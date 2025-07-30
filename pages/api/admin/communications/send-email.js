@@ -33,7 +33,7 @@ ${content}
           </div>
           
           <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #fcba00; text-align: center;">
-            <p style="color: #666; margin: 5px 0;"><strong style="color: #fcba00;">Phone:</strong> (901) 497-7001</p>
+            <p style="color: #666; margin: 5px 0;"><strong style="color: #fcba00;">Phone:</strong> (901) 410-2020</p>
             <p style="color: #666; margin: 5px 0;"><strong style="color: #fcba00;">Email:</strong> djbenmurray@gmail.com</p>
             <p style="color: #666; margin: 5px 0;"><strong style="color: #fcba00;">Website:</strong> m10djcompany.com</p>
             <p style="color: #999; font-size: 12px; margin-top: 15px;">

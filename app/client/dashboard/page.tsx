@@ -194,7 +194,7 @@ export default async function ClientDashboard() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <a
-              href="tel:(901)497-7001"
+              href="tel:(901)410-2020"
               className="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <div className="p-2 bg-brand-gold rounded-lg mr-3">
@@ -203,7 +203,7 @@ export default async function ClientDashboard() {
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-gray-900 dark:text-white">(901) 497-7001</p>
+                <p className="font-semibold text-gray-900 dark:text-white">(901) 410-2020</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Call Ben directly</p>
               </div>
             </a>

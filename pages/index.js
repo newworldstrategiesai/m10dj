@@ -259,8 +259,8 @@ export default function Home() {
                     <div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-2 font-inter">Call Us Today</h3>
                       <p className="text-gray-600 mb-3 font-inter">Ready to discuss your event? Give us a call!</p>
-                      <a href="tel:+19015551234" className="text-brand font-semibold hover:text-brand-600 transition-colors">
-                        (901) 555-1234
+                      <a href="tel:+19014102020" className="text-brand font-semibold hover:text-brand-600 transition-colors">
+(901) 410-2020
                       </a>
                     </div>
                   </div>

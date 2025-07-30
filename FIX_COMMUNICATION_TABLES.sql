@@ -67,8 +67,14 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Drop triggers if they exist, then create them
+DROP TRIGGER IF EXISTS update_communication_log_updated_at ON communication_log;
 CREATE TRIGGER update_communication_log_updated_at BEFORE UPDATE ON communication_log FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_email_templates_updated_at ON email_templates;
 CREATE TRIGGER update_email_templates_updated_at BEFORE UPDATE ON email_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_follow_up_reminders_updated_at ON follow_up_reminders;
 CREATE TRIGGER update_follow_up_reminders_updated_at BEFORE UPDATE ON follow_up_reminders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Add RLS policies for new tables
@@ -89,19 +95,19 @@ INSERT INTO email_templates (name, subject, content, template_type) VALUES
 (
   'Initial Response',
   'Thank you for your inquiry - M10 DJ Company',
-  E'Hi {{client_name}},\n\nThank you for reaching out to M10 DJ Company about your {{event_type}}!\n\nWe\'re excited to help make your event unforgettable. I\'ve reviewed your request and would love to discuss the details with you.\n\nHere\'s what happens next:\n• I\'ll prepare a personalized quote based on your needs\n• We can schedule a call to discuss your vision\n• I\'ll check availability for {{event_date}}\n\nFeel free to call me directly at (901) 497-7001 or reply to this email with any questions.\n\nLooking forward to working with you!\n\nBest regards,\nBen Murray\nM10 DJ Company\nPhone: (901) 497-7001\nEmail: djbenmurray@gmail.com',
+  E'Hi {{client_name}},\n\nThank you for reaching out to M10 DJ Company about your {{event_type}}!\n\nWe\'re excited to help make your event unforgettable. I\'ve reviewed your request and would love to discuss the details with you.\n\nHere\'s what happens next:\n• I\'ll prepare a personalized quote based on your needs\n• We can schedule a call to discuss your vision\n• I\'ll check availability for {{event_date}}\n\nFeel free to call me directly at (901) 410-2020 or reply to this email with any questions.\n\nLooking forward to working with you!\n\nBest regards,\nBen Murray\nM10 DJ Company\nPhone: (901) 410-2020\nEmail: djbenmurray@gmail.com',
   'follow_up'
 ),
 (
   'Quote Follow-up',
   'Following up on your M10 DJ quote',
-  E'Hi {{client_name}},\n\nI wanted to follow up on the quote I sent for your {{event_type}} on {{event_date}}.\n\nDo you have any questions about the services or pricing? I\'m happy to customize the package to better fit your needs and budget.\n\nYour date is still available, but popular dates do book up quickly. I\'d love to secure your spot and start planning an amazing event!\n\nPlease let me know if you\'d like to move forward or if you need any additional information.\n\nBest regards,\nBen Murray\nM10 DJ Company\nPhone: (901) 497-7001',
+  E'Hi {{client_name}},\n\nI wanted to follow up on the quote I sent for your {{event_type}} on {{event_date}}.\n\nDo you have any questions about the services or pricing? I\'m happy to customize the package to better fit your needs and budget.\n\nYour date is still available, but popular dates do book up quickly. I\'d love to secure your spot and start planning an amazing event!\n\nPlease let me know if you\'d like to move forward or if you need any additional information.\n\nBest regards,\nBen Murray\nM10 DJ Company\nPhone: (901) 410-2020',
   'quote'
 ),
 (
   'Booking Confirmation',
   'Your event is confirmed! - M10 DJ Company',
-  E'Hi {{client_name}},\n\nFantastic news! Your {{event_type}} on {{event_date}} is officially confirmed!\n\nI\'m thrilled to be part of your special day. Here are the next steps:\n\n• I\'ll send you a detailed timeline 2 weeks before your event\n• We\'ll have a final planning call 1 week prior\n• Feel free to send me your must-play and do-not-play songs anytime\n\nIf you have any questions or need to make changes, don\'t hesitate to reach out.\n\nThank you for choosing M10 DJ Company. I can\'t wait to help make your event unforgettable!\n\nBest regards,\nBen Murray\nM10 DJ Company\nPhone: (901) 497-7001',
+  E'Hi {{client_name}},\n\nFantastic news! Your {{event_type}} on {{event_date}} is officially confirmed!\n\nI\'m thrilled to be part of your special day. Here are the next steps:\n\n• I\'ll send you a detailed timeline 2 weeks before your event\n• We\'ll have a final planning call 1 week prior\n• Feel free to send me your must-play and do-not-play songs anytime\n\nIf you have any questions or need to make changes, don\'t hesitate to reach out.\n\nThank you for choosing M10 DJ Company. I can\'t wait to help make your event unforgettable!\n\nBest regards,\nBen Murray\nM10 DJ Company\nPhone: (901) 410-2020',
   'booking_confirmation'
 ) ON CONFLICT (name) DO NOTHING;
 

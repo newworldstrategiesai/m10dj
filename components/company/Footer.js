@@ -39,8 +39,8 @@ export default function Footer() {
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-brand flex-shrink-0" />
                 <div>
-                  <a href="tel:+19015551234" className="text-white hover:text-brand transition-colors font-inter font-semibold">
-                    (901) 555-1234
+                  <a href="tel:+19014102020" className="text-white hover:text-brand transition-colors font-inter font-semibold">
+(901) 410-2020
                   </a>
                   <p className="text-gray-400 text-sm font-inter">Call or text anytime</p>
                 </div>
@@ -181,7 +181,7 @@ export default function Footer() {
               <Link href="#contact" className="btn-primary">
                 Get Free Quote
               </Link>
-              <a href="tel:+19015551234" className="btn-secondary">
+              <a href="tel:+19014102020" className="btn-secondary">
                 Call Now
               </a>
             </div>

@@ -144,8 +144,8 @@ export default function Header() {
               <div className="flex items-center space-x-4 text-sm">
                 <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg">
                   <Phone className="w-4 h-4 text-brand" />
-                  <a href="tel:+19015551234" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
-                    (901) 555-1234
+                  <a href="tel:+19014102020" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+(901) 410-2020
                   </a>
                 </div>
               </div>
@@ -251,8 +251,8 @@ export default function Header() {
                   <Phone className="w-5 h-5 text-brand" />
                   <div>
                     <p className="text-sm font-semibold text-gray-900 font-inter">Call or Text</p>
-                    <a href="tel:+19015551234" className="text-brand hover:text-brand-600 font-semibold font-inter transition-colors">
-                      (901) 555-1234
+                    <a href="tel:+19014102020" className="text-brand hover:text-brand-600 font-semibold font-inter transition-colors">
+(901) 410-2020
                     </a>
                   </div>
                 </div>

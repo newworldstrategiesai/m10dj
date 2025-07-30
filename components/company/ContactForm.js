@@ -157,7 +157,7 @@ export default function ContactForm({ className = '' }) {
               value={formData.phone}
               onChange={handleInputChange}
               className="modern-input"
-              placeholder="(901) 555-0123"
+              placeholder="(901) 410-2020"
             />
           </div>
 
@@ -280,8 +280,8 @@ export default function ContactForm({ className = '' }) {
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900 font-inter">Call us directly</p>
-              <a href="tel:+19015551234" className="text-brand hover:text-brand-600 transition-colors font-inter">
-                (901) 555-1234
+              <a href="tel:+19014102020" className="text-brand hover:text-brand-600 transition-colors font-inter">
+(901) 410-2020
               </a>
             </div>
           </div>

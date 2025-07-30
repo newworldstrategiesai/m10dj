@@ -72,7 +72,7 @@ export default async function handler(req, res) {
             </p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <p style="color: #666; margin: 5px 0;">Call us directly: <strong style="color: #fcba00;">(901) 555-1234</strong></p>
+              <p style="color: #666; margin: 5px 0;">Call us directly: <strong style="color: #fcba00;">(901) 410-2020</strong></p>
               <p style="color: #666; margin: 5px 0;">Email: <strong style="color: #fcba00;">info@m10djcompany.com</strong></p>
             </div>
             
