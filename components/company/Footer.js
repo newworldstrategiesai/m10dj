@@ -1,246 +1,193 @@
+import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { Phone, Mail, MapPin, Facebook, Instagram } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, Facebook, Instagram, Music } from 'lucide-react';
 
 export default function Footer() {
-  const serviceAreas = [
-    { name: 'Midtown Memphis', href: '/midtown-memphis' },
-    { name: 'Downtown Memphis', href: '/downtown-memphis' },
-    { name: 'Germantown', href: '/germantown' },
-    { name: 'Collierville', href: '/collierville' },
-    { name: 'Bartlett', href: '/bartlett' },
-    { name: 'Arlington', href: '/arlington' }
-  ];
-
-  const services = [
-    { name: 'Wedding DJ Services', href: '/services#wedding' },
-    { name: 'Corporate Events', href: '/services#corporate' },
-    { name: 'Birthday Parties', href: '/services#parties' },
-    { name: 'Sound & Lighting', href: '/services#lighting' },
-    { name: 'MC Services', href: '/services#mc' }
-  ];
-
-  const resources = [
-    { name: 'About Us', href: '/about' },
-    { name: 'Our Services', href: '/services' },
-    { name: 'Event Blog', href: '/blog' },
-    { name: 'Preferred Venues', href: '/venues' },
-    { name: 'Trusted Vendors', href: '/vendors' },
-    { name: 'Admin Dashboard', href: '/admin/dashboard' }
-  ];
-
-  const businessSchema = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "M10 DJ Company",
-    "description": "Professional DJ services for weddings, corporate events, and parties in Memphis, TN",
-    "url": "https://m10djcompany.com",
-    "telephone": "(901) 410-2020",
-    "email": "m10djcompany@gmail.com",
-    "logo": {
-      "@type": "ImageObject",
-      "url": "https://m10djcompany.com/logo-static.jpg",
-      "width": "400",
-      "height": "400"
-    },
-    "image": "https://m10djcompany.com/logo-static.jpg",
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Memphis",
-      "addressRegion": "TN",
-      "addressCountry": "US"
-    },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": "35.1495",
-      "longitude": "-90.0490"
-    },
-    "areaServed": [
-      {
-        "@type": "City",
-        "name": "Memphis, TN"
-      },
-      {
-        "@type": "City", 
-        "name": "Germantown, TN"
-      },
-      {
-        "@type": "City",
-        "name": "Collierville, TN"
-      },
-      {
-        "@type": "City",
-        "name": "Bartlett, TN"
-      },
-      {
-        "@type": "City",
-        "name": "Arlington, TN"
-      }
-    ],
-    "priceRange": "$$$",
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "5.0",
-      "reviewCount": "50"
-    },
-    "sameAs": [
-      "https://facebook.com/m10djcompany",
-      "https://instagram.com/m10djcompany"
-    ]
-  };
+  const currentYear = new Date().getFullYear();
 
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(businessSchema) }}
-      />
-      
-      <footer className="cyber-grid animated-bg text-white relative overflow-hidden">
-        <div className="section-container py-16 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Company Info */}
-            <div className="lg:col-span-1">
-              <div className="flex items-center mb-6">
-                <div className="relative w-14 h-14 mr-3">
-                  <Image
-                    src="/logo.gif"
-                    alt="M10 DJ Company Logo"
-                    width={56}
-                    height={56}
-                    className="object-contain"
-                    unoptimized // This allows GIF animation to work
-                    onError={(e) => {
-                      // Fallback to static logo if GIF fails to load
-                      e.target.src = '/logo-static.jpg';
-                    }}
-                  />
-                </div>
+    <footer className="bg-gray-900 text-white relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.2) 1px, transparent 0)',
+          backgroundSize: '20px 20px'
+        }} />
+      </div>
+
+      <div className="section-container relative z-10 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Company Info */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-brand text-black rounded-lg flex items-center justify-center">
+                <Music className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white font-playfair">M10 DJ Company</h3>
+                <p className="text-brand font-semibold font-inter">Premium Event Entertainment</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-300 mb-6 leading-relaxed font-inter max-w-md">
+              Memphis's premier entertainment company, delivering exceptional experiences with professional DJ services, 
+              state-of-the-art sound systems, and personalized event coordination.
+            </p>
+            
+            {/* Contact Info */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <Phone className="w-5 h-5 text-brand flex-shrink-0" />
                 <div>
-                  <div className="text-xl font-bold font-orbitron text-neon-cyan neon-text">M10 DJ COMPANY</div>
-                  <div className="text-neon-purple text-sm font-rajdhani uppercase tracking-wide">Memphis Event Entertainment</div>
+                  <a href="tel:+19015551234" className="text-white hover:text-brand transition-colors font-inter font-semibold">
+                    (901) 555-1234
+                  </a>
+                  <p className="text-gray-400 text-sm font-inter">Call or text anytime</p>
                 </div>
               </div>
               
-              <p className="text-gray-300 mb-6 leading-relaxed font-rajdhani">
-                Creating unforgettable celebrations throughout Memphis and surrounding areas 
-                with professional DJ services, lighting, and entertainment.
-              </p>
-
-              <div className="space-y-3">
-                <div className="flex items-center glass-card px-3 py-2">
-                  <Phone className="w-5 h-5 text-neon-cyan mr-3" />
-                  <a 
-                    href="tel:(901)410-2020" 
-                    className="text-gray-300 hover:text-neon-cyan transition-colors font-rajdhani"
-                  >
-                    (901) 410-2020
+              <div className="flex items-center space-x-3">
+                <Mail className="w-5 h-5 text-brand flex-shrink-0" />
+                <div>
+                  <a href="mailto:info@m10dj.com" className="text-white hover:text-brand transition-colors font-inter font-semibold">
+                    info@m10dj.com
                   </a>
-                </div>
-                <div className="flex items-center glass-card px-3 py-2">
-                  <Mail className="w-5 h-5 text-neon-purple mr-3" />
-                  <a 
-                    href="mailto:m10djcompany@gmail.com" 
-                    className="text-gray-300 hover:text-neon-purple transition-colors font-rajdhani"
-                  >
-                    m10djcompany@gmail.com
-                  </a>
-                </div>
-                <div className="flex items-center glass-card px-3 py-2">
-                  <MapPin className="w-5 h-5 text-neon-pink mr-3" />
-                  <span className="text-gray-300 font-rajdhani">Memphis, TN & Surrounding Areas</span>
+                  <p className="text-gray-400 text-sm font-inter">24-hour response time</p>
                 </div>
               </div>
-            </div>
-
-            {/* Services */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 font-orbitron text-neon-cyan uppercase tracking-wide">Our Services</h3>
-              <ul className="space-y-3">
-                {services.map((service, index) => (
-                  <li key={index}>
-                    <Link 
-                      href={service.href}
-                      className="text-gray-300 hover:text-neon-cyan transition-colors text-sm font-rajdhani block py-1 px-2 hover:bg-neon-cyan/10 clip-cyber-small"
-                    >
-                      {service.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Resources */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 font-orbitron text-neon-purple uppercase tracking-wide">Resources</h3>
-              <ul className="space-y-3">
-                {resources.map((resource, index) => (
-                  <li key={index}>
-                    <Link 
-                      href={resource.href}
-                      className="text-gray-300 hover:text-neon-purple transition-colors text-sm font-rajdhani block py-1 px-2 hover:bg-neon-purple/10 clip-cyber-small"
-                    >
-                      {resource.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Service Areas */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 font-orbitron text-neon-pink uppercase tracking-wide">Areas We Serve</h3>
-              <ul className="space-y-3">
-                {serviceAreas.map((area, index) => (
-                  <li key={index}>
-                    <Link 
-                      href={area.href}
-                      className="text-gray-300 hover:text-neon-pink transition-colors text-sm font-rajdhani block py-1 px-2 hover:bg-neon-pink/10 clip-cyber-small"
-                    >
-                      {area.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              
+              <div className="flex items-center space-x-3">
+                <MapPin className="w-5 h-5 text-brand flex-shrink-0" />
+                <div>
+                  <p className="text-white font-inter font-semibold">Memphis, TN & Surrounding Areas</p>
+                  <p className="text-gray-400 text-sm font-inter">50-mile service radius</p>
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* Social Media & Copyright */}
-          <div className="border-t border-neon-cyan/30 mt-12 pt-8 glass-card p-6">
-            <div className="flex flex-col md:flex-row items-center justify-between">
-              <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                <a
-                  href="https://facebook.com/m10djcompany"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-12 h-12 glass-card flex items-center justify-center hover:bg-neon-cyan hover:text-black transition-all duration-300 clip-cyber-small group"
-                  aria-label="Follow us on Facebook"
-                >
-                  <Facebook className="w-5 h-5 text-neon-cyan group-hover:text-black" />
-                </a>
-                <a
-                  href="https://instagram.com/m10djcompany"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-12 h-12 glass-card flex items-center justify-center hover:bg-neon-purple hover:text-black transition-all duration-300 clip-cyber-small group"
-                  aria-label="Follow us on Instagram"
-                >
-                  <Instagram className="w-5 h-5 text-neon-purple group-hover:text-black" />
-                </a>
-              </div>
-              
-              <div className="text-center md:text-right">
-                <p className="text-gray-300 text-sm font-rajdhani uppercase tracking-wide">
-                  © {new Date().getFullYear()} M10 DJ Company. All rights reserved.
-                </p>
-                <p className="text-neon-cyan text-xs mt-1 font-orbitron">
-                  Professional DJ Services in Memphis, TN since 2014
-                </p>
-              </div>
+          
+          {/* Services */}
+          <div>
+            <h4 className="text-lg font-semibold text-brand mb-6 font-playfair">Our Services</h4>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/services#wedding" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Wedding Entertainment
+                </Link>
+              </li>
+              <li>
+                <Link href="/services#corporate" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Corporate Events
+                </Link>
+              </li>
+              <li>
+                <Link href="/services#private" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Private Parties
+                </Link>
+              </li>
+              <li>
+                <Link href="/services#school" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  School Dances
+                </Link>
+              </li>
+              <li>
+                <Link href="/services#holiday" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Holiday Parties
+                </Link>
+              </li>
+            </ul>
+          </div>
+          
+          {/* Service Areas */}
+          <div>
+            <h4 className="text-lg font-semibold text-brand mb-6 font-playfair">Service Areas</h4>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/memphis" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Memphis
+                </Link>
+              </li>
+              <li>
+                <Link href="/germantown" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Germantown
+                </Link>
+              </li>
+              <li>
+                <Link href="/collierville" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Collierville
+                </Link>
+              </li>
+              <li>
+                <Link href="/bartlett" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Bartlett
+                </Link>
+              </li>
+              <li>
+                <Link href="/arlington" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Arlington
+                </Link>
+              </li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="divider-brand my-12" />
+        
+        {/* Bottom Section */}
+        <div className="flex flex-col md:flex-row items-center justify-between space-y-6 md:space-y-0">
+          <div className="text-center md:text-left">
+            <p className="text-gray-400 font-inter">
+              © {currentYear} <span className="text-brand font-semibold">M10 DJ Company</span>. All rights reserved.
+            </p>
+            <p className="text-gray-500 text-sm font-inter mt-1">
+              Licensed & Insured • Professional Event Entertainment
+            </p>
+          </div>
+          
+          {/* Social Media */}
+          <div className="flex items-center space-x-6">
+            <p className="text-gray-400 font-inter text-sm">Follow Us:</p>
+            <div className="flex space-x-4">
+              <a 
+                href="https://facebook.com/m10djcompany" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 bg-gray-800 hover:bg-brand text-gray-400 hover:text-black rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
+                aria-label="Facebook"
+              >
+                <Facebook className="w-5 h-5" />
+              </a>
+              <a 
+                href="https://instagram.com/m10djcompany" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 bg-gray-800 hover:bg-brand text-gray-400 hover:text-black rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
+                aria-label="Instagram"
+              >
+                <Instagram className="w-5 h-5" />
+              </a>
             </div>
           </div>
         </div>
-      </footer>
-    </>
+        
+        {/* Call to Action */}
+        <div className="mt-12 text-center">
+          <div className="bg-gradient-to-r from-brand/10 to-brand/5 rounded-2xl p-8 border border-brand/20">
+            <h4 className="text-2xl font-bold text-white mb-4 font-playfair">Ready to Make Your Event Unforgettable?</h4>
+            <p className="text-gray-300 mb-6 font-inter max-w-2xl mx-auto">
+              Get your free consultation and quote today. Let's create an amazing experience for your special event.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="#contact" className="btn-primary">
+                Get Free Quote
+              </Link>
+              <a href="tel:+19015551234" className="btn-secondary">
+                Call Now
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 } 

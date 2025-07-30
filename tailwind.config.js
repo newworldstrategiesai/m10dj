@@ -2,12 +2,13 @@ const { fontFamily } = require('tailwindcss/defaultTheme');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: ['class', '[data-theme="dark"]'],
   content: [
-    'app/**/*.{ts,tsx}',
-    'components/**/*.{ts,tsx}',
-    'pages/**/*.{ts,tsx}'
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/**/*.{js,ts,jsx,tsx,mdx}'
   ],
+  darkMode: ['class'],
   theme: {
     container: {
       center: true,
@@ -18,80 +19,114 @@ module.exports = {
     },
     extend: {
       colors: {
-        'neon-cyan': '#00ffff',
-        'neon-purple': '#8b5cf6',
-        'neon-pink': '#ff00ff',
-        'neon-green': '#00ff41',
-        'cyber-dark': '#0a0a0f',
-        'cyber-surface': '#1a1a2e',
-        'cyber-border': '#16213e',
-        'glass': {
-          bg: 'rgba(255, 255, 255, 0.05)',
-          border: 'rgba(255, 255, 255, 0.1)'
+        // Brand colors
+        'brand': {
+          DEFAULT: '#fcba00',
+          50: '#fefbf3',
+          100: '#fef7e6',
+          200: '#fdecc7',
+          300: '#fbdb9e',
+          400: '#fcc564',
+          500: '#fcba00',
+          600: '#e6a800',
+          700: '#d19600',
+          800: '#a67600',
+          900: '#7a5500',
+        },
+        // Professional grays
+        'gray': {
+          50: '#f9fafb',
+          100: '#f3f4f6',
+          200: '#e5e7eb',
+          300: '#d1d5db',
+          400: '#9ca3af',
+          500: '#6b7280',
+          600: '#4b5563',
+          700: '#374151',
+          800: '#1f2937',
+          900: '#111827',
+        },
+        // System colors
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))'
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))'
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))'
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))'
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))'
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))'
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))'
         }
       },
       fontFamily: {
-        sans: ['Rajdhani', ...fontFamily.sans],
-        mono: ['Orbitron', ...fontFamily.mono],
-        orbitron: ['Orbitron', 'monospace'],
-        rajdhani: ['Rajdhani', 'sans-serif']
+        sans: ['Inter', ...fontFamily.sans],
+        serif: ['Playfair Display', ...fontFamily.serif],
+        inter: ['Inter', 'sans-serif'],
+        playfair: ['Playfair Display', 'serif']
       },
       backgroundImage: {
-        'cyber-gradient': 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%)',
-        'neon-gradient': 'linear-gradient(45deg, #00ffff, #8b5cf6, #ff00ff)',
-        'glass-gradient': 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)'
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+        'brand-gradient': 'linear-gradient(135deg, #fcba00 0%, #ffd700 100%)',
+        'subtle-gradient': 'linear-gradient(135deg, #fefefe 0%, #f8f9fa 100%)'
       },
       boxShadow: {
-        'neon-cyan': '0 0 20px rgba(0, 255, 255, 0.3)',
-        'neon-purple': '0 0 20px rgba(139, 92, 246, 0.3)',
-        'neon-pink': '0 0 20px rgba(255, 0, 255, 0.3)',
-        'cyber': '0 20px 40px rgba(0, 255, 255, 0.2), 0 0 0 1px rgba(0, 255, 255, 0.3)'
+        'brand': '0 4px 6px -1px rgba(252, 186, 0, 0.1), 0 2px 4px -1px rgba(252, 186, 0, 0.06)',
+        'brand-lg': '0 10px 15px -3px rgba(252, 186, 0, 0.1), 0 4px 6px -2px rgba(252, 186, 0, 0.05)',
+        'elegant': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        'premium': '0 25px 50px -12px rgba(0, 0, 0, 0.15)'
       },
       animation: {
-        'gradient-shift': 'gradient-shift 3s ease infinite',
-        'neon-flicker': 'neon-flicker 2s ease-in-out infinite alternate',
-        'cyber-grid': 'grid-move 20s linear infinite',
-        'hologram': 'hologram-scan 2s linear infinite',
-        'float': 'float 6s ease-in-out infinite',
-        'rotate-slow': 'rotate 20s linear infinite'
+        'fade-in': 'fadeIn 0.4s ease-out',
+        'fade-in-up': 'fadeInUp 0.6s ease-out',
+        'slide-in': 'slideIn 0.4s ease-out'
       },
       keyframes: {
-        'gradient-shift': {
-          '0%, 100%': { 'background-position': '0% 50%' },
-          '50%': { 'background-position': '100% 50%' }
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' }
         },
-        'neon-flicker': {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.8' }
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(30px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
         },
-        'grid-move': {
-          '0%': { transform: 'translate(0, 0)' },
-          '100%': { transform: 'translate(50px, 50px)' }
-        },
-        'hologram-scan': {
-          '0%': { 'background-position': '0 0' },
-          '100%': { 'background-position': '20px 20px' }
-        },
-        'float': {
-          '0%, 100%': { 
-            transform: 'translateY(0px) translateX(0px)',
-            opacity: '0'
-          },
-          '10%, 90%': {
-            opacity: '1'
-          },
-          '50%': { 
-            transform: 'translateY(-20px) translateX(10px)'
-          }
-        },
-        'rotate': {
-          '0%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(360deg)' }
+        slideIn: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(0)' }
         }
       },
-      clipPath: {
-        'cyber': 'polygon(20px 0%, 100% 0%, calc(100% - 20px) 100%, 0% 100%)',
-        'cyber-small': 'polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)'
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '128': '32rem'
+      },
+      borderRadius: {
+        lg: '0.75rem',
+        xl: '1rem',
+        '2xl': '1.5rem'
       }
     }
   },
@@ -99,11 +134,8 @@ module.exports = {
     require('tailwindcss-animate'),
     function({ addUtilities }) {
       const newUtilities = {
-        '.clip-cyber': {
-          'clip-path': 'polygon(20px 0%, 100% 0%, calc(100% - 20px) 100%, 0% 100%)'
-        },
-        '.clip-cyber-small': {
-          'clip-path': 'polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)'
+        '.text-balance': {
+          'text-wrap': 'balance'
         }
       }
       addUtilities(newUtilities)

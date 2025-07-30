@@ -1,314 +1,309 @@
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
-import { Music, Users, Calendar, Award, Heart, Building2, PartyPopper, GraduationCap } from 'lucide-react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Star, Users, Calendar, Music, Headphones, Mic, Volume2, Award, Phone, Mail, MapPin, ChevronRight } from 'lucide-react';
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
-import FAQSection from '../components/company/FAQSection';
 import TestimonialSlider from '../components/company/TestimonialSlider';
+import FAQSection from '../components/company/FAQSection';
 
 export default function Home() {
-  const services = [
-    {
-      icon: Heart,
-      title: "Wedding DJ Services",
-      description: "Make your special day unforgettable with our professional wedding DJ services. From the ceremony to the last dance, we'll create the perfect atmosphere.",
-      features: ["Ceremony music", "Cocktail hour playlist", "Reception entertainment", "Wireless microphones", "Dance floor lighting"]
-    },
-    {
-      icon: Building2,
-      title: "Corporate Events",
-      description: "Professional DJ services for corporate functions, holiday parties, product launches, and company celebrations that impress your guests.",
-      features: ["Professional MC services", "Audio visual support", "Background music", "Presentation support", "Award ceremonies"]
-    },
-    {
-      icon: PartyPopper,
-      title: "Birthday Parties",
-      description: "Celebrate another year of life with music that gets everyone dancing! We specialize in parties for all ages with age-appropriate music.",
-      features: ["All-ages playlists", "Interactive games", "Special announcements", "Party lighting", "Music requests"]
-    },
-    {
-      icon: Calendar,
-      title: "Anniversary Celebrations", 
-      description: "Honor your special milestone with music from your era and favorites that tell your love story through the years.",
-      features: ["Era-specific music", "Special dedications", "Romantic lighting", "Timeline music", "Guest requests"]
-    },
-    {
-      icon: GraduationCap,
-      title: "School Dances & Events",
-      description: "Create memorable experiences for students with current hits and appropriate music that keeps the energy high and the dance floor packed.",
-      features: ["Current hit music", "Clean versions only", "Student requests", "School-appropriate content", "Interactive activities"]
-    },
-    {
-      icon: Users,
-      title: "Private Parties",
-      description: "Whatever the occasion, we'll provide the perfect soundtrack. From intimate gatherings to large celebrations, we've got you covered.",
-      features: ["Custom playlists", "Flexible timing", "All music genres", "Professional setup", "Backup equipment"]
-    }
-  ];
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   return (
     <>
       <Head>
-        <title>M10 DJ Company | Premier Wedding & Event DJ Services in Memphis, TN</title>
-        <meta 
-          name="description" 
-          content="Professional DJ services in Memphis, TN for weddings, corporate events, birthdays & celebrations. Serving Germantown, Collierville, Bartlett & surrounding areas. Get your free quote today!" 
-        />
-        <meta name="keywords" content="DJ services Memphis, wedding DJ Memphis TN, corporate event DJ, birthday party DJ, Memphis DJ company, Germantown DJ, Collierville DJ, Bartlett DJ" />
+        <title>M10 DJ Company | Premium Event Entertainment in Memphis</title>
+        <meta name="description" content="Memphis's premier DJ and entertainment company. Professional event services for weddings, corporate events, and private parties. Unforgettable experiences with cutting-edge technology." />
+        <meta name="keywords" content="Memphis DJ, wedding DJ, corporate events, party DJ, event entertainment, Memphis events" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com" />
-        
-        {/* Open Graph tags */}
-        <meta property="og:title" content="M10 DJ Company | Premier Wedding & Event DJ Services in Memphis, TN" />
-        <meta property="og:description" content="Professional DJ services in Memphis, TN for weddings, corporate events, birthdays & celebrations. Serving Germantown, Collierville, Bartlett & surrounding areas." />
-        <meta property="og:image" content="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse3.mm.bing.net%2Fth%2Fid%2FOIP.yr05JG7kPZyN7YgTzU6h9AAAAA%3Fpid%3DApi&f=1&ipt=17ed6ed3a6ff98b946d704a9f4430cfe33b3d9e95e4c081f0f69d0b2de54de2b&ipo=images" />
-        <meta property="og:url" content="https://m10djcompany.com" />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="M10 DJ Company" />
-        
-        {/* Twitter Card tags */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="M10 DJ Company | Premier Wedding & Event DJ Services in Memphis, TN" />
-        <meta name="twitter:description" content="Professional DJ services in Memphis, TN for weddings, corporate events, birthdays & celebrations." />
-        <meta name="twitter:image" content="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse3.mm.bing.net%2Fth%2Fid%2FOIP.yr05JG7kPZyN7YgTzU6h9AAAAA%3Fpid%3DApi&f=1&ipt=17ed6ed3a6ff98b946d704a9f4430cfe33b3d9e95e4c081f0f69d0b2de54de2b&ipo=images" />
-        
-        {/* Additional SEO tags */}
-        <meta name="geo.region" content="US-TN" />
-        <meta name="geo.placename" content="Memphis" />
-        <meta name="geo.position" content="35.1495;-90.0490" />
-        <meta name="ICBM" content="35.1495, -90.0490" />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <Header />
 
       <main>
         {/* Hero Section */}
-        <section id="home" className="relative min-h-screen flex items-center justify-center animated-bg cyber-grid text-white overflow-hidden">
+        <section id="home" className={`relative min-h-screen flex items-center justify-center bg-white text-gray-900 overflow-hidden ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
           {/* Background Elements */}
-          <div className="absolute inset-0">
-            <div className="absolute top-20 left-10 w-72 h-72 bg-neon-cyan rounded-full blur-3xl opacity-20 animate-pulse"></div>
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-neon-purple rounded-full blur-3xl opacity-20 animate-pulse" style={{animationDelay: '1s'}}></div>
-            <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-neon-pink rounded-full blur-3xl opacity-10 animate-pulse" style={{animationDelay: '2s'}}></div>
-          </div>
-          {/* Particles */}
-          <div className="particles">
-            {[...Array(20)].map((_, i) => (
-              <div 
-                key={i} 
-                className="particle" 
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 6}s`
-                }}
-              />
-            ))}
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-white">
+            <div className="absolute top-20 right-10 w-96 h-96 bg-brand/5 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-20 left-10 w-80 h-80 bg-brand/10 rounded-full blur-2xl"></div>
           </div>
           
-          <div className="section-container relative z-10 text-center pt-20">
+          <div className="section-container relative z-10 text-center py-32">
             <div className="max-w-5xl mx-auto">
               {/* Main Headline */}
-              <h1 className="heading-1 mb-6 neon-text">
-                <span className="block text-white">Unforgettable Memphis Events</span>
+              <h1 className="heading-1 mb-8 animate-fade-in-up">
+                <span className="block text-gray-900">Unforgettable Memphis Events</span>
                 <span className="block text-gradient">Start with M10 DJ Company</span>
               </h1>
               
-              <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed animate-slide-up">
-                Professional DJ services that create perfect moments for your wedding, corporate event, or celebration. 
-                Serving Memphis and all surrounding areas with premium sound, lighting, and entertainment.
+              <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed font-inter">
+                Memphis's premier entertainment company, delivering exceptional experiences with professional DJ services, 
+                state-of-the-art sound systems, and personalized event coordination.
               </p>
               
-              {/* Key Benefits */}
-              <div className="flex flex-wrap justify-center gap-6 mb-10 text-sm md:text-base">
-                <div className="flex items-center space-x-2 glass-card px-6 py-3 hologram">
-                  <Award className="w-5 h-5 text-neon-cyan" />
-                  <span className="font-rajdhani font-semibold uppercase tracking-wide">Professional Equipment</span>
-                </div>
-                <div className="flex items-center space-x-2 glass-card px-6 py-3 hologram">
-                  <Music className="w-5 h-5 text-neon-purple" />
-                  <span className="font-rajdhani font-semibold uppercase tracking-wide">All Music Genres</span>
-                </div>
-                <div className="flex items-center space-x-2 glass-card px-6 py-3 hologram">
-                  <Users className="w-5 h-5 text-neon-pink" />
-                  <span className="font-rajdhani font-semibold uppercase tracking-wide">MC Services Included</span>
-                </div>
-              </div>
-              
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                <button
-                  onClick={() => {
-                    const element = document.getElementById('contact');
-                    if (element) element.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="btn-primary text-lg px-8 py-4"
-                >
-                  Get Free Quote
-                </button>
-                <a href="tel:(901)410-2020" className="btn-outline text-lg px-8 py-4">
-                  Call (901) 410-2020
-                </a>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
+                <Link href="#contact" className="btn-primary group">
+                  Get Your Free Quote
+                  <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link href="/services" className="btn-secondary">
+                  View Our Services
+                </Link>
               </div>
               
-              {/* Service Areas */}
-              <div className="text-center">
-                <p className="text-gray-400 mb-3">Proudly serving:</p>
-                <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-300">
-                  <span>Memphis</span>
-                  <span>Germantown</span>
-                  <span>Collierville</span>
-                  <span>Bartlett</span>
-                  <span>Arlington</span>
-                  <span>Midtown</span>
-                  <span>Downtown</span>
-                  <span>& More</span>
+              {/* Key Benefits */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
+                <div className="modern-card text-center group">
+                  <div className="w-16 h-16 bg-brand text-white rounded-xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                    <Award className="w-8 h-8" />
+                  </div>
+                  <h3 className="heading-3 mb-4 text-gray-900">15+ Years Experience</h3>
+                  <p className="text-gray-600 font-inter">Trusted by thousands of clients across Memphis with a proven track record of exceptional events.</p>
+                </div>
+                
+                <div className="modern-card text-center group">
+                  <div className="w-16 h-16 bg-brand text-white rounded-xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                    <Volume2 className="w-8 h-8" />
+                  </div>
+                  <h3 className="heading-3 mb-4 text-gray-900">Professional Equipment</h3>
+                  <p className="text-gray-600 font-inter">State-of-the-art sound systems, lighting, and entertainment technology for flawless events.</p>
+                </div>
+                
+                <div className="modern-card text-center group">
+                  <div className="w-16 h-16 bg-brand text-white rounded-xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                    <Users className="w-8 h-8" />
+                  </div>
+                  <h3 className="heading-3 mb-4 text-gray-900">Personalized Service</h3>
+                  <p className="text-gray-600 font-inter">Customized entertainment solutions tailored to your unique vision and event requirements.</p>
                 </div>
               </div>
-            </div>
-          </div>
-          
-          {/* Scroll Indicator */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-            <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
-              <div className="w-1 h-3 bg-white/60 rounded-full mt-2 animate-pulse"></div>
             </div>
           </div>
         </section>
 
         {/* Services Section */}
-        <section id="services" className="py-20 relative cyber-grid">
+        <section id="services" className="py-section bg-gray-50">
           <div className="section-container">
-            <div className="text-center mb-16">
-              <h2 className="heading-2 text-white mb-6 neon-text">
-                Professional DJ Services for Every Occasion
-              </h2>
-              <p className="text-xl text-gray-300 max-w-3xl mx-auto font-rajdhani">
-                From intimate gatherings to grand celebrations, we bring the perfect soundtrack to your special moments. 
-                Our experienced DJs understand how to read the crowd and keep the energy flowing all night long.
+            <div className="text-center mb-20">
+              <h2 className="heading-2 mb-6 text-gray-900">Premium Entertainment Services</h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
+                From intimate gatherings to grand celebrations, we provide comprehensive entertainment solutions 
+                that exceed expectations and create lasting memories.
               </p>
             </div>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {services.map((service, index) => (
-                <div key={index} className="glass-card p-8 hover:shadow-cyber transition-all duration-500 group">
-                  <div className="w-16 h-16 bg-gradient-to-r from-neon-cyan to-neon-purple clip-cyber-small flex items-center justify-center mb-6 shadow-neon-cyan">
-                    <service.icon className="w-8 h-8 text-black" />
+              {/* Wedding Services */}
+              <div className="premium-card group cursor-pointer">
+                <div className="flex items-center mb-6">
+                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                    <Music className="w-6 h-6" />
                   </div>
-                  
-                  <h3 className="text-2xl font-bold text-white mb-4 font-orbitron uppercase tracking-wide group-hover:text-neon-cyan transition-colors">
-                    {service.title}
-                  </h3>
-                  
-                  <p className="text-gray-300 mb-6 leading-relaxed font-rajdhani">
-                    {service.description}
-                  </p>
-                  
-                  <ul className="space-y-2">
-                    {service.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center text-sm text-gray-400 font-rajdhani group-hover:text-gray-300 transition-colors">
-                        <div className="w-2 h-2 bg-neon-cyan rounded-full mr-3 flex-shrink-0 shadow-neon-cyan"></div>
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
+                  <h3 className="text-2xl font-semibold text-gray-900 font-playfair">Wedding Entertainment</h3>
                 </div>
-              ))}
+                <p className="text-gray-600 mb-6 font-inter">
+                  Make your special day unforgettable with our comprehensive wedding DJ and entertainment packages.
+                </p>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Ceremony & reception music</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Professional MC services</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Custom lighting & sound</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Dance floor coordination</span>
+                  </li>
+                </ul>
+                <Link href="/services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
+                  Learn More <ChevronRight className="ml-1 w-4 h-4" />
+                </Link>
+              </div>
+              
+              {/* Corporate Events */}
+              <div className="premium-card group cursor-pointer">
+                <div className="flex items-center mb-6">
+                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-semibold text-gray-900 font-playfair">Corporate Events</h3>
+                </div>
+                <p className="text-gray-600 mb-6 font-inter">
+                  Professional entertainment solutions for corporate gatherings, conferences, and business celebrations.
+                </p>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Conference audio/visual</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Awards ceremony hosting</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Team building entertainment</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Holiday party coordination</span>
+                  </li>
+                </ul>
+                <Link href="/services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
+                  Learn More <ChevronRight className="ml-1 w-4 h-4" />
+                </Link>
+              </div>
+              
+              {/* Private Parties */}
+              <div className="premium-card group cursor-pointer">
+                <div className="flex items-center mb-6">
+                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-semibold text-gray-900 font-playfair">Private Parties</h3>
+                </div>
+                <p className="text-gray-600 mb-6 font-inter">
+                  Celebrate life's special moments with customized entertainment for birthdays, anniversaries, and more.
+                </p>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Birthday celebrations</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Anniversary parties</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Graduation events</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span className="text-gray-700 font-inter">Custom themed parties</span>
+                  </li>
+                </ul>
+                <Link href="/services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
+                  Learn More <ChevronRight className="ml-1 w-4 h-4" />
+                </Link>
+              </div>
             </div>
+          </div>
+        </section>
 
-            <div className="text-center mt-12">
-              <button
-                onClick={() => {
-                  const element = document.getElementById('contact');
-                  if (element) element.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="btn-primary text-lg"
-              >
-                Get Custom Quote for Your Event
-              </button>
+        {/* Stats Section */}
+        <section className="py-section bg-gray-900 text-white">
+          <div className="section-container">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+              <div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-playfair">500+</div>
+                <div className="text-gray-300 font-inter">Events Completed</div>
+              </div>
+              <div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-playfair">15+</div>
+                <div className="text-gray-300 font-inter">Years Experience</div>
+              </div>
+              <div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-playfair">100%</div>
+                <div className="text-gray-300 font-inter">Client Satisfaction</div>
+              </div>
+              <div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-playfair">24/7</div>
+                <div className="text-gray-300 font-inter">Support Available</div>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Testimonials Section */}
-        <TestimonialSlider id="testimonials" />
+        <TestimonialSlider />
 
         {/* FAQ Section */}
-        <FAQSection id="faq" />
+        <FAQSection />
 
         {/* Contact Section */}
-        <section id="contact" className="py-20 relative cyber-grid">
+        <section id="contact" className="py-section-lg bg-gray-50">
           <div className="section-container">
-            <div className="text-center mb-12">
-              <h2 className="heading-2 text-white mb-6 neon-text">
-                Ready to Get Started?
-              </h2>
-              <p className="text-xl text-gray-300 max-w-3xl mx-auto font-rajdhani">
-                Let's discuss your event and create something amazing together. Get your free quote today and let's start planning your perfect celebration!
+            <div className="text-center mb-16">
+              <h2 className="heading-2 mb-6 text-gray-900">Ready to Create Something Amazing?</h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
+                Let's discuss your event and create an unforgettable experience. Get your free consultation and quote today.
               </p>
             </div>
             
-            <ContactForm className="max-w-5xl mx-auto" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+              {/* Contact Info */}
+              <div className="space-y-8">
+                <div className="modern-card">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Phone className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2 font-inter">Call Us Today</h3>
+                      <p className="text-gray-600 mb-3 font-inter">Ready to discuss your event? Give us a call!</p>
+                      <a href="tel:+19015551234" className="text-brand font-semibold hover:text-brand-600 transition-colors">
+                        (901) 555-1234
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="modern-card">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2 font-inter">Email Us</h3>
+                      <p className="text-gray-600 mb-3 font-inter">Send us your event details and questions</p>
+                      <a href="mailto:info@m10dj.com" className="text-brand font-semibold hover:text-brand-600 transition-colors">
+                        info@m10dj.com
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="modern-card">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2 font-inter">Service Area</h3>
+                      <p className="text-gray-600 font-inter">Memphis, TN and surrounding areas within 50 miles</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Contact Form */}
+              <div className="modern-card bg-white">
+                <ContactForm />
+              </div>
+            </div>
           </div>
         </section>
       </main>
 
       <Footer />
-
-      {/* Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "LocalBusiness",
-            "name": "M10 DJ Company",
-            "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse3.mm.bing.net%2Fth%2Fid%2FOIP.yr05JG7kPZyN7YgTzU6h9AAAAA%3Fpid%3DApi&f=1&ipt=17ed6ed3a6ff98b946d704a9f4430cfe33b3d9e95e4c081f0f69d0b2de54de2b&ipo=images",
-            "description": "Professional DJ services for weddings, corporate events, and celebrations in Memphis, TN and surrounding areas",
-            "url": "https://m10djcompany.com",
-            "telephone": "(901) 410-2020",
-            "email": "m10djcompany@gmail.com",
-            "address": {
-              "@type": "PostalAddress",
-              "addressLocality": "Memphis",
-              "addressRegion": "TN",
-              "addressCountry": "US"
-            },
-            "geo": {
-              "@type": "GeoCoordinates",
-              "latitude": "35.1495",
-              "longitude": "-90.0490"
-            },
-            "openingHoursSpecification": {
-              "@type": "OpeningHoursSpecification",
-              "dayOfWeek": [
-                "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
-              ],
-              "opens": "09:00",
-              "closes": "23:00"
-            },
-            "serviceType": services.map(service => service.title),
-            "areaServed": [
-              "Memphis, TN",
-              "Germantown, TN", 
-              "Collierville, TN",
-              "Bartlett, TN",
-              "Arlington, TN",
-              "Midtown Memphis, TN",
-              "Downtown Memphis, TN"
-            ],
-            "sameAs": [
-              "https://facebook.com/m10djcompany",
-              "https://instagram.com/m10djcompany"
-            ],
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": "5",
-              "reviewCount": "6",
-              "bestRating": "5"
-            }
-          })
-        }}
-      />
     </>
   );
 } 

@@ -1,301 +1,300 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Menu, X, Phone, Mail, ChevronDown } from 'lucide-react';
+import { Phone, Mail, Menu, X, ChevronDown, MapPin } from 'lucide-react';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToSection = (sectionId) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-      setIsMobileMenuOpen(false);
-      setActiveDropdown(null);
-    }
-  };
-
-  const navigationItems = [
-    { 
-      name: 'Home', 
-      href: '/', 
-      type: 'link' 
-    },
-    { 
-      name: 'About', 
-      href: '/about', 
-      type: 'link' 
-    },
-    {
-      name: 'Services',
-      type: 'dropdown',
-      items: [
-        { name: 'All Services', href: '/services' },
-        { name: 'Wedding Packages', href: '/services#wedding' },
-        { name: 'Corporate Events', href: '/services#corporate' },
-        { name: 'Private Parties', href: '/services#parties' },
-        { name: 'Lighting & Sound', href: '/services#lighting' }
-      ]
-    },
-    {
-      name: 'Resources',
-      type: 'dropdown',
-      items: [
-        { name: 'Preferred Venues', href: '/venues' },
-        { name: 'Trusted Vendors', href: '/vendors' },
-        { name: 'Event Blog', href: '/blog' },
-        { name: 'Planning Tips', href: '/#faq' },
-        { name: 'Photo Gallery', href: '/#gallery' }
-      ]
-    },
-    {
-      name: 'Areas Served',
-      type: 'dropdown',
-      items: [
-        { name: 'Midtown Memphis', href: '/midtown-memphis' },
-        { name: 'Downtown Memphis', href: '/downtown-memphis' },
-        { name: 'Germantown', href: '/germantown' },
-        { name: 'Collierville', href: '/collierville' },
-        { name: 'Bartlett', href: '/bartlett' },
-        { name: 'Arlington', href: '/arlington' }
-      ]
-    },
-    { 
-      name: 'Blog', 
-      href: '/blog', 
-      type: 'link' 
-    },
-    { 
-      name: 'Contact', 
-      onClick: () => scrollToSection('contact'),
-      type: 'button' 
-    }
-  ];
-
-  const handleDropdownToggle = (index) => {
-    setActiveDropdown(activeDropdown === index ? null : index);
+  const toggleDropdown = (dropdown) => {
+    setOpenDropdown(openDropdown === dropdown ? null : dropdown);
   };
 
   const closeDropdown = () => {
-    setActiveDropdown(null);
+    setOpenDropdown(null);
   };
 
-  return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled 
-        ? 'glass-card backdrop-blur-md shadow-neon-cyan' 
-        : 'bg-transparent'
-    }`}>
-      <div className="section-container">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="relative w-16 h-16 transform group-hover:scale-105 transition-transform">
-              <Image
-                src="/logo.gif"
-                alt="M10 DJ Company Logo"
-                width={64}
-                height={64}
-                className="object-contain"
-                priority
-                unoptimized // This allows GIF animation to work
-                onError={(e) => {
-                  // Fallback to static logo if GIF fails to load
-                  e.target.src = '/logo-static.jpg';
-                }}
-              />
-            </div>
-            <div className="hidden sm:block">
-              <div className="text-xl font-bold text-white font-orbitron neon-text">
-                M10 DJ COMPANY
-              </div>
-              <div className="text-sm text-neon-purple font-rajdhani uppercase tracking-wide">
-                Memphis Event Entertainment
-              </div>
-            </div>
-          </Link>
+  const services = [
+    { name: 'Wedding DJ Services', href: '/services#wedding' },
+    { name: 'Corporate Events', href: '/services#corporate' },
+    { name: 'Private Parties', href: '/services#private' },
+    { name: 'School Dances', href: '/services#school' },
+    { name: 'Holiday Parties', href: '/services#holiday' }
+  ];
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
-            {navigationItems.map((item, index) => (
-              <div key={index} className="relative">
-                {item.type === 'link' ? (
-                  <Link
-                    href={item.href}
-                    className="px-4 py-2 text-gray-300 hover:text-neon-cyan font-medium transition-colors font-rajdhani uppercase tracking-wide"
-                  >
-                    {item.name}
-                  </Link>
-                ) : item.type === 'button' ? (
-                  <button
-                    onClick={item.onClick}
-                    className="px-4 py-2 text-gray-300 hover:text-neon-cyan font-medium transition-colors font-rajdhani uppercase tracking-wide"
-                  >
-                    {item.name}
-                  </button>
-                ) : (
-                  // Dropdown
-                  <div className="relative">
-                    <button
-                      onClick={() => handleDropdownToggle(index)}
-                      onMouseEnter={() => setActiveDropdown(index)}
-                      className="flex items-center px-4 py-2 text-gray-300 hover:text-neon-cyan font-medium transition-colors font-rajdhani uppercase tracking-wide"
-                    >
-                      {item.name}
-                      <ChevronDown className="w-4 h-4 ml-1" />
-                    </button>
-                    
-                    {activeDropdown === index && (
-                      <div 
-                        className="absolute top-full left-0 mt-1 w-56 glass-card clip-cyber border border-neon-cyan/30 py-2 z-50 animate-fade-in"
-                        onMouseLeave={closeDropdown}
+  const areas = [
+    { name: 'Memphis', href: '/memphis' },
+    { name: 'Germantown', href: '/germantown' },
+    { name: 'Collierville', href: '/collierville' },
+    { name: 'Bartlett', href: '/bartlett' },
+    { name: 'Arlington', href: '/arlington' }
+  ];
+
+  return (
+    <>
+      <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200' 
+          : 'bg-white/90 backdrop-blur-sm'
+      }`}>
+        <div className="section-container">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
+            <Link href="/" className="flex-shrink-0 group">
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <Image
+                    src="/logo-static.jpg"
+                    alt="M10 DJ Company Logo"
+                    width={50}
+                    height={50}
+                    className="rounded-lg transition-transform group-hover:scale-105"
+                    priority
+                  />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 font-playfair group-hover:text-brand transition-colors">
+                    M10 DJ Company
+                  </h1>
+                  <p className="text-sm text-brand font-semibold font-inter tracking-wide">
+                    Premium Event Entertainment
+                  </p>
+                </div>
+              </div>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center space-x-8">
+              <Link href="/" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+                Home
+              </Link>
+              
+              {/* Services Dropdown */}
+              <div className="relative group">
+                <button
+                  className="flex items-center text-gray-700 hover:text-brand font-semibold font-inter transition-colors"
+                  onClick={() => toggleDropdown('services')}
+                >
+                  Services
+                  <ChevronDown className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" />
+                </button>
+                {openDropdown === 'services' && (
+                  <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-premium border border-gray-200 py-2 z-50 animate-fade-in">
+                    {services.map((service) => (
+                      <Link
+                        key={service.name}
+                        href={service.href}
+                        className="block px-4 py-3 text-gray-700 hover:bg-brand/5 hover:text-brand font-inter transition-colors"
+                        onClick={closeDropdown}
                       >
-                        {item.items.map((subItem, subIndex) => (
-                          <Link
-                            key={subIndex}
-                            href={subItem.href}
-                            onClick={closeDropdown}
-                            className="block px-4 py-2 text-sm text-gray-300 hover:bg-neon-cyan/10 hover:text-neon-cyan transition-colors font-rajdhani"
-                          >
-                            {subItem.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
+                        {service.name}
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
-            ))}
-          </nav>
 
-          {/* Contact Info & CTA */}
-          <div className="hidden lg:flex items-center space-x-4">
-            <div className="flex items-center text-sm text-gray-300 glass-card px-3 py-1">
-              <Phone className="w-4 h-4 mr-1 text-neon-cyan" />
-              <a 
-                href="tel:(901)410-2020" 
-                className="hover:text-neon-cyan transition-colors font-rajdhani"
-              >
-                (901) 410-2020
-              </a>
+              {/* Areas Dropdown */}
+              <div className="relative group">
+                <button
+                  className="flex items-center text-gray-700 hover:text-brand font-semibold font-inter transition-colors"
+                  onClick={() => toggleDropdown('areas')}
+                >
+                  Service Areas
+                  <ChevronDown className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" />
+                </button>
+                {openDropdown === 'areas' && (
+                  <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-premium border border-gray-200 py-2 z-50 animate-fade-in">
+                    {areas.map((area) => (
+                      <Link
+                        key={area.name}
+                        href={area.href}
+                        className="block px-4 py-3 text-gray-700 hover:bg-brand/5 hover:text-brand font-inter transition-colors"
+                        onClick={closeDropdown}
+                      >
+                        {area.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Link href="/about" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+                About
+              </Link>
+              
+              <Link href="#contact" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+                Contact
+              </Link>
+            </nav>
+
+            {/* Contact Info & CTA */}
+            <div className="hidden lg:flex items-center space-x-6">
+              <div className="flex items-center space-x-4 text-sm">
+                <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg">
+                  <Phone className="w-4 h-4 text-brand" />
+                  <a href="tel:+19015551234" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+                    (901) 555-1234
+                  </a>
+                </div>
+              </div>
+              
+              <Link href="#contact" className="btn-primary">
+                Get Quote
+              </Link>
             </div>
+
+            {/* Mobile Menu Button */}
             <button
-              onClick={() => scrollToSection('contact')}
-              className="btn-primary text-sm"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden p-2 text-gray-700 hover:text-brand transition-colors rounded-lg hover:bg-gray-100"
             >
-              Get Quote
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-neon-cyan hover:text-neon-purple transition-all duration-300 glass-card clip-cyber-small hover:shadow-neon-cyan"
-          >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
         </div>
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden absolute top-full left-0 right-0 glass-card border-t border-neon-cyan/30 shadow-neon-cyan animate-fade-in">
-            <nav className="px-4 py-6 space-y-4">
-              {navigationItems.map((item, index) => (
-                <div key={index}>
-                  {item.type === 'link' ? (
-                    <Link
-                      href={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="block py-2 text-gray-300 hover:text-neon-cyan font-medium transition-colors font-rajdhani uppercase tracking-wide"
-                    >
-                      {item.name}
-                    </Link>
-                  ) : item.type === 'button' ? (
-                    <button
-                      onClick={() => {
-                        item.onClick();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="block py-2 text-gray-300 hover:text-neon-cyan font-medium transition-colors font-rajdhani uppercase tracking-wide"
-                    >
-                      {item.name}
-                    </button>
-                  ) : (
-                    // Mobile Dropdown
-                    <div>
-                      <button
-                        onClick={() => handleDropdownToggle(`mobile-${index}`)}
-                        className="flex items-center justify-between w-full py-2 text-gray-300 hover:text-neon-cyan font-medium transition-colors font-rajdhani uppercase tracking-wide"
-                      >
-                        {item.name}
-                        <ChevronDown 
-                          className={`w-4 h-4 transition-transform text-neon-purple ${
-                            activeDropdown === `mobile-${index}` ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </button>
-                      
-                      {activeDropdown === `mobile-${index}` && (
-                        <div className="pl-4 mt-2 space-y-2">
-                          {item.items.map((subItem, subIndex) => (
-                            <Link
-                              key={subIndex}
-                              href={subItem.href}
-                              onClick={() => setIsMobileMenuOpen(false)}
-                              className="block py-1 text-sm text-gray-400 hover:text-neon-purple transition-colors font-rajdhani"
-                            >
-                              {subItem.name}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
+          <div className="lg:hidden bg-white border-t border-gray-200 shadow-lg animate-fade-in">
+            <div className="section-container py-4">
+              <nav className="space-y-4">
+                <Link 
+                  href="/" 
+                  className="block text-gray-700 hover:text-brand font-semibold font-inter py-2 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Home
+                </Link>
+                
+                {/* Mobile Services */}
+                <div>
+                  <button
+                    className="flex items-center justify-between w-full text-gray-700 font-semibold font-inter py-2"
+                    onClick={() => toggleDropdown('mobile-services')}
+                  >
+                    Services
+                    <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === 'mobile-services' ? 'rotate-180' : ''}`} />
+                  </button>
+                  {openDropdown === 'mobile-services' && (
+                    <div className="pl-4 pt-2 space-y-2">
+                      {services.map((service) => (
+                        <Link
+                          key={service.name}
+                          href={service.href}
+                          className="block text-gray-600 hover:text-brand font-inter py-1 transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          {service.name}
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </div>
-              ))}
-              
+
+                {/* Mobile Areas */}
+                <div>
+                  <button
+                    className="flex items-center justify-between w-full text-gray-700 font-semibold font-inter py-2"
+                    onClick={() => toggleDropdown('mobile-areas')}
+                  >
+                    Service Areas
+                    <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === 'mobile-areas' ? 'rotate-180' : ''}`} />
+                  </button>
+                  {openDropdown === 'mobile-areas' && (
+                    <div className="pl-4 pt-2 space-y-2">
+                      {areas.map((area) => (
+                        <Link
+                          key={area.name}
+                          href={area.href}
+                          className="block text-gray-600 hover:text-brand font-inter py-1 transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          {area.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <Link 
+                  href="/about" 
+                  className="block text-gray-700 hover:text-brand font-semibold font-inter py-2 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  About
+                </Link>
+                
+                <Link 
+                  href="#contact" 
+                  className="block text-gray-700 hover:text-brand font-semibold font-inter py-2 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Contact
+                </Link>
+              </nav>
+
               {/* Mobile Contact Info */}
-              <div className="pt-4 border-t border-neon-cyan/30 space-y-3">
-                <div className="flex items-center text-sm text-gray-300 glass-card px-3 py-2">
-                  <Phone className="w-4 h-4 mr-2 text-neon-cyan" />
-                  <a 
-                    href="tel:(901)410-2020" 
-                    className="hover:text-neon-cyan transition-colors font-rajdhani"
-                  >
-                    (901) 410-2020
-                  </a>
+              <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+                <div className="flex items-center space-x-3 bg-gray-50 px-3 py-3 rounded-lg">
+                  <Phone className="w-5 h-5 text-brand" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 font-inter">Call or Text</p>
+                    <a href="tel:+19015551234" className="text-brand hover:text-brand-600 font-semibold font-inter transition-colors">
+                      (901) 555-1234
+                    </a>
+                  </div>
                 </div>
-                <div className="flex items-center text-sm text-gray-300 glass-card px-3 py-2">
-                  <Mail className="w-4 h-4 mr-2 text-neon-purple" />
-                  <a 
-                    href="mailto:m10djcompany@gmail.com" 
-                    className="hover:text-neon-purple transition-colors font-rajdhani"
-                  >
-                    m10djcompany@gmail.com
-                  </a>
+                
+                <div className="flex items-center space-x-3 bg-gray-50 px-3 py-3 rounded-lg">
+                  <Mail className="w-5 h-5 text-brand" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 font-inter">Email Us</p>
+                    <a href="mailto:info@m10dj.com" className="text-brand hover:text-brand-600 font-semibold font-inter transition-colors">
+                      info@m10dj.com
+                    </a>
+                  </div>
                 </div>
-                <button
-                  onClick={() => {
-                    scrollToSection('contact');
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="btn-primary w-full mt-4"
+
+                <Link 
+                  href="#contact" 
+                  className="btn-primary w-full text-center"
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Get Your Free Quote
-                </button>
+                </Link>
               </div>
-            </nav>
+            </div>
           </div>
         )}
-      </div>
-    </header>
+      </header>
+
+      {/* Overlay for mobile menu */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-25 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Click outside to close dropdowns */}
+      {openDropdown && (
+        <div 
+          className="fixed inset-0 z-30"
+          onClick={closeDropdown}
+        />
+      )}
+    </>
   );
 } 
