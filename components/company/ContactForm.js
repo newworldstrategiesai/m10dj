@@ -15,6 +15,7 @@ export default function ContactForm({ className = '' }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -27,13 +28,34 @@ export default function ContactForm({ className = '' }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
     
     try {
-      // Simulate form submission
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSubmitted(true);
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          eventType: formData.eventType,
+          eventDate: formData.eventDate,
+          location: formData.venue,
+          message: `${formData.message}${formData.guests ? `\n\nNumber of guests: ${formData.guests}` : ''}`
+        })
+      });
+
+      if (response.ok) {
+        setSubmitted(true);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send message');
+      }
     } catch (error) {
       console.error('Error submitting form:', error);
+      setError(error.message || 'Failed to send message. Please try again or call us directly.');
     } finally {
       setIsSubmitting(false);
     }
@@ -52,6 +74,7 @@ export default function ContactForm({ className = '' }) {
         <button
           onClick={() => {
             setSubmitted(false);
+            setError('');
             setFormData({
               name: '',
               email: '',
@@ -79,6 +102,12 @@ export default function ContactForm({ className = '' }) {
           Tell us about your event and we'll provide a customized quote within 24 hours.
         </p>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-700 text-sm font-inter">{error}</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -145,14 +174,14 @@ export default function ContactForm({ className = '' }) {
               className="modern-select"
             >
               <option value="">Select event type</option>
-              <option value="wedding">Wedding</option>
-              <option value="corporate">Corporate Event</option>
-              <option value="birthday">Birthday Party</option>
-              <option value="anniversary">Anniversary</option>
-              <option value="graduation">Graduation</option>
-              <option value="holiday">Holiday Party</option>
-              <option value="school">School Dance/Event</option>
-              <option value="other">Other</option>
+              <option value="Wedding">Wedding</option>
+              <option value="Corporate Event">Corporate Event</option>
+              <option value="Birthday Party">Birthday Party</option>
+              <option value="Anniversary">Anniversary</option>
+              <option value="Graduation">Graduation</option>
+              <option value="Holiday Party">Holiday Party</option>
+              <option value="School Dance">School Dance/Event</option>
+              <option value="Other">Other</option>
             </select>
           </div>
         </div>

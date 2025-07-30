@@ -30,9 +30,33 @@ body {
   color: var(--text-primary) !important;
   margin: 0;
   padding: 0;
+  padding-top: 80px !important; /* Account for fixed header height */
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure main content areas also account for header */
+main {
+  position: relative;
+  z-index: 1;
+}
+
+/* Adjust first section specifically to ensure proper spacing */
+section:first-child {
+  padding-top: 2rem !important;
+}
+
+@media (min-width: 768px) {
+  section:first-child {
+    padding-top: 3rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  section:first-child {
+    padding-top: 4rem !important;
+  }
 }
 
 /* Scrollbar */

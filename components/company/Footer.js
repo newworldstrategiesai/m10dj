@@ -49,8 +49,8 @@ export default function Footer() {
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-brand flex-shrink-0" />
                 <div>
-                  <a href="mailto:info@m10dj.com" className="text-white hover:text-brand transition-colors font-inter font-semibold">
-                    info@m10dj.com
+                  <a href="mailto:info@m10djcompany.com" className="text-white hover:text-brand transition-colors font-inter font-semibold">
+                    info@m10djcompany.com
                   </a>
                   <p className="text-gray-400 text-sm font-inter">24-hour response time</p>
                 </div>

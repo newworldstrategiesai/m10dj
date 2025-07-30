@@ -16,6 +16,7 @@ import OauthSignIn from '@/components/ui/AuthForms/OauthSignIn';
 import ForgotPassword from '@/components/ui/AuthForms/ForgotPassword';
 import UpdatePassword from '@/components/ui/AuthForms/UpdatePassword';
 import SignUp from '@/components/ui/AuthForms/Signup';
+import { getRoleBasedRedirectUrl } from '@/utils/auth-helpers/role-redirect';
 
 export default async function SignIn({
   params,
@@ -49,7 +50,9 @@ export default async function SignIn({
   } = await supabase.auth.getUser();
 
   if (user && viewProp !== 'update_password') {
-    return redirect('/');
+    // User is already logged in, redirect to role-appropriate dashboard
+    const redirectUrl = await getRoleBasedRedirectUrl();
+    return redirect(redirectUrl);
   } else if (!user && viewProp === 'update_password') {
     return redirect('/signin');
   }

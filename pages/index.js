@@ -274,8 +274,8 @@ export default function Home() {
                     <div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-2 font-inter">Email Us</h3>
                       <p className="text-gray-600 mb-3 font-inter">Send us your event details and questions</p>
-                      <a href="mailto:info@m10dj.com" className="text-brand font-semibold hover:text-brand-600 transition-colors">
-                        info@m10dj.com
+                      <a href="mailto:info@m10djcompany.com" className="text-brand font-semibold hover:text-brand-600 transition-colors">
+                        info@m10djcompany.com
                       </a>
                     </div>
                   </div>

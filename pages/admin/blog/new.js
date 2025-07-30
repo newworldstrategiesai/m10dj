@@ -13,7 +13,6 @@ import {
   List,
   Quote
 } from 'lucide-react';
-import { db } from '../../../utils/company_lib/supabase';
 
 export default function NewBlogPost() {
   const router = useRouter();
@@ -73,13 +72,26 @@ export default function NewBlogPost() {
         author: 'M10 DJ Company'
       };
 
-      await db.createBlogPost(postData);
+      // Use API endpoint instead of direct database call
+      const response = await fetch('/api/admin/blog', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(postData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create blog post');
+      }
       
       // Redirect to blog management
       router.push('/admin/blog?created=true');
     } catch (error) {
       console.error('Error creating blog post:', error);
-      alert('Failed to create blog post. Please try again.');
+      alert(`Failed to create blog post: ${error.message}`);
     } finally {
       setSaving(false);
     }

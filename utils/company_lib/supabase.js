@@ -40,9 +40,8 @@ export const db = {
           event_type: data.eventType,
           event_date: data.eventDate,
           location: data.location,
-          message: data.message,
-          status: 'new',
-          created_at: new Date().toISOString()
+          message: data.message
+          // Remove status and created_at - let database defaults handle these
         }
       ])
       .select();

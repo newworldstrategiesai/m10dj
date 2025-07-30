@@ -261,8 +261,8 @@ export default function Header() {
                   <Mail className="w-5 h-5 text-brand" />
                   <div>
                     <p className="text-sm font-semibold text-gray-900 font-inter">Email Us</p>
-                    <a href="mailto:info@m10dj.com" className="text-brand hover:text-brand-600 font-semibold font-inter transition-colors">
-                      info@m10dj.com
+                    <a href="mailto:info@m10djcompany.com" className="text-brand hover:text-brand-600 font-semibold font-inter transition-colors">
+                      info@m10djcompany.com
                     </a>
                   </div>
                 </div>
