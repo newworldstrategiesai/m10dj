@@ -23,7 +23,7 @@ export default async function SignIn({
   searchParams
 }: {
   params: { id: string };
-  searchParams: { disable_button: boolean };
+  searchParams: { disable_button: boolean; redirect?: string };
 }) {
   const { allowOauth, allowEmail, allowPassword } = getAuthTypes();
   const viewTypes = getViewTypes();
@@ -50,8 +50,10 @@ export default async function SignIn({
   } = await supabase.auth.getUser();
 
   if (user && viewProp !== 'update_password') {
-    // User is already logged in, redirect to role-appropriate dashboard
-    const redirectUrl = await getRoleBasedRedirectUrl();
+    // User is already logged in, use redirect param or role-appropriate dashboard
+    const redirectUrl = searchParams?.redirect 
+      ? decodeURIComponent(searchParams.redirect) 
+      : await getRoleBasedRedirectUrl();
     return redirect(redirectUrl);
   } else if (!user && viewProp === 'update_password') {
     return redirect('/signin');
@@ -74,12 +76,13 @@ export default async function SignIn({
                   : 'Sign In'
           }
         >
-          {viewProp === 'password_signin' && (
-            <PasswordSignIn
-              allowEmail={allowEmail}
-              redirectMethod={redirectMethod}
-            />
-          )}
+                  {viewProp === 'password_signin' && (
+          <PasswordSignIn
+            allowEmail={allowEmail}
+            redirectMethod={redirectMethod}
+            redirectTo={searchParams?.redirect ? decodeURIComponent(searchParams.redirect) : ''}
+          />
+        )}
           {viewProp === 'email_signin' && (
             <EmailSignIn
               allowPassword={allowPassword}

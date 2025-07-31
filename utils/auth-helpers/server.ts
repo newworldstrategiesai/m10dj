@@ -136,6 +136,7 @@ export async function signInWithPassword(formData: FormData) {
   const cookieStore = cookies();
   const email = String(formData.get('email')).trim();
   const password = String(formData.get('password')).trim();
+  const redirectTo = formData.get('redirect') as string;
   let redirectPath: string;
 
   const supabase = createClient();
@@ -153,9 +154,9 @@ export async function signInWithPassword(formData: FormData) {
   } else if (data.user) {
     cookieStore.set('preferredSignInView', 'password_signin', { path: '/' });
     
-    // Get role-based redirect URL
-    const roleBasedUrl = await getRoleBasedRedirectUrl();
-    redirectPath = getStatusRedirect(roleBasedUrl, 'Success!', 'You are now signed in.');
+    // Use redirect parameter if provided, otherwise use role-based redirect
+    const finalRedirectUrl = redirectTo ? decodeURIComponent(redirectTo) : await getRoleBasedRedirectUrl();
+    redirectPath = getStatusRedirect(finalRedirectUrl, 'Success!', 'You are now signed in.');
   } else {
     redirectPath = getErrorRedirect(
       '/signin/password_signin',

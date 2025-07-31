@@ -121,8 +121,18 @@ export default async function handler(req, res) {
               <p style="margin: 0; color: #000; font-weight: bold;">
                 Database ID: ${dbSubmission.id}
               </p>
-              <p style="margin: 5px 0 0 0; color: #000; font-size: 14px;">
+              <p style="margin: 5px 0 15px 0; color: #000; font-size: 14px;">
                 Submitted: ${new Date().toLocaleString()}
+              </p>
+              
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/admin/contacts/${dbSubmission.id}" 
+                 style="display: inline-block; background: #000; color: #fcba00; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 10px 0;">
+                📋 View Lead Details
+              </a>
+              
+              <p style="margin: 10px 0 0 0; color: #000; font-size: 12px;">
+                Click above to view full details, add notes, and manage this lead.<br>
+                (If not logged in, you'll be redirected to sign in first)
               </p>
             </div>
           </div>

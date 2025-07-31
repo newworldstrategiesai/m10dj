@@ -11,11 +11,13 @@ import React, { useState } from 'react';
 interface PasswordSignInProps {
   allowEmail: boolean;
   redirectMethod: string;
+  redirectTo?: string;
 }
 
 export default function PasswordSignIn({
   allowEmail,
-  redirectMethod
+  redirectMethod,
+  redirectTo
 }: PasswordSignInProps) {
   const router = redirectMethod === 'client' ? useRouter() : null;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,6 +57,13 @@ export default function PasswordSignIn({
               autoComplete="current-password"
               className="w-full p-3 rounded-md bg-zinc-800"
             />
+            {redirectTo && (
+              <input
+                type="hidden"
+                name="redirect"
+                value={encodeURIComponent(redirectTo)}
+              />
+            )}
           </div>
           <Button
             variant="slim"

@@ -36,6 +36,9 @@ export default function ContactDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
+  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   
   // Form states
   const [emailForm, setEmailForm] = useState({ subject: '', content: '', template: '' });
@@ -51,10 +54,50 @@ export default function ContactDetail() {
   const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => {
-    if (id) {
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    if (authChecked && isAdmin && id) {
       loadContactData();
     }
-  }, [id]);
+  }, [authChecked, isAdmin, id]);
+
+  const checkAuth = async () => {
+    const supabase = createClient();
+    
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error || !user) {
+        // Redirect to signin with current page as redirect target
+        const currentPath = router.asPath || `/admin/contacts/${id || ''}`;
+        window.location.href = `/signin?redirect=${encodeURIComponent(currentPath)}`;
+        return;
+      }
+
+      // Check if user is admin
+      const adminEmails = [
+        'admin@m10djcompany.com', 
+        'manager@m10djcompany.com',
+        'djbenmurray@gmail.com'  // Ben Murray - Owner
+      ];
+      const userIsAdmin = adminEmails.includes(user.email);
+
+      if (!userIsAdmin) {
+        window.location.href = '/';
+        return;
+      }
+
+      setUser(user);
+      setIsAdmin(true);
+      setAuthChecked(true);
+    } catch (err) {
+      console.error('Auth error:', err);
+      const currentPath = router.asPath || `/admin/contacts/${id || ''}`;
+      window.location.href = `/signin?redirect=${encodeURIComponent(currentPath)}`;
+    }
+  };
 
   const loadContactData = async () => {
     setLoading(true);
