@@ -1,5 +1,5 @@
 // Twilio webhook for incoming SMS messages
-const { sendAdminSMS } = require('../../../utils/sms-helper');
+import { sendAdminSMS } from '../../../utils/sms-helper.js';
 
 export default async function handler(req, res) {
   try {
