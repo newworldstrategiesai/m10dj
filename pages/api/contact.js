@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 import { db } from '../../utils/company_lib/supabase';
-import { sendAdminSMS, formatContactSubmissionSMS } from '../../utils/sms-helper';
+const { sendAdminSMS, formatContactSubmissionSMS } = require('../../utils/sms-helper');
 
 // Initialize Resend with API key from environment variable
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;

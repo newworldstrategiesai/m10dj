@@ -1,9 +1,11 @@
 // Twilio webhook for incoming SMS messages
-import { sendAdminSMS } from '../../../utils/sms-helper';
+const { sendAdminSMS } = require('../../../utils/sms-helper');
 
 export default async function handler(req, res) {
   try {
     const { From, To, Body, MessageSid } = req.body;
+    
+    console.log(`Incoming SMS from ${From}: ${Body}`);
     
     // Format the forwarded message with sender info
     const forwardedMessage = `📱 NEW TEXT MESSAGE
@@ -16,8 +18,11 @@ Message ID: ${MessageSid}
 
 Reply directly to this number to respond.`;
 
+    console.log('Attempting to forward SMS to admin...');
+    
     // Forward the SMS to admin
-    await sendAdminSMS(forwardedMessage);
+    const smsResult = await sendAdminSMS(forwardedMessage);
+    console.log('SMS forward result:', smsResult);
     
     console.log(`SMS forwarded from ${From}: ${Body}`);
     

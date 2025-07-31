@@ -112,7 +112,7 @@ export async function getAdminPhoneNumber() {
  * @param {string} phoneNumber - Optional phone number (uses admin default if not provided)
  * @returns {Object} Result object with success status and details
  */
-export async function sendAdminSMS(message, phoneNumber = null) {
+async function sendAdminSMS(message, phoneNumber = null) {
   try {
     let adminPhone;
     
@@ -187,7 +187,7 @@ export async function sendAdminSMS(message, phoneNumber = null) {
  * @param {Object} submissionData - Contact form data
  * @returns {string} Formatted SMS message
  */
-export function formatContactSubmissionSMS(submissionData) {
+function formatContactSubmissionSMS(submissionData) {
   const { name, email, phone, eventType, eventDate, location, message } = submissionData;
   
   let smsMessage = `🎵 NEW CONTACT FORM SUBMISSION\n\n`;
@@ -214,3 +214,9 @@ export function formatContactSubmissionSMS(submissionData) {
   
   return smsMessage;
 }
+
+// CommonJS exports
+module.exports = {
+  sendAdminSMS,
+  formatContactSubmissionSMS
+};
