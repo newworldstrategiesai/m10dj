@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Star, Users, Calendar, Music, Headphones, Mic, Volume2, Award, Phone, Mail, MapPin, ChevronRight } from 'lucide-react';
@@ -8,6 +7,7 @@ import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import FAQSection from '../components/company/FAQSection';
+import { SEOHead } from '../components/ui/SEO';
 
 export default function Home() {
   const [isVisible, setIsVisible] = useState(false);
@@ -18,13 +18,48 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>M10 DJ Company | Premium Event Entertainment in Memphis</title>
-        <meta name="description" content="Memphis's premier DJ and entertainment company. Professional event services for weddings, corporate events, and private parties. Unforgettable experiences with cutting-edge technology." />
-        <meta name="keywords" content="Memphis DJ, wedding DJ, corporate events, party DJ, event entertainment, Memphis events" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <SEOHead
+        title="Premium Event Entertainment in Memphis"
+        description="Memphis's premier DJ and entertainment company. Professional event services for weddings, corporate events, and private parties. Unforgettable experiences with cutting-edge technology. Call (901) 410-2020 for your free quote!"
+        keywords={[
+          'Memphis DJ',
+          'wedding DJ Memphis',
+          'corporate events Memphis',
+          'party DJ Memphis',
+          'event entertainment Memphis',
+          'Memphis events',
+          'professional DJ services',
+          'sound system rental Memphis',
+          'uplighting Memphis'
+        ]}
+        canonical="/"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          "name": "M10 DJ Company",
+          "description": "Memphis's premier DJ and entertainment company",
+          "url": "https://m10djcompany.com",
+          "telephone": "+19014102020",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Memphis",
+            "addressRegion": "TN",
+            "addressCountry": "US"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 35.1495,
+            "longitude": -90.0490
+          },
+          "openingHours": "Mo-Su 09:00-21:00",
+          "priceRange": "$$",
+          "image": "https://m10djcompany.com/logo-static.jpg",
+          "sameAs": [
+            "https://www.facebook.com/m10djcompany",
+            "https://www.instagram.com/m10djcompany"
+          ]
+        }}
+      />
 
       <Header />
 

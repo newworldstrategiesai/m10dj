@@ -6,6 +6,8 @@
     "start": "next start",
     "lint": "next lint",
     "prettier-fix": "prettier --write .",
+    "seo:analyze": "npm run build && npx lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json",
+    "seo:test": "npm run build && npx lighthouse http://localhost:3000 --view",
     "stripe:login": "stripe login",
     "stripe:listen": "stripe listen --forward-to=localhost:3000/api/webhooks",
     "stripe:fixtures": "stripe fixtures fixtures/stripe-fixtures.json",
