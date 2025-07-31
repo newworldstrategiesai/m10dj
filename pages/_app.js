@@ -26,6 +26,9 @@ export default function App({ Component, pageProps }) {
         <meta name="twitter:image" content="https://m10djcompany.com/logo-static.jpg" />
         <meta name="twitter:site" content="@m10djcompany" />
         
+        {/* Google Site Verification */}
+        <meta name="google-site-verification" content="gvyoj4VOR-ZSnrkrcpUfKdX4Qh81QsZBuIviCWJDSAI" />
+        
         {/* Additional meta tags */}
         <meta name="application-name" content="M10 DJ Company" />
         <meta name="apple-mobile-web-app-title" content="M10 DJ Company" />
