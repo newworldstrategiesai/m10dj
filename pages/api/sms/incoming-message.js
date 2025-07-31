@@ -21,15 +21,10 @@ Reply directly to this number to respond.`;
     
     console.log(`SMS forwarded from ${From}: ${Body}`);
     
-    // Optional: Send auto-reply to sender (uncomment if you want this)
-    // const autoReply = `<?xml version="1.0" encoding="UTF-8"?>
-    // <Response>
-    //     <Message>Thank you for contacting M10 DJ Company! We've received your message and will respond shortly. For immediate assistance, please call (901) 410-2020.</Message>
-    // </Response>`;
-    
-    // For now, just acknowledge receipt without auto-reply
+    // Send auto-reply to sender
     const response = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+    <Message>Thank you for contacting M10 DJ Company! 🎵 We've received your message and will respond shortly. For immediate assistance, please call (901) 410-2020 or visit m10djcompany.com</Message>
 </Response>`;
 
     res.setHeader('Content-Type', 'text/xml');
