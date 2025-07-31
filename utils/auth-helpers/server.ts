@@ -338,3 +338,42 @@ export async function updateName(formData: FormData) {
     );
   }
 }
+
+export async function updateAdminPhoneNumber(formData: FormData) {
+  const supabase = createClient();
+  const newPhoneNumber = formData.get('newAdminPhoneNumber') as string;
+
+  if (!newPhoneNumber) {
+    return getErrorRedirect('/account', 'Phone number is required');
+  }
+
+  // Clean phone number (remove spaces, dashes, parentheses)
+  const cleanedPhone = newPhoneNumber.replace(/[\s\-\(\)]/g, '');
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return getErrorRedirect('/account', 'Authentication required');
+  }
+
+  // Update or insert admin phone number setting
+  const { error } = await supabase
+    .from('admin_settings')
+    .upsert(
+      {
+        user_id: user.id,
+        setting_key: 'admin_phone_number',
+        setting_value: cleanedPhone
+      },
+      {
+        onConflict: 'user_id,setting_key'
+      }
+    );
+
+  if (error) {
+    console.error('Error updating admin phone number:', error);
+    return getErrorRedirect('/account', 'Failed to update phone number');
+  }
+
+  return getStatusRedirect('/account', 'Success!', 'Phone number updated successfully');
+}

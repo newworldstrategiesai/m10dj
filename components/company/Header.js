@@ -26,11 +26,11 @@ export default function Header() {
   };
 
   const services = [
-    { name: 'Wedding DJ Services', href: '/services#wedding' },
-    { name: 'Corporate Events', href: '/services#corporate' },
-    { name: 'Private Parties', href: '/services#private' },
-    { name: 'School Dances', href: '/services#school' },
-    { name: 'Holiday Parties', href: '/services#holiday' }
+    { name: 'Wedding DJ Services', href: '/weddings' },
+    { name: 'Corporate Events', href: '/corporate-events' },
+    { name: 'Private Parties', href: '/private-parties' },
+    { name: 'School Dances', href: '/school-dances' },
+    { name: 'Holiday Parties', href: '/holiday-parties' }
   ];
 
   const areas = [
@@ -64,7 +64,7 @@ export default function Header() {
                   />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 font-playfair group-hover:text-brand transition-colors">
+                  <h1 className="text-2xl font-bold text-gray-900 font-sans group-hover:text-brand transition-colors">
                     M10 DJ Company
                   </h1>
                   <p className="text-sm text-brand font-semibold font-inter tracking-wide">

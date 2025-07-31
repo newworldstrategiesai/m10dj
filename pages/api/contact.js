@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { db } from '../../utils/company_lib/supabase';
+import { sendAdminSMS, formatContactSubmissionSMS } from '../../utils/sms-helper';
 
 // Initialize Resend with API key from environment variable
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -152,6 +153,21 @@ export default async function handler(req, res) {
       }
     } else {
       console.log('Resend API key not configured - skipping email sending');
+    }
+
+    // Send SMS notification to admin
+    try {
+      const smsMessage = formatContactSubmissionSMS(submissionData);
+      const smsResult = await sendAdminSMS(smsMessage);
+      
+      if (smsResult.success) {
+        console.log('Admin SMS notification sent successfully:', smsResult.smsId);
+      } else {
+        console.log('Admin SMS notification failed:', smsResult.error);
+      }
+    } catch (smsError) {
+      console.error('SMS notification error:', smsError);
+      // Don't fail the entire request if SMS fails
     }
 
     res.status(200).json({ 

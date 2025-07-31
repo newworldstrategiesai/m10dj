@@ -239,7 +239,7 @@ export default function AdminDashboard() {
                     <span className="text-white font-bold text-lg">M10</span>
                   </div>
                   <div>
-                    <h1 className="text-xl font-bold text-gray-900 font-playfair">
+                    <h1 className="text-xl font-bold text-gray-900 font-sans">
                       Admin Dashboard
                     </h1>
                     <p className="text-sm text-gray-500 font-inter">

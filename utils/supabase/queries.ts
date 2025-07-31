@@ -37,3 +37,18 @@ export const getUserDetails = cache(async (supabase: SupabaseClient) => {
     .single();
   return userDetails;
 });
+
+export const getAdminPhoneNumber = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('admin_settings')
+    .select('setting_value')
+    .eq('setting_key', 'admin_phone_number')
+    .single();
+
+  if (error) {
+    console.error('Error fetching admin phone number:', error);
+    return '9014977001'; // Default fallback
+  }
+
+  return data?.setting_value || '9014977001';
+});

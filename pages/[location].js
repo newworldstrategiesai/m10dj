@@ -8,6 +8,15 @@ import FAQSection from '../components/company/FAQSection';
 
 // Location data for Memphis area
 const locationData = {
+  'memphis': {
+    name: 'Memphis',
+    zipCodes: ['38103', '38104', '38105', '38106', '38107', '38114', '38126'],
+    description: 'Professional DJ services throughout Memphis, serving the heart of Tennessee with exceptional entertainment.',
+    neighborhoods: ['Downtown', 'Midtown', 'Cooper-Young', 'Central Gardens', 'South Main', 'Medical District'],
+    landmarks: ['Beale Street', 'Graceland', 'Sun Studio', 'National Civil Rights Museum', 'Memphis Zoo', 'Overton Park'],
+    localBusinesses: ['The Peabody Memphis', 'FedExForum', 'Crosstown Concourse', 'AutoZone Park', 'Memphis Cook Convention Center'],
+    eventTypes: ['Historic venue weddings', 'Corporate galas downtown', 'Private parties', 'Cultural events', 'Festival entertainment']
+  },
   'midtown-memphis': {
     name: 'Midtown Memphis',
     zipCodes: ['38104', '38105', '38106', '38107', '38114'],
@@ -142,7 +151,7 @@ export default function LocationPage() {
               </div>
               
               <h1 className="heading-1 mb-6">
-                <span className="block">Professional DJ Services in</span>
+                <span className="block text-white">Professional DJ Services in</span>
                 <span className="block text-gradient">{loc.name}, Tennessee</span>
               </h1>
               

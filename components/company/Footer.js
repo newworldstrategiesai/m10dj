@@ -24,7 +24,7 @@ export default function Footer() {
                 <Music className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white font-playfair">M10 DJ Company</h3>
+                <h3 className="text-2xl font-bold text-white font-sans">M10 DJ Company</h3>
                 <p className="text-brand font-semibold font-inter">Premium Event Entertainment</p>
               </div>
             </div>
@@ -68,30 +68,30 @@ export default function Footer() {
           
           {/* Services */}
           <div>
-            <h4 className="text-lg font-semibold text-brand mb-6 font-playfair">Our Services</h4>
+            <h4 className="text-lg font-semibold text-brand mb-6 font-sans">Our Services</h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/services#wedding" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                <Link href="/weddings" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
                   Wedding Entertainment
                 </Link>
               </li>
               <li>
-                <Link href="/services#corporate" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                <Link href="/corporate-events" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
                   Corporate Events
                 </Link>
               </li>
               <li>
-                <Link href="/services#private" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                <Link href="/private-parties" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
                   Private Parties
                 </Link>
               </li>
               <li>
-                <Link href="/services#school" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                <Link href="/school-dances" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
                   School Dances
                 </Link>
               </li>
               <li>
-                <Link href="/services#holiday" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                <Link href="/holiday-parties" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
                   Holiday Parties
                 </Link>
               </li>
@@ -100,7 +100,7 @@ export default function Footer() {
           
           {/* Service Areas */}
           <div>
-            <h4 className="text-lg font-semibold text-brand mb-6 font-playfair">Service Areas</h4>
+            <h4 className="text-lg font-semibold text-brand mb-6 font-sans">Service Areas</h4>
             <ul className="space-y-3">
               <li>
                 <Link href="/memphis" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
@@ -142,6 +142,25 @@ export default function Footer() {
             <p className="text-gray-500 text-sm font-inter mt-1">
               Licensed & Insured • Professional Event Entertainment
             </p>
+            {/* Mobile Sign In Link */}
+            <div className="md:hidden mt-3">
+              <Link 
+                href="/signin" 
+                className="text-gray-500 hover:text-brand transition-colors font-inter text-sm px-3 py-1 rounded-md hover:bg-gray-800/50 inline-block"
+              >
+                Admin Sign In
+              </Link>
+            </div>
+          </div>
+          
+          {/* Admin Sign In Link */}
+          <div className="hidden md:block">
+            <Link 
+              href="/signin" 
+              className="text-gray-500 hover:text-brand transition-colors font-inter text-sm px-3 py-1 rounded-md hover:bg-gray-800/50"
+            >
+              Admin Sign In
+            </Link>
           </div>
           
           {/* Social Media */}
@@ -173,7 +192,7 @@ export default function Footer() {
         {/* Call to Action */}
         <div className="mt-12 text-center">
           <div className="bg-gradient-to-r from-brand/10 to-brand/5 rounded-2xl p-8 border border-brand/20">
-            <h4 className="text-2xl font-bold text-white mb-4 font-playfair">Ready to Make Your Event Unforgettable?</h4>
+            <h4 className="text-2xl font-bold text-white mb-4 font-sans">Ready to Make Your Event Unforgettable?</h4>
             <p className="text-gray-300 mb-6 font-inter max-w-2xl mx-auto">
               Get your free consultation and quote today. Let's create an amazing experience for your special event.
             </p>

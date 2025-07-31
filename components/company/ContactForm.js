@@ -67,7 +67,7 @@ export default function ContactForm({ className = '' }) {
         <div className="w-16 h-16 bg-brand text-white rounded-full flex items-center justify-center mx-auto mb-6">
           <Send className="w-8 h-8" />
         </div>
-        <h3 className="text-2xl font-semibold text-gray-900 mb-4 font-playfair">Thank You!</h3>
+        <h3 className="text-2xl font-semibold text-gray-900 mb-4 font-sans">Thank You!</h3>
         <p className="text-gray-600 mb-6 font-inter">
           We've received your message and will get back to you within 24 hours with a personalized quote for your event.
         </p>
@@ -97,7 +97,7 @@ export default function ContactForm({ className = '' }) {
   return (
     <div className={`${className}`}>
       <div className="mb-8">
-        <h3 className="text-2xl font-semibold text-gray-900 mb-4 font-playfair">Get Your Free Quote</h3>
+        <h3 className="text-2xl font-semibold text-gray-900 mb-4 font-sans">Get Your Free Quote</h3>
         <p className="text-gray-600 font-inter">
           Tell us about your event and we'll provide a customized quote within 24 hours.
         </p>

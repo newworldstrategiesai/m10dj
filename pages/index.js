@@ -59,6 +59,10 @@ export default function Home() {
                 <Link href="/services" className="btn-secondary">
                   View Our Services
                 </Link>
+                <Link href="/signin" className="btn-outline group">
+                  Sign In
+                  <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
               </div>
               
               {/* Key Benefits */}
@@ -109,7 +113,7 @@ export default function Home() {
                   <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
                     <Music className="w-6 h-6" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 font-playfair">Wedding Entertainment</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 font-sans">Wedding Entertainment</h3>
                 </div>
                 <p className="text-gray-600 mb-6 font-inter">
                   Make your special day unforgettable with our comprehensive wedding DJ and entertainment packages.
@@ -143,7 +147,7 @@ export default function Home() {
                   <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
                     <Users className="w-6 h-6" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 font-playfair">Corporate Events</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 font-sans">Corporate Events</h3>
                 </div>
                 <p className="text-gray-600 mb-6 font-inter">
                   Professional entertainment solutions for corporate gatherings, conferences, and business celebrations.
@@ -177,7 +181,7 @@ export default function Home() {
                   <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
                     <Calendar className="w-6 h-6" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 font-playfair">Private Parties</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 font-sans">Private Parties</h3>
                 </div>
                 <p className="text-gray-600 mb-6 font-inter">
                   Celebrate life's special moments with customized entertainment for birthdays, anniversaries, and more.
@@ -213,19 +217,19 @@ export default function Home() {
           <div className="section-container">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-playfair">500+</div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">500+</div>
                 <div className="text-gray-300 font-inter">Events Completed</div>
               </div>
               <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-playfair">15+</div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">15+</div>
                 <div className="text-gray-300 font-inter">Years Experience</div>
               </div>
               <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-playfair">100%</div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">100%</div>
                 <div className="text-gray-300 font-inter">Client Satisfaction</div>
               </div>
               <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-playfair">24/7</div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">24/7</div>
                 <div className="text-gray-300 font-inter">Support Available</div>
               </div>
             </div>
