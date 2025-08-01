@@ -68,6 +68,7 @@ const COMMUNICATION_PREFERENCES = ['email', 'phone', 'text', 'any'];
 
 export default function ContactDetailPage() {
   const [contact, setContact] = useState<Contact | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -77,10 +78,42 @@ export default function ContactDetailPage() {
   const { id, from } = router.query as { id: string; from?: string };
 
   useEffect(() => {
-    if (id) {
+    checkUser();
+  }, []);
+
+  useEffect(() => {
+    if (user && id) {
       fetchContact();
     }
-  }, [id]);
+  }, [user, id]);
+
+  const checkUser = async () => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        router.push('/signin');
+        return;
+      }
+
+      // Check if user is admin using email-based authentication (same as other admin helpers)
+      const adminEmails = [
+        'admin@m10djcompany.com',
+        'manager@m10djcompany.com',
+        'djbenmurray@gmail.com'  // Ben Murray - Owner
+      ];
+
+      if (!adminEmails.includes(user.email || '')) {
+        router.push('/signin');
+        return;
+      }
+
+      setUser(user);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      router.push('/signin');
+    }
+  };
 
   const fetchContact = async () => {
     try {
@@ -204,6 +237,10 @@ export default function ContactDetailPage() {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#fcba00]"></div>
         </div>
     );
+  }
+
+  if (!user) {
+    return null; // Will redirect via checkUser
   }
 
   if (!contact) {

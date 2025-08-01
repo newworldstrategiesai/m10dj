@@ -25,14 +25,14 @@ export default function ContactsPage() {
                 return;
             }
 
-            // Check if user is admin
-            const { data: profile } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', user.id)
-                .single();
+            // Check if user is admin using email-based authentication (same as other admin helpers)
+            const adminEmails = [
+                'admin@m10djcompany.com',
+                'manager@m10djcompany.com',
+                'djbenmurray@gmail.com'  // Ben Murray - Owner
+            ];
 
-            if (!profile || profile.role !== 'admin') {
+            if (!adminEmails.includes(user.email || '')) {
                 router.push('/signin');
                 return;
             }
