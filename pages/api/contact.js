@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { db } from '../../utils/company_lib/supabase';
 import { sendAdminSMS, formatContactSubmissionSMS } from '../../utils/sms-helper.js';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 // Initialize Resend with API key from environment variable
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -31,6 +32,142 @@ export default async function handler(req, res) {
 
     const dbSubmission = await db.createContactSubmission(submissionData);
     console.log('Contact submission saved to database:', dbSubmission.id);
+
+    // Create a contact record in the new contacts system
+    try {
+      // Create service role client for inserting contacts
+      const { createClient } = require('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+      
+      // Extract first and last name from the full name
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      
+      // Map event types to standardized values
+      const eventTypeMapping = {
+        'Wedding': 'wedding',
+        'Corporate Event': 'corporate',
+        'School Dance': 'school_dance',
+        'Holiday Party': 'holiday_party',
+        'Private Party': 'private_party'
+      };
+      
+      const standardizedEventType = eventTypeMapping[eventType] || 'other';
+      
+      // Parse event date if provided
+      let parsedEventDate = null;
+      if (eventDate) {
+        const dateObj = new Date(eventDate);
+        if (!isNaN(dateObj.getTime())) {
+          parsedEventDate = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD format
+        }
+      }
+      
+      // Get the admin/owner user ID from environment variable
+      // You need to set DEFAULT_ADMIN_USER_ID in your environment variables
+      const adminUserId = process.env.DEFAULT_ADMIN_USER_ID;
+      
+      if (!adminUserId) {
+        console.error('DEFAULT_ADMIN_USER_ID environment variable not set');
+        console.log('Please set DEFAULT_ADMIN_USER_ID to your admin user ID in .env.local');
+        // For now, we'll continue without creating a contact record
+        throw new Error('Admin user ID not configured - contact will not be saved to contacts table');
+      }
+
+      // Create contact record
+      const contactData = {
+        user_id: adminUserId, // Assign to admin user
+        first_name: firstName,
+        last_name: lastName,
+        email_address: email,
+        phone: phone || null,
+        event_type: standardizedEventType,
+        event_date: parsedEventDate,
+        venue_name: location || null,
+        special_requests: message || null,
+        lead_status: 'New',
+        lead_source: 'Website',
+        lead_stage: 'Initial Inquiry',
+        lead_temperature: 'Warm',
+        communication_preference: 'email',
+        initial_contact_channel: 'contact_form',
+        how_heard_about_us: 'Website Contact Form',
+        notes: `Initial inquiry submitted via website contact form on ${new Date().toLocaleDateString()}`,
+        last_contacted_date: new Date().toISOString(),
+        last_contact_type: 'form_submission',
+        opt_in_status: true, // Assume opt-in from contact form
+        lead_score: 50, // Default score for website inquiries
+        priority_level: 'Medium'
+      };
+      
+      // Check if contact already exists (by email or phone) for this user
+      let existingContact = null;
+      if (email) {
+        const { data: emailMatch } = await supabase
+          .from('contacts')
+          .select('*')
+          .eq('email_address', email)
+          .eq('user_id', adminUserId)
+          .is('deleted_at', null)
+          .single();
+        existingContact = emailMatch;
+      }
+      
+      if (!existingContact && phone) {
+        const cleanPhone = phone.replace(/\D/g, ''); // Remove non-digits
+        const { data: phoneMatch } = await supabase
+          .from('contacts')
+          .select('*')
+          .eq('user_id', adminUserId)
+          .ilike('phone', `%${cleanPhone}%`)
+          .is('deleted_at', null)
+          .single();
+        existingContact = phoneMatch;
+      }
+      
+      if (existingContact) {
+        // Update existing contact with new information
+        const updateData = {
+          ...contactData,
+          messages_received_count: (existingContact.messages_received_count || 0) + 1,
+          last_contacted_date: new Date().toISOString(),
+          notes: `${existingContact.notes || ''}\n\nNew inquiry ${new Date().toLocaleDateString()}: ${message || 'No message provided'}`
+        };
+        
+        const { data: updatedContact, error: updateError } = await supabase
+          .from('contacts')
+          .update(updateData)
+          .eq('id', existingContact.id)
+          .select()
+          .single();
+          
+        if (updateError) {
+          console.error('Error updating existing contact:', updateError);
+        } else {
+          console.log('Updated existing contact:', updatedContact.id);
+        }
+      } else {
+        // Create new contact
+        const { data: newContact, error: createError } = await supabase
+          .from('contacts')
+          .insert([contactData])
+          .select()
+          .single();
+          
+        if (createError) {
+          console.error('Error creating new contact:', createError);
+        } else {
+          console.log('Created new contact:', newContact.id);
+        }
+      }
+    } catch (contactError) {
+      console.error('Error managing contact record (non-critical):', contactError);
+      // Don't fail the entire request if contact creation fails
+    }
 
     // Only send emails if Resend API key is configured
     if (resend && process.env.RESEND_API_KEY) {

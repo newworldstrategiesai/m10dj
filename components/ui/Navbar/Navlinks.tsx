@@ -26,9 +26,17 @@ export default function Navlinks({ user }: NavlinksProps) {
             Pricing
           </Link>
           {user && (
-            <Link href="/account" className={s.link}>
-              Account
-            </Link>
+            <>
+              <Link href="/account" className={s.link}>
+                Account
+              </Link>
+              <Link href="/admin/contacts" className={s.link}>
+                Contacts
+              </Link>
+              <Link href="/chat" className={s.link}>
+                Chat
+              </Link>
+            </>
           )}
         </nav>
       </div>

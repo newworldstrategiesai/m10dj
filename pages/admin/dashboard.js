@@ -486,7 +486,7 @@ export default function AdminDashboard() {
                     <tr 
                       key={submission.id} 
                       className="hover:bg-surface-light transition-colors cursor-pointer"
-                      onClick={() => window.location.href = `/admin/contacts/${submission.id}`}
+                      onClick={() => window.location.href = `/admin/leads/${submission.id}`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>

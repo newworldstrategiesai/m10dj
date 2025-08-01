@@ -1,0 +1,2493 @@
+'use client';
+
+import { useState, useCallback, useEffect, useRef, useMemo, Fragment } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import dayjs from 'dayjs';
+import {
+  IconArrowLeft,
+  IconDotsVertical,
+  IconEdit,
+  IconMessages,
+  IconPaperclip,
+  IconPhotoPlus,
+  IconPlus,
+  IconSearch,
+  IconSend,
+  IconVideo,
+  IconRobot,
+  IconUser,
+  IconTrash,
+  IconRefresh,
+  IconEraser,
+  IconDatabase,
+  IconPhone,
+  IconMenu2,
+  IconX,
+  IconMessagePlus
+} from '@tabler/icons-react';
+import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/use-toast';
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+// Import the MessageDetailsModal component
+import { MessageDetailsModal } from './components/MessageDetailsModal';
+
+// Import initial conversations
+import { conversations } from '@/data/conversations.json';
+
+// Import our new components
+import { SMSThreadItem } from './components/SMSThreadItem';
+import { ChatHeader } from './components/ChatHeader';
+import TwilioSetupGuide from '@/components/TwilioSetupGuide';
+import NewMessageModal from '@/components/NewMessageModal';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useUser } from '@/hooks/useUser';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import axios from 'axios';
+// Add import for NewSMSDialog at the top of imports
+import NewSMSDialog from './components/NewSMSDialog';
+
+// Types
+interface Message {
+  sender: string;
+  message: string;
+  timestamp: string;
+  to?: string;
+  source?: 'twilio_api' | 'supabase';
+  direction?: 'inbound' | 'outbound';
+  timestampMs?: number;
+}
+
+interface AIAgent {
+  id: string;
+  profile: string;
+  username: string;
+  fullName: string;
+  title: string;
+  messages: Message[];
+  isAI: true;
+}
+
+interface SMSContact {
+  id: string;
+  name: string;
+  phone: string;
+  lastMessage?: string;
+  lastMessageTime?: string;
+  destinationNumber?: string; // Add destination number field
+}
+
+// Add this interface for SMS users
+interface SMSUser {
+  id: string;
+  profile: string;
+  username: string;
+  fullName: string;
+  title: string;
+  messages: Message[];
+  phone: string;
+  isSMS: true;
+  destinationNumber?: string; // Add destination number field
+}
+
+// Base conversation type from the imported conversations
+interface BaseConversation {
+  id: string;
+  profile: string;
+  username: string;
+  fullName: string;
+  title: string;
+  messages: Message[];
+}
+
+// Update the ChatUser type to include SMSUser and ensure all types have the required properties
+type ChatUser = BaseConversation & {
+  phone?: string;
+  isSMS?: boolean;
+  destinationNumber?: string;
+} | AIAgent | SMSUser;
+
+type Convo = ChatUser['messages'][number];
+
+// Update the handleSelectContact function to work with Supabase contacts
+interface Contact {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  user_id: string;
+  lead_status?: string;
+  lead_source?: string;
+  opt_in_status?: boolean;
+  notes?: string;
+  vertical?: string;
+  sub_category?: string;
+  preferred_language?: string;
+}
+
+// Add types for SMS history
+interface SMSHistoryMessage {
+  id: string;
+  sender: 'user' | 'contact';
+  message: string;
+  timestamp: string;
+}
+
+interface SMSHistoryConversation {
+  id: string;
+  phone: string;
+  messages: SMSHistoryMessage[];
+  lastMessageTime: number | null;
+  lastMessage?: string;
+  contact: Contact | null;
+  name: string;
+}
+
+interface SMSNotification {
+  id: string;
+  user_id: string;
+  from_phone: string;
+  message: string;
+  contact_name: string;
+  contact_id: string | null;
+  created_at: string;
+}
+
+// Add these type definitions after the existing interfaces
+interface ProcessedMessage {
+  sender: string;
+  message: string;
+  timestamp: string;
+  timestampMs?: number;
+  to?: string;
+  source: 'twilio_api' | 'supabase';
+  direction: 'inbound' | 'outbound';
+}
+
+interface ThreadAutomationSettings {
+  responseStyle: 'formal' | 'casual' | 'very-casual';
+  messageLength: 'short' | 'medium' | 'long';
+}
+
+// Add this interface for the selected message
+interface SelectedMessage {
+  from: string;
+  to: string;
+  body: string;
+  dateSent: string;
+  direction: 'inbound' | 'outbound';
+}
+
+// Add this type guard function at the top of the file
+function hasPhone(user: ChatUser): user is (BaseConversation | SMSUser) & { phone: string } {
+  return 'phone' in user;
+}
+
+// Add these environment variable checks at the top of the file, after imports
+const NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+if (!NEXT_PUBLIC_SUPABASE_URL || !NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  console.error('Missing required environment variables for Supabase configuration');
+}
+
+// Move normalizePhoneNumber outside the component
+function normalizePhoneNumber(phoneNumber?: string): string {
+  if (!phoneNumber) return '';
+  return phoneNumber.replace(/\D/g, '');
+}
+
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  return function(...args: Parameters<T>) {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+
+// Add these interfaces at the top with other interfaces
+interface TwilioMessage {
+  direction: 'inbound' | 'outbound';
+  from: string;
+  body: string;
+  dateSent: string | number;
+  source?: 'twilio_api' | 'supabase';
+  to?: string;
+}
+
+interface TwilioApiKeys {
+  user_id: string;
+  twilio_sid: string;
+  twilio_auth_token: string;
+}
+
+// Add this helper function near the top of the file with other utility functions
+function formatTimestamp(timestamp: string | number): string {
+  // If it's a Unix timestamp (number or numeric string)
+  if (!isNaN(Number(timestamp))) {
+    // Convert to milliseconds if needed (check if seconds vs milliseconds)
+    const timestampMs = String(timestamp).length > 10 ? 
+      Number(timestamp) : 
+      Number(timestamp) * 1000;
+    return new Date(timestampMs).toISOString();
+  }
+  
+  // If it's already a valid ISO string, return it as is
+  const date = new Date(timestamp);
+  if (!isNaN(date.getTime())) {
+    return String(timestamp);
+  }
+  
+  // If we get here, the timestamp is invalid
+  console.warn('Invalid timestamp:', timestamp);
+  return new Date().toISOString();
+}
+
+interface ProcessedMessageWithMs extends ProcessedMessage {
+  timestampMs: number;
+}
+
+interface MessageWithMs extends Message {
+  timestampMs: number;
+}
+
+export default function ChatPage() {
+  const { toast } = useToast();
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [threads, setThreads] = useState<ChatUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<ChatUser>(conversations[0]);
+  const [mobileSelectedUser, setMobileSelectedUser] = useState<ChatUser | null>(null);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [conversationContext, setConversationContext] = useState<Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>>([]); 
+  
+  // Add new state variables for AI suggestions
+  const [aiSuggestion, setAiSuggestion] = useState<string>('');
+  const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false);
+  const [showSuggestionPopover, setShowSuggestionPopover] = useState(false);
+  
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [smsContacts, setSMSContacts] = useState<SMSContact[]>([]);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactPhone, setNewContactPhone] = useState('');
+  const [newMessageModalOpen, setNewMessageModalOpen] = useState(false);
+  const [smsError, setSMSError] = useState<string | null>(null);
+  const { user } = useUser();
+  const userId = user?.id;
+  const supabase = createClientComponentClient();
+  const [isLoadingSMSHistory, setIsLoadingSMSHistory] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [showTwilioSetupGuide, setShowTwilioSetupGuide] = useState(false);
+  const [twilioErrorType, setTwilioErrorType] = useState<'credentials' | 'phone_number' | 'general'>('general');
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [showDetailsPanel, setShowDetailsPanel] = useState(window.innerWidth >= 768);
+  const [showMobileDetailsPanel, setShowMobileDetailsPanel] = useState(false);
+  // Add state for the selected message and modal visibility
+  const [selectedMessage, setSelectedMessage] = useState<SelectedMessage | null>(null);
+  // Add a state for Twilio numbers
+  const [userTwilioNumbers, setUserTwilioNumbers] = useState<string[]>([]);
+  // Add new state for automation mode
+  const [automationMode, setAutomationMode] = useState<'semi' | 'full'>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('automationMode') as 'semi' | 'full' || 'semi';
+    }
+    return 'semi';
+  });
+  const [isAutomationEnabled, setIsAutomationEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('isAutomationEnabled') === 'true';
+    }
+    return false;
+  });
+  // Add new state variables for automation parameters
+  const [responseDelay, setResponseDelay] = useState<'none' | 'short' | 'medium' | 'long'>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('responseDelay') as 'none' | 'short' | 'medium' | 'long' || 'short';
+    }
+    return 'short';
+  });
+  const [responseStyle, setResponseStyle] = useState<'formal' | 'casual' | 'very-casual'>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('responseStyle') as 'formal' | 'casual' | 'very-casual' || 'casual';
+    }
+    return 'casual';
+  });
+  const [messageLength, setMessageLength] = useState<'short' | 'medium' | 'long'>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('messageLength') as 'short' | 'medium' | 'long' || 'medium';
+    }
+    return 'medium';
+  });
+  // Add new state variables for automation status
+  const [automationStatus, setAutomationStatus] = useState<'idle' | 'detecting' | 'thinking' | 'sending'>('idle');
+  const [automationStatusMessage, setAutomationStatusMessage] = useState<string>('');
+  // Add new state variables for countdown
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
+  const [isCancelled, setIsCancelled] = useState(false);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Add new state for default automation settings
+  const [defaultAutomationSettings] = useState({
+    isEnabled: true,
+    mode: 'full' as 'semi' | 'full',
+    responseDelay: 'short' as 'none' | 'short' | 'medium' | 'long',
+    responseStyle: 'casual' as 'formal' | 'casual' | 'very-casual',
+    messageLength: 'medium' as 'short' | 'medium' | 'long'
+  });
+
+  // Add new state for editing contact info
+  const [isEditingContact, setIsEditingContact] = useState(false);
+  const [editedContact, setEditedContact] = useState<Contact | null>(null);
+
+  // Add new state for Twilio credentials
+  const [twilioCredentials, setTwilioCredentials] = useState<{
+    twilioSid: string;
+    twilioAuthToken: string;
+    twilioNumbers: string[];
+  } | null>(null);
+
+  // Add new function to fetch Twilio credentials
+  const fetchTwilioCredentials = async () => {
+    if (!user) return;
+    
+    try {
+      // Get the most recent API key
+      const { data: apiKeys, error: apiKeyError } = await supabase
+        .from('api_keys')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (apiKeyError) {
+        console.error('Error fetching API keys:', apiKeyError);
+        throw new Error('Failed to fetch Twilio credentials from Supabase');
+      }
+
+      const apiKey = apiKeys?.[0];
+      if (!apiKey?.twilio_sid || !apiKey?.twilio_auth_token) {
+        console.error('No Twilio credentials found in Supabase');
+        throw new Error('No Twilio credentials found in Supabase');
+      }
+
+      // Fetch Twilio numbers
+      const response = await fetch('/api/get-twilio-numbers', {
+        headers: {
+          'twilioSid': apiKey.twilio_sid,
+          'twilioAuthToken': apiKey.twilio_auth_token,
+          'userId': user.id
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch Twilio numbers');
+      }
+
+      const { numbers } = await response.json();
+
+      setTwilioCredentials({
+        twilioSid: apiKey.twilio_sid,
+        twilioAuthToken: apiKey.twilio_auth_token,
+        twilioNumbers: numbers || []
+      });
+    } catch (error) {
+      console.error('Error fetching Twilio credentials from Supabase:', error);
+      console.log('Attempting to use environment variables as backup');
+      
+      try {
+        // Make a request to get Twilio numbers using environment variables
+        const backupResponse = await fetch('/api/get-twilio-numbers-env', {
+          headers: {
+            'userId': user.id
+          }
+        });
+        
+        if (!backupResponse.ok) {
+          throw new Error('Failed to fetch Twilio numbers with environment variables');
+        }
+        
+        const { numbers, twilioSid, twilioAuthToken } = await backupResponse.json();
+        
+        if (twilioSid && twilioAuthToken) {
+          console.log('Using environment variables for Twilio credentials as backup');
+          setTwilioCredentials({
+            twilioSid,
+            twilioAuthToken,
+            twilioNumbers: numbers || []
+          });
+        } else {
+          console.error('No valid Twilio credentials available');
+        }
+      } catch (backupError) {
+        console.error('Error using backup credentials:', backupError);
+        
+        // As a last resort, try to fetch just the Twilio phone number from env
+        try {
+          const envPhoneResponse = await fetch('/api/get-env-phone-number');
+          if (envPhoneResponse.ok) {
+            const { phoneNumber } = await envPhoneResponse.json();
+            if (phoneNumber) {
+              console.log('Retrieved Twilio phone number from environment:', phoneNumber);
+              setTwilioCredentials(prev => ({
+                twilioSid: prev?.twilioSid || '',
+                twilioAuthToken: prev?.twilioAuthToken || '',
+                twilioNumbers: [phoneNumber]
+              }));
+            }
+          }
+        } catch (phoneError) {
+          console.error('Error fetching env phone number:', phoneError);
+        }
+      }
+    }
+  };
+
+  // Add useEffect to fetch credentials once
+  useEffect(() => {
+    if (user && !twilioCredentials) {
+      fetchTwilioCredentials();
+    }
+  }, [user]); // Only run when user changes
+
+  // Use a useEffect to debounce the search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [search]);
+
+  // Load threads from localStorage if they exist
+  useEffect(() => {
+    console.log('Loading initial threads');
+    const storedThreads = localStorage.getItem('threads');
+    
+    const loadThreads = async () => {
+      let initialThreads: ChatUser[] = [];
+      
+      if (storedThreads) {
+        console.log('Found stored threads in localStorage');
+        const parsedThreads = JSON.parse(storedThreads);
+        console.log('Parsed threads:', {
+          totalThreads: parsedThreads.length,
+          smsThreads: parsedThreads.filter((t: any) => 'isSMS' in t && t.isSMS).length
+        });
+        initialThreads = parsedThreads;
+      } else {
+        console.log('No stored threads found, initializing with default AI conversations');
+        initialThreads = conversations.filter(convo => !('isSMS' in convo));
+      }
+      
+      setThreads(initialThreads);
+      setSelectedUser(initialThreads[0] || conversations[0]); // Fallback to default
+      
+      // Set a flag to indicate we've completed the initial load
+      setLastFetchTime(new Date());
+    };
+    
+    loadThreads();
+  }, []); // Remove user dependency to prevent reloading on user changes
+  
+  // Add a separate effect to fetch SMS history once after initial load
+  // with a 5-minute refresh interval
+  useEffect(() => {
+    if (!user || !lastFetchTime) return;
+    
+    // Only fetch once on initial load and then on a timer
+    const fetchSMSData = async () => {
+      try {
+        console.log('Scheduled SMS history fetch');
+        await fetchSMSHistory();
+        // Update the last fetch time
+        setLastFetchTime(new Date());
+      } catch (error) {
+        console.error('Error in scheduled SMS history fetch:', error);
+      }
+    };
+    
+    // Fetch SMS data initially
+    fetchSMSData();
+    
+    // Set up a timer to refresh SMS data every 5 minutes
+    const refreshInterval = setInterval(fetchSMSData, 5 * 60 * 1000);
+    
+    // Clean up the interval when the component unmounts
+    return () => clearInterval(refreshInterval);
+  }, [user, lastFetchTime === null]); // Only refetch when user changes or on first load
+
+  // Save threads to localStorage whenever they are updated
+  useEffect(() => {
+    if (threads.length > 0) {
+      localStorage.setItem('threads', JSON.stringify(threads));
+    }
+  }, [threads]);
+
+  // Update the useEffect for scrolling to ensure it scrolls to the bottom when new messages are added
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [selectedUser.messages]);
+
+  // Add a new useEffect to handle scrolling when the selected user changes
+  useEffect(() => {
+    // Add a small delay to ensure the DOM has updated
+    const timer = setTimeout(() => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [selectedUser.id]); // Only run when the selected user ID changes
+
+  // Load SMS contacts from localStorage and check Supabase for contact names
+  useEffect(() => {
+    const loadSMSContacts = async () => {
+      if (!user) {
+        console.log('No user found, skipping SMS contacts load');
+        return;
+      }
+
+      try {
+        console.log('Loading SMS contacts for user:', user.id);
+        // Fetch contacts from Supabase
+        const { data: contactsData, error: contactsError } = await supabase
+          .from('contacts')
+          .select('id, first_name, last_name, phone')
+          .eq('user_id', user.id);
+            
+        if (contactsError) {
+          console.error('Error fetching contacts:', contactsError);
+          return;
+        }
+
+        console.log('Fetched contacts:', contactsData?.length || 0);
+
+        // Update threads with contact names
+        if (contactsData) {
+          setThreads(prev => {
+            const updatedThreads = prev.map(thread => {
+              if ('isSMS' in thread && thread.isSMS && thread.phone) {
+                const normalizedThreadPhone = normalizePhoneNumber(thread.phone);
+                const contact = contactsData.find(c => 
+                  normalizePhoneNumber(c.phone) === normalizedThreadPhone
+                );
+                
+                if (contact) {
+                  const fullName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
+                  if (fullName) {
+                    return {
+                      ...thread,
+                      fullName,
+                      username: fullName.split(' ')[0]
+                    };
+                  }
+                }
+              }
+              return thread;
+            });
+            console.log('Updated threads with contact names:', {
+              totalThreads: updatedThreads.length,
+              smsThreads: updatedThreads.filter(t => 'isSMS' in t && t.isSMS).length
+            });
+            return updatedThreads;
+          });
+        }
+      } catch (error) {
+        console.error('Error updating contact names:', error);
+      }
+    };
+    
+    loadSMSContacts();
+  }, [user, supabase]); // Remove normalizePhoneNumber from dependencies
+
+  // Handle search input change with debounce
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only update search if we're not currently loading SMS history
+    // This prevents the search from triggering unnecessary API calls
+    setSearch(e.target.value);
+  }, []);
+
+  // Add the processSMSHistory function before the fetchSMSHistory function
+  const processSMSHistory = (messages: any[], specificPhoneNumber?: string) => {
+    if (specificPhoneNumber) {
+      // Update specific thread
+      setThreads(prevThreads => {
+        const updatedThreads = prevThreads.map(thread => {
+          if ('isSMS' in thread && thread.isSMS && normalizePhoneNumber(thread.phone) === normalizePhoneNumber(specificPhoneNumber)) {
+            // Map the messages from the SMS logs format to our thread format
+            const threadMessages = messages.map((msg: any) => ({
+              sender: msg.direction === 'inbound' ? msg.from : 'You',
+              message: msg.body,
+              timestamp: msg.dateSent || msg.dateCreated,
+              source: msg.source || 'twilio_api',
+              direction: msg.direction,
+              to: msg.to,
+              from: msg.from
+            }));
+            
+            return {
+              ...thread,
+              messages: threadMessages
+            };
+          }
+          return thread;
+        });
+        console.log('Updated threads for specific phone number:', {
+          threadCount: updatedThreads.length,
+          phoneNumber: specificPhoneNumber
+        });
+        return updatedThreads;
+      });
+    } else {
+      // Update all SMS threads
+      const messagesByPhone = messages.reduce((acc: any, msg: any) => {
+        const phoneKey = msg.direction === 'inbound' ? msg.from : msg.to;
+        if (!acc[phoneKey]) {
+          acc[phoneKey] = [];
+        }
+        acc[phoneKey].push({
+          sender: msg.direction === 'inbound' ? msg.from : 'You',
+          message: msg.body,
+          timestamp: msg.dateSent || msg.dateCreated,
+          source: msg.source || 'twilio_api',
+          direction: msg.direction,
+          to: msg.to,
+          from: msg.from
+        });
+        return acc;
+      }, {});
+
+      console.log('Grouped messages by phone:', Object.keys(messagesByPhone).length);
+
+      setThreads(prevThreads => {
+        const updatedThreads = prevThreads.map(thread => {
+          if ('isSMS' in thread && thread.isSMS && thread.phone) {
+            const normalizedPhone = normalizePhoneNumber(thread.phone);
+            const threadMessages = messagesByPhone[normalizedPhone] || [];
+            if (threadMessages.length > 0) {
+              return {
+                ...thread,
+                messages: threadMessages
+              };
+            }
+          }
+          return thread;
+        });
+        console.log('Updated all SMS threads:', {
+          threadCount: updatedThreads.length,
+          smsThreadCount: updatedThreads.filter(t => 'isSMS' in t && t.isSMS).length
+        });
+        return updatedThreads;
+      });
+    }
+  };
+
+  // Add a function to create SMS threads from Twilio messages
+  const createSMSThreadsFromTwilioMessages = (messages: any[]) => {
+    console.log('Creating SMS threads from Twilio messages:', messages.length);
+    if (!messages || messages.length === 0) return;
+    
+    // Get the actual Twilio phone number being used
+    // This phone number needs to be extracted from the messages
+    let actualTwilioNumber = '';
+    
+    // Find the first outbound message to see which Twilio number is being used
+    const outboundMessage = messages.find(msg => msg.direction === 'outbound');
+    if (outboundMessage) {
+      actualTwilioNumber = outboundMessage.from;
+      console.log('Detected actual Twilio number from outbound message:', actualTwilioNumber);
+    } else {
+      // If no outbound message, look at the 'to' of an inbound message
+      const inboundMessage = messages.find(msg => msg.direction === 'inbound');
+      if (inboundMessage) {
+        actualTwilioNumber = inboundMessage.to;
+        console.log('Detected actual Twilio number from inbound message:', actualTwilioNumber);
+      }
+    }
+    
+    // If we found a Twilio number, update the twilioCredentials if it's different
+    if (actualTwilioNumber && 
+        (!twilioCredentials?.twilioNumbers.includes(actualTwilioNumber))) {
+      console.log('Updating Twilio credentials with actual number:', actualTwilioNumber);
+      setTwilioCredentials(prev => {
+        if (!prev) return {
+          twilioSid: '',
+          twilioAuthToken: '',
+          twilioNumbers: [actualTwilioNumber]
+        };
+        
+        return {
+          ...prev,
+          twilioNumbers: [actualTwilioNumber, ...prev.twilioNumbers.filter(n => n !== actualTwilioNumber)]
+        };
+      });
+    }
+    
+    // Group messages by phone number
+    const threadsByPhone: Record<string, {messages: any[], latestTimestamp: Date}> = {};
+    
+    messages.forEach(msg => {
+      // For outbound messages, the recipient is the contact
+      // For inbound messages, the sender is the contact
+      const contactPhone = msg.direction === 'inbound' ? msg.from : msg.to;
+      const twilioPhone = msg.direction === 'inbound' ? msg.to : msg.from;
+      
+      if (!contactPhone) return; // Skip if we can't determine the contact
+      
+      // Initialize this thread if it doesn't exist
+      if (!threadsByPhone[contactPhone]) {
+        threadsByPhone[contactPhone] = {
+          messages: [],
+          latestTimestamp: new Date(0)
+        };
+      }
+      
+      // Add the message to this phone's thread
+      threadsByPhone[contactPhone].messages.push({
+        sender: msg.direction === 'inbound' ? contactPhone : 'You',
+        message: msg.body,
+        timestamp: msg.dateSent,
+        to: msg.to,
+        from: msg.from,
+        source: msg.source || 'twilio_api',
+        direction: msg.direction
+      });
+      
+      // Update the latest timestamp
+      const msgDate = new Date(msg.dateSent);
+      if (msgDate > threadsByPhone[contactPhone].latestTimestamp) {
+        threadsByPhone[contactPhone].latestTimestamp = msgDate;
+      }
+    });
+    
+    // Convert to array and sort by latest message
+    const newThreads = Object.entries(threadsByPhone)
+      .map(([phone, data]) => {
+        // Sort messages by timestamp (oldest first)
+        const sortedMessages = data.messages.sort((a, b) => 
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+        
+        // Look for a contact name
+        const fullName = phone;
+        
+        // Get the correct Twilio phone number from the messages
+        const destinationNumber = sortedMessages.length > 0
+          ? (sortedMessages[0].direction === 'inbound' 
+             ? sortedMessages[0].to 
+             : sortedMessages[0].from)
+          : actualTwilioNumber || (twilioCredentials?.twilioNumbers[0] || '');
+        
+        return {
+          id: `sms-${phone}`,
+          profile: '/placeholders/contact-placeholder.png',
+          username: fullName.split(' ')[0],
+          fullName,
+          title: 'SMS Contact',
+          messages: sortedMessages,
+          phone,
+          isSMS: true as const,
+          destinationNumber
+        };
+      })
+      .sort((a, b) => {
+        // Sort by most recent message
+        const aLatest = a.messages.length > 0 ? new Date(a.messages[a.messages.length - 1].timestamp).getTime() : 0;
+        const bLatest = b.messages.length > 0 ? new Date(b.messages[b.messages.length - 1].timestamp).getTime() : 0;
+        return bLatest - aLatest;
+      });
+      
+    console.log('Created SMS threads:', newThreads.length);
+    
+    // Update the thread state - carefully merge with existing threads to prevent constant state updates
+    setThreads(prevThreads => {
+      // Don't update if the threads are effectively the same to prevent re-renders
+      // Get existing SMS threads
+      const existingSMSThreads = prevThreads.filter(thread => 'isSMS' in thread && thread.isSMS);
+      
+      // Check if we already have these exact threads with same message counts
+      const hasChanges = newThreads.some(newThread => {
+        const existingThread = existingSMSThreads.find(t => t.id === newThread.id);
+        // If thread doesn't exist or message count is different, we have changes
+        return !existingThread || existingThread.messages.length !== newThread.messages.length;
+      });
+      
+      // If no actual changes, return the existing threads to prevent re-render
+      if (!hasChanges && existingSMSThreads.length === newThreads.length) {
+        console.log('No changes in SMS threads, skipping update');
+        return prevThreads;
+      }
+      
+      // Keep all AI agent conversations
+      const aiThreads = prevThreads.filter(thread => !('isSMS' in thread) || !thread.isSMS);
+      
+      // Merge existing SMS threads with new ones
+      const mergedThreads = [
+        ...aiThreads,
+        ...newThreads
+      ];
+      
+      // If this is our first time loading and we have SMS threads,
+      // select the most recent SMS thread instead of the default AI thread
+      if (newThreads.length > 0 && prevThreads.every(t => !('isSMS' in t) || !t.isSMS)) {
+        setSelectedUser(newThreads[0]);
+      }
+      
+      return mergedThreads;
+    });
+  };
+  
+  // Update the fetchSMSHistory function to use the thread creation logic
+  const fetchSMSHistory = async (phoneNumber?: string) => {
+    if (!user) {
+      console.log('No user found, skipping SMS history fetch');
+      return;
+    }
+    
+    // Prevent duplicate requests for the same data
+    if (isLoadingSMSHistory) {
+      console.log('Already loading SMS history, skipping duplicate request');
+      return;
+    }
+    
+    try {
+      setIsLoadingSMSHistory(true);
+      console.log('Fetching SMS history for user:', user.id, 'specific phone:', phoneNumber || 'none');
+      
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      if (phoneNumber) {
+        queryParams.append('phoneNumber', phoneNumber.replace(/\D/g, ''));
+      }
+      queryParams.append('page', '1');
+      queryParams.append('pageSize', '100');
+      queryParams.append('userId', user.id);
+      queryParams.append('useEnvVarsAsBackup', 'true');
+      
+      // Add a cache-busting timestamp to prevent browser caching
+      queryParams.append('_t', Date.now().toString());
+      
+      // Make the API request
+      const response = await fetch(`/api/get-sms-logs?${queryParams.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch SMS history: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Fetched SMS history:', {
+        totalCount: data.messages?.length || 0,
+        phoneNumber: phoneNumber || 'all'
+      });
+      
+      // Create SMS threads from messages if there are any
+      if (data.messages && data.messages.length > 0) {
+        // If looking for a specific number, use processSMSHistory, otherwise create new threads
+        if (phoneNumber) {
+          processSMSHistory(data.messages, phoneNumber);
+        } else {
+          createSMSThreadsFromTwilioMessages(data.messages);
+        }
+      } else {
+        console.log('No SMS messages found');
+      }
+    } catch (error) {
+      console.error('Error fetching SMS history:', error);
+      
+      // Show Twilio setup guide if needed
+      if (error instanceof Error && 
+          (error.message.includes('No Twilio credentials') || 
+           error.message.includes('Invalid Twilio credentials') ||
+           error.message.includes('Failed to fetch Twilio'))) {
+        setShowTwilioSetupGuide(true);
+        setTwilioErrorType('credentials');
+      }
+    } finally {
+      setIsLoadingSMSHistory(false);
+    }
+  };
+
+  // Add the sendMessage function
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputMessage.trim() || !selectedUser) return;
+    
+    // Add type guard for SMS users
+    if (!('isSMS' in selectedUser) || !selectedUser.isSMS || !selectedUser.phone) {
+      console.error('Cannot send SMS: Not an SMS user or missing phone number');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Prepare the message data
+      const messageData = {
+        to: selectedUser.phone,
+        message: inputMessage,
+        threadId: selectedUser.id,
+        useEnvVars: !twilioCredentials, // Use env vars if no credentials in state
+        from: selectedUser.destinationNumber || (twilioCredentials?.twilioNumbers?.[0] || '')
+      };
+
+      console.log('Sending SMS with data:', {
+        to: messageData.to,
+        messageLength: messageData.message.length,
+        from: messageData.from || 'using env vars',
+        threadId: messageData.threadId
+      });
+
+      // Use the updated endpoint and format
+      const response = await fetch('/api/sms/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(messageData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('SMS send error response:', errorData);
+        
+        // Provide more helpful error messages based on the error type
+        if (errorData.error === 'Failed to fetch Twilio credentials') {
+          throw new Error('Twilio credentials not found. Please check your environment variables or add credentials in your account settings.');
+        } else if (errorData.error === 'No Twilio number configured') {
+          throw new Error('No Twilio phone number configured. Please add a phone number in your account settings.');
+        } else {
+          throw new Error(errorData.error || 'Failed to send SMS');
+        }
+      }
+
+      const data = await response.json();
+      console.log('SMS sent successfully:', data);
+      
+      // Add the message to the current thread immediately for better UX
+      setThreads(prev => {
+        return prev.map(thread => {
+          if (thread.id === selectedUser.id) {
+            // Add the new message to this thread
+            const newMessage = {
+              sender: 'You',
+              message: inputMessage,
+              timestamp: new Date().toISOString(),
+              direction: 'outbound' as const,
+              to: selectedUser.phone,
+              from: selectedUser.destinationNumber || (twilioCredentials?.twilioNumbers?.[0] || ''),
+              source: 'supabase' as const
+            };
+            
+            return {
+              ...thread,
+              messages: [...thread.messages, newMessage]
+            };
+          }
+          return thread;
+        });
+      });
+
+      // Clear input message
+      setInputMessage('');
+
+      toast({
+        title: "SMS sent",
+        description: `Message sent to ${selectedUser.fullName}`
+      });
+      
+      // Refresh the SMS history after sending a message to get server confirmation
+      setTimeout(() => {
+        fetchSMSHistory(selectedUser.phone);
+      }, 1000);
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      setSMSError(error.message || 'Failed to send SMS');
+      
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send SMS",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update the fetchContactInfo function
+  const fetchContactInfo = async (phone?: string): Promise<{ name: string; phone: string } | null> => {
+    if (!phone) return null;
+    
+    try {
+      const normalizedPhone = normalizePhoneNumber(phone);
+      const { data } = await supabase
+        .from('contacts')
+        .select('first_name, last_name, phone')
+        .eq('user_id', user?.id)
+        .filter('phone', 'ilike', `%${normalizedPhone}%`)
+        .maybeSingle();
+      
+      if (data) {
+        return {
+          name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+          phone: data.phone
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching contact info:', error);
+      return null;
+    }
+  };
+  
+  // Update the handleSelectUser function with proper typing
+  const handleSelectUser = useCallback(async (user: ChatUser, clearSearch = false, event?: React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent default behavior if event is provided
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    // Start animation
+    setIsAnimating(true);
+    
+    // Set a timeout to allow the animation to complete before updating state
+    setTimeout(() => {
+      setSelectedUser(user);
+      setMobileSelectedUser(user);
+      setMobileOpen(false);
+      if (clearSearch) setSearch('');
+      
+      // Set details panel to true if on desktop
+      if (window.innerWidth >= 768) {
+        setShowDetailsPanel(true);
+      }
+      
+      // Reset animation state
+      setIsAnimating(false);
+    }, 300); // Match this with the CSS transition duration
+    
+    // If this is an SMS user, try to fetch contact info
+    if ('isSMS' in user && user.isSMS && 'phone' in user) {
+      const contactInfo = await fetchContactInfo(user.phone);
+      
+      if (contactInfo) {
+        // Update the user with the contact name
+        setSelectedUser(prev => ({
+          ...prev,
+          fullName: contactInfo.name,
+          username: contactInfo.name.split(' ')[0]
+        }));
+        
+        // Also update the thread in the threads list
+      setThreads(prev => {
+          return prev.map(thread => {
+            if (thread.id === user.id) {
+            return {
+                ...thread,
+                fullName: contactInfo.name,
+                username: contactInfo.name.split(' ')[0]
+              };
+            }
+            return thread;
+          });
+        });
+      }
+      
+      // Always fetch the latest messages when selecting an SMS contact
+      // Use a small timeout to ensure the UI updates first
+      setTimeout(() => {
+        if ('phone' in user) {
+          // Use a function reference instead of directly calling fetchSMSHistory
+          const fetchMessages = () => {
+            if (user && 'phone' in user) {
+              fetchSMSHistory(user.phone);
+            }
+          };
+          fetchMessages();
+        }
+      }, 400); // Slightly longer timeout to ensure animation completes
+    }
+  }, [fetchContactInfo]);
+  
+  // Handle back button click with animation
+  const handleBackButtonClick = useCallback((e?: React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent default behavior if event is provided
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Start animation
+    setIsAnimating(true);
+    
+    // Set a timeout to allow the animation to complete before updating state
+    setTimeout(() => {
+      setMobileOpen(true);
+      setMobileSelectedUser(null);
+      
+      // Reset animation state
+      setIsAnimating(false);
+    }, 300); // Match this with the CSS transition duration
+  }, []);
+
+  // Handle selecting an existing contact
+  const handleSelectExistingContact = useCallback(async (contact: Contact) => {
+    if (!user) {
+      console.log('No user found, cannot select contact');
+      return;
+    }
+    
+    console.log('Selected existing contact:', {
+      contactId: contact.id,
+      name: `${contact.first_name} ${contact.last_name}`,
+      phone: contact.phone
+    });
+    
+    // Check if there's already a thread for this contact
+    const existingThread = threads.find(thread => 
+      hasPhone(thread) && 
+      thread.phone === contact.phone
+    );
+    
+    if (existingThread) {
+      console.log('Found existing thread for contact:', {
+        threadId: existingThread.id,
+        phone: existingThread.phone
+      });
+      
+      // Select the existing thread
+      setSelectedUser(existingThread);
+      setMobileSelectedUser(existingThread);
+      
+      // Close the mobile sidebar if open
+      setMobileOpen(false);
+      
+      toast({
+        title: 'Conversation Opened',
+        description: `Showing existing conversation with ${contact.first_name} ${contact.last_name}`,
+      });
+      
+      return;
+    }
+    
+    // Create a new SMS thread for this contact
+    const contactName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown';
+    const contactPhone = contact.phone;
+    
+    // Create a new SMS thread
+    const newThread: SMSUser = {
+      id: `sms_${Date.now()}`,
+      profile: '/images/default-avatar.png',
+      username: contactName,
+      fullName: contactName,
+      title: 'SMS',
+      messages: [],
+      phone: contactPhone,
+      isSMS: true as const,
+      destinationNumber: twilioCredentials?.twilioNumbers[0] || undefined // Use first Twilio number if available
+    };
+    
+    console.log('Created new SMS thread:', {
+      threadId: newThread.id,
+      phone: newThread.phone,
+      destinationNumber: newThread.destinationNumber
+    });
+    
+    // Add the thread to the list
+    setThreads(prev => {
+      const updatedThreads = [newThread, ...prev];
+      console.log('Updated threads with new SMS thread:', {
+        totalThreads: updatedThreads.length,
+        smsThreads: updatedThreads.filter(t => 'isSMS' in t && t.isSMS).length
+      });
+      return updatedThreads;
+    });
+    
+    // Start animation
+    setIsAnimating(true);
+    
+    // Set a timeout to allow the animation to complete before updating state
+    setTimeout(() => {
+      // Select the new thread
+      setSelectedUser(newThread);
+      setMobileSelectedUser(newThread);
+      
+      // Close the mobile sidebar if open
+      setMobileOpen(false);
+      
+      // Reset animation state
+      setIsAnimating(false);
+    }, 300); // Match this with the CSS transition duration
+    
+    // Fetch the latest messages for this contact
+    setTimeout(() => {
+      console.log('Fetching messages for new contact:', contactPhone);
+      fetchSMSHistory(contactPhone);
+    }, 400); // Slightly longer timeout to ensure animation completes
+    
+    toast({
+      title: 'Conversation Started',
+      description: `You can now send messages to ${contactName}`,
+    });
+  }, [user, threads, setThreads, setSelectedUser, setMobileSelectedUser, setMobileOpen, toast, twilioCredentials, fetchSMSHistory]);
+
+  // Create new AI thread
+  const createNewThread = useCallback(() => {
+    setConversationContext([]); // Reset context for new thread
+    const newAgent: AIAgent = {
+      id: uuidv4(),
+      profile: "/ai-avatar.png",
+      username: "AI",
+      fullName: "AI Assistant",
+      title: "GPT-4 Turbo Powered",
+      isAI: true,
+      messages: [{
+        sender: "AI",
+        message: "Hello! I'm your AI assistant powered by GPT-4. How can I help you today?",
+        timestamp: new Date().toISOString()
+      }]
+    };
+
+    setThreads(prev => {
+      const updatedThreads = [newAgent, ...prev];
+      localStorage.setItem('threads', JSON.stringify(updatedThreads));
+      return updatedThreads;
+    });
+    
+    // Start animation
+    setIsAnimating(true);
+    
+    // Set a timeout to allow the animation to complete before updating state
+    setTimeout(() => {
+      setSelectedUser(newAgent);
+      setMobileSelectedUser(newAgent);
+      setMobileOpen(false);
+      
+      // Reset animation state
+      setIsAnimating(false);
+    }, 300); // Match this with the CSS transition duration
+    
+        toast({
+      title: "New AI chat created",
+      description: "Start chatting with your AI assistant",
+    });
+  }, [toast]);
+
+  // Filter threads based on search - use a memoized version to prevent unnecessary recalculations
+  const filteredChatList = useMemo(() => {
+    return threads.filter(({ fullName }) =>
+      fullName.toLowerCase().includes(search.trim().toLowerCase())
+    );
+  }, [threads, search]);
+
+  // Update the currentMessage grouping with proper types
+  const currentMessage = useMemo(() => {
+    // First, ensure all messages have properly formatted timestamps
+    const normalizedMessages = selectedUser.messages.map(msg => {
+      // Preserve original timestamp for DB messages
+      const timestamp = msg.source === 'supabase' ? msg.timestamp : formatTimestamp(msg.timestamp);
+      return {
+        ...msg,
+        timestamp,
+        timestampMs: new Date(timestamp).getTime()
+      };
+    });
+
+    // Sort messages by timestamp
+    const sortedMessages = [...normalizedMessages]
+      .sort((a, b) => a.timestampMs - b.timestampMs)
+      .map(({ timestampMs, ...msg }) => msg);
+
+    // Group by date
+    return sortedMessages.reduce(
+      (acc: Record<string, Message[]>, message: Message) => {
+        const key = dayjs(message.timestamp).format('D MMM, YYYY');
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+        acc[key].push(message);
+        return acc;
+      },
+      {}
+    );
+  }, [selectedUser.messages]);
+
+  // Listen for the custom event to open the add contact modal
+  useEffect(() => {
+    const handleOpenAddContactModal = () => {
+      setNewMessageModalOpen(true);
+    };
+
+    window.addEventListener('openAddContactModal', handleOpenAddContactModal);
+
+    return () => {
+      window.removeEventListener('openAddContactModal', handleOpenAddContactModal);
+    };
+  }, []);
+
+  // Add an effect to scroll to bottom when selected user changes
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [selectedUser.id]);
+
+  // Add this before the return statement
+  console.log('Current user:', user);
+  console.log('User ID being passed to NewMessageModal:', user?.id);
+
+  // Add helper function to get delay in milliseconds
+  const getDelayDuration = (delay: 'none' | 'short' | 'medium' | 'long'): number => {
+    switch (delay) {
+      case 'none': return 0;
+      case 'short': return 2000; // 2 seconds
+      case 'medium': return 5000; // 5 seconds
+      case 'long': return 10000; // 10 seconds
+      default: return 2000;
+    }
+  };
+
+  // Add function to handle automatic responses
+  const handleAutomaticResponse = useCallback(async (incomingMessage: Message, threadId: string) => {
+    const threadSettings = getThreadAutomationSettings(threadId);
+    if (!threadSettings.isEnabled || threadSettings.mode !== 'full') return;
+    
+    try {
+      setIsCancelled(false);
+      setAutomationStatus('detecting');
+      setAutomationStatusMessage('New message detected, preparing response...');
+      
+      // Get thread from ID
+      const thread = threads.find(t => t.id === threadId);
+      if (!thread) return;
+      
+      // Get all messages for context
+      const allMessages = thread.messages.map(msg => ({
+        role: msg.sender === 'You' ? 'user' : 'assistant',
+        content: msg.message
+      }));
+      
+      const styleGuide = {
+        'formal': 'Use professional language and complete sentences.',
+        'casual': 'Use casual SMS language and common text abbreviations (like u for you, r for are, tmrw for tomorrow, etc).',
+        'very-casual': 'Use very casual texting style with lots of abbreviations and emojis.'
+      };
+      
+      const lengthGuide = {
+        'short': 'Keep responses very brief, ideally under 50 characters.',
+        'medium': 'Keep responses concise, around 100-150 characters.',
+        'long': 'Provide detailed responses when appropriate.'
+      };
+      
+      const context = [
+        {
+          role: 'system',
+          content: hasPhone(thread) 
+            ? `You are an AI assistant automatically responding to SMS messages. ${styleGuide[threadSettings.responseStyle as keyof typeof styleGuide]} ${lengthGuide[threadSettings.messageLength as keyof typeof lengthGuide]} Keep messages natural and contextually appropriate. Do not use quotation marks.`
+            : 'You are an AI assistant generating a response suggestion. Keep the tone professional but friendly. Focus on being clear and helpful. Do not use quotation marks.'
+        },
+        ...allMessages
+      ];
+      
+      // Add delay if specified
+      const delay = getDelayDuration(threadSettings.responseDelay);
+      if (delay > 0 && !isCancelled) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      if (isCancelled) {
+        throw new Error('Automatic response cancelled');
+      }
+
+      // Show thinking status
+      setAutomationStatus('thinking');
+      setAutomationStatusMessage('AI is generating a response...');
+      
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'Please generate an automatic response to the latest message.',
+          context: context
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate automatic response');
+      }
+
+      const data = await response.json();
+      const cleanResponse = data.response.replace(/['"]/g, '');
+      
+      // Send the message directly using the SMS API
+      if (hasPhone(thread)) {
+        const response = await fetch('/api/sms/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            to: thread.phone,
+            message: cleanResponse,
+            threadId: thread.id,
+            useEnvVars: true,
+            from: thread.destinationNumber
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to send SMS');
+        }
+
+        // Update the thread with the sent message
+        const newMessage = {
+          sender: 'You',
+          message: cleanResponse,
+          timestamp: new Date().toISOString()
+        };
+
+        setThreads(prev => {
+          const updatedThreads = prev.map(t => {
+            if (t.id === thread.id) {
+              return {
+                ...t,
+                messages: [...t.messages, newMessage]
+              };
+            }
+            return t;
+          });
+          localStorage.setItem('threads', JSON.stringify(updatedThreads));
+          return updatedThreads;
+        });
+      }
+      
+    } catch (error: any) {
+      console.error('Error in automatic response:', error);
+      if (error.message !== 'Automatic response cancelled') {
+        toast({
+          title: "Automatic Response Error",
+          description: error.message || "Failed to generate automatic response",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [threads, toast, isCancelled]);
+
+  // Add polling mechanism for SMS history
+  useEffect(() => {
+    if (!user) return;
+    
+    // Create a debounced version of fetchSMSHistory for polling
+    const debouncedFetchSMSHistory = debounce(async () => {
+      if (user && !isLoadingSMSHistory) {
+        const previousThreads = [...threads];
+        await fetchSMSHistory();
+        
+        // Check for new threads
+        const newThreads = threads.filter(thread => 
+          !previousThreads.some(prevThread => prevThread.id === thread.id)
+        );
+        
+        // Apply default automation settings to new threads
+        if (newThreads.length > 0) {
+          setThreads(prev => {
+            const updatedThreads = prev.map(thread => {
+              if (newThreads.some(newThread => newThread.id === thread.id)) {
+                // Save automation settings to localStorage for this thread
+                localStorage.setItem(`thread_${thread.id}_automation`, JSON.stringify({
+                  isEnabled: defaultAutomationSettings.isEnabled,
+                  mode: defaultAutomationSettings.mode,
+                  responseDelay: defaultAutomationSettings.responseDelay,
+                  responseStyle: defaultAutomationSettings.responseStyle,
+                  messageLength: defaultAutomationSettings.messageLength
+                }));
+                
+                return {
+                  ...thread,
+                  automationSettings: {
+                    isEnabled: defaultAutomationSettings.isEnabled,
+                    mode: defaultAutomationSettings.mode,
+                    responseDelay: defaultAutomationSettings.responseDelay,
+                    responseStyle: defaultAutomationSettings.responseStyle,
+                    messageLength: defaultAutomationSettings.messageLength
+                  }
+                };
+              }
+              return thread;
+            });
+            return updatedThreads;
+          });
+        }
+      }
+    }, 500);
+    
+    // Set up polling for all SMS history every 30 seconds
+    const intervalId = setInterval(() => {
+      debouncedFetchSMSHistory();
+    }, 30000);
+    
+    // Initial fetch
+    debouncedFetchSMSHistory();
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [user, fetchSMSHistory, isLoadingSMSHistory, threads]);
+
+  // Add function to get thread-specific automation settings
+  const getThreadAutomationSettings = useCallback((threadId: string) => {
+    const savedSettings = localStorage.getItem(`thread_${threadId}_automation`);
+    if (savedSettings) {
+      return JSON.parse(savedSettings);
+    }
+    return defaultAutomationSettings;
+  }, [defaultAutomationSettings]);
+
+  // Add polling for the selected SMS contact
+  useEffect(() => {
+    if (!user || !('isSMS' in selectedUser) || !selectedUser.isSMS || !('phone' in selectedUser)) return;
+    
+    // Create a debounced version of fetchSMSHistory for the selected contact
+    const debouncedFetchContactSMSHistory = debounce(async () => {
+      if (!isLoadingSMSHistory && 'phone' in selectedUser) {
+        const previousMessages = [...selectedUser.messages]; // Create a copy of current messages
+        await fetchSMSHistory(selectedUser.phone);
+        
+        // Check if we received any new messages
+        const newMessages = selectedUser.messages.filter(msg => {
+          return !previousMessages.some(prevMsg => 
+            prevMsg.timestamp === msg.timestamp && 
+            prevMsg.message === msg.message &&
+            prevMsg.sender === msg.sender
+          );
+        });
+
+        // Process each new message
+        for (const newMessage of newMessages) {
+          // Only respond to messages from the contact (not our own messages)
+          if (newMessage.sender !== 'You') {
+            if (isAutomationEnabled && automationMode === 'full') {
+              // In full auto mode, generate and send response automatically
+              handleAutomaticResponse(newMessage, selectedUser.id);
+            } else if (isAutomationEnabled && automationMode === 'semi') {
+              // In semi-auto mode, generate suggestion and populate input
+              setIsGeneratingSuggestion(true);
+              try {
+                const allMessages = selectedUser.messages.map(msg => ({
+                  role: msg.sender === 'You' ? 'user' : 'assistant',
+                  content: msg.message
+                }));
+                
+                const response = await fetch('/api/chat', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    message: 'Please suggest a response to the conversation above.',
+                    context: [
+                      {
+                        role: 'system',
+                        content: hasPhone(selectedUser) 
+                          ? `You are an AI assistant generating SMS response suggestions. Use ${responseStyle === 'formal' ? 'professional language and complete sentences' : responseStyle === 'casual' ? 'casual SMS language and common text abbreviations (like u for you, r for are, tmrw for tomorrow, etc)' : 'very casual texting style with lots of abbreviations and emojis'}. Keep responses ${messageLength === 'short' ? 'very brief, ideally under 50 characters' : messageLength === 'medium' ? 'concise, around 100-150 characters' : 'detailed when appropriate'}. Do not use quotation marks.`
+                          : 'You are an AI assistant generating a response suggestion. Keep the tone professional but friendly. Focus on being clear and helpful. Do not use quotation marks.'
+                      },
+                      ...allMessages
+                    ]
+                  })
+                });
+
+                if (!response.ok) {
+                  throw new Error('Failed to generate suggestion');
+                }
+
+                const data = await response.json();
+                const cleanResponse = data.response.replace(/['"]/g, '');
+                setAiSuggestion(cleanResponse);
+                setInputMessage(cleanResponse);
+              } catch (error: any) {
+                console.error('Error generating suggestion:', error);
+                toast({
+                  title: "Error",
+                  description: error.message || "Failed to generate suggestion",
+                  variant: "destructive",
+                });
+              } finally {
+                setIsGeneratingSuggestion(false);
+              }
+            }
+          }
+        }
+      }
+    }, 500);
+    
+    // Set up polling for new messages every 10 seconds
+    const intervalId = setInterval(() => {
+      debouncedFetchContactSMSHistory();
+    }, 10000);
+    
+    // Initial fetch when component mounts or selected user changes
+    debouncedFetchContactSMSHistory();
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [user, selectedUser, fetchSMSHistory, isLoadingSMSHistory, isAutomationEnabled, automationMode, handleAutomaticResponse, toast, responseStyle, messageLength]);
+
+  // Add the deleteThread function
+  const deleteThread = useCallback((threadId: string) => {
+    setThreads(prev => {
+      const updatedThreads = prev.filter(thread => thread.id !== threadId);
+      localStorage.setItem('threads', JSON.stringify(updatedThreads));
+      
+      // If we're deleting the selected thread, select the first available thread
+      if (selectedUser.id === threadId && updatedThreads.length > 0) {
+        setSelectedUser(updatedThreads[0]);
+        setMobileSelectedUser(updatedThreads[0]);
+      }
+      
+      return updatedThreads;
+    });
+      
+      toast({
+      title: "Chat deleted",
+      description: "The conversation has been removed",
+    });
+  }, [selectedUser.id, toast]);
+
+  // Add the saveContactToSupabase function
+  const saveContactToSupabase = async (contact: any) => {
+    if (!user?.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .insert([contact]);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Contact saved",
+        description: `${contact.first_name} ${contact.last_name} has been added to your contacts`
+      });
+    } catch (error) {
+      console.error('Error saving contact to Supabase:', error);
+      toast({
+        title: "Error saving contact",
+        description: "Failed to save contact to database",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Update the createSMSContact function
+  const createSMSContact = useCallback((fromNumber?: string) => {
+    if (!newContactName.trim() || !newContactPhone.trim()) {
+        toast({
+          title: 'Error creating contact',
+          description: 'Name and phone number are required',
+          variant: 'destructive'
+        });
+        return;
+    }
+
+    try {
+      console.log('Creating new SMS contact with name:', newContactName, 'and phone:', newContactPhone);
+      
+      // Check if there's already a thread for this phone number
+      const existingThread = threads.find(thread => 
+        hasPhone(thread) && 
+        thread.phone === newContactPhone
+      );
+      
+      if (existingThread) {
+        console.log('Found existing thread for phone number:', {
+          threadId: existingThread.id,
+          phone: existingThread.phone
+        });
+        
+        // Select the existing thread
+        setSelectedUser(existingThread);
+        setNewMessageModalOpen(false);
+        
+        toast({
+          title: 'Conversation Opened',
+          description: `Showing existing conversation with ${newContactName}`,
+        });
+        
+        return;
+      }
+      
+      // Build contact object
+      const contactId = uuidv4();
+      const newContact = {
+        id: contactId,
+        first_name: newContactName.split(' ')[0] || '',
+        last_name: newContactName.split(' ').slice(1).join(' ') || '',
+        phone: newContactPhone,
+        user_id: user?.id || '',
+      };
+      
+      // Add to SMS Contacts
+      setSMSContacts(prev => [...prev, {
+        id: contactId,
+        name: newContactName,
+        phone: newContactPhone
+      }]);
+      
+      // Create a thread for this contact
+      const newThread: SMSUser = {
+        id: uuidv4(),
+        profile: '/placeholders/avatar.png',
+        username: newContactName,
+        fullName: newContactName,
+        title: `SMS with ${newContactName}`,
+        messages: [],
+        phone: newContact.phone,
+        isSMS: true as const,
+        destinationNumber: fromNumber || 'unknown' // Add destination number
+      };
+      
+      setThreads(prev => [newThread, ...prev]);
+      setSelectedUser(newThread);
+      setNewMessageModalOpen(false);
+      
+      // Clear input fields
+      setNewContactName('');
+      setNewContactPhone('');
+      
+      // Save contact to Supabase
+      saveContactToSupabase(newContact);
+      
+    } catch (error) {
+      console.error('Error creating SMS contact:', error);
+      toast({
+        title: 'Error creating contact',
+        description: 'Failed to create SMS contact',
+        variant: 'destructive'
+      });
+    }
+  }, [newContactName, newContactPhone, user?.id, threads, setSMSContacts, setThreads, setSelectedUser, setNewMessageModalOpen, toast]);
+
+  // Function to toggle details panel
+  const toggleDetailsPanel = useCallback((e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowDetailsPanel(prev => !prev);
+  }, []);
+
+  // Function to toggle mobile details panel
+  const toggleMobileDetailsPanel = useCallback((e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowMobileDetailsPanel(prev => !prev);
+  }, []);
+
+  // Function to close mobile details panel
+  const closeMobileDetailsPanel = useCallback((e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowMobileDetailsPanel(false);
+  }, []);
+
+  // Add a function to handle message click to show details
+  const handleMessageClick = (message: Message, isReceived: boolean, event?: React.MouseEvent<HTMLDivElement>) => {
+    // Prevent default behavior if event is provided
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    // For SMS messages, we need to determine the actual from/to numbers
+    if ('isSMS' in selectedUser && selectedUser.isSMS) {
+      const twilioNumber = selectedUser.destinationNumber || '';
+      const contactNumber = selectedUser.phone || '';
+      
+      setSelectedMessage({
+        from: isReceived ? contactNumber : twilioNumber,
+        to: isReceived ? twilioNumber : contactNumber,
+        body: message.message,
+        dateSent: message.timestamp,
+        direction: isReceived ? 'inbound' : 'outbound'
+      });
+    }
+  };
+
+  // Add state for rate limiting
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastRequestTime, setLastRequestTime] = useState(0);
+  const MIN_REQUEST_INTERVAL = 500; // Reduce to 500ms between requests
+  const MAX_RETRIES = 5; // Increase max retries
+  const INITIAL_RETRY_DELAY = 2000; // Start with 2 second delay
+  const MAX_RETRY_DELAY = 15000; // Max 15 second delay
+
+  // Update the generateAISuggestion function
+  const generateAISuggestion = async () => {
+    if (!selectedUser || !selectedUser.messages.length) return;
+    
+    // Check if we need to wait before making another request
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+      toast({
+        title: "Please wait",
+        description: "Please wait a moment before generating another suggestion",
+        variant: "default",
+      });
+      return;
+    }
+    
+    setIsGeneratingSuggestion(true);
+    setError(null);
+    setLastRequestTime(now);
+    
+    try {
+      // Get the 25 most recent messages for context, maintaining the conversation order
+      const recentMessages = selectedUser.messages
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        .slice(-25) // Take only the last 25 messages
+        .map(msg => ({
+          role: msg.sender === 'You' ? 'assistant' : 'user', // Flip the roles since 'You' means the assistant/business
+          content: msg.message,
+          name: msg.sender === 'You' ? 'business' : 'customer' // Add names to make it clearer
+        }));
+      
+      // Add a system message to guide the AI based on the conversation type
+      const systemMessage = {
+        role: 'system',
+        content: hasPhone(selectedUser) 
+          ? `You are a business representative responding to customer messages. The conversation history shows the most recent messages from both the business (marked as 'business') and the customer (marked as 'customer'). When generating responses:
+             - Use ${responseStyle === 'formal' ? 'professional language and complete sentences' : responseStyle === 'casual' ? 'casual SMS language and common text abbreviations (like u for you, r for are, tmrw for tomorrow, etc)' : 'very casual texting style with lots of abbreviations and emojis'}
+             - Keep responses ${messageLength === 'short' ? 'very brief, ideally under 50 characters' : messageLength === 'medium' ? 'concise, around 100-150 characters' : 'detailed when appropriate'}
+             - Maintain the conversation context and respond appropriately to the customer's last message
+             - Do not use quotation marks in your response`
+          : 'You are a business representative generating a response suggestion. Keep the tone professional but friendly. Focus on being clear and helpful. Do not use quotation marks.'
+      };
+
+      const makeRequest = async (retryCount = 0): Promise<Response> => {
+        try {
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: 'Please suggest a response to the customer\'s last message, taking into account the recent chat history and context.',
+              context: [systemMessage, ...recentMessages]
+            })
+          });
+
+          if (response.status === 429) { // Rate limit error
+            if (retryCount < MAX_RETRIES) {
+              // Calculate delay with exponential backoff and jitter
+              const baseDelay = Math.min(
+                INITIAL_RETRY_DELAY * Math.pow(2, retryCount),
+                MAX_RETRY_DELAY
+              );
+              // Add random jitter (±20% of base delay)
+              const jitter = baseDelay * 0.2 * (Math.random() * 2 - 1);
+              const delay = baseDelay + jitter;
+              
+              // Update UI to show waiting status
+              toast({
+                title: "Rate limit reached",
+                description: `Waiting ${Math.round(delay/1000)} seconds before retrying...`,
+                duration: delay,
+              });
+              
+              await new Promise(resolve => setTimeout(resolve, delay));
+              return makeRequest(retryCount + 1);
+            }
+            throw new Error(`Rate limit exceeded. Please wait ${Math.round(MAX_RETRY_DELAY/1000)} seconds before trying again.`);
+          }
+
+          return response;
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('Rate limit exceeded')) {
+            throw error; // Re-throw rate limit errors
+          }
+          
+          if (retryCount < MAX_RETRIES) {
+            const delay = Math.min(
+              INITIAL_RETRY_DELAY * Math.pow(2, retryCount),
+              MAX_RETRY_DELAY
+            );
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return makeRequest(retryCount + 1);
+          }
+          throw error;
+        }
+      };
+
+      const response = await makeRequest();
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      // Remove any quotation marks from the response
+      const cleanResponse = data.response.replace(/['"]/g, '');
+      setAiSuggestion(cleanResponse);
+      setInputMessage(cleanResponse);
+      setShowSuggestionPopover(true);
+      setRetryCount(0); // Reset retry count on success
+      
+    } catch (error: any) {
+      console.error('Error generating suggestion:', error);
+      
+      // Show different toast messages based on error type
+      if (error.message.includes('Rate limit exceeded')) {
+        toast({
+          title: "Rate Limit Reached",
+          description: error.message,
+          duration: 5000,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to generate suggestion. Please try again in a moment.",
+          variant: "destructive",
+        });
+      }
+      
+      setRetryCount(prev => prev + 1);
+    } finally {
+      setIsGeneratingSuggestion(false);
+    }
+  };
+
+  // Add effect to persist automation settings
+  useEffect(() => {
+    localStorage.setItem('automationMode', automationMode);
+    localStorage.setItem('isAutomationEnabled', isAutomationEnabled.toString());
+    localStorage.setItem('responseDelay', responseDelay);
+    localStorage.setItem('responseStyle', responseStyle);
+    localStorage.setItem('messageLength', messageLength);
+  }, [automationMode, isAutomationEnabled, responseDelay, responseStyle, messageLength]);
+
+  // Add effect to generate instant response when automation is enabled
+  useEffect(() => {
+    if (isAutomationEnabled && selectedUser.messages.length > 0) {
+      const lastMessage = selectedUser.messages[selectedUser.messages.length - 1];
+      // Only generate response if the last message is from the contact
+      if (lastMessage.sender !== 'You') {
+        if (automationMode === 'full') {
+          handleAutomaticResponse(lastMessage, selectedUser.id);
+        } else {
+          // For semi-auto mode, generate suggestion
+          const generateSuggestion = async () => {
+            setIsGeneratingSuggestion(true);
+            try {
+              const allMessages = selectedUser.messages.map(msg => ({
+                role: msg.sender === 'You' ? 'user' : 'assistant',
+                content: msg.message
+              }));
+              
+              const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  message: 'Please suggest a response to the conversation above.',
+                  context: [
+                    {
+                      role: 'system',
+                      content: hasPhone(selectedUser) 
+                        ? `You are an AI assistant generating SMS response suggestions. Use ${responseStyle === 'formal' ? 'professional language and complete sentences' : responseStyle === 'casual' ? 'casual SMS language and common text abbreviations (like u for you, r for are, tmrw for tomorrow, etc)' : 'very casual texting style with lots of abbreviations and emojis'}. Keep responses ${messageLength === 'short' ? 'very brief, ideally under 50 characters' : messageLength === 'medium' ? 'concise, around 100-150 characters' : 'detailed when appropriate'}. Do not use quotation marks.`
+                        : 'You are an AI assistant generating a response suggestion. Keep the tone professional but friendly. Focus on being clear and helpful. Do not use quotation marks.'
+                    },
+                    ...allMessages
+                  ]
+                })
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to generate suggestion');
+              }
+
+              const data = await response.json();
+              const cleanResponse = data.response.replace(/['"]/g, '');
+              setAiSuggestion(cleanResponse);
+              setInputMessage(cleanResponse);
+            } catch (error: any) {
+              console.error('Error generating suggestion:', error);
+              toast({
+                title: "Error",
+                description: error.message || "Failed to generate suggestion",
+                variant: "destructive",
+              });
+            } finally {
+              setIsGeneratingSuggestion(false);
+            }
+          };
+          generateSuggestion();
+        }
+      }
+    }
+  }, [isAutomationEnabled, selectedUser.id]);
+
+  // Update the automation mode setter to handle instant response
+  const handleAutomationModeChange = async (newMode: 'semi' | 'full') => {
+    setAutomationMode(newMode);
+    if (isAutomationEnabled && selectedUser.messages.length > 0) {
+      const lastMessage = selectedUser.messages[selectedUser.messages.length - 1];
+      if (lastMessage.sender !== 'You') {
+        if (newMode === 'full') {
+          // For full auto mode, generate and send response automatically
+          setAutomationStatus('detecting');
+          setAutomationStatusMessage('New message detected, preparing response...');
+          
+          const allMessages = selectedUser.messages.map(msg => ({
+            role: msg.sender === 'You' ? 'user' : 'assistant',
+            content: msg.message
+          }));
+          
+          const styleGuide = {
+            'formal': 'Use professional language and complete sentences.',
+            'casual': 'Use casual SMS language and common text abbreviations (like u for you, r for are, tmrw for tomorrow, etc).',
+            'very-casual': 'Use very casual texting style with lots of abbreviations and emojis.'
+          };
+          
+          const lengthGuide = {
+            'short': 'Keep responses very brief, ideally under 50 characters.',
+            'medium': 'Keep responses concise, around 100-150 characters.',
+            'long': 'Provide detailed responses when appropriate.'
+          };
+          
+          const context = [
+            {
+              role: 'system',
+              content: hasPhone(selectedUser) 
+                ? `You are an AI assistant automatically responding to SMS messages. ${styleGuide[responseStyle]} ${lengthGuide[messageLength]} Keep messages natural and contextually appropriate. Do not use quotation marks.`
+                : 'You are an AI assistant generating a response suggestion. Keep the tone professional but friendly. Focus on being clear and helpful. Do not use quotation marks.'
+            },
+            ...allMessages
+          ];
+          
+          try {
+            // Add delay if specified
+            const delay = getDelayDuration(responseDelay);
+            if (delay > 0) {
+              setAutomationStatusMessage(`Waiting ${delay/1000}s before responding...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+            
+            // Show thinking status
+            setAutomationStatus('thinking');
+            setAutomationStatusMessage('AI is generating a response...');
+            
+            const response = await fetch('/api/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                message: 'Please generate an automatic response to the latest message.',
+                context: context
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to generate automatic response');
+            }
+
+            const data = await response.json();
+            const cleanResponse = data.response.replace(/['"]/g, '');
+            
+            // Show sending status
+            setAutomationStatus('sending');
+            setAutomationStatusMessage('Sending automatic response...');
+            
+            // Automatically send the response
+            const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+            setInputMessage(cleanResponse);
+            await sendMessage(fakeEvent);
+            
+            // Reset status after successful send
+            setAutomationStatus('idle');
+            setAutomationStatusMessage('');
+            
+          } catch (error: any) {
+            console.error('Error in automatic response:', error);
+            toast({
+              title: "Error",
+              description: error.message || "Failed to generate and send automatic response",
+              variant: "destructive",
+            });
+            setAutomationStatus('idle');
+            setAutomationStatusMessage('');
+          }
+        } else {
+          // For semi-auto mode, just generate suggestion
+          generateAISuggestion();
+        }
+      }
+    }
+  };
+
+  // Update the automation toggle handler
+  const handleAutomationToggle = async (enabled: boolean) => {
+    setIsAutomationEnabled(enabled);
+    if (enabled && selectedUser.messages.length > 0) {
+      const lastMessage = selectedUser.messages[selectedUser.messages.length - 1];
+      if (lastMessage.sender !== 'You') {
+        if (automationMode === 'full') {
+          // For full auto mode, generate and send response automatically
+          setAutomationStatus('detecting');
+          setAutomationStatusMessage('New message detected, preparing response...');
+          
+          const allMessages = selectedUser.messages.map(msg => ({
+            role: msg.sender === 'You' ? 'user' : 'assistant',
+            content: msg.message
+          }));
+          
+          const styleGuide = {
+            'formal': 'Use professional language and complete sentences.',
+            'casual': 'Use casual SMS language and common text abbreviations (like u for you, r for are, tmrw for tomorrow, etc).',
+            'very-casual': 'Use very casual texting style with lots of abbreviations and emojis.'
+          };
+          
+          const lengthGuide = {
+            'short': 'Keep responses very brief, ideally under 50 characters.',
+            'medium': 'Keep responses concise, around 100-150 characters.',
+            'long': 'Provide detailed responses when appropriate.'
+          };
+          
+          const context = [
+            {
+              role: 'system',
+              content: hasPhone(selectedUser) 
+                ? `You are an AI assistant automatically responding to SMS messages. ${styleGuide[responseStyle]} ${lengthGuide[messageLength]} Keep messages natural and contextually appropriate. Do not use quotation marks.`
+                : 'You are an AI assistant generating a response suggestion. Keep the tone professional but friendly. Focus on being clear and helpful. Do not use quotation marks.'
+            },
+            ...allMessages
+          ];
+          
+          try {
+            // Add delay if specified
+            const delay = getDelayDuration(responseDelay);
+            if (delay > 0) {
+              setAutomationStatusMessage(`Waiting ${delay/1000}s before responding...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+            
+            // Show thinking status
+            setAutomationStatus('thinking');
+            setAutomationStatusMessage('AI is generating a response...');
+            
+            const response = await fetch('/api/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                message: 'Please generate an automatic response to the latest message.',
+                context: context
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to generate automatic response');
+            }
+
+            const data = await response.json();
+            const cleanResponse = data.response.replace(/['"]/g, '');
+            
+            // Show sending status
+            setAutomationStatus('sending');
+            setAutomationStatusMessage('Sending automatic response...');
+            
+            // Automatically send the response
+            const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+            setInputMessage(cleanResponse);
+            await sendMessage(fakeEvent);
+            
+            // Reset status after successful send
+            setAutomationStatus('idle');
+            setAutomationStatusMessage('');
+            
+          } catch (error: any) {
+            console.error('Error in automatic response:', error);
+            toast({
+              title: "Error",
+              description: error.message || "Failed to generate and send automatic response",
+              variant: "destructive",
+            });
+            setAutomationStatus('idle');
+            setAutomationStatusMessage('');
+          }
+        } else {
+          // For semi-auto mode, just generate suggestion
+          generateAISuggestion();
+        }
+      }
+    }
+  };
+
+  // Add function to handle cancellation
+  const handleCancelAutomation = useCallback(() => {
+    setIsCancelled(true);
+    setAutomationStatus('idle');
+    setAutomationStatusMessage('');
+    setCountdownSeconds(null);
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
+  }, []);
+
+  // Add service worker registration
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+          console.log('ServiceWorker registration successful');
+        }).catch(err => {
+          console.log('ServiceWorker registration failed:', err);
+        });
+      });
+    }
+  }, []);
+
+  // Add this function before the return statement
+  const handleSaveContact = async () => {
+    if (!editedContact || !user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .update({
+          first_name: editedContact.first_name,
+          last_name: editedContact.last_name,
+          phone: editedContact.phone,
+          notes: editedContact.notes,
+          vertical: editedContact.vertical,
+          sub_category: editedContact.sub_category,
+          preferred_language: editedContact.preferred_language
+        })
+        .eq('id', editedContact.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Update the threads with the new contact info
+      setThreads(prev => 
+        prev.map(thread => {
+          if ('isSMS' in thread && thread.isSMS && thread.phone === editedContact.phone) {
+            const fullName = `${editedContact.first_name || ''} ${editedContact.last_name || ''}`.trim();
+            return {
+              ...thread,
+              fullName,
+              username: fullName.split(' ')[0]
+            };
+          }
+          return thread;
+        })
+      );
+
+      // Update selected user if it's the current contact
+      if ('isSMS' in selectedUser && selectedUser.isSMS && selectedUser.phone === editedContact.phone) {
+        const fullName = `${editedContact.first_name || ''} ${editedContact.last_name || ''}`.trim();
+        setSelectedUser(prev => ({
+          ...prev,
+          fullName,
+          username: fullName.split(' ')[0]
+        }));
+      }
+
+      setIsEditingContact(false);
+      toast({
+        title: "Success",
+        description: "Contact information updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating contact:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update contact information",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add state for Supabase subscription
+  const [supabaseSubscription, setSupabaseSubscription] = useState<RealtimeChannel | null>(null);
+
+  // Add useEffect for real-time SMS updates
+  useEffect(() => {
+    if (!user) return;
+
+    // Subscribe to the twilio_messages table for real-time updates
+    const channel = supabase
+      .channel('sms-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'twilio_messages',
+          filter: `user_id=eq.${user.id}`
+        },
+        async (payload) => {
+          console.log('New SMS received:', payload);
+          const { new: newMessage } = payload;
+
+          // Format the message
+          const formattedMessage = {
+            sender: newMessage.direction === 'inbound' ? newMessage.from_phone : 'You',
+            message: newMessage.body,
+            timestamp: newMessage.date_created,
+            source: 'supabase' as const,
+            direction: newMessage.direction as 'inbound' | 'outbound',
+            to: newMessage.to_phone,
+            from: newMessage.from_phone
+          };
+
+          // Find the relevant thread
+          const threadPhone = newMessage.direction === 'inbound' ? newMessage.from_phone : newMessage.to_phone;
+          
+          // Update threads with the new message
+          setThreads(prevThreads => {
+            return prevThreads.map(thread => {
+              if ('isSMS' in thread && thread.isSMS && normalizePhoneNumber(thread.phone) === normalizePhoneNumber(threadPhone)) {
+                // Update the thread with the new message
+                return {
+                  ...thread,
+                  messages: [...thread.messages, formattedMessage]
+                };
+              }
+              return thread;
+            });
+          });
+
+          // If this is an incoming message and automation is enabled, handle it
+          if (newMessage.direction === 'inbound' && isAutomationEnabled) {
+            const thread = threads.find(t => 
+              'isSMS' in t && t.isSMS && 
+              normalizePhoneNumber(t.phone) === normalizePhoneNumber(threadPhone)
+            );
+            
+            if (thread) {
+              if (automationMode === 'full') {
+                handleAutomaticResponse(formattedMessage, thread.id);
+              } else if (automationMode === 'semi') {
+                generateAISuggestion();
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    setSupabaseSubscription(channel);
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (supabaseSubscription) {
+        supabase.removeChannel(supabaseSubscription);
+      }
+    };
+  }, [user, supabase, threads, isAutomationEnabled, automationMode]);
+
+  // Add state for new SMS dialog
+  const [isNewSMSDialogOpen, setIsNewSMSDialogOpen] = useState(false);
+
+  // Process search results
+  useEffect(() => {
+    if (debouncedSearch.trim() === '') return;
+    
+    // Your search processing logic
+  }, [debouncedSearch]);
+
+  // Function to create a new SMS conversation
+  // Add the function to create a new SMS conversation
+  const createNewSMSConversation = useCallback((phoneNumber: string, contactName: string, fromNumber: string) => {
+    // Check if we already have a thread for this phone number
+    const existingThreadIndex = threads.findIndex(thread => 
+      hasPhone(thread) && thread.phone === phoneNumber
+    );
+
+    // Create a new SMS thread object
+    const newThread: SMSUser = {
+      id: uuidv4(),
+      profile: '/placeholders/avatar.png',
+      username: phoneNumber,
+      fullName: contactName || phoneNumber,
+      title: `SMS with ${contactName || phoneNumber}`,
+      messages: [],
+      phone: phoneNumber,
+      isSMS: true,
+      destinationNumber: fromNumber
+    };
+
+    if (existingThreadIndex !== -1) {
+      // Select the existing thread
+      setSelectedUser(threads[existingThreadIndex]);
+    } else {
+      // Add the new thread to the list and select it
+      setThreads(prev => [newThread, ...prev]);
+      setSelectedUser(newThread);
+    }
+
+    // Close the dialog
+    setIsNewSMSDialogOpen(false);
+  }, [threads, setThreads, setSelectedUser]);
+
+  // First let's add state for storing the fromNumber
+  const [newContactFromNumber, setNewContactFromNumber] = useState('');
+
+  return (
+    <div className="flex h-screen overflow-hidden dark:text-white">
+      {/* Add a style to hide the global chat button */}
+      <style jsx global>{`
+        #chat-widget-container {
+          display: none !important;
+        }
+      `}</style>
+      
+      {/* All the rest of the JSX */}
+    </div>
+  );
+} 

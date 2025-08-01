@@ -1,0 +1,36 @@
+
+> dev
+> next dev --turbo
+
+  ▲ Next.js 14.2.3 (turbo)
+  - Local:        http://localhost:3000
+  - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Compiled in 162ms
+ ✓ Ready in 1698ms
+ ⨯ You are using configuration and/or tools that are not yet
+supported by Next.js with Turbopack:
+
+
+- Unsupported Next.js configuration option(s) (next.config.js)
+  To use Turbopack, remove the following configuration options:
+    - compiler.removeConsole
+
+
+If you cannot make the changes above, but still want to try out
+Next.js with Turbopack, create the Next.js playground app
+by running the following commands:
+
+  pnpm create next-app --example with-turbopack with-turbopack-app
+  cd with-turbopack-app
+  pnpm run dev
+        
+ ⚠ Learn more about Next.js and Turbopack: https://nextjs.link/with-turbopack
+
+[?25h
+npm notice
+npm notice New major version of npm available! 10.9.2 -> 11.5.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.5.2
+npm notice To update run: npm install -g npm@11.5.2
+npm notice
