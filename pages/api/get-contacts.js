@@ -15,11 +15,25 @@ export default async function handler(req, res) {
 
     const { search, eventType, leadStatus, limit = 100 } = req.query;
 
+    // Check if user is admin using email-based authentication
+    const adminEmails = [
+      'admin@m10djcompany.com',
+      'manager@m10djcompany.com',
+      'djbenmurray@gmail.com'  // Ben Murray - Owner
+    ];
+    const isAdmin = adminEmails.includes(session.user.email || '');
+
     let query = supabase
       .from('contacts')
       .select('*')
-      .eq('user_id', session.user.id)
-      .is('deleted_at', null) // Only get non-deleted contacts
+      .is('deleted_at', null); // Only get non-deleted contacts
+
+    // For non-admin users, filter by user_id. Admin users see all contacts.
+    if (!isAdmin) {
+      query = query.eq('user_id', session.user.id);
+    }
+
+    query = query
       .order('created_at', { ascending: false })
       .limit(parseInt(limit));
 
@@ -40,17 +54,29 @@ export default async function handler(req, res) {
 
     const { data: contacts, error } = await query;
 
+    // Debug logging
+    console.log('Admin check:', { 
+      userEmail: session.user.email, 
+      isAdmin, 
+      contactsCount: contacts?.length || 0 
+    });
+
     if (error) {
       console.error('Database error:', error);
       return res.status(500).json({ error: 'Failed to fetch contacts' });
     }
 
     // Get summary statistics
-    const { data: summary } = await supabase
+    let summaryQuery = supabase
       .from('contacts_summary')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .single();
+      .select('*');
+
+    // For non-admin users, filter summary by user_id. Admin users see all summaries.
+    if (!isAdmin) {
+      summaryQuery = summaryQuery.eq('user_id', session.user.id);
+    }
+
+    const { data: summary } = await summaryQuery.single();
 
     res.status(200).json({
       contacts: contacts || [],

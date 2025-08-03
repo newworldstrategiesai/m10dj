@@ -67,20 +67,53 @@ export default async function handler(req, res) {
         }
       }
       
-      // Get the admin/owner user ID from environment variable
-      // You need to set DEFAULT_ADMIN_USER_ID in your environment variables
-      const adminUserId = process.env.DEFAULT_ADMIN_USER_ID;
+      // Get the admin/owner user ID 
+      let adminUserId = process.env.DEFAULT_ADMIN_USER_ID;
       
+      // If not set in environment, find the admin user by email from auth.users
       if (!adminUserId) {
-        console.error('DEFAULT_ADMIN_USER_ID environment variable not set');
-        console.log('Please set DEFAULT_ADMIN_USER_ID to your admin user ID in .env.local');
-        // For now, we'll continue without creating a contact record
-        throw new Error('Admin user ID not configured - contact will not be saved to contacts table');
+        try {
+          // Use service role client to query auth.users directly
+          const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+          
+          if (!authError && authUsers?.users) {
+            const adminEmails = [
+              'djbenmurray@gmail.com',  // Ben Murray - Owner (try this first)
+              'admin@m10djcompany.com',
+              'manager@m10djcompany.com'
+            ];
+            
+            // Find the first admin user
+            const adminUser = authUsers.users.find(user => 
+              adminEmails.includes(user.email || '')
+            );
+            
+            if (adminUser) {
+              adminUserId = adminUser.id;
+              console.log(`Found admin user ${adminUser.email} with ID: ${adminUserId}`);
+            } else {
+              console.error('No admin user found with emails:', adminEmails);
+            }
+          } else {
+            console.error('Error fetching auth users:', authError);
+          }
+        } catch (err) {
+          console.error('Error getting admin user:', err);
+        }
+      }
+      
+      // If still no admin user found, use a fallback - we'll create without assignment
+      if (!adminUserId) {
+        console.warn('No admin user ID found, contact will be created without user assignment');
+        console.warn('Set DEFAULT_ADMIN_USER_ID in your environment to fix this');
+        adminUserId = null;
+      } else {
+        console.log('Using admin user ID:', adminUserId);
       }
 
       // Create contact record
       const contactData = {
-        user_id: adminUserId, // Assign to admin user
+        user_id: adminUserId, // May be null if no admin user found
         first_name: firstName,
         last_name: lastName,
         email_address: email,
@@ -94,7 +127,6 @@ export default async function handler(req, res) {
         lead_stage: 'Initial Inquiry',
         lead_temperature: 'Warm',
         communication_preference: 'email',
-        initial_contact_channel: 'contact_form',
         how_heard_about_us: 'Website Contact Form',
         notes: `Initial inquiry submitted via website contact form on ${new Date().toLocaleDateString()}`,
         last_contacted_date: new Date().toISOString(),
@@ -104,14 +136,19 @@ export default async function handler(req, res) {
         priority_level: 'Medium'
       };
       
-      // Check if contact already exists (by email or phone) for this user
+      console.log('Creating contact with data:', {
+        ...contactData,
+        user_id: adminUserId ? 'assigned' : 'unassigned'
+      });
+      
+      // Check if contact already exists (by email or phone)
+      // Don't filter by user_id since contact forms can create unassigned contacts
       let existingContact = null;
       if (email) {
         const { data: emailMatch } = await supabase
           .from('contacts')
           .select('*')
           .eq('email_address', email)
-          .eq('user_id', adminUserId)
           .is('deleted_at', null)
           .single();
         existingContact = emailMatch;
@@ -122,7 +159,6 @@ export default async function handler(req, res) {
         const { data: phoneMatch } = await supabase
           .from('contacts')
           .select('*')
-          .eq('user_id', adminUserId)
           .ilike('phone', `%${cleanPhone}%`)
           .is('deleted_at', null)
           .single();
@@ -160,13 +196,17 @@ export default async function handler(req, res) {
           
         if (createError) {
           console.error('Error creating new contact:', createError);
+          console.error('Contact data that failed:', contactData);
+          throw new Error(`Failed to create contact: ${createError.message}`);
         } else {
           console.log('Created new contact:', newContact.id);
         }
       }
     } catch (contactError) {
-      console.error('Error managing contact record (non-critical):', contactError);
-      // Don't fail the entire request if contact creation fails
+      console.error('Error managing contact record:', contactError);
+      console.error('This means the contact was not saved to the contacts system!');
+      // Continue with email sending, but log this as a critical issue
+      // You may want to check the database policies and permissions
     }
 
     // Only send emails if Resend API key is configured

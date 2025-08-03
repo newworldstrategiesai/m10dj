@@ -5,6 +5,8 @@ import { Toaster } from '@/components/ui/Toasts/toaster';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import { headers } from 'next/headers';
+import GoogleAnalytics from '@/components/GoogleAnalytics';
+import FacebookPixel from '@/components/FacebookPixel';
 import 'styles/main.css';
 
 const title = 'M10 DJ Company - Professional Event Entertainment in Memphis';
@@ -159,6 +161,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
             })
           }}
         />
+        <GoogleAnalytics />
+        <FacebookPixel />
       </head>
       <body className="bg-black">
         {!isSignInPage && <Navbar />}
