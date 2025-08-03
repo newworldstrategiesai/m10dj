@@ -5,8 +5,7 @@ import { Toaster } from '@/components/ui/Toasts/toaster';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import { headers } from 'next/headers';
-import GoogleAnalytics from '@/components/GoogleAnalytics';
-import FacebookPixel from '@/components/FacebookPixel';
+
 import 'styles/main.css';
 
 const title = 'M10 DJ Company - Professional Event Entertainment in Memphis';
@@ -161,8 +160,49 @@ export default async function RootLayout({ children }: PropsWithChildren) {
             })
           }}
         />
-        <GoogleAnalytics />
-        <FacebookPixel />
+        
+        {/* Google Analytics */}
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-8DQRX3LY9T"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-8DQRX3LY9T');
+            `,
+          }}
+        />
+        
+        {/* Facebook Pixel */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              fbq('init', '1080417329531937');
+              fbq('track', 'PageView');
+            `,
+          }}
+        />
+        <noscript>
+          <img 
+            height="1" 
+            width="1" 
+            style={{ display: 'none' }}
+            src="https://www.facebook.com/tr?id=1080417329531937&ev=PageView&noscript=1"
+            alt=""
+          />
+        </noscript>
       </head>
       <body className="bg-black">
         {!isSignInPage && <Navbar />}
