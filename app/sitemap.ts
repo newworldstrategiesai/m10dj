@@ -12,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/dj-near-me-memphis',
     '/memphis-event-dj-services',
     '/memphis-dj-pricing-guide',
+    '/dj-germantown-tn',
     '/dj-ben-murray',
     '/services',
     '/memphis-wedding-dj',
@@ -43,7 +44,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
              route === '/memphis-dj-services' ? 0.92 : 
              route === '/memphis-event-dj-services' ? 0.91 :
              route === '/memphis-dj-pricing-guide' ? 0.9 :
-             route === '/memphis-wedding-dj-prices-2025' ? 0.89 : 
+             route === '/dj-germantown-tn' ? 0.89 :
+             route === '/memphis-wedding-dj-prices-2025' ? 0.88 : 
              route === '/pricing' ? 0.85 : 0.8,
   }));
 
