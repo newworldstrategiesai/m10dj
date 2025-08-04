@@ -230,12 +230,12 @@ export default function LocationPage() {
                 {loc.weddingFocus ? (
                   <>
                     <span className="block text-white">DJ {loc.name} TN</span>
-                    <span className="block text-brand-gold">Wedding DJ {loc.name} Services</span>
+                    <span className="block text-[#fcba00]">Wedding DJ {loc.name} Services</span>
                   </>
                 ) : (
                   <>
                     <span className="block text-white">DJ {loc.name} TN</span>
-                    <span className="block text-brand-gold">Professional Entertainment Services</span>
+                    <span className="block text-[#fcba00]">Professional Entertainment Services</span>
                   </>
                 )}
               </h1>
