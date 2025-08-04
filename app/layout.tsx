@@ -6,6 +6,7 @@ import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import { headers } from 'next/headers';
 import EnhancedTracking from '@/components/EnhancedTracking';
+import PerformanceOptimizations from '@/components/PerformanceOptimizations';
 
 import 'styles/main.css';
 
@@ -90,6 +91,17 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en">
       <head>
+        {/* Performance Optimizations */}
+        <meta name="theme-color" content="#F59E0B" />
+        <meta name="color-scheme" content="light dark" />
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
+        {/* Critical Resource Hints */}
+        <link rel="preload" href="/logo-static.jpg" as="image" type="image/jpeg" />
+        <link rel="modulepreload" href="/_next/static/chunks/main.js" />
+        
         {/* Structured Data for Local Business */}
         <script
           type="application/ld+json"
@@ -218,6 +230,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           <Toaster />
         </Suspense>
         <EnhancedTracking />
+        <PerformanceOptimizations />
       </body>
     </html>
   );
