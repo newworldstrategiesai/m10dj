@@ -16,7 +16,7 @@ export default function Footer() {
       </div>
 
       <div className="section-container relative z-10 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Company Info */}
           <div className="lg:col-span-2">
             <div className="flex items-center space-x-3 mb-6">
@@ -125,6 +125,70 @@ export default function Footer() {
               <li>
                 <Link href="/arlington" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
                   Arlington
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Wedding Planning Resources */}
+          <div>
+            <h4 className="text-lg font-semibold text-brand mb-6 font-sans">Wedding Planning</h4>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/memphis-dj-pricing-guide" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  DJ Pricing Guide
+                </Link>
+              </li>
+              <li>
+                <Link href="/memphis-wedding-dj-prices-2025" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Memphis Wedding DJ Prices
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog/memphis-wedding-songs-2025" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Wedding Song Ideas
+                </Link>
+              </li>
+              <li>
+                <Link href="/venues" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Memphis Wedding Venues
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog/memphis-wedding-dj-cost-guide-2025" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Wedding Cost Planning
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Specialized Services */}
+          <div>
+            <h4 className="text-lg font-semibold text-brand mb-6 font-sans">Find Local DJ</h4>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/dj-near-me-memphis" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  DJ Near Me
+                </Link>
+              </li>
+              <li>
+                <Link href="/memphis-event-dj-services" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Corporate DJ Services
+                </Link>
+              </li>
+              <li>
+                <Link href="/dj-germantown-tn" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  DJ Germantown TN
+                </Link>
+              </li>
+              <li>
+                <Link href="/millington" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  DJ Millington TN
+                </Link>
+              </li>
+              <li>
+                <Link href="/dj-ben-murray" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Meet DJ Ben Murray
                 </Link>
               </li>
             </ul>

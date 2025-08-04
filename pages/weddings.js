@@ -634,12 +634,17 @@ export default function Weddings() {
             </div>
 
             <div className="text-center mt-12">
-              <Link href="/wedding-dj-memphis-tn" className="btn-primary mr-4">
-                Explore Memphis Wedding DJ Services
-              </Link>
-              <Link href="/memphis-dj-services" className="btn-secondary">
-                View All Memphis DJ Services
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Link href="/memphis-dj-pricing-guide" className="btn-primary">
+                  View Transparent Pricing
+                </Link>
+                <Link href="/wedding-dj-memphis-tn" className="btn-secondary">
+                  Memphis Wedding DJ Services
+                </Link>
+                <Link href="/dj-near-me-memphis" className="btn-secondary">
+                  Find DJ Near Me
+                </Link>
+              </div>
             </div>
           </div>
         </section>

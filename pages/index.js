@@ -228,9 +228,14 @@ export default function Home() {
                     <span className="text-gray-700 font-inter">Holiday party coordination</span>
                   </li>
                 </ul>
-                <Link href="/services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
-                  Learn More <ChevronRight className="ml-1 w-4 h-4" />
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link href="/memphis-event-dj-services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
+                    Corporate DJ Services <ChevronRight className="ml-1 w-4 h-4" />
+                  </Link>
+                  <Link href="/services" className="inline-flex items-center text-gray-600 font-semibold hover:text-brand transition-colors text-sm">
+                    All Services <ChevronRight className="ml-1 w-3 h-3" />
+                  </Link>
+                </div>
               </div>
               
               {/* Private Parties */}
@@ -299,6 +304,62 @@ export default function Home() {
 
         {/* FAQ Section */}
         <FAQSection />
+
+        {/* Wedding Planning Resources Section */}
+        <section className="py-16 bg-white">
+          <div className="section-container">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Planning Your Memphis Event?</h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                Get the information you need to plan the perfect celebration
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              {/* Pricing Guide */}
+              <div className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-all">
+                <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">DJ Pricing Guide</h3>
+                <p className="text-gray-600 mb-4">
+                  Transparent pricing for Memphis DJ services. Compare packages and understand what's included.
+                </p>
+                <Link href="/memphis-dj-pricing-guide" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
+                  View Pricing Guide <ChevronRight className="ml-1 w-4 h-4" />
+                </Link>
+              </div>
+              
+              {/* DJ Near Me */}
+              <div className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-all">
+                <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
+                  <MapPin className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Find Local DJ</h3>
+                <p className="text-gray-600 mb-4">
+                  Looking for a DJ near you? Discover our Memphis area coverage and local expertise.
+                </p>
+                <Link href="/dj-near-me-memphis" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
+                  Find DJ Near Me <ChevronRight className="ml-1 w-4 h-4" />
+                </Link>
+              </div>
+              
+              {/* Ben Murray Profile */}
+              <div className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-all">
+                <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
+                  <Users className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Meet Your DJ</h3>
+                <p className="text-gray-600 mb-4">
+                  Learn about DJ Ben Murray, M10's founder with 15+ years of Memphis entertainment experience.
+                </p>
+                <Link href="/dj-ben-murray" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
+                  Meet DJ Ben <ChevronRight className="ml-1 w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Contact Section */}
         <section id="contact" className="py-section-lg bg-gray-50">

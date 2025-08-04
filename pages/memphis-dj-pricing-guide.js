@@ -804,6 +804,102 @@ export default function MemphisDJPricingGuide() {
           </div>
         </section>
 
+        {/* Related Services Section */}
+        <section className="py-16 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
+          <div className="section-container">
+            <div className="max-w-6xl mx-auto">
+              
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Explore Memphis DJ Services</h2>
+                <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                  Discover our specialized services and coverage areas throughout Memphis and surrounding communities
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Wedding DJ Services */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 hover:shadow-lg transition-all">
+                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
+                    <Heart className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Wedding DJ Services</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                    Complete wedding entertainment with ceremony, cocktail hour, and reception coverage.
+                  </p>
+                  <Link href="/memphis-wedding-dj" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors text-sm">
+                    Memphis Wedding DJs <ChevronRight className="ml-1 w-3 h-3" />
+                  </Link>
+                </div>
+                
+                {/* Corporate Events */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 hover:shadow-lg transition-all">
+                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
+                    <Building className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Corporate DJ Services</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                    Professional entertainment for business events, conferences, and corporate celebrations.
+                  </p>
+                  <Link href="/memphis-event-dj-services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors text-sm">
+                    Corporate Services <ChevronRight className="ml-1 w-3 h-3" />
+                  </Link>
+                </div>
+                
+                {/* DJ Near Me */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 hover:shadow-lg transition-all">
+                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
+                    <Target className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Find Local DJ</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                    Looking for a DJ near your location? Explore our Memphis area coverage and availability.
+                  </p>
+                  <Link href="/dj-near-me-memphis" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors text-sm">
+                    DJ Near Me <ChevronRight className="ml-1 w-3 h-3" />
+                  </Link>
+                </div>
+                
+                {/* Premium Locations */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 hover:shadow-lg transition-all">
+                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Premium Locations</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                    Specialized DJ services for Germantown's luxury venues and upscale celebrations.
+                  </p>
+                  <Link href="/dj-germantown-tn" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors text-sm">
+                    DJ Germantown TN <ChevronRight className="ml-1 w-3 h-3" />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="text-center mt-12">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-8">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Ready to Book Your Memphis DJ?</h3>
+                  <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
+                    Get started with your free consultation and custom pricing quote
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <Link href="/dj-ben-murray" className="btn-secondary flex items-center justify-center">
+                      <Users className="w-5 h-5 mr-2" />
+                      Meet Your DJ
+                    </Link>
+                    <button 
+                      onClick={scrollToContact}
+                      className="btn-primary flex items-center justify-center"
+                    >
+                      <Phone className="w-5 h-5 mr-2" />
+                      Get Free Quote
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
         {/* Contact Form */}
         <section id="contact" className="py-24 bg-gray-50 dark:bg-gray-800">
           <ContactForm />
