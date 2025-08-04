@@ -95,7 +95,7 @@ const equipmentFeatures = [
 ];
 
 const serviceAreas = [
-  "Downtown Memphis", "Midtown Memphis", "East Memphis", "Germantown", 
+  "Downtown Memphis", "Midtown Memphis", "East Memphis", "Poplar Corridor", "White Station", "Hickory Hill", "Germantown", 
   "Collierville", "Bartlett", "Cordova", "Olive Branch", "Southaven",
   "Lakeland", "Arlington", "Millington", "Atoka", "Tipton County"
 ];

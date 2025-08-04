@@ -7,7 +7,7 @@ import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import FAQSection from '../components/company/FAQSection';
-import { SEOHead } from '../components/ui/SEO';
+import SEO from '../components/SEO';
 import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
 import { scrollToContact } from '../utils/scroll-helpers';
 
@@ -20,7 +20,7 @@ export default function Home() {
 
   return (
     <>
-      <SEOHead
+      <SEO
         title="Memphis Wedding DJ | #1 Wedding DJ Memphis | M10 DJ Company"
         description="Memphis's #1 wedding DJ! M10 DJ Company delivers unforgettable wedding entertainment with 15+ years experience, 500+ weddings, and expert venue knowledge. From ceremony to reception, we make your Memphis wedding perfect. Call (901) 410-2020!"
         keywords={[
@@ -42,12 +42,12 @@ export default function Home() {
           'luxury wedding DJ Memphis'
         ]}
         canonical="/"
-        structuredData={{
+        jsonLd={{
           "@context": "https://schema.org",
           "@type": "LocalBusiness",
           "name": "M10 DJ Company",
           "description": "Memphis's premier wedding DJ company with 15+ years experience and 500+ successful weddings",
-          "url": "https://m10djcompany.com",
+          "url": "https://www.m10djcompany.com",
           "telephone": "+19014102020",
           "address": {
             "@type": "PostalAddress",
@@ -92,6 +92,38 @@ export default function Home() {
                 "@type": "State",
                 "name": "Tennessee"
               }
+            },
+            {
+              "@type": "City",
+              "name": "Cordova",
+              "containedInPlace": {
+                "@type": "State",
+                "name": "Tennessee"
+              }
+            },
+            {
+              "@type": "City",
+              "name": "Lakeland",
+              "containedInPlace": {
+                "@type": "State",
+                "name": "Tennessee"
+              }
+            },
+            {
+              "@type": "City",
+              "name": "Southaven",
+              "containedInPlace": {
+                "@type": "State",
+                "name": "Mississippi"
+              }
+            },
+            {
+              "@type": "City",
+              "name": "West Memphis",
+              "containedInPlace": {
+                "@type": "State",
+                "name": "Arkansas"
+              }
             }
           ],
           "serviceType": ["Wedding DJ Services", "Wedding Reception DJ", "Wedding Ceremony Music", "Bridal Entertainment"],
@@ -111,7 +143,7 @@ export default function Home() {
           },
           "openingHours": "Mo-Su 09:00-21:00",
           "priceRange": "$395-$1195",
-          "image": "https://m10djcompany.com/logo-static.jpg",
+          "image": "https://www.m10djcompany.com/logo-static.jpg",
           "sameAs": [
             "https://www.facebook.com/m10djcompany",
             "https://www.instagram.com/m10djcompany"
@@ -411,6 +443,93 @@ export default function Home() {
                   Meet DJ Ben <ChevronRight className="ml-1 w-4 h-4" />
                 </Link>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Service Areas */}
+        <section className="py-section bg-white">
+          <div className="section-container">
+            <div className="text-center mb-16">
+              <h2 className="heading-2 mb-6 text-gray-900">Memphis Metro Area Coverage</h2>
+              <p className="text-xl text-gray-600 max-w-4xl mx-auto font-inter">
+                We proudly serve Memphis and surrounding communities including East Memphis, Midtown, Germantown, Collierville, Cordova, Bartlett, Arlington, Lakeland, Southaven, and West Memphis with professional DJ services tailored to each area's unique venues and community preferences.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <Link href="/memphis" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Memphis</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Downtown & Core</p>
+              </Link>
+              
+              <Link href="/east-memphis" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">East Memphis</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Country Clubs</p>
+              </Link>
+              
+              <Link href="/midtown-memphis" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Midtown</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Cultural District</p>
+              </Link>
+              
+              <Link href="/germantown" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Germantown</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Elegant Venues</p>
+              </Link>
+              
+              <Link href="/collierville" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Collierville</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Historic Charm</p>
+              </Link>
+              
+              <Link href="/cordova" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Cordova</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Suburban Events</p>
+              </Link>
+              
+              <Link href="/bartlett" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Bartlett</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Community Focus</p>
+              </Link>
+              
+              <Link href="/lakeland" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Lakeland</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Exclusive Events</p>
+              </Link>
+              
+              <Link href="/southaven" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Southaven</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Mississippi Metro</p>
+              </Link>
+              
+              <Link href="/west-memphis" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
+                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
+                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">West Memphis</h3>
+                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Arkansas Side</p>
+              </Link>
+            </div>
+            
+            <div className="text-center mt-12">
+              <p className="text-lg text-gray-600 mb-6">
+                Each location receives specialized attention with local venue knowledge and community-focused service.
+              </p>
+              <Link 
+                href="/dj-near-me-memphis" 
+                className="btn-primary inline-flex items-center"
+              >
+                Find DJ Services Near You
+                <ChevronRight className="ml-2 w-5 h-5" />
+              </Link>
             </div>
           </div>
         </section>

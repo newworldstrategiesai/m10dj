@@ -140,6 +140,64 @@ export default async function RootLayout({ children }: PropsWithChildren) {
                 },
                 "geoRadius": "50000"
               },
+              "areaServed": [
+                {
+                  "@type": "City",
+                  "name": "Memphis",
+                  "containedInPlace": {
+                    "@type": "State",
+                    "name": "Tennessee"
+                  }
+                },
+                {
+                  "@type": "Place",
+                  "name": "East Memphis",
+                  "containedInPlace": {
+                    "@type": "City",
+                    "name": "Memphis"
+                  }
+                },
+                {
+                  "@type": "City",
+                  "name": "Germantown",
+                  "containedInPlace": {
+                    "@type": "State",
+                    "name": "Tennessee"
+                  }
+                },
+                {
+                  "@type": "City",
+                  "name": "Collierville",
+                  "containedInPlace": {
+                    "@type": "State",
+                    "name": "Tennessee"
+                  }
+                },
+                {
+                  "@type": "City",
+                  "name": "Bartlett",
+                  "containedInPlace": {
+                    "@type": "State",
+                    "name": "Tennessee"
+                  }
+                },
+                {
+                  "@type": "Place",
+                  "name": "Midtown Memphis",
+                  "containedInPlace": {
+                    "@type": "City",
+                    "name": "Memphis"
+                  }
+                },
+                {
+                  "@type": "Place",
+                  "name": "Downtown Memphis",
+                  "containedInPlace": {
+                    "@type": "City",
+                    "name": "Memphis"
+                  }
+                }
+              ],
               "hasOfferCatalog": {
                 "@type": "OfferCatalog",
                 "name": "DJ Services",

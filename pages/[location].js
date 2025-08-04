@@ -1,4 +1,3 @@
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Music, MapPin, Phone, Mail, Star, Users, Award, Heart } from 'lucide-react';
@@ -6,6 +5,8 @@ import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import FAQSection from '../components/company/FAQSection';
+import SEO from '../components/SEO';
+import AIJsonLd from '../components/AIJsonLd';
 import { scrollToContact } from '../utils/scroll-helpers';
 
 // Location data for Memphis area
@@ -27,6 +28,16 @@ const locationData = {
     landmarks: ['Overton Park', 'Memphis Zoo', 'Brooks Museum', 'Cooper-Young District'],
     localBusinesses: ['The Peabody Memphis', 'Crosstown Concourse', 'Overton Square'],
     eventTypes: ['Wedding receptions at historic venues', 'Corporate events downtown', 'Birthday parties', 'Anniversary celebrations']
+  },
+  'east-memphis': {
+    name: 'East Memphis',
+    zipCodes: ['38119', '38120', '38125', '38138', '38115', '38141'],
+    description: 'Professional DJ services in East Memphis including Poplar Corridor, White Station, Hickory Hill, and surrounding upscale neighborhoods.',
+    neighborhoods: ['Poplar Corridor', 'White Station', 'Hickory Hill', 'Raleigh', 'Cordova'],
+    landmarks: ['Memphis Country Club', 'The Racquet Club', 'White Station Tower', 'Hickory Hill Mall'],
+    localBusinesses: ['The Peabody Memphis', 'Memphis Country Club', 'The Racquet Club of Memphis', 'White Station area venues'],
+    eventTypes: ['Country club weddings', 'Corporate events at upscale venues', 'Private parties', 'Community celebrations'],
+    weddingFocus: true
   },
   'downtown-memphis': {
     name: 'Downtown Memphis',
@@ -89,6 +100,50 @@ const locationData = {
     eventTypes: ['Millington wedding receptions', 'Military wedding celebrations', 'Community center events', 'Golf club weddings', 'Family reunions', 'School events'],
     weddingFocus: true,
     weddingDescription: 'Serving Millington couples and military families with professional wedding DJ services, from intimate ceremonies to large celebrations throughout this proud Tennessee community.'
+  },
+  'cordova': {
+    name: 'Cordova',
+    zipCodes: ['38016', '38018'],
+    description: 'Professional DJ services in Cordova, TN serving this thriving suburban community with wedding entertainment, corporate events, and celebration services.',
+    neighborhoods: ['Cordova Station', 'Cordova Lake', 'Wolfchase', 'Dexter Lake'],
+    landmarks: ['Shelby Farms Park', 'Wolfchase Galleria', 'Cordova Community Center', 'Germantown Parkway'],
+    localBusinesses: ['Wolfchase Galleria', 'Cordova Country Club', 'Shelby Farms Greenline', 'Memphis Athletic Ministries'],
+    eventTypes: ['Country club weddings', 'Corporate events at office parks', 'Community center celebrations', 'School dances', 'Private parties'],
+    weddingFocus: true,
+    weddingDescription: 'Cordova wedding DJ services specializing in elegant suburban celebrations. Perfect for couples seeking sophisticated entertainment in this family-friendly Tennessee community.'
+  },
+  'lakeland': {
+    name: 'Lakeland',
+    zipCodes: ['38002'],
+    description: 'Premium DJ services for Lakeland, TN - serving this exclusive suburban community with professional entertainment for weddings, corporate events, and private celebrations.',
+    neighborhoods: ['Lakeland Proper', 'Canada Road Corridor', 'Old Brownsville Road'],
+    landmarks: ['Lakeland Community Center', 'Canada Road Park', 'Historic Lakeland Depot'],
+    localBusinesses: ['Lakeland Community Center', 'Canada Road Athletic Complex', 'Lakeland Town Hall'],
+    eventTypes: ['Elegant wedding receptions', 'Corporate retreat entertainment', 'Community celebrations', 'Private estate parties', 'Anniversary celebrations'],
+    weddingFocus: true,
+    weddingDescription: 'Lakeland wedding DJ services for Tennessee\'s most exclusive suburban community. Specializing in upscale celebrations and intimate gatherings in this prestigious area.'
+  },
+  'southaven': {
+    name: 'Southaven',
+    zipCodes: ['38671', '38672'],
+    description: 'Professional DJ services in Southaven, MS - serving the greater Memphis metro area with wedding entertainment, corporate events, and celebration services just south of Tennessee.',
+    neighborhoods: ['Southbrook', 'Crosswinds', 'Tulane area', 'Stateline Road corridor'],
+    landmarks: ['Snowden Grove Park', 'Landers Center', 'Southaven Towne Center', 'BankNH Pavilion'],
+    localBusinesses: ['Landers Center', 'Southaven Towne Center', 'Snowden Grove Amphitheater', 'DeSoto Civic Center'],
+    eventTypes: ['Wedding receptions at event centers', 'Corporate events at Landers Center', 'Amphitheater celebrations', 'Private parties', 'School events'],
+    weddingFocus: true,
+    weddingDescription: 'Southaven wedding DJ services for Mississippi couples near Memphis. Professional entertainment for venues throughout this vibrant metro community.'
+  },
+  'west-memphis': {
+    name: 'West Memphis',
+    zipCodes: ['72301', '72303'],
+    description: 'Professional DJ services in West Memphis, AR - serving the Arkansas side of the greater Memphis area with wedding entertainment, corporate events, and celebration services.',
+    neighborhoods: ['Downtown West Memphis', 'Edmondson', 'Bragg', 'Future City'],
+    landmarks: ['Southland Casino Racing', 'West Memphis Community Center', 'Mississippi River Park', 'Interstate 40 corridor'],
+    localBusinesses: ['Southland Casino Racing', 'West Memphis Community Center', 'Future City venues', 'Mississippi River venues'],
+    eventTypes: ['Casino wedding receptions', 'Riverfront celebrations', 'Corporate events', 'Community center parties', 'Private celebrations'],
+    weddingFocus: true,
+    weddingDescription: 'West Memphis wedding DJ services for Arkansas couples in the Memphis metro area. Unique venue options including riverfront and casino celebrations.'
   }
 };
 
@@ -130,27 +185,27 @@ export default function LocationPage() {
 
   return (
     <>
-      <Head>
-        <title>{loc.weddingFocus ? `${loc.name} Wedding DJ | Professional Wedding DJs ${loc.name} TN | M10 DJ Company` : `Professional DJ Services in ${loc.name}, TN | M10 DJ Company`}</title>
-        <meta 
-          name="description" 
-          content={`${loc.description} ${loc.weddingFocus ? 'Top-rated wedding DJ services with ceremony music, reception entertainment & MC services.' : 'Wedding DJ, corporate events, birthday parties & more.'} Call (901) 410-2020 for your free quote!`}
-        />
-        <meta name="keywords" content={loc.weddingFocus ? `${loc.name} wedding DJ, wedding DJ ${loc.name} TN, ${loc.name} wedding DJs, best wedding DJ ${loc.name}, professional wedding DJ ${loc.name}, ${loc.name} wedding entertainment, DJ services ${loc.name}` : `DJ services ${loc.name}, wedding DJ ${loc.name} TN, ${loc.name} event DJ, birthday party DJ ${loc.name}, corporate event entertainment`} />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href={`https://m10djcompany.com/${location}`} />
-        
-        {/* Open Graph tags */}
-        <meta property="og:title" content={loc.weddingFocus ? `${loc.name} Wedding DJ | Professional Wedding DJs ${loc.name} TN` : `Professional DJ Services in ${loc.name}, TN | M10 DJ Company`} />
-        <meta property="og:description" content={`${loc.description} ${loc.weddingFocus ? 'Professional wedding DJ services for Tennessee couples.' : 'Professional DJ entertainment for all occasions.'}`} />
-        <meta property="og:url" content={`https://m10djcompany.com/${location}`} />
-        <meta property="og:type" content="website" />
-        
-        {/* Local SEO tags */}
-        <meta name="geo.region" content="US-TN" />
-        <meta name="geo.placename" content={loc.name} />
-        <meta name="ICBM" content="35.1495, -90.0490" />
-      </Head>
+      <SEO
+        title={loc.weddingFocus ? `${loc.name} Wedding DJ | Professional Wedding DJs ${loc.name} TN | M10 DJ Company` : `Professional DJ Services in ${loc.name}, TN | M10 DJ Company`}
+        description={`${loc.description} ${loc.weddingFocus ? 'Top-rated wedding DJ services with ceremony music, reception entertainment & MC services.' : 'Wedding DJ, corporate events, birthday parties & more.'} Call (901) 410-2020 for your free quote!`}
+        canonical={`/${location}`}
+        keywords={loc.weddingFocus ? [
+          `${loc.name} wedding DJ`,
+          `wedding DJ ${loc.name} TN`,
+          `${loc.name} wedding DJs`,
+          `best wedding DJ ${loc.name}`,
+          `professional wedding DJ ${loc.name}`,
+          `${loc.name} wedding entertainment`,
+          `DJ services ${loc.name}`
+        ] : [
+          `DJ services ${loc.name}`,
+          `wedding DJ ${loc.name} TN`,
+          `${loc.name} event DJ`,
+          `birthday party DJ ${loc.name}`,
+          `corporate event entertainment`
+        ]}
+      />
+      <AIJsonLd loc={loc} />
 
       <Header />
 
@@ -396,6 +451,44 @@ export default function LocationPage() {
             
             <div id="contact-form">
               <ContactForm className="max-w-5xl mx-auto" />
+            </div>
+          </div>
+        </section>
+
+        {/* Other Areas We Serve */}
+        <section className="py-16 bg-white">
+          <div className="section-container">
+            <div className="text-center mb-12">
+              <h2 className="heading-2 mb-6 text-gray-900">Other Areas We Serve</h2>
+              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                M10 DJ Company provides professional DJ services throughout the Memphis metro area. 
+                Explore our specialized services in these communities:
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {Object.entries(locationData)
+                .filter(([key]) => key !== location)
+                .map(([key, locationInfo]) => (
+                  <Link 
+                    key={key}
+                    href={`/${key}`}
+                    className="bg-gray-50 hover:bg-brand hover:text-white transition-all duration-300 rounded-lg p-4 text-center group"
+                  >
+                    <div className="flex items-center justify-center mb-2">
+                      <MapPin className="h-4 w-4 text-brand group-hover:text-white mr-2" />
+                      <h3 className="font-semibold text-gray-900 group-hover:text-white">
+                        {locationInfo.name}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-gray-600 group-hover:text-white opacity-80">
+                      DJ services in {locationInfo.name}
+                      {locationInfo.weddingFocus && (
+                        <span className="block text-xs mt-1">Wedding Specialists</span>
+                      )}
+                    </p>
+                  </Link>
+                ))}
             </div>
           </div>
         </section>
