@@ -284,8 +284,8 @@ export default function PreferredVenues() {
           <div className="section-container relative z-10 pt-16">
             <div className="max-w-4xl mx-auto text-center">
               <h1 className="heading-1 mb-6">
-                <span className="block">Preferred Wedding Venues</span>
-                <span className="block text-gradient">in Memphis, Tennessee</span>
+                <span className="block text-white">Preferred Wedding Venues</span>
+                <span className="block text-[#fcba00]">in Memphis, Tennessee</span>
               </h1>
               
               <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">

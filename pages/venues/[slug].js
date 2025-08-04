@@ -183,7 +183,8 @@ export default function VenuePage({ venue }) {
               </div>
 
               <h1 className="heading-1 mb-6">
-                Professional DJ Services at <span className="text-gradient">{venue.venue_name}</span>
+                <span className="text-white">Professional DJ Services at</span>
+                <span className="block text-[#fcba00]">{venue.venue_name}</span>
               </h1>
               
               <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
