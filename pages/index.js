@@ -21,13 +21,13 @@ export default function Home() {
   return (
     <>
       <SEO
-        title="Memphis DJ & Wedding DJ Memphis | #1 DJ Memphis | M10 DJ Company"
+        title="Memphis DJ Services | Wedding & Event DJ | #1 DJ Memphis | M10 DJ Company"
         description="Memphis DJ & Wedding DJ services! M10 DJ Company - Memphis's #1 choice for weddings, events & celebrations. 15+ years experience, 500+ successful weddings. Professional DJ Memphis for weddings, corporate events & parties. Call (901) 410-2020!"
         keywords={[
           'Memphis DJ',
           'DJ Memphis',
-          'Memphis wedding DJ',
-          'wedding DJ Memphis',
+          'professional DJ Memphis',
+          'Memphis event DJ',
           'Memphis DJs',
           'DJ in Memphis',
           'Memphis DJ services',

@@ -149,7 +149,7 @@ export default function WeddingDJMemphisTN() {
   return (
     <>
       <Head>
-        <title>Wedding DJ Memphis TN | Best Wedding DJs in Memphis Tennessee | M10 DJ Company</title>
+        <title>Wedding DJ Memphis Tennessee | Professional Wedding DJs TN | M10 DJ Company</title>
         <meta 
           name="description" 
           content="Premier wedding DJ Memphis TN services. Professional wedding DJs for Tennessee couples with 10+ years experience. Ceremony, reception & MC services in Memphis. Call (901) 410-2020!" 

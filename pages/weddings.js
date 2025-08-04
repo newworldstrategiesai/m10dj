@@ -139,7 +139,7 @@ export default function Weddings() {
   return (
     <>
       <Head>
-        <title>Memphis Wedding DJ | M10 DJ Company | Professional Wedding Entertainment</title>
+        <title>Memphis Wedding Entertainment | Professional Wedding DJs | M10 DJ Company</title>
         <meta name="description" content="Memphis's premier wedding DJ service. Professional entertainment, personalized music, and flawless execution for your special day. Serving Memphis and surrounding areas since 2014." />
         <meta name="keywords" content="Memphis wedding DJ, wedding DJ Memphis TN, wedding entertainment Memphis, Memphis DJ service, wedding music Memphis, professional wedding DJ" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
