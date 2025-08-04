@@ -139,7 +139,7 @@ export default function About() {
                 {stats.map((stat, index) => (
                   <div key={index} className="text-center">
                     <div className="w-16 h-16 bg-brand-gold rounded-lg flex items-center justify-center mx-auto mb-3">
-                      <stat.icon className="w-8 h-8 text-black" />
+                      <stat.icon className="w-8 h-8 text-white" />
                     </div>
                     <div className="text-3xl font-bold text-brand-gold mb-1">{stat.value}</div>
                     <div className="text-sm text-gray-300">{stat.label}</div>
