@@ -866,11 +866,16 @@ export default function MemphisDJPricingGuide() {
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Premium Locations</h3>
                   <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-                    Specialized DJ services for Germantown's luxury venues and upscale celebrations.
+                    Specialized DJ services for Memphis suburbs including luxury venues and community celebrations.
                   </p>
-                  <Link href="/dj-germantown-tn" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors text-sm">
-                    DJ Germantown TN <ChevronRight className="ml-1 w-3 h-3" />
-                  </Link>
+                  <div className="flex flex-col gap-2">
+                    <Link href="/dj-germantown-tn" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors text-sm">
+                      DJ Germantown TN <ChevronRight className="ml-1 w-3 h-3" />
+                    </Link>
+                    <Link href="/dj-collierville-tn" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors text-sm">
+                      DJ Collierville TN <ChevronRight className="ml-1 w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
               </div>
 

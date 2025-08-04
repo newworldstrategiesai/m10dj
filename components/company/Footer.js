@@ -182,8 +182,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/millington" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
-                  DJ Millington TN
+                <Link href="/dj-collierville-tn" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  DJ Collierville TN
                 </Link>
               </li>
               <li>
