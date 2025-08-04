@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '',
     '/pricing',
     '/about',
+    '/dj-ben-murray',
     '/services',
     '/memphis-wedding-dj',
     '/wedding-dj-memphis-tn',
@@ -31,6 +32,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: new Date(),
     changeFrequency: (route === '' ? 'daily' : 'weekly') as 'daily' | 'weekly',
     priority: route === '' ? 1 : 
+             route === '/dj-ben-murray' ? 0.96 :
              route === '/memphis-wedding-dj' ? 0.95 : 
              route === '/wedding-dj-memphis-tn' ? 0.94 : 
              route === '/best-wedding-dj-memphis' ? 0.93 : 
