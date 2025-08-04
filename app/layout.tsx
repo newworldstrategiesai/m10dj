@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/Toasts/toaster';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import { headers } from 'next/headers';
+import EnhancedTracking from '@/components/EnhancedTracking';
 
 import 'styles/main.css';
 
@@ -216,6 +217,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         <Suspense>
           <Toaster />
         </Suspense>
+        <EnhancedTracking />
       </body>
     </html>
   );

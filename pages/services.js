@@ -16,6 +16,7 @@ import {
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import { db } from '../utils/company_lib/supabase';
+import { scrollToContact } from '../utils/scroll-helpers';
 
 const categoryIcons = {
   dj: Music,
@@ -155,10 +156,7 @@ export default function Services() {
             </div>
             
             <button
-              onClick={() => {
-                const element = document.getElementById('contact');
-                if (element) element.scrollIntoView({ behavior: 'smooth' });
-              }}
+              onClick={scrollToContact}
               className="btn-primary"
             >
               Book Now
@@ -211,7 +209,7 @@ export default function Services() {
           <div className="section-container relative z-10 pt-16">
             <div className="max-w-4xl mx-auto text-center">
               <h1 className="heading-1 mb-6">
-                <span className="block">Professional DJ Services</span>
+                <span className="block text-white">Professional DJ Services</span>
                 <span className="block text-gradient">for Memphis Events</span>
               </h1>
               
@@ -351,10 +349,7 @@ export default function Services() {
                     </li>
                   </ul>
                   <button
-                    onClick={() => {
-                      const element = document.getElementById('contact');
-                      if (element) element.scrollIntoView({ behavior: 'smooth' });
-                    }}
+                    onClick={scrollToContact}
                     className="btn-primary w-full"
                   >
                     Book Wedding Package
@@ -393,10 +388,7 @@ export default function Services() {
                     </li>
                   </ul>
                   <button
-                    onClick={() => {
-                      const element = document.getElementById('contact');
-                      if (element) element.scrollIntoView({ behavior: 'smooth' });
-                    }}
+                    onClick={scrollToContact}
                     className="btn-secondary w-full"
                   >
                     Book Corporate Package
@@ -435,10 +427,7 @@ export default function Services() {
                     </li>
                   </ul>
                   <button
-                    onClick={() => {
-                      const element = document.getElementById('contact');
-                      if (element) element.scrollIntoView({ behavior: 'smooth' });
-                    }}
+                    onClick={scrollToContact}
                     className="btn-secondary w-full"
                   >
                     Book Party Package

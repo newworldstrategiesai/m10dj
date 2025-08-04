@@ -10,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/pricing',
     '/about',
     '/services',
+    '/memphis-wedding-dj',
     '/weddings',
     '/corporate-events',
     '/private-parties',
@@ -22,7 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: (route === '' ? 'daily' : 'weekly') as 'daily' | 'weekly',
-    priority: route === '' ? 1 : route === '/pricing' ? 0.9 : 0.8,
+    priority: route === '' ? 1 : route === '/memphis-wedding-dj' ? 0.95 : route === '/pricing' ? 0.9 : 0.8,
   }));
 
   // Location pages

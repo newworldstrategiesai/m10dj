@@ -8,6 +8,8 @@ import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import FAQSection from '../components/company/FAQSection';
 import { SEOHead } from '../components/ui/SEO';
+import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
+import { scrollToContact } from '../utils/scroll-helpers';
 
 export default function Home() {
   const [isVisible, setIsVisible] = useState(false);
@@ -87,14 +89,28 @@ export default function Home() {
               
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
-                <Link href="#contact" className="btn-primary group">
+                <button 
+                  onClick={() => {
+                    trackLead('quote_request_start', { source: 'hero_section' });
+                    scrollToContact();
+                  }}
+                  className="btn-primary group"
+                >
                   Get Your Free Quote
                   <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link href="/services" className="btn-secondary">
+                </button>
+                <Link 
+                  href="/services" 
+                  className="btn-secondary"
+                  onClick={() => trackServiceInterest('all_services', 'hero_section')}
+                >
                   View Our Services
                 </Link>
-                <Link href="/signin" className="btn-outline group">
+                <Link 
+                  href="/signin" 
+                  className="btn-outline group"
+                  onClick={() => trackLead('admin_signin_attempt', { source: 'hero_section' })}
+                >
                   Sign In
                   <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
@@ -334,7 +350,7 @@ export default function Home() {
               </div>
               
               {/* Contact Form */}
-              <div className="modern-card bg-white">
+              <div id="contact-form" className="modern-card bg-white">
                 <ContactForm />
               </div>
             </div>

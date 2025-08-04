@@ -276,7 +276,7 @@ export default function AdminDashboard() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Link
               href="/admin/blog"
               className="modern-card hover:shadow-lg transition-all group cursor-pointer"
@@ -310,6 +310,25 @@ export default function AdminDashboard() {
                   </h3>
                   <p className="text-sm text-gray-600 font-inter">
                     Create a new article
+                  </p>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              href="/admin/analytics"
+              className="modern-card hover:shadow-lg transition-all group cursor-pointer"
+            >
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-lg font-bold text-gray-900 font-inter mb-1">
+                    Analytics Dashboard
+                  </h3>
+                  <p className="text-sm text-gray-600 font-inter">
+                    View tracking insights
                   </p>
                 </div>
               </div>

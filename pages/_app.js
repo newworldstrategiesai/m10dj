@@ -1,5 +1,6 @@
 import '../styles/company-globals.css'
 import Head from 'next/head'
+import EnhancedTracking from '../components/EnhancedTracking'
 
 export default function App({ Component, pageProps }) {
   return (
@@ -40,6 +41,7 @@ export default function App({ Component, pageProps }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </Head>
       <Component {...pageProps} />
+      <EnhancedTracking />
     </>
   )
 } 

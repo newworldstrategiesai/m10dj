@@ -5,6 +5,7 @@ import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import FAQSection from '../components/company/FAQSection';
+import { scrollToContact } from '../utils/scroll-helpers';
 
 // Location data for Memphis area
 const locationData = {
@@ -174,10 +175,7 @@ export default function LocationPage() {
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
-                  onClick={() => {
-                    const element = document.getElementById('contact');
-                    if (element) element.scrollIntoView({ behavior: 'smooth' });
-                  }}
+                  onClick={scrollToContact}
                   className="btn-primary text-lg px-8 py-4"
                 >
                   Get Free Quote
@@ -223,10 +221,7 @@ export default function LocationPage() {
                   </div>
                   
                   <button
-                    onClick={() => {
-                      const element = document.getElementById('contact');
-                      if (element) element.scrollIntoView({ behavior: 'smooth' });
-                    }}
+                    onClick={scrollToContact}
                     className="btn-primary w-full"
                   >
                     Get Quote
@@ -312,7 +307,9 @@ export default function LocationPage() {
               </p>
             </div>
             
-            <ContactForm className="max-w-5xl mx-auto" />
+            <div id="contact-form">
+              <ContactForm className="max-w-5xl mx-auto" />
+            </div>
           </div>
         </section>
       </main>

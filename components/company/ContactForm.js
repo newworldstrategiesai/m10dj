@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
+import { trackLead, trackContactAction } from '../EnhancedTracking';
 
 export default function ContactForm({ className = '' }) {
   const [formData, setFormData] = useState({
@@ -16,6 +17,29 @@ export default function ContactForm({ className = '' }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+
+  // Handle scroll positioning when success message appears
+  useEffect(() => {
+    if (submitted) {
+      // Ensure success message stays in view on mobile
+      const scrollToSuccess = () => {
+        const formElement = document.getElementById('contact-form');
+        if (formElement && window.innerWidth < 1024) { // Only on mobile
+          const headerOffset = 80;
+          const elementPosition = formElement.offsetTop - headerOffset;
+          
+          window.scrollTo({
+            top: elementPosition,
+            behavior: 'smooth'
+          });
+        }
+      };
+      
+      // Use multiple timeouts to handle different rendering timings
+      setTimeout(scrollToSuccess, 50);
+      setTimeout(scrollToSuccess, 200);
+    }
+  }, [submitted]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -48,6 +72,23 @@ export default function ContactForm({ className = '' }) {
       });
 
       if (response.ok) {
+        // Track successful lead generation
+        trackLead('contact_form', {
+          event_type: formData.eventType,
+          guest_count: formData.guests,
+          has_venue: !!formData.venue,
+          has_date: !!formData.eventDate
+        });
+        
+        // Track Facebook conversion
+        if (typeof window !== 'undefined' && window.fbq) {
+          window.fbq('track', 'Lead', {
+            content_name: 'Contact Form Submission',
+            content_category: formData.eventType,
+            value: 1
+          });
+        }
+        
         setSubmitted(true);
       } else {
         const errorData = await response.json();
@@ -63,33 +104,39 @@ export default function ContactForm({ className = '' }) {
 
   if (submitted) {
     return (
-      <div className={`bg-white rounded-2xl p-8 text-center ${className}`}>
+      <div className={`bg-white rounded-2xl p-8 text-center min-h-[400px] flex flex-col justify-center ${className}`}>
         <div className="w-16 h-16 bg-brand text-white rounded-full flex items-center justify-center mx-auto mb-6">
           <Send className="w-8 h-8" />
         </div>
         <h3 className="text-2xl font-semibold text-gray-900 mb-4 font-sans">Thank You!</h3>
-        <p className="text-gray-600 mb-6 font-inter">
+        <p className="text-gray-600 mb-8 font-inter max-w-md mx-auto">
           We've received your message and will get back to you within 24 hours with a personalized quote for your event.
         </p>
-        <button
-          onClick={() => {
-            setSubmitted(false);
-            setError('');
-            setFormData({
-              name: '',
-              email: '',
-              phone: '',
-              eventType: '',
-              eventDate: '',
-              guests: '',
-              venue: '',
-              message: ''
-            });
-          }}
-          className="btn-secondary"
-        >
-          Send Another Message
-        </button>
+        <div className="space-y-4">
+          <div className="flex items-center justify-center space-x-2 text-brand">
+            <Phone className="w-4 h-4" />
+            <span className="font-semibold">(901) 410-2020</span>
+          </div>
+          <button
+            onClick={() => {
+              setSubmitted(false);
+              setError('');
+              setFormData({
+                name: '',
+                email: '',
+                phone: '',
+                eventType: '',
+                eventDate: '',
+                guests: '',
+                venue: '',
+                message: ''
+              });
+            }}
+            className="btn-secondary"
+          >
+            Send Another Message
+          </button>
+        </div>
       </div>
     );
   }

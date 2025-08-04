@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Phone, Mail, Menu, X, ChevronDown, MapPin } from 'lucide-react';
+import { trackContactAction, trackLead, trackServiceInterest } from '../EnhancedTracking';
+import { scrollToContact } from '../../utils/scroll-helpers';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -96,7 +98,10 @@ export default function Header() {
                         key={service.name}
                         href={service.href}
                         className="block px-4 py-3 text-gray-700 hover:bg-brand/5 hover:text-brand font-inter transition-colors"
-                        onClick={closeDropdown}
+                        onClick={() => {
+                          closeDropdown();
+                          trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'header_dropdown');
+                        }}
                       >
                         {service.name}
                       </Link>
@@ -134,9 +139,12 @@ export default function Header() {
                 About
               </Link>
               
-              <Link href="#contact" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+              <button 
+                onClick={scrollToContact}
+                className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors"
+              >
                 Contact
-              </Link>
+              </button>
             </nav>
 
             {/* Contact Info & CTA */}
@@ -144,15 +152,25 @@ export default function Header() {
               <div className="flex items-center space-x-4 text-sm">
                 <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg">
                   <Phone className="w-4 h-4 text-brand" />
-                  <a href="tel:+19014102020" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+                  <a 
+                    href="tel:+19014102020" 
+                    className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors"
+                    onClick={() => trackContactAction('phone', 'header_desktop')}
+                  >
 (901) 410-2020
                   </a>
                 </div>
               </div>
               
-              <Link href="#contact" className="btn-primary">
+              <button 
+                onClick={() => {
+                  trackLead('quote_request_start', { source: 'header_desktop' });
+                  scrollToContact();
+                }}
+                className="btn-primary"
+              >
                 Get Quote
-              </Link>
+              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -194,7 +212,10 @@ export default function Header() {
                           key={service.name}
                           href={service.href}
                           className="block text-gray-600 hover:text-brand font-inter py-1 transition-colors"
-                          onClick={() => setIsMobileMenuOpen(false)}
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'mobile_menu');
+                          }}
                         >
                           {service.name}
                         </Link>
@@ -236,13 +257,15 @@ export default function Header() {
                   About
                 </Link>
                 
-                <Link 
-                  href="#contact" 
+                <button 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    scrollToContact();
+                  }}
                   className="block text-gray-700 hover:text-brand font-semibold font-inter py-2 transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Contact
-                </Link>
+                </button>
               </nav>
 
               {/* Mobile Contact Info */}
@@ -267,13 +290,15 @@ export default function Header() {
                   </div>
                 </div>
 
-                <Link 
-                  href="#contact" 
+                <button 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    scrollToContact();
+                  }}
                   className="btn-primary w-full text-center"
-                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Get Your Free Quote
-                </Link>
+                </button>
               </div>
             </div>
           </div>
