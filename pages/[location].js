@@ -1,6 +1,7 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Music, MapPin, Phone, Mail, Star, Users, Award } from 'lucide-react';
+import { Music, MapPin, Phone, Mail, Star, Users, Award, Heart } from 'lucide-react';
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
@@ -39,29 +40,35 @@ const locationData = {
   'germantown': {
     name: 'Germantown',
     zipCodes: ['38138', '38139'],
-    description: 'Premier DJ services for Germantown\'s upscale events, weddings, and corporate celebrations.',
+    description: 'Premier Germantown wedding DJ services for Tennessee\'s most elegant celebrations. Professional wedding DJs serving Germantown with upscale entertainment, ceremony music, and reception packages.',
     neighborhoods: ['Forest Hill Irene', 'Germantown Hills', 'Thornwood'],
     landmarks: ['Germantown Performing Arts Centre', 'W.C. Johnson Park', 'Shelby Farms'],
     localBusinesses: ['Saddle Creek', 'Germantown Country Club', 'River Oaks'],
-    eventTypes: ['Elegant wedding receptions', 'Country club events', 'Corporate retreats', 'Anniversary parties']
+    eventTypes: ['Elegant Germantown wedding receptions', 'Country club wedding celebrations', 'Luxury venue weddings', 'Corporate events', 'Anniversary parties'],
+    weddingFocus: true,
+    weddingDescription: 'As Germantown\'s premier wedding DJ service, we specialize in elegant receptions at upscale venues throughout this prestigious Tennessee community.'
   },
   'collierville': {
     name: 'Collierville',
     zipCodes: ['38017', '38027'],
-    description: 'Serving Collierville with professional DJ services for weddings, celebrations, and community events.',
+    description: 'Professional Collierville wedding DJ services specializing in historic venue celebrations. Trusted wedding DJs serving Collierville, TN with ceremony music, reception entertainment, and MC services.',
     neighborhoods: ['Historic Collierville', 'Schilling Farms', 'Bailey Station'],
     landmarks: ['Historic Square', 'W.C. Johnson Park', 'Collierville Greenbelt'],
     localBusinesses: ['The Columns', 'Morton Museum', 'Town Square Park'],
-    eventTypes: ['Historic venue weddings', 'Community celebrations', 'School events', 'Private parties']
+    eventTypes: ['Historic Collierville wedding receptions', 'The Columns wedding celebrations', 'Community celebrations', 'School events', 'Private parties'],
+    weddingFocus: true,
+    weddingDescription: 'Collierville\'s trusted wedding DJ service, specializing in historic venue weddings and elegant receptions throughout this charming Tennessee community.'
   },
   'bartlett': {
     name: 'Bartlett',
     zipCodes: ['38133', '38135'],
-    description: 'Professional DJ entertainment for Bartlett residents, from intimate gatherings to large celebrations.',
+    description: 'Professional Bartlett wedding DJ services and event entertainment. Serving Bartlett, TN with wedding receptions, ceremony music, and DJ services for all celebrations.',
     neighborhoods: ['Bartlett Station', 'Elmore Park', 'Scenic Hills'],
     landmarks: ['Bartlett Station Municipal Center', 'Nicholas Yahk Park', 'Stage Road Park'],
     localBusinesses: ['Bartlett Recreation Center', 'Bradford Creek Golf Course'],
-    eventTypes: ['Community center events', 'School dances', 'Birthday celebrations', 'Wedding receptions']
+    eventTypes: ['Bartlett wedding receptions', 'Community center wedding events', 'School dances', 'Birthday celebrations', 'Anniversary parties'],
+    weddingFocus: true,
+    weddingDescription: 'Serving Bartlett couples with professional wedding DJ services, from intimate receptions to large celebrations throughout this vibrant Tennessee community.'
   },
   'arlington': {
     name: 'Arlington',
@@ -113,18 +120,18 @@ export default function LocationPage() {
   return (
     <>
       <Head>
-        <title>{`Professional DJ Services in ${loc.name}, TN | M10 DJ Company`}</title>
+        <title>{loc.weddingFocus ? `${loc.name} Wedding DJ | Professional Wedding DJs ${loc.name} TN | M10 DJ Company` : `Professional DJ Services in ${loc.name}, TN | M10 DJ Company`}</title>
         <meta 
           name="description" 
-          content={`${loc.description} Wedding DJ, corporate events, birthday parties & more. Call (901) 410-2020 for your free quote!`}
+          content={`${loc.description} ${loc.weddingFocus ? 'Top-rated wedding DJ services with ceremony music, reception entertainment & MC services.' : 'Wedding DJ, corporate events, birthday parties & more.'} Call (901) 410-2020 for your free quote!`}
         />
-        <meta name="keywords" content={`DJ services ${loc.name}, wedding DJ ${loc.name} TN, ${loc.name} event DJ, birthday party DJ ${loc.name}, corporate event entertainment`} />
+        <meta name="keywords" content={loc.weddingFocus ? `${loc.name} wedding DJ, wedding DJ ${loc.name} TN, ${loc.name} wedding DJs, best wedding DJ ${loc.name}, professional wedding DJ ${loc.name}, ${loc.name} wedding entertainment, DJ services ${loc.name}` : `DJ services ${loc.name}, wedding DJ ${loc.name} TN, ${loc.name} event DJ, birthday party DJ ${loc.name}, corporate event entertainment`} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href={`https://m10djcompany.com/${location}`} />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content={`Professional DJ Services in ${loc.name}, TN | M10 DJ Company`} />
-        <meta property="og:description" content={`${loc.description} Professional DJ entertainment for all occasions.`} />
+        <meta property="og:title" content={loc.weddingFocus ? `${loc.name} Wedding DJ | Professional Wedding DJs ${loc.name} TN` : `Professional DJ Services in ${loc.name}, TN | M10 DJ Company`} />
+        <meta property="og:description" content={`${loc.description} ${loc.weddingFocus ? 'Professional wedding DJ services for Tennessee couples.' : 'Professional DJ entertainment for all occasions.'}`} />
         <meta property="og:url" content={`https://m10djcompany.com/${location}`} />
         <meta property="og:type" content="website" />
         
@@ -152,8 +159,17 @@ export default function LocationPage() {
               </div>
               
               <h1 className="heading-1 mb-6">
-                <span className="block text-white">Professional DJ Services in</span>
-                <span className="block text-gradient">{loc.name}, Tennessee</span>
+                {loc.weddingFocus ? (
+                  <>
+                    <span className="block text-white">{loc.name} Wedding DJ</span>
+                    <span className="block text-gradient">Services in Tennessee</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="block text-white">Professional DJ Services in</span>
+                    <span className="block text-gradient">{loc.name}, Tennessee</span>
+                  </>
+                )}
               </h1>
               
               <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
@@ -229,7 +245,67 @@ export default function LocationPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
 
+        {/* Wedding DJ Focus Section */}
+        {loc.weddingFocus && (
+          <section className="py-16 bg-brand text-white">
+            <div className="section-container">
+              <div className="max-w-4xl mx-auto text-center">
+                <div className="flex items-center justify-center mb-6">
+                  <Heart className="w-8 h-8 text-white mr-3" />
+                  <span className="text-white font-semibold text-lg">Wedding DJ Specialists</span>
+                </div>
+                
+                <h2 className="text-4xl font-bold mb-6">
+                  {loc.name} Wedding DJ Services
+                </h2>
+                
+                <p className="text-xl mb-8 opacity-90 leading-relaxed">
+                  {loc.weddingDescription}
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                  <div className="text-center">
+                    <Music className="w-12 h-12 text-white mx-auto mb-4" />
+                    <h3 className="text-xl font-bold mb-2">Ceremony Music</h3>
+                    <p className="opacity-90">Professional sound for your {loc.name} wedding ceremony</p>
+                  </div>
+                  <div className="text-center">
+                    <Users className="w-12 h-12 text-white mx-auto mb-4" />
+                    <h3 className="text-xl font-bold mb-2">Reception DJ</h3>
+                    <p className="opacity-90">Keep your {loc.name} wedding guests dancing all night</p>
+                  </div>
+                  <div className="text-center">
+                    <Award className="w-12 h-12 text-white mx-auto mb-4" />
+                    <h3 className="text-xl font-bold mb-2">MC Services</h3>
+                    <p className="opacity-90">Professional announcements and timeline coordination</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button 
+                    onClick={scrollToContact}
+                    className="bg-white text-brand hover:bg-gray-100 px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
+                  >
+                    Get {loc.name} Wedding Quote
+                  </button>
+                  <Link 
+                    href="/memphis-wedding-dj-prices-2025" 
+                    className="border-2 border-white text-white hover:bg-white hover:text-brand px-8 py-4 rounded-lg font-semibold text-lg transition-colors text-center"
+                  >
+                    View Wedding Packages
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Location Details */}
+        <section className="py-16 bg-white dark:bg-gray-900">
+          <div className="section-container">
             {/* Local Areas */}
             {loc.neighborhoods.length > 0 && (
               <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 mb-16">

@@ -45,6 +45,7 @@
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
+    "critters": "^0.0.23",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "libphonenumber-js": "^1.12.10",
@@ -60,7 +61,8 @@
     "tailwindcss": "^3.4.4",
     "tailwindcss-animate": "^1.0.7",
     "twilio": "^5.8.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "web-vitals": "^5.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.2",

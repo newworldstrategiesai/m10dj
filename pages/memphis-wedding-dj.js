@@ -60,21 +60,21 @@ const venues = [
 
 const reviews = [
   {
-    name: "Sarah & Michael",
-    venue: "Dixon Gallery & Gardens",
-    text: "M10 DJ Company made our Memphis wedding absolutely perfect! They read the room perfectly and kept everyone dancing all night long.",
-    rating: 5
-  },
-  {
-    name: "Ashley & David", 
+    name: "Quade Nowlin",
     venue: "The Peabody Memphis",
-    text: "Professional, responsive, and incredibly talented. Our Memphis wedding DJ exceeded all expectations. Highly recommend!",
+    text: "Ben was absolutely amazing for our Memphis wedding! From the ceremony to the reception, everything was flawless. The music selection kept everyone on the dance floor, and his MC skills were professional and engaging. Worth every penny!",
     rating: 5
   },
   {
-    name: "Jennifer & Chris",
+    name: "Alexis Cameron", 
+    venue: "Dixon Gallery & Gardens",
+    text: "M10 DJ Company exceeded all our expectations! Ben understood our vision perfectly and created the ideal atmosphere for our Memphis wedding. The sound quality was incredible and he kept the energy high all night long.",
+    rating: 5
+  },
+  {
+    name: "Chandler Keen",
     venue: "Memphis Hunt & Country Club", 
-    text: "From ceremony to reception, they handled everything flawlessly. The best Memphis wedding DJ service we could have chosen!",
+    text: "We couldn't have asked for a better DJ! Ben was professional, accommodating, and really listened to what we wanted. Our Memphis wedding was perfect thanks to his expertise and attention to detail.",
     rating: 5
   }
 ];

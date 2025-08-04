@@ -11,7 +11,8 @@ import {
   Star,
   Clock,
   Users,
-  Settings
+  Settings,
+  Heart
 } from 'lucide-react';
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
@@ -433,6 +434,53 @@ export default function Services() {
                     Book Party Package
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* Memphis Services Links */}
+            <div className="mt-20 bg-gray-50 dark:bg-gray-800 rounded-2xl p-8">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                  Explore Memphis DJ Services
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                  Discover specialized DJ services for Memphis events, including wedding packages, pricing guides, and local expertise.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Link href="/memphis-dj-services" className="bg-white dark:bg-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow group">
+                  <div className="flex items-center mb-4">
+                    <Music className="w-8 h-8 text-brand mr-3" />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-brand transition-colors">
+                      Complete Memphis DJ Services
+                    </h3>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                    Comprehensive DJ services for all Memphis events - weddings, corporate, private parties, and more.
+                  </p>
+                </Link>
+
+                <Link href="/memphis-wedding-dj" className="bg-white dark:bg-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow group">
+                  <div className="flex items-center mb-4">
+                    <Heart className="w-8 h-8 text-brand mr-3" />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-brand transition-colors">
+                      Memphis Wedding DJ Specialists
+                    </h3>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                    Professional wedding DJ services with ceremony music, reception entertainment, and MC services.
+                  </p>
+                </Link>
+              </div>
+
+              <div className="text-center mt-8">
+                <Link href="/best-wedding-dj-memphis" className="btn-secondary mr-4">
+                  Why We're Memphis's Best DJ
+                </Link>
+                <Link href="/blog/memphis-wedding-dj-cost-guide-2025" className="btn-outline">
+                  View DJ Pricing Guide
+                </Link>
               </div>
             </div>
 

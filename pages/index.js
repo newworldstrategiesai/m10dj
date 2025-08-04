@@ -21,16 +21,18 @@ export default function Home() {
   return (
     <>
       <SEOHead
-        title="Premium Event Entertainment in Memphis"
-        description="Memphis's premier DJ and entertainment company. Professional event services for weddings, corporate events, and private parties. Unforgettable experiences with cutting-edge technology. Call (901) 410-2020 for your free quote!"
+        title="Memphis Wedding DJ | Professional Event Entertainment | M10 DJ Company"
+        description="Memphis's premier wedding DJ and entertainment company. Professional DJ services for Memphis weddings, corporate events, and private parties. 500+ successful events with 5-star reviews. Call (901) 410-2020 for your free quote!"
         keywords={[
-          'Memphis DJ',
+          'Memphis wedding DJ',
           'wedding DJ Memphis',
+          'best wedding DJ Memphis',
+          'Memphis DJ services',
           'corporate events Memphis',
           'party DJ Memphis',
           'event entertainment Memphis',
           'Memphis events',
-          'professional DJ services',
+          'professional DJ services Memphis',
           'sound system rental Memphis',
           'uplighting Memphis'
         ]}
@@ -78,13 +80,13 @@ export default function Home() {
             <div className="max-w-5xl mx-auto">
               {/* Main Headline */}
               <h1 className="heading-1 mb-8 animate-fade-in-up">
-                <span className="block text-gray-900">Unforgettable Memphis Events</span>
-                <span className="block text-gradient">Start with M10 DJ Company</span>
+                <span className="block text-gray-900">Memphis Wedding DJ</span>
+                <span className="block text-gradient">& Event Entertainment</span>
               </h1>
               
               <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed font-inter">
-                Memphis's premier entertainment company, delivering exceptional experiences with professional DJ services, 
-                state-of-the-art sound systems, and personalized event coordination.
+                Memphis's premier wedding DJ and entertainment company, delivering unforgettable experiences with professional DJ services, 
+                state-of-the-art sound systems, and personalized event coordination for weddings and special celebrations.
               </p>
               
               {/* CTA Buttons */}
@@ -164,32 +166,37 @@ export default function Home() {
                   <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
                     <Music className="w-6 h-6" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 font-sans">Wedding Entertainment</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 font-sans">Memphis Wedding DJ</h3>
                 </div>
                 <p className="text-gray-600 mb-6 font-inter">
-                  Make your special day unforgettable with our comprehensive wedding DJ and entertainment packages.
+                  Memphis's premier wedding DJ service with professional entertainment, MC services, and custom packages for your special day.
                 </p>
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start">
                     <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Ceremony & reception music</span>
+                    <span className="text-gray-700 font-inter">Professional Memphis wedding DJ</span>
                   </li>
                   <li className="flex items-start">
                     <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Professional MC services</span>
+                    <span className="text-gray-700 font-inter">Master of ceremonies services</span>
                   </li>
                   <li className="flex items-start">
                     <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Custom lighting & sound</span>
+                    <span className="text-gray-700 font-inter">Premium sound & uplighting</span>
                   </li>
                   <li className="flex items-start">
                     <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Dance floor coordination</span>
+                    <span className="text-gray-700 font-inter">Ceremony to reception coverage</span>
                   </li>
                 </ul>
-                <Link href="/services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
-                  Learn More <ChevronRight className="ml-1 w-4 h-4" />
-                </Link>
+                <div className="space-y-2">
+                  <Link href="/memphis-wedding-dj" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors mb-2 block">
+                    Memphis Wedding DJ Services <ChevronRight className="ml-1 w-4 h-4" />
+                  </Link>
+                  <Link href="/best-wedding-dj-memphis" className="inline-flex items-center text-gray-600 hover:text-brand transition-colors text-sm">
+                    Why We're Memphis's Best Wedding DJ <ChevronRight className="ml-1 w-3 h-3" />
+                  </Link>
+                </div>
               </div>
               
               {/* Corporate Events */}

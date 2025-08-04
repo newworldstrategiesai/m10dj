@@ -587,6 +587,63 @@ export default function Weddings() {
           </div>
         </section>
 
+        {/* Memphis Wedding Resources Section */}
+        <section className="py-20 bg-gray-50">
+          <div className="section-container">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 font-sans">Memphis Wedding DJ Resources</h2>
+              <p className="text-lg text-gray-600 font-inter max-w-3xl mx-auto">
+                Planning your Memphis wedding? Explore our comprehensive guides to help you make the best decisions 
+                for your Tennessee celebration.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <Link href="/best-wedding-dj-memphis" className="modern-card p-6 text-center group hover:shadow-xl transition-all">
+                <div className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                  <Award className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 font-sans">Best Memphis Wedding DJ</h3>
+                <p className="text-gray-600 font-inter mb-4">
+                  Discover why M10 is consistently rated the best wedding DJ in Memphis with 5-star reviews and 500+ successful weddings.
+                </p>
+                <span className="text-brand font-semibold group-hover:underline">Learn Why We're #1 →</span>
+              </Link>
+
+              <Link href="/blog/memphis-wedding-dj-cost-guide-2025" className="modern-card p-6 text-center group hover:shadow-xl transition-all">
+                <div className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                  <Calendar className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 font-sans">Memphis Wedding DJ Costs</h3>
+                <p className="text-gray-600 font-inter mb-4">
+                  Complete 2025 pricing guide for Memphis wedding DJ services, packages, and tips to save money on your celebration.
+                </p>
+                <span className="text-brand font-semibold group-hover:underline">View Pricing Guide →</span>
+              </Link>
+
+              <Link href="/blog/memphis-wedding-songs-2025" className="modern-card p-6 text-center group hover:shadow-xl transition-all">
+                <div className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                  <Music2 className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 font-sans">Memphis Wedding Songs</h3>
+                <p className="text-gray-600 font-inter mb-4">
+                  Discover the best Memphis wedding songs for 2025, including local favorites and proven crowd-pleasers for your playlist.
+                </p>
+                <span className="text-brand font-semibold group-hover:underline">Get Song Ideas →</span>
+              </Link>
+            </div>
+
+            <div className="text-center mt-12">
+              <Link href="/wedding-dj-memphis-tn" className="btn-primary mr-4">
+                Explore Memphis Wedding DJ Services
+              </Link>
+              <Link href="/memphis-dj-services" className="btn-secondary">
+                View All Memphis DJ Services
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* Contact Form Section */}
         <section className="py-20 bg-white">
           <div className="section-container">
