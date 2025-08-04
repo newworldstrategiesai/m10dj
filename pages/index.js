@@ -21,32 +21,32 @@ export default function Home() {
   return (
     <>
       <SEO
-        title="Memphis Wedding DJ | #1 Wedding DJ Memphis | M10 DJ Company"
-        description="Memphis's #1 wedding DJ! M10 DJ Company delivers unforgettable wedding entertainment with 15+ years experience, 500+ weddings, and expert venue knowledge. From ceremony to reception, we make your Memphis wedding perfect. Call (901) 410-2020!"
+        title="Memphis DJ & Wedding DJ Memphis | #1 DJ Memphis | M10 DJ Company"
+        description="Memphis DJ & Wedding DJ services! M10 DJ Company - Memphis's #1 choice for weddings, events & celebrations. 15+ years experience, 500+ successful weddings. Professional DJ Memphis for weddings, corporate events & parties. Call (901) 410-2020!"
         keywords={[
+          'Memphis DJ',
+          'DJ Memphis',
           'Memphis wedding DJ',
           'wedding DJ Memphis',
-          'Memphis wedding DJ services',
+          'Memphis DJs',
+          'DJ in Memphis',
+          'Memphis DJ services',
+          'DJ services Memphis',
           'best wedding DJ Memphis',
+          'professional DJ Memphis',
           'wedding DJ Memphis TN',
+          'Memphis event DJ',
+          'party DJ Memphis',
+          'DJ for hire Memphis',
           'Memphis wedding entertainment',
-          'wedding DJ near me Memphis',
-          'Memphis wedding reception DJ',
-          'Memphis ceremony DJ',
-          'professional wedding DJ Memphis',
-          'Memphis wedding music',
-          'wedding DJ packages Memphis',
-          'Memphis bridal DJ',
-          'top wedding DJ Memphis',
-          'Memphis wedding venue DJ',
-          'luxury wedding DJ Memphis'
+          'best DJs in Memphis'
         ]}
         canonical="/"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "LocalBusiness",
           "name": "M10 DJ Company",
-          "description": "Memphis's premier wedding DJ company with 15+ years experience and 500+ successful weddings",
+          "description": "Memphis's premier DJ and wedding entertainment company with 15+ years experience, 500+ successful weddings, and professional event services",
           "url": "https://www.m10djcompany.com",
           "telephone": "+19014102020",
           "address": {
@@ -126,17 +126,17 @@ export default function Home() {
               }
             }
           ],
-          "serviceType": ["Wedding DJ Services", "Wedding Reception DJ", "Wedding Ceremony Music", "Bridal Entertainment"],
+          "serviceType": ["Memphis DJ Services", "Wedding DJ Services", "Corporate Event DJ", "Party DJ Services", "Event Entertainment", "DJ for Hire"],
           "hasOfferCatalog": {
             "@type": "OfferCatalog",
-            "name": "Wedding DJ Services",
+            "name": "Memphis DJ & Wedding Services",
             "itemListElement": [
               {
                 "@type": "Offer",
                 "itemOffered": {
                   "@type": "Service",
-                  "name": "Wedding DJ Package",
-                  "description": "Complete wedding entertainment from ceremony to reception"
+                  "name": "Memphis DJ & Wedding Services",
+                  "description": "Professional DJ services for weddings, corporate events, and celebrations throughout Memphis"
                 }
               }
             ]
@@ -166,13 +166,13 @@ export default function Home() {
             <div className="max-w-5xl mx-auto">
               {/* Main Headline */}
               <h1 className="heading-1 mb-8 animate-fade-in-up">
-                <span className="block text-gray-900">Memphis Wedding DJ</span>
-                <span className="block text-gradient">#1 Choice for Your Perfect Day</span>
+                <span className="block text-gray-900">Memphis DJ & Wedding Services</span>
+                <span className="block text-gradient">#1 Choice for Weddings & Events</span>
               </h1>
               
               <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed font-inter">
-                Memphis's premier wedding DJ with 15+ years of experience and 500+ unforgettable weddings. From intimate ceremonies to grand receptions, 
-                we deliver flawless entertainment with expert venue knowledge, state-of-the-art sound systems, and personalized coordination that makes your wedding day perfect.
+                Memphis's premier DJ and wedding entertainment with 15+ years of experience and 500+ successful events. Specializing in weddings, corporate events, and celebrations throughout Memphis, 
+                we deliver flawless entertainment with expert venue knowledge, state-of-the-art sound systems, and professional coordination that makes every event perfect.
               </p>
               
               {/* CTA Buttons */}
