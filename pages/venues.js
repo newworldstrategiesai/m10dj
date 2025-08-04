@@ -210,27 +210,38 @@ export default function PreferredVenues() {
             )}
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-            {renderPriceRange(venue.price_range)}
-            
-            <div className="flex items-center space-x-2">
-              {venue.events_hosted > 0 && (
-                <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full">
-                  {venue.events_hosted} events hosted
-                </span>
-              )}
+          <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              {renderPriceRange(venue.price_range)}
               
-              {venue.website && (
-                <a
-                  href={venue.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center text-brand-gold hover:text-brand-gold-dark transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              )}
+              <div className="flex items-center space-x-2">
+                {venue.events_hosted > 0 && (
+                  <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full">
+                    {venue.events_hosted} events hosted
+                  </span>
+                )}
+                
+                {venue.website && (
+                  <a
+                    href={venue.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center text-brand-gold hover:text-brand-gold-dark transition-colors"
+                    title="Visit venue website"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
             </div>
+            
+            {/* DJ Services Link */}
+            <Link 
+              href={`/venues/${venue.venue_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}
+              className="block w-full text-center py-2 px-4 bg-brand text-white rounded-lg hover:bg-brand-600 transition-colors font-semibold"
+            >
+              DJ Services at {venue.venue_name}
+            </Link>
           </div>
         </div>
       </div>
