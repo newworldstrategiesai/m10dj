@@ -21,33 +21,32 @@ export default function Home() {
   return (
     <>
       <SEOHead
-        title="Memphis DJ Services Near You | Wedding & Event Entertainment | M10 DJ Company"
-        description="Find professional DJ services near you in Memphis, TN! Premier wedding DJ and entertainment company serving Memphis and surrounding areas. 500+ successful events with 5-star reviews. Local DJ expertise with state-of-the-art equipment. Call (901) 410-2020!"
+        title="Memphis Wedding DJ | #1 Wedding DJ Memphis | M10 DJ Company"
+        description="Memphis's #1 wedding DJ! M10 DJ Company delivers unforgettable wedding entertainment with 15+ years experience, 500+ weddings, and expert venue knowledge. From ceremony to reception, we make your Memphis wedding perfect. Call (901) 410-2020!"
         keywords={[
-          'DJ near me Memphis',
-          'DJ services near me',
-          'Memphis DJ near me',
-          'wedding DJ near me Memphis',
-          'DJ near me',
           'Memphis wedding DJ',
           'wedding DJ Memphis',
+          'Memphis wedding DJ services',
           'best wedding DJ Memphis',
-          'Memphis DJ services',
-          'corporate events Memphis',
-          'party DJ Memphis',
-          'event entertainment Memphis',
-          'Memphis events',
-          'professional DJ services Memphis',
-          'local DJ Memphis',
-          'sound system rental Memphis',
-          'uplighting Memphis'
+          'wedding DJ Memphis TN',
+          'Memphis wedding entertainment',
+          'wedding DJ near me Memphis',
+          'Memphis wedding reception DJ',
+          'Memphis ceremony DJ',
+          'professional wedding DJ Memphis',
+          'Memphis wedding music',
+          'wedding DJ packages Memphis',
+          'Memphis bridal DJ',
+          'top wedding DJ Memphis',
+          'Memphis wedding venue DJ',
+          'luxury wedding DJ Memphis'
         ]}
         canonical="/"
         structuredData={{
           "@context": "https://schema.org",
           "@type": "LocalBusiness",
           "name": "M10 DJ Company",
-          "description": "Professional DJ services near you in Memphis, TN and surrounding areas",
+          "description": "Memphis's premier wedding DJ company with 15+ years experience and 500+ successful weddings",
           "url": "https://m10djcompany.com",
           "telephone": "+19014102020",
           "address": {
@@ -95,7 +94,21 @@ export default function Home() {
               }
             }
           ],
-          "serviceType": ["Wedding DJ", "Event DJ", "Corporate DJ", "Party DJ"],
+          "serviceType": ["Wedding DJ Services", "Wedding Reception DJ", "Wedding Ceremony Music", "Bridal Entertainment"],
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Wedding DJ Services",
+            "itemListElement": [
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Wedding DJ Package",
+                  "description": "Complete wedding entertainment from ceremony to reception"
+                }
+              }
+            ]
+          },
           "openingHours": "Mo-Su 09:00-21:00",
           "priceRange": "$395-$1195",
           "image": "https://m10djcompany.com/logo-static.jpg",
@@ -121,13 +134,13 @@ export default function Home() {
             <div className="max-w-5xl mx-auto">
               {/* Main Headline */}
               <h1 className="heading-1 mb-8 animate-fade-in-up">
-                <span className="block text-gray-900">Memphis DJ Services Near You</span>
-                <span className="block text-gradient">Wedding & Event Entertainment</span>
+                <span className="block text-gray-900">Memphis Wedding DJ</span>
+                <span className="block text-gradient">#1 Choice for Your Perfect Day</span>
               </h1>
               
               <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed font-inter">
-                Find professional DJ services near you in Memphis, TN and surrounding areas. As Memphis's premier wedding DJ and entertainment company, 
-                we deliver unforgettable experiences with expert local DJs, state-of-the-art sound systems, and personalized event coordination for weddings and special celebrations.
+                Memphis's premier wedding DJ with 15+ years of experience and 500+ unforgettable weddings. From intimate ceremonies to grand receptions, 
+                we deliver flawless entertainment with expert venue knowledge, state-of-the-art sound systems, and personalized coordination that makes your wedding day perfect.
               </p>
               
               {/* CTA Buttons */}
@@ -165,24 +178,24 @@ export default function Home() {
                   <div className="w-16 h-16 bg-brand text-white rounded-xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                     <Award className="w-8 h-8" />
                   </div>
-                  <h3 className="heading-3 mb-4 text-gray-900">15+ Years Local Experience</h3>
-                  <p className="text-gray-600 font-inter">Trusted by thousands of clients across Memphis and surrounding areas with deep local venue knowledge and community connections.</p>
+                  <h3 className="heading-3 mb-4 text-gray-900">15+ Years Wedding Experience</h3>
+                  <p className="text-gray-600 font-inter">Trusted by 500+ Memphis couples with deep venue knowledge at The Peabody, Graceland, Memphis Botanic Garden, and 27+ premier wedding venues.</p>
                 </div>
                 
                 <div className="modern-card text-center group">
                   <div className="w-16 h-16 bg-brand text-white rounded-xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                     <Volume2 className="w-8 h-8" />
                   </div>
-                  <h3 className="heading-3 mb-4 text-gray-900">Professional Equipment</h3>
-                  <p className="text-gray-600 font-inter">State-of-the-art sound systems, lighting, and entertainment technology for flawless events.</p>
+                  <h3 className="heading-3 mb-4 text-gray-900">Wedding-Grade Equipment</h3>
+                  <p className="text-gray-600 font-inter">Crystal-clear sound systems, elegant uplighting, and wireless microphones for ceremony, cocktail hour, and reception perfection.</p>
                 </div>
                 
                 <div className="modern-card text-center group">
                   <div className="w-16 h-16 bg-brand text-white rounded-xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                     <Users className="w-8 h-8" />
                   </div>
-                  <h3 className="heading-3 mb-4 text-gray-900">Personalized Service</h3>
-                  <p className="text-gray-600 font-inter">Customized entertainment solutions tailored to your unique vision and event requirements.</p>
+                  <h3 className="heading-3 mb-4 text-gray-900">Your Perfect Wedding</h3>
+                  <p className="text-gray-600 font-inter">Custom playlists, seamless timeline coordination, and MC services tailored to your love story and wedding vision.</p>
                 </div>
               </div>
             </div>
@@ -193,10 +206,10 @@ export default function Home() {
         <section id="services" className="py-section bg-gray-50">
           <div className="section-container">
             <div className="text-center mb-20">
-              <h2 className="heading-2 mb-6 text-gray-900">Local DJ Services Near You</h2>
+              <h2 className="heading-2 mb-6 text-gray-900">Memphis Wedding Entertainment Services</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
-                From intimate gatherings to grand celebrations across Memphis and surrounding areas, we provide comprehensive 
-                entertainment solutions with local expertise that exceed expectations and create lasting memories.
+                From intimate ceremonies to grand receptions across Memphis's finest venues, we provide comprehensive 
+                wedding entertainment with expert venue knowledge, flawless execution, and memories that last a lifetime.
               </p>
             </div>
             
@@ -322,19 +335,19 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               <div>
                 <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">500+</div>
-                <div className="text-gray-300 font-inter">Local Events Completed</div>
+                <div className="text-gray-300 font-inter">Memphis Weddings</div>
               </div>
               <div>
                 <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">15+</div>
-                <div className="text-gray-300 font-inter">Years Local Experience</div>
+                <div className="text-gray-300 font-inter">Years Wedding Experience</div>
               </div>
               <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">50mi</div>
-                <div className="text-gray-300 font-inter">Service Area Radius</div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">27+</div>
+                <div className="text-gray-300 font-inter">Premium Venues</div>
               </div>
               <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">24/7</div>
-                <div className="text-gray-300 font-inter">Local Support Available</div>
+                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">100%</div>
+                <div className="text-gray-300 font-inter">Wedding Day Success</div>
               </div>
             </div>
           </div>
@@ -350,9 +363,9 @@ export default function Home() {
         <section className="py-16 bg-white">
           <div className="section-container">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Planning Your Local Memphis Event?</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Planning Your Memphis Wedding?</h2>
               <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                Get the local expertise and information you need to plan the perfect celebration near you
+                Get the expert guidance and resources you need to plan the perfect Memphis wedding celebration
               </p>
             </div>
             
@@ -362,9 +375,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
                   <Calendar className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">DJ Pricing Guide</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Wedding DJ Pricing</h3>
                 <p className="text-gray-600 mb-4">
-                  Transparent pricing for Memphis DJ services. Compare packages and understand what's included.
+                  Transparent wedding DJ pricing for Memphis couples. Compare packages and understand what makes your day perfect.
                 </p>
                 <Link href="/memphis-dj-pricing-guide" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
                   View Pricing Guide <ChevronRight className="ml-1 w-4 h-4" />
@@ -376,9 +389,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
                   <MapPin className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">DJ Services Near You</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Wedding Venues We Serve</h3>
                 <p className="text-gray-600 mb-4">
-                  Professional DJ services in your area! Discover our comprehensive Memphis and surrounding areas coverage with local venue expertise.
+                  Expert wedding DJ services at 27+ Memphis venues including The Peabody, Graceland, Memphis Botanic Garden, and more premier locations.
                 </p>
                 <Link href="/dj-near-me-memphis" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
                   Find DJ Near Me <ChevronRight className="ml-1 w-4 h-4" />
@@ -390,9 +403,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
                   <Users className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Meet Your DJ</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Meet Your Wedding DJ</h3>
                 <p className="text-gray-600 mb-4">
-                  Learn about DJ Ben Murray, M10's founder with 15+ years of Memphis entertainment experience.
+                  Meet DJ Ben Murray, Memphis wedding specialist with 15+ years experience and 500+ unforgettable celebrations.
                 </p>
                 <Link href="/dj-ben-murray" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
                   Meet DJ Ben <ChevronRight className="ml-1 w-4 h-4" />
@@ -406,9 +419,9 @@ export default function Home() {
         <section id="contact" className="py-section-lg bg-gray-50">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 mb-6 text-gray-900">Ready to Create Something Amazing?</h2>
+              <h2 className="heading-2 mb-6 text-gray-900">Ready for Your Perfect Wedding Day?</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
-                Let's discuss your event and create an unforgettable experience. Get your free consultation and quote today.
+                Let's discuss your Memphis wedding and create an unforgettable celebration. Get your free wedding consultation and quote today.
               </p>
             </div>
             
