@@ -62,7 +62,8 @@ export default function Header() {
                     width={50}
                     height={50}
                     className="rounded-lg transition-transform group-hover:scale-105"
-                    priority
+                    priority={true}
+                    fetchpriority="high"
                   />
                 </div>
                 <div>
