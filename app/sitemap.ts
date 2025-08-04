@@ -74,5 +74,45 @@ export default function sitemap(): MetadataRoute.Sitemap {
              location === 'germantown' || location === 'collierville' || location === 'bartlett' || location === 'millington' ? 0.75 : 0.7,
   }));
 
-  return [...staticPages, ...locationPages];
+  // Venue pages (update when venues are added/removed from database)
+  const venuePages = [
+    // Memphis venues
+    'the-peabody-hotel',
+    'memphis-botanic-garden', 
+    'dixon-gallery-gardens',
+    'woodruff-fontaine-house',
+    'annesdale-mansion',
+    'the-atrium-at-overton-square',
+    'central-station-hotel',
+    'avon-acres',
+    'the-balinese-ballroom',
+    'the-cadre-building',
+    'the-columns-at-one-commerce-square',
+    'old-dominick-distillery',
+    'memphis-brooks-museum-of-art',
+    'memphis-zoo-event-venues',
+    'graceland-s-chapel-in-the-woods',
+    'the-guest-house-at-graceland',
+    // Suburban TN venues
+    'heartwood-hall',
+    'cedar-hall',
+    'orion-hill',
+    'the-robinshaw',
+    'pin-oak-farms',
+    'the-great-hall-conference-center',
+    'pike-west',
+    // MS venues  
+    'mallard-s-croft',
+    'the-gin-at-nesbit',
+    'bonne-terre-inn-chapel',
+    // AR venues
+    'snowden-house'
+  ].map((venueSlug) => ({
+    url: `${baseUrl}/venues/${venueSlug}`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly' as 'monthly',
+    priority: 0.7,
+  }));
+
+  return [...staticPages, ...locationPages, ...venuePages];
 } 
