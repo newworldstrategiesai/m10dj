@@ -40,13 +40,13 @@ const locationData = {
   'germantown': {
     name: 'Germantown',
     zipCodes: ['38138', '38139'],
-    description: 'Premier Germantown wedding DJ services for Tennessee\'s most elegant celebrations. Professional wedding DJs serving Germantown with upscale entertainment, ceremony music, and reception packages.',
+    description: 'Wedding DJ in Germantown, TN - Premier Germantown wedding DJ services for Tennessee\'s most elegant celebrations. Professional wedding DJs serving Germantown with upscale entertainment, ceremony music, and reception packages.',
     neighborhoods: ['Forest Hill Irene', 'Germantown Hills', 'Thornwood'],
     landmarks: ['Germantown Performing Arts Centre', 'W.C. Johnson Park', 'Shelby Farms'],
     localBusinesses: ['Saddle Creek', 'Germantown Country Club', 'River Oaks'],
-    eventTypes: ['Elegant Germantown wedding receptions', 'Country club wedding celebrations', 'Luxury venue weddings', 'Corporate events', 'Anniversary parties'],
+    eventTypes: ['Wedding DJ Germantown receptions', 'Country club wedding celebrations', 'Luxury venue weddings', 'Corporate events', 'Anniversary parties'],
     weddingFocus: true,
-    weddingDescription: 'As Germantown\'s premier wedding DJ service, we specialize in elegant receptions at upscale venues throughout this prestigious Tennessee community.'
+    weddingDescription: 'Wedding DJ in Germantown - As Germantown\'s premier wedding DJ service, we specialize in elegant receptions at upscale venues throughout this prestigious Tennessee community.'
   },
   'collierville': {
     name: 'Collierville',
@@ -62,13 +62,13 @@ const locationData = {
   'bartlett': {
     name: 'Bartlett',
     zipCodes: ['38133', '38135'],
-    description: 'Professional Bartlett wedding DJ services and event entertainment. Serving Bartlett, TN with wedding receptions, ceremony music, and DJ services for all celebrations.',
+    description: 'Wedding DJ in Bartlett, TN - Professional Bartlett wedding DJ services and event entertainment. Serving Bartlett, TN couples with wedding receptions, ceremony music, and comprehensive DJ services for all celebrations.',
     neighborhoods: ['Bartlett Station', 'Elmore Park', 'Scenic Hills'],
     landmarks: ['Bartlett Station Municipal Center', 'Nicholas Yahk Park', 'Stage Road Park'],
     localBusinesses: ['Bartlett Recreation Center', 'Bradford Creek Golf Course'],
-    eventTypes: ['Bartlett wedding receptions', 'Community center wedding events', 'School dances', 'Birthday celebrations', 'Anniversary parties'],
+    eventTypes: ['Wedding DJ in Bartlett receptions', 'Community center wedding events', 'School dances', 'Birthday celebrations', 'Anniversary parties'],
     weddingFocus: true,
-    weddingDescription: 'Serving Bartlett couples with professional wedding DJ services, from intimate receptions to large celebrations throughout this vibrant Tennessee community.'
+    weddingDescription: 'Wedding DJ in Bartlett - Serving Bartlett couples with professional wedding DJ services, from intimate receptions to large celebrations throughout this vibrant Tennessee community.'
   },
   'arlington': {
     name: 'Arlington',
@@ -78,6 +78,17 @@ const locationData = {
     landmarks: ['Arlington High School', 'Shelby Forest State Park'],
     localBusinesses: ['Arlington Community Center'],
     eventTypes: ['School events', 'Community celebrations', 'Wedding receptions', 'Family reunions']
+  },
+  'millington': {
+    name: 'Millington',
+    zipCodes: ['38053'],
+    description: 'Professional Millington wedding DJ services and event entertainment. Serving Millington, TN with wedding receptions, ceremony music, and comprehensive DJ services for all celebrations.',
+    neighborhoods: ['Millington Central', 'Navy Base Area', 'Raleigh-Millington'],
+    landmarks: ['Millington Regional Jetport', 'Meeman-Shelby Forest State Park', 'Naval Support Activity Mid-South'],
+    localBusinesses: ['Millington Community Center', 'Millington Golf & Country Club', 'Shelby Forest General Store'],
+    eventTypes: ['Millington wedding receptions', 'Military wedding celebrations', 'Community center events', 'Golf club weddings', 'Family reunions', 'School events'],
+    weddingFocus: true,
+    weddingDescription: 'Serving Millington couples and military families with professional wedding DJ services, from intimate ceremonies to large celebrations throughout this proud Tennessee community.'
   }
 };
 

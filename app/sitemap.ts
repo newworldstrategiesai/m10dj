@@ -52,6 +52,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     'germantown',
     'collierville',
     'bartlett',
+    'millington',
     'olive-branch',
     'southaven',
     'cordova'
@@ -61,7 +62,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${baseUrl}/${location}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as 'weekly',
-    priority: 0.7,
+    priority: location === 'memphis' ? 0.9 : 
+             location === 'germantown' || location === 'collierville' || location === 'bartlett' || location === 'millington' ? 0.75 : 0.7,
   }));
 
   return [...staticPages, ...locationPages];

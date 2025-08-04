@@ -43,9 +43,9 @@ const djServices = [
   },
   {
     icon: Users,
-    title: "Private Party DJ",
-    description: "Memorable private party entertainment for birthdays, anniversaries, and special celebrations",
-    features: ["Birthday parties", "Anniversaries", "Retirement parties", "Family reunions", "Graduation parties"],
+    title: "Private Party & Anniversary DJ",
+    description: "Memorable anniversary DJ services and private party entertainment for birthdays, milestone celebrations, and special occasions throughout Memphis",
+    features: ["Anniversary celebrations", "Birthday parties", "Anniversary DJ Memphis", "Retirement parties", "Family reunions", "Graduation parties"],
     price: "Starting at $395"
   },
   {
@@ -136,7 +136,7 @@ export default function MemphisDJServices() {
           name="description" 
           content="Complete Memphis DJ services for weddings, corporate events, private parties & more. Professional entertainment with premium sound systems. Serving all of Memphis, TN. Call (901) 410-2020!" 
         />
-        <meta name="keywords" content="Memphis DJ services, DJ services Memphis, Memphis event DJ, professional DJ Memphis, Memphis party DJ, corporate DJ Memphis, wedding DJ Memphis" />
+        <meta name="keywords" content="Memphis DJ services, DJ services Memphis, anniversary DJ Memphis, professional DJ Memphis, Memphis event DJ, Memphis party DJ, anniversary DJ, corporate DJ Memphis, wedding DJ Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://m10djcompany.com/memphis-dj-services" />
         

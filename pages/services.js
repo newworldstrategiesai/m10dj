@@ -182,7 +182,7 @@ export default function Services() {
           name="description" 
           content="Complete DJ services for Memphis weddings, corporate events & parties. Professional sound, lighting, and MC services with transparent pricing. Get your free quote today!" 
         />
-        <meta name="keywords" content="DJ services Memphis, wedding DJ pricing Memphis, corporate DJ services, sound system rental Memphis, uplighting Memphis, MC services Memphis TN" />
+        <meta name="keywords" content="professional DJ Memphis, pro DJ Memphis, DJ services Memphis, professional DJ services Memphis, wedding DJ pricing Memphis, corporate DJ services, sound system rental Memphis, uplighting Memphis, MC services Memphis TN" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://m10djcompany.com/services" />
         
@@ -215,8 +215,8 @@ export default function Services() {
               </h1>
               
               <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                From intimate celebrations to grand events, we provide comprehensive DJ services with professional equipment, 
-                experienced entertainers, and transparent pricing. Every event is customized to your unique vision.
+                Memphis's premier professional DJ services for intimate celebrations to grand events. Our experienced pro DJs deliver 
+                comprehensive entertainment with professional-grade equipment, skilled performances, and transparent pricing. Every event is customized to your unique vision.
               </p>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto">
