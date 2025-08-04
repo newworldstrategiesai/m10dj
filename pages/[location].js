@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Music, MapPin, Phone, Mail, Star, Users, Award, Heart } from 'lucide-react';
+import { Music, MapPin, Phone, Mail, Star, Users, Award, Heart, Calendar } from 'lucide-react';
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
@@ -186,23 +186,25 @@ export default function LocationPage() {
   return (
     <>
       <SEO
-        title={loc.weddingFocus ? `${loc.name} Wedding DJ | Professional Wedding DJs ${loc.name} TN | M10 DJ Company` : `Professional DJ Services in ${loc.name}, TN | M10 DJ Company`}
+        title={loc.weddingFocus ? `DJ ${loc.name} TN | Wedding DJ ${loc.name} | Professional DJs | M10 DJ Company` : `DJ ${loc.name} TN | Professional DJ Services ${loc.name} | M10 DJ Company`}
         description={`${loc.description} ${loc.weddingFocus ? 'Top-rated wedding DJ services with ceremony music, reception entertainment & MC services.' : 'Wedding DJ, corporate events, birthday parties & more.'} Call (901) 410-2020 for your free quote!`}
         canonical={`/${location}`}
         keywords={loc.weddingFocus ? [
+          `DJ ${loc.name} TN`,
+          `Wedding DJ ${loc.name}`,
           `${loc.name} wedding DJ`,
           `wedding DJ ${loc.name} TN`,
           `${loc.name} wedding DJs`,
           `best wedding DJ ${loc.name}`,
           `professional wedding DJ ${loc.name}`,
-          `${loc.name} wedding entertainment`,
           `DJ services ${loc.name}`
         ] : [
+          `DJ ${loc.name} TN`,
           `DJ services ${loc.name}`,
-          `wedding DJ ${loc.name} TN`,
-          `${loc.name} event DJ`,
-          `birthday party DJ ${loc.name}`,
-          `corporate event entertainment`
+          `${loc.name} DJ`,
+          `event DJ ${loc.name}`,
+          `party DJ ${loc.name}`,
+          `corporate DJ ${loc.name}`
         ]}
       />
       <AIJsonLd loc={loc} />
@@ -227,13 +229,13 @@ export default function LocationPage() {
               <h1 className="heading-1 mb-6">
                 {loc.weddingFocus ? (
                   <>
-                    <span className="block text-white">{loc.name} Wedding DJ</span>
-                    <span className="block text-gradient">Services in Tennessee</span>
+                    <span className="block text-white">DJ {loc.name} TN</span>
+                    <span className="block text-gradient">Wedding DJ {loc.name} Services</span>
                   </>
                 ) : (
                   <>
-                    <span className="block text-white">Professional DJ Services in</span>
-                    <span className="block text-gradient">{loc.name}, Tennessee</span>
+                    <span className="block text-white">DJ {loc.name} TN</span>
+                    <span className="block text-gradient">Professional Entertainment Services</span>
                   </>
                 )}
               </h1>
@@ -435,6 +437,131 @@ export default function LocationPage() {
 
         {/* FAQ Section */}
         <FAQSection />
+
+        {/* Related Services Section - Strategic Internal Linking */}
+        <section className="py-16 bg-gray-50 dark:bg-gray-800">
+          <div className="section-container">
+            <div className="text-center mb-12">
+              <h2 className="heading-2 mb-6 text-gray-900 dark:text-white">
+                Complete DJ Services for {loc.name}
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                Beyond {loc.name} events, M10 DJ Company offers specialized services throughout Memphis. 
+                Explore our full range of professional entertainment options.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Wedding DJ Authority Link */}
+              <Link 
+                href="/memphis-wedding-dj"
+                className="bg-white dark:bg-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow group"
+              >
+                <div className="flex items-start space-x-4">
+                  <Heart className="h-8 w-8 text-brand group-hover:text-brand-dark" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-brand">
+                      Memphis Wedding DJ Services
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      Complete wedding entertainment from ceremony to reception. Learn about our wedding packages and specialties.
+                    </p>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Event DJ Services Link */}
+              <Link 
+                href="/memphis-event-dj-services"
+                className="bg-white dark:bg-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow group"
+              >
+                <div className="flex items-start space-x-4">
+                  <Users className="h-8 w-8 text-brand group-hover:text-brand-dark" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-brand">
+                      Corporate & Event DJ Memphis
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      Professional entertainment for corporate events, birthday parties, and special celebrations.
+                    </p>
+                  </div>
+                </div>
+              </Link>
+
+              {/* DJ Near Me Link */}
+              <Link 
+                href="/dj-near-me-memphis"
+                className="bg-white dark:bg-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow group"
+              >
+                <div className="flex items-start space-x-4">
+                  <MapPin className="h-8 w-8 text-brand group-hover:text-brand-dark" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-brand">
+                      DJ Near Me Memphis
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      Find local DJ services throughout Memphis with same-day quotes and professional entertainment.
+                    </p>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Specialty Services Link */}
+              <Link 
+                href="/memphis-specialty-dj-services"
+                className="bg-white dark:bg-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow group"
+              >
+                <div className="flex items-start space-x-4">
+                  <Star className="h-8 w-8 text-brand group-hover:text-brand-dark" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-brand">
+                      Specialty Event DJ Services
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      School dances, proms, bar mitzvahs, Sweet 16 parties, and other unique celebrations.
+                    </p>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Multicultural Services Link */}
+              <Link 
+                href="/multicultural-dj-memphis"
+                className="bg-white dark:bg-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow group"
+              >
+                <div className="flex items-start space-x-4">
+                  <Music className="h-8 w-8 text-brand group-hover:text-brand-dark" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-brand">
+                      Multicultural DJ Services
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      Spanish DJ, Indian wedding DJ, Bollywood DJ, and bilingual entertainment services.
+                    </p>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Pricing Guide Link */}
+              <Link 
+                href="/memphis-dj-pricing-guide"
+                className="bg-white dark:bg-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow group"
+              >
+                <div className="flex items-start space-x-4">
+                  <Calendar className="h-8 w-8 text-brand group-hover:text-brand-dark" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-brand">
+                      Memphis DJ Pricing Guide
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      Transparent pricing information for DJ services, packages, and what to expect for your event.
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </section>
 
         {/* Contact Section */}
         <section id="contact" className="py-20 bg-white dark:bg-gray-900">
