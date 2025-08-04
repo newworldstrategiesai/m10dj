@@ -355,7 +355,7 @@ export default function MemphisWeddingMusicTopSongs2025() {
             <div className="max-w-4xl mx-auto">
               <h1 className="heading-1 mb-6">
                 <span className="block text-white">Memphis Wedding Music &</span>
-                <span className="block text-gradient">Top Songs for 2025</span>
+                <span className="block text-yellow-400">Top Songs for 2025</span>
               </h1>
               
               <p className="text-xl md:text-2xl mb-8 leading-relaxed text-white/90">

@@ -259,7 +259,7 @@ export default function TopMemphisWeddingVenues2025() {
             <div className="max-w-4xl mx-auto">
               <h1 className="heading-1 mb-6">
                 <span className="block text-white">Top Memphis Wedding</span>
-                <span className="block text-gradient">Venues for 2025</span>
+                <span className="block text-brand-gold">Venues for 2025</span>
               </h1>
               
               <p className="text-xl md:text-2xl mb-8 leading-relaxed text-white/90">

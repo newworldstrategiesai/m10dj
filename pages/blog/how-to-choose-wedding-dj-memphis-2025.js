@@ -153,7 +153,7 @@ export default function HowToChooseWeddingDJMemphis() {
             <div className="max-w-4xl mx-auto">
               <h1 className="heading-1 mb-6">
                 <span className="block text-white">How to Choose the Right</span>
-                <span className="block text-gradient">Wedding DJ in Memphis</span>
+                <span className="block text-brand-gold">Wedding DJ in Memphis</span>
               </h1>
               
               <p className="text-xl md:text-2xl mb-8 leading-relaxed text-white/90">

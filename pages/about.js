@@ -125,8 +125,8 @@ export default function About() {
           <div className="section-container relative z-10 pt-16">
             <div className="max-w-4xl mx-auto text-center">
               <h1 className="heading-1 mb-6">
-                <span className="block">About M10 DJ Company</span>
-                <span className="block text-gradient">Memphis's Premier Event Entertainment</span>
+                <span className="block text-white">About M10 DJ Company</span>
+                <span className="block text-brand-gold">Memphis's Premier Event Entertainment</span>
               </h1>
               
               <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
