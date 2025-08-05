@@ -149,18 +149,18 @@ export default function WeddingDJMemphisTN() {
   return (
     <>
       <Head>
-        <title>Wedding DJ Memphis Tennessee | Professional Wedding DJs TN | M10 DJ Company</title>
+        <title>Tennessee Wedding DJ Services | Memphis TN Wedding Entertainment | M10 DJ Company</title>
         <meta 
           name="description" 
-          content="Premier wedding DJ Memphis TN services. Professional wedding DJs for Tennessee couples with 10+ years experience. Ceremony, reception & MC services in Memphis. Call (901) 410-2020!" 
+          content="Professional Tennessee wedding DJ services. Serving couples across TN with premium wedding entertainment, from Memphis to Nashville. Experienced DJs, state-wide coverage. Call (901) 410-2020!" 
         />
-        <meta name="keywords" content="wedding DJ Memphis TN, Memphis TN wedding DJ, wedding DJ Memphis Tennessee, best wedding DJ Memphis TN, Memphis Tennessee wedding DJs, wedding DJ services Memphis TN" />
+        <meta name="keywords" content="Tennessee wedding DJ, wedding DJ Tennessee, TN wedding entertainment, Memphis TN wedding DJ, Tennessee wedding entertainment, wedding DJ services TN" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://m10djcompany.com/wedding-dj-memphis-tn" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="Wedding DJ Memphis TN | Best Wedding DJs in Memphis Tennessee" />
-        <meta property="og:description" content="Premier wedding DJ Memphis TN services with 10+ years experience. Professional ceremony, reception & MC services for Tennessee couples." />
+        <meta property="og:title" content="Tennessee Wedding DJ Services | Memphis TN Wedding Entertainment" />
+        <meta property="og:description" content="Professional wedding DJ services across Tennessee. From Memphis to Nashville, we provide premium wedding entertainment for TN couples. Experienced DJs, state-wide coverage." />
         <meta property="og:url" content="https://m10djcompany.com/wedding-dj-memphis-tn" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />

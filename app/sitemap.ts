@@ -37,18 +37,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: new Date(),
     changeFrequency: (route === '' ? 'daily' : 'weekly') as 'daily' | 'weekly',
     priority: route === '' ? 1 : 
+             // Primary wedding pages
+             route === '/memphis-wedding-dj' ? 0.98 : // Main wedding authority page
+             route === '/wedding-dj-memphis-tn' ? 0.95 : // TN-focused page
+             route === '/best-wedding-dj-memphis' ? 0.94 : // Reviews/social proof
+             // Location-based pages
              route === '/dj-near-me-memphis' ? 0.97 :
-             route === '/dj-ben-murray' ? 0.96 :
-             route === '/memphis-wedding-dj' ? 0.95 : 
-             route === '/wedding-dj-memphis-tn' ? 0.94 : 
-             route === '/best-wedding-dj-memphis' ? 0.93 : 
-             route === '/memphis-dj-services' ? 0.92 : 
+             route === '/dj-germantown-tn' ? 0.92 :
+             route === '/dj-collierville-tn' ? 0.92 :
+             // Service pages
+             route === '/memphis-dj-services' ? 0.93 :
              route === '/memphis-event-dj-services' ? 0.91 :
-             route === '/memphis-dj-pricing-guide' ? 0.9 :
-             route === '/dj-germantown-tn' ? 0.89 :
-             route === '/dj-collierville-tn' ? 0.88 :
-             route === '/memphis-wedding-dj-prices-2025' ? 0.87 : 
-             route === '/pricing' ? 0.85 : 0.8,
+             // Informational pages
+             route === '/memphis-dj-pricing-guide' ? 0.90 :
+             route === '/memphis-wedding-dj-prices-2025' ? 0.89 :
+             route === '/pricing' ? 0.88 :
+             route === '/dj-ben-murray' ? 0.87 : 0.8,
   }));
 
   // Location pages

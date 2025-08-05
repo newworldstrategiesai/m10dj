@@ -176,18 +176,18 @@ export default function BestWeddingDJMemphis() {
   return (
     <>
       <Head>
-        <title>Best Wedding DJ Memphis | Top-Rated Memphis Wedding DJs | M10 DJ Company</title>
+        <title>Memphis Wedding DJ Reviews | 500+ 5-Star Weddings | M10 DJ Company</title>
         <meta 
           name="description" 
-          content="Discover why M10 is the best wedding DJ in Memphis. 5-star rated with 500+ successful weddings, professional equipment, and experienced MC services. See what makes us Memphis's top choice!" 
+          content="See why couples rate us Memphis's most trusted wedding DJ. Over 500 5-star reviews, real wedding photos & videos, client testimonials, and proven track record. Read what makes us different!" 
         />
-        <meta name="keywords" content="best wedding DJ Memphis, top wedding DJ Memphis, best Memphis wedding DJ, top rated wedding DJ Memphis, Memphis wedding DJ reviews, award winning wedding DJ Memphis" />
+        <meta name="keywords" content="Memphis wedding DJ reviews, wedding DJ reviews Memphis, Memphis DJ testimonials, wedding DJ ratings Memphis, Memphis wedding DJ testimonials, wedding DJ success stories Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://m10djcompany.com/best-wedding-dj-memphis" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="Best Wedding DJ Memphis | Top-Rated Memphis Wedding DJs" />
-        <meta property="og:description" content="Discover why M10 is Memphis's best wedding DJ with 5-star reviews, 500+ weddings, and professional equipment. See what sets us apart!" />
+        <meta property="og:title" content="Memphis Wedding DJ Reviews | 500+ 5-Star Weddings | M10 DJ Company" />
+        <meta property="og:description" content="See what makes M10 Memphis's most trusted wedding DJ. Read real reviews, see photos & videos from 500+ successful weddings, and discover why couples choose us." />
         <meta property="og:url" content="https://m10djcompany.com/best-wedding-dj-memphis" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
@@ -264,17 +264,20 @@ export default function BestWeddingDJMemphis() {
                   </p>
 
                   <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                    <button 
-                      onClick={scrollToContact}
-                      className="btn-primary text-lg px-8 py-4"
+                    <Link
+                      href="/memphis-wedding-dj"
+                      className="btn-primary text-lg px-8 py-4 flex items-center"
                     >
-                      Book the Best Memphis DJ
+                      View Wedding DJ Services
                       <ChevronRight className="ml-2 w-5 h-5" />
-                    </button>
+                    </Link>
                     <a href="tel:(901)410-2020" className="btn-outline text-lg px-8 py-4">
                       <Phone className="mr-2 w-5 h-5" />
                       Call (901) 410-2020
                     </a>
+                    <p className="mt-4 text-sm text-gray-300 col-span-2">
+                      Looking for our complete wedding DJ services? Visit our <Link href="/memphis-wedding-dj" className="text-brand-gold hover:underline">Memphis Wedding DJ</Link> page.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-3 gap-6 text-center">
