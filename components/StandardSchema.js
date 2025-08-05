@@ -159,6 +159,8 @@ export const LocalBusinessSchema = ({
           })
         })),
         "priceRange": priceRange,
+        "currenciesAccepted": "USD",
+        "paymentAccepted": "Cash, Credit Card, Check, Online Payment",
         "aggregateRating": {
           "@type": "AggregateRating",
           "ratingValue": "5.0",
@@ -166,11 +168,31 @@ export const LocalBusinessSchema = ({
           "bestRating": "5",
           "worstRating": "1"
         },
-        "openingHours": [
-          "Mo-Su 09:00-22:00"
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday",
+              "Tuesday", 
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday"
+            ],
+            "opens": "09:00",
+            "closes": "22:00"
+          }
         ],
-        "image": "https://www.m10djcompany.com/logo-static.jpg",
-        "logo": "https://www.m10djcompany.com/logo-static.jpg"
+        "image": [
+          "https://www.m10djcompany.com/logo-static.jpg"
+        ],
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.m10djcompany.com/logo-static.jpg",
+          "width": 400,
+          "height": 400
+        }
       })
     }}
   />
@@ -456,37 +478,158 @@ export const ArticleSchema = ({
   />
 );
 
+// Multi-Service Business Schema with Departments (Google recommended structure)
+export const MultiServiceBusinessSchema = () => (
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "EntertainmentBusiness",
+        "@id": "https://www.m10djcompany.com/#entertainmentbusiness",
+        "name": "M10 DJ Company",
+        "description": "Memphis's premier wedding and event DJ company with 15+ years of experience and 500+ successful celebrations.",
+        "url": "https://www.m10djcompany.com",
+        "telephone": "+19014102020",
+        "email": "info@m10djcompany.com",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Memphis, TN",
+          "addressLocality": "Memphis",
+          "addressRegion": "TN",
+          "postalCode": "38119",
+          "addressCountry": "US"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 35.1495,
+          "longitude": -90.0490
+        },
+        "priceRange": "$799-$1899",
+        "currenciesAccepted": "USD",
+        "paymentAccepted": "Cash, Credit Card, Check, Online Payment",
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "5.0",
+          "reviewCount": "150",
+          "bestRating": "5",
+          "worstRating": "1"
+        },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday"
+            ],
+            "opens": "09:00",
+            "closes": "22:00"
+          }
+        ],
+        "image": [
+          "https://www.m10djcompany.com/logo-static.jpg"
+        ],
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.m10djcompany.com/logo-static.jpg",
+          "width": 400,
+          "height": 400
+        },
+        "department": [
+          {
+            "@type": "EntertainmentBusiness",
+            "name": "M10 DJ Company Wedding Services",
+            "description": "Professional wedding DJ and entertainment services throughout Memphis",
+            "url": "https://www.m10djcompany.com/weddings",
+            "telephone": "+19014102020",
+            "priceRange": "$999-$1899",
+            "servesCuisine": "Wedding Entertainment"
+          },
+          {
+            "@type": "EntertainmentBusiness", 
+            "name": "M10 DJ Company Corporate Events",
+            "description": "Professional DJ services for corporate events, conferences, and business celebrations",
+            "url": "https://www.m10djcompany.com/corporate-events",
+            "telephone": "+19014102020",
+            "priceRange": "$799-$1499",
+            "servesCuisine": "Corporate Entertainment"
+          },
+          {
+            "@type": "EntertainmentBusiness",
+            "name": "M10 DJ Company Private Parties",
+            "description": "DJ services for private celebrations, birthdays, anniversaries and special events",
+            "url": "https://www.m10djcompany.com/private-parties",
+            "telephone": "+19014102020",
+            "priceRange": "$799-$1299",
+            "servesCuisine": "Private Event Entertainment"
+          }
+        ]
+      })
+    }}
+  />
+);
+
+// QA Schema Component (Google-compliant alternative to FAQPage)
+export const QAPageSchema = ({ questions = [] }) => (
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "QAPage",
+        "mainEntity": questions.map(qa => ({
+          "@type": "Question",
+          "name": qa.question,
+          "answerCount": 1,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": qa.answer,
+            "author": {
+              "@type": "Organization",
+              "name": "M10 DJ Company"
+            }
+          }
+        }))
+      })
+    }}
+  />
+);
+
+// HowTo Schema Component for Process-Based Content
+export const HowToSchema = ({ 
+  name,
+  description,
+  steps = []
+}) => (
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": name,
+        "description": description,
+        "step": steps.map((step, index) => ({
+          "@type": "HowToStep",
+          "position": index + 1,
+          "name": step.name,
+          "text": step.description
+        }))
+      })
+    }}
+  />
+);
+
 // Combined schema for homepage
 export const HomepageSchema = () => (
   <>
     <EnhancedOrganizationSchema />
     <WebSiteSchema />
-    <LocalBusinessSchema 
-      serviceType="Wedding & Event DJ Services"
-      areaServed={["Memphis", "East Memphis", "Germantown", "Collierville", "Cordova", "Bartlett"]}
-      businessType="EntertainmentBusiness"
-    />
-    <ServiceSchema 
-      name="Memphis DJ Services"
-      description="Professional wedding and event DJ services throughout Memphis and surrounding areas"
-      areaServed={["Memphis", "TN"]}
-      offers={[
-        {
-          name: "Wedding DJ Services",
-          description: "Complete wedding entertainment from ceremony to reception",
-          priceRange: "$999-$1899"
-        },
-        {
-          name: "Corporate Event DJ",
-          description: "Professional DJ services for corporate events and parties",
-          priceRange: "$799-$1499"
-        },
-        {
-          name: "Private Party DJ",
-          description: "DJ services for private celebrations and special events",
-          priceRange: "$799-$1299"
-        }
-      ]}
-    />
+    <MultiServiceBusinessSchema />
   </>
 );

@@ -25,15 +25,20 @@ const KeywordSchema = ({ keywords, pageType, serviceArea }) => {
       "serviceType": pageType
     };
 
-    // FAQ Schema for AI search
-    const faqSchema = {
-      "@type": "FAQPage",
-      "mainEntity": keywords.slice(0, 5).map(keyword => ({
+    // QA Schema for AI search (Google-compliant alternative to FAQPage)
+    const qaSchema = {
+      "@type": "QAPage",
+      "mainEntity": keywords.slice(0, 3).map(keyword => ({
         "@type": "Question",
         "name": `What ${pageType.toLowerCase()} services do you offer for "${keyword}"?`,
+        "answerCount": 1,
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": `M10 DJ Company provides professional ${pageType.toLowerCase()} services for ${keyword}. We offer comprehensive entertainment solutions with 15+ years of experience serving Memphis and surrounding areas.`
+          "text": `M10 DJ Company provides professional ${pageType.toLowerCase()} services for ${keyword}. We offer comprehensive entertainment solutions with 15+ years of experience serving Memphis and surrounding areas.`,
+          "author": {
+            "@type": "Organization",
+            "name": "M10 DJ Company"
+          }
         }
       }))
     };
@@ -66,7 +71,7 @@ const KeywordSchema = ({ keywords, pageType, serviceArea }) => {
       ]
     };
 
-    baseSchema["@graph"] = [serviceSchema, faqSchema, howToSchema];
+    baseSchema["@graph"] = [serviceSchema, qaSchema, howToSchema];
     
     return baseSchema;
   };

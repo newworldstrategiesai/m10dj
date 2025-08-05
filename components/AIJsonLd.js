@@ -59,47 +59,46 @@ export default function AIJsonLd({ loc }) {
         ]
       },
       {
-        "@type": "FAQPage",
-        "@id": `https://www.m10djcompany.com/${loc.name.toLowerCase().replace(/\s+/g, '-')}#faq`,
+        "@type": "QAPage",
+        "@id": `https://www.m10djcompany.com/${loc.name.toLowerCase().replace(/\s+/g, '-')}#qa`,
         "mainEntity": [
           {
             "@type": "Question",
             "name": `What DJ services does M10 DJ Company offer in ${loc.name}?`,
+            "answerCount": 1,
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": `M10 DJ Company provides comprehensive DJ services in ${loc.name} including ${loc.eventTypes.slice(0, 3).join(', ')}. We offer professional sound systems, wireless microphones, MC services, uplighting, and music for all types of celebrations. Our experienced DJs serve ${loc.neighborhoods.join(', ')} and surrounding areas with premium entertainment packages.`
+              "text": `M10 DJ Company provides comprehensive DJ services in ${loc.name} including ${loc.eventTypes.slice(0, 3).join(', ')}. We offer professional sound systems, wireless microphones, MC services, uplighting, and music for all types of celebrations. Our experienced DJs serve ${loc.neighborhoods.join(', ')} and surrounding areas with premium entertainment packages.`,
+              "author": {
+                "@type": "Organization",
+                "name": "M10 DJ Company"
+              }
             }
           },
           {
             "@type": "Question", 
             "name": `Do you provide ceremony music and MC services in ${loc.name}?`,
+            "answerCount": 1,
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": `Yes! We provide full ceremony music and professional MC services throughout ${loc.name}. Our services include processional and recessional music, wireless microphone systems for vows and readings, and experienced MC services for reception introductions, toasts, and event coordination. We're familiar with venues in ${loc.neighborhoods.slice(0, 2).join(' and ')} and can adapt to any location.`
+              "text": `Yes! We provide full ceremony music and professional MC services throughout ${loc.name}. Our services include processional and recessional music, wireless microphone systems for vows and readings, and experienced MC services for reception introductions, toasts, and event coordination. We're familiar with venues in ${loc.neighborhoods.slice(0, 2).join(' and ')} and can adapt to any location.`,
+              "author": {
+                "@type": "Organization",
+                "name": "M10 DJ Company"
+              }
             }
           },
           {
             "@type": "Question",
             "name": `What areas of ${loc.name} do you serve?`,
+            "answerCount": 1,
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": `We serve all areas of ${loc.name} including ${loc.neighborhoods.join(', ')}. Our service area covers zip codes ${loc.zipCodes.join(', ')} and we're experienced with venues near ${loc.landmarks.slice(0, 2).join(' and ')}. We also work with ${loc.localBusinesses.slice(0, 2).join(' and ')} and other premier locations throughout the area.`
-            }
-          },
-          {
-            "@type": "Question",
-            "name": `How far in advance should I book DJ services in ${loc.name}?`,
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": `For ${loc.weddingFocus ? 'weddings' : 'events'} in ${loc.name}, we recommend booking 6-12 months in advance, especially for popular dates and venues. ${loc.weddingFocus ? 'Wedding season (April-October) books quickly in premium areas like ' + loc.neighborhoods[0] + '.' : 'Peak event seasons fill up fast.'} However, we often have availability for last-minute events, so don't hesitate to call (901) 410-2020 to check our calendar.`
-            }
-          },
-          {
-            "@type": "Question",
-            "name": `What makes M10 DJ Company different from other DJs in ${loc.name}?`,
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": `M10 DJ Company brings local expertise to ${loc.name} with deep knowledge of area venues, community preferences, and acoustic requirements. We use professional-grade equipment, maintain extensive music libraries, and provide dedicated planning support. Our DJs are experienced with ${loc.eventTypes[0]} and understand the unique character of ${loc.name}. Plus, we offer transparent pricing and a 100% satisfaction guarantee.`
+              "text": `We serve all areas of ${loc.name} including ${loc.neighborhoods.join(', ')}. Our service area covers zip codes ${loc.zipCodes.join(', ')} and we're experienced with venues near ${loc.landmarks.slice(0, 2).join(' and ')}. We also work with ${loc.localBusinesses.slice(0, 2).join(' and ')} and other premier locations throughout the area.`,
+              "author": {
+                "@type": "Organization",
+                "name": "M10 DJ Company"
+              }
             }
           }
         ]

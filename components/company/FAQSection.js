@@ -94,16 +94,21 @@ export default function FAQSection({ className = '', showSchema = true, useDatab
     setOpenItems(newOpenItems);
   };
 
-  // Generate FAQ Schema markup
-  const faqSchema = {
+  // Generate QA Schema markup (Google-compliant alternative to FAQPage)
+  const qaSchema = {
     "@context": "https://schema.org",
-    "@type": "FAQPage",
+    "@type": "QAPage",
     "mainEntity": faqData.map(faq => ({
       "@type": "Question",
       "name": faq.question,
+      "answerCount": 1,
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": faq.answer
+        "text": faq.answer,
+        "author": {
+          "@type": "Organization",
+          "name": "M10 DJ Company"
+        }
       }
     }))
   };
@@ -111,9 +116,9 @@ export default function FAQSection({ className = '', showSchema = true, useDatab
   return (
     <>
       {showSchema && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+                <script
+          type="application/ld+json" 
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(qaSchema) }}
         />
       )}
       

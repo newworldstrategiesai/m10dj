@@ -648,43 +648,7 @@ export default function MemphisDJCostCompleteGuide() {
       </main>
 
       <Footer />
-      
-      {/* FAQ Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            "mainEntity": [
-              {
-                "@type": "Question",
-                "name": "How much does a DJ cost in Memphis?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Professional DJ services in Memphis typically range from $595-$1,195 depending on event duration, equipment needs, and venue requirements. Most wedding receptions cost $695-$895 for 6-8 hours of professional service."
-                }
-              },
-              {
-                "@type": "Question", 
-                "name": "What affects Memphis DJ pricing?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "The main factors affecting DJ pricing in Memphis are event duration, equipment requirements, venue location and setup complexity, date and season, and additional services like uplighting or ceremony music."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Are expensive DJs worth the investment?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Professional DJs invest in high-quality equipment, backup systems, liability insurance, and years of experience. This ensures reliable performance and reduces the risk of equipment failure or poor service that could affect your event."
-                }
-              }
-            ]
-          })
-        }}
-      />
+
     </>
   );
 }

@@ -315,15 +315,9 @@ export default function MemphisDJPricingGuide() {
               "description": "Complete Memphis DJ pricing guide with transparent costs, packages, and booking information",
               "url": "https://m10djcompany.com/memphis-dj-pricing-guide",
               "mainEntity": {
-                "@type": "FAQPage",
-                "mainEntity": faqs.map(faq => ({
-                  "@type": "Question",
-                  "name": faq.question,
-                  "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": faq.answer
-                  }
-                }))
+                "@type": "Thing", 
+                "name": "Memphis DJ Pricing Information",
+                "description": "Comprehensive pricing guide for Memphis DJ services including packages, costs, and booking information"
               },
                               "about": {
                 "@type": "EntertainmentBusiness",
@@ -344,9 +338,24 @@ export default function MemphisDJPricingGuide() {
                   "latitude": 35.1495,
                   "longitude": -90.0490
                 },
-                "openingHours": [
-                  "Mo-Su 09:00-22:00"
+                "openingHoursSpecification": [
+                  {
+                    "@type": "OpeningHoursSpecification",
+                    "dayOfWeek": [
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday", 
+                      "Friday",
+                      "Saturday",
+                      "Sunday"
+                    ],
+                    "opens": "09:00",
+                    "closes": "22:00"
+                  }
                 ],
+                "currenciesAccepted": "USD",
+                "paymentAccepted": "Cash, Credit Card, Check, Online Payment",
                 "priceRange": "$395-$1195",
                 "aggregateRating": {
                   "@type": "AggregateRating",

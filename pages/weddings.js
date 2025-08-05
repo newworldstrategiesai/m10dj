@@ -176,9 +176,24 @@ export default function Weddings() {
               "latitude": 35.1495,
               "longitude": -90.0490
             },
-            "openingHours": [
-              "Mo-Su 09:00-22:00"
+            "openingHoursSpecification": [
+              {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": [
+                  "Monday",
+                  "Tuesday",
+                  "Wednesday", 
+                  "Thursday",
+                  "Friday",
+                  "Saturday",
+                  "Sunday"
+                ],
+                "opens": "09:00",
+                "closes": "22:00"
+              }
             ],
+            "currenciesAccepted": "USD",
+            "paymentAccepted": "Cash, Credit Card, Check, Online Payment",
             "serviceArea": {
               "@type": "GeoCircle",
               "geoMidpoint": {

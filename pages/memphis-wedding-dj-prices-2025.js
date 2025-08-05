@@ -787,36 +787,38 @@ export default function MemphisWeddingDJPrices2025() {
         }}
       />
 
-      {/* FAQ Schema */}
+      {/* QA Schema (Google-compliant alternative) */}
       <script
         type="application/ld+json" 
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
-            "@type": "FAQPage",
+            "@type": "QAPage",
             "mainEntity": [
               {
                 "@type": "Question",
                 "name": "What's included in your Memphis wedding DJ pricing?",
+                "answerCount": 1,
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Our pricing includes professional DJ service, MC duties, premium sound system, wireless microphones, basic dance lighting, music consultation, setup/breakdown, and liability insurance. No hidden fees!"
+                  "text": "Our pricing includes professional DJ service, MC duties, premium sound system, wireless microphones, basic dance lighting, music consultation, setup/breakdown, and liability insurance. No hidden fees!",
+                  "author": {
+                    "@type": "Organization", 
+                    "name": "M10 DJ Company"
+                  }
                 }
               },
               {
                 "@type": "Question", 
                 "name": "Do you charge extra for Memphis venue travel?",
+                "answerCount": 1,
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Travel within Memphis and the immediate metro area is included. For venues outside our 50-mile radius, a modest travel fee may apply based on distance and time."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Can I get a discount for off-peak Memphis wedding dates?", 
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Yes! We offer 10-15% discounts for January-March and November-December weddings. Weekday and Sunday weddings also qualify for reduced pricing."
+                  "text": "Travel within Memphis and the immediate metro area is included. For venues outside our 50-mile radius, a modest travel fee may apply based on distance and time.",
+                  "author": {
+                    "@type": "Organization",
+                    "name": "M10 DJ Company"
+                  }
                 }
               }
             ]
