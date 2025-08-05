@@ -7,6 +7,7 @@ import ContactForm from '../components/company/ContactForm';
 import FAQSection from '../components/company/FAQSection';
 import SEO from '../components/ui/SEO/SEOHead';
 import AIJsonLd from '../components/AIJsonLd';
+import { LocalBusinessSchema, BreadcrumbSchema } from '../components/StandardSchema';
 import { scrollToContact } from '../utils/scroll-helpers';
 
 // Location data for Memphis area
@@ -623,41 +624,21 @@ export default function LocationPage() {
 
       <Footer />
 
-      {/* Local Business Schema */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "LocalBusiness",
-            "name": "M10 DJ Company",
-            "description": `Professional DJ services in ${loc.name}, TN for weddings, corporate events, and celebrations`,
-            "url": `https://m10djcompany.com/${location}`,
-            "telephone": "(901) 410-2020",
-            "email": "m10djcompany@gmail.com",
-            "address": {
-              "@type": "PostalAddress",
-              "addressLocality": loc.name,
-              "addressRegion": "TN",
-              "addressCountry": "US",
-              "postalCode": loc.zipCodes[0]
-            },
-            "geo": {
-              "@type": "GeoCoordinates",
-              "latitude": "35.1495",
-              "longitude": "-90.0490"
-            },
-            "areaServed": {
-              "@type": "City",
-              "name": `${loc.name}, TN`
-            },
-            "serviceType": ["Wedding DJ Services", "Corporate Event DJ", "Birthday Party DJ", "Event Entertainment"],
-            "sameAs": [
-              "https://facebook.com/m10djcompany",
-              "https://instagram.com/m10djcompany"
-            ]
-          })
-        }}
+      {/* Standardized Schema Markup */}
+      <LocalBusinessSchema 
+        name={`M10 DJ Company - ${loc.name} DJ Services`}
+        description={`Professional DJ services in ${loc.name}, TN for weddings, corporate events, and celebrations. Serving ${loc.neighborhoods.join(', ')} and surrounding areas.`}
+        serviceType={`${loc.name} DJ Services`}
+        areaServed={[loc.name, ...loc.neighborhoods.slice(0, 3)]}
+        priceRange="$799-$1899"
+      />
+      
+      <BreadcrumbSchema 
+        items={[
+          { name: 'Home', url: '/' },
+          { name: 'Service Areas', url: '/#service-areas' },
+          { name: `DJ ${loc.name} TN`, url: `/${location}` }
+        ]}
       />
     </>
   );

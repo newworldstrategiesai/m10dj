@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
+import SEO from '../components/SEO';
 import Link from 'next/link';
 import { 
   Music, 
@@ -20,6 +20,8 @@ import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
+import Breadcrumbs, { generateBreadcrumbs } from '../components/Breadcrumbs';
+import { AIAnswerBlock, AIFactBox, MemphisDJAIBlocks, AIContentSchema } from '../components/AIOverviewOptimization';
 import { scrollToContact } from '../utils/scroll-helpers';
 
 const weddingServices = [
@@ -88,28 +90,89 @@ export default function MemphisWeddingDJ() {
 
   return (
     <>
-      <Head>
-        <title>Memphis Wedding DJ | #1 Professional Wedding DJs in Memphis TN | M10 DJ Company</title>
-        <meta 
-          name="description" 
-          content="Top-rated Memphis wedding DJ services. Professional wedding DJs for Memphis weddings with 10+ years experience. Ceremony, reception & MC services. Call (901) 410-2020!" 
-        />
-        <meta name="keywords" content="Memphis wedding DJ, wedding DJ Memphis TN, Memphis wedding DJs, best wedding DJ Memphis, professional wedding DJ Memphis, Memphis wedding entertainment, wedding DJ services Memphis" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/memphis-wedding-dj" />
-        
-        {/* Open Graph tags */}
-        <meta property="og:title" content="Memphis Wedding DJ | #1 Professional Wedding DJs in Memphis TN" />
-        <meta property="og:description" content="Top-rated Memphis wedding DJ services with 10+ years experience. Professional ceremony, reception & MC services." />
-        <meta property="og:url" content="https://m10djcompany.com/memphis-wedding-dj" />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
-        
-        {/* Local SEO tags */}
-        <meta name="geo.region" content="US-TN" />
-        <meta name="geo.placename" content="Memphis" />
-        <meta name="ICBM" content="35.1495, -90.0490" />
-      </Head>
+      <SEO
+        title="Memphis Wedding DJ | #1 Professional Wedding DJs in Memphis TN | M10 DJ Company"
+        description="Top-rated Memphis wedding DJ services. Professional wedding DJs for Memphis weddings with 10+ years experience. Ceremony, reception & MC services. Call (901) 410-2020!"
+        keywords={[
+          'Memphis wedding DJ',
+          'wedding DJ Memphis TN', 
+          'Memphis wedding DJs',
+          'best wedding DJ Memphis',
+          'professional wedding DJ Memphis',
+          'Memphis wedding entertainment',
+          'wedding DJ services Memphis'
+        ]}
+        canonical="/memphis-wedding-dj"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          "@id": "https://www.m10djcompany.com/memphis-wedding-dj#business",
+          "name": "M10 DJ Company - Memphis Wedding DJ",
+          "description": "Memphis's premier wedding DJ service with 10+ years of experience creating unforgettable celebrations. Professional ceremony, reception & MC services.",
+          "url": "https://www.m10djcompany.com/memphis-wedding-dj",
+          "telephone": "+19014102020",
+          "priceRange": "$799-$1899",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Memphis",
+            "addressRegion": "TN",
+            "addressCountry": "US"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 35.1495,
+            "longitude": -90.0490
+          },
+          "areaServed": [
+            {
+              "@type": "City",
+              "name": "Memphis",
+              "containedInPlace": {
+                "@type": "State",
+                "name": "Tennessee"
+              }
+            }
+          ],
+          "serviceType": "Wedding DJ Services",
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Memphis Wedding DJ Services",
+            "itemListElement": [
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Wedding DJ Services",
+                  "description": "Professional wedding DJ and MC services for Memphis weddings"
+                }
+              },
+              {
+                "@type": "Offer", 
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Wedding Ceremony Music",
+                  "description": "Professional ceremony music and sound system services"
+                }
+              },
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service", 
+                  "name": "Wedding Reception Entertainment",
+                  "description": "Full reception DJ services with dance floor entertainment"
+                }
+              }
+            ]
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "5.0",
+            "reviewCount": "150",
+            "bestRating": "5",
+            "worstRating": "5"
+          }
+        }}
+      />
 
       <Header />
 
@@ -194,6 +257,35 @@ export default function MemphisWeddingDJ() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Breadcrumb Navigation */}
+        <section className="py-6 bg-white">
+          <div className="section-container">
+            <Breadcrumbs 
+              items={generateBreadcrumbs.service('Memphis Wedding DJ')}
+            />
+          </div>
+        </section>
+
+        {/* AI-Optimized Answer Blocks */}
+        <section className="py-16 bg-gray-50">
+          <div className="section-container">
+            <AIAnswerBlock {...MemphisDJAIBlocks.experience} />
+            <AIAnswerBlock {...MemphisDJAIBlocks.pricing} />
+            
+            <AIFactBox 
+              title="Memphis Wedding DJ Expertise"
+              facts={[
+                "Exclusive partnerships with 27+ premier Memphis wedding venues",
+                "Professional-grade sound systems and elegant uplighting included",
+                "Experienced MC services for seamless ceremony and reception flow",
+                "Backup equipment and contingency plans for every event",
+                "Transparent pricing with no hidden fees or surprise charges",
+                "15+ years specializing in Memphis weddings and celebrations"
+              ]}
+            />
           </div>
         </section>
 
@@ -460,6 +552,84 @@ export default function MemphisWeddingDJ() {
             </div>
           </div>
         </section>
+
+        {/* AI-Optimized FAQ Section */}
+        <section className="py-section bg-gray-50">
+          <div className="section-container">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-16">
+                <h2 className="heading-2 mb-6 text-gray-900">Memphis Wedding DJ Frequently Asked Questions</h2>
+                <p className="text-xl text-gray-600">
+                  Get answers to common questions about our Memphis wedding DJ services
+                </p>
+              </div>
+
+              <div className="space-y-8">
+                {/* FAQ Item 1 - AI Snippet Ready */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    How much does a Memphis wedding DJ cost?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Memphis wedding DJ services typically range from $799-$1899 depending on package, venue requirements, and event duration. 
+                    M10 DJ Company offers transparent pricing with no hidden fees. Our packages include professional-grade sound systems, 
+                    wireless microphones, basic uplighting, and experienced MC services. Premium packages add ceremony music, 
+                    enhanced lighting, and extended coverage.
+                  </p>
+                </div>
+
+                {/* FAQ Item 2 - Local Authority */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    What makes M10 DJ Company the best Memphis wedding DJ?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    M10 DJ Company stands out with 15+ years of Memphis wedding experience, 500+ successful celebrations, 
+                    and exclusive partnerships with premier venues like The Peabody Hotel, Memphis Botanic Garden, and Graceland. 
+                    Our professional-grade sound systems, elegant uplighting, and expert MC services ensure flawless wedding 
+                    entertainment from ceremony to reception.
+                  </p>
+                </div>
+
+                {/* FAQ Item 3 - Process/Timeline */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    How far in advance should we book our Memphis wedding DJ?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    We recommend booking your Memphis wedding DJ 6-12 months in advance, especially for peak wedding season 
+                    (April-October) and popular venues. This ensures availability and allows time for detailed planning. 
+                    However, we can accommodate shorter timelines based on availability. Contact us immediately for last-minute bookings.
+                  </p>
+                </div>
+
+                {/* FAQ Item 4 - Service Coverage */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    Do you travel outside Memphis for weddings?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Yes! We serve the greater Memphis area including Germantown, Collierville, Bartlett, Cordova, Millington, 
+                    and surrounding communities within 50 miles. Travel fees may apply for venues outside our standard service area. 
+                    We're experienced with venues throughout Tennessee, Mississippi, and Arkansas.
+                  </p>
+                </div>
+
+                {/* FAQ Item 5 - Equipment/Setup */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    What equipment do you provide for Memphis weddings?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Our Memphis wedding DJ packages include professional sound systems, wireless microphones for ceremony and toasts, 
+                    basic uplighting, DJ booth setup, and backup equipment. Premium packages add enhanced lighting, additional speakers 
+                    for larger venues, and ceremony sound systems. All equipment is professional-grade and regularly maintained.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       <Footer />
@@ -534,6 +704,70 @@ export default function MemphisWeddingDJ() {
               "reviewCount": "200"
             }
           })
+        }}
+      />
+
+      {/* FAQ Schema for AI Overview */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "How much does a Memphis wedding DJ cost?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Memphis wedding DJ services typically range from $799-$1899 depending on package, venue requirements, and event duration. M10 DJ Company offers transparent pricing with no hidden fees. Our packages include professional-grade sound systems, wireless microphones, basic uplighting, and experienced MC services."
+                }
+              },
+              {
+                "@type": "Question", 
+                "name": "What makes M10 DJ Company the best Memphis wedding DJ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "M10 DJ Company stands out with 15+ years of Memphis wedding experience, 500+ successful celebrations, and exclusive partnerships with premier venues like The Peabody Hotel, Memphis Botanic Garden, and Graceland. Our professional-grade sound systems, elegant uplighting, and expert MC services ensure flawless wedding entertainment from ceremony to reception."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How far in advance should we book our Memphis wedding DJ?", 
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "We recommend booking your Memphis wedding DJ 6-12 months in advance, especially for peak wedding season (April-October) and popular venues. This ensures availability and allows time for detailed planning. However, we can accommodate shorter timelines based on availability."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Do you travel outside Memphis for weddings?",
+                "acceptedAnswer": {
+                  "@type": "Answer", 
+                  "text": "Yes! We serve the greater Memphis area including Germantown, Collierville, Bartlett, Cordova, Millington, and surrounding communities within 50 miles. Travel fees may apply for venues outside our standard service area. We're experienced with venues throughout Tennessee, Mississippi, and Arkansas."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What equipment do you provide for Memphis weddings?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Our Memphis wedding DJ packages include professional sound systems, wireless microphones for ceremony and toasts, basic uplighting, DJ booth setup, and backup equipment. Premium packages add enhanced lighting, additional speakers for larger venues, and ceremony sound systems. All equipment is professional-grade and regularly maintained."
+                }
+              }
+            ]
+          })
+        }}
+      />
+
+      {/* AI Content Schema */}
+      <AIContentSchema 
+        content={{
+          headline: "Memphis Wedding DJ | #1 Professional Wedding DJs in Memphis TN",
+          description: "Top-rated Memphis wedding DJ services with 15+ years of experience and 500+ successful celebrations. Professional ceremony, reception & MC services.",
+          url: "https://www.m10djcompany.com/memphis-wedding-dj",
+          datePublished: "2024-01-01T00:00:00Z",
+          dateModified: new Date().toISOString()
         }}
       />
     </>

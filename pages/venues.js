@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import Image from 'next/image';
 import { 
   MapPin,
   Phone,
@@ -45,14 +46,17 @@ const venueTypeLabels = {
   other: 'Other Venues'
 };
 
-export default function PreferredVenues() {
-  const [venues, setVenues] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function PreferredVenues({ initialVenues }) {
+  const [venues, setVenues] = useState(initialVenues || []);
+  const [loading, setLoading] = useState(false);
   const [selectedType, setSelectedType] = useState('all');
 
+  // Only load venues if not provided via SSG
   useEffect(() => {
-    loadVenues();
-  }, []);
+    if (!initialVenues) {
+      loadVenues();
+    }
+  }, [initialVenues]);
 
   const loadVenues = async () => {
     setLoading(true);
@@ -93,11 +97,14 @@ export default function PreferredVenues() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
         {venue.main_image_url && (
-          <div className="h-48 bg-gray-100 dark:bg-gray-700 overflow-hidden">
-            <img 
+          <div className="relative h-48 bg-gray-100 dark:bg-gray-700 overflow-hidden">
+            <Image 
               src={venue.main_image_url} 
-              alt={`${venue.venue_name}`}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+              alt={`${venue.venue_name} - Memphis Wedding Venue`}
+              fill
+              className="object-cover hover:scale-105 transition-transform duration-300"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              loading="lazy"
             />
           </div>
         )}
@@ -426,4 +433,26 @@ export default function PreferredVenues() {
       />
     </>
   );
+}
+
+// Generate static props for SEO
+export async function getStaticProps() {
+  try {
+    const venues = await db.getPreferredVenues();
+
+    return {
+      props: {
+        initialVenues: venues || []
+      },
+      revalidate: 3600 // Revalidate every hour
+    };
+  } catch (error) {
+    console.error('Error fetching venues for SSG:', error);
+    return {
+      props: {
+        initialVenues: []
+      },
+      revalidate: 3600
+    };
+  }
 } 

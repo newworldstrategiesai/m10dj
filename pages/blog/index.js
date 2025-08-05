@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import Image from 'next/image';
 import { 
   Calendar,
   User,
@@ -15,16 +16,19 @@ import Header from '../../components/company/Header';
 import Footer from '../../components/company/Footer';
 import { db } from '../../utils/company_lib/supabase';
 
-export default function BlogIndex() {
-  const [posts, setPosts] = useState([]);
-  const [featuredPosts, setFeaturedPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function BlogIndex({ initialPosts, initialFeaturedPosts }) {
+  const [posts, setPosts] = useState(initialPosts || []);
+  const [featuredPosts, setFeaturedPosts] = useState(initialFeaturedPosts || []);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
+  // Only load posts if not provided via SSG
   useEffect(() => {
-    loadPosts();
-  }, []);
+    if (!initialPosts || !initialFeaturedPosts) {
+      loadPosts();
+    }
+  }, [initialPosts, initialFeaturedPosts]);
 
   const loadPosts = async () => {
     setLoading(true);
@@ -74,11 +78,14 @@ export default function BlogIndex() {
   const BlogPostCard = ({ post, featured = false }) => (
     <article className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${featured ? 'lg:col-span-2' : ''}`}>
       {post.featured_image_url && (
-        <div className={`${featured ? 'h-64' : 'h-48'} bg-gray-100 dark:bg-gray-700 overflow-hidden`}>
-          <img 
+        <div className={`relative ${featured ? 'h-64' : 'h-48'} bg-gray-100 dark:bg-gray-700 overflow-hidden`}>
+          <Image 
             src={post.featured_image_url} 
-            alt={post.title}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            alt={`${post.title} - Memphis DJ Blog Post`}
+            fill
+            className="object-cover hover:scale-105 transition-transform duration-300"
+            sizes={featured ? "(max-width: 768px) 100vw, 66vw" : "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"}
+            loading="lazy"
           />
         </div>
       )}
@@ -373,4 +380,31 @@ export default function BlogIndex() {
       />
     </>
   );
+}
+
+// Generate static props for SEO
+export async function getStaticProps() {
+  try {
+    const [allPosts, featured] = await Promise.all([
+      db.getBlogPosts(),
+      db.getFeaturedBlogPosts(3)
+    ]);
+
+    return {
+      props: {
+        initialPosts: allPosts || [],
+        initialFeaturedPosts: featured || []
+      },
+      revalidate: 3600 // Revalidate every hour
+    };
+  } catch (error) {
+    console.error('Error fetching blog posts for SSG:', error);
+    return {
+      props: {
+        initialPosts: [],
+        initialFeaturedPosts: []
+      },
+      revalidate: 3600
+    };
+  }
 } 

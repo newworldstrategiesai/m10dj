@@ -1,7 +1,8 @@
 import Head from 'next/head';
 
 export default function SEO({ title, description, canonical, jsonLd, keywords = [], ogImage = '/logo-static.jpg', ogType = 'website' }) {
-  const fullCanonical = canonical ? `https://www.m10djcompany.com${canonical}` : 'https://www.m10djcompany.com';
+  const baseUrl = 'https://www.m10djcompany.com';
+  const fullCanonical = canonical ? `${baseUrl}${canonical}` : baseUrl;
   
   return (
     <Head>
@@ -16,14 +17,14 @@ export default function SEO({ title, description, canonical, jsonLd, keywords = 
       <meta property="og:description" content={description} />
       <meta property="og:url" content={fullCanonical} />
       <meta property="og:type" content={ogType} />
-      <meta property="og:image" content={`https://www.m10djcompany.com${ogImage}`} />
+      <meta property="og:image" content={`${baseUrl}${ogImage}`} />
       <meta property="og:site_name" content="M10 DJ Company" />
       
       {/* Twitter Card tags */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
-      <meta name="twitter:image" content={`https://www.m10djcompany.com${ogImage}`} />
+      <meta name="twitter:image" content={`${baseUrl}${ogImage}`} />
       <meta name="twitter:creator" content="@m10djcompany" />
       
       {/* Additional SEO tags */}

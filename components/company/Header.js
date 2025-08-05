@@ -58,7 +58,7 @@ export default function Header() {
                 <div className="relative">
                   <Image
                     src="/logo-static.jpg"
-                    alt="M10 DJ Company Logo"
+                    alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
                     width={50}
                     height={50}
                     className="rounded-lg transition-transform group-hover:scale-105"

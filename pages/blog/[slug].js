@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { 
   Calendar,
@@ -18,19 +19,19 @@ import Header from '../../components/company/Header';
 import Footer from '../../components/company/Footer';
 import { db } from '../../utils/company_lib/supabase';
 
-export default function BlogPost() {
+export default function BlogPost({ post: initialPost, relatedPosts: initialRelatedPosts }) {
   const router = useRouter();
   const { slug } = router.query;
-  const [post, setPost] = useState(null);
-  const [relatedPosts, setRelatedPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [post, setPost] = useState(initialPost || null);
+  const [relatedPosts, setRelatedPosts] = useState(initialRelatedPosts || []);
+  const [loading, setLoading] = useState(!initialPost);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (slug) {
+    if (slug && !initialPost) {
       loadPost();
     }
-  }, [slug]);
+  }, [slug, initialPost]);
 
   const loadPost = async () => {
     setLoading(true);
@@ -215,11 +216,14 @@ export default function BlogPost() {
 
             {/* Featured Image */}
             {post.featured_image_url && (
-              <div className="mb-8 rounded-xl overflow-hidden">
-                <img 
+              <div className="relative mb-8 rounded-xl overflow-hidden h-96">
+                <Image 
                   src={post.featured_image_url} 
-                  alt={post.title}
-                  className="w-full h-96 object-cover"
+                  alt={`${post.title} - Memphis DJ Blog Featured Image`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+                  priority
                 />
               </div>
             )}
@@ -411,4 +415,55 @@ export default function BlogPost() {
       />
     </>
   );
+}
+
+// Generate static paths for all blog posts
+export async function getStaticPaths() {
+  try {
+    const posts = await db.getBlogPosts();
+    
+    const paths = posts.map(post => ({
+      params: { slug: post.slug }
+    }));
+
+    return {
+      paths,
+      fallback: 'blocking' // Enable ISR for new posts
+    };
+  } catch (error) {
+    console.error('Error in getStaticPaths for blog posts:', error);
+    return {
+      paths: [],
+      fallback: 'blocking'
+    };
+  }
+}
+
+// Generate static props for each blog post
+export async function getStaticProps({ params }) {
+  try {
+    const post = await db.getBlogPostBySlug(params.slug);
+    
+    if (!post) {
+      return {
+        notFound: true
+      };
+    }
+
+    // Get related posts based on tags or category
+    const relatedPosts = await db.getRelatedBlogPosts(post.id, 3);
+
+    return {
+      props: {
+        post,
+        relatedPosts: relatedPosts || []
+      },
+      revalidate: 3600 // Revalidate every hour
+    };
+  } catch (error) {
+    console.error('Error in getStaticProps for blog post:', error);
+    return {
+      notFound: true
+    };
+  }
 } 

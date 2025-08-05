@@ -8,6 +8,8 @@ import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import FAQSection from '../components/company/FAQSection';
 import SEO from '../components/SEO';
+import { HomepageSchema } from '../components/StandardSchema';
+import { AIAnswerBlock, AIQuickFacts, AIContentSchema } from '../components/AIOverviewOptimization';
 import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
 import { scrollToContact } from '../utils/scroll-helpers';
 
@@ -42,114 +44,10 @@ export default function Home() {
           'best DJs in Memphis'
         ]}
         canonical="/"
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "LocalBusiness",
-          "name": "M10 DJ Company",
-          "description": "Memphis's premier DJ and wedding entertainment company with 15+ years experience, 500+ successful weddings, and professional event services",
-          "url": "https://www.m10djcompany.com",
-          "telephone": "+19014102020",
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Memphis",
-            "addressRegion": "TN",
-            "addressCountry": "US"
-          },
-          "geo": {
-            "@type": "GeoCoordinates",
-            "latitude": 35.1495,
-            "longitude": -90.0490
-          },
-          "areaServed": [
-            {
-              "@type": "City",
-              "name": "Memphis",
-              "containedInPlace": {
-                "@type": "State", 
-                "name": "Tennessee"
-              }
-            },
-            {
-              "@type": "City",
-              "name": "Germantown",
-              "containedInPlace": {
-                "@type": "State",
-                "name": "Tennessee" 
-              }
-            },
-            {
-              "@type": "City",
-              "name": "Collierville",
-              "containedInPlace": {
-                "@type": "State",
-                "name": "Tennessee"
-              }
-            },
-            {
-              "@type": "City", 
-              "name": "Bartlett",
-              "containedInPlace": {
-                "@type": "State",
-                "name": "Tennessee"
-              }
-            },
-            {
-              "@type": "City",
-              "name": "Cordova",
-              "containedInPlace": {
-                "@type": "State",
-                "name": "Tennessee"
-              }
-            },
-            {
-              "@type": "City",
-              "name": "Lakeland",
-              "containedInPlace": {
-                "@type": "State",
-                "name": "Tennessee"
-              }
-            },
-            {
-              "@type": "City",
-              "name": "Southaven",
-              "containedInPlace": {
-                "@type": "State",
-                "name": "Mississippi"
-              }
-            },
-            {
-              "@type": "City",
-              "name": "West Memphis",
-              "containedInPlace": {
-                "@type": "State",
-                "name": "Arkansas"
-              }
-            }
-          ],
-          "serviceType": ["Memphis DJ Services", "Wedding DJ Services", "Corporate Event DJ", "Party DJ Services", "Event Entertainment", "DJ for Hire"],
-          "hasOfferCatalog": {
-            "@type": "OfferCatalog",
-            "name": "Memphis DJ & Wedding Services",
-            "itemListElement": [
-              {
-                "@type": "Offer",
-                "itemOffered": {
-                  "@type": "Service",
-                  "name": "Memphis DJ & Wedding Services",
-                  "description": "Professional DJ services for weddings, corporate events, and celebrations throughout Memphis"
-                }
-              }
-            ]
-          },
-          "openingHours": "Mo-Su 09:00-21:00",
-          "priceRange": "$395-$1195",
-          "image": "https://www.m10djcompany.com/logo-static.jpg",
-          "sameAs": [
-            "https://www.facebook.com/m10djcompany",
-            "https://www.instagram.com/m10djcompany"
-          ]
-        }}
       />
+
+      {/* Standardized Schema Markup */}
+      <HomepageSchema />
 
       <Header />
 
@@ -166,14 +64,21 @@ export default function Home() {
             <div className="max-w-5xl mx-auto">
               {/* Main Headline */}
               <h1 className="heading-1 mb-8 animate-fade-in-up">
-                <span className="block text-gray-900">Memphis DJ & Wedding Services</span>
-                <span className="block text-gradient">#1 Choice for Weddings & Events</span>
+                <span className="block text-gray-900">Memphis DJ Services</span>
+                <span className="block text-gradient">Professional Wedding & Event Entertainment</span>
               </h1>
               
-              <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed font-inter">
-                Memphis's premier DJ and wedding entertainment with 15+ years of experience and 500+ successful events. Specializing in weddings, corporate events, and celebrations throughout Memphis, 
-                we deliver flawless entertainment with expert venue knowledge, state-of-the-art sound systems, and professional coordination that makes every event perfect.
-              </p>
+              {/* AI-Optimized Answer Block */}
+              <AIAnswerBlock
+                question="Looking for the best Memphis DJ?"
+                answer="M10 DJ Company is Memphis's premier wedding and event entertainment service with 15+ years of experience and 500+ successful celebrations."
+                context="We specialize in weddings, corporate events, and celebrations throughout Memphis with expert venue knowledge at The Peabody Hotel, Memphis Botanic Garden, Graceland, and 27+ premier locations. Our professional-grade sound systems, elegant uplighting, and experienced MC services ensure flawless entertainment from ceremony to reception."
+                statistics={[
+                  { value: "15+", label: "Years Experience" },
+                  { value: "500+", label: "Celebrations" },
+                  { value: "27+", label: "Premier Venues" }
+                ]}
+              />
               
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
@@ -447,6 +352,25 @@ export default function Home() {
           </div>
         </section>
 
+        {/* AI Quick Facts */}
+        <section className="py-16 bg-gray-900">
+          <div className="section-container">
+            <AIQuickFacts
+              category="Memphis DJ Services"
+              facts={[
+                "15+ years serving Memphis weddings & events",
+                "500+ successful celebrations completed", 
+                "27+ premier venues in our network",
+                "Professional-grade sound & lighting equipment",
+                "Transparent pricing with no hidden fees",
+                "Backup equipment & contingency plans included",
+                "Experienced MC services & event coordination",
+                "Serving Memphis, Germantown, Collierville & beyond"
+              ]}
+            />
+          </div>
+        </section>
+
         {/* Service Areas */}
         <section className="py-section bg-white">
           <div className="section-container">
@@ -600,6 +524,17 @@ export default function Home() {
       </main>
 
       <Footer />
+
+      {/* AI Content Schema */}
+      <AIContentSchema 
+        content={{
+          headline: "Memphis DJ Services | Wedding & Event DJ | #1 DJ Memphis",
+          description: "Memphis's premier wedding and event DJ company with 15+ years of experience and 500+ successful celebrations. Professional DJ services for weddings, corporate events, and parties.",
+          url: "https://www.m10djcompany.com",
+          datePublished: "2024-01-01T00:00:00Z",
+          dateModified: new Date().toISOString()
+        }}
+      />
     </>
   );
 } 
