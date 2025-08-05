@@ -2,12 +2,13 @@
 const nextConfig = {
   images: {
     domains: ['localhost', 'm10djcompany.com', 'supabase.co'],
-    formats: ['image/webp', 'image/avif'],
+    formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 3600,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    unoptimized: false,
   },
   compress: true,
   poweredByHeader: false,
@@ -20,7 +21,16 @@ const nextConfig = {
   },
   experimental: {
     optimizeCss: true,
-    webVitalsAttribution: ['CLS', 'LCP'],
+    webVitalsAttribution: ['CLS', 'LCP', 'INP'],
+    optimizePackageImports: ['lucide-react', '@heroicons/react'],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
   async headers() {
     return [
@@ -42,6 +52,14 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains',
           },
         ],
       },

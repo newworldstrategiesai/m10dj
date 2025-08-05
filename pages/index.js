@@ -10,6 +10,7 @@ import FAQSection from '../components/company/FAQSection';
 import SEO from '../components/SEO';
 import { HomepageSchema } from '../components/StandardSchema';
 import { AIAnswerBlock, AIQuickFacts, AIContentSchema } from '../components/AIOverviewOptimization';
+import { LazySection, OptimizedButton } from '../components/MobilePerformanceOptimizer';
 import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
 import { scrollToContact } from '../utils/scroll-helpers';
 
@@ -82,7 +83,7 @@ export default function Home() {
               
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
-                <button 
+                <OptimizedButton 
                   onClick={() => {
                     trackLead('quote_request_start', { source: 'hero_section' });
                     scrollToContact();
@@ -91,7 +92,7 @@ export default function Home() {
                 >
                   Get Your Free Quote
                   <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </button>
+                </OptimizedButton>
                 <Link 
                   href="/services" 
                   className="btn-secondary"
@@ -291,10 +292,14 @@ export default function Home() {
         </section>
 
         {/* Testimonials Section */}
-        <TestimonialSlider />
+        <LazySection>
+          <TestimonialSlider />
+        </LazySection>
 
         {/* FAQ Section */}
-        <FAQSection />
+        <LazySection>
+          <FAQSection />
+        </LazySection>
 
         {/* Wedding Planning Resources Section */}
         <section className="py-16 bg-white">

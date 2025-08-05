@@ -7,6 +7,7 @@ import { getURL } from '@/utils/helpers';
 import { headers } from 'next/headers';
 import EnhancedTracking from '@/components/EnhancedTracking';
 import PerformanceOptimizations from '@/components/PerformanceOptimizations';
+import { CriticalResourceHints, OptimizedScriptLoader, ServiceWorkerManager, PerformanceBudgetMonitor } from '@/components/MobilePerformanceOptimizer';
 
 import 'styles/main.css';
 
@@ -287,8 +288,13 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         <Suspense>
           <Toaster />
         </Suspense>
-        <EnhancedTracking />
-        <PerformanceOptimizations />
+        <OptimizedScriptLoader>
+          <EnhancedTracking />
+          <PerformanceOptimizations />
+          <ServiceWorkerManager />
+          <PerformanceBudgetMonitor />
+        </OptimizedScriptLoader>
+        <CriticalResourceHints />
       </body>
     </html>
   );
