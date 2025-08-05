@@ -27,6 +27,7 @@ import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
+import { BreadcrumbListSchema } from '../components/StandardSchema';
 
 export default function Weddings() {
   const [isVisible, setIsVisible] = useState(false);
@@ -156,16 +157,18 @@ export default function Weddings() {
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
-            "@type": ["MusicGroup", "LocalBusiness"],
+            "@type": ["MusicGroup", "EntertainmentBusiness"],
             "name": "M10 DJ Company - Wedding DJ Services",
-            "description": "Professional wedding DJ services in Memphis, TN",
+            "description": "Professional wedding DJ services in Memphis, TN with 15+ years experience and 500+ successful celebrations",
             "url": "https://m10djcompany.com/weddings",
             "telephone": "(901) 410-2020",
             "email": "info@m10djcompany.com",
             "address": {
               "@type": "PostalAddress",
+              "streetAddress": "Memphis, TN",
               "addressLocality": "Memphis",
               "addressRegion": "TN",
+              "postalCode": "38119",
               "addressCountry": "US"
             },
             "geo": {
@@ -173,6 +176,9 @@ export default function Weddings() {
               "latitude": 35.1495,
               "longitude": -90.0490
             },
+            "openingHours": [
+              "Mo-Su 09:00-22:00"
+            ],
             "serviceArea": {
               "@type": "GeoCircle",
               "geoMidpoint": {
@@ -183,7 +189,45 @@ export default function Weddings() {
               "geoRadius": "50000"
             },
             "priceRange": "$799-$1899",
-            "servesCuisine": ["Wedding Entertainment", "DJ Services"],
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "5.0",
+              "reviewCount": "150",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "review": [
+              {
+                "@type": "Review",
+                "author": {
+                  "@type": "Person",
+                  "name": "Sarah & Michael Johnson"
+                },
+                "datePublished": "2024-01-15",
+                "reviewBody": "M10 DJ Company made our wedding absolutely perfect! They played exactly what we wanted and kept everyone dancing all night long. Professional, responsive, and truly cared about making our day special.",
+                "reviewRating": {
+                  "@type": "Rating",
+                  "ratingValue": "5",
+                  "bestRating": "5",
+                  "worstRating": "1"
+                }
+              },
+              {
+                "@type": "Review",
+                "author": {
+                  "@type": "Person",
+                  "name": "Emily & David Chen"
+                },
+                "datePublished": "2024-03-22",
+                "reviewBody": "Outstanding wedding DJ service! Ben and his team exceeded our expectations with perfect music selection and seamless event coordination. Highly recommend for Memphis weddings!",
+                "reviewRating": {
+                  "@type": "Rating",
+                  "ratingValue": "5",
+                  "bestRating": "5",
+                  "worstRating": "1"
+                }
+              }
+            ],
             "hasOfferCatalog": {
               "@type": "OfferCatalog",
               "name": "Wedding DJ Packages",
@@ -195,8 +239,14 @@ export default function Weddings() {
                     "name": "Essential Wedding Package",
                     "description": "Professional DJ services for intimate wedding celebrations"
                   },
-                  "price": "799",
-                  "priceCurrency": "USD"
+                  "priceSpecification": {
+                    "@type": "PriceSpecification",
+                    "price": "799",
+                    "priceCurrency": "USD",
+                    "valueAddedTaxIncluded": true
+                  },
+                  "availability": "https://schema.org/InStock",
+                  "validFrom": "2024-01-01"
                 },
                 {
                   "@type": "Offer",
@@ -205,8 +255,14 @@ export default function Weddings() {
                     "name": "Premium Wedding Package", 
                     "description": "Complete wedding entertainment with uplighting and MC services"
                   },
-                  "price": "1299",
-                  "priceCurrency": "USD"
+                  "priceSpecification": {
+                    "@type": "PriceSpecification",
+                    "price": "1299",
+                    "priceCurrency": "USD",
+                    "valueAddedTaxIncluded": true
+                  },
+                  "availability": "https://schema.org/InStock",
+                  "validFrom": "2024-01-01"
                 },
                 {
                   "@type": "Offer",
@@ -215,13 +271,27 @@ export default function Weddings() {
                     "name": "Luxury Wedding Package",
                     "description": "Ultimate wedding experience with custom lighting and effects"
                   },
-                  "price": "1899",
-                  "priceCurrency": "USD"
+                  "priceSpecification": {
+                    "@type": "PriceSpecification",
+                    "price": "1899",
+                    "priceCurrency": "USD",
+                    "valueAddedTaxIncluded": true
+                  },
+                  "availability": "https://schema.org/InStock",
+                  "validFrom": "2024-01-01"
                 }
               ]
             }
           })}
         </script>
+
+        {/* Breadcrumb Schema */}
+        <BreadcrumbListSchema 
+          breadcrumbs={[
+            { name: "Home", url: "https://m10djcompany.com" },
+            { name: "Wedding DJ Services", url: "https://m10djcompany.com/weddings" }
+          ]}
+        />
       </Head>
 
       <Header />

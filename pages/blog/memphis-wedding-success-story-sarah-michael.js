@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Header from '../../components/company/Header';
 import Footer from '../../components/company/Footer';
+import { ArticleSchema, BreadcrumbListSchema } from '../../components/StandardSchema';
 import ContactForm from '../../components/company/ContactForm';
 import { scrollToContact } from '../../utils/scroll-helpers';
 
@@ -129,30 +130,23 @@ export default function MemphisWeddingSuccessStory() {
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         
         {/* Article Schema */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Article",
-              "headline": "Memphis Wedding Success Story: Sarah & Michael at The Peabody",
-              "description": "Real Memphis wedding success story featuring professional DJ services",
-              "author": {
-                "@type": "Organization",
-                "name": "M10 DJ Company"
-              },
-              "publisher": {
-                "@type": "Organization", 
-                "name": "M10 DJ Company",
-                "logo": {
-                  "@type": "ImageObject",
-                  "url": "https://m10djcompany.com/logo-static.jpg"
-                }
-              },
-              "datePublished": "2024-12-01",
-              "dateModified": "2024-12-01"
-            })
-          }}
+        <ArticleSchema 
+          headline="Memphis Wedding Success Story: Sarah & Michael at The Peabody"
+          description="Real Memphis wedding success story featuring professional DJ services at The Peabody Hotel Memphis. Learn how M10 DJ Company created the perfect wedding celebration."
+          datePublished="2024-12-01"
+          dateModified="2024-12-01"
+          url="https://m10djcompany.com/blog/memphis-wedding-success-story-sarah-michael"
+          image="https://m10djcompany.com/logo-static.jpg"
+          category="Wedding Success Stories"
+        />
+
+        {/* Breadcrumb Schema */}
+        <BreadcrumbListSchema 
+          breadcrumbs={[
+            { name: "Home", url: "https://m10djcompany.com" },
+            { name: "Blog", url: "https://m10djcompany.com/blog" },
+            { name: "Memphis Wedding Success Story", url: "https://m10djcompany.com/blog/memphis-wedding-success-story-sarah-michael" }
+          ]}
         />
       </Head>
 

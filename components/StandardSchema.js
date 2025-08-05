@@ -116,14 +116,22 @@ export const LocalBusinessSchema = ({
   description = "Memphis's premier wedding and event DJ company with 15+ years of experience and 500+ successful celebrations.",
   serviceType = "DJ Services",
   areaServed = ["Memphis", "Germantown", "Collierville", "East Memphis"],
-  priceRange = "$799-$1899"
+  priceRange = "$799-$1899",
+  businessType = "EntertainmentBusiness",
+  address = {
+    streetAddress: "Memphis, TN", // General area for privacy
+    addressLocality: "Memphis",
+    addressRegion: "TN", 
+    postalCode: "38119",
+    addressCountry: "US"
+  }
 }) => (
   <script
     type="application/ld+json"
     dangerouslySetInnerHTML={{
       __html: JSON.stringify({
         "@context": "https://schema.org",
-        "@type": "LocalBusiness",
+        "@type": businessType,
         "@id": `https://www.m10djcompany.com/#localbusiness-${serviceType.toLowerCase().replace(/\s+/g, '-')}`,
         "name": name,
         "description": description,
@@ -132,9 +140,7 @@ export const LocalBusinessSchema = ({
         "email": "info@m10djcompany.com",
         "address": {
           "@type": "PostalAddress",
-          "addressLocality": "Memphis",
-          "addressRegion": "TN",
-          "addressCountry": "US"
+          ...address
         },
         "geo": {
           "@type": "GeoCoordinates",
@@ -158,7 +164,7 @@ export const LocalBusinessSchema = ({
           "ratingValue": "5.0",
           "reviewCount": "150",
           "bestRating": "5",
-          "worstRating": "5"
+          "worstRating": "1"
         },
         "openingHours": [
           "Mo-Su 09:00-22:00"
@@ -227,14 +233,238 @@ export const BreadcrumbSchema = ({ items }) => (
   />
 );
 
+// Review Schema Component
+export const ReviewSchema = ({ reviews = [] }) => (
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify(reviews.map(review => ({
+        "@context": "https://schema.org",
+        "@type": "Review",
+        "author": {
+          "@type": "Person",
+          "name": review.author
+        },
+        "datePublished": review.datePublished,
+        "reviewBody": review.reviewBody,
+        "reviewRating": {
+          "@type": "Rating",
+          "ratingValue": review.rating,
+          "bestRating": "5",
+          "worstRating": "1"
+        },
+        "itemReviewed": {
+          "@type": "LocalBusiness",
+          "name": "M10 DJ Company",
+          "url": "https://www.m10djcompany.com"
+        }
+      })))
+    }}
+  />
+);
+
+// BreadcrumbList Schema Component
+export const BreadcrumbListSchema = ({ breadcrumbs = [] }) => (
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": breadcrumbs.map((crumb, index) => ({
+          "@type": "ListItem",
+          "position": index + 1,
+          "name": crumb.name,
+          "item": crumb.url
+        }))
+      })
+    }}
+  />
+);
+
+// Person Schema Component for DJ Bio
+export const PersonSchema = ({ 
+  name = "Ben Murray",
+  jobTitle = "Professional DJ & Entertainment Director",
+  description = "Memphis DJ with 15+ years of experience and 500+ successful weddings and events",
+  url = "https://www.m10djcompany.com/dj-ben-murray",
+  image = "https://www.m10djcompany.com/logo-static.jpg"
+}) => (
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": name,
+        "jobTitle": jobTitle,
+        "description": description,
+        "url": url,
+        "image": image,
+        "worksFor": {
+          "@type": "Organization",
+          "name": "M10 DJ Company",
+          "url": "https://www.m10djcompany.com"
+        },
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Memphis",
+          "addressRegion": "TN",
+          "addressCountry": "US"
+        },
+        "knowsAbout": [
+          "Wedding DJ Services",
+          "Event Entertainment",
+          "Music Curation",
+          "MC Services",
+          "Wedding Planning"
+        ]
+      })
+    }}
+  />
+);
+
+// Enhanced Organization Schema with more details
+export const EnhancedOrganizationSchema = () => (
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "@id": "https://www.m10djcompany.com/#organization",
+        "name": "M10 DJ Company",
+        "alternateName": "M10 DJ",
+        "description": "Memphis's premier wedding and event DJ company with 15+ years of experience and 500+ successful celebrations.",
+        "url": "https://www.m10djcompany.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.m10djcompany.com/logo-static.jpg",
+          "width": 400,
+          "height": 400
+        },
+        "image": "https://www.m10djcompany.com/logo-static.jpg",
+        "telephone": "+19014102020",
+        "email": "info@m10djcompany.com",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Memphis, TN",
+          "addressLocality": "Memphis",
+          "addressRegion": "TN",
+          "postalCode": "38119",
+          "addressCountry": "US"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 35.1495,
+          "longitude": -90.0490
+        },
+        "foundingDate": "2009",
+        "founder": {
+          "@type": "Person",
+          "name": "Ben Murray",
+          "jobTitle": "Professional DJ & Entertainment Director"
+        },
+        "sameAs": [
+          "https://www.facebook.com/m10djcompany",
+          "https://www.instagram.com/m10djcompany",
+          "https://www.linkedin.com/company/m10djcompany"
+        ],
+        "areaServed": [
+          {
+            "@type": "City",
+            "name": "Memphis",
+            "containedInPlace": {
+              "@type": "State",
+              "name": "Tennessee"
+            }
+          },
+          {
+            "@type": "Place", 
+            "name": "East Memphis"
+          },
+          {
+            "@type": "Place",
+            "name": "Germantown"
+          },
+          {
+            "@type": "Place",
+            "name": "Collierville"
+          }
+        ],
+        "serviceType": ["Wedding DJ Services", "Event Entertainment", "Corporate DJ", "MC Services"],
+        "priceRange": "$799-$1899"
+      })
+    }}
+  />
+);
+
+// Article Schema Component for Blog Posts
+export const ArticleSchema = ({ 
+  headline,
+  description,
+  author = "M10 DJ Company",
+  datePublished,
+  dateModified,
+  url,
+  image,
+  category = "Wedding & DJ Tips"
+}) => (
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": headline,
+        "description": description,
+        "author": {
+          "@type": "Organization",
+          "name": author
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "M10 DJ Company",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.m10djcompany.com/logo-static.jpg"
+          }
+        },
+        "datePublished": datePublished,
+        "dateModified": dateModified,
+        "mainEntityOfPage": {
+          "@type": "WebPage",
+          "@id": url
+        },
+        "image": {
+          "@type": "ImageObject",
+          "url": image || "https://www.m10djcompany.com/logo-static.jpg",
+          "width": 1200,
+          "height": 630
+        },
+        "articleSection": category,
+        "about": {
+          "@type": "Thing",
+          "name": "Memphis Wedding DJ Services"
+        },
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": ["h1", ".article-summary", ".key-points"]
+        }
+      })
+    }}
+  />
+);
+
 // Combined schema for homepage
 export const HomepageSchema = () => (
   <>
-    <OrganizationSchema />
+    <EnhancedOrganizationSchema />
     <WebSiteSchema />
     <LocalBusinessSchema 
       serviceType="Wedding & Event DJ Services"
       areaServed={["Memphis", "East Memphis", "Germantown", "Collierville", "Cordova", "Bartlett"]}
+      businessType="EntertainmentBusiness"
     />
     <ServiceSchema 
       name="Memphis DJ Services"

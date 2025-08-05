@@ -30,6 +30,7 @@ import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import { scrollToContact } from '../utils/scroll-helpers';
+import { BreadcrumbListSchema } from '../components/StandardSchema';
 
 const pricingTiers = [
   {
@@ -324,16 +325,18 @@ export default function MemphisDJPricingGuide() {
                   }
                 }))
               },
-              "about": {
-                "@type": "LocalBusiness",
+                              "about": {
+                "@type": "EntertainmentBusiness",
                 "name": "M10 DJ Company",
-                "description": "Professional DJ services in Memphis, TN",
+                "description": "Professional DJ services in Memphis, TN with 15+ years experience",
                 "telephone": "+19014102020",
                 "email": "booking@m10djcompany.com",
                 "address": {
                   "@type": "PostalAddress",
+                  "streetAddress": "Memphis, TN",
                   "addressLocality": "Memphis",
                   "addressRegion": "TN",
+                  "postalCode": "38119",
                   "addressCountry": "US"
                 },
                 "geo": {
@@ -341,7 +344,34 @@ export default function MemphisDJPricingGuide() {
                   "latitude": 35.1495,
                   "longitude": -90.0490
                 },
+                "openingHours": [
+                  "Mo-Su 09:00-22:00"
+                ],
                 "priceRange": "$395-$1195",
+                "aggregateRating": {
+                  "@type": "AggregateRating",
+                  "ratingValue": "5.0",
+                  "reviewCount": "150",
+                  "bestRating": "5",
+                  "worstRating": "1"
+                },
+                "review": [
+                  {
+                    "@type": "Review",
+                    "author": {
+                      "@type": "Person",
+                      "name": "Jennifer Martinez"
+                    },
+                    "datePublished": "2024-11-10",
+                    "reviewBody": "Excellent value for professional DJ services! M10 provided transparent pricing and exceeded our expectations for our corporate event.",
+                    "reviewRating": {
+                      "@type": "Rating",
+                      "ratingValue": "5",
+                      "bestRating": "5",
+                      "worstRating": "1"
+                    }
+                  }
+                ],
                 "serviceArea": {
                   "@type": "City",
                   "name": "Memphis",
@@ -353,14 +383,31 @@ export default function MemphisDJPricingGuide() {
               },
               "offers": pricingTiers.map(tier => ({
                 "@type": "Offer",
-                "name": tier.name,
-                "description": tier.description,
-                "price": tier.price,
-                "priceCurrency": "USD",
-                "category": "DJ Services"
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": tier.name,
+                  "description": tier.description,
+                  "category": "DJ Services"
+                },
+                "priceSpecification": {
+                  "@type": "PriceSpecification",
+                  "price": tier.price.replace(/\$|\-.*$/g, ''),
+                  "priceCurrency": "USD",
+                  "valueAddedTaxIncluded": true
+                },
+                "availability": "https://schema.org/InStock",
+                "validFrom": "2024-01-01"
               }))
             }),
           }}
+        />
+
+        {/* Breadcrumb Schema */}
+        <BreadcrumbListSchema 
+          breadcrumbs={[
+            { name: "Home", url: "https://m10djcompany.com" },
+            { name: "Memphis DJ Pricing Guide", url: "https://m10djcompany.com/memphis-dj-pricing-guide" }
+          ]}
         />
       </Head>
 

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
+import { PersonSchema, BreadcrumbListSchema, EnhancedOrganizationSchema } from '../components/StandardSchema';
 
 export default function About() {
   const stats = [
@@ -110,6 +111,20 @@ export default function About() {
         {/* Additional SEO tags */}
         <meta name="geo.region" content="US-TN" />
         <meta name="geo.placename" content="Memphis" />
+
+        {/* Enhanced Organization Schema */}
+        <EnhancedOrganizationSchema />
+
+        {/* Person Schema for DJ Ben Murray */}
+        <PersonSchema />
+
+        {/* Breadcrumb Schema */}
+        <BreadcrumbListSchema 
+          breadcrumbs={[
+            { name: "Home", url: "https://m10djcompany.com" },
+            { name: "About M10 DJ Company", url: "https://m10djcompany.com/about" }
+          ]}
+        />
       </Head>
 
       <Header />
