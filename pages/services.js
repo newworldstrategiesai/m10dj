@@ -529,8 +529,10 @@ export default function Services() {
               "email": "m10djcompany@gmail.com",
               "address": {
                 "@type": "PostalAddress",
-                "addressLocality": "Memphis",
+                "streetAddress": "65 Stewart Rd",
+                "addressLocality": "Eads",
                 "addressRegion": "TN",
+                "postalCode": "38028",
                 "addressCountry": "US"
               }
             },

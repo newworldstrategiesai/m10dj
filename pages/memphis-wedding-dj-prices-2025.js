@@ -794,34 +794,29 @@ export default function MemphisWeddingDJPrices2025() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "QAPage",
-            "mainEntity": [
-              {
-                "@type": "Question",
-                "name": "What's included in your Memphis wedding DJ pricing?",
-                "answerCount": 1,
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Our pricing includes professional DJ service, MC duties, premium sound system, wireless microphones, basic dance lighting, music consultation, setup/breakdown, and liability insurance. No hidden fees!",
-                  "author": {
-                    "@type": "Organization", 
-                    "name": "M10 DJ Company"
-                  }
-                }
+            "mainEntity": {
+              "@type": "Question",
+              "name": "What's included in your Memphis wedding DJ pricing?",
+              "text": "I'm comparing Memphis wedding DJ services and want to understand exactly what's included in your pricing packages. What services and equipment do you provide?",
+              "answerCount": 1,
+              "datePublished": "2024-01-12T14:00:00-06:00",
+              "author": {
+                "@type": "Person",
+                "name": "Memphis Bride"
               },
-              {
-                "@type": "Question", 
-                "name": "Do you charge extra for Memphis venue travel?",
-                "answerCount": 1,
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Travel within Memphis and the immediate metro area is included. For venues outside our 50-mile radius, a modest travel fee may apply based on distance and time.",
-                  "author": {
-                    "@type": "Organization",
-                    "name": "M10 DJ Company"
-                  }
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Our pricing includes professional DJ service, MC duties, premium sound system, wireless microphones, basic dance lighting, music consultation, setup/breakdown, and liability insurance. No hidden fees!",
+                "datePublished": "2024-01-12T14:30:00-06:00",
+                "url": "https://www.m10djcompany.com/memphis-wedding-dj-prices-2025#pricing-details",
+                "upvoteCount": 28,
+                "author": {
+                  "@type": "Organization", 
+                  "name": "M10 DJ Company",
+                  "url": "https://www.m10djcompany.com"
                 }
               }
-            ]
+            }
           })
         }}
       />

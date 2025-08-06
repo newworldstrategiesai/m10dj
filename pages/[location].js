@@ -135,6 +135,17 @@ const locationData = {
     weddingFocus: true,
     weddingDescription: 'Southaven wedding DJ services for Mississippi couples near Memphis. Professional entertainment for venues throughout this vibrant metro community.'
   },
+  'olive-branch': {
+    name: 'Olive Branch',
+    zipCodes: ['38654', '38672'],
+    description: 'Professional DJ services in Olive Branch, MS - serving this thriving Mississippi community with wedding entertainment, corporate events, and celebration services in the greater Memphis metro area.',
+    neighborhoods: ['Olive Branch City Center', 'Goodman Road area', 'Highway 78 corridor', 'Cockrum area', 'Pleasant Hill'],
+    landmarks: ['Olive Branch City Park', 'DeSoto Civic Center', 'Olive Branch Family Life Center', 'Wesson Lane Park'],
+    localBusinesses: ['DeSoto Civic Center', 'Olive Branch Country Club', 'Olive Branch City Hall', 'Old Town Shopping Center'],
+    eventTypes: ['Wedding receptions at event centers', 'Country club celebrations', 'Corporate events', 'Community center parties', 'Private celebrations', 'School events'],
+    weddingFocus: true,
+    weddingDescription: 'Olive Branch wedding DJ services for Mississippi couples in the Memphis metro area. Professional entertainment specializing in elegant receptions and celebrations throughout this beautiful suburban community.'
+  },
   'west-memphis': {
     name: 'West Memphis',
     zipCodes: ['72301', '72303'],

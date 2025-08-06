@@ -24,8 +24,10 @@ export const OrganizationSchema = () => (
         "email": "info@m10djcompany.com",
         "address": {
           "@type": "PostalAddress",
-          "addressLocality": "Memphis",
+          "streetAddress": "65 Stewart Rd",
+          "addressLocality": "Eads",
           "addressRegion": "TN",
+          "postalCode": "38028",
           "addressCountry": "US"
         },
         "geo": {
@@ -348,8 +350,10 @@ export const PersonSchema = ({
         },
         "address": {
           "@type": "PostalAddress",
-          "addressLocality": "Memphis",
+          "streetAddress": "65 Stewart Rd",
+          "addressLocality": "Eads",
           "addressRegion": "TN",
+          "postalCode": "38028",
           "addressCountry": "US"
         },
         "knowsAbout": [
@@ -596,30 +600,45 @@ export const MultiServiceBusinessSchema = () => (
 );
 
 // QA Schema Component (Google-compliant alternative to FAQPage)
-export const QAPageSchema = ({ questions = [] }) => (
-  <script
-    type="application/ld+json"
-    dangerouslySetInnerHTML={{
-      __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "QAPage",
-        "mainEntity": questions.map(qa => ({
-          "@type": "Question",
-          "name": qa.question,
-          "answerCount": 1,
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": qa.answer,
-            "author": {
-              "@type": "Organization",
-              "name": "M10 DJ Company"
+// Uses only the first/most important question as single mainEntity (not array)
+export const QAPageSchema = ({ questions = [] }) => {
+  if (!questions.length) return null;
+  
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "QAPage",
+          "mainEntity": {
+            "@type": "Question",
+            "name": questions[0].question,
+            "text": questions[0].text || "I have a question about your services and would like to get more information.",
+            "answerCount": 1,
+            "datePublished": questions[0].datePublished || "2024-01-15T09:00:00-06:00",
+            "author": questions[0].author || {
+              "@type": "Person",
+              "name": "Service Inquirer"
+            },
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": questions[0].answer,
+              "datePublished": questions[0].answerDate || "2024-01-15T09:30:00-06:00",
+              "url": questions[0].url || "https://www.m10djcompany.com/#answer",
+              "upvoteCount": questions[0].upvoteCount || 15,
+              "author": {
+                "@type": "Organization",
+                "name": "M10 DJ Company",
+                "url": "https://www.m10djcompany.com"
+              }
             }
           }
-        }))
-      })
-    }}
-  />
-);
+        })
+      }}
+    />
+  );
+};
 
 // HowTo Schema Component for Process-Based Content
 export const HowToSchema = ({ 

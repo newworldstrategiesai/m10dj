@@ -183,8 +183,10 @@ export default function WeddingDJMemphisTN() {
               "telephone": "+19014102020",
               "address": {
                 "@type": "PostalAddress",
-                "addressLocality": "Memphis", 
+                "streetAddress": "65 Stewart Rd",
+                "addressLocality": "Eads",
                 "addressRegion": "TN",
+                "postalCode": "38028",
                 "addressCountry": "US"
               },
               "geo": {

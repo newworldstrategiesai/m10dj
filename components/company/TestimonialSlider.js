@@ -9,80 +9,80 @@ const fallbackTestimonials = [
     event_type: "Wedding Reception", 
     location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "Ben was absolutely amazing for our Memphis wedding! From the ceremony to the reception, everything was flawless. The music selection kept everyone on the dance floor, and his MC skills were professional and engaging. Worth every penny!",
-    event_date: "2024-07-20"
+    testimonial_text: "Ben was an excellent choice for my wedding. He played everything we asked and built a playlist based on those preferences. He had a better price than everyone else we contacted, and he was more responsive than anyone else we reached out to. He had a professional demeanor the entire time while also being able to have fun. Highly recommended, 10/10",
+    event_date: "2024-11-01"
   },
   {
     client_name: "Alexis Cameron",
     event_type: "Wedding Reception",
     location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "M10 DJ Company exceeded all our expectations! Ben understood our vision perfectly and created the ideal atmosphere for our Memphis wedding. The sound quality was incredible and he kept the energy high all night long.",
-    event_date: "2024-09-14"
+    testimonial_text: "Ben DJ'd our wedding last weekend and I couldn't be more thankful. He was communicative, paid great attention to detail, and ensured everything went smoothly. He had a lapel mic for my officiant and some speeches that made it all seamless and convenient. We had younger kids, grandparents and all the others in between- the music was appropriate and also right up our alley. Ben went over the top to make sure the night went amazingly. Will be recommending to friends and family and highly do to anyone reading this now. Thank you, Ben!",
+    event_date: "2024-10-01"
   },
   {
     client_name: "Chandler Keen",
     event_type: "Wedding Reception",
     location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "We couldn't have asked for a better DJ! Ben was professional, accommodating, and really listened to what we wanted. Our Memphis wedding was perfect thanks to his expertise and attention to detail.",
-    event_date: "2024-06-08"
+    testimonial_text: "Ben Murray DJ'd my wedding and could not have been more thoughtful in the planning process. He's extremely talented and all of the guests at our wedding raved about the song choices and DJ. I highly recommend Ben for any event, he will cater to your wants and needs and ensure that your event is filled with exciting music that fits your desires.",
+    event_date: "2021-12-01"
   },
   {
     client_name: "Dan Roberts",
     event_type: "Wedding Reception",
     location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "Outstanding service from start to finish! Ben handled our ceremony and reception beautifully. Great music selection, smooth transitions, and he really knows how to work a Memphis crowd. Highly recommend!",
-    event_date: "2024-05-25"
+    testimonial_text: "Ben worked as the DJ at my fairly large (200-250 people) wedding. He was extremely professional with his communication and knew the right questions to ask us about specific music for planned dances and also about what kind of music we thought our attendees would like. I've never been to a wedding where the DJ mixes his own tracks throughout the open dance time, but Ben made that work extremely well! He read the room and knew when to switch to keep the energy up on the dancefloor.",
+    event_date: "2021-12-01"
   },
   {
     client_name: "Brad Eiseman",
     event_type: "Wedding Reception",
     location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "Ben made our outdoor Memphis wedding absolutely magical! Despite some weather concerns, he had everything under control. The music was perfect and our guests danced until the very end.",
-    event_date: "2024-08-17"
+    testimonial_text: "This company is professional, courteous, and kind! Easily one of the best DJs we could have chosen for our wedding which was obviously one of the most important moments in our lives! DJ Ben Murray is a great person and a great DJ and we were lucky to have him as our DJ for our wedding!- Brad & Sarah",
+    event_date: "2021-12-01"
   },
   {
     client_name: "Steven Gordon",
     event_type: "Wedding Reception",
     location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "M10 DJ Company was fantastic for our unique Memphis wedding venue! Ben's equipment handled the large space perfectly and he kept everyone entertained. Professional, reliable, and fun!",
-    event_date: "2024-04-13"
+    testimonial_text: "Ben is the best DJ in Memphis. We had him DJ our wedding, very easy to work with and the reception music, lighting, etc was perfect…made sure everybody was enjoying the vibe and accommodated requests. From prior experience, he's also a great party/club, etc DJ.",
+    event_date: "2021-12-01"
   },
   {
     client_name: "Mary Nguyen", 
     event_type: "Wedding Reception",
     location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "Ben was the perfect DJ for our Memphis wedding! He was so easy to work with during planning and executed everything flawlessly on our big day. Our dance floor was packed all night!",
-    event_date: "2024-10-05"
+    testimonial_text: "Ben is AMAZING! He's professional and knows what he's doing. He got us to put together our playlist and combined it with his and made the night magical! I don't know if he's ever done a Vietnamese wedding before, but he rocked it for my brother's.",
+    event_date: "2021-12-01"
   },
   {
     client_name: "Haley Blalock",
     event_type: "Wedding Reception", 
     location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "Incredible experience with M10 DJ Company! Ben understood the unique atmosphere we wanted for our historic Memphis venue and delivered perfectly. Classy, professional, and so much fun!",
-    event_date: "2024-03-30"
+    testimonial_text: "Great!!!!! He did the music at the ceremony and Dj the reception! He did a fantastic job and it was a day not many people will forget.",
+    event_date: "2021-12-01"
   },
   {
     client_name: "AK Warmus",
     event_type: "Wedding Reception",
     location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "Best decision we made for our Memphis wedding! Ben's energy and professionalism were unmatched. He kept the party going and made sure every moment was perfect. Cannot recommend enough!",
-    event_date: "2024-11-02"
+    testimonial_text: "Would have another wedding just to have Ben DJ for us again.",
+    event_date: "2022-12-01"
   },
   {
     client_name: "Jamie Irby",
-    event_type: "Venue Entertainment",
-    location: "The Bluff, Memphis TN",
+    event_type: "Corporate Event",
+    location: "Memphis, TN",
     rating: 5,
-    testimonial_text: "As entertainment director at The Bluff, I've worked with many DJs, but M10 DJ Company stands out. Ben is professional, reliable, and always delivers exceptional service for our Memphis events. Highly recommend!",
-    event_date: "2024-09-28"
+    testimonial_text: "Super professional and punctual. Took care of our every need and want, would use again!",
+    event_date: "2021-12-01"
   }
 ];
 

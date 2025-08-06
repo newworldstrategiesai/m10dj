@@ -129,8 +129,11 @@ export default function SchoolDances() {
                 "telephone": "(901) 410-2020",
                 "address": {
                   "@type": "PostalAddress",
-                  "addressLocality": "Memphis",
-                  "addressRegion": "TN"
+                  "streetAddress": "65 Stewart Rd",
+                  "addressLocality": "Eads",
+                  "addressRegion": "TN",
+                  "postalCode": "38028",
+                  "addressCountry": "US"
                 }
               },
               "areaServed": "Memphis, TN",

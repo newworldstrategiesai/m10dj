@@ -114,8 +114,10 @@ export default function MemphisWeddingDJ() {
           "priceRange": "$799-$1899",
           "address": {
             "@type": "PostalAddress",
-            "addressLocality": "Memphis",
+            "streetAddress": "65 Stewart Rd",
+            "addressLocality": "Eads",
             "addressRegion": "TN",
+            "postalCode": "38028",
             "addressCountry": "US"
           },
           "geo": {
@@ -648,8 +650,10 @@ export default function MemphisWeddingDJ() {
             "email": "info@m10djcompany.com",
             "address": {
               "@type": "PostalAddress",
-              "addressLocality": "Memphis", 
+              "streetAddress": "65 Stewart Rd",
+              "addressLocality": "Eads",
               "addressRegion": "TN",
+              "postalCode": "38028",
               "addressCountry": "US"
             },
             "geo": {
@@ -707,57 +711,7 @@ export default function MemphisWeddingDJ() {
         }}
       />
 
-      {/* QA Schema for AI Overview (Google-compliant alternative) */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "QAPage",
-            "mainEntity": [
-              {
-                "@type": "Question",
-                "name": "How much does a Memphis wedding DJ cost?",
-                "answerCount": 1,
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Memphis wedding DJ services typically range from $799-$1899 depending on package, venue requirements, and event duration. M10 DJ Company offers transparent pricing with no hidden fees. Our packages include professional-grade sound systems, wireless microphones, basic uplighting, and experienced MC services.",
-                  "author": {
-                    "@type": "Organization",
-                    "name": "M10 DJ Company"
-                  }
-                }
-              },
-              {
-                "@type": "Question", 
-                "name": "What makes M10 DJ Company the best Memphis wedding DJ?",
-                "answerCount": 1,
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "M10 DJ Company stands out with 15+ years of Memphis wedding experience, 500+ successful celebrations, and exclusive partnerships with premier venues like The Peabody Hotel, Memphis Botanic Garden, and Graceland. Our professional-grade sound systems, elegant uplighting, and expert MC services ensure flawless wedding entertainment from ceremony to reception.",
-                  "author": {
-                    "@type": "Organization",
-                    "name": "M10 DJ Company"
-                  }
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "How far in advance should we book our Memphis wedding DJ?",
-                "answerCount": 1,
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "We recommend booking your Memphis wedding DJ 6-12 months in advance, especially for peak wedding season (April-October) and popular venues. This ensures availability and allows time for detailed planning. However, we can accommodate shorter timelines based on availability.",
-                  "author": {
-                    "@type": "Organization",
-                    "name": "M10 DJ Company"
-                  }
-                }
-              }
-            ]
-          })
-        }}
-      />
+
 
       {/* AI Content Schema */}
       <AIContentSchema 

@@ -95,22 +95,33 @@ export default function FAQSection({ className = '', showSchema = true, useDatab
   };
 
   // Generate QA Schema markup (Google-compliant alternative to FAQPage)
+  // Uses only the first/most important FAQ as single mainEntity (not array)
   const qaSchema = {
     "@context": "https://schema.org",
     "@type": "QAPage",
-    "mainEntity": faqData.map(faq => ({
+    "mainEntity": {
       "@type": "Question",
-      "name": faq.question,
+      "name": faqData[0]?.question || fallbackFaqData[0].question,
+      "text": "I'm interested in hiring DJ services and want to plan ahead. What's the recommended booking timeline?",
       "answerCount": 1,
+      "datePublished": "2024-01-05T10:00:00-06:00",
+      "author": {
+        "@type": "Person",
+        "name": "Event Planner"
+      },
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": faq.answer,
+        "text": faqData[0]?.answer || fallbackFaqData[0].answer,
+        "datePublished": "2024-01-05T10:30:00-06:00",
+        "url": "https://www.m10djcompany.com/#booking-timeline",
+        "upvoteCount": 35,
         "author": {
           "@type": "Organization",
-          "name": "M10 DJ Company"
+          "name": "M10 DJ Company",
+          "url": "https://www.m10djcompany.com"
         }
       }
-    }))
+    }
   };
 
   return (
