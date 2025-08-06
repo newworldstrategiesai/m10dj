@@ -169,9 +169,9 @@ export default function MemphisWeddingDJ() {
           "aggregateRating": {
             "@type": "AggregateRating",
             "ratingValue": "5.0",
-            "reviewCount": "150",
+            "reviewCount": "200",
             "bestRating": "5",
-            "worstRating": "5"
+            "worstRating": "1"
           }
         }}
       />
@@ -636,80 +636,7 @@ export default function MemphisWeddingDJ() {
 
       <Footer />
 
-      {/* Enhanced Schema Markup */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "LocalBusiness",
-            "name": "M10 DJ Company - Memphis Wedding DJ",
-            "description": "Memphis's premier wedding DJ service with 10+ years experience. Professional ceremony, reception and MC services for weddings throughout Memphis, TN.",
-            "url": "https://m10djcompany.com/memphis-wedding-dj",
-            "telephone": "+19014102020",
-            "email": "info@m10djcompany.com",
-            "address": {
-              "@type": "PostalAddress",
-              "streetAddress": "65 Stewart Rd",
-              "addressLocality": "Eads",
-              "addressRegion": "TN",
-              "postalCode": "38028",
-              "addressCountry": "US"
-            },
-            "geo": {
-              "@type": "GeoCoordinates",
-              "latitude": 35.1495,
-              "longitude": -90.0490
-            },
-            "openingHours": "Mo-Su 09:00-21:00",
-            "priceRange": "$295-$795",
-            "image": "https://m10djcompany.com/logo-static.jpg",
-            "sameAs": [
-              "https://www.facebook.com/m10djcompany",
-              "https://www.instagram.com/m10djcompany"
-            ],
-            "serviceArea": {
-              "@type": "City",
-              "name": "Memphis, TN"
-            },
-            "hasOfferCatalog": {
-              "@type": "OfferCatalog",
-              "name": "Memphis Wedding DJ Services",
-              "itemListElement": [
-                {
-                  "@type": "Offer",
-                  "itemOffered": {
-                    "@type": "Service", 
-                    "name": "Memphis Wedding DJ",
-                    "description": "Professional wedding DJ services for Memphis weddings"
-                  }
-                },
-                {
-                  "@type": "Offer", 
-                  "itemOffered": {
-                    "@type": "Service",
-                    "name": "Wedding Ceremony Music",
-                    "description": "Professional ceremony music and sound for Memphis weddings"
-                  }
-                },
-                {
-                  "@type": "Offer",
-                  "itemOffered": {
-                    "@type": "Service",
-                    "name": "Wedding MC Services", 
-                    "description": "Master of ceremonies services for Memphis weddings"
-                  }
-                }
-              ]
-            },
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": "5.0",
-              "reviewCount": "200"
-            }
-          })
-        }}
-      />
+
 
 
 
