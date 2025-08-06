@@ -115,26 +115,29 @@ export default function PrivateParties() {
         <meta property="og:url" content="https://m10djcompany.com/private-parties" />
         
         {/* Schema.org */}
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Service",
-            "name": "Private Party DJ Services",
-            "description": "Professional DJ and entertainment services for private parties in Memphis, TN",
-            "provider": {
-              "@type": "LocalBusiness",
-              "name": "M10 DJ Company",
-              "telephone": "(901) 410-2020",
-              "address": {
-                "@type": "PostalAddress",
-                "addressLocality": "Memphis",
-                "addressRegion": "TN"
-              }
-            },
-            "areaServed": "Memphis, TN",
-            "serviceType": "Private Party Entertainment"
-          })}
-        </script>
+        <script 
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Service",
+              "name": "Private Party DJ Services",
+              "description": "Professional DJ and entertainment services for private parties in Memphis, TN",
+              "provider": {
+                "@type": "LocalBusiness",
+                "name": "M10 DJ Company",
+                "telephone": "(901) 410-2020",
+                "address": {
+                  "@type": "PostalAddress",
+                  "addressLocality": "Memphis",
+                  "addressRegion": "TN"
+                }
+              },
+              "areaServed": "Memphis, TN",
+              "serviceType": "Private Party Entertainment"
+            })
+          }}
+        />
       </Head>
 
       <Header />

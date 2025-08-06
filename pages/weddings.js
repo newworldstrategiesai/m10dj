@@ -154,151 +154,154 @@ export default function Weddings() {
         <meta property="og:type" content="website" />
         
         {/* Schema.org Wedding Business */}
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": ["MusicGroup", "EntertainmentBusiness"],
-            "name": "M10 DJ Company - Wedding DJ Services",
-            "description": "Professional wedding DJ services in Memphis, TN with 15+ years experience and 500+ successful celebrations",
-            "url": "https://m10djcompany.com/weddings",
-            "telephone": "(901) 410-2020",
-            "email": "info@m10djcompany.com",
-            "address": {
-              "@type": "PostalAddress",
-              "streetAddress": "Memphis, TN",
-              "addressLocality": "Memphis",
-              "addressRegion": "TN",
-              "postalCode": "38119",
-              "addressCountry": "US"
-            },
-            "geo": {
-              "@type": "GeoCoordinates",
-              "latitude": 35.1495,
-              "longitude": -90.0490
-            },
-            "openingHoursSpecification": [
-              {
-                "@type": "OpeningHoursSpecification",
-                "dayOfWeek": [
-                  "Monday",
-                  "Tuesday",
-                  "Wednesday", 
-                  "Thursday",
-                  "Friday",
-                  "Saturday",
-                  "Sunday"
-                ],
-                "opens": "09:00",
-                "closes": "22:00"
-              }
-            ],
-            "currenciesAccepted": "USD",
-            "paymentAccepted": "Cash, Credit Card, Check, Online Payment",
-            "serviceArea": {
-              "@type": "GeoCircle",
-              "geoMidpoint": {
+        <script 
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": ["MusicGroup", "EntertainmentBusiness"],
+              "name": "M10 DJ Company - Wedding DJ Services",
+              "description": "Professional wedding DJ services in Memphis, TN with 15+ years experience and 500+ successful celebrations",
+              "url": "https://m10djcompany.com/weddings",
+              "telephone": "(901) 410-2020",
+              "email": "info@m10djcompany.com",
+              "address": {
+                "@type": "PostalAddress",
+                "streetAddress": "65 Stewart Rd",
+                "addressLocality": "Eads",
+                "addressRegion": "TN",
+                "postalCode": "38028",
+                "addressCountry": "US"
+              },
+              "geo": {
                 "@type": "GeoCoordinates",
-                "latitude": 35.1495,
-                "longitude": -90.0490
+                "latitude": 35.2379,
+                "longitude": -89.7465
               },
-              "geoRadius": "50000"
-            },
-            "priceRange": "$799-$1899",
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": "5.0",
-              "reviewCount": "150",
-              "bestRating": "5",
-              "worstRating": "1"
-            },
-            "review": [
-              {
-                "@type": "Review",
-                "author": {
-                  "@type": "Person",
-                  "name": "Sarah & Michael Johnson"
-                },
-                "datePublished": "2024-01-15",
-                "reviewBody": "M10 DJ Company made our wedding absolutely perfect! They played exactly what we wanted and kept everyone dancing all night long. Professional, responsive, and truly cared about making our day special.",
-                "reviewRating": {
-                  "@type": "Rating",
-                  "ratingValue": "5",
-                  "bestRating": "5",
-                  "worstRating": "1"
+              "openingHoursSpecification": [
+                {
+                  "@type": "OpeningHoursSpecification",
+                  "dayOfWeek": [
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday", 
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                    "Sunday"
+                  ],
+                  "opens": "09:00",
+                  "closes": "22:00"
                 }
+              ],
+              "currenciesAccepted": "USD",
+              "paymentAccepted": "Cash, Credit Card, Check, Online Payment",
+              "serviceArea": {
+                "@type": "GeoCircle",
+                "geoMidpoint": {
+                  "@type": "GeoCoordinates",
+                  "latitude": 35.1495,
+                  "longitude": -90.0490
+                },
+                "geoRadius": "50000"
               },
-              {
-                "@type": "Review",
-                "author": {
-                  "@type": "Person",
-                  "name": "Emily & David Chen"
+              "priceRange": "$799-$1899",
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "5.0",
+                "reviewCount": "150",
+                "bestRating": "5",
+                "worstRating": "1"
+              },
+              "review": [
+                {
+                  "@type": "Review",
+                  "author": {
+                    "@type": "Person",
+                    "name": "Sarah & Michael Johnson"
+                  },
+                  "datePublished": "2024-01-15",
+                  "reviewBody": "M10 DJ Company made our wedding absolutely perfect! They played exactly what we wanted and kept everyone dancing all night long. Professional, responsive, and truly cared about making our day special.",
+                  "reviewRating": {
+                    "@type": "Rating",
+                    "ratingValue": "5",
+                    "bestRating": "5",
+                    "worstRating": "1"
+                  }
                 },
-                "datePublished": "2024-03-22",
-                "reviewBody": "Outstanding wedding DJ service! Ben and his team exceeded our expectations with perfect music selection and seamless event coordination. Highly recommend for Memphis weddings!",
-                "reviewRating": {
-                  "@type": "Rating",
-                  "ratingValue": "5",
-                  "bestRating": "5",
-                  "worstRating": "1"
+                {
+                  "@type": "Review",
+                  "author": {
+                    "@type": "Person",
+                    "name": "Emily & David Chen"
+                  },
+                  "datePublished": "2024-03-22",
+                  "reviewBody": "Outstanding wedding DJ service! Ben and his team exceeded our expectations with perfect music selection and seamless event coordination. Highly recommend for Memphis weddings!",
+                  "reviewRating": {
+                    "@type": "Rating",
+                    "ratingValue": "5",
+                    "bestRating": "5",
+                    "worstRating": "1"
+                  }
                 }
+              ],
+              "hasOfferCatalog": {
+                "@type": "OfferCatalog",
+                "name": "Wedding DJ Packages",
+                "itemListElement": [
+                  {
+                    "@type": "Offer",
+                    "itemOffered": {
+                      "@type": "Service",
+                      "name": "Essential Wedding Package",
+                      "description": "Professional DJ services for intimate wedding celebrations"
+                    },
+                    "priceSpecification": {
+                      "@type": "PriceSpecification",
+                      "price": "799",
+                      "priceCurrency": "USD",
+                      "valueAddedTaxIncluded": true
+                    },
+                    "availability": "https://schema.org/InStock",
+                    "validFrom": "2024-01-01"
+                  },
+                  {
+                    "@type": "Offer",
+                    "itemOffered": {
+                      "@type": "Service",
+                      "name": "Premium Wedding Package", 
+                      "description": "Complete wedding entertainment with uplighting and MC services"
+                    },
+                    "priceSpecification": {
+                      "@type": "PriceSpecification",
+                      "price": "1299",
+                      "priceCurrency": "USD",
+                      "valueAddedTaxIncluded": true
+                    },
+                    "availability": "https://schema.org/InStock",
+                    "validFrom": "2024-01-01"
+                  },
+                  {
+                    "@type": "Offer",
+                    "itemOffered": {
+                      "@type": "Service",
+                      "name": "Luxury Wedding Package",
+                      "description": "Ultimate wedding experience with custom lighting and effects"
+                    },
+                    "priceSpecification": {
+                      "@type": "PriceSpecification",
+                      "price": "1899",
+                      "priceCurrency": "USD",
+                      "valueAddedTaxIncluded": true
+                    },
+                    "availability": "https://schema.org/InStock",
+                    "validFrom": "2024-01-01"
+                  }
+                ]
               }
-            ],
-            "hasOfferCatalog": {
-              "@type": "OfferCatalog",
-              "name": "Wedding DJ Packages",
-              "itemListElement": [
-                {
-                  "@type": "Offer",
-                  "itemOffered": {
-                    "@type": "Service",
-                    "name": "Essential Wedding Package",
-                    "description": "Professional DJ services for intimate wedding celebrations"
-                  },
-                  "priceSpecification": {
-                    "@type": "PriceSpecification",
-                    "price": "799",
-                    "priceCurrency": "USD",
-                    "valueAddedTaxIncluded": true
-                  },
-                  "availability": "https://schema.org/InStock",
-                  "validFrom": "2024-01-01"
-                },
-                {
-                  "@type": "Offer",
-                  "itemOffered": {
-                    "@type": "Service",
-                    "name": "Premium Wedding Package", 
-                    "description": "Complete wedding entertainment with uplighting and MC services"
-                  },
-                  "priceSpecification": {
-                    "@type": "PriceSpecification",
-                    "price": "1299",
-                    "priceCurrency": "USD",
-                    "valueAddedTaxIncluded": true
-                  },
-                  "availability": "https://schema.org/InStock",
-                  "validFrom": "2024-01-01"
-                },
-                {
-                  "@type": "Offer",
-                  "itemOffered": {
-                    "@type": "Service",
-                    "name": "Luxury Wedding Package",
-                    "description": "Ultimate wedding experience with custom lighting and effects"
-                  },
-                  "priceSpecification": {
-                    "@type": "PriceSpecification",
-                    "price": "1899",
-                    "priceCurrency": "USD",
-                    "valueAddedTaxIncluded": true
-                  },
-                  "availability": "https://schema.org/InStock",
-                  "validFrom": "2024-01-01"
-                }
-              ]
-            }
-          })}
-        </script>
+            })
+          }}
+        />
 
         {/* Breadcrumb Schema */}
         <BreadcrumbListSchema 

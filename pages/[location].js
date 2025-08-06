@@ -437,7 +437,7 @@ export default function LocationPage() {
         </section>
 
         {/* FAQ Section */}
-        <FAQSection />
+        <FAQSection showSchema={false} />
 
         {/* Related Services Section - Strategic Internal Linking */}
         <section className="py-16 bg-gray-50 dark:bg-gray-800">

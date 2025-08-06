@@ -327,16 +327,16 @@ export default function MemphisDJPricingGuide() {
                 "email": "booking@m10djcompany.com",
                 "address": {
                   "@type": "PostalAddress",
-                  "streetAddress": "Memphis, TN",
-                  "addressLocality": "Memphis",
+                  "streetAddress": "65 Stewart Rd",
+                  "addressLocality": "Eads",
                   "addressRegion": "TN",
-                  "postalCode": "38119",
+                  "postalCode": "38028",
                   "addressCountry": "US"
                 },
                 "geo": {
                   "@type": "GeoCoordinates",
-                  "latitude": 35.1495,
-                  "longitude": -90.0490
+                  "latitude": 35.2379,
+                  "longitude": -89.7465
                 },
                 "openingHoursSpecification": [
                   {

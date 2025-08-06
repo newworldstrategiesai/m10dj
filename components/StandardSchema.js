@@ -115,14 +115,14 @@ export const LocalBusinessSchema = ({
   name = "M10 DJ Company", 
   description = "Memphis's premier wedding and event DJ company with 15+ years of experience and 500+ successful celebrations.",
   serviceType = "DJ Services",
-  areaServed = ["Memphis", "Germantown", "Collierville", "East Memphis"],
+  areaServed = ["Memphis", "Memphis Metro Area", "Germantown", "Collierville", "Bartlett", "Cordova", "East Memphis", "Midtown Memphis", "Downtown Memphis"],
   priceRange = "$799-$1899",
   businessType = "EntertainmentBusiness",
   address = {
-    streetAddress: "Memphis, TN", // General area for privacy
-    addressLocality: "Memphis",
+    streetAddress: "65 Stewart Rd",
+    addressLocality: "Eads",
     addressRegion: "TN", 
-    postalCode: "38119",
+    postalCode: "38028",
     addressCountry: "US"
   }
 }) => (
@@ -144,8 +144,8 @@ export const LocalBusinessSchema = ({
         },
         "geo": {
           "@type": "GeoCoordinates",
-          "latitude": 35.1495,
-          "longitude": -90.0490
+          "latitude": 35.2379,
+          "longitude": -89.7465
         },
         "serviceType": serviceType,
         "areaServed": areaServed.map(area => ({
@@ -158,6 +158,24 @@ export const LocalBusinessSchema = ({
             }
           })
         })),
+        "serviceArea": {
+          "@type": "GeoCircle",
+          "geoMidpoint": {
+            "@type": "GeoCoordinates", 
+            "latitude": 35.1495,
+            "longitude": -90.0490,
+            "name": "Memphis, TN"
+          },
+          "geoRadius": "30000"
+        },
+        "knowsAbout": [
+          "Memphis Wedding DJ Services",
+          "Memphis Event Entertainment", 
+          "Memphis Corporate DJ",
+          "Memphis Party DJ",
+          "Beale Street Events",
+          "Memphis Music Scene"
+        ],
         "priceRange": priceRange,
         "currenciesAccepted": "USD",
         "paymentAccepted": "Cash, Credit Card, Check, Online Payment",
@@ -370,16 +388,16 @@ export const EnhancedOrganizationSchema = () => (
         "email": "info@m10djcompany.com",
         "address": {
           "@type": "PostalAddress",
-          "streetAddress": "Memphis, TN",
-          "addressLocality": "Memphis",
+          "streetAddress": "65 Stewart Rd",
+          "addressLocality": "Eads",
           "addressRegion": "TN",
-          "postalCode": "38119",
+          "postalCode": "38028",
           "addressCountry": "US"
         },
         "geo": {
           "@type": "GeoCoordinates",
-          "latitude": 35.1495,
-          "longitude": -90.0490
+          "latitude": 35.2379,
+          "longitude": -89.7465
         },
         "foundingDate": "2009",
         "founder": {
@@ -487,23 +505,23 @@ export const MultiServiceBusinessSchema = () => (
         "@context": "https://schema.org",
         "@type": "EntertainmentBusiness",
         "@id": "https://www.m10djcompany.com/#entertainmentbusiness",
-        "name": "M10 DJ Company",
-        "description": "Memphis's premier wedding and event DJ company with 15+ years of experience and 500+ successful celebrations.",
+        "name": "M10 DJ Company - Memphis Wedding & Event DJ",
+        "description": "Memphis's premier wedding and event DJ company with 15+ years of experience and 500+ successful celebrations. Serving Memphis, Germantown, Collierville, and all Mid-South locations with professional DJ and entertainment services.",
         "url": "https://www.m10djcompany.com",
         "telephone": "+19014102020",
         "email": "info@m10djcompany.com",
         "address": {
           "@type": "PostalAddress",
-          "streetAddress": "Memphis, TN",
-          "addressLocality": "Memphis",
+          "streetAddress": "65 Stewart Rd",
+          "addressLocality": "Eads",
           "addressRegion": "TN",
-          "postalCode": "38119",
+          "postalCode": "38028",
           "addressCountry": "US"
         },
         "geo": {
           "@type": "GeoCoordinates",
-          "latitude": 35.1495,
-          "longitude": -90.0490
+          "latitude": 35.2379,
+          "longitude": -89.7465
         },
         "priceRange": "$799-$1899",
         "currenciesAccepted": "USD",
@@ -543,30 +561,33 @@ export const MultiServiceBusinessSchema = () => (
         "department": [
           {
             "@type": "EntertainmentBusiness",
-            "name": "M10 DJ Company Wedding Services",
-            "description": "Professional wedding DJ and entertainment services throughout Memphis",
+            "name": "M10 DJ Company Memphis Wedding Services",
+            "description": "Premier Memphis wedding DJ and entertainment services - serving Memphis, Germantown, Collierville, and all Mid-South locations",
             "url": "https://www.m10djcompany.com/weddings",
             "telephone": "+19014102020",
             "priceRange": "$999-$1899",
-            "servesCuisine": "Wedding Entertainment"
+            "servesCuisine": "Wedding Entertainment",
+            "areaServed": ["Memphis", "Memphis Metro Area", "Germantown", "Collierville"]
           },
           {
             "@type": "EntertainmentBusiness", 
-            "name": "M10 DJ Company Corporate Events",
-            "description": "Professional DJ services for corporate events, conferences, and business celebrations",
+            "name": "M10 DJ Company Memphis Corporate Events",
+            "description": "Professional Memphis corporate DJ services for downtown events, conferences, and business celebrations at FedExForum, Memphis Cook Convention Center, and premier venues",
             "url": "https://www.m10djcompany.com/corporate-events",
             "telephone": "+19014102020",
             "priceRange": "$799-$1499",
-            "servesCuisine": "Corporate Entertainment"
+            "servesCuisine": "Corporate Entertainment",
+            "areaServed": ["Memphis", "Downtown Memphis", "Memphis Metro Area"]
           },
           {
             "@type": "EntertainmentBusiness",
-            "name": "M10 DJ Company Private Parties",
-            "description": "DJ services for private celebrations, birthdays, anniversaries and special events",
+            "name": "M10 DJ Company Memphis Private Parties",
+            "description": "Memphis DJ services for private celebrations, birthdays, anniversaries and special events throughout Memphis and surrounding areas",
             "url": "https://www.m10djcompany.com/private-parties",
             "telephone": "+19014102020",
             "priceRange": "$799-$1299",
-            "servesCuisine": "Private Event Entertainment"
+            "servesCuisine": "Private Event Entertainment",
+            "areaServed": ["Memphis", "Memphis Metro Area", "East Memphis", "Midtown Memphis"]
           }
         ]
       })

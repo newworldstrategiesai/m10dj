@@ -120,26 +120,29 @@ export default function HolidayParties() {
         <meta property="og:url" content="https://m10djcompany.com/holiday-parties" />
         
         {/* Schema.org */}
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Service",
-            "name": "Holiday Party DJ Services",
-            "description": "Professional DJ and entertainment services for holiday parties and seasonal celebrations in Memphis, TN",
-            "provider": {
-              "@type": "LocalBusiness",
-              "name": "M10 DJ Company",
-              "telephone": "(901) 410-2020",
-              "address": {
-                "@type": "PostalAddress",
-                "addressLocality": "Memphis",
-                "addressRegion": "TN"
-              }
-            },
-            "areaServed": "Memphis, TN",
-            "serviceType": "Holiday Event Entertainment"
-          })}
-        </script>
+        <script 
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Service",
+              "name": "Holiday Party DJ Services",
+              "description": "Professional DJ and entertainment services for holiday parties and seasonal celebrations in Memphis, TN",
+              "provider": {
+                "@type": "LocalBusiness",
+                "name": "M10 DJ Company",
+                "telephone": "(901) 410-2020",
+                "address": {
+                  "@type": "PostalAddress",
+                  "addressLocality": "Memphis",
+                  "addressRegion": "TN"
+                }
+              },
+              "areaServed": "Memphis, TN",
+              "serviceType": "Holiday Event Entertainment"
+            })
+          }}
+        />
       </Head>
 
       <Header />
