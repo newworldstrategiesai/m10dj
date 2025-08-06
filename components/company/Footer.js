@@ -71,7 +71,7 @@ export default function Footer() {
             <h4 className="text-lg font-semibold text-brand mb-6 font-sans">Our Services</h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/weddings" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                <Link href="/memphis-wedding-dj" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
                   Wedding Entertainment
                 </Link>
               </li>

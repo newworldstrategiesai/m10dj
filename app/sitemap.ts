@@ -24,7 +24,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/blog/memphis-wedding-dj-cost-guide-2025',
     '/blog/memphis-wedding-songs-2025',
     '/blog/memphis-wedding-success-story-sarah-michael',
-    '/weddings',
     '/corporate-events',
     '/private-parties',
     '/school-dances',

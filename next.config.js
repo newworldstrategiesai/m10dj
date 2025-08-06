@@ -117,6 +117,16 @@ const nextConfig = {
         destination: '/',
         permanent: true,
       },
+      {
+        source: '/weddings',
+        destination: '/memphis-wedding-dj',
+        permanent: true,
+      },
+      {
+        source: '/djbenmurray',
+        destination: '/dj-ben-murray',
+        permanent: true,
+      },
     ];
   },
 };

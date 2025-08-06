@@ -28,7 +28,7 @@ export default function Header() {
   };
 
   const services = [
-    { name: 'Wedding DJ Services', href: '/weddings' },
+    { name: 'Wedding DJ Services', href: '/memphis-wedding-dj' },
     { name: 'Corporate Events', href: '/corporate-events' },
     { name: 'Private Parties', href: '/private-parties' },
     { name: 'School Dances', href: '/school-dances' },

@@ -567,7 +567,7 @@ export const MultiServiceBusinessSchema = () => (
             "@type": "EntertainmentBusiness",
             "name": "M10 DJ Company Memphis Wedding Services",
             "description": "Premier Memphis wedding DJ and entertainment services - serving Memphis, Germantown, Collierville, and all Mid-South locations",
-            "url": "https://www.m10djcompany.com/weddings",
+            "url": "https://www.m10djcompany.com/memphis-wedding-dj",
             "telephone": "+19014102020",
             "priceRange": "$999-$1899",
             "servesCuisine": "Wedding Entertainment",
