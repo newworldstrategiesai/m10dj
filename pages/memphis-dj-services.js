@@ -277,7 +277,7 @@ export default function MemphisDJServices() {
                     onClick={scrollToContact}
                     className="btn-outline w-full group-hover:btn-primary transition-all"
                   >
-                    Learn More
+                    Get Free Quote
                   </button>
                 </div>
               ))}

@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '',
     '/pricing',
     '/about',
+    '/contact',
     '/dj-near-me-memphis',
     '/memphis-event-dj-services',
     '/memphis-dj-pricing-guide',
@@ -50,6 +51,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
              // Informational pages
              route === '/memphis-dj-pricing-guide' ? 0.90 :
              route === '/memphis-wedding-dj-prices-2025' ? 0.89 :
+             route === '/contact' ? 0.89 :
              route === '/pricing' ? 0.88 :
              route === '/dj-ben-murray' ? 0.87 : 0.8,
   }));

@@ -482,7 +482,7 @@ export default function DJNearMemphis() {
                     </p>
                     
                     <div className="flex items-center text-brand font-semibold">
-                      <span>Learn More</span>
+                      <span>View {service.title} Details</span>
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </div>
                   </Link>

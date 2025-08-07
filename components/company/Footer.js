@@ -127,6 +127,21 @@ export default function Footer() {
                   Arlington
                 </Link>
               </li>
+              <li>
+                <Link href="/cordova" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Cordova
+                </Link>
+              </li>
+              <li>
+                <Link href="/southaven" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Southaven
+                </Link>
+              </li>
+              <li>
+                <Link href="/olive-branch" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Olive Branch
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -261,7 +276,7 @@ export default function Footer() {
               Get your free consultation and quote today. Let's create an amazing experience for your special event.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="#contact" className="btn-primary">
+              <Link href="/contact" className="btn-primary">
                 Get Free Quote
               </Link>
               <a href="tel:+19014102020" className="btn-secondary">

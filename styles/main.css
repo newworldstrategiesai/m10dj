@@ -9,7 +9,48 @@
 }
 
 *:focus:not(ol) {
-  @apply outline-none ring-2 ring-[#fcba00] ring-opacity-50;
+  @apply outline-none ring-2 ring-[#fcba00] ring-opacity-75;
+}
+
+/* Enhanced focus for interactive elements */
+button:focus,
+a:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  @apply ring-2 ring-[#fcba00] ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+}
+
+/* High contrast focus for better visibility */
+@media (prefers-contrast: high) {
+  *:focus {
+    @apply ring-4 ring-yellow-400 ring-offset-4;
+  }
+}
+
+/* Screen Reader Only utility for accessibility */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.sr-only:focus,
+.focus\:not-sr-only:focus {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  padding: inherit !important;
+  margin: inherit !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
 }
 
 html {

@@ -40,11 +40,22 @@ export default function Header() {
     { name: 'Germantown', href: '/germantown' },
     { name: 'Collierville', href: '/collierville' },
     { name: 'Bartlett', href: '/bartlett' },
-    { name: 'Arlington', href: '/arlington' }
+    { name: 'Arlington', href: '/arlington' },
+    { name: 'Cordova', href: '/cordova' },
+    { name: 'Southaven', href: '/southaven' },
+    { name: 'Olive Branch', href: '/olive-branch' }
   ];
 
   return (
     <>
+      {/* Skip Navigation Link for Accessibility */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-[60] bg-brand text-white px-4 py-2 rounded-md font-semibold focus:ring-2 focus:ring-yellow-400"
+      >
+        Skip to main content
+      </a>
+      
       <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${
         isScrolled 
           ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200' 
@@ -139,12 +150,9 @@ export default function Header() {
                 About
               </Link>
               
-              <button 
-                onClick={scrollToContact}
-                className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors"
-              >
+              <Link href="/contact" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
                 Contact
-              </button>
+              </Link>
             </nav>
 
             {/* Contact Info & CTA */}

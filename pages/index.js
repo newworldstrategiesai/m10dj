@@ -52,7 +52,7 @@ export default function Home() {
 
       <Header />
 
-      <main>
+      <main id="main-content">
         {/* Hero Section */}
         <section id="home" className={`relative min-h-screen flex items-center justify-center bg-white text-gray-900 overflow-hidden ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
           {/* Background Elements */}
@@ -260,7 +260,7 @@ export default function Home() {
                   </li>
                 </ul>
                 <Link href="/services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
-                  Learn More <ChevronRight className="ml-1 w-4 h-4" />
+                  View Party Services <ChevronRight className="ml-1 w-4 h-4" />
                 </Link>
               </div>
             </div>
