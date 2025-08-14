@@ -193,6 +193,31 @@ export const faqData = {
       question: 'Do you provide DJ services outside of Memphis?',
       answer: 'Yes, we serve the greater Memphis area including Germantown, Collierville, Bartlett, Cordova, and surrounding communities within 50 miles of Memphis.',
       category: 'Service Area'
+    },
+    {
+      question: 'How far in advance should I book my Memphis DJ?',
+      answer: 'We recommend booking your Memphis DJ 6-12 months in advance for weddings, 2-3 months for corporate events, and 4-6 weeks for private parties. Popular dates (weekends, holidays) book faster.',
+      category: 'Booking'
+    },
+    {
+      question: 'What equipment do you provide for events?',
+      answer: 'We provide professional-grade sound systems, wireless microphones, uplighting, fog machines (when requested), and all necessary cables and setup equipment. Our equipment is regularly maintained and includes backup systems.',
+      category: 'Equipment'
+    },
+    {
+      question: 'Do you take music requests during events?',
+      answer: 'Absolutely! We encourage music requests and work with you to create the perfect playlist. We can take requests during the event while maintaining the overall vibe and staying within your preferred music guidelines.',
+      category: 'Music'
+    },
+    {
+      question: 'Are you available for last-minute bookings?',
+      answer: 'Yes, we accept last-minute bookings when available. Contact us at (901) 410-2020 to check availability. Rush bookings may have limited equipment or service options.',
+      category: 'Booking'
+    },
+    {
+      question: 'What makes M10 DJ Company different from other Memphis DJs?',
+      answer: 'With 15+ years of experience, 500+ successful events, and expertise at 27+ Memphis venues, we offer personalized service, professional-grade equipment, and deep local venue knowledge that ensures your event runs flawlessly.',
+      category: 'About Us'
     }
   ],
   wedding: [

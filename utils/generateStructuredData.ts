@@ -133,14 +133,23 @@ export function generateStructuredData(props: StructuredDataProps) {
 
   switch (pageType) {
     case 'homepage':
-      // LocalBusiness schema for homepage
-      schemas.push({
+      // Enhanced LocalBusiness schema with Organization properties for homepage
+      // This consolidates both LocalBusiness and Organization into one comprehensive schema
+      schemas[0] = {
         "@context": "https://schema.org",
-        "@type": "LocalBusiness",
-        "@id": generateId('local-business'),
+        "@type": ["LocalBusiness", "Organization"],
+        "@id": `${businessInfo.url}/#organization`,
         "name": businessInfo.name,
+        "alternateName": businessInfo.alternateName,
         "description": businessInfo.description,
-        "url": pageUrl,
+        "url": businessInfo.url,
+        "logo": {
+          "@type": "ImageObject",
+          "url": businessInfo.logo.url,
+          "width": businessInfo.logo.width,
+          "height": businessInfo.logo.height
+        },
+        "image": businessInfo.image,
         "telephone": businessInfo.telephone,
         "email": businessInfo.email,
         "address": {
@@ -156,6 +165,13 @@ export function generateStructuredData(props: StructuredDataProps) {
           "latitude": businessInfo.geo.latitude,
           "longitude": businessInfo.geo.longitude
         },
+        "foundingDate": businessInfo.foundingDate,
+        "founder": {
+          "@type": "Person",
+          "name": businessInfo.founder.name,
+          "jobTitle": businessInfo.founder.jobTitle
+        },
+        "sameAs": businessInfo.socialMedia,
         "openingHours": businessInfo.openingHours,
         "areaServed": Object.values(locationData).map(location => ({
           "@type": "City",
@@ -178,8 +194,18 @@ export function generateStructuredData(props: StructuredDataProps) {
             "priceRange": service.priceRange,
             "position": index + 1
           }))
-        }
-      });
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": businessInfo.aggregateRating.ratingValue,
+          "reviewCount": businessInfo.aggregateRating.reviewCount,
+          "bestRating": businessInfo.aggregateRating.bestRating,
+          "worstRating": businessInfo.aggregateRating.worstRating
+        },
+        "priceRange": businessInfo.priceRange,
+        "currenciesAccepted": businessInfo.currenciesAccepted,
+        "paymentAccepted": businessInfo.paymentAccepted
+      };
 
       // WebSite schema with search action
       schemas.push({
@@ -566,6 +592,9 @@ export function generateStructuredData(props: StructuredDataProps) {
       "@context": "https://schema.org",
       "@type": "FAQPage",
       "@id": generateId('faq'),
+      "name": "Memphis DJ Services - Frequently Asked Questions",
+      "description": "Common questions about M10 DJ Company's professional DJ services in Memphis, TN including pricing, booking, equipment, and service areas.",
+      "url": pageUrl,
       "mainEntity": relevantFaqs.map(faq => ({
         "@type": "Question",
         "name": faq.question,
