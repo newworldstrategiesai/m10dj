@@ -10,7 +10,7 @@ import FAQSection from '../components/company/FAQSection';
 import SEO from '../components/SEO';
 import { generateStructuredData } from '../utils/generateStructuredData';
 import { AIAnswerBlock, AIQuickFacts } from '../components/AIOverviewOptimization';
-import { LazySection, OptimizedButton } from '../components/MobilePerformanceOptimizer';
+// import { LazySection, OptimizedButton } from '../components/MobilePerformanceOptimizer';
 import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
 import { scrollToContact } from '../utils/scroll-helpers';
 
@@ -89,7 +89,7 @@ export default function Home() {
               
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
-                <OptimizedButton 
+                <button 
                   onClick={() => {
                     trackLead('quote_request_start', { source: 'hero_section' });
                     scrollToContact();
@@ -98,7 +98,7 @@ export default function Home() {
                 >
                   Get Your Free Quote
                   <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </OptimizedButton>
+                </button>
                 <Link 
                   href="/services" 
                   className="btn-secondary"
@@ -298,14 +298,14 @@ export default function Home() {
         </section>
 
         {/* Testimonials Section */}
-        <LazySection>
+        <section>
           <TestimonialSlider showSchema={false} />
-        </LazySection>
+        </section>
 
         {/* FAQ Section */}
-        <LazySection>
+        <section>
           <FAQSection showSchema={false} />
-        </LazySection>
+        </section>
 
         {/* Wedding Planning Resources Section */}
         <section className="py-16 bg-white">

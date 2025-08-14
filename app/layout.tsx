@@ -5,9 +5,11 @@ import { Toaster } from '@/components/ui/Toasts/toaster';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import { headers } from 'next/headers';
-import EnhancedTracking from '@/components/EnhancedTracking';
-import PerformanceOptimizations from '@/components/PerformanceOptimizations';
-import { CriticalResourceHints, OptimizedScriptLoader, ServiceWorkerManager, PerformanceBudgetMonitor } from '@/components/MobilePerformanceOptimizer';
+// Performance components disabled during SEO recovery
+// import EnhancedTracking from '@/components/EnhancedTracking';
+// import PerformanceOptimizations from '@/components/PerformanceOptimizations';
+// Performance components disabled during SEO recovery
+// import { CriticalResourceHints, OptimizedScriptLoader, ServiceWorkerManager, PerformanceBudgetMonitor } from '@/components/MobilePerformanceOptimizer';
 import { Analytics } from '@vercel/analytics/next';
 
 import 'styles/main.css';
