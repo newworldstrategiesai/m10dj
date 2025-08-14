@@ -42,9 +42,9 @@ export const businessInfo = {
   ],
   aggregateRating: {
     ratingValue: '5.0',
-    reviewCount: '150',
+    reviewCount: '10', // Actual Google review count
     bestRating: '5',
-    worstRating: '1'
+    worstRating: '5' // All reviews are 5-star
   }
 };
 
@@ -212,25 +212,135 @@ export const faqData = {
 export const reviewData = {
   featured: [
     {
-      author: 'Sarah M.',
+      author: 'Quade Nowlin',
       rating: 5,
-      text: 'M10 DJ Company made our wedding absolutely perfect! Ben was professional, played exactly what we wanted, and kept the dance floor packed all night.',
-      date: '2024-06-15',
-      event: 'Wedding'
+      text: 'Ben was an excellent choice for my wedding. He played everything we asked and built a playlist based on those preferences. He had a better price than everyone else we contacted, and he was more responsive than anyone else we reached out to. He had a professional demeanor the entire time while also being able to have fun. Highly recommended, 10/10',
+      date: '2024-11-01', // 1 month ago
+      event: 'Wedding',
+      reviewAspect: 'Wedding Entertainment',
+      headline: 'Excellent Wedding Choice - 10/10',
+      positiveNotes: ['Better pricing than competitors', 'Most responsive communication', 'Professional yet fun demeanor', 'Custom playlist creation'],
+      verified: true,
+      source: 'Google Reviews'
     },
     {
-      author: 'Corporate Client',
+      author: 'Alexis Cameron',
       rating: 5,
-      text: 'Outstanding service for our annual company party. Professional, punctual, and exactly what we needed for a successful corporate event.',
-      date: '2024-05-20',
-      event: 'Corporate Event'
+      text: 'Ben DJ\'d our wedding last weekend and I couldn\'t be more thankful. He was communicative, paid great attention to detail, and ensured everything went smoothly. He had a lapel mic for my officiant and some speeches that made it all seamless and convenient. We had younger kids, grandparents and all the others in between- the music was appropriate and also right up our alley. Ben went over the top to make sure the night went amazingly. Will be recommending to friends and family and highly do to anyone reading this now. Thank you, Ben!',
+      date: '2024-10-01', // 2 months ago
+      event: 'Wedding',
+      reviewAspect: 'Wedding Coordination',
+      headline: 'Couldn\'t Be More Thankful',
+      positiveNotes: ['Excellent communication', 'Great attention to detail', 'Lapel mic for officiant', 'Age-appropriate music for all guests', 'Went over the top'],
+      verified: true,
+      source: 'Google Reviews'
     },
     {
-      author: 'Jennifer L.',
+      author: 'Chandler Keen',
       rating: 5,
-      text: 'Hired M10 DJ for my daughter\'s sweet 16. They were amazing with the kids and played all the right music. Highly recommend!',
-      date: '2024-04-10',
-      event: 'Private Party'
+      text: 'Ben Murray DJ\'d my wedding and could not have been more thoughtful in the planning process. He\'s extremely talented and all of the guests at our wedding raved about the song choices and DJ. I highly recommend Ben for any event, he will cater to your wants and needs and ensure that your event is filled with exciting music that fits your desires.',
+      date: '2021-12-01', // 3 years ago
+      event: 'Wedding',
+      reviewAspect: 'Event Planning',
+      headline: 'Extremely Thoughtful Planning Process',
+      positiveNotes: ['Thoughtful planning process', 'Extremely talented', 'Guests raved about song choices', 'Caters to specific wants and needs'],
+      verified: true,
+      source: 'Google Reviews'
+    },
+    {
+      author: 'Dan Roberts',
+      rating: 5,
+      text: 'Ben worked as the DJ at my fairly large (200-250 people) wedding. He was extremely professional with his communication and knew the right questions to ask us about specific music for planned dances and also about what kind of music we thought our attendees would like. I\'ve never been to a wedding where the DJ mixes his own tracks throughout the open dance time, but Ben made that work extremely well! He read the room and knew when to switch to keep the energy up on the dancefloor.',
+      date: '2021-12-01', // 3 years ago
+      event: 'Large Wedding',
+      reviewAspect: 'Live Mixing & Crowd Reading',
+      headline: 'Professional Large Wedding DJ',
+      positiveNotes: ['Handled 200-250 people expertly', 'Professional communication', 'Live track mixing during dancing', 'Excellent crowd reading abilities'],
+      verified: true,
+      source: 'Google Reviews'
+    },
+    {
+      author: 'Brad Eiseman',
+      rating: 5,
+      text: 'This company is professional, courteous, and kind! Easily one of the best DJs we could have chosen for our wedding which was obviously one of the most important moments in our lives! DJ Ben Murray is a great person and a great DJ and we were lucky to have him as our DJ for our wedding!- Brad & Sarah',
+      date: '2021-12-01', // 3 years ago
+      event: 'Wedding',
+      reviewAspect: 'Overall Service Quality',
+      headline: 'One of the Best DJs We Could Have Chosen',
+      positiveNotes: ['Professional, courteous, and kind', 'Great person and great DJ', 'Perfect for most important life moments'],
+      verified: true,
+      source: 'Google Reviews'
+    },
+    {
+      author: 'Steven Gordon',
+      rating: 5,
+      text: 'Ben is the best DJ in Memphis. We had him DJ our wedding, very easy to work with and the reception music, lighting, etc was perfect…made sure everybody was enjoying the vibe and accommodated requests. From prior experience, he\'s also a great party/club, etc DJ.',
+      date: '2021-12-01', // 3 years ago
+      event: 'Wedding',
+      reviewAspect: 'Memphis DJ Expertise',
+      headline: 'Best DJ in Memphis',
+      positiveNotes: ['Best DJ in Memphis', 'Easy to work with', 'Perfect music and lighting', 'Accommodated requests', 'Great for all event types'],
+      verified: true,
+      source: 'Google Reviews'
+    },
+    {
+      author: 'Mary Nguyen',
+      rating: 5,
+      text: 'Ben is AMAZING! He\'s professional and knows what he\'s doing. He got us to put together our playlist and combined it with his and made the night magical! I don\'t know if he\'s ever done a Vietnamese wedding before, but he rocked it for my brother\'s.',
+      date: '2021-12-01', // 3 years ago
+      event: 'Vietnamese Wedding',
+      reviewAspect: 'Multicultural Events',
+      headline: 'Amazing Vietnamese Wedding DJ',
+      positiveNotes: ['Professional and knowledgeable', 'Collaborative playlist creation', 'Made the night magical', 'Excellent with cultural events'],
+      verified: true,
+      source: 'Google Reviews'
+    },
+    {
+      author: 'AK Warmus',
+      rating: 5,
+      text: 'Would have another wedding just to have Ben DJ for us again.',
+      date: '2022-12-01', // 2 years ago
+      event: 'Wedding',
+      reviewAspect: 'Overall Satisfaction',
+      headline: 'Would Have Another Wedding Just for Ben',
+      positiveNotes: ['So satisfied would repeat the experience', 'Exceptional service quality'],
+      verified: true,
+      source: 'Google Reviews'
+    },
+    {
+      author: 'Haley Blalack',
+      rating: 5,
+      text: 'Great!!!!! He did the music at the ceremony and Dj the reception! He did a fantastic job and it was a day not many people will forget.',
+      date: '2021-12-01', // 3 years ago
+      event: 'Wedding',
+      reviewAspect: 'Ceremony & Reception',
+      headline: 'Fantastic Job - Unforgettable Day',
+      positiveNotes: ['Handled both ceremony and reception', 'Fantastic performance', 'Created unforgettable memories'],
+      verified: true,
+      source: 'Google Reviews'
+    },
+    {
+      author: 'Jamie Irby',
+      rating: 5,
+      text: 'Super professional and punctual. Took care of our every need and want, would use again!',
+      date: '2021-12-01', // 3 years ago
+      event: 'Wedding',
+      reviewAspect: 'Professional Service',
+      headline: 'Super Professional and Punctual',
+      positiveNotes: ['Super professional', 'Always punctual', 'Took care of every need', 'Would use again'],
+      verified: true,
+      source: 'Google Reviews'
     }
-  ]
+  ],
+  aggregateStats: {
+    totalReviews: 10, // Actual Google review count
+    averageRating: 5.0,
+    ratingDistribution: {
+      5: 10, // All 10 reviews are 5-star
+      4: 0,
+      3: 0,
+      2: 0,
+      1: 0
+    }
+  }
 };

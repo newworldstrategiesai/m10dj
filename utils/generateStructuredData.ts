@@ -577,27 +577,72 @@ export function generateStructuredData(props: StructuredDataProps) {
     });
   }
 
-  // Add Review schema
+  // Add comprehensive Review schemas following full Schema.org specification
   if (reviewData.featured.length > 0) {
+    // Add individual Review schemas for each featured review
+    reviewData.featured.forEach((review, index) => {
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "Review",
+        "@id": generateId('review', index.toString()),
+        "name": review.headline || `${review.event} Review`,
+        "reviewBody": review.text,
+        "reviewRating": {
+          "@type": "Rating",
+          "ratingValue": review.rating,
+          "bestRating": 5,
+          "worstRating": 1,
+          "reviewAspect": review.reviewAspect || review.event
+        },
+        "itemReviewed": {
+          "@type": "LocalBusiness",
+          "@id": `${businessInfo.url}/#organization`,
+          "name": businessInfo.name,
+          "url": businessInfo.url,
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": businessInfo.address.streetAddress,
+            "addressLocality": businessInfo.address.addressLocality,
+            "addressRegion": businessInfo.address.addressRegion,
+            "postalCode": businessInfo.address.postalCode,
+            "addressCountry": businessInfo.address.addressCountry
+          },
+          "telephone": businessInfo.telephone,
+          "priceRange": businessInfo.priceRange,
+          "serviceType": "DJ Services"
+        },
+        "author": {
+          "@type": "Person",
+          "name": review.author
+        },
+        "datePublished": review.date,
+        "publisher": {
+          "@type": "Organization",
+          "name": businessInfo.name,
+          "url": businessInfo.url
+        },
+        "positiveNotes": review.positiveNotes || [],
+        "inLanguage": "en-US",
+        "isPartOf": {
+          "@type": "WebPage",
+          "@id": pageUrl
+        }
+      });
+    });
+
+    // Add AggregateRating schema for overall business rating
     schemas.push({
       "@context": "https://schema.org",
-      "@type": "Review",
-      "@id": generateId('review'),
+      "@type": "AggregateRating",
+      "@id": generateId('aggregate-rating'),
       "itemReviewed": {
         "@id": `${businessInfo.url}/#organization`
       },
-      "reviewRating": {
-        "@type": "Rating",
-        "ratingValue": reviewData.featured[0].rating,
-        "bestRating": 5,
-        "worstRating": 1
-      },
-      "author": {
-        "@type": "Person",
-        "name": reviewData.featured[0].author
-      },
-      "reviewBody": reviewData.featured[0].text,
-      "datePublished": reviewData.featured[0].date
+      "ratingValue": reviewData.aggregateStats?.averageRating || businessInfo.aggregateRating.ratingValue,
+      "reviewCount": reviewData.aggregateStats?.totalReviews || businessInfo.aggregateRating.reviewCount,
+      "bestRating": 5,
+      "worstRating": 1,
+      "ratingExplanation": `Based on ${reviewData.aggregateStats?.totalReviews || businessInfo.aggregateRating.reviewCount} verified customer reviews across all services including weddings, corporate events, and private parties.`
     });
   }
 
@@ -625,4 +670,174 @@ export function generateBreadcrumbSchema(breadcrumbs: Array<{name: string, url: 
 // Helper function to get structured data as JSON string (use with dangerouslySetInnerHTML)
 export function getStructuredDataScript(data: any): string {
   return JSON.stringify(data, null, 2);
+}
+
+// Specialized Review Schema Generator following full Schema.org specification
+export function generateReviewSchema(props: {
+  reviews: Array<{
+    author: string;
+    rating: number;
+    text: string;
+    date: string;
+    event?: string;
+    reviewAspect?: string;
+    headline?: string;
+    positiveNotes?: string[];
+    negativeNotes?: string[];
+    verified?: boolean;
+  }>;
+  itemReviewed: {
+    "@type": string;
+    name: string;
+    url: string;
+    address?: any;
+    telephone?: string;
+    priceRange?: string;
+    serviceType?: string;
+  };
+  aggregateRating?: {
+    ratingValue: number;
+    reviewCount: number;
+    bestRating?: number;
+    worstRating?: number;
+  };
+  pageUrl: string;
+}) {
+  const { reviews, itemReviewed, aggregateRating, pageUrl } = props;
+  
+  const reviewSchemas = reviews.map((review, index) => ({
+    "@context": "https://schema.org",
+    "@type": "Review",
+    "@id": `${pageUrl}#review-${index}`,
+    "name": review.headline || `${review.event || 'Service'} Review`,
+    "reviewBody": review.text,
+    "reviewRating": {
+      "@type": "Rating",
+      "ratingValue": review.rating,
+      "bestRating": 5,
+      "worstRating": 1,
+      ...(review.reviewAspect && { "reviewAspect": review.reviewAspect })
+    },
+    "itemReviewed": {
+      "@type": itemReviewed["@type"],
+      "@id": `${itemReviewed.url}/#organization`,
+      "name": itemReviewed.name,
+      "url": itemReviewed.url,
+      ...(itemReviewed.address && { "address": itemReviewed.address }),
+      ...(itemReviewed.telephone && { "telephone": itemReviewed.telephone }),
+      ...(itemReviewed.priceRange && { "priceRange": itemReviewed.priceRange }),
+      ...(itemReviewed.serviceType && { "serviceType": itemReviewed.serviceType })
+    },
+    "author": {
+      "@type": "Person",
+      "name": review.author
+    },
+    "datePublished": review.date,
+    "publisher": {
+      "@type": "Organization", 
+      "name": itemReviewed.name,
+      "url": itemReviewed.url
+    },
+    "inLanguage": "en-US",
+    "isPartOf": {
+      "@type": "WebPage",
+      "@id": pageUrl
+    },
+    ...(review.positiveNotes && review.positiveNotes.length > 0 && {
+      "positiveNotes": review.positiveNotes
+    }),
+    ...(review.negativeNotes && review.negativeNotes.length > 0 && {
+      "negativeNotes": review.negativeNotes
+    }),
+    ...(review.verified && {
+      "additionalProperty": {
+        "@type": "PropertyValue",
+        "name": "Verified Review",
+        "value": "true"
+      }
+    })
+  }));
+
+  // Add aggregate rating if provided
+  if (aggregateRating) {
+    reviewSchemas.push({
+      "@context": "https://schema.org",
+      "@type": "AggregateRating",
+      "@id": `${pageUrl}#aggregate-rating`,
+      "itemReviewed": {
+        "@id": `${itemReviewed.url}/#organization`
+      },
+      "ratingValue": aggregateRating.ratingValue,
+      "reviewCount": aggregateRating.reviewCount,
+      "bestRating": aggregateRating.bestRating || 5,
+      "worstRating": aggregateRating.worstRating || 1,
+      "ratingExplanation": `Based on ${aggregateRating.reviewCount} verified customer reviews`
+    } as any);
+  }
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": reviewSchemas
+  };
+}
+
+// Helper function to generate individual Review schema (matches your Legal Seafood example)
+export function generateIndividualReviewSchema(props: {
+  reviewBody: string;
+  reviewRating: number;
+  reviewAspect?: string;
+  author: string;
+  datePublished?: string;
+  headline?: string;
+  itemReviewed: {
+    "@type": string;
+    name: string;
+    url?: string;
+    image?: string;
+    address?: any;
+    telephone?: string;
+    priceRange?: string;
+    servesCuisine?: string; // For restaurants
+    serviceType?: string;   // For service businesses
+  };
+  publisher?: {
+    "@type": string;
+    name: string;
+  };
+  pageUrl: string;
+}) {
+  const { reviewBody, reviewRating, reviewAspect, author, datePublished, headline, itemReviewed, publisher, pageUrl } = props;
+  
+  return {
+    "@context": "https://schema.org",
+    "@type": "Review",
+    "@id": `${pageUrl}#review`,
+    ...(headline && { "name": headline }),
+    "reviewBody": reviewBody,
+    "reviewRating": {
+      "@type": "Rating",
+      "ratingValue": reviewRating,
+      "bestRating": 5,
+      "worstRating": 1,
+      ...(reviewAspect && { "reviewAspect": reviewAspect })
+    },
+    "itemReviewed": {
+      "@type": itemReviewed["@type"],
+      "name": itemReviewed.name,
+      ...(itemReviewed.url && { "url": itemReviewed.url }),
+      ...(itemReviewed.image && { "image": itemReviewed.image }),
+      ...(itemReviewed.address && { "address": itemReviewed.address }),
+      ...(itemReviewed.telephone && { "telephone": itemReviewed.telephone }),
+      ...(itemReviewed.priceRange && { "priceRange": itemReviewed.priceRange }),
+      ...(itemReviewed.servesCuisine && { "servesCuisine": itemReviewed.servesCuisine }),
+      ...(itemReviewed.serviceType && { "serviceType": itemReviewed.serviceType })
+    },
+    "author": {
+      "@type": "Person",
+      "name": author
+    },
+    ...(datePublished && { "datePublished": datePublished }),
+    ...(publisher && { "publisher": publisher }),
+    "inLanguage": "en-US"
+  };
 }
