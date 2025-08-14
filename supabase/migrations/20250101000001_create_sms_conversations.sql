@@ -74,9 +74,9 @@ CREATE POLICY "Admin users can manage all SMS conversations"
     TO authenticated
     USING (
         EXISTS (
-            SELECT 1 FROM public.admin_settings 
+            SELECT 1 FROM public.admin_users 
             WHERE user_id = auth.uid() 
-            AND role = 'admin'
+            AND is_active = true
         )
     );
 
