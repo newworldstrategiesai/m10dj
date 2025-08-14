@@ -25,7 +25,7 @@ export default function Home() {
     <>
       <SEO
         title="Memphis DJ Services | Professional DJ Memphis | M10 DJ Company"
-        description="Professional Memphis DJ for all events - weddings, corporate, parties. #1 rated DJ services in Memphis with 500+ successful events. All occasions covered. Call (901) 410-2020!"
+        description="Memphis DJ • 500+ Events • Same-Day Quotes Available! Professional DJ services for weddings, corporate events & parties. #1 rated Memphis DJ company. Call (901) 410-2020 now!"
         keywords={[
           'Memphis DJ',
           'DJ Memphis',

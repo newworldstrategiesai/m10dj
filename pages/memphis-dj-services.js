@@ -131,10 +131,10 @@ export default function MemphisDJServices() {
   return (
     <>
       <Head>
-        <title>Memphis DJ Services | Event DJ Memphis | Complete DJ Services</title>
+        <title>DJ Memphis | Memphis DJ Services | Professional Event DJ</title>
         <meta 
           name="description" 
-          content="Complete Memphis DJ services - weddings, corporate events, private parties & more. Professional event DJ Memphis with premium equipment. Full service packages. Call (901) 410-2020!" 
+          content="DJ Memphis for all events! 🎵 Professional Memphis DJ services - weddings, corporate events, parties. Premium equipment included. Same-day quotes. Call (901) 410-2020!" 
         />
         <meta name="keywords" content="Memphis DJ services, DJ services Memphis, anniversary DJ Memphis, professional DJ Memphis, Memphis event DJ, Memphis party DJ, anniversary DJ, corporate DJ Memphis, wedding DJ Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -92,7 +92,7 @@ export default function MemphisWeddingDJ() {
     <>
       <SEO
         title="Wedding DJ Memphis | Memphis Wedding DJs | Professional Wedding Entertainment"
-        description="Wedding DJ Memphis TN - Professional Memphis wedding DJs with 500+ successful weddings. Best wedding DJs in Memphis for ceremonies, receptions & events. Call (901) 410-2020!"
+        description="Wedding DJ Memphis TN ⭐ 500+ Weddings ⭐ Same-Day Quotes! Professional Memphis wedding DJs for ceremonies & receptions. #1 wedding DJ Memphis. Call (901) 410-2020!"
         keywords={[
           'Memphis wedding DJ',
           'wedding DJ Memphis TN', 
@@ -352,11 +352,12 @@ export default function MemphisWeddingDJ() {
           <div className="section-container">
             <div className="text-center mb-16">
               <h2 className="heading-2 text-gray-900 mb-6">
-                Professional Wedding DJ Team in Memphis
+                Wedding DJs in Memphis - Professional Team Approach
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Our experienced Memphis wedding DJ team includes backup DJs and specialized entertainers 
-                to ensure your wedding celebration is flawless, no matter the size or complexity.
+                Looking for wedding DJs in Memphis? Our professional team of experienced Memphis wedding DJs 
+                includes backup DJs and specialized entertainers to ensure your wedding celebration is flawless, 
+                no matter the size or complexity.
               </p>
             </div>
 
@@ -665,6 +666,18 @@ export default function MemphisWeddingDJ() {
                     Our Memphis wedding DJ packages include professional sound systems, wireless microphones for ceremony and toasts, 
                     basic uplighting, DJ booth setup, and backup equipment. Premium packages add enhanced lighting, additional speakers 
                     for larger venues, and ceremony sound systems. All equipment is professional-grade and regularly maintained.
+                  </p>
+                </div>
+
+                {/* New FAQ targeting high-impression keywords */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    Are you the best wedding DJs in Memphis?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    With 500+ successful Memphis weddings and 15+ years of experience, we're proud to be among the top wedding DJs in Memphis. 
+                    Our professional team of Memphis wedding DJs specializes in creating unforgettable celebrations with personalized music, 
+                    professional MC services, and premium equipment. See our 5-star reviews from Memphis couples!
                   </p>
                 </div>
               </div>
