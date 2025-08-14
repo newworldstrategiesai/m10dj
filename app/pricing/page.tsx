@@ -10,7 +10,7 @@ import { getURL } from '@/utils/helpers';
 
 export const metadata: Metadata = {
   title: 'DJ Services Pricing & Packages | M10 DJ Company Memphis',
-  description: 'Transparent DJ service pricing for Memphis weddings, corporate events & parties. Package 1 from $1,145, Package 2 from $1,245, Package 3 from $1,500. Ceremony audio packages available. Get your free quote today!',
+  description: 'Transparent DJ service pricing for Memphis weddings, corporate events & parties. Package 1 from $1,245, Package 2 from $1,395, Package 3 from $1,500. Ceremony audio $395. Get your free quote today!',
   keywords: [
     'DJ pricing Memphis',
     'wedding DJ cost Memphis',
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: 'DJ Services Pricing & Packages | M10 DJ Company Memphis',
-    description: 'Transparent DJ service pricing for Memphis weddings, corporate events & parties. Professional packages starting at $1,145.',
+    description: 'Transparent DJ service pricing for Memphis weddings, corporate events & parties. Professional packages starting at $1,245.',
     url: `${getURL()}/pricing`,
     type: 'website',
     images: [
@@ -84,16 +84,16 @@ export default async function PricingPage() {
                 {
                   "@type": "Offer",
                   "name": "Package 1 - Reception Only",
-                  "description": "4 hours of DJ and MC services + dance floor lighting and speaker plus one of the following: Uplighting (16 lights) or Additional hour of time",
-                  "price": "1145",
+                  "description": "4 hours of DJ and MC services + dance floor lighting and speaker",
+                  "price": "1245",
                   "priceCurrency": "USD",
                   "availability": "https://schema.org/InStock"
                 },
                 {
                   "@type": "Offer",
                   "name": "Package 2 - Reception Only",
-                  "description": "4 hours of DJ and MC services + dance floor lighting and speaker plus two of the following: Ceremony audio package, Additional hour of time, Uplighting (16 lights)",
-                  "price": "1245",
+                  "description": "4 hours of DJ and MC services + dance floor lighting and speaker plus one of the following: Uplighting (16 lights) or Additional hour of time",
+                  "price": "1395",
                   "priceCurrency": "USD",
                   "availability": "https://schema.org/InStock"
                 },
@@ -108,8 +108,8 @@ export default async function PricingPage() {
                 {
                   "@type": "Offer",
                   "name": "Ceremony Audio Package",
-                  "description": "Smaller, less obstructive system. Prelude music starts up to 15 mins before time. 4 hours of DJ and MC services + dance floor lighting and speaker",
-                  "price": "295",
+                  "description": "Smaller, less obstructive system. Prelude music starts up to 15 mins before time. Music & microphones included. Lapel mic for officiant + handheld mics as needed",
+                  "price": "395",
                   "priceCurrency": "USD",
                   "availability": "https://schema.org/InStock"
                 },

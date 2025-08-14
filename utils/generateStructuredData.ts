@@ -389,7 +389,10 @@ export function generateStructuredData(props: StructuredDataProps) {
             "longitude": locationInfo.coordinates.longitude
           },
           "geoRadius": locationInfo.radius
-        }
+        },
+        "priceRange": businessInfo.priceRange,
+        "currenciesAccepted": businessInfo.currenciesAccepted,
+        "paymentAccepted": businessInfo.paymentAccepted
       });
 
       // Service schema for location pages
@@ -606,7 +609,10 @@ export function generateStructuredData(props: StructuredDataProps) {
           "@type": "GeoCoordinates",
           "latitude": businessInfo.geo.latitude,
           "longitude": businessInfo.geo.longitude
-        }
+        },
+        "priceRange": businessInfo.priceRange,
+        "currenciesAccepted": businessInfo.currenciesAccepted,
+        "paymentAccepted": businessInfo.paymentAccepted
       });
       break;
   }

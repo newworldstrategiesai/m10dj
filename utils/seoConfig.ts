@@ -31,7 +31,7 @@ export const businessInfo = {
     latitude: 35.1495,
     longitude: -90.0490
   },
-  priceRange: '$799-$1899',
+  priceRange: '$395-$1500',
   currenciesAccepted: 'USD',
   paymentAccepted: ['Cash', 'Check', 'Credit Card', 'PayPal', 'Venmo'],
   openingHours: 'Mo-Su 09:00-21:00',
@@ -92,9 +92,9 @@ export const serviceTypes = {
     description: 'Professional wedding DJ services including ceremony music, reception entertainment, MC services, and complete wedding coordination.',
     serviceType: 'Wedding Entertainment',
     category: 'Wedding Services',
-    priceRange: '$795-$1595',
-    duration: '6-8 hours',
-    includes: ['Professional DJ', 'Sound System', 'Wireless Microphones', 'MC Services', 'Uplighting', 'Music Library', 'Online Planning'],
+    priceRange: '$1245-$1500',
+    duration: '4-5 hours',
+    includes: ['Professional DJ', 'MC Services', 'Sound System', 'Dance Floor Lighting', 'Wireless Microphones', 'Music Library', 'Online Planning'],
     keywords: ['wedding DJ', 'wedding entertainment', 'wedding music', 'wedding MC', 'bridal party introductions']
   },
   corporate: {
@@ -102,7 +102,7 @@ export const serviceTypes = {
     description: 'Professional corporate event entertainment including background music, presentations, awards ceremonies, and company celebrations.',
     serviceType: 'Corporate Entertainment',
     category: 'Business Services',
-    priceRange: '$495-$995',
+    priceRange: '$450-$650',
     duration: '2-6 hours',
     includes: ['Professional DJ', 'Sound System', 'Microphones', 'Background Music', 'Presentation Support', 'Professional Attire'],
     keywords: ['corporate DJ', 'business events', 'company parties', 'corporate entertainment', 'conference audio']
@@ -112,7 +112,7 @@ export const serviceTypes = {
     description: 'Professional DJ services for private parties including birthdays, anniversaries, graduations, and family celebrations.',
     serviceType: 'Private Entertainment',
     category: 'Party Services',
-    priceRange: '$395-$795',
+    priceRange: '$150-$395',
     duration: '3-6 hours',
     includes: ['Professional DJ', 'Sound System', 'Party Music', 'Requests', 'Lighting Effects', 'MC Services'],
     keywords: ['party DJ', 'birthday party', 'anniversary party', 'graduation party', 'family celebration']
