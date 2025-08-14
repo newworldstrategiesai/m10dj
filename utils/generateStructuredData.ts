@@ -1,0 +1,628 @@
+// Dynamic Structured Data Generator for M10 DJ Company
+// Generates appropriate JSON-LD schema based on page type and props
+
+
+import { businessInfo, locationData, serviceTypes, venueTypes, faqData, reviewData } from './seoConfig';
+
+export type PageType = 
+  | 'homepage' 
+  | 'service' 
+  | 'location' 
+  | 'venue' 
+  | 'blog' 
+  | 'event'
+  | 'about'
+  | 'contact'
+  | 'pricing';
+
+interface BasePageProps {
+  pageType: PageType;
+  slug?: string;
+  canonical?: string;
+  title?: string;
+  description?: string;
+}
+
+interface ServicePageProps extends BasePageProps {
+  pageType: 'service';
+  serviceKey?: keyof typeof serviceTypes;
+  locationKey?: keyof typeof locationData;
+}
+
+interface LocationPageProps extends BasePageProps {
+  pageType: 'location';
+  locationKey: keyof typeof locationData;
+  serviceKey?: keyof typeof serviceTypes;
+}
+
+interface VenuePageProps extends BasePageProps {
+  pageType: 'venue';
+  venueName?: string;
+  venueType?: keyof typeof venueTypes;
+  address?: any;
+  coordinates?: { latitude: number; longitude: number };
+}
+
+interface BlogPageProps extends BasePageProps {
+  pageType: 'blog';
+  headline?: string;
+  author?: string;
+  datePublished?: string;
+  dateModified?: string;
+  category?: string;
+  image?: string;
+}
+
+interface EventPageProps extends BasePageProps {
+  pageType: 'event';
+  eventName?: string;
+  startDate?: string;
+  endDate?: string;
+  location?: any;
+  offers?: any;
+}
+
+export type StructuredDataProps = 
+  | ServicePageProps 
+  | LocationPageProps 
+  | VenuePageProps 
+  | BlogPageProps 
+  | EventPageProps
+  | BasePageProps;
+
+export function generateStructuredData(props: StructuredDataProps) {
+  const { pageType, slug = '', canonical, title, description } = props;
+  const baseUrl = businessInfo.url;
+  const pageUrl = canonical ? `${baseUrl}${canonical}` : `${baseUrl}/${slug}`;
+
+  // Generate unique @id for each schema type to avoid duplication
+  const generateId = (type: string, suffix: string = '') => 
+    `${pageUrl}#${type}${suffix ? `-${suffix}` : ''}`;
+
+  const schemas: any[] = [];
+
+  // Base Organization schema (included on every page)
+  schemas.push({
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${businessInfo.url}/#organization`,
+    "name": businessInfo.name,
+    "alternateName": businessInfo.alternateName,
+    "description": businessInfo.description,
+    "url": businessInfo.url,
+    "logo": {
+      "@type": "ImageObject",
+      "url": businessInfo.logo.url,
+      "width": businessInfo.logo.width,
+      "height": businessInfo.logo.height
+    },
+    "image": businessInfo.image,
+    "telephone": businessInfo.telephone,
+    "email": businessInfo.email,
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": businessInfo.address.streetAddress,
+      "addressLocality": businessInfo.address.addressLocality,
+      "addressRegion": businessInfo.address.addressRegion,
+      "postalCode": businessInfo.address.postalCode,
+      "addressCountry": businessInfo.address.addressCountry
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": businessInfo.geo.latitude,
+      "longitude": businessInfo.geo.longitude
+    },
+    "foundingDate": businessInfo.foundingDate,
+    "founder": {
+      "@type": "Person",
+      "name": businessInfo.founder.name,
+      "jobTitle": businessInfo.founder.jobTitle
+    },
+    "sameAs": businessInfo.socialMedia,
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": businessInfo.aggregateRating.ratingValue,
+      "reviewCount": businessInfo.aggregateRating.reviewCount,
+      "bestRating": businessInfo.aggregateRating.bestRating,
+      "worstRating": businessInfo.aggregateRating.worstRating
+    },
+    "priceRange": businessInfo.priceRange,
+    "currenciesAccepted": businessInfo.currenciesAccepted,
+    "paymentAccepted": businessInfo.paymentAccepted
+  });
+
+  switch (pageType) {
+    case 'homepage':
+      // LocalBusiness schema for homepage
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "@id": generateId('local-business'),
+        "name": businessInfo.name,
+        "description": businessInfo.description,
+        "url": pageUrl,
+        "telephone": businessInfo.telephone,
+        "email": businessInfo.email,
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": businessInfo.address.streetAddress,
+          "addressLocality": businessInfo.address.addressLocality,
+          "addressRegion": businessInfo.address.addressRegion,
+          "postalCode": businessInfo.address.postalCode,
+          "addressCountry": businessInfo.address.addressCountry
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": businessInfo.geo.latitude,
+          "longitude": businessInfo.geo.longitude
+        },
+        "openingHours": businessInfo.openingHours,
+        "areaServed": Object.values(locationData).map(location => ({
+          "@type": "City",
+          "name": location.name,
+          "containedInPlace": {
+            "@type": "State",
+            "name": "Tennessee"
+          }
+        })),
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "DJ Services",
+          "itemListElement": Object.values(serviceTypes).map((service, index) => ({
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": service.name,
+              "description": service.description
+            },
+            "priceRange": service.priceRange,
+            "position": index + 1
+          }))
+        }
+      });
+
+      // WebSite schema with search action
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": generateId('website'),
+        "name": `${businessInfo.name} - Memphis Wedding & Event DJ Services`,
+        "description": businessInfo.description,
+        "url": businessInfo.url,
+        "publisher": {
+          "@id": `${businessInfo.url}/#organization`
+        },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": `${businessInfo.url}/search?q={search_term_string}`
+          },
+          "query-input": "required name=search_term_string"
+        },
+        "inLanguage": "en-US"
+      });
+      break;
+
+    case 'service':
+      const serviceProps = props as ServicePageProps;
+      const service = serviceProps.serviceKey ? serviceTypes[serviceProps.serviceKey] : serviceTypes.wedding;
+      const location = serviceProps.locationKey ? locationData[serviceProps.locationKey] : locationData.memphis;
+
+      // Service schema
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "@id": generateId('service'),
+        "name": service.name,
+        "description": service.description,
+        "serviceType": service.serviceType,
+        "category": service.category,
+        "provider": {
+          "@id": `${businessInfo.url}/#organization`
+        },
+        "areaServed": {
+          "@type": "GeoCircle",
+          "geoMidpoint": {
+            "@type": "GeoCoordinates",
+            "latitude": location.coordinates.latitude,
+            "longitude": location.coordinates.longitude
+          },
+          "geoRadius": location.radius
+        },
+        "offers": {
+          "@type": "Offer",
+          "priceRange": service.priceRange,
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock",
+          "validFrom": new Date().toISOString(),
+          "seller": {
+            "@id": `${businessInfo.url}/#organization`
+          }
+        },
+        "additionalProperty": service.includes.map((item, index) => ({
+          "@type": "PropertyValue",
+          "name": `Included Service ${index + 1}`,
+          "value": item
+        }))
+      });
+
+      // LocalBusiness schema for service pages
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "@id": generateId('local-business'),
+        "name": `${businessInfo.name} - ${service.name}`,
+        "description": service.description,
+        "url": pageUrl,
+        "telephone": businessInfo.telephone,
+        "email": businessInfo.email,
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": businessInfo.address.streetAddress,
+          "addressLocality": businessInfo.address.addressLocality,
+          "addressRegion": businessInfo.address.addressRegion,
+          "postalCode": businessInfo.address.postalCode,
+          "addressCountry": businessInfo.address.addressCountry
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": businessInfo.geo.latitude,
+          "longitude": businessInfo.geo.longitude
+        },
+        "areaServed": {
+          "@type": "GeoCircle",
+          "geoMidpoint": {
+            "@type": "GeoCoordinates",
+            "latitude": location.coordinates.latitude,
+            "longitude": location.coordinates.longitude
+          },
+          "geoRadius": location.radius
+        },
+        "priceRange": service.priceRange
+      });
+      break;
+
+    case 'location':
+      const locationProps = props as LocationPageProps;
+      const locationInfo = locationData[locationProps.locationKey];
+      const defaultService = locationProps.serviceKey ? serviceTypes[locationProps.serviceKey] : serviceTypes.wedding;
+
+      // LocalBusiness schema with location-specific data
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "@id": generateId('local-business'),
+        "name": `${businessInfo.name} - ${locationInfo.name}`,
+        "description": `Professional DJ services in ${locationInfo.name}, TN. ${businessInfo.description}`,
+        "url": pageUrl,
+        "telephone": businessInfo.telephone,
+        "email": businessInfo.email,
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": businessInfo.address.streetAddress,
+          "addressLocality": businessInfo.address.addressLocality,
+          "addressRegion": businessInfo.address.addressRegion,
+          "postalCode": businessInfo.address.postalCode,
+          "addressCountry": businessInfo.address.addressCountry
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": locationInfo.coordinates.latitude,
+          "longitude": locationInfo.coordinates.longitude
+        },
+        "areaServed": [
+          {
+            "@type": "City",
+            "name": locationInfo.name,
+            "containedInPlace": {
+              "@type": "State",
+              "name": "Tennessee"
+            }
+          },
+          ...locationInfo.neighborhoods.map(neighborhood => ({
+            "@type": "Place",
+            "name": neighborhood,
+            "containedInPlace": {
+              "@type": "City",
+              "name": locationInfo.name
+            }
+          }))
+        ],
+        "serviceArea": {
+          "@type": "GeoCircle",
+          "geoMidpoint": {
+            "@type": "GeoCoordinates",
+            "latitude": locationInfo.coordinates.latitude,
+            "longitude": locationInfo.coordinates.longitude
+          },
+          "geoRadius": locationInfo.radius
+        }
+      });
+
+      // Service schema for location pages
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "@id": generateId('service'),
+        "name": `${defaultService.name} in ${locationInfo.name}`,
+        "description": `${defaultService.description} Serving ${locationInfo.name} and surrounding areas.`,
+        "serviceType": defaultService.serviceType,
+        "provider": {
+          "@id": `${businessInfo.url}/#organization`
+        },
+        "areaServed": {
+          "@type": "GeoCircle",
+          "geoMidpoint": {
+            "@type": "GeoCoordinates",
+            "latitude": locationInfo.coordinates.latitude,
+            "longitude": locationInfo.coordinates.longitude
+          },
+          "geoRadius": locationInfo.radius
+        },
+        "offers": {
+          "@type": "Offer",
+          "priceRange": defaultService.priceRange,
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        }
+      });
+      break;
+
+    case 'venue':
+      const venueProps = props as VenuePageProps;
+      const venueInfo = venueProps.venueType ? venueTypes[venueProps.venueType] : venueTypes.wedding;
+
+      // Place schema for venue pages
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "Place",
+        "@id": generateId('place'),
+        "name": venueProps.venueName || `${venueInfo.name} - Memphis`,
+        "description": `Professional DJ services at ${venueProps.venueName || 'Memphis venues'}. ${venueInfo.description}`,
+        "url": pageUrl,
+        "address": venueProps.address || {
+          "@type": "PostalAddress",
+          "addressLocality": "Memphis",
+          "addressRegion": "TN",
+          "addressCountry": "US"
+        },
+        "geo": venueProps.coordinates ? {
+          "@type": "GeoCoordinates",
+          "latitude": venueProps.coordinates.latitude,
+          "longitude": venueProps.coordinates.longitude
+        } : {
+          "@type": "GeoCoordinates",
+          "latitude": businessInfo.geo.latitude,
+          "longitude": businessInfo.geo.longitude
+        }
+      });
+
+      // Service schema for venue pages
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "@id": generateId('service'),
+        "name": `DJ Services at ${venueProps.venueName || 'Memphis Venues'}`,
+        "description": venueInfo.description,
+        "provider": {
+          "@id": `${businessInfo.url}/#organization`
+        },
+        "serviceArea": {
+          "@type": "Place",
+          "name": venueProps.venueName || "Memphis Venues"
+        },
+        "additionalProperty": venueInfo.includes.map((item, index) => ({
+          "@type": "PropertyValue",
+          "name": `Venue Service ${index + 1}`,
+          "value": item
+        }))
+      });
+      break;
+
+    case 'blog':
+      const blogProps = props as BlogPageProps;
+      
+      // Article schema for blog posts
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "@id": generateId('article'),
+        "headline": blogProps.headline || title || "Memphis DJ Tips & Insights",
+        "description": description || "Expert DJ tips and insights from Memphis's premier wedding and event DJ company.",
+        "author": {
+          "@type": "Organization",
+          "name": blogProps.author || businessInfo.name,
+          "url": businessInfo.url
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": businessInfo.name,
+          "logo": {
+            "@type": "ImageObject",
+            "url": businessInfo.logo.url,
+            "width": businessInfo.logo.width,
+            "height": businessInfo.logo.height
+          }
+        },
+        "datePublished": blogProps.datePublished || new Date().toISOString(),
+        "dateModified": blogProps.dateModified || new Date().toISOString(),
+        "mainEntityOfPage": {
+          "@type": "WebPage",
+          "@id": pageUrl
+        },
+        "image": {
+          "@type": "ImageObject",
+          "url": blogProps.image || businessInfo.image,
+          "width": 1200,
+          "height": 630
+        },
+        "articleSection": blogProps.category || "DJ Tips & Insights",
+        "about": {
+          "@type": "Thing",
+          "name": "Memphis DJ Services"
+        },
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": ["h1", ".article-summary", ".key-points"]
+        }
+      });
+
+      // BlogPosting schema (additional for blog posts)
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "@id": generateId('blog-posting'),
+        "headline": blogProps.headline || title || "Memphis DJ Tips & Insights",
+        "description": description || "Expert DJ tips and insights from Memphis's premier wedding and event DJ company.",
+        "author": {
+          "@type": "Organization",
+          "name": blogProps.author || businessInfo.name
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": businessInfo.name,
+          "logo": {
+            "@type": "ImageObject",
+            "url": businessInfo.logo.url
+          }
+        },
+        "datePublished": blogProps.datePublished || new Date().toISOString(),
+        "dateModified": blogProps.dateModified || new Date().toISOString(),
+        "mainEntityOfPage": pageUrl,
+        "image": blogProps.image || businessInfo.image
+      });
+      break;
+
+    case 'event':
+      const eventProps = props as EventPageProps;
+      
+      // Event schema
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "Event",
+        "@id": generateId('event'),
+        "name": eventProps.eventName || title || "Memphis DJ Event",
+        "description": description || "Professional DJ services for your Memphis event.",
+        "startDate": eventProps.startDate,
+        "endDate": eventProps.endDate,
+        "location": eventProps.location || {
+          "@type": "Place",
+          "name": "Memphis, TN",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Memphis",
+            "addressRegion": "TN",
+            "addressCountry": "US"
+          }
+        },
+        "organizer": {
+          "@id": `${businessInfo.url}/#organization`
+        },
+        "performer": {
+          "@id": `${businessInfo.url}/#organization`
+        },
+        "offers": eventProps.offers || {
+          "@type": "Offer",
+          "url": pageUrl,
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        }
+      });
+      break;
+
+    default:
+      // Default LocalBusiness schema for other page types
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "@id": generateId('local-business'),
+        "name": businessInfo.name,
+        "description": description || businessInfo.description,
+        "url": pageUrl,
+        "telephone": businessInfo.telephone,
+        "email": businessInfo.email,
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": businessInfo.address.streetAddress,
+          "addressLocality": businessInfo.address.addressLocality,
+          "addressRegion": businessInfo.address.addressRegion,
+          "postalCode": businessInfo.address.postalCode,
+          "addressCountry": businessInfo.address.addressCountry
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": businessInfo.geo.latitude,
+          "longitude": businessInfo.geo.longitude
+        }
+      });
+      break;
+  }
+
+  // Add FAQ schema if relevant
+  const relevantFaqs = faqData.general;
+  if (relevantFaqs.length > 0) {
+    schemas.push({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "@id": generateId('faq'),
+      "mainEntity": relevantFaqs.map(faq => ({
+        "@type": "Question",
+        "name": faq.question,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": faq.answer
+        }
+      }))
+    });
+  }
+
+  // Add Review schema
+  if (reviewData.featured.length > 0) {
+    schemas.push({
+      "@context": "https://schema.org",
+      "@type": "Review",
+      "@id": generateId('review'),
+      "itemReviewed": {
+        "@id": `${businessInfo.url}/#organization`
+      },
+      "reviewRating": {
+        "@type": "Rating",
+        "ratingValue": reviewData.featured[0].rating,
+        "bestRating": 5,
+        "worstRating": 1
+      },
+      "author": {
+        "@type": "Person",
+        "name": reviewData.featured[0].author
+      },
+      "reviewBody": reviewData.featured[0].text,
+      "datePublished": reviewData.featured[0].date
+    });
+  }
+
+  // Return as @graph structure to avoid duplication
+  return {
+    "@context": "https://schema.org",
+    "@graph": schemas
+  };
+}
+
+// Helper function to generate breadcrumb schema
+export function generateBreadcrumbSchema(breadcrumbs: Array<{name: string, url: string}>) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": breadcrumbs.map((crumb, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": crumb.name,
+      "item": crumb.url
+    }))
+  };
+}
+
+// Helper function to get structured data as JSON string (use with dangerouslySetInnerHTML)
+export function getStructuredDataScript(data: any): string {
+  return JSON.stringify(data, null, 2);
+}
