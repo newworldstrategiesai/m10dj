@@ -122,21 +122,8 @@ export default async function handler(req, res) {
           console.error('❌ Failed to store AI response:', insertError);
         } else {
           console.log('✅ Pre-generated AI response stored in database');
-          
-          // Create delayed URL with the pending response ID
-          const delayedUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/sms/send-stored-ai-response?id=${pendingResponse.id}`;
-          
-          // Use setTimeout to trigger the stored response after delay
-          setTimeout(async () => {
-            try {
-              const response = await fetch(delayedUrl);
-              console.log('✅ Stored AI response triggered:', response.ok ? 'success' : 'failed');
-            } catch (error) {
-              console.error('❌ Delayed AI trigger failed:', error);
-            }
-          }, 60000); // 60 seconds
-          
-          console.log('✅ Pre-generated AI response scheduled for 60 seconds');
+          console.log(`🕐 AI response will be sent by cron job at: ${new Date(Date.now() + 60000).toLocaleTimeString()}`);
+          console.log('✅ AI response scheduled for cron job processing');
         }
       } catch (scheduleError) {
         console.error('❌ Failed to schedule pre-generated AI response:', scheduleError);
