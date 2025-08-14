@@ -21,7 +21,8 @@ import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import Breadcrumbs, { generateBreadcrumbs } from '../components/Breadcrumbs';
-import { AIAnswerBlock, AIFactBox, MemphisDJAIBlocks, AIContentSchema } from '../components/AIOverviewOptimization';
+import { AIAnswerBlock, AIFactBox, MemphisDJAIBlocks } from '../components/AIOverviewOptimization';
+import { generateStructuredData } from '../utils/generateStructuredData';
 import { scrollToContact } from '../utils/scroll-helpers';
 
 const weddingServices = [
@@ -88,6 +89,16 @@ export default function MemphisWeddingDJ() {
     setIsVisible(true);
   }, []);
 
+  // Generate consolidated structured data using new system
+  const structuredData = generateStructuredData({
+    pageType: 'service',
+    serviceKey: 'wedding',
+    locationKey: 'memphis',
+    canonical: '/memphis-wedding-dj',
+    title: 'Wedding DJ Memphis | Memphis Wedding DJs | Professional Wedding Entertainment',
+    description: 'Memphis\'s premier wedding DJ service with 10+ years of experience creating unforgettable celebrations. Professional ceremony, reception & MC services.'
+  });
+
   return (
     <>
       <SEO
@@ -103,77 +114,7 @@ export default function MemphisWeddingDJ() {
           'wedding DJ services Memphis'
         ]}
         canonical="/memphis-wedding-dj"
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "LocalBusiness",
-          "@id": "https://www.m10djcompany.com/memphis-wedding-dj#business",
-          "name": "M10 DJ Company - Memphis Wedding DJ",
-          "description": "Memphis's premier wedding DJ service with 10+ years of experience creating unforgettable celebrations. Professional ceremony, reception & MC services.",
-          "url": "https://www.m10djcompany.com/memphis-wedding-dj",
-          "telephone": "+19014102020",
-          "priceRange": "$799-$1899",
-          "address": {
-            "@type": "PostalAddress",
-            "streetAddress": "65 Stewart Rd",
-            "addressLocality": "Eads",
-            "addressRegion": "TN",
-            "postalCode": "38028",
-            "addressCountry": "US"
-          },
-          "geo": {
-            "@type": "GeoCoordinates",
-            "latitude": 35.1495,
-            "longitude": -90.0490
-          },
-          "areaServed": [
-            {
-              "@type": "City",
-              "name": "Memphis",
-              "containedInPlace": {
-                "@type": "State",
-                "name": "Tennessee"
-              }
-            }
-          ],
-          "serviceType": "Wedding DJ Services",
-          "hasOfferCatalog": {
-            "@type": "OfferCatalog",
-            "name": "Memphis Wedding DJ Services",
-            "itemListElement": [
-              {
-                "@type": "Offer",
-                "itemOffered": {
-                  "@type": "Service",
-                  "name": "Wedding DJ Services",
-                  "description": "Professional wedding DJ and MC services for Memphis weddings"
-                }
-              },
-              {
-                "@type": "Offer", 
-                "itemOffered": {
-                  "@type": "Service",
-                  "name": "Wedding Ceremony Music",
-                  "description": "Professional ceremony music and sound system services"
-                }
-              },
-              {
-                "@type": "Offer",
-                "itemOffered": {
-                  "@type": "Service", 
-                  "name": "Wedding Reception Entertainment",
-                  "description": "Full reception DJ services with dance floor entertainment"
-                }
-              }
-            ]
-          },
-          "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "5.0",
-            "reviewCount": "200",
-            "bestRating": "5",
-            "worstRating": "1"
-          }
-        }}
+        jsonLd={structuredData}
       />
 
       <Header />
@@ -692,16 +633,7 @@ export default function MemphisWeddingDJ() {
 
 
 
-      {/* AI Content Schema */}
-      <AIContentSchema 
-        content={{
-          headline: "Memphis Wedding DJ | #1 Professional Wedding DJs in Memphis TN",
-          description: "Top-rated Memphis wedding DJ services with 15+ years of experience and 500+ successful celebrations. Professional ceremony, reception & MC services.",
-          url: "https://www.m10djcompany.com/memphis-wedding-dj",
-          datePublished: "2024-01-01T00:00:00Z",
-          dateModified: new Date().toISOString()
-        }}
-      />
+
     </>
   );
 }
