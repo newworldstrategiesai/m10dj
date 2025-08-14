@@ -95,6 +95,16 @@ export default function Footer() {
                   Holiday Parties
                 </Link>
               </li>
+              <li>
+                <Link href="/multicultural-dj-memphis" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Multicultural DJ
+                </Link>
+              </li>
+              <li>
+                <Link href="/dj-rentals-memphis" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  DJ Equipment Rentals
+                </Link>
+              </li>
             </ul>
           </div>
           
@@ -172,6 +182,11 @@ export default function Footer() {
               <li>
                 <Link href="/blog/memphis-wedding-dj-cost-guide-2025" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
                   Wedding Cost Planning
+                </Link>
+              </li>
+              <li>
+                <Link href="/dj-ben-murray" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1">
+                  Meet DJ Ben Murray
                 </Link>
               </li>
             </ul>

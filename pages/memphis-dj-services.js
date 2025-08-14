@@ -95,9 +95,20 @@ const equipmentFeatures = [
 ];
 
 const serviceAreas = [
-  "Downtown Memphis", "Midtown Memphis", "East Memphis", "Poplar Corridor", "White Station", "Hickory Hill", "Germantown", 
-  "Collierville", "Bartlett", "Cordova", "Olive Branch", "Southaven",
-  "Lakeland", "Arlington", "Millington", "Atoka", "Tipton County"
+  { name: "Downtown Memphis", slug: "downtown-memphis" },
+  { name: "Midtown Memphis", slug: "midtown-memphis" },
+  { name: "East Memphis", slug: "east-memphis" },
+  { name: "Memphis", slug: "memphis" },
+  { name: "Germantown", slug: "germantown" },
+  { name: "Collierville", slug: "collierville" },
+  { name: "Bartlett", slug: "bartlett" },
+  { name: "Cordova", slug: "cordova" },
+  { name: "Olive Branch", slug: "olive-branch" },
+  { name: "Southaven", slug: "southaven" },
+  { name: "Lakeland", slug: "lakeland" },
+  { name: "Arlington", slug: "arlington" },
+  { name: "Millington", slug: "millington" },
+  { name: "West Memphis", slug: "west-memphis" }
 ];
 
 const testimonials = [
@@ -178,7 +189,7 @@ export default function MemphisDJServices() {
               },
               "areaServed": serviceAreas.map(area => ({
                 "@type": "City",
-                "name": area
+                "name": area.name
               })),
               "serviceType": ["Wedding DJ Services", "Corporate Event DJ", "Private Party DJ", "School Dance DJ", "Holiday Party Entertainment"],
               "priceRange": "$395-$1899"
@@ -333,10 +344,14 @@ export default function MemphisDJServices() {
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {serviceAreas.map((area, index) => (
-                <div key={index} className="text-center p-4 rounded-lg border hover:bg-gray-50 transition-colors">
-                  <MapPin className="w-5 h-5 text-brand mx-auto mb-2" />
-                  <span className="text-sm font-medium">{area}</span>
-                </div>
+                <Link 
+                  key={index} 
+                  href={`/${area.slug}`}
+                  className="text-center p-4 rounded-lg border hover:bg-gray-50 hover:shadow-md hover:border-brand transition-all duration-200 group"
+                >
+                  <MapPin className="w-5 h-5 text-brand mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-brand transition-colors">{area.name}</span>
+                </Link>
               ))}
             </div>
 

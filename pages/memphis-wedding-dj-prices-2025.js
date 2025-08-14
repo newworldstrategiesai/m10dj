@@ -55,46 +55,62 @@ const pricingFactors = [
 
 const packageComparison = [
   {
-    name: "Essential Package",
-    price: "$295",
-    duration: "4 Hours",
-    ideal: "Small receptions (50-75 guests)",
+    name: "Ceremony Audio",
+    price: "$395",
+    duration: "2-3 Hours",
+    ideal: "Ceremony only (50-150 guests)",
     includes: [
-      "Professional DJ & MC",
-      "Premium sound system",
+      "Professional sound system",
       "Wireless microphones",
-      "Basic dance lighting",
-      "Music consultation",
-      "Setup & breakdown"
+      "Ceremony music",
+      "Professional setup",
+      "Sound technician",
+      "Equipment breakdown"
     ],
     popular: false
   },
   {
-    name: "Complete Package", 
-    price: "$595",
+    name: "Package 1", 
+    price: "$1,245",
     duration: "6 Hours",
     ideal: "Most Memphis weddings (75-150 guests)",
     includes: [
-      "Everything in Essential",
-      "Ceremony sound system",
-      "Cocktail hour music",
-      "Enhanced lighting package",
+      "Professional DJ & MC",
+      "Premium sound system",
+      "Wireless microphones",
+      "Dance floor lighting",
+      "Music consultation",
       "Timeline coordination",
-      "Bridal party introductions",
-      "Special requests handling"
+      "Setup & breakdown"
     ],
     popular: true
   },
   {
-    name: "Premium Package",
-    price: "$795", 
-    duration: "8 Hours",
-    ideal: "Large weddings (150+ guests)",
+    name: "Package 2",
+    price: "$1,395", 
+    duration: "7 Hours",
+    ideal: "Enhanced weddings (100-200 guests)",
     includes: [
-      "Everything in Complete",
-      "Uplighting (8-12 lights)",
+      "Everything in Package 1",
       "Extended coverage",
+      "Enhanced lighting package",
       "Additional equipment",
+      "Ceremony sound system",
+      "Cocktail hour music",
+      "Premium coordination"
+    ],
+    popular: false
+  },
+  {
+    name: "Package 3",
+    price: "$1,500",
+    duration: "8 Hours", 
+    ideal: "Premium weddings (150+ guests)",
+    includes: [
+      "Everything in Package 2",
+      "Uplighting package",
+      "Extended reception coverage",
+      "Premium sound system",
       "Dedicated coordinator",
       "Emergency backup systems",
       "Post-event consultation"
@@ -104,12 +120,12 @@ const packageComparison = [
 ];
 
 const venues = [
-  { name: "The Peabody Memphis", priceRange: "$650-$950", notes: "Premium venue pricing" },
-  { name: "Dixon Gallery & Gardens", priceRange: "$550-$750", notes: "Outdoor ceremony extra" },
-  { name: "Memphis Hunt & Country Club", priceRange: "$595-$795", notes: "Preferred vendor rates" },
-  { name: "The Columns", priceRange: "$495-$695", notes: "Intimate venue pricing" },
-  { name: "Memphis Botanic Garden", priceRange: "$550-$795", notes: "Weather backup required" },
-  { name: "Graceland Wedding Chapel", priceRange: "$395-$595", notes: "Smaller space pricing" }
+  { name: "The Peabody Memphis", priceRange: "$1,395-$1,500", notes: "Premium venue - Package 2 or 3" },
+  { name: "Dixon Gallery & Gardens", priceRange: "$1,245-$1,395", notes: "Package 1 or 2, ceremony extra" },
+  { name: "Memphis Hunt & Country Club", priceRange: "$1,245-$1,500", notes: "Preferred vendor rates" },
+  { name: "The Columns", priceRange: "$1,245-$1,395", notes: "Package 1 or 2 recommended" },
+  { name: "Memphis Botanic Garden", priceRange: "$1,245-$1,500", notes: "Weather backup required" },
+  { name: "Graceland Wedding Chapel", priceRange: "$395-$1,245", notes: "Ceremony to full packages" }
 ];
 
 const additionalServices = [
@@ -130,7 +146,7 @@ export default function MemphisWeddingDJPrices2025() {
         <title>Memphis Wedding DJ Prices 2025: Complete Pricing Guide | M10 DJ Company</title>
         <meta 
           name="description" 
-          content="Complete guide to Memphis wedding DJ prices in 2025. Compare packages, understand pricing factors, and get transparent quotes. Starting at $295 for Memphis weddings." 
+          content="Complete guide to Memphis wedding DJ prices in 2025. Compare packages, understand pricing factors, and get transparent quotes. Ceremony audio from $395, wedding packages from $1,245." 
         />
         <meta name="keywords" content="Memphis wedding DJ prices, wedding DJ cost Memphis, Memphis DJ pricing 2025, how much does a wedding DJ cost Memphis, Memphis wedding DJ packages, affordable wedding DJ Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -138,7 +154,7 @@ export default function MemphisWeddingDJPrices2025() {
         
         {/* Open Graph tags */}
         <meta property="og:title" content="Memphis Wedding DJ Prices 2025: Complete Pricing Guide" />
-        <meta property="og:description" content="Transparent Memphis wedding DJ pricing guide for 2025. Packages starting at $295 with no hidden fees." />
+        <meta property="og:description" content="Transparent Memphis wedding DJ pricing guide for 2025. Ceremony audio from $395, wedding packages from $1,245. No hidden fees." />
         <meta property="og:url" content="https://m10djcompany.com/memphis-wedding-dj-prices-2025" />
         <meta property="og:type" content="article" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
@@ -153,7 +169,7 @@ export default function MemphisWeddingDJPrices2025() {
         {/* Twitter Card tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Memphis Wedding DJ Prices 2025: Complete Pricing Guide" />
-        <meta name="twitter:description" content="Transparent Memphis wedding DJ pricing guide for 2025. Packages starting at $295." />
+        <meta name="twitter:description" content="Transparent Memphis wedding DJ pricing guide for 2025. Ceremony audio from $395, wedding packages from $1,245." />
         <meta name="twitter:image" content="https://m10djcompany.com/logo-static.jpg" />
         
         {/* Local SEO tags */}
@@ -213,18 +229,22 @@ export default function MemphisWeddingDJPrices2025() {
             {/* Quick Stats */}
             <div className="bg-gray-50 rounded-xl p-6 mb-8">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Memphis Wedding DJ Price Overview</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-brand-gold">$295</div>
-                  <div className="text-sm text-gray-600">Starting Price</div>
+                  <div className="text-2xl font-bold text-brand-gold">$395</div>
+                  <div className="text-sm text-gray-600">Ceremony Audio</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-brand-gold">$595</div>
-                  <div className="text-sm text-gray-600">Average Cost</div>
+                  <div className="text-2xl font-bold text-brand-gold">$1,245</div>
+                  <div className="text-sm text-gray-600">Package 1</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-brand-gold">$795</div>
-                  <div className="text-sm text-gray-600">Premium Package</div>
+                  <div className="text-2xl font-bold text-brand-gold">$1,395</div>
+                  <div className="text-sm text-gray-600">Package 2</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-brand-gold">$1,500</div>
+                  <div className="text-sm text-gray-600">Package 3</div>
                 </div>
               </div>
             </div>
@@ -268,8 +288,8 @@ export default function MemphisWeddingDJPrices2025() {
                 <span className="font-semibold text-blue-800">Memphis Market Average</span>
               </div>
               <p className="text-blue-700">
-                The average cost of a wedding DJ in Memphis is <strong>$595</strong> for a 6-hour reception package. 
-                This represents a 5% increase from 2024, reflecting improved equipment and service quality.
+                The average cost of a wedding DJ in Memphis is <strong>$1,245</strong> for a 6-hour reception package. 
+                This reflects professional equipment, experienced service, and comprehensive coverage for your special day.
               </p>
             </div>
 
@@ -287,28 +307,28 @@ export default function MemphisWeddingDJPrices2025() {
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="border border-gray-300 px-4 py-3">Small/Intimate</td>
-                    <td className="border border-gray-300 px-4 py-3">25-75 guests</td>
-                    <td className="border border-gray-300 px-4 py-3">$295-$495</td>
+                    <td className="border border-gray-300 px-4 py-3">Ceremony Only</td>
+                    <td className="border border-gray-300 px-4 py-3">25-150 guests</td>
+                    <td className="border border-gray-300 px-4 py-3">$395</td>
                     <td className="border border-gray-300 px-4 py-3">$395</td>
                   </tr>
                   <tr className="bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-3">Medium</td>
+                    <td className="border border-gray-300 px-4 py-3">Small/Medium</td>
                     <td className="border border-gray-300 px-4 py-3">75-150 guests</td>
-                    <td className="border border-gray-300 px-4 py-3">$495-$695</td>
-                    <td className="border border-gray-300 px-4 py-3">$595</td>
+                    <td className="border border-gray-300 px-4 py-3">$1,245</td>
+                    <td className="border border-gray-300 px-4 py-3">$1,245</td>
                   </tr>
                   <tr>
-                    <td className="border border-gray-300 px-4 py-3">Large</td>
-                    <td className="border border-gray-300 px-4 py-3">150-250 guests</td>
-                    <td className="border border-gray-300 px-4 py-3">$695-$950</td>
-                    <td className="border border-gray-300 px-4 py-3">$795</td>
+                    <td className="border border-gray-300 px-4 py-3">Enhanced</td>
+                    <td className="border border-gray-300 px-4 py-3">100-200 guests</td>
+                    <td className="border border-gray-300 px-4 py-3">$1,395</td>
+                    <td className="border border-gray-300 px-4 py-3">$1,395</td>
                   </tr>
                   <tr className="bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-3">Very Large</td>
-                    <td className="border border-gray-300 px-4 py-3">250+ guests</td>
-                    <td className="border border-gray-300 px-4 py-3">$950-$1,200</td>
-                    <td className="border border-gray-300 px-4 py-3">$1,050</td>
+                    <td className="border border-gray-300 px-4 py-3">Premium</td>
+                    <td className="border border-gray-300 px-4 py-3">150+ guests</td>
+                    <td className="border border-gray-300 px-4 py-3">$1,500</td>
+                    <td className="border border-gray-300 px-4 py-3">$1,500</td>
                   </tr>
                 </tbody>
               </table>
@@ -366,7 +386,7 @@ export default function MemphisWeddingDJPrices2025() {
               No hidden fees, no surprises – just honest pricing for exceptional service.
             </p>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8 mb-12">
               {packageComparison.map((pkg, index) => (
                 <div key={index} className={`rounded-xl p-8 ${pkg.popular ? 'bg-brand text-white ring-4 ring-brand-gold shadow-xl' : 'bg-white border-2 border-gray-200'} relative`}>
                   {pkg.popular && (
@@ -584,7 +604,8 @@ export default function MemphisWeddingDJPrices2025() {
                 </h3>
                 <p className="text-gray-700">
                   Our pricing includes professional DJ service, MC duties, premium sound system, wireless microphones, 
-                  basic dance lighting, music consultation, setup/breakdown, and liability insurance. No hidden fees!
+                  dance lighting, music consultation, setup/breakdown, and liability insurance. Ceremony audio starts at $395, 
+                  wedding packages from $1,245. No hidden fees!
                 </p>
               </div>
 
@@ -756,7 +777,7 @@ export default function MemphisWeddingDJPrices2025() {
             "@context": "https://schema.org",
             "@type": "BlogPosting",
             "headline": "Memphis Wedding DJ Prices 2025: Complete Pricing Guide",
-            "description": "Complete guide to Memphis wedding DJ prices in 2025. Compare packages, understand pricing factors, and get transparent quotes. Starting at $295 for Memphis weddings.",
+            "description": "Complete guide to Memphis wedding DJ prices in 2025. Compare packages, understand pricing factors, and get transparent quotes. Ceremony audio from $395, wedding packages from $1,245.",
             "image": "https://m10djcompany.com/logo-static.jpg",
             "url": "https://m10djcompany.com/memphis-wedding-dj-prices-2025",
             "datePublished": "2025-01-01",
@@ -806,7 +827,7 @@ export default function MemphisWeddingDJPrices2025() {
               },
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Our pricing includes professional DJ service, MC duties, premium sound system, wireless microphones, basic dance lighting, music consultation, setup/breakdown, and liability insurance. No hidden fees!",
+                "text": "Our pricing includes professional DJ service, MC duties, premium sound system, wireless microphones, dance lighting, music consultation, setup/breakdown, and liability insurance. Ceremony audio starts at $395, wedding packages from $1,245. No hidden fees!",
                 "datePublished": "2024-01-12T14:30:00-06:00",
                 "url": "https://www.m10djcompany.com/memphis-wedding-dj-prices-2025#pricing-details",
                 "upvoteCount": 28,

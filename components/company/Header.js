@@ -32,7 +32,10 @@ export default function Header() {
     { name: 'Corporate Events', href: '/corporate-events' },
     { name: 'Private Parties', href: '/private-parties' },
     { name: 'School Dances', href: '/school-dances' },
-    { name: 'Holiday Parties', href: '/holiday-parties' }
+    { name: 'Holiday Parties', href: '/holiday-parties' },
+    { name: 'Multicultural DJ', href: '/multicultural-dj-memphis' },
+    { name: 'DJ Equipment Rentals', href: '/dj-rentals-memphis' },
+    { name: 'Pricing Guide', href: '/memphis-dj-pricing-guide' }
   ];
 
   const areas = [
@@ -43,7 +46,13 @@ export default function Header() {
     { name: 'Arlington', href: '/arlington' },
     { name: 'Cordova', href: '/cordova' },
     { name: 'Southaven', href: '/southaven' },
-    { name: 'Olive Branch', href: '/olive-branch' }
+    { name: 'Olive Branch', href: '/olive-branch' },
+    { name: 'East Memphis', href: '/east-memphis' },
+    { name: 'Midtown Memphis', href: '/midtown-memphis' },
+    { name: 'Downtown Memphis', href: '/downtown-memphis' },
+    { name: 'Millington', href: '/millington' },
+    { name: 'Lakeland', href: '/lakeland' },
+    { name: 'West Memphis', href: '/west-memphis' }
   ];
 
   return (
