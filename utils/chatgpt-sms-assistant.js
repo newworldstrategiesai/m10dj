@@ -92,11 +92,31 @@ export async function generateAIResponse(customerMessage, context) {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
-    return data.choices[0].message.content.trim();
+    
+    // Validate the response structure
+    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+      throw new Error('Invalid OpenAI API response structure');
+    }
+    
+    const aiResponse = data.choices[0].message.content.trim();
+    
+    // Validate the response content
+    if (!aiResponse || aiResponse.length === 0) {
+      throw new Error('OpenAI returned empty response');
+    }
+    
+    // Ensure response isn't too long for SMS (160 chars per SMS, aim for 2-3 messages max)
+    if (aiResponse.length > 480) {
+      console.warn(`⚠️ AI response is long (${aiResponse.length} chars), may be split into multiple SMS`);
+    }
+    
+    console.log(`✅ OpenAI generated response: ${aiResponse.length} characters`);
+    return aiResponse;
   } catch (error) {
     console.error('Error generating AI response:', error);
     return getFallbackResponse(context);

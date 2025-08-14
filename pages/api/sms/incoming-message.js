@@ -9,13 +9,31 @@ export default async function handler(req, res) {
     
     // 1. FIRST: Generate AI preview and send enhanced admin notification
     let aiPreview = null;
+    let aiGenerationSuccess = false;
+    
     try {
       console.log('🤖 Generating AI preview for admin...');
+      console.log('📋 Fetching customer context...');
+      
       const customerContext = await getCustomerContext(From);
+      console.log('✅ Customer context retrieved');
+      
+      console.log('🧠 Calling OpenAI API...');
       aiPreview = await generateAIResponse(Body, customerContext);
-      console.log('✅ AI preview generated');
+      
+      // Validate the AI response
+      if (aiPreview && aiPreview.trim().length > 0) {
+        aiGenerationSuccess = true;
+        console.log('✅ AI preview generated successfully');
+        console.log(`📝 AI Response Preview: "${aiPreview.substring(0, 100)}..."`);
+      } else {
+        console.warn('⚠️ AI response was empty or invalid');
+        aiPreview = null;
+      }
     } catch (aiError) {
       console.error('❌ AI preview generation failed:', aiError);
+      aiPreview = null;
+      aiGenerationSuccess = false;
     }
 
     try {
@@ -48,10 +66,13 @@ export default async function handler(req, res) {
         }
 
         // Add AI suggested response
-        if (aiPreview) {
+        if (aiGenerationSuccess && aiPreview) {
           adminMessage += `🤖 AI Suggests:\n"${aiPreview}"\n\n`;
           adminMessage += `💡 Reply within 60s to override AI\n`;
           adminMessage += `📋 Or copy/paste AI response above`;
+        } else if (aiGenerationSuccess === false) {
+          adminMessage += `❌ AI generation failed - no auto-response will be sent\n`;
+          adminMessage += `💡 Please reply manually`;
         } else {
           adminMessage += `💡 Reply within 60 seconds to prevent AI response`;
         }
@@ -94,7 +115,7 @@ export default async function handler(req, res) {
     autoReplyMessage += `We're excited to help make your event unforgettable!`;
 
     // 3. THIRD: Schedule delayed AI response using pre-generated response
-    if (aiPreview) {
+    if (aiGenerationSuccess && aiPreview) {
       try {
         console.log('📅 Scheduling delayed AI response with pre-generated content...');
         
@@ -124,6 +145,9 @@ export default async function handler(req, res) {
           console.log('✅ Pre-generated AI response stored in database');
           console.log(`🕐 AI response will be sent by cron job at: ${new Date(Date.now() + 60000).toLocaleTimeString()}`);
           console.log('✅ AI response scheduled for cron job processing');
+          console.log(`📋 Auto-reply sent: "${autoReplyMessage.substring(0, 50)}..."`);
+          console.log(`🤖 AI response queued: "${aiPreview.substring(0, 50)}..."`);
+          console.log('🔄 These are two DIFFERENT messages - auto-reply is immediate, AI response is delayed');
         }
       } catch (scheduleError) {
         console.error('❌ Failed to schedule pre-generated AI response:', scheduleError);
