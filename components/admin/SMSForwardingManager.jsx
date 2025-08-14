@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { 
   MessageSquare, 
   Phone, 
@@ -22,11 +23,19 @@ export default function SMSForwardingManager() {
   const testSMSForwarding = async () => {
     setLoading(true);
     try {
+      // Get the user's auth token
+      const supabase = createClient();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch('/api/test-sms-forwarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ADMIN_API_KEY}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           testMessage: testMessage

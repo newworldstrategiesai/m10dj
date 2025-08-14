@@ -1,13 +1,43 @@
 // API endpoint for testing SMS forwarding system
+import { createClient } from '@supabase/supabase-js';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Basic security check
-  const apiKey = req.headers.authorization?.replace('Bearer ', '');
-  if (apiKey !== process.env.ADMIN_API_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Check for admin authentication using Supabase
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'No authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Check if user is admin
+    const adminEmails = [
+      'admin@m10djcompany.com', 
+      'manager@m10djcompany.com',
+      'djbenmurray@gmail.com'
+    ];
+
+    if (!adminEmails.includes(user.email)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+  } catch (authError) {
+    console.error('Auth error:', authError);
+    return res.status(401).json({ error: 'Authentication failed' });
   }
 
   try {
