@@ -2,7 +2,8 @@ import { MetadataRoute } from 'next';
 import { getURL } from '@/utils/helpers';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = getURL();
+  // Force www subdomain for consistency with sitemap
+  const baseUrl = 'https://www.m10djcompany.com';
   
   return {
     rules: [

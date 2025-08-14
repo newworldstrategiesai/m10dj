@@ -1,8 +1,10 @@
 import { MetadataRoute } from 'next';
 import { getURL } from '@/utils/helpers';
+import { createClient } from '@/utils/supabase/server';
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = getURL();
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Force www subdomain for sitemap URLs to avoid redirect errors in Google Search Console
+  const baseUrl = 'https://www.m10djcompany.com';
   
   // Static pages
   const staticPages = [
@@ -22,9 +24,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/memphis-dj-services',
     '/best-wedding-dj-memphis',
     '/memphis-wedding-dj-prices-2025',
-    '/blog/memphis-wedding-dj-cost-guide-2025',
-    '/blog/memphis-wedding-songs-2025',
-    '/blog/memphis-wedding-success-story-sarah-michael',
     '/corporate-events',
     '/private-parties',
     '/school-dances',
@@ -66,9 +65,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     'collierville',
     'bartlett',
     'millington',
+    'arlington',
+    'cordova',
+    'lakeland',
     'olive-branch',
     'southaven',
-    'cordova'
+    'west-memphis'
   ];
 
   const locationPages = locations.map((location) => ({
@@ -119,5 +121,40 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...locationPages, ...venuePages];
+  // Dynamically fetch blog posts from Supabase
+  let blogPages: MetadataRoute.Sitemap = [];
+  try {
+    const supabase = createClient();
+    
+    // Fetch all published blog posts
+    const { data: posts, error } = await supabase
+      .from('blog_posts')
+      .select('slug, updated_at, published_at')
+      .eq('is_published', true)
+      .order('published_at', { ascending: false });
+
+    if (!error && posts) {
+      blogPages = posts.map((post) => ({
+        url: `${baseUrl}/blog/${post.slug}`,
+        lastModified: new Date(post.updated_at || post.published_at || new Date()),
+        changeFrequency: 'monthly' as const,
+        priority: 0.6,
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching blog posts for sitemap:', error);
+    // Fallback to hardcoded blog posts if database fetch fails
+    blogPages = [
+      '/blog/memphis-wedding-dj-cost-guide-2025',
+      '/blog/memphis-wedding-songs-2025',
+      '/blog/memphis-wedding-success-story-sarah-michael'
+    ].map((route) => ({
+      url: `${baseUrl}${route}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as 'monthly',
+      priority: 0.6,
+    }));
+  }
+
+  return [...staticPages, ...locationPages, ...venuePages, ...blogPages];
 } 

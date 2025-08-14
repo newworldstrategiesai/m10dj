@@ -3,7 +3,8 @@ import { getURL } from '@/utils/helpers';
 import { createClient } from '@/utils/supabase/server';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = getURL();
+  // Force www subdomain for sitemap URLs to avoid redirect errors in Google Search Console
+  const baseUrl = 'https://www.m10djcompany.com';
   
   try {
     const supabase = createClient();
@@ -12,7 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { data: posts, error } = await supabase
       .from('blog_posts')
       .select('slug, updated_at, published_at')
-      .eq('status', 'published')
+      .eq('is_published', true)
       .order('published_at', { ascending: false });
 
     if (error) {
