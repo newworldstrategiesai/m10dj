@@ -15,9 +15,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/dj-near-me-memphis',
     '/memphis-event-dj-services',
     '/memphis-dj-pricing-guide',
+    '/memphis-specialty-dj-services',
+    '/multicultural-dj-memphis',
     '/dj-rentals-memphis',
     '/dj-germantown-tn',
     '/dj-collierville-tn',
+    '/dj-east-memphis-tn',
     '/dj-ben-murray',
     '/services',
     '/memphis-wedding-dj',
@@ -37,23 +40,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(),
     changeFrequency: (route === '' ? 'daily' : 'weekly') as 'daily' | 'weekly',
     priority: route === '' ? 1 : 
-             // Primary wedding pages
+             // Primary wedding pages (highest conversion potential)
              route === '/memphis-wedding-dj' ? 0.98 : // Main wedding authority page
+             route === '/dj-near-me-memphis' ? 0.97 : // High-intent local search
              route === '/wedding-dj-memphis-tn' ? 0.95 : // TN-focused page
              route === '/best-wedding-dj-memphis' ? 0.94 : // Reviews/social proof
-             // Location-based pages
-             route === '/dj-near-me-memphis' ? 0.97 :
+             // Service pages (good conversion potential)
+             route === '/memphis-dj-services' ? 0.93 :
              route === '/dj-germantown-tn' ? 0.92 :
              route === '/dj-collierville-tn' ? 0.92 :
-             // Service pages
-             route === '/memphis-dj-services' ? 0.93 :
+             route === '/dj-east-memphis-tn' ? 0.92 :
              route === '/memphis-event-dj-services' ? 0.91 :
-             // Informational pages
+             // Specialty and pricing pages
              route === '/memphis-dj-pricing-guide' ? 0.90 :
              route === '/memphis-wedding-dj-prices-2025' ? 0.89 :
+             route === '/memphis-specialty-dj-services' ? 0.88 :
+             // Contact and about pages
              route === '/contact' ? 0.89 :
              route === '/pricing' ? 0.88 :
-             route === '/dj-ben-murray' ? 0.87 : 0.8,
+             route === '/dj-ben-murray' ? 0.87 :
+             // Specialty services
+             route === '/multicultural-dj-memphis' ? 0.85 :
+             route === '/dj-rentals-memphis' ? 0.84 : 0.8,
   }));
 
   // Location pages
@@ -148,7 +156,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     blogPages = [
       '/blog/memphis-wedding-dj-cost-guide-2025',
       '/blog/memphis-wedding-songs-2025',
-      '/blog/memphis-wedding-success-story-sarah-michael'
+      '/blog/memphis-wedding-success-story-sarah-michael',
+      '/blog/memphis-dj-cost-complete-guide-2025',
+      '/blog/memphis-dj-cost-pricing-guide-2025',
+      '/blog/how-to-choose-wedding-dj-memphis-2025',
+      '/blog/memphis-wedding-music-top-songs-2025',
+      '/blog/top-memphis-wedding-venues-2025',
+      '/blog/east-memphis-wedding-dj-guide-2025'
     ].map((route) => ({
       url: `${baseUrl}${route}`,
       lastModified: new Date(),

@@ -273,14 +273,23 @@ export function generateStructuredData(props: StructuredDataProps) {
         }))
       });
 
-      // LocalBusiness schema for service pages
-      schemas.push({
+      // Consolidated LocalBusiness + Organization schema for service pages
+      // This replaces the base Organization schema to avoid duplication
+      schemas[0] = {
         "@context": "https://schema.org",
-        "@type": "LocalBusiness",
-        "@id": generateId('local-business'),
-        "name": `${businessInfo.name} - ${service.name}`,
-        "description": service.description,
-        "url": pageUrl,
+        "@type": ["LocalBusiness", "Organization"],
+        "@id": `${businessInfo.url}/#organization`,
+        "name": businessInfo.name,
+        "alternateName": businessInfo.alternateName,
+        "description": `${service.description} ${businessInfo.description}`,
+        "url": businessInfo.url,
+        "logo": {
+          "@type": "ImageObject",
+          "url": businessInfo.logo.url,
+          "width": businessInfo.logo.width,
+          "height": businessInfo.logo.height
+        },
+        "image": businessInfo.image,
         "telephone": businessInfo.telephone,
         "email": businessInfo.email,
         "address": {
@@ -296,6 +305,13 @@ export function generateStructuredData(props: StructuredDataProps) {
           "latitude": businessInfo.geo.latitude,
           "longitude": businessInfo.geo.longitude
         },
+        "foundingDate": businessInfo.foundingDate,
+        "founder": {
+          "@type": "Person",
+          "name": businessInfo.founder.name,
+          "jobTitle": businessInfo.founder.jobTitle
+        },
+        "sameAs": businessInfo.socialMedia,
         "areaServed": {
           "@type": "GeoCircle",
           "geoMidpoint": {
@@ -305,8 +321,18 @@ export function generateStructuredData(props: StructuredDataProps) {
           },
           "geoRadius": location.radius
         },
-        "priceRange": service.priceRange
-      });
+        "serviceType": service.serviceType,
+        "priceRange": service.priceRange,
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": businessInfo.aggregateRating.ratingValue,
+          "reviewCount": businessInfo.aggregateRating.reviewCount,
+          "bestRating": businessInfo.aggregateRating.bestRating,
+          "worstRating": businessInfo.aggregateRating.worstRating
+        },
+        "currenciesAccepted": businessInfo.currenciesAccepted,
+        "paymentAccepted": businessInfo.paymentAccepted
+      };
       break;
 
     case 'location':

@@ -19,7 +19,10 @@ export default function robots(): MetadataRoute.Robots {
           '/auth/',
           '/_next/',
           '/favicon.ico',
+          '/*.json$', // Block JSON files
+          '/chat/', // Block chat interface from crawling
         ],
+        crawlDelay: 1, // Be respectful to server resources
       },
       {
         userAgent: 'Googlebot',
@@ -31,7 +34,36 @@ export default function robots(): MetadataRoute.Robots {
           '/account/',
           '/client/',
           '/auth/',
+          '/chat/',
         ],
+        // No crawl delay for Googlebot - we want fast indexing
+      },
+      {
+        userAgent: 'Bingbot',
+        allow: '/',
+        disallow: [
+          '/admin/',
+          '/api/',
+          '/signin/',
+          '/account/',
+          '/client/',
+          '/auth/',
+          '/chat/',
+        ],
+        crawlDelay: 2, // Bing can be more aggressive, slow it down
+      },
+      // Block problematic bots
+      {
+        userAgent: 'SemrushBot',
+        disallow: '/',
+      },
+      {
+        userAgent: 'AhrefsBot',
+        disallow: '/',
+      },
+      {
+        userAgent: 'MJ12bot',
+        disallow: '/',
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
