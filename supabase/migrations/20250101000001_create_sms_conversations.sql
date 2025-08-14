@@ -90,19 +90,19 @@ CREATE POLICY "Service role can manage SMS conversations"
 -- Create a view for conversation summaries
 CREATE OR REPLACE VIEW public.conversation_summaries AS
 SELECT 
-    phone_number,
-    conversation_session_id,
+    sc.phone_number,
+    sc.conversation_session_id,
     COUNT(*) as message_count,
-    MIN(created_at) as conversation_start,
-    MAX(created_at) as last_message,
-    COUNT(CASE WHEN direction = 'inbound' THEN 1 END) as inbound_messages,
-    COUNT(CASE WHEN direction = 'outbound' THEN 1 END) as outbound_messages,
-    COUNT(CASE WHEN message_type = 'ai_assistant' THEN 1 END) as ai_responses,
+    MIN(sc.created_at) as conversation_start,
+    MAX(sc.created_at) as last_message,
+    COUNT(CASE WHEN sc.direction = 'inbound' THEN 1 END) as inbound_messages,
+    COUNT(CASE WHEN sc.direction = 'outbound' THEN 1 END) as outbound_messages,
+    COUNT(CASE WHEN sc.message_type = 'ai_assistant' THEN 1 END) as ai_responses,
     ARRAY_AGG(
-        CASE WHEN direction = 'inbound' 
-        THEN message_content 
-        END ORDER BY created_at
-    ) FILTER (WHERE direction = 'inbound') as customer_messages,
+        CASE WHEN sc.direction = 'inbound' 
+        THEN sc.message_content 
+        END ORDER BY sc.created_at
+    ) FILTER (WHERE sc.direction = 'inbound') as customer_messages,
     -- Get customer info if available
     c.first_name,
     c.last_name,
@@ -112,8 +112,8 @@ SELECT
 FROM public.sms_conversations sc
 LEFT JOIN public.contacts c ON sc.customer_id = c.id
 WHERE sc.conversation_session_id IS NOT NULL
-GROUP BY phone_number, conversation_session_id, c.first_name, c.last_name, c.event_type, c.event_date, c.lead_status
-ORDER BY last_message DESC;
+GROUP BY sc.phone_number, sc.conversation_session_id, c.first_name, c.last_name, c.event_type, c.event_date, c.lead_status
+ORDER BY MAX(sc.created_at) DESC;
 
 -- Grant access to the view
 GRANT SELECT ON public.conversation_summaries TO authenticated;

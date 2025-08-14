@@ -1,4 +1,6 @@
-// Simplified SMS webhook - based on working debug version
+// Enhanced SMS webhook with instant auto-reply + delayed AI response
+import { scheduleDelayedAIResponse } from '../../../utils/delayed-ai-scheduler.js';
+
 export default async function handler(req, res) {
   try {
     const { From, To, Body, MessageSid, NumMedia, MediaUrl0, MediaContentType0 } = req.body;
@@ -35,7 +37,7 @@ export default async function handler(req, res) {
           adminMessage += `📎 Media: ${NumMedia} attachment(s)\n\n`;
         }
         
-        adminMessage += `💡 Reply directly to respond to customer`;
+        adminMessage += `💡 Reply within 60 seconds to prevent AI response`;
 
         // Send admin SMS
         const twilio = require('twilio');
@@ -73,6 +75,15 @@ export default async function handler(req, res) {
     autoReplyMessage += `💻 Visit: m10djcompany.com\n`;
     autoReplyMessage += `📧 Email: djbenmurray@gmail.com\n\n`;
     autoReplyMessage += `We're excited to help make your event unforgettable!`;
+
+    // 3. THIRD: Schedule delayed AI response (60 seconds later)
+    try {
+      console.log('📅 Scheduling delayed AI response...');
+      await scheduleDelayedAIResponse(From, Body, MessageSid, 60);
+      console.log('✅ AI response scheduled successfully');
+    } catch (scheduleError) {
+      console.error('❌ Failed to schedule AI response:', scheduleError);
+    }
 
     const response = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
