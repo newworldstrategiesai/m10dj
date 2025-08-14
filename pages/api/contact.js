@@ -1,7 +1,6 @@
 import { Resend } from 'resend';
 import { db } from '../../utils/company_lib/supabase';
 import { sendAdminSMS, formatContactSubmissionSMS } from '../../utils/sms-helper.js';
-import { sendEnhancedNotifications } from '../../utils/notification-system.js';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 // Initialize Resend with API key from environment variable
@@ -343,37 +342,51 @@ export default async function handler(req, res) {
       console.log('Resend API key not configured - skipping email sending');
     }
 
-    // Send enhanced notifications with redundancy
+    // Send SMS notification - DIRECT & RELIABLE APPROACH (like August 3rd)
     try {
-      console.log('🔔 Sending enhanced notifications for lead:', dbSubmission.id);
-      const notificationResults = await sendEnhancedNotifications(submissionData, dbSubmission);
+      console.log('📱 Sending SMS notification for contact form submission...');
       
-      console.log('📊 Notification Results:', {
-        smsSuccess: notificationResults.sms.success,
-        smsAttempts: notificationResults.sms.attempts,
-        emailSuccess: notificationResults.email.success,
-        totalSuccessfulMethods: notificationResults.summary.successfulMethods
-      });
-
-      // Log critical failures
-      if (notificationResults.summary.successfulMethods === 0) {
-        console.error('🚨 CRITICAL: All notification methods failed for lead:', dbSubmission.id);
-      } else if (!notificationResults.sms.success) {
-        console.warn('⚠️  SMS notification failed but email succeeded for lead:', dbSubmission.id);
-      }
-
-    } catch (notificationError) {
-      console.error('🚨 Enhanced notification system error:', notificationError);
+      // Format the SMS message
+      const smsMessage = formatContactSubmissionSMS(submissionData);
+      console.log('SMS Message formatted:', smsMessage);
       
-      // Fallback to basic SMS as last resort
+      // Try direct SMS first (most reliable)
       try {
-        console.log('🔄 Attempting fallback SMS notification...');
-        const smsMessage = formatContactSubmissionSMS(submissionData);
+        const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+        
+        if (!adminPhone) {
+          throw new Error('No ADMIN_PHONE_NUMBER environment variable set');
+        }
+        
+        // Use Twilio directly (bypass complex helper functions)
+        const twilio = require('twilio');
+        const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        
+        const smsResult = await twilioClient.messages.create({
+          body: smsMessage,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: adminPhone
+        });
+        
+        console.log('✅ Contact form SMS sent successfully:', smsResult.sid);
+        console.log(`✅ SMS notification sent for ${eventType} inquiry from ${name}`);
+        
+      } catch (directError) {
+        console.error('❌ Direct SMS failed, trying helper function:', directError);
+        
+        // Fallback to helper function
         const fallbackResult = await sendAdminSMS(smsMessage);
-        console.log('Fallback SMS result:', fallbackResult.success ? 'SUCCESS' : 'FAILED');
-      } catch (fallbackError) {
-        console.error('❌ Fallback SMS also failed:', fallbackError);
+        console.log('📱 Helper function SMS result:', fallbackResult);
+        
+        if (fallbackResult.success) {
+          console.log('✅ Fallback SMS notification succeeded!');
+        } else {
+          console.error('❌ Fallback SMS also failed:', fallbackResult.error);
+        }
       }
+      
+    } catch (smsError) {
+      console.error('❌ SMS notification failed:', smsError);
     }
 
     res.status(200).json({ 

@@ -1,4 +1,4 @@
-// Twilio webhook for incoming SMS messages - Reliable Version (Based on July 31st)
+// Twilio webhook for incoming SMS messages - Simple & Reliable Version
 import { sendAdminSMS } from '../../../utils/sms-helper.js';
 
 export default async function handler(req, res) {
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
       hasTwilioPhone: !!process.env.TWILIO_PHONE_NUMBER
     });
     
-    // Enhanced message formatting with better context (keeping improvements from recent version)
+    // Enhanced message formatting with better context
     const timestamp = new Date().toLocaleString('en-US', {
       timeZone: 'America/Chicago',
       weekday: 'short',
@@ -49,49 +49,32 @@ export default async function handler(req, res) {
 
     console.log('🔄 Attempting to forward SMS to admin...');
     
-    // Forward the SMS to admin - DIRECT APPROACH (like July 31st)
+    // Forward the SMS to admin - SIMPLE & RELIABLE
     try {
-      // Use the direct admin phone number from environment
-      const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+      const smsResult = await sendAdminSMS(forwardedMessage);
+      console.log('📱 SMS forward result:', smsResult);
       
-      if (!adminPhone) {
-        console.error('❌ No ADMIN_PHONE_NUMBER environment variable set');
-        throw new Error('No admin phone number configured');
-      }
-      
-      // Use Twilio directly (bypass complex helper functions)
-      const twilio = require('twilio');
-      const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-      
-      const smsResult = await twilioClient.messages.create({
-        body: forwardedMessage,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: adminPhone
-      });
-      
-      console.log('✅ SMS sent successfully to admin:', smsResult.sid);
-      console.log(`✅ SMS successfully forwarded from ${From}: ${Body}`);
-      
-    } catch (smsError) {
-      console.error('❌ Direct SMS forward error:', smsError);
-      
-      // Fallback: Try the helper function approach
-      try {
-        console.log('🔄 Trying helper function as fallback...');
-        const fallbackResult = await sendAdminSMS(forwardedMessage);
-        console.log('📱 Fallback SMS result:', fallbackResult);
+      if (smsResult.success) {
+        console.log(`✅ SMS successfully forwarded from ${From}: ${Body}`);
+      } else {
+        console.error('❌ SMS forward failed:', smsResult.error);
         
-        if (fallbackResult.success) {
-          console.log('✅ Fallback SMS forwarding succeeded!');
-        } else {
-          console.error('❌ Fallback SMS forwarding also failed:', fallbackResult.error);
+        // Try backup admin numbers if available
+        if (process.env.BACKUP_ADMIN_PHONE) {
+          console.log('🔄 Trying backup admin phone...');
+          try {
+            const backupResult = await sendAdminSMS(forwardedMessage, process.env.BACKUP_ADMIN_PHONE);
+            console.log('📱 Backup SMS result:', backupResult);
+          } catch (backupError) {
+            console.error('❌ Backup SMS also failed:', backupError);
+          }
         }
-      } catch (fallbackError) {
-        console.error('❌ Fallback SMS forwarding error:', fallbackError);
       }
+    } catch (smsError) {
+      console.error('❌ SMS forward error:', smsError);
     }
     
-    // Enhanced auto-reply to sender (keeping improvements)
+    // Enhanced auto-reply to sender
     const currentHour = new Date().getHours();
     const isBusinessHours = currentHour >= 9 && currentHour < 17; // 9 AM to 5 PM
     
