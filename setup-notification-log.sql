@@ -1,3 +1,6 @@
+-- Quick setup script for notification_log table
+-- Run this directly in your Supabase SQL editor if migrations aren't working
+
 -- Create notification_log table for tracking notification attempts
 CREATE TABLE IF NOT EXISTS notification_log (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -66,9 +69,12 @@ CREATE POLICY "Service role can update notification logs" ON notification_log
 DO $$ 
 BEGIN
   IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'contact_submissions') THEN
-    ALTER TABLE notification_log 
-    ADD CONSTRAINT fk_notification_log_contact_submission 
-    FOREIGN KEY (contact_submission_id) REFERENCES contact_submissions(id) ON DELETE CASCADE;
+    -- Check if constraint doesn't already exist
+    IF NOT EXISTS (SELECT FROM information_schema.table_constraints WHERE constraint_name = 'fk_notification_log_contact_submission') THEN
+      ALTER TABLE notification_log 
+      ADD CONSTRAINT fk_notification_log_contact_submission 
+      FOREIGN KEY (contact_submission_id) REFERENCES contact_submissions(id) ON DELETE CASCADE;
+    END IF;
   END IF;
 END $$;
 
@@ -79,3 +85,6 @@ COMMENT ON COLUMN notification_log.notification_type IS 'Type of notification (l
 COMMENT ON COLUMN notification_log.sms_success IS 'Whether SMS notification was successful';
 COMMENT ON COLUMN notification_log.sms_attempts IS 'Number of SMS attempts made';
 COMMENT ON COLUMN notification_log.successful_methods IS 'Total number of successful notification methods';
+
+-- Success message
+SELECT 'notification_log table created successfully!' as result;

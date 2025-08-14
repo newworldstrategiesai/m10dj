@@ -34,6 +34,24 @@ export default async function handler(req, res) {
       .limit(50);
 
     if (error) {
+      // If table doesn't exist, return empty data instead of error
+      if (error.code === '42P01') {
+        return res.status(200).json({
+          logs: [],
+          stats: {
+            total: 0,
+            successful: 0,
+            failed: 0,
+            smsFailures: 0,
+            emailFailures: 0,
+            successRate: 0
+          },
+          criticalIssues: [],
+          timestamp: new Date().toISOString(),
+          message: 'Notification logging table not set up yet. System will work without logging.'
+        });
+      }
+      
       console.error('Error fetching notification logs:', error);
       return res.status(500).json({ error: 'Failed to fetch logs' });
     }

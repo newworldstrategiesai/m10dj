@@ -268,10 +268,12 @@ async function logDigestAttempt(supabase, data) {
       }]);
 
     if (error) {
-      console.error('Failed to log digest attempt:', error);
+      console.warn('⚠️ Failed to log digest attempt (this is not critical):', error.message);
+    } else {
+      console.log('✅ Daily digest attempt logged to database');
     }
   } catch (error) {
-    console.error('Error logging digest attempt:', error);
+    console.warn('⚠️ Error logging digest attempt (this is not critical):', error.message);
   }
 }
 

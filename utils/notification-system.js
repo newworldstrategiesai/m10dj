@@ -201,7 +201,7 @@ async function logNotificationAttempt(submissionData, dbSubmission, results) {
     );
 
     const logData = {
-      contact_submission_id: dbSubmission.id,
+      contact_submission_id: dbSubmission?.id || null,
       notification_type: 'lead_alert',
       sms_success: results.sms.success,
       sms_attempts: results.sms.attempts,
@@ -218,7 +218,8 @@ async function logNotificationAttempt(submissionData, dbSubmission, results) {
       .insert([logData]);
 
     if (error) {
-      console.error('Failed to log notification attempt:', error);
+      // Don't fail the entire notification system if logging fails
+      console.warn('⚠️ Failed to log notification attempt (this is not critical):', error.message);
       results.database.error = error.message;
     } else {
       results.database.success = true;
@@ -226,7 +227,8 @@ async function logNotificationAttempt(submissionData, dbSubmission, results) {
     }
 
   } catch (error) {
-    console.error('Database logging error:', error);
+    // Don't fail the entire notification system if logging fails
+    console.warn('⚠️ Database logging error (this is not critical):', error.message);
     results.database.error = error.message;
   }
 }

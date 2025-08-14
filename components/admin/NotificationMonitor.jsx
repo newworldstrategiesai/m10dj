@@ -19,25 +19,45 @@ export default function NotificationMonitor() {
   const [lastCheck, setLastCheck] = useState(null);
 
   useEffect(() => {
+    let mounted = true;
+    
+    const fetchNotificationLogs = async () => {
+      if (!mounted) return;
+      
+      try {
+        const response = await fetch('/api/admin/notification-logs');
+        if (response.ok) {
+          const data = await response.json();
+          if (mounted) {
+            setRecentLogs(data.logs || []);
+            setLastCheck(new Date());
+          }
+        } else {
+          // Silently handle errors - don't log to prevent console spam
+          if (mounted) {
+            setRecentLogs([]);
+            setLastCheck(new Date());
+          }
+        }
+      } catch (error) {
+        // Silently handle errors - database might not be set up yet
+        if (mounted) {
+          setRecentLogs([]);
+          setLastCheck(new Date());
+        }
+      }
+    };
+
     fetchNotificationLogs();
     
     // Auto-refresh every 5 minutes
     const interval = setInterval(fetchNotificationLogs, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
-
-  const fetchNotificationLogs = async () => {
-    try {
-      const response = await fetch('/api/admin/notification-logs');
-      if (response.ok) {
-        const data = await response.json();
-        setRecentLogs(data.logs || []);
-        setLastCheck(new Date());
-      }
-    } catch (error) {
-      console.error('Failed to fetch notification logs:', error);
-    }
-  };
 
   const runHealthCheck = async () => {
     setLoading(true);
