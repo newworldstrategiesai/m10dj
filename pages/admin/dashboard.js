@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
+import { useAdminNotifications } from '../../hooks/useAdminNotifications';
 import { 
   Users, 
   Mail, 
@@ -29,6 +30,9 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Admin notifications hook
+  const { checkForNewSubmissions, newSubmissionsCount, isChecking } = useAdminNotifications();
 
   useEffect(() => {
     checkAuth();
@@ -37,6 +41,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (isAdmin) {
       loadData();
+      // Check for new submissions after admin authentication
+      checkForNewSubmissions();
     }
   }, [isAdmin]);
 
@@ -255,20 +261,39 @@ export default function AdminDashboard() {
                   </p>
                   <p className="text-xs text-gray-500 font-inter">{user?.email}</p>
                 </div>
-                <button
-                  onClick={loadData}
-                  className="btn-secondary !px-3 !py-2"
-                  title="Refresh Data"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleSignOut}
-                  className="btn-secondary !px-3 !py-2 !text-red-600 !border-red-200 hover:!bg-red-50"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={checkForNewSubmissions}
+                    className="btn-secondary !px-3 !py-2 !text-blue-600 !border-blue-200 hover:!bg-blue-50 relative"
+                    disabled={isChecking}
+                    title="Check for New Submissions"
+                  >
+                    {isChecking ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4" />
+                    )}
+                    {newSubmissionsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                        {newSubmissionsCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={loadData}
+                    className="btn-secondary !px-3 !py-2"
+                    title="Refresh Data"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    className="btn-secondary !px-3 !py-2 !text-red-600 !border-red-200 hover:!bg-red-50"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

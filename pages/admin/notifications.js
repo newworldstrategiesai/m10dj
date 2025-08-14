@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { createClient } from '@/utils/supabase/client';
+import { useAdminNotifications } from '../../hooks/useAdminNotifications';
 import { 
   ArrowLeft,
   Bell,
