@@ -1,47 +1,5 @@
-// Twilio webhook for incoming SMS messages
+// Twilio webhook for incoming SMS messages - Reliable Version (Based on July 31st)
 import { sendAdminSMS } from '../../../utils/sms-helper.js';
-import { sendEnhancedNotifications } from '../../../utils/notification-system.js';
-import { createClient } from '@supabase/supabase-js';
-
-/**
- * Log incoming SMS message to database
- */
-async function logIncomingMessage(messageData) {
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    // Create a record in contact_submissions for incoming SMS
-    const { data, error } = await supabase
-      .from('contact_submissions')
-      .insert([{
-        name: `SMS Contact ${messageData.from}`,
-        email: 'sms-inquiry@m10djcompany.com',
-        phone: messageData.from,
-        event_type: 'SMS Inquiry',
-        event_date: new Date().toISOString().split('T')[0],
-        location: 'SMS',
-        message: `Incoming SMS: ${messageData.body}${messageData.numMedia > 0 ? ` [${messageData.numMedia} media attachment(s)]` : ''}`,
-        status: 'new'
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error logging incoming SMS:', error);
-      return null;
-    }
-
-    console.log('✅ Incoming SMS logged to database:', data.id);
-    return data;
-
-  } catch (error) {
-    console.error('Database logging error:', error);
-    return null;
-  }
-}
 
 export default async function handler(req, res) {
   try {
@@ -54,24 +12,14 @@ export default async function handler(req, res) {
       hasTwilioToken: !!process.env.TWILIO_AUTH_TOKEN,
       hasTwilioPhone: !!process.env.TWILIO_PHONE_NUMBER
     });
-
-    // Store incoming message in database for tracking
-    let incomingMessageRecord = null;
-    try {
-      incomingMessageRecord = await logIncomingMessage({
-        from: From,
-        to: To,
-        body: Body,
-        messageSid: MessageSid,
-        numMedia: NumMedia || 0,
-        mediaUrl: MediaUrl0,
-        mediaContentType: MediaContentType0
-      });
-    } catch (dbError) {
-      console.error('Failed to log incoming message:', dbError);
+    
+    // Debug: Log the admin phone number (partially masked for security)
+    if (process.env.ADMIN_PHONE_NUMBER) {
+      const maskedPhone = process.env.ADMIN_PHONE_NUMBER.replace(/\d(?=\d{4})/g, '*');
+      console.log('Admin phone (masked):', maskedPhone);
     }
     
-    // Enhanced message formatting with better context
+    // Enhanced message formatting with better context (keeping improvements from recent version)
     const timestamp = new Date().toLocaleString('en-US', {
       timeZone: 'America/Chicago',
       weekday: 'short',
@@ -105,101 +53,61 @@ export default async function handler(req, res) {
     forwardedMessage += `💡 Reply directly to respond to customer\n`;
     forwardedMessage += `📱 View details: m10djcompany.com/admin/dashboard`;
 
-               console.log('🔄 Attempting to forward SMS to admin...');
-           
-           // PRIMARY: Try basic SMS forwarding first (most reliable)
-           let smsForwardSuccessful = false;
-           
-           try {
-             console.log('📱 Trying basic SMS forwarding...');
-             const basicSmsResult = await sendAdminSMS(forwardedMessage);
-             console.log('📱 Basic SMS forward result:', basicSmsResult);
-             
-             if (basicSmsResult.success) {
-               console.log(`✅ SMS successfully forwarded from ${From}: ${Body}`);
-               smsForwardSuccessful = true;
-             } else {
-               console.error('❌ Basic SMS forward failed:', basicSmsResult.error);
-             }
-           } catch (basicError) {
-             console.error('❌ Basic SMS forward error:', basicError);
-           }
-           
-           // SECONDARY: Try enhanced notification system as backup
-           if (!smsForwardSuccessful) {
-             try {
-               console.log('🔄 Basic SMS failed, trying enhanced notifications...');
-               
-               // Create a pseudo-submission for the notification system
-               const pseudoSubmission = {
-                 name: `SMS from ${formattedFrom}`,
-                 email: 'sms-contact@m10djcompany.com',
-                 phone: From,
-                 eventType: 'SMS Inquiry',
-                 eventDate: new Date().toISOString().split('T')[0],
-                 location: 'SMS',
-                 message: Body
-               };
-
-               const pseudoDbSubmission = incomingMessageRecord || { 
-                 id: `sms-${MessageSid}` 
-               };
-
-               // Send enhanced notifications (SMS + Email backup)
-               const notificationResults = await sendEnhancedNotifications(pseudoSubmission, pseudoDbSubmission);
-               
-               console.log('📊 Enhanced SMS Forward Results:', {
-                 smsSuccess: notificationResults.sms.success,
-                 emailSuccess: notificationResults.email.success,
-                 totalSuccessfulMethods: notificationResults.summary.successfulMethods
-               });
-
-               if (notificationResults.summary.successfulMethods > 0) {
-                 console.log('✅ Enhanced notifications succeeded!');
-                 smsForwardSuccessful = true;
-               } else {
-                 console.error('🚨 CRITICAL: All enhanced notification methods failed!');
-               }
-
-             } catch (enhancedError) {
-               console.error('🚨 Enhanced SMS forwarding also failed:', enhancedError);
-             }
-           }
-           
-           // TERTIARY: Try backup phone numbers if everything else fails
-           if (!smsForwardSuccessful && (process.env.BACKUP_ADMIN_PHONE || process.env.EMERGENCY_CONTACT_PHONE)) {
-             console.log('🆘 Trying emergency backup phone numbers...');
-             
-             const backupNumbers = [
-               process.env.BACKUP_ADMIN_PHONE,
-               process.env.EMERGENCY_CONTACT_PHONE
-             ].filter(Boolean);
-             
-             for (const backupNumber of backupNumbers) {
-               try {
-                 const emergencyMessage = `🚨 EMERGENCY SMS FORWARD\n\n${forwardedMessage}\n\n⚠️ Primary forwarding failed!`;
-                 const backupResult = await sendAdminSMS(emergencyMessage, backupNumber);
-                 console.log(`📱 Emergency backup to ${backupNumber}:`, backupResult);
-                 
-                 if (backupResult.success) {
-                   console.log('✅ Emergency backup SMS successful!');
-                   smsForwardSuccessful = true;
-                   break;
-                 }
-               } catch (backupError) {
-                 console.error(`❌ Emergency backup to ${backupNumber} failed:`, backupError);
-               }
-             }
-           }
-           
-           // Final status log
-           if (smsForwardSuccessful) {
-             console.log('🎉 SMS forwarding completed successfully!');
-           } else {
-             console.error('💥 ALL SMS FORWARDING METHODS FAILED - CRITICAL ISSUE!');
-           }
+    console.log('🔄 Attempting to forward SMS to admin...');
+    console.log('📄 Formatted message preview:', forwardedMessage.substring(0, 100) + '...');
     
-    // Send enhanced auto-reply to sender
+    // Forward the SMS to admin - DIRECT APPROACH (like July 31st)
+    try {
+      // Use the direct admin phone number from environment
+      const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+      console.log('📞 Admin phone retrieved:', adminPhone ? 'YES' : 'NO');
+      
+      if (!adminPhone) {
+        console.error('❌ No ADMIN_PHONE_NUMBER environment variable set');
+        throw new Error('No admin phone number configured');
+      }
+      
+      console.log('🔧 Initializing Twilio client...');
+      // Use Twilio directly (bypass complex helper functions)
+      const twilio = require('twilio');
+      const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      console.log('✅ Twilio client initialized');
+      
+      console.log('📤 Sending SMS with params:', {
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: adminPhone ? adminPhone.substring(0, 6) + '***' : 'undefined',
+        bodyLength: forwardedMessage.length
+      });
+      
+      const smsResult = await twilioClient.messages.create({
+        body: forwardedMessage,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: adminPhone
+      });
+      
+      console.log('✅ SMS sent successfully to admin:', smsResult.sid);
+      console.log(`✅ SMS successfully forwarded from ${From}: ${Body}`);
+      
+    } catch (smsError) {
+      console.error('❌ Direct SMS forward error:', smsError);
+      
+      // Fallback: Try the helper function approach
+      try {
+        console.log('🔄 Trying helper function as fallback...');
+        const fallbackResult = await sendAdminSMS(forwardedMessage);
+        console.log('📱 Fallback SMS result:', fallbackResult);
+        
+        if (fallbackResult.success) {
+          console.log('✅ Fallback SMS forwarding succeeded!');
+        } else {
+          console.error('❌ Fallback SMS forwarding also failed:', fallbackResult.error);
+        }
+      } catch (fallbackError) {
+        console.error('❌ Fallback SMS forwarding error:', fallbackError);
+      }
+    }
+    
+    // Enhanced auto-reply to sender (keeping improvements)
     const currentHour = new Date().getHours();
     const isBusinessHours = currentHour >= 9 && currentHour < 17; // 9 AM to 5 PM
     
@@ -227,7 +135,9 @@ export default async function handler(req, res) {
     res.status(200).send(response);
     
   } catch (error) {
-    console.error('Error forwarding SMS:', error);
+    console.error('❌ CRITICAL ERROR in SMS webhook:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request body:', req.body);
     
     // Still return valid TwiML even on error
     const errorResponse = `<?xml version="1.0" encoding="UTF-8"?>
