@@ -8,6 +8,7 @@ import { headers } from 'next/headers';
 import EnhancedTracking from '@/components/EnhancedTracking';
 import PerformanceOptimizations from '@/components/PerformanceOptimizations';
 import { CriticalResourceHints, OptimizedScriptLoader, ServiceWorkerManager, PerformanceBudgetMonitor } from '@/components/MobilePerformanceOptimizer';
+import { Analytics } from '@vercel/analytics/next';
 
 import 'styles/main.css';
 
@@ -297,6 +298,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           <PerformanceBudgetMonitor />
         </OptimizedScriptLoader>
         <CriticalResourceHints />
+        <Analytics />
       </body>
     </html>
   );
