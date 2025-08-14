@@ -93,52 +93,56 @@ export default async function handler(req, res) {
     autoReplyMessage += `📧 Email: djbenmurray@gmail.com\n\n`;
     autoReplyMessage += `We're excited to help make your event unforgettable!`;
 
-    // 3. THIRD: Schedule delayed AI response using simple URL approach
-    try {
-      console.log('📅 Scheduling delayed AI response...');
-      
-      // Create a delayed URL that can be triggered manually or via external service
-      const delayedUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/sms/simple-delayed-ai?phone=${encodeURIComponent(From)}&message=${encodeURIComponent(Body)}&messageId=${MessageSid}`;
-      
-      console.log('🔗 Delayed AI URL created:', delayedUrl);
-      
-      // Store the delay request in database for manual triggering if needed
+    // 3. THIRD: Schedule delayed AI response using pre-generated response
+    if (aiPreview) {
       try {
+        console.log('📅 Scheduling delayed AI response with pre-generated content...');
+        
+        // Store the pre-generated AI response in database
         const { createClient } = require('@supabase/supabase-js');
         const supabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL,
           process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
-        await supabase
+        const { data: pendingResponse, error: insertError } = await supabase
           .from('pending_ai_responses')
           .insert([{
             phone_number: From,
             original_message: Body,
             original_message_id: MessageSid,
+            ai_response: aiPreview, // Store the pre-generated response
             scheduled_for: new Date(Date.now() + 60000).toISOString(),
             status: 'pending'
-          }]);
-        
-        console.log('✅ AI delay request stored in database');
-      } catch (dbError) {
-        console.error('❌ Failed to store delay request:', dbError);
-      }
-      
-      // Use external delay service (you can replace this with any delay service)
-      // For testing, we'll use setTimeout with a fallback
-      setTimeout(async () => {
-        try {
-          const response = await fetch(delayedUrl);
-          console.log('✅ Delayed AI triggered:', response.ok ? 'success' : 'failed');
-        } catch (error) {
-          console.error('❌ Delayed AI trigger failed:', error);
+          }])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('❌ Failed to store AI response:', insertError);
+        } else {
+          console.log('✅ Pre-generated AI response stored in database');
+          
+          // Create delayed URL with the pending response ID
+          const delayedUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/sms/send-stored-ai-response?id=${pendingResponse.id}`;
+          
+          // Use setTimeout to trigger the stored response after delay
+          setTimeout(async () => {
+            try {
+              const response = await fetch(delayedUrl);
+              console.log('✅ Stored AI response triggered:', response.ok ? 'success' : 'failed');
+            } catch (error) {
+              console.error('❌ Delayed AI trigger failed:', error);
+            }
+          }, 60000); // 60 seconds
+          
+          console.log('✅ Pre-generated AI response scheduled for 60 seconds');
         }
-      }, 60000); // 60 seconds
-      
-      console.log('✅ AI response scheduled for 60 seconds');
-    } catch (scheduleError) {
-      console.error('❌ Failed to schedule AI response:', scheduleError);
+      } catch (scheduleError) {
+        console.error('❌ Failed to schedule pre-generated AI response:', scheduleError);
+      }
+    } else {
+      console.log('⏭️ No AI preview generated, skipping delayed response');
     }
 
     const response = `<?xml version="1.0" encoding="UTF-8"?>
