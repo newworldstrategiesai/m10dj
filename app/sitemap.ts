@@ -20,6 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/dj-ben-murray',
     '/services',
     '/memphis-wedding-dj',
+    '/wedding-djs-memphis',
     '/wedding-dj-memphis-tn',
     '/memphis-dj-services',
     '/best-wedding-dj-memphis',
@@ -38,6 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route === '' ? 1 : 
              // Primary wedding pages
              route === '/memphis-wedding-dj' ? 0.98 : // Main wedding authority page
+             route === '/wedding-djs-memphis' ? 0.96 : // Plural wedding DJs page
              route === '/wedding-dj-memphis-tn' ? 0.95 : // TN-focused page
              route === '/best-wedding-dj-memphis' ? 0.94 : // Reviews/social proof
              // Location-based pages

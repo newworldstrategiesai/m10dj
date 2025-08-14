@@ -91,8 +91,8 @@ export default function MemphisWeddingDJ() {
   return (
     <>
       <SEO
-        title="Memphis Wedding DJ | #1 Professional Wedding DJs in Memphis TN | M10 DJ Company"
-        description="Top-rated Memphis wedding DJ services. Professional wedding DJs for Memphis weddings with 10+ years experience. Ceremony, reception & MC services. Call (901) 410-2020!"
+        title="Wedding DJ Memphis | Memphis Wedding DJs | Professional Wedding Entertainment"
+        description="Wedding DJ Memphis TN - Professional Memphis wedding DJs with 500+ successful weddings. Best wedding DJs in Memphis for ceremonies, receptions & events. Call (901) 410-2020!"
         keywords={[
           'Memphis wedding DJ',
           'wedding DJ Memphis TN', 

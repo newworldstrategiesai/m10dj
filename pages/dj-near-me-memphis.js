@@ -186,10 +186,10 @@ export default function DJNearMemphis() {
   return (
     <>
       <Head>
-        <title>DJ Near Me | Wedding DJ Near Me | Memphis Local DJs | M10 DJ Company</title>
+        <title>DJ Near Me Memphis | Local DJs Near Me | Wedding DJ Near Me Memphis</title>
         <meta 
           name="description" 
-          content="DJ near me in Memphis? Wedding DJ near me? M10 DJ Company provides local DJ services throughout Memphis with same-day quotes. Professional DJs near you for weddings, events & parties. Call (901) 410-2020!"
+          content="Looking for DJ near me? Local Memphis DJs available for weddings & events. Professional DJs near you with 15+ years experience. Same-day quotes. Call (901) 410-2020!"
         />
         <meta name="keywords" content="DJ near me, wedding DJ near me, DJ near me Memphis, Memphis DJ near me, local DJ Memphis, event DJ near me, find DJ near me, Memphis area DJ" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -176,10 +176,10 @@ export default function BestWeddingDJMemphis() {
   return (
     <>
       <Head>
-        <title>Memphis Wedding DJ Reviews | 500+ 5-Star Weddings | M10 DJ Company</title>
+        <title>Best Wedding DJ Memphis | Top Memphis Wedding DJs | 5-Star Reviews</title>
         <meta 
           name="description" 
-          content="See why couples rate us Memphis's most trusted wedding DJ. Over 500 5-star reviews, real wedding photos & videos, client testimonials, and proven track record. Read what makes us different!" 
+          content="Best wedding DJ Memphis with 500+ 5-star reviews. Top-rated Memphis wedding DJs for your special day. See why couples choose us as their wedding DJ Memphis. Call now!" 
         />
         <meta name="keywords" content="Memphis wedding DJ reviews, wedding DJ reviews Memphis, Memphis DJ testimonials, wedding DJ ratings Memphis, Memphis wedding DJ testimonials, wedding DJ success stories Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
