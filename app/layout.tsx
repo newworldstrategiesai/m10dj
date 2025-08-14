@@ -236,48 +236,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           }}
         />
         
-        {/* Google Analytics */}
-        <script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-8DQRX3LY9T"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-8DQRX3LY9T');
-            `,
-          }}
-        />
-        
-        {/* Facebook Pixel */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              !function(f,b,e,v,n,t,s)
-              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-              n.queue=[];t=b.createElement(e);t.async=!0;
-              t.src=v;s=b.getElementsByTagName(e)[0];
-              s.parentNode.insertBefore(t,s)}(window, document,'script',
-              'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '1080417329531937');
-              fbq('track', 'PageView');
-            `,
-          }}
-        />
-        <noscript>
-          <img 
-            height="1" 
-            width="1" 
-            style={{ display: 'none' }}
-            src="https://www.facebook.com/tr?id=1080417329531937&ev=PageView&noscript=1"
-            alt=""
-          />
-        </noscript>
+        {/* Tracking scripts removed from layout.tsx to prevent conflicts with _document.js */}
+        {/* All tracking now handled in _document.js with proper defer loading */}
       </head>
       <body className="bg-black">
         {!isSignInPage && <Navbar />}
@@ -291,13 +251,15 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         <Suspense>
           <Toaster />
         </Suspense>
-        <OptimizedScriptLoader>
+        {/* Performance components disabled during SEO recovery */}
+        {/* TODO: Re-enable after traffic recovery with proper optimization */}
+        {/* <OptimizedScriptLoader>
           <EnhancedTracking />
           <PerformanceOptimizations />
           <ServiceWorkerManager />
           <PerformanceBudgetMonitor />
         </OptimizedScriptLoader>
-        <CriticalResourceHints />
+        <CriticalResourceHints /> */}
         <Analytics />
       </body>
     </html>
