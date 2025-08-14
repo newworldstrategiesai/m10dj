@@ -127,6 +127,11 @@ const nextConfig = {
         destination: '/dj-ben-murray',
         permanent: true,
       },
+      {
+        source: '/wedding-djs-memphis',
+        destination: '/memphis-wedding-dj',
+        permanent: true,
+      },
     ];
   },
 };

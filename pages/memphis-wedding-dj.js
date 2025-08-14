@@ -347,8 +347,47 @@ export default function MemphisWeddingDJ() {
           </div>
         </section>
 
-        {/* Memphis Wedding DJ Reviews */}
+        {/* Memphis Wedding DJ Team Section */}
         <section className="py-20 bg-white">
+          <div className="section-container">
+            <div className="text-center mb-16">
+              <h2 className="heading-2 text-gray-900 mb-6">
+                Professional Wedding DJ Team in Memphis
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Our experienced Memphis wedding DJ team includes backup DJs and specialized entertainers 
+                to ensure your wedding celebration is flawless, no matter the size or complexity.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="w-10 h-10 text-black" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Lead DJ + Backup</h3>
+                <p className="text-gray-600">Primary DJ with backup DJ available for large weddings and peace of mind</p>
+              </div>
+              <div className="text-center">
+                <div className="w-20 h-20 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Award className="w-10 h-10 text-black" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">15+ Years Experience</h3>
+                <p className="text-gray-600">Each Memphis wedding DJ brings extensive experience and professional training</p>
+              </div>
+              <div className="text-center">
+                <div className="w-20 h-20 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-10 h-10 text-black" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Team Approach</h3>
+                <p className="text-gray-600">Multiple DJs available for large venues, destination weddings, and extended coverage</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Memphis Wedding DJ Reviews */}
+        <section className="py-20 bg-gray-50">
           <div className="section-container">
             <div className="text-center mb-16">
               <h2 className="heading-2 text-gray-900 mb-6">
