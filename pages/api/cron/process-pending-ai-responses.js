@@ -1,4 +1,6 @@
 // Cron job to process pending AI responses (runs every minute)
+// NOTE: On Vercel Hobby plan, use external cron service (cron-job.org, uptimerobot.com)
+// to trigger this endpoint every minute instead of native Vercel crons
 export default async function handler(req, res) {
   // Verify this is a legitimate cron request
   if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
