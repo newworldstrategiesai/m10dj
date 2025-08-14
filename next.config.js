@@ -132,6 +132,11 @@ const nextConfig = {
         destination: '/memphis-wedding-dj',
         permanent: true,
       },
+      {
+        source: '/dj-rentals',
+        destination: '/dj-rentals-memphis',
+        permanent: true,
+      },
     ];
   },
 };

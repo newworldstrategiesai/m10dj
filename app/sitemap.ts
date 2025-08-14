@@ -15,6 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/dj-near-me-memphis',
     '/memphis-event-dj-services',
     '/memphis-dj-pricing-guide',
+    '/dj-rentals-memphis',
     '/dj-germantown-tn',
     '/dj-collierville-tn',
     '/dj-ben-murray',
