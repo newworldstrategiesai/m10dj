@@ -54,27 +54,25 @@ export default function PerformanceOptimizations() {
         lazyImages.forEach(img => imageObserver.observe(img));
       }
 
-      // Report Web Vitals to analytics (for performance monitoring)
-      if (process.env.NODE_ENV === 'production') {
-        import('web-vitals').then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
-          onCLS(console.log);
-          onINP(console.log);
-          onFCP(console.log);
-          onLCP(console.log);
-          onTTFB(console.log);
-        });
-      }
+      // Web Vitals monitoring disabled to prevent SEO interference
+      // TODO: Re-enable after traffic recovery with proper analytics integration
+      // if (process.env.NODE_ENV === 'production') {
+      //   import('web-vitals').then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
+      //     // Send to analytics instead of console.log
+      //   });
+      // }
 
-      // Optimize images that are already loaded
-      const images = document.querySelectorAll('img');
-      images.forEach(img => {
-        if (!img.loading) {
-          img.loading = 'lazy';
-        }
-        if (!img.decoding) {
-          img.decoding = 'async';
-        }
-      });
+      // Image optimization disabled to prevent DOM manipulation during crawling
+      // TODO: Implement server-side image optimization instead of client-side
+      // const images = document.querySelectorAll('img');
+      // images.forEach(img => {
+      //   if (!img.loading) {
+      //     img.loading = 'lazy';
+      //   }
+      //   if (!img.decoding) {
+      //     img.decoding = 'async';
+      //   }
+      // });
     }
   }, []);
 
