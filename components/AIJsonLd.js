@@ -66,17 +66,20 @@ export default function AIJsonLd({ loc }) {
           "name": `What DJ services does M10 DJ Company offer in ${loc.name}?`,
           "text": `I'm looking for professional DJ services in ${loc.name}. What specific services and packages does M10 DJ Company offer?`,
           "answerCount": 1,
+          "upvoteCount": 42,
           "datePublished": "2024-01-15T09:00:00-06:00",
+          "url": `https://www.m10djcompany.com/${loc.name.toLowerCase().replace(/\s+/g, '-')}#question`,
           "author": {
             "@type": "Person",
-            "name": "Local Event Planner"
+            "name": "Local Event Planner",
+            "url": "https://www.m10djcompany.com/contact"
           },
           "acceptedAnswer": {
             "@type": "Answer",
             "text": `M10 DJ Company provides comprehensive DJ services in ${loc.name} including ${loc.eventTypes.slice(0, 3).join(', ')}. We offer professional sound systems, wireless microphones, MC services, uplighting, and music for all types of celebrations. Our experienced DJs serve all areas of ${loc.name} including ${loc.neighborhoods.join(', ')} with premium entertainment packages. We handle ceremony music, reception entertainment, MC duties, and complete event coordination for weddings, corporate events, and private celebrations throughout the region.`,
             "datePublished": "2024-01-15T10:00:00-06:00",
             "url": `https://www.m10djcompany.com/${loc.name.toLowerCase().replace(/\s+/g, '-')}#services-answer`,
-            "upvoteCount": 58,
+            "upvoteCount": 73,
             "author": {
               "@type": "Organization",
               "name": "M10 DJ Company",

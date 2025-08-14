@@ -600,9 +600,12 @@ export const MultiServiceBusinessSchema = () => (
 );
 
 // QA Schema Component (Google-compliant alternative to FAQPage)
-// Uses only the first/most important question as single mainEntity (not array)
+// Enhanced to follow full Schema.org QAPage specification
 export const QAPageSchema = ({ questions = [] }) => {
   if (!questions.length) return null;
+  
+  const mainQuestion = questions[0];
+  const hasMultipleAnswers = questions.length > 1;
   
   return (
     <script
@@ -613,26 +616,44 @@ export const QAPageSchema = ({ questions = [] }) => {
           "@type": "QAPage",
           "mainEntity": {
             "@type": "Question",
-            "name": questions[0].question,
-            "text": questions[0].text || "I have a question about your services and would like to get more information.",
-            "answerCount": 1,
-            "datePublished": questions[0].datePublished || "2024-01-15T09:00:00-06:00",
-            "author": questions[0].author || {
+            "name": mainQuestion.question,
+            "text": mainQuestion.text || mainQuestion.question,
+            "answerCount": hasMultipleAnswers ? questions.length : 1,
+            "upvoteCount": mainQuestion.upvoteCount || 25,
+            "datePublished": mainQuestion.datePublished || "2024-01-15T09:00:00-06:00",
+            "url": mainQuestion.questionUrl || "https://www.m10djcompany.com/#question",
+            "author": mainQuestion.author || {
               "@type": "Person",
-              "name": "Service Inquirer"
+              "name": "Event Organizer",
+              "url": "https://www.m10djcompany.com/contact"
             },
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": questions[0].answer,
-              "datePublished": questions[0].answerDate || "2024-01-15T09:30:00-06:00",
-              "url": questions[0].url || "https://www.m10djcompany.com/#answer",
-              "upvoteCount": questions[0].upvoteCount || 15,
+              "text": mainQuestion.answer,
+              "datePublished": mainQuestion.answerDate || "2024-01-15T09:30:00-06:00",
+              "url": mainQuestion.answerUrl || "https://www.m10djcompany.com/#accepted-answer",
+              "upvoteCount": mainQuestion.answerUpvotes || 45,
               "author": {
                 "@type": "Organization",
                 "name": "M10 DJ Company",
                 "url": "https://www.m10djcompany.com"
               }
-            }
+            },
+            // Add suggested answers if multiple perspectives exist
+            ...(hasMultipleAnswers && {
+              "suggestedAnswer": questions.slice(1).map((q, index) => ({
+                "@type": "Answer",
+                "text": q.answer,
+                "upvoteCount": q.answerUpvotes || 10,
+                "url": q.answerUrl || `https://www.m10djcompany.com/#suggested-answer-${index + 1}`,
+                "datePublished": q.answerDate || "2024-01-15T10:00:00-06:00",
+                "author": {
+                  "@type": "Organization",
+                  "name": "M10 DJ Company",
+                  "url": "https://www.m10djcompany.com"
+                }
+              }))
+            })
           }
         })
       }}

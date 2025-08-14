@@ -8,8 +8,8 @@ import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import FAQSection from '../components/company/FAQSection';
 import SEO from '../components/SEO';
-import { HomepageSchema } from '../components/StandardSchema';
-import { AIAnswerBlock, AIQuickFacts, AIContentSchema } from '../components/AIOverviewOptimization';
+import { generateStructuredData } from '../utils/generateStructuredData';
+import { AIAnswerBlock, AIQuickFacts } from '../components/AIOverviewOptimization';
 import { LazySection, OptimizedButton } from '../components/MobilePerformanceOptimizer';
 import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
 import { scrollToContact } from '../utils/scroll-helpers';
@@ -20,6 +20,14 @@ export default function Home() {
   useEffect(() => {
     setIsVisible(true);
   }, []);
+
+  // Generate consolidated structured data for homepage
+  const structuredData = generateStructuredData({
+    pageType: 'homepage',
+    canonical: '/',
+    title: 'Memphis DJ Services | Professional DJ Memphis | M10 DJ Company',
+    description: 'Memphis DJ • 500+ Events • Same-Day Quotes Available! Professional DJ services for weddings, corporate events & parties. #1 rated Memphis DJ company. Call (901) 410-2020 now!'
+  });
 
   return (
     <>
@@ -45,10 +53,8 @@ export default function Home() {
           'best DJs in Memphis'
         ]}
         canonical="/"
+        jsonLd={structuredData}
       />
-
-      {/* Standardized Schema Markup */}
-      <HomepageSchema />
 
       <Header />
 
@@ -293,12 +299,12 @@ export default function Home() {
 
         {/* Testimonials Section */}
         <LazySection>
-          <TestimonialSlider />
+          <TestimonialSlider showSchema={false} />
         </LazySection>
 
         {/* FAQ Section */}
         <LazySection>
-          <FAQSection />
+          <FAQSection showSchema={false} />
         </LazySection>
 
         {/* Wedding Planning Resources Section */}
@@ -529,80 +535,6 @@ export default function Home() {
       </main>
 
       <Footer />
-
-      {/* Real Google Reviews JSON-LD Schema */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "LocalBusiness",
-            "name": "M10 DJ Company",
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": "5",
-              "reviewCount": "10",
-              "bestRating": "5",
-              "worstRating": "1"
-            },
-            "review": [
-              {
-                "@type": "Review",
-                "author": {
-                  "@type": "Person",
-                  "name": "Quade Nowlin"
-                },
-                "reviewRating": {
-                  "@type": "Rating",
-                  "ratingValue": 5,
-                  "bestRating": "5"
-                },
-                "reviewBody": "Ben was an excellent choice for my wedding. He played everything we asked and built a playlist based on those preferences. He had a better price than everyone else we contacted, and he was more responsive than anyone else we reached out to. He had a professional demeanor the entire time while also being able to have fun. Highly recommended, 10/10",
-                "datePublished": "2024-11-01"
-              },
-              {
-                "@type": "Review",
-                "author": {
-                  "@type": "Person",
-                  "name": "Alexis Cameron"
-                },
-                "reviewRating": {
-                  "@type": "Rating",
-                  "ratingValue": 5,
-                  "bestRating": "5"
-                },
-                "reviewBody": "Ben DJ'd our wedding last weekend and I couldn't be more thankful. He was communicative, paid great attention to detail, and ensured everything went smoothly. He had a lapel mic for my officiant and some speeches that made it all seamless and convenient. We had younger kids, grandparents and all the others in between- the music was appropriate and also right up our alley. Ben went over the top to make sure the night went amazingly. Will be recommending to friends and family and highly do to anyone reading this now. Thank you, Ben!",
-                "datePublished": "2024-10-01"
-              },
-              {
-                "@type": "Review",
-                "author": {
-                  "@type": "Person",
-                  "name": "Chandler Keen"
-                },
-                "reviewRating": {
-                  "@type": "Rating",
-                  "ratingValue": 5,
-                  "bestRating": "5"
-                },
-                "reviewBody": "Ben Murray DJ'd my wedding and could not have been more thoughtful in the planning process. He's extremely talented and all of the guests at our wedding raved about the song choices and DJ. I highly recommend Ben for any event, he will cater to your wants and needs and ensure that your event is filled with exciting music that fits your desires.",
-                "datePublished": "2021-12-01"
-              }
-            ]
-          })
-        }}
-      />
-
-      {/* AI Content Schema */}
-      <AIContentSchema 
-        content={{
-          headline: "Memphis DJ Services | Wedding & Event DJ | #1 DJ Memphis",
-          description: "Memphis's premier wedding and event DJ company with 15+ years of experience and 500+ successful celebrations. Professional DJ services for weddings, corporate events, and parties.",
-          url: "https://www.m10djcompany.com",
-          datePublished: "2024-01-01T00:00:00Z",
-          dateModified: new Date().toISOString()
-        }}
-      />
     </>
   );
 } 

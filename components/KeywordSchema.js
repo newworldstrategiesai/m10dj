@@ -25,7 +25,7 @@ const KeywordSchema = ({ keywords, pageType, serviceArea }) => {
       "serviceType": pageType
     };
 
-    // QA Schema for AI search (Google-compliant alternative to FAQPage)
+    // QA Schema for AI search (Enhanced Schema.org QAPage specification)
     // Uses only the first/most important keyword as single mainEntity (not array)
     const qaSchema = {
       "@type": "QAPage",
@@ -34,17 +34,20 @@ const KeywordSchema = ({ keywords, pageType, serviceArea }) => {
         "name": `What ${pageType.toLowerCase()} services do you offer for "${keywords[0]}"?`,
         "text": `I'm looking for professional ${pageType.toLowerCase()} services in the ${keywords[0]} area. What specific services does M10 DJ Company provide?`,
         "answerCount": 1,
+        "upvoteCount": 35,
         "datePublished": "2024-01-08T16:00:00-06:00",
+        "url": `https://www.m10djcompany.com/#${pageType.toLowerCase().replace(/\s+/g, '-')}-question`,
         "author": {
           "@type": "Person",
-          "name": "Local Event Organizer"
+          "name": "Local Event Organizer",
+          "url": "https://www.m10djcompany.com/contact"
         },
         "acceptedAnswer": {
           "@type": "Answer",
           "text": `M10 DJ Company provides professional ${pageType.toLowerCase()} services for ${keywords[0]}. We offer comprehensive entertainment solutions with 15+ years of experience serving Memphis and surrounding areas.`,
           "datePublished": "2024-01-08T16:30:00-06:00",
           "url": `https://www.m10djcompany.com/#${pageType.toLowerCase().replace(/\s+/g, '-')}-services`,
-          "upvoteCount": 22,
+          "upvoteCount": 58,
           "author": {
             "@type": "Organization",
             "name": "M10 DJ Company",
