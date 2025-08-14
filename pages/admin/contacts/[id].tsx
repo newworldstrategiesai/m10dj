@@ -471,7 +471,7 @@ export default function ContactDetailPage() {
                       onChange={(value) => handleInputChange('event_date', value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{contact.event_date ? new Date(contact.event_date).toLocaleDateString() : 'Not set'}</p>
+                    <p className="text-gray-900">{contact.event_date || 'Not set'}</p>
                     )}
                   </div>
                 <div>

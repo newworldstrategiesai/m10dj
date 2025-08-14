@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { db } from '../../utils/company_lib/supabase';
 import { sendAdminSMS, formatContactSubmissionSMS } from '../../utils/sms-helper.js';
+import { sendEnhancedNotifications } from '../../utils/notification-system.js';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 // Initialize Resend with API key from environment variable
@@ -284,7 +285,7 @@ export default async function handler(req, res) {
             
             <h3 style="color: #333; margin-top: 30px; border-bottom: 2px solid #fcba00; padding-bottom: 10px;">Event Details</h3>
             <p><strong>Event Type:</strong> ${eventType}</p>
-            ${eventDate ? `<p><strong>Event Date:</strong> ${new Date(eventDate).toLocaleDateString()}</p>` : ''}
+            ${eventDate ? `<p><strong>Event Date:</strong> ${eventDate}</p>` : ''}
             ${location ? `<p><strong>Location:</strong> ${location}</p>` : ''}
             
             ${message ? `
@@ -342,19 +343,37 @@ export default async function handler(req, res) {
       console.log('Resend API key not configured - skipping email sending');
     }
 
-    // Send SMS notification to admin
+    // Send enhanced notifications with redundancy
     try {
-      const smsMessage = formatContactSubmissionSMS(submissionData);
-      const smsResult = await sendAdminSMS(smsMessage);
+      console.log('🔔 Sending enhanced notifications for lead:', dbSubmission.id);
+      const notificationResults = await sendEnhancedNotifications(submissionData, dbSubmission);
       
-      if (smsResult.success) {
-        console.log('Admin SMS notification sent successfully:', smsResult.smsId);
-      } else {
-        console.log('Admin SMS notification failed:', smsResult.error);
+      console.log('📊 Notification Results:', {
+        smsSuccess: notificationResults.sms.success,
+        smsAttempts: notificationResults.sms.attempts,
+        emailSuccess: notificationResults.email.success,
+        totalSuccessfulMethods: notificationResults.summary.successfulMethods
+      });
+
+      // Log critical failures
+      if (notificationResults.summary.successfulMethods === 0) {
+        console.error('🚨 CRITICAL: All notification methods failed for lead:', dbSubmission.id);
+      } else if (!notificationResults.sms.success) {
+        console.warn('⚠️  SMS notification failed but email succeeded for lead:', dbSubmission.id);
       }
-    } catch (smsError) {
-      console.error('SMS notification error:', smsError);
-      // Don't fail the entire request if SMS fails
+
+    } catch (notificationError) {
+      console.error('🚨 Enhanced notification system error:', notificationError);
+      
+      // Fallback to basic SMS as last resort
+      try {
+        console.log('🔄 Attempting fallback SMS notification...');
+        const smsMessage = formatContactSubmissionSMS(submissionData);
+        const fallbackResult = await sendAdminSMS(smsMessage);
+        console.log('Fallback SMS result:', fallbackResult.success ? 'SUCCESS' : 'FAILED');
+      } catch (fallbackError) {
+        console.error('❌ Fallback SMS also failed:', fallbackError);
+      }
     }
 
     res.status(200).json({ 

@@ -525,7 +525,7 @@ export default function AdminDashboard() {
                           {submission.event_date && (
                             <div className="text-sm text-gray-500 flex items-center font-inter">
                               <Calendar className="w-4 h-4 mr-1" />
-                              {new Date(submission.event_date).toLocaleDateString()}
+                              {submission.event_date}
                             </div>
                           )}
                           {submission.location && (

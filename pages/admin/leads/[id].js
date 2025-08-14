@@ -88,6 +88,24 @@ export default function LeadDetailsPage() {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not specified';
+    
+    // Handle date strings that might be in YYYY-MM-DD format
+    // Parse as local date to avoid timezone issues
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1; // Month is 0-indexed
+      const day = parseInt(parts[2]);
+      const localDate = new Date(year, month, day);
+      
+      return localDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    
+    // Fallback for other date formats
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
