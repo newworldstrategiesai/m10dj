@@ -11,7 +11,7 @@ import { Star, Users, Calendar, Music, Headphones, Mic, Volume2, Award, Phone, M
 // Components restored for production
 import SEO from '../components/SEO';
 import { generateStructuredData } from '../utils/generateStructuredData';
-// import { AIAnswerBlock, AIQuickFacts } from '../components/AIOverviewOptimization';
+import { AIAnswerBlock, AIQuickFacts } from '../components/AIOverviewOptimization';
 // import { LazySection, OptimizedButton } from '../components/MobilePerformanceOptimizer';
 // import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
 // import { scrollToContact } from '../utils/scroll-helpers';

@@ -2,9 +2,8 @@
 // Generates appropriate JSON-LD schema based on page type and props
 
 
-// Import with explicit types to avoid constructor errors
-import type { businessInfo as BusinessInfoType, locationData as LocationDataType, serviceTypes as ServiceTypesType, venueTypes as VenueTypesType, faqData as FaqDataType, reviewData as ReviewDataType } from './seoConfig';
-import * as seoConfig from './seoConfig';
+// Simplified imports to avoid constructor errors
+import { businessInfo, locationData, serviceTypes, venueTypes, faqData, reviewData } from './seoConfig';
 
 export type PageType = 
   | 'homepage' 
@@ -74,9 +73,6 @@ export type StructuredDataProps =
 
 export function generateStructuredData(props: StructuredDataProps) {
   const { pageType, slug = '', canonical, title, description } = props;
-  
-  // Use destructured imports to avoid constructor errors
-  const { businessInfo, locationData, serviceTypes, venueTypes, faqData, reviewData } = seoConfig;
   
   const baseUrl = businessInfo.url;
   const pageUrl = canonical ? `${baseUrl}${canonical}` : `${baseUrl}/${slug}`;
