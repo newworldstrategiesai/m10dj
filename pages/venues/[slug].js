@@ -21,7 +21,7 @@ import {
 import Header from '../../components/company/Header';
 import Footer from '../../components/company/Footer';
 import ContactForm from '../../components/company/ContactForm';
-import SEOHead from '../../components/ui/SEO/SEOHead';
+import SEO from '../../components/SEO';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -99,7 +99,7 @@ export default function VenuePage({ venue }) {
 
   return (
     <>
-      <SEOHead
+      <SEO
         title={`${venue.venue_name} DJ Services | Memphis Wedding DJ at ${venue.venue_name}`}
         description={`Professional DJ services at ${venue.venue_name} in ${venue.city}, ${venue.state}. ${venue.description} M10 DJ Company provides expert wedding and event entertainment with venue-specific expertise.`}
         keywords={[

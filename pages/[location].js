@@ -5,7 +5,7 @@ import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import FAQSection from '../components/company/FAQSection';
-import SEO from '../components/ui/SEO/SEOHead';
+import SEO from '../components/SEO';
 import { BreadcrumbSchema } from '../components/StandardSchema';
 import { generateStructuredData } from '../utils/generateStructuredData';
 import { scrollToContact } from '../utils/scroll-helpers';
