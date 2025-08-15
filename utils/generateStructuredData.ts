@@ -2,7 +2,9 @@
 // Generates appropriate JSON-LD schema based on page type and props
 
 
-import { businessInfo, locationData, serviceTypes, venueTypes, faqData, reviewData } from './seoConfig';
+// Import with explicit types to avoid constructor errors
+import type { businessInfo as BusinessInfoType, locationData as LocationDataType, serviceTypes as ServiceTypesType, venueTypes as VenueTypesType, faqData as FaqDataType, reviewData as ReviewDataType } from './seoConfig';
+import * as seoConfig from './seoConfig';
 
 export type PageType = 
   | 'homepage' 
@@ -25,20 +27,20 @@ interface BasePageProps {
 
 interface ServicePageProps extends BasePageProps {
   pageType: 'service';
-  serviceKey?: keyof typeof serviceTypes;
-  locationKey?: keyof typeof locationData;
+  serviceKey?: string;
+  locationKey?: string;
 }
 
 interface LocationPageProps extends BasePageProps {
   pageType: 'location';
-  locationKey: keyof typeof locationData;
-  serviceKey?: keyof typeof serviceTypes;
+  locationKey: string;
+  serviceKey?: string;
 }
 
 interface VenuePageProps extends BasePageProps {
   pageType: 'venue';
   venueName?: string;
-  venueType?: keyof typeof venueTypes;
+  venueType?: string;
   address?: any;
   coordinates?: { latitude: number; longitude: number };
 }
@@ -72,6 +74,10 @@ export type StructuredDataProps =
 
 export function generateStructuredData(props: StructuredDataProps) {
   const { pageType, slug = '', canonical, title, description } = props;
+  
+  // Use destructured imports to avoid constructor errors
+  const { businessInfo, locationData, serviceTypes, venueTypes, faqData, reviewData } = seoConfig;
+  
   const baseUrl = businessInfo.url;
   const pageUrl = canonical ? `${baseUrl}${canonical}` : `${baseUrl}/${slug}`;
 
@@ -232,8 +238,12 @@ export function generateStructuredData(props: StructuredDataProps) {
 
     case 'service':
       const serviceProps = props as ServicePageProps;
-      const service = serviceProps.serviceKey ? serviceTypes[serviceProps.serviceKey] : serviceTypes.wedding;
-      const location = serviceProps.locationKey ? locationData[serviceProps.locationKey] : locationData.memphis;
+      const service = serviceProps.serviceKey && serviceProps.serviceKey in serviceTypes 
+        ? serviceTypes[serviceProps.serviceKey as keyof typeof serviceTypes] 
+        : serviceTypes.wedding;
+      const location = serviceProps.locationKey && serviceProps.locationKey in locationData 
+        ? locationData[serviceProps.locationKey as keyof typeof locationData] 
+        : locationData.memphis;
 
       // Service schema
       schemas.push({
@@ -337,8 +347,12 @@ export function generateStructuredData(props: StructuredDataProps) {
 
     case 'location':
       const locationProps = props as LocationPageProps;
-      const locationInfo = locationData[locationProps.locationKey];
-      const defaultService = locationProps.serviceKey ? serviceTypes[locationProps.serviceKey] : serviceTypes.wedding;
+      const locationInfo = locationProps.locationKey in locationData 
+        ? locationData[locationProps.locationKey as keyof typeof locationData] 
+        : locationData.memphis;
+      const defaultService = locationProps.serviceKey && locationProps.serviceKey in serviceTypes 
+        ? serviceTypes[locationProps.serviceKey as keyof typeof serviceTypes] 
+        : serviceTypes.wedding;
 
       // LocalBusiness schema with location-specific data
       schemas.push({
@@ -426,7 +440,9 @@ export function generateStructuredData(props: StructuredDataProps) {
 
     case 'venue':
       const venueProps = props as VenuePageProps;
-      const venueInfo = venueProps.venueType ? venueTypes[venueProps.venueType] : venueTypes.wedding;
+      const venueInfo = venueProps.venueType && venueProps.venueType in venueTypes 
+        ? venueTypes[venueProps.venueType as keyof typeof venueTypes] 
+        : venueTypes.wedding;
 
       // Place schema for venue pages
       schemas.push({

@@ -2,17 +2,19 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Star, Users, Calendar, Music, Headphones, Mic, Volume2, Award, Phone, Mail, MapPin, ChevronRight } from 'lucide-react';
-import Header from '../components/company/Header';
-import Footer from '../components/company/Footer';
-import ContactForm from '../components/company/ContactForm';
-import TestimonialSlider from '../components/company/TestimonialSlider';
-import FAQSection from '../components/company/FAQSection';
+// DEBUGGING: Temporarily commenting out imports to isolate constructor error
+// import Header from '../components/company/Header';
+// import Footer from '../components/company/Footer';
+// import ContactForm from '../components/company/ContactForm';
+// import TestimonialSlider from '../components/company/TestimonialSlider';
+// import FAQSection from '../components/company/FAQSection';
+// DEBUGGING: Testing fixed generateStructuredData import
 import SEO from '../components/SEO';
 import { generateStructuredData } from '../utils/generateStructuredData';
-import { AIAnswerBlock, AIQuickFacts } from '../components/AIOverviewOptimization';
+// import { AIAnswerBlock, AIQuickFacts } from '../components/AIOverviewOptimization';
 // import { LazySection, OptimizedButton } from '../components/MobilePerformanceOptimizer';
-import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
-import { scrollToContact } from '../utils/scroll-helpers';
+// import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
+// import { scrollToContact } from '../utils/scroll-helpers';
 
 export default function Home() {
   const [isVisible, setIsVisible] = useState(false);
@@ -21,7 +23,7 @@ export default function Home() {
     setIsVisible(true);
   }, []);
 
-  // Generate consolidated structured data for homepage
+  // DEBUGGING: Testing fixed generateStructuredData function
   const structuredData = generateStructuredData({
     pageType: 'homepage',
     canonical: '/',
@@ -31,6 +33,7 @@ export default function Home() {
 
   return (
     <>
+      {/* DEBUGGING: Testing SEO component without structured data */}
       <SEO
         title="Memphis DJ Services | Professional DJ Memphis | M10 DJ Company"
         description="Memphis DJ • 500+ Events • Same-Day Quotes Available! Professional DJ services for weddings, corporate events & parties. #1 rated Memphis DJ company. Call (901) 410-2020 now!"
@@ -56,7 +59,7 @@ export default function Home() {
         jsonLd={structuredData}
       />
 
-      <Header />
+      {/* <Header /> */}
 
       <main id="main-content">
         {/* Hero Section */}
@@ -91,8 +94,9 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
                 <button 
                   onClick={() => {
-                    trackLead('quote_request_start', { source: 'hero_section' });
-                    scrollToContact();
+                    // trackLead('quote_request_start', { source: 'hero_section' });
+                    // scrollToContact();
+                    console.log('Quote button clicked - tracking disabled for debugging');
                   }}
                   className="btn-primary group"
                 >
@@ -109,7 +113,7 @@ export default function Home() {
                 <Link 
                   href="/signin" 
                   className="btn-outline group"
-                  onClick={() => trackLead('admin_signin_attempt', { source: 'hero_section' })}
+                  onClick={() => console.log('Admin signin clicked - tracking disabled for debugging')}
                 >
                   Sign In
                   <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -299,12 +303,20 @@ export default function Home() {
 
         {/* Testimonials Section */}
         <section>
-          <TestimonialSlider showSchema={false} />
+          {/* <TestimonialSlider showSchema={false} /> */}
+          <div className="text-center py-16">
+            <h2 className="heading-2 mb-4">Testimonials (Temporarily Disabled)</h2>
+            <p>Debugging constructor error...</p>
+          </div>
         </section>
 
         {/* FAQ Section */}
         <section>
-          <FAQSection showSchema={false} />
+          {/* <FAQSection showSchema={false} /> */}
+          <div className="text-center py-16">
+            <h2 className="heading-2 mb-4">FAQ (Temporarily Disabled)</h2>
+            <p>Debugging constructor error...</p>
+          </div>
         </section>
 
         {/* Wedding Planning Resources Section */}
@@ -527,14 +539,18 @@ export default function Home() {
               
               {/* Contact Form */}
               <div id="contact-form" className="modern-card bg-white">
-                <ContactForm />
+                {/* <ContactForm /> */}
+                <div className="text-center py-16">
+                  <h3 className="heading-3 mb-4">Contact Form (Temporarily Disabled)</h3>
+                  <p>Debugging constructor error...</p>
+                </div>
               </div>
             </div>
           </div>
         </section>
       </main>
 
-      <Footer />
+      {/* <Footer /> */}
     </>
   );
 } 
