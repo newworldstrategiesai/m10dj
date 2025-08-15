@@ -8,7 +8,7 @@ import { Star, Users, Calendar, Music, Headphones, Mic, Volume2, Award, Phone, M
 // import ContactForm from '../components/company/ContactForm';
 // import TestimonialSlider from '../components/company/TestimonialSlider';
 // import FAQSection from '../components/company/FAQSection';
-// DEBUGGING: Testing fixed generateStructuredData import
+// Components restored for production
 import SEO from '../components/SEO';
 import { generateStructuredData } from '../utils/generateStructuredData';
 // import { AIAnswerBlock, AIQuickFacts } from '../components/AIOverviewOptimization';

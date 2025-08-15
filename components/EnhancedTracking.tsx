@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect } from 'react';
 
 // Enhanced tracking utilities for M10 DJ Company
