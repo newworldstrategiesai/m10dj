@@ -341,19 +341,19 @@ export default function AdminDashboard() {
             </Link>
 
             <Link
-              href="/admin/analytics"
+              href="/admin/contacts"
               className="modern-card hover:shadow-lg transition-all group cursor-pointer"
             >
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <BarChart3 className="w-6 h-6" />
+                  <Users className="w-6 h-6" />
                 </div>
                 <div className="ml-4">
                   <h3 className="text-lg font-bold text-gray-900 font-inter mb-1">
-                    Analytics Dashboard
+                    Contact Management
                   </h3>
                   <p className="text-sm text-gray-600 font-inter">
-                    View tracking insights
+                    Manage client contacts
                   </p>
                 </div>
               </div>

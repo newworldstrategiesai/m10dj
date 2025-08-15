@@ -1,15 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
-import { trackEvent as collectEvent } from '../utils/analytics-collector';
 
 // Enhanced tracking utilities for M10 DJ Company
 export const trackEvent = (eventName: string, parameters?: Record<string, any>) => {
-  // Collect for admin dashboard
-  if (typeof window !== 'undefined') {
-    collectEvent(eventName, parameters);
-  }
-
   // Google Analytics 4
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', eventName, {
