@@ -6,6 +6,7 @@ import { Star, Users, Calendar, Music, Headphones, Mic, Volume2, Award, Phone, M
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import SEO from '../components/SEO';
+import ContactForm from '../components/company/ContactForm';
 import { generateStructuredData } from '../utils/generateStructuredData';
 
 export default function Home() {
@@ -217,49 +218,7 @@ export default function Home() {
               
               {/* Simple Contact Form */}
               <div id="contact-form" className="modern-card bg-white">
-                <div className="mb-8">
-                  <h3 className="text-2xl font-semibold text-gray-900 mb-4 font-sans">Get Your Free Quote</h3>
-                  <p className="text-gray-600 font-inter">Tell us about your event and we'll provide a customized quote within 24 hours.</p>
-                </div>
-                <form className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Full Name *</label>
-                      <input type="text" id="name" name="name" required className="modern-input" placeholder="Your full name" />
-                    </div>
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Email Address *</label>
-                      <input type="email" id="email" name="email" required className="modern-input" placeholder="your.email@example.com" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Phone Number *</label>
-                      <input type="tel" id="phone" name="phone" required className="modern-input" placeholder="(901) 410-2020" />
-                    </div>
-                    <div>
-                      <label htmlFor="eventType" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Event Type *</label>
-                      <select id="eventType" name="eventType" required className="modern-select">
-                        <option value="">Select event type</option>
-                        <option value="Wedding">Wedding</option>
-                        <option value="Corporate Event">Corporate Event</option>
-                        <option value="Birthday Party">Birthday Party</option>
-                        <option value="Anniversary">Anniversary</option>
-                        <option value="Graduation">Graduation</option>
-                        <option value="Holiday Party">Holiday Party</option>
-                        <option value="School Dance">School Dance/Event</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="message" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Additional Details</label>
-                    <textarea id="message" name="message" rows="4" className="modern-textarea" placeholder="Tell us more about your event, special requests, or any questions you have..."></textarea>
-                  </div>
-                  <button type="submit" className="btn-primary w-full flex items-center justify-center space-x-2">
-                    <span>Get My Free Quote</span>
-                  </button>
-                </form>
+                <ContactForm />
               </div>
             </div>
           </div>
