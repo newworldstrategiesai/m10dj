@@ -38,7 +38,7 @@ const fallbackFaqData = [
   }
 ];
 
-export default function FAQSection({ className = '', showSchema = true, useDatabase = true }) {
+export default function FAQSection({ className = '', showSchema = true, useDatabase = false }) {
   const [openItems, setOpenItems] = useState(new Set());
   const [faqData, setFaqData] = useState(fallbackFaqData);
   const [loading, setLoading] = useState(false);

@@ -86,7 +86,7 @@ const fallbackTestimonials = [
   }
 ];
 
-export default function TestimonialSlider({ className = '', showSchema = true, useDatabase = true }) {
+export default function TestimonialSlider({ className = '', showSchema = true, useDatabase = false }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [testimonials, setTestimonials] = useState(fallbackTestimonials);

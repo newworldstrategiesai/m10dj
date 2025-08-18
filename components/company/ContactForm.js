@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
-import { trackLead, trackContactAction } from '../EnhancedTracking';
+// Temporarily disabled to prevent rate limiting issues
+// import { trackLead, trackContactAction } from '../EnhancedTracking';
 
 export default function ContactForm({ className = '' }) {
   const [formData, setFormData] = useState({
@@ -73,12 +74,12 @@ export default function ContactForm({ className = '' }) {
 
       if (response.ok) {
         // Track successful lead generation
-        trackLead('contact_form', {
-          event_type: formData.eventType,
-          guest_count: formData.guests,
-          has_venue: !!formData.venue,
-          has_date: !!formData.eventDate
-        });
+        // trackLead('contact_form', {
+        //   event_type: formData.eventType,
+        //   guest_count: formData.guests,
+        //   has_venue: !!formData.venue,
+        //   has_date: !!formData.eventDate
+        // });
         
         // Track Facebook conversion
         if (typeof window !== 'undefined' && window.fbq) {

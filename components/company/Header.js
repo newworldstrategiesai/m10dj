@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Phone, Mail, Menu, X, ChevronDown, MapPin } from 'lucide-react';
-import { trackContactAction, trackLead, trackServiceInterest } from '../EnhancedTracking';
+// Temporarily disabled to prevent rate limiting issues
+// import { trackContactAction, trackLead, trackServiceInterest } from '../EnhancedTracking';
 import { scrollToContact } from '../../utils/scroll-helpers';
 
 export default function Header() {
@@ -120,7 +121,7 @@ export default function Header() {
                         className="block px-4 py-3 text-gray-700 hover:bg-brand/5 hover:text-brand font-inter transition-colors"
                         onClick={() => {
                           closeDropdown();
-                          trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'header_dropdown');
+                          // trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'header_dropdown');
                         }}
                       >
                         {service.name}
@@ -172,7 +173,9 @@ export default function Header() {
                   <a 
                     href="tel:+19014102020" 
                     className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors"
-                    onClick={() => trackContactAction('phone', 'header_desktop')}
+                    onClick={() => {
+                      // trackContactAction('phone', 'header_desktop');
+                    }}
                   >
 (901) 410-2020
                   </a>
@@ -181,7 +184,7 @@ export default function Header() {
               
               <button 
                 onClick={() => {
-                  trackLead('quote_request_start', { source: 'header_desktop' });
+                  // trackLead('quote_request_start', { source: 'header_desktop' });
                   scrollToContact();
                 }}
                 className="btn-primary"
@@ -231,7 +234,7 @@ export default function Header() {
                           className="block text-gray-600 hover:text-brand font-inter py-1 transition-colors"
                           onClick={() => {
                             setIsMobileMenuOpen(false);
-                            trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'mobile_menu');
+                            // trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'mobile_menu');
                           }}
                         >
                           {service.name}

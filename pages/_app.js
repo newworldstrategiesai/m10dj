@@ -1,6 +1,6 @@
 import '../styles/company-globals.css'
 import Head from 'next/head'
-// Enhanced tracking disabled during SEO recovery
+// Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
 
 export default function App({ Component, pageProps }) {
@@ -42,7 +42,7 @@ export default function App({ Component, pageProps }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </Head>
       <Component {...pageProps} />
-      {/* Enhanced tracking disabled during SEO recovery */}
+      {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}
     </>
   )

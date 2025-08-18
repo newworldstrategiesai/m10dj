@@ -2,19 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Star, Users, Calendar, Music, Headphones, Mic, Volume2, Award, Phone, Mail, MapPin, ChevronRight } from 'lucide-react';
-// DEBUGGING: Temporarily commenting out imports to isolate constructor error
-// import Header from '../components/company/Header';
-// import Footer from '../components/company/Footer';
-// import ContactForm from '../components/company/ContactForm';
-// import TestimonialSlider from '../components/company/TestimonialSlider';
-// import FAQSection from '../components/company/FAQSection';
-// Components restored for production
+// Temporarily simplified imports to isolate infinite reload issue
+import Header from '../components/company/Header';
+import Footer from '../components/company/Footer';
 import SEO from '../components/SEO';
 import { generateStructuredData } from '../utils/generateStructuredData';
-import { AIAnswerBlock, AIQuickFacts } from '../components/AIOverviewOptimization';
-// import { LazySection, OptimizedButton } from '../components/MobilePerformanceOptimizer';
-// import { trackLead, trackServiceInterest } from '../components/EnhancedTracking';
-// import { scrollToContact } from '../utils/scroll-helpers';
 
 export default function Home() {
   const [isVisible, setIsVisible] = useState(false);
@@ -23,7 +15,7 @@ export default function Home() {
     setIsVisible(true);
   }, []);
 
-  // DEBUGGING: Testing fixed generateStructuredData function
+  // Generate structured data for SEO
   const structuredData = generateStructuredData({
     pageType: 'homepage',
     canonical: '/',
@@ -33,7 +25,6 @@ export default function Home() {
 
   return (
     <>
-      {/* DEBUGGING: Testing SEO component without structured data */}
       <SEO
         title="Memphis DJ Services | Professional DJ Memphis | M10 DJ Company"
         description="Memphis DJ • 500+ Events • Same-Day Quotes Available! Professional DJ services for weddings, corporate events & parties. #1 rated Memphis DJ company. Call (901) 410-2020 now!"
@@ -59,7 +50,7 @@ export default function Home() {
         jsonLd={structuredData}
       />
 
-      {/* <Header /> */}
+      <Header />
 
       <main id="main-content">
         {/* Hero Section */}
@@ -78,25 +69,45 @@ export default function Home() {
                 <span className="block text-gradient">Professional Wedding & Event Entertainment</span>
               </h1>
               
-              {/* AI-Optimized Answer Block */}
-              <AIAnswerBlock
-                question="Looking for the best Memphis DJ?"
-                answer="M10 DJ Company is Memphis's premier wedding and event entertainment service with 15+ years of experience and 500+ successful celebrations."
-                context="We specialize in weddings, corporate events, and celebrations throughout Memphis with expert venue knowledge at The Peabody Hotel, Memphis Botanic Garden, Graceland, and 27+ premier locations. Our professional-grade sound systems, elegant uplighting, and experienced MC services ensure flawless entertainment from ceremony to reception."
-                statistics={[
-                  { value: "15+", label: "Years Experience" },
-                  { value: "500+", label: "Celebrations" },
-                  { value: "27+", label: "Premier Venues" }
-                ]}
-              />
+              {/* Simple Content Block */}
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 mb-12 shadow-lg border border-brand/10 max-w-4xl mx-auto">
+                <div className="mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4">Looking for the best Memphis DJ?</h3>
+                  <div className="prose prose-lg text-gray-800 leading-relaxed">
+                    <p className="text-xl font-medium mb-4">
+                      <strong>M10 DJ Company is Memphis's premier wedding and event entertainment service with 15+ years of experience and 500+ successful celebrations.</strong>
+                    </p>
+                    <p className="text-lg text-gray-700 leading-relaxed">
+                      We specialize in weddings, corporate events, and celebrations throughout Memphis with expert venue knowledge at The Peabody Hotel, Memphis Botanic Garden, Graceland, and 27+ premier locations. Our professional-grade sound systems, elegant uplighting, and experienced MC services ensure flawless entertainment from ceremony to reception.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-brand-gold mb-1">15+</div>
+                      <div className="text-sm text-gray-600 font-medium">Years Experience</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-brand-gold mb-1">500+</div>
+                      <div className="text-sm text-gray-600 font-medium">Celebrations</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-brand-gold mb-1">27+</div>
+                      <div className="text-sm text-gray-600 font-medium">Premier Venues</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
                 <button 
                   onClick={() => {
-                    // trackLead('quote_request_start', { source: 'hero_section' });
-                    // scrollToContact();
-                    console.log('Quote button clicked - tracking disabled for debugging');
+                    const contactForm = document.getElementById('contact');
+                    if (contactForm) {
+                      contactForm.scrollIntoView({ behavior: 'smooth' });
+                    }
                   }}
                   className="btn-primary group"
                 >
@@ -106,14 +117,12 @@ export default function Home() {
                 <Link 
                   href="/services" 
                   className="btn-secondary"
-                  onClick={() => trackServiceInterest('all_services', 'hero_section')}
                 >
                   View Our Services
                 </Link>
                 <Link 
                   href="/signin" 
                   className="btn-outline group"
-                  onClick={() => console.log('Admin signin clicked - tracking disabled for debugging')}
                 >
                   Sign In
                   <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -150,338 +159,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Services Section */}
-        <section id="services" className="py-section bg-gray-50">
-          <div className="section-container">
-            <div className="text-center mb-20">
-              <h2 className="heading-2 mb-6 text-gray-900">Memphis Wedding Entertainment Services</h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
-                From intimate ceremonies to grand receptions across Memphis's finest venues, we provide comprehensive 
-                wedding entertainment with expert venue knowledge, flawless execution, and memories that last a lifetime.
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {/* Wedding Services */}
-              <div className="premium-card group cursor-pointer">
-                <div className="flex items-center mb-6">
-                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                    <Music className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 font-sans">Memphis Wedding DJ</h3>
-                </div>
-                <p className="text-gray-600 mb-6 font-inter">
-                  Memphis's premier wedding DJ service with professional entertainment, MC services, and custom packages for your special day.
-                </p>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Professional Memphis wedding DJ</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Master of ceremonies services</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Premium sound & uplighting</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Ceremony to reception coverage</span>
-                  </li>
-                </ul>
-                <div className="space-y-2">
-                  <Link href="/memphis-wedding-dj" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors mb-2 block">
-                    Memphis Wedding DJ Services <ChevronRight className="ml-1 w-4 h-4" />
-                  </Link>
-                  <Link href="/best-wedding-dj-memphis" className="inline-flex items-center text-gray-600 hover:text-brand transition-colors text-sm">
-                    Why We're Memphis's Best Wedding DJ <ChevronRight className="ml-1 w-3 h-3" />
-                  </Link>
-                </div>
-              </div>
-              
-              {/* Corporate Events */}
-              <div className="premium-card group cursor-pointer">
-                <div className="flex items-center mb-6">
-                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                    <Users className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 font-sans">Corporate Events</h3>
-                </div>
-                <p className="text-gray-600 mb-6 font-inter">
-                  Professional entertainment solutions for corporate gatherings, conferences, and business celebrations.
-                </p>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Conference audio/visual</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Awards ceremony hosting</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Team building entertainment</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Holiday party coordination</span>
-                  </li>
-                </ul>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Link href="/memphis-event-dj-services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
-                    Corporate DJ Services <ChevronRight className="ml-1 w-4 h-4" />
-                  </Link>
-                  <Link href="/services" className="inline-flex items-center text-gray-600 font-semibold hover:text-brand transition-colors text-sm">
-                    All Services <ChevronRight className="ml-1 w-3 h-3" />
-                  </Link>
-                </div>
-              </div>
-              
-              {/* Private Parties */}
-              <div className="premium-card group cursor-pointer">
-                <div className="flex items-center mb-6">
-                  <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                    <Calendar className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 font-sans">Private Parties</h3>
-                </div>
-                <p className="text-gray-600 mb-6 font-inter">
-                  Celebrate life's special moments with customized entertainment for birthdays, anniversaries, and more.
-                </p>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Birthday celebrations</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Anniversary parties</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Graduation events</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="w-2 h-2 bg-brand rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700 font-inter">Custom themed parties</span>
-                  </li>
-                </ul>
-                <Link href="/services" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
-                  View Party Services <ChevronRight className="ml-1 w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Stats Section */}
-        <section className="py-section bg-gray-900 text-white">
-          <div className="section-container">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">500+</div>
-                <div className="text-gray-300 font-inter">Memphis Weddings</div>
-              </div>
-              <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">15+</div>
-                <div className="text-gray-300 font-inter">Years Wedding Experience</div>
-              </div>
-              <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">27+</div>
-                <div className="text-gray-300 font-inter">Premium Venues</div>
-              </div>
-              <div>
-                <div className="text-4xl md:text-5xl font-bold text-brand mb-2 font-sans">100%</div>
-                <div className="text-gray-300 font-inter">Wedding Day Success</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials Section */}
-        <section>
-          {/* <TestimonialSlider showSchema={false} /> */}
-          <div className="text-center py-16">
-            <h2 className="heading-2 mb-4">Testimonials (Temporarily Disabled)</h2>
-            <p>Debugging constructor error...</p>
-          </div>
-        </section>
-
-        {/* FAQ Section */}
-        <section>
-          {/* <FAQSection showSchema={false} /> */}
-          <div className="text-center py-16">
-            <h2 className="heading-2 mb-4">FAQ (Temporarily Disabled)</h2>
-            <p>Debugging constructor error...</p>
-          </div>
-        </section>
-
-        {/* Wedding Planning Resources Section */}
-        <section className="py-16 bg-white">
-          <div className="section-container">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Planning Your Memphis Wedding?</h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                Get the expert guidance and resources you need to plan the perfect Memphis wedding celebration
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              {/* Pricing Guide */}
-              <div className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-all">
-                <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
-                  <Calendar className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Wedding DJ Pricing</h3>
-                <p className="text-gray-600 mb-4">
-                  Transparent wedding DJ pricing for Memphis couples. Compare packages and understand what makes your day perfect.
-                </p>
-                <Link href="/memphis-dj-pricing-guide" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
-                  View Pricing Guide <ChevronRight className="ml-1 w-4 h-4" />
-                </Link>
-              </div>
-              
-              {/* DJ Near Me */}
-              <div className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-all">
-                <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
-                  <MapPin className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Wedding Venues We Serve</h3>
-                <p className="text-gray-600 mb-4">
-                  Expert wedding DJ services at 27+ Memphis venues including The Peabody, Graceland, Memphis Botanic Garden, and more premier locations.
-                </p>
-                <Link href="/dj-near-me-memphis" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
-                  Find DJ Near Me <ChevronRight className="ml-1 w-4 h-4" />
-                </Link>
-              </div>
-              
-              {/* Ben Murray Profile */}
-              <div className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-all">
-                <div className="w-12 h-12 bg-brand text-white rounded-lg flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Meet Your Wedding DJ</h3>
-                <p className="text-gray-600 mb-4">
-                  Meet DJ Ben Murray, Memphis wedding specialist with 15+ years experience and 500+ unforgettable celebrations.
-                </p>
-                <Link href="/dj-ben-murray" className="inline-flex items-center text-brand font-semibold hover:text-brand-600 transition-colors">
-                  Meet DJ Ben <ChevronRight className="ml-1 w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* AI Quick Facts */}
-        <section className="py-16 bg-gray-900">
-          <div className="section-container">
-            <AIQuickFacts
-              category="Memphis DJ Services"
-              facts={[
-                "15+ years serving Memphis weddings & events",
-                "500+ successful celebrations completed", 
-                "27+ premier venues in our network",
-                "Professional-grade sound & lighting equipment",
-                "Transparent pricing with no hidden fees",
-                "Backup equipment & contingency plans included",
-                "Experienced MC services & event coordination",
-                "Serving Memphis, Germantown, Collierville & beyond"
-              ]}
-            />
-          </div>
-        </section>
-
-        {/* Service Areas */}
-        <section className="py-section bg-white">
-          <div className="section-container">
-            <div className="text-center mb-16">
-              <h2 className="heading-2 mb-6 text-gray-900">Memphis Metro Area Coverage</h2>
-              <p className="text-xl text-gray-600 max-w-4xl mx-auto font-inter">
-                We proudly serve Memphis and surrounding communities including East Memphis, Midtown, Germantown, Collierville, Cordova, Bartlett, Arlington, Lakeland, Southaven, and West Memphis with professional DJ services tailored to each area's unique venues and community preferences.
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              <Link href="/memphis" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Memphis</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Downtown & Core</p>
-              </Link>
-              
-              <Link href="/east-memphis" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">East Memphis</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Country Clubs</p>
-              </Link>
-              
-              <Link href="/midtown-memphis" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Midtown</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Cultural District</p>
-              </Link>
-              
-              <Link href="/germantown" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Germantown</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Elegant Venues</p>
-              </Link>
-              
-              <Link href="/collierville" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Collierville</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Historic Charm</p>
-              </Link>
-              
-              <Link href="/cordova" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Cordova</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Suburban Events</p>
-              </Link>
-              
-              <Link href="/bartlett" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Bartlett</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Community Focus</p>
-              </Link>
-              
-              <Link href="/lakeland" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Lakeland</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Exclusive Events</p>
-              </Link>
-              
-              <Link href="/southaven" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">Southaven</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Mississippi Metro</p>
-              </Link>
-              
-              <Link href="/west-memphis" className="group bg-gray-50 hover:bg-brand transition-all duration-300 rounded-lg p-4 text-center">
-                <MapPin className="h-5 w-5 text-brand group-hover:text-white mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-900 group-hover:text-white text-sm">West Memphis</h3>
-                <p className="text-xs text-gray-600 group-hover:text-white opacity-80">Arkansas Side</p>
-              </Link>
-            </div>
-            
-            <div className="text-center mt-12">
-              <p className="text-lg text-gray-600 mb-6">
-                Each location receives specialized attention with local venue knowledge and community-focused service.
-              </p>
-              <Link 
-                href="/dj-near-me-memphis" 
-                className="btn-primary inline-flex items-center"
-              >
-                Find DJ Services Near You
-                <ChevronRight className="ml-2 w-5 h-5" />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Contact Section */}
+        {/* Simple Contact Section */}
         <section id="contact" className="py-section-lg bg-gray-50">
           <div className="section-container">
             <div className="text-center mb-16">
@@ -503,7 +181,7 @@ export default function Home() {
                       <h3 className="text-xl font-semibold text-gray-900 mb-2 font-inter">Call Us Today</h3>
                       <p className="text-gray-600 mb-3 font-inter">Ready to discuss your event? Give us a call!</p>
                       <a href="tel:+19014102020" className="text-brand font-semibold hover:text-brand-600 transition-colors">
-(901) 410-2020
+                        (901) 410-2020
                       </a>
                     </div>
                   </div>
@@ -537,20 +215,58 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* Contact Form */}
+              {/* Simple Contact Form */}
               <div id="contact-form" className="modern-card bg-white">
-                {/* <ContactForm /> */}
-                <div className="text-center py-16">
-                  <h3 className="heading-3 mb-4">Contact Form (Temporarily Disabled)</h3>
-                  <p>Debugging constructor error...</p>
+                <div className="mb-8">
+                  <h3 className="text-2xl font-semibold text-gray-900 mb-4 font-sans">Get Your Free Quote</h3>
+                  <p className="text-gray-600 font-inter">Tell us about your event and we'll provide a customized quote within 24 hours.</p>
                 </div>
+                <form className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Full Name *</label>
+                      <input type="text" id="name" name="name" required className="modern-input" placeholder="Your full name" />
+                    </div>
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Email Address *</label>
+                      <input type="email" id="email" name="email" required className="modern-input" placeholder="your.email@example.com" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="phone" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Phone Number *</label>
+                      <input type="tel" id="phone" name="phone" required className="modern-input" placeholder="(901) 410-2020" />
+                    </div>
+                    <div>
+                      <label htmlFor="eventType" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Event Type *</label>
+                      <select id="eventType" name="eventType" required className="modern-select">
+                        <option value="">Select event type</option>
+                        <option value="Wedding">Wedding</option>
+                        <option value="Corporate Event">Corporate Event</option>
+                        <option value="Birthday Party">Birthday Party</option>
+                        <option value="Anniversary">Anniversary</option>
+                        <option value="Graduation">Graduation</option>
+                        <option value="Holiday Party">Holiday Party</option>
+                        <option value="School Dance">School Dance/Event</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="message" className="block text-sm font-semibold text-gray-900 mb-2 font-inter">Additional Details</label>
+                    <textarea id="message" name="message" rows="4" className="modern-textarea" placeholder="Tell us more about your event, special requests, or any questions you have..."></textarea>
+                  </div>
+                  <button type="submit" className="btn-primary w-full flex items-center justify-center space-x-2">
+                    <span>Get My Free Quote</span>
+                  </button>
+                </form>
               </div>
             </div>
           </div>
         </section>
       </main>
 
-      {/* <Footer /> */}
+      <Footer />
     </>
   );
 } 
