@@ -221,12 +221,12 @@ export default function DJGermantownTN() {
   return (
     <>
       <Head>
-        <title>DJ Germantown TN | Wedding & Event DJ Services | Germantown Tennessee | M10 DJ Company</title>
+        <title>Best DJ Germantown TN | Wedding DJ Germantown | Professional DJ Services | M10 DJ Company</title>
         <meta 
           name="description" 
-          content="Professional DJ Germantown TN services for weddings, corporate events & celebrations. Experienced with Germantown Country Club, GPAC & luxury venues. Call (901) 410-2020!" 
+          content="Memphis's Best DJ Germantown TN ⭐ Luxury Wedding DJ Services ⭐ Germantown Country Club & GPAC Expert! Professional Germantown DJ for weddings & events. Call (901) 410-2020!" 
         />
-        <meta name="keywords" content="DJ Germantown TN, Germantown DJ services, wedding DJ Germantown Tennessee, DJ services Germantown TN, Germantown wedding DJ, corporate DJ Germantown TN, Germantown event DJ, DJ Germantown Tennessee" />
+        <meta name="keywords" content="DJ Germantown TN, Germantown DJ services, wedding DJ Germantown Tennessee, DJ services Germantown TN, Germantown wedding DJ, corporate DJ Germantown TN, Germantown event DJ, DJ Germantown Tennessee, best DJ Germantown, professional DJ Germantown" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://m10djcompany.com/dj-germantown-tn" />
         

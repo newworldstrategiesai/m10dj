@@ -223,12 +223,12 @@ export default function DJColliervilleTN() {
   return (
     <>
       <Head>
-        <title>DJ Collierville TN | Wedding & Event DJ Services | Collierville Tennessee | M10 DJ Company</title>
+        <title>Best DJ Collierville TN | Wedding DJ Collierville | Professional DJ Services | M10 DJ Company</title>
         <meta 
           name="description" 
-          content="Professional DJ Collierville TN services for weddings, corporate events & celebrations. Historic Town Square, community venues & family celebrations. Call (901) 410-2020!" 
+          content="Memphis's Best DJ Collierville TN ⭐ Historic Town Square Expert ⭐ Family-Friendly Wedding DJ Services! Professional Collierville DJ for weddings & community events. Call (901) 410-2020!" 
         />
-        <meta name="keywords" content="DJ Collierville TN, Collierville DJ services, wedding DJ Collierville Tennessee, DJ services Collierville TN, Collierville wedding DJ, corporate DJ Collierville TN, Collierville event DJ, DJ Collierville Tennessee" />
+        <meta name="keywords" content="DJ Collierville TN, Collierville DJ services, wedding DJ Collierville Tennessee, DJ services Collierville TN, Collierville wedding DJ, corporate DJ Collierville TN, Collierville event DJ, DJ Collierville Tennessee, best DJ Collierville, professional DJ Collierville" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://m10djcompany.com/dj-collierville-tn" />
         

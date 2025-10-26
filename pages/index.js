@@ -27,25 +27,30 @@ export default function Home() {
   return (
     <>
       <SEO
-        title="Memphis DJ Services | Professional DJ Memphis | M10 DJ Company"
-        description="Memphis DJ • 500+ Events • Same-Day Quotes Available! Professional DJ services for weddings, corporate events & parties. #1 rated Memphis DJ company. Call (901) 410-2020 now!"
+        title="Best Wedding DJs in Memphis TN | M10 DJ Company | 500+ Weddings | Same-Day Quotes"
+        description="Memphis's #1 Wedding DJ Company ⭐ 500+ Successful Weddings ⭐ Same-Day Quotes Available! Professional Memphis wedding DJs for ceremonies & receptions. Call (901) 410-2020 now!"
         keywords={[
-          'Memphis DJ',
+          'wedding djs in memphis',
+          'djs near me',
+          'wedding dj memphis',
+          'djs in memphis',
+          'memphis wedding dj',
+          'best wedding DJ Memphis',
+          'Memphis DJs',
           'DJ Memphis',
           'professional DJ Memphis',
           'Memphis event DJ',
-          'Memphis DJs',
           'DJ in Memphis',
           'Memphis DJ services',
           'DJ services Memphis',
-          'best wedding DJ Memphis',
-          'professional DJ Memphis',
           'wedding DJ Memphis TN',
-          'Memphis event DJ',
           'party DJ Memphis',
           'DJ for hire Memphis',
           'Memphis wedding entertainment',
-          'best DJs in Memphis'
+          'best DJs in Memphis',
+          'memphis djs',
+          'djs memphis tn',
+          'memphis tn djs'
         ]}
         canonical="/"
         jsonLd={structuredData}
@@ -138,6 +143,9 @@ export default function Home() {
                   </div>
                   <h3 className="heading-3 mb-4 text-gray-900">15+ Years Wedding Experience</h3>
                   <p className="text-gray-600 font-inter">Trusted by 500+ Memphis couples with deep venue knowledge at The Peabody, Graceland, Memphis Botanic Garden, and 27+ premier wedding venues.</p>
+                  <Link href="/memphis-wedding-dj" className="text-brand hover:text-brand-600 font-semibold mt-4 inline-flex items-center">
+                    View Wedding DJs <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
                 </div>
                 
                 <div className="modern-card text-center group">
@@ -146,6 +154,9 @@ export default function Home() {
                   </div>
                   <h3 className="heading-3 mb-4 text-gray-900">Wedding-Grade Equipment</h3>
                   <p className="text-gray-600 font-inter">Crystal-clear sound systems, elegant uplighting, and wireless microphones for ceremony, cocktail hour, and reception perfection.</p>
+                  <Link href="/services" className="text-brand hover:text-brand-600 font-semibold mt-4 inline-flex items-center">
+                    View All Services <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
                 </div>
                 
                 <div className="modern-card text-center group">
@@ -154,6 +165,9 @@ export default function Home() {
                   </div>
                   <h3 className="heading-3 mb-4 text-gray-900">Your Perfect Wedding</h3>
                   <p className="text-gray-600 font-inter">Custom playlists, seamless timeline coordination, and MC services tailored to your love story and wedding vision.</p>
+                  <Link href="/dj-near-me-memphis" className="text-brand hover:text-brand-600 font-semibold mt-4 inline-flex items-center">
+                    Find DJs Near You <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
                 </div>
               </div>
             </div>
