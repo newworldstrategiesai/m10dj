@@ -35,38 +35,38 @@ export default function CorporateEvents() {
     {
       title: 'Company Holiday Parties',
       description: 'Professional entertainment for your annual holiday celebration',
-      features: ['DJ & MC services', 'Professional sound system', 'Holiday music playlists', 'Microphones for speeches'],
-      price: 'Starting at $695'
+      features: ['DJ & MC services', 'Professional sound system', 'Holiday music playlists', 'Microphones for speeches', 'Backup equipment & insurance'],
+      price: 'Custom Quote'
     },
     {
       title: 'Product Launch Events',
       description: 'Create buzz and excitement for your new product unveiling',
-      features: ['Background music', 'Presentation audio support', 'Wireless microphones', 'Professional lighting'],
-      price: 'Starting at $595'
+      features: ['Background music', 'Presentation audio support', 'Wireless microphones', 'Professional lighting', 'Technical coordinator on-site'],
+      price: 'Custom Quote'
     },
     {
       title: 'Awards Ceremonies',
       description: 'Elegant entertainment for recognition events and award shows',
-      features: ['Ceremonial music', 'Award presentation support', 'Multiple microphones', 'Professional MC'],
-      price: 'Starting at $795'
+      features: ['Ceremonial music', 'Award presentation support', 'Multiple microphones', 'Professional MC', 'Backup audio systems'],
+      price: 'Custom Quote'
     },
     {
       title: 'Team Building Events',
       description: 'Fun, engaging entertainment for company retreats and team activities',
-      features: ['Interactive DJ services', 'Team activity music', 'Sound system rental', 'Event coordination'],
-      price: 'Starting at $495'
+      features: ['Interactive DJ services', 'Team activity music', 'Sound system rental', 'Event coordination', 'Flexible setup options'],
+      price: 'Custom Quote'
     },
     {
       title: 'Conference & Meetings',
       description: 'Professional audio support for presentations and breakout sessions',
-      features: ['Presentation audio', 'Wireless microphones', 'Background music', 'Technical support'],
-      price: 'Starting at $395'
+      features: ['Presentation audio', 'Wireless microphones', 'Background music', 'Technical support', 'Multi-room capabilities'],
+      price: 'Custom Quote'
     },
     {
       title: 'Networking Events',
       description: 'Sophisticated background music for professional networking',
-      features: ['Ambient background music', 'Professional sound system', 'Volume control', 'Elegant presentation'],
-      price: 'Starting at $450'
+      features: ['Ambient background music', 'Professional sound system', 'Volume control', 'Elegant presentation', 'Zone audio options'],
+      price: 'Custom Quote'
     }
   ];
 
@@ -253,6 +253,67 @@ export default function CorporateEvents() {
           </div>
         </section>
 
+        {/* Pricing Education Section */}
+        <section className="py-20 bg-gray-50">
+          <div className="section-container">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-4xl font-bold text-gray-900 mb-6 font-sans">Understanding Memphis Corporate Event DJ Pricing</h2>
+                <p className="text-xl text-gray-600 font-inter">
+                  Professional corporate event entertainment typically ranges from <strong>$500-$2,000+</strong> depending on event type, duration, and services required. Most Memphis businesses invest <strong>$800-$1,500</strong> for complete professional entertainment services.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-8 md:p-12 shadow-lg mb-12">
+                <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">What Affects Corporate Event DJ Pricing?</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <div className="flex items-start mb-4">
+                      <Clock className="w-6 h-6 text-brand mr-3 flex-shrink-0 mt-1" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-2">Event Duration</h4>
+                        <p className="text-gray-600 text-sm">2-8 hours typical, longer events and multi-day conferences available</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start mb-4">
+                      <Users className="w-6 h-6 text-brand mr-3 flex-shrink-0 mt-1" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-2">Guest Count & Venue Size</h4>
+                        <p className="text-gray-600 text-sm">Larger venues require additional equipment and speakers</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-start mb-4">
+                      <Volume2 className="w-6 h-6 text-brand mr-3 flex-shrink-0 mt-1" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-2">Technical Requirements</h4>
+                        <p className="text-gray-600 text-sm">Presentation support, multiple microphones, lighting needs</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <Award className="w-6 h-6 text-brand mr-3 flex-shrink-0 mt-1" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-2">Professional Experience</h4>
+                        <p className="text-gray-600 text-sm">10+ years corporate event experience commands premium rates</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 p-6 bg-blue-50 rounded-xl border-l-4 border-blue-600">
+                  <p className="text-gray-800 mb-3">
+                    <strong>M10 DJ Company</strong> offers professional Memphis corporate event entertainment with transparent, all-inclusive quotes and no hidden fees. Our pricing reflects 10+ years of corporate event experience, professional-grade equipment, backup systems, and full liability insurance.
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>💡 Pro Tip:</strong> While you may find cheaper options ($200-$400), these often lack professional equipment, backup systems, insurance, and corporate event experience. <strong>Investing in a professional DJ protects your company's reputation and event investment.</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Venues Section */}
         <section className="py-20 bg-white">
           <div className="section-container">
@@ -269,6 +330,75 @@ export default function CorporateEvents() {
                   <p className="text-gray-700 font-semibold font-inter text-sm">{venue}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section className="py-20 bg-gray-50">
+          <div className="section-container">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 font-sans">Corporate Event DJ - Frequently Asked Questions</h2>
+                <p className="text-lg text-gray-600 font-inter">
+                  Get answers to common questions about Memphis corporate event entertainment
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {/* FAQ 1 - Pricing */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    How much does a corporate event DJ cost in Memphis?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed mb-4">
+                    Professional corporate event DJ services in Memphis typically range from <strong>$500-$2,000+</strong> depending on event type, duration, technical requirements, and guest count. Most Memphis businesses invest <strong>$800-$1,500</strong> for complete professional entertainment services including DJ, sound system, microphones, and technical support.
+                  </p>
+                  <p className="text-gray-600 leading-relaxed text-sm">
+                    <strong>Note:</strong> Budget DJs ($200-$400) often lack professional equipment, backup systems, corporate event experience, and liability insurance. For business events representing your company's reputation, investing in professional entertainment ensures flawless execution.
+                  </p>
+                </div>
+
+                {/* FAQ 2 - What's Included */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    What's included in corporate event DJ services?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    M10 DJ Company's corporate event packages include professional DJ services, premium sound system, wireless microphones for presentations and speeches, background music programming, MC services for announcements, professional attire, setup and teardown, backup equipment, liability insurance, and pre-event consultation. We customize services based on your specific corporate event needs, venue requirements, and company culture.
+                  </p>
+                </div>
+
+                {/* FAQ 3 - Corporate Experience */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    Do you have experience with Memphis corporate events?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Yes! M10 DJ Company has 10+ years of professional corporate event experience serving Memphis businesses. We've provided entertainment for company holiday parties, product launches, awards ceremonies, team building events, networking events, and conferences at premier Memphis venues including The Peabody Memphis, Memphis Cook Convention Center, Crosstown Concourse, and FedExForum. We understand corporate professionalism, appropriate music selection, and seamless event coordination.
+                  </p>
+                </div>
+
+                {/* FAQ 4 - Technical Support */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    Can you provide audio/visual support for presentations?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Absolutely! We provide complete audio support for corporate presentations including wireless microphones, presentation audio connectivity, speaker systems for large venues, and technical coordination. Our team arrives early for setup and sound checks, ensures seamless audio for speeches and presentations, and has backup equipment on-site. We work closely with your event coordinator and venue technical staff to ensure flawless execution.
+                  </p>
+                </div>
+
+                {/* FAQ 5 - Booking Timeline */}
+                <div className="bg-white rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    How far in advance should we book corporate event entertainment?
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    We recommend booking corporate event entertainment 2-6 months in advance, especially for popular dates like December holiday parties and spring/summer corporate events. However, we can often accommodate shorter timelines based on availability. For last-minute events, contact us immediately - we'll do our best to support your corporate entertainment needs with professional service Memphis businesses trust.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
