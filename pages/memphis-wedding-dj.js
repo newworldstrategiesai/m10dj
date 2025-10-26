@@ -865,11 +865,11 @@ export default function MemphisWeddingDJ() {
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">
                     How much does a Memphis wedding DJ cost?
                   </h3>
+                  <p className="text-gray-600 leading-relaxed mb-4">
+                    Professional Memphis wedding DJ services typically range from <strong>$1,200-$3,500+</strong> depending on experience level, equipment quality, venue requirements, and event duration. Most Memphis couples invest <strong>$1,800-$2,500</strong> for complete ceremony and reception coverage with an experienced professional DJ.
+                  </p>
                   <p className="text-gray-600 leading-relaxed">
-                    Memphis wedding DJ services typically range from $799-$1899 depending on package, venue requirements, and event duration. 
-                    M10 DJ Company offers transparent pricing with no hidden fees. Our packages include professional-grade sound systems, 
-                    wireless microphones, basic uplighting, and experienced MC services. Premium packages add ceremony music, 
-                    enhanced lighting, and extended coverage.
+                    M10 DJ Company offers transparent, all-inclusive pricing with no hidden fees. Our packages include professional-grade sound systems, wireless microphones, elegant uplighting, backup equipment, liability insurance, and experienced MC services. Premium packages add ceremony audio, enhanced lighting, monogram projection, and special effects. <strong>Budget DJs ($500-$1,000) often lack insurance, backup systems, and venue experience</strong> - investing in a professional DJ protects your entire wedding investment.
                   </p>
                 </div>
 
