@@ -308,12 +308,7 @@ async function sendMessengerReply(recipientId, message) {
   }
 }
 
-async function sendAdminNotification(data: {
-  type;
-  contactId;
-  message;
-  senderName?;
-}) {
+async function sendAdminNotification(data) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {

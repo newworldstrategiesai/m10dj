@@ -289,12 +289,7 @@ async function getInstagramUserInfo(userId) {
   return { name: 'Instagram User', username: userId };
 }
 
-async function sendAdminNotification(data: {
-  type;
-  contactId;
-  message;
-  username?;
-}) {
+async function sendAdminNotification(data) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
