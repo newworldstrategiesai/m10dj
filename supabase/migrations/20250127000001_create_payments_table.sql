@@ -201,6 +201,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to update contact final_price on payment
+DROP TRIGGER IF EXISTS trigger_update_contact_final_price ON public.payments;
 CREATE TRIGGER trigger_update_contact_final_price
   AFTER INSERT OR UPDATE ON public.payments
   FOR EACH ROW
