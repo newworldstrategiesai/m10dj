@@ -15,11 +15,19 @@ export default async function handler(req, res) {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
+    console.log('🔍 Webhook verification attempt:', {
+      mode,
+      receivedToken: token?.substring(0, 10) + '...',
+      envToken: process.env.MESSENGER_VERIFY_TOKEN?.substring(0, 10) + '...',
+      match: token === process.env.MESSENGER_VERIFY_TOKEN
+    });
+
     // Verify the webhook
     if (mode === 'subscribe' && token === process.env.MESSENGER_VERIFY_TOKEN) {
       console.log('✅ Messenger webhook verified');
       res.status(200).send(challenge);
     } else {
+      console.log('❌ Verification failed');
       res.status(403).send('Forbidden');
     }
     return;
