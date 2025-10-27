@@ -236,10 +236,13 @@ async function importPayment(paymentData, index) {
 async function main() {
   console.log('💰 Starting HoneyBook Payments Import\n');
   
-  // Check if file exists
-  const csvPath = path.join(__dirname, '..', 'data', 'honeybook-payments.csv');
+  // Check if file exists - try all-payments first, fallback to honeybook-payments
+  let csvPath = path.join(__dirname, '..', 'data', 'all-payments-from-honeybook.csv');
   if (!fs.existsSync(csvPath)) {
-    console.error('❌ File not found: data/honeybook-payments.csv');
+    csvPath = path.join(__dirname, '..', 'data', 'honeybook-payments.csv');
+  }
+  if (!fs.existsSync(csvPath)) {
+    console.error('❌ File not found: data/all-payments-from-honeybook.csv or data/honeybook-payments.csv');
     console.error('\nPlease ensure the HoneyBook payments CSV is in the data folder.');
     process.exit(1);
   }

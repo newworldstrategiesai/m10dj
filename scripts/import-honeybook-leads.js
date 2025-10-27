@@ -233,10 +233,13 @@ async function importLead(leadData, index) {
 async function main() {
   console.log('🚀 Starting HoneyBook Leads Import\n');
   
-  // Check if file exists
-  const csvPath = path.join(__dirname, '..', 'data', 'honeybook-leads.csv');
+  // Check if file exists - try all-leads first, fallback to honeybook-leads
+  let csvPath = path.join(__dirname, '..', 'data', 'all-leads-from-honeybook.csv');
   if (!fs.existsSync(csvPath)) {
-    console.error('❌ File not found: data/honeybook-leads.csv');
+    csvPath = path.join(__dirname, '..', 'data', 'honeybook-leads.csv');
+  }
+  if (!fs.existsSync(csvPath)) {
+    console.error('❌ File not found: data/all-leads-from-honeybook.csv or data/honeybook-leads.csv');
     console.error('\nPlease:');
     console.error('1. Open your Google Sheet');
     console.error('2. File > Download > Comma Separated Values (.csv)');
