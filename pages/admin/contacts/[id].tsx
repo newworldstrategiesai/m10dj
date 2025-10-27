@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import Link from 'next/link';
 import ServiceSelectionButton from '@/components/admin/ServiceSelectionButton';
+import PaymentHistory from '@/components/admin/PaymentHistory';
 
 interface Contact {
   id: string;
@@ -31,6 +32,8 @@ interface Contact {
   venue_address: string | null;
   guest_count: number | null;
   budget_range: string | null;
+  quoted_price: number | null;
+  final_price: number | null;
   special_requests: string | null;
   music_genres: string[] | null;
   equipment_needs: string[] | null;
@@ -55,6 +58,7 @@ interface Project {
   event_date: string;
   start_time: string | null;
   end_time: string | null;
+  event_duration: number | null;
   venue_name: string | null;
   venue_address: string | null;
   number_of_guests: number | null;
@@ -92,6 +96,8 @@ export default function ContactDetailPage() {
   const [contact, setContact] = useState<Contact | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -109,6 +115,7 @@ export default function ContactDetailPage() {
     if (user && id) {
       fetchContact();
       fetchProjects();
+      fetchPayments();
     }
   }, [user, id]);
 
@@ -197,6 +204,30 @@ export default function ContactDetailPage() {
       });
     } finally {
       setProjectsLoading(false);
+    }
+  };
+
+  const fetchPayments = async () => {
+    if (!id) return;
+    
+    setPaymentsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('contact_id', id)
+        .order('transaction_date', { ascending: false, nullsFirst: false })
+        .order('due_date', { ascending: false, nullsFirst: false });
+      
+      if (error) {
+        console.error('Error fetching payments:', error);
+      } else {
+        setPayments(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching payments:', error);
+    } finally {
+      setPaymentsLoading(false);
     }
   };
 
@@ -704,6 +735,13 @@ export default function ContactDetailPage() {
                   </div>
                 )}
               </div>
+
+              {/* Payment History Section */}
+              <PaymentHistory 
+                contactId={id}
+                payments={payments}
+                projectValue={contact?.quoted_price || contact?.final_price || 0}
+              />
             </div>
           </TabsContent>
 
