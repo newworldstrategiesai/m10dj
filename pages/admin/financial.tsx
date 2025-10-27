@@ -21,10 +21,13 @@ import Button from '@/components/ui/Button';
 
 interface MonthlyRevenue {
   month: string;
-  total_revenue: number;
+  transaction_count: number;
+  gross_revenue: number;
+  sales_tax_collected: number;
+  tips_collected: number;
+  total_fees: number;
   net_revenue: number;
-  payment_count: number;
-  avg_payment: number;
+  effective_fee_rate: number;
 }
 
 interface OutstandingBalance {
@@ -40,9 +43,13 @@ interface OutstandingBalance {
 
 interface PaymentMethodStat {
   payment_method: string;
-  payment_count: number;
-  total_amount: number;
-  avg_amount: number;
+  transaction_count: number;
+  total_volume: number;
+  avg_transaction_size: number;
+  avg_fee_per_transaction: number;
+  total_fees_paid: number;
+  effective_fee_rate: number;
+  total_net_received: number;
 }
 
 interface ClientPaymentSummary {
@@ -216,8 +223,8 @@ export default function FinancialDashboard() {
 
   const calculateGrowth = () => {
     if (monthlyRevenue.length < 2) return 0;
-    const current = monthlyRevenue[0]?.total_revenue || 0;
-    const previous = monthlyRevenue[1]?.total_revenue || 0;
+    const current = monthlyRevenue[0]?.gross_revenue || 0;
+    const previous = monthlyRevenue[1]?.gross_revenue || 0;
     if (previous === 0) return 0;
     return ((current - previous) / previous) * 100;
   };
@@ -313,34 +320,42 @@ export default function FinancialDashboard() {
             Monthly Revenue Trend
           </h2>
           <div className="space-y-3">
-            {monthlyRevenue.map((month, index) => {
-              const maxRevenue = Math.max(...monthlyRevenue.map(m => m.total_revenue));
-              const widthPercentage = maxRevenue > 0 ? (month.total_revenue / maxRevenue) * 100 : 0;
-              
-              return (
-                <div key={month.month} className="relative">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">{formatMonth(month.month)}</span>
-                    <div className="text-right">
-                      <span className="text-lg font-bold text-gray-900">{formatCurrency(month.total_revenue)}</span>
-                      <span className="text-xs text-gray-500 ml-2">({month.payment_count} payments)</span>
+            {monthlyRevenue.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No revenue data available yet</p>
+                <p className="text-sm mt-2">Revenue will appear here once payments are processed</p>
+              </div>
+            ) : (
+              monthlyRevenue.map((month, index) => {
+                const maxRevenue = Math.max(...monthlyRevenue.map(m => m.gross_revenue));
+                const widthPercentage = maxRevenue > 0 ? (month.gross_revenue / maxRevenue) * 100 : 0;
+                const avgPayment = month.transaction_count > 0 ? month.gross_revenue / month.transaction_count : 0;
+                
+                return (
+                  <div key={month.month} className="relative">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">{formatMonth(month.month)}</span>
+                      <div className="text-right">
+                        <span className="text-lg font-bold text-gray-900">{formatCurrency(month.gross_revenue)}</span>
+                        <span className="text-xs text-gray-500 ml-2">({month.transaction_count} payments)</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          index === 0 ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-blue-400 to-blue-500'
+                        }`}
+                        style={{ width: `${widthPercentage}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
+                      <span>Net: {formatCurrency(month.net_revenue)}</span>
+                      <span>Avg: {formatCurrency(avgPayment)}</span>
                     </div>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        index === 0 ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-blue-400 to-blue-500'
-                      }`}
-                      style={{ width: `${widthPercentage}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
-                    <span>Net: {formatCurrency(month.net_revenue)}</span>
-                    <span>Avg: {formatCurrency(month.avg_payment)}</span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -352,30 +367,36 @@ export default function FinancialDashboard() {
               Payment Methods
             </h2>
             <div className="space-y-4">
-              {paymentMethodStats.map((method) => {
-                const maxAmount = Math.max(...paymentMethodStats.map(m => m.total_amount));
-                const widthPercentage = maxAmount > 0 ? (method.total_amount / maxAmount) * 100 : 0;
-                
-                return (
-                  <div key={method.payment_method}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-700">{method.payment_method}</span>
-                      <span className="text-sm text-gray-500">{method.payment_count} payments</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-8 overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-end px-3 text-white text-sm font-semibold transition-all duration-500"
-                        style={{ width: `${widthPercentage}%` }}
-                      >
-                        {formatCurrency(method.total_amount)}
+              {paymentMethodStats.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No payment data available yet</p>
+                </div>
+              ) : (
+                paymentMethodStats.map((method) => {
+                  const maxAmount = Math.max(...paymentMethodStats.map(m => m.total_volume));
+                  const widthPercentage = maxAmount > 0 ? (method.total_volume / maxAmount) * 100 : 0;
+                  
+                  return (
+                    <div key={method.payment_method}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-700">{method.payment_method}</span>
+                        <span className="text-sm text-gray-500">{method.transaction_count} payments</span>
                       </div>
+                      <div className="w-full bg-gray-100 rounded-full h-8 overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-end px-3 text-white text-sm font-semibold transition-all duration-500"
+                          style={{ width: `${widthPercentage}%` }}
+                        >
+                          {formatCurrency(method.total_volume)}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Average: {formatCurrency(method.avg_transaction_size)}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Average: {formatCurrency(method.avg_amount)}
-                    </p>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
