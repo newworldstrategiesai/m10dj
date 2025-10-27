@@ -32,12 +32,39 @@ export default function HolidayParties() {
     setIsVisible(true);
   }, []);
 
+  const holidayPackages = [
+    {
+      title: 'Just the Basics',
+      description: 'Essential DJ services for smaller holiday gatherings',
+      duration: '3 hours',
+      features: ['Professional DJ/MC services', 'Premium sound system', 'Wireless microphone', 'Holiday music library', 'Festive lighting', 'Professional setup & coordination'],
+      price: '$850',
+      bestFor: 'Small office parties, family gatherings, intimate celebrations'
+    },
+    {
+      title: 'Package #1',
+      description: 'Complete entertainment for most holiday celebrations',
+      duration: '4 hours',
+      features: ['Professional DJ/MC services', 'Premium sound system & microphones', 'Multi-color LED dance floor lighting', 'Holiday atmosphere lighting', 'Extensive holiday music collection', 'Professional setup & coordination', 'Backup equipment'],
+      price: '$1,095',
+      bestFor: 'Company Christmas parties, New Year\'s Eve events, holiday fundraisers',
+      popular: true
+    },
+    {
+      title: 'Package #2',
+      description: 'Premium holiday celebration experience',
+      duration: '4 hours',
+      features: ['Everything in Package #1, PLUS:', 'Up to 16 elegant uplighting fixtures', 'Enhanced venue ambiance', 'Professional lighting design', 'Complete A/V support', 'Special holiday effects options'],
+      price: '$1,345',
+      bestFor: 'Large corporate parties, New Year\'s Eve galas, premier holiday events'
+    }
+  ];
+
   const holidayEvents = [
     {
       title: 'Christmas Parties',
       description: 'Spread holiday cheer with festive music and professional entertainment',
       features: ['Christmas classics & carols', 'Modern holiday hits', 'Corporate-friendly music', 'Holiday lighting effects'],
-      price: 'Starting at $595',
       icon: TreePine,
       season: 'December'
     },
@@ -45,7 +72,6 @@ export default function HolidayParties() {
       title: 'New Year\'s Eve Celebrations',
       description: 'Ring in the new year with countdown excitement and party music',
       features: ['Countdown coordination', 'Party anthems', 'Midnight celebration music', 'Champagne toast coordination'],
-      price: 'Starting at $795',
       icon: Sparkles,
       season: 'December 31st'
     },
@@ -53,7 +79,6 @@ export default function HolidayParties() {
       title: 'Thanksgiving Gatherings',
       description: 'Family-friendly entertainment for your Thanksgiving celebration',
       features: ['Grateful heart music', 'Family sing-alongs', 'Autumn classics', 'Dinner background music'],
-      price: 'Starting at $475',
       icon: Gift,
       season: 'November'
     },
@@ -61,7 +86,6 @@ export default function HolidayParties() {
       title: 'Valentine\'s Day Events',
       description: 'Romantic entertainment for couples celebrations and singles parties',
       features: ['Love song classics', 'Romantic slow dances', 'Anti-Valentine music options', 'Couple-friendly activities'],
-      price: 'Starting at $525',
       icon: Heart,
       season: 'February'
     },
@@ -69,7 +93,6 @@ export default function HolidayParties() {
       title: 'Halloween Parties',
       description: 'Spook-tacular entertainment with themed music and fun activities',
       features: ['Halloween classics', 'Monster mash music', 'Costume contest coordination', 'Spooky sound effects'],
-      price: 'Starting at $545',
       icon: Award,
       season: 'October'
     },
@@ -77,10 +100,18 @@ export default function HolidayParties() {
       title: 'Fourth of July Celebrations',
       description: 'Patriotic entertainment for your Independence Day festivities',
       features: ['Patriotic classics', 'American favorites', 'Fireworks coordination', 'BBQ background music'],
-      price: 'Starting at $495',
       icon: Star,
       season: 'July'
     }
+  ];
+
+  const addOnServices = [
+    { name: 'Additional Hour', price: '$150', description: 'Extend your celebration beyond package hours' },
+    { name: 'Holiday Decor Lighting', price: '$200', description: 'Seasonal colored uplighting to match your holiday theme' },
+    { name: 'Flat Screen TV w/ Stand', price: '$300', description: '65" TV for holiday photos or video messages' },
+    { name: 'Additional Speaker', price: '$150', description: 'Extra speaker for separate party areas' },
+    { name: 'Cold Spark Fountain Effect', price: '$500', description: 'Dramatic indoor-safe spark effects for midnight countdowns or grand entrances' },
+    { name: 'Snow Machine', price: '$400', description: 'Create a winter wonderland with safe indoor "snow"' }
   ];
 
   const musicByHoliday = [
@@ -219,11 +250,117 @@ export default function HolidayParties() {
           </div>
         </section>
 
-        {/* Holiday Events Section */}
+        {/* Pricing Section */}
         <section id="holidays" className="py-20 bg-white">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Holiday Event Services</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Holiday Party DJ Packages</h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
+                Transparent pricing for professional holiday entertainment. All packages include premium equipment, festive music, and backup systems.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+              {holidayPackages.map((pkg, index) => (
+                <div key={index} className={`rounded-2xl p-8 transition-all ${
+                  pkg.popular 
+                    ? 'bg-gradient-to-br from-green-600 to-red-600 text-white shadow-2xl transform scale-105 relative' 
+                    : 'bg-gray-50 hover:shadow-xl'
+                }`}>
+                  {pkg.popular && (
+                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                      <span className="bg-brand-gold text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                        ⭐ MOST POPULAR ⭐
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="text-center mb-6">
+                    <h3 className={`text-2xl font-bold mb-2 font-sans ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>
+                      {pkg.title}
+                    </h3>
+                    <p className={`mb-4 font-inter ${pkg.popular ? 'text-white/90' : 'text-gray-600'}`}>
+                      {pkg.description}
+                    </p>
+                    <div className={`text-4xl font-bold mb-2 ${pkg.popular ? 'text-brand-gold' : 'text-brand'}`}>
+                      {pkg.price}
+                    </div>
+                    <p className={`text-sm ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>
+                      {pkg.duration} of service
+                    </p>
+                  </div>
+                  
+                  <ul className="space-y-3 mb-6">
+                    {pkg.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-start text-sm">
+                        <CheckCircle className={`w-5 h-5 mr-2 flex-shrink-0 mt-0.5 ${
+                          pkg.popular ? 'text-brand-gold' : 'text-green-500'
+                        }`} />
+                        <span className={pkg.popular ? 'text-white' : 'text-gray-700'}>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <div className={`text-sm mb-6 p-3 rounded-lg ${
+                    pkg.popular ? 'bg-white/10' : 'bg-green-50'
+                  }`}>
+                    <p className={`font-semibold mb-1 ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>
+                      Best For:
+                    </p>
+                    <p className={pkg.popular ? 'text-white/90' : 'text-gray-600'}>
+                      {pkg.bestFor}
+                    </p>
+                  </div>
+                  
+                  <Link href="#contact" className={`block w-full text-center py-3 rounded-lg font-semibold transition-colors ${
+                    pkg.popular 
+                      ? 'bg-brand-gold text-black hover:bg-brand-gold/90' 
+                      : 'bg-brand text-white hover:bg-brand/90'
+                  }`}>
+                    Get Started
+                  </Link>
+                </div>
+              ))}
+            </div>
+
+            {/* Add-On Services */}
+            <div className="bg-gray-50 rounded-2xl p-8 md:p-12">
+              <div className="text-center mb-8">
+                <h3 className="text-3xl font-bold text-gray-900 mb-4 font-sans">Holiday Add-On Services</h3>
+                <p className="text-lg text-gray-600 font-inter">
+                  Enhance your celebration with these festive add-ons
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {addOnServices.map((addon, index) => (
+                  <div key={index} className="bg-white rounded-xl p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className="font-bold text-gray-900 font-sans">{addon.name}</h4>
+                      <span className="text-brand font-bold text-lg">{addon.price}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 font-inter">{addon.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-center mt-8 p-6 bg-white rounded-xl">
+                <p className="text-gray-700 mb-4">
+                  <strong>All packages include:</strong> Professional setup & teardown, backup equipment, liability insurance, pre-event consultation, and professional attire
+                </p>
+                <p className="text-lg text-brand font-semibold">
+                  📞 Call (901) 410-2020 for custom quotes | ⚐ Serving Memphis & surrounding areas
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Holiday Events We Serve Section */}
+        <section className="py-20 bg-gray-50">
+          <div className="section-container">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Holidays We Celebrate</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
                 Professional entertainment for every holiday and seasonal celebration throughout the year.
               </p>
@@ -252,8 +389,6 @@ export default function HolidayParties() {
                       </li>
                     ))}
                   </ul>
-                  
-                  <div className="text-brand font-semibold text-lg mb-4">{event.price}</div>
                   
                   <Link href="#contact" className="btn-outline w-full text-center">
                     Book This Holiday
