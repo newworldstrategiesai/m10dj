@@ -153,14 +153,11 @@ export default function AdminDashboard() {
         .from('events')
         .select('*', { count: 'exact', head: true });
 
-      // Upcoming events (next 30 days)
-      const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+      // Upcoming events (all future events)
       const { count: upcomingEvents } = await supabase
         .from('events')
         .select('*', { count: 'exact', head: true })
         .gte('event_date', new Date().toISOString().split('T')[0])
-        .lte('event_date', thirtyDaysFromNow.toISOString().split('T')[0])
         .in('status', ['confirmed', 'in_progress']);
 
       // Revenue stats
@@ -216,17 +213,13 @@ export default function AdminDashboard() {
 
   const fetchUpcomingEvents = async () => {
     try {
-      const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-      
       const { data, error } = await supabase
         .from('events')
         .select('*')
         .gte('event_date', new Date().toISOString().split('T')[0])
-        .lte('event_date', thirtyDaysFromNow.toISOString().split('T')[0])
         .in('status', ['confirmed', 'in_progress'])
         .order('event_date', { ascending: true })
-        .limit(5);
+        .limit(10);
 
       if (!error && data) {
         setUpcomingEvents(data);
@@ -471,7 +464,7 @@ export default function AdminDashboard() {
                 {upcomingEvents.length === 0 ? (
                   <div className="p-8 text-center text-gray-500">
                     <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p>No upcoming events in the next 30 days</p>
+                    <p>No upcoming events scheduled</p>
                   </div>
                 ) : (
                   upcomingEvents.map(event => (
