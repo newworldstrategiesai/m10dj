@@ -318,7 +318,7 @@ export default function SocialMediaIntegration() {
               <p className="text-sm font-medium text-gray-700 mb-2">Webhook URL:</p>
               <div className="flex items-center gap-2">
                 <code className="text-xs text-gray-900 bg-white px-3 py-2 rounded flex-1 break-all">{webhookUrls.instagram}</code>
-                <Button onClick={() => copyWebhookUrl(webhookUrls.instagram, 'Instagram')} size="sm" variant="slim">
+                <Button onClick={() => copyWebhookUrl(webhookUrls.instagram, 'Instagram')} variant="slim">
                   Copy
                 </Button>
               </div>
@@ -370,7 +370,7 @@ export default function SocialMediaIntegration() {
               <p className="text-sm font-medium text-gray-700 mb-2">Webhook URL:</p>
               <div className="flex items-center gap-2">
                 <code className="text-xs text-gray-900 bg-white px-3 py-2 rounded flex-1 break-all">{webhookUrls.messenger}</code>
-                <Button onClick={() => copyWebhookUrl(webhookUrls.messenger, 'Messenger')} size="sm" variant="slim">
+                <Button onClick={() => copyWebhookUrl(webhookUrls.messenger, 'Messenger')} variant="slim">
                   Copy
                 </Button>
               </div>
