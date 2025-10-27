@@ -163,7 +163,7 @@ SELECT
   SUM(CASE WHEN p.payment_status = 'Paid' THEN p.total_amount ELSE 0 END) as total_paid,
   SUM(CASE WHEN p.payment_status = 'Paid' THEN p.net_amount ELSE 0 END) as total_net_received,
   SUM(p.gratuity) as total_tips,
-  AVG(EXTRACT(epoch FROM (p.transaction_date - p.due_date))/86400) FILTER (WHERE p.payment_status = 'Paid' AND p.due_date IS NOT NULL) as avg_days_late,
+  AVG(EXTRACT(epoch FROM (p.transaction_date::timestamp - p.due_date::timestamp))/86400) FILTER (WHERE p.payment_status = 'Paid' AND p.due_date IS NOT NULL) as avg_days_late,
   MIN(p.transaction_date) as first_payment_date,
   MAX(p.transaction_date) as last_payment_date,
   STRING_AGG(DISTINCT p.payment_method, ', ' ORDER BY p.payment_method) as payment_methods_used
