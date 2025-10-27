@@ -250,7 +250,7 @@ export default function InstagramIntegration() {
           
           {!isConnected && (
             <Button
-              variant="outline"
+              variant="slim"
               onClick={() => window.open('https://developers.facebook.com/apps', '_blank')}
               className="flex items-center gap-2"
             >
