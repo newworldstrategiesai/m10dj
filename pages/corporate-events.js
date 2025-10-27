@@ -31,43 +31,40 @@ export default function CorporateEvents() {
     setIsVisible(true);
   }, []);
 
-  const corporateServices = [
+  const corporatePackages = [
     {
-      title: 'Company Holiday Parties',
-      description: 'Professional entertainment for your annual holiday celebration',
-      features: ['DJ & MC services', 'Professional sound system', 'Holiday music playlists', 'Microphones for speeches', 'Backup equipment & insurance'],
-      price: 'Custom Quote'
+      title: 'Just the Basics',
+      description: 'Essential DJ services for smaller corporate events',
+      duration: '3 hours',
+      features: ['Professional DJ/MC services', 'Premium sound system', 'Wireless microphone', 'Professional setup & coordination'],
+      price: '$850',
+      bestFor: 'Small meetings, networking events, brief celebrations'
     },
     {
-      title: 'Product Launch Events',
-      description: 'Create buzz and excitement for your new product unveiling',
-      features: ['Background music', 'Presentation audio support', 'Wireless microphones', 'Professional lighting', 'Technical coordinator on-site'],
-      price: 'Custom Quote'
+      title: 'Package #1',
+      description: 'Complete entertainment for most corporate events',
+      duration: '4 hours',
+      features: ['Professional DJ/MC services', 'Premium sound system & microphones', 'Multi-color LED dance floor lighting', 'Professional setup & coordination', 'Backup equipment'],
+      price: '$1,095',
+      bestFor: 'Holiday parties, team building, awards ceremonies',
+      popular: true
     },
     {
-      title: 'Awards Ceremonies',
-      description: 'Elegant entertainment for recognition events and award shows',
-      features: ['Ceremonial music', 'Award presentation support', 'Multiple microphones', 'Professional MC', 'Backup audio systems'],
-      price: 'Custom Quote'
-    },
-    {
-      title: 'Team Building Events',
-      description: 'Fun, engaging entertainment for company retreats and team activities',
-      features: ['Interactive DJ services', 'Team activity music', 'Sound system rental', 'Event coordination', 'Flexible setup options'],
-      price: 'Custom Quote'
-    },
-    {
-      title: 'Conference & Meetings',
-      description: 'Professional audio support for presentations and breakout sessions',
-      features: ['Presentation audio', 'Wireless microphones', 'Background music', 'Technical support', 'Multi-room capabilities'],
-      price: 'Custom Quote'
-    },
-    {
-      title: 'Networking Events',
-      description: 'Sophisticated background music for professional networking',
-      features: ['Ambient background music', 'Professional sound system', 'Volume control', 'Elegant presentation', 'Zone audio options'],
-      price: 'Custom Quote'
+      title: 'Package #2',
+      description: 'Premium corporate event experience',
+      duration: '4 hours',
+      features: ['Everything in Package #1, PLUS:', 'Up to 16 elegant uplighting fixtures', 'Enhanced venue ambiance', 'Professional lighting design', 'Complete A/V support'],
+      price: '$1,345',
+      bestFor: 'Product launches, large company parties, high-profile events'
     }
+  ];
+
+  const addOnServices = [
+    { name: 'Additional Hour', price: '$150', description: 'Extend your event beyond package hours' },
+    { name: 'Monogram/Logo Projection', price: '$300', description: 'Company logo or custom graphic projection' },
+    { name: 'Flat Screen TV w/ Stand', price: '$300', description: '65" TV for presentations or slideshows' },
+    { name: 'Additional Speaker', price: '$150', description: 'Extra speaker for cocktail hour or breakout rooms' },
+    { name: 'Cold Spark Fountain Effect', price: '$500', description: 'Dramatic indoor-safe spark effects for grand entrances' }
   ];
 
   const venues = [
@@ -166,42 +163,108 @@ export default function CorporateEvents() {
           </div>
         </section>
 
-        {/* Services Section */}
+        {/* Packages Section */}
         <section id="services" className="py-20 bg-white">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Corporate Event Services</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Corporate Event DJ Packages</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
-                Professional entertainment solutions tailored to your business needs and company culture.
+                Transparent pricing for professional Memphis corporate event entertainment. All packages include premium equipment, professional MC services, and backup systems.
               </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {corporateServices.map((service, index) => (
-                <div key={index} className="modern-card p-6 hover:shadow-xl transition-shadow">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl flex items-center justify-center mb-6">
-                    <Building className="w-8 h-8" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+              {corporatePackages.map((pkg, index) => (
+                <div key={index} className={`rounded-2xl p-8 transition-all ${
+                  pkg.popular 
+                    ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-2xl transform scale-105 relative' 
+                    : 'bg-gray-50 hover:shadow-xl'
+                }`}>
+                  {pkg.popular && (
+                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                      <span className="bg-brand-gold text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                        ⭐ MOST POPULAR ⭐
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="text-center mb-6">
+                    <h3 className={`text-2xl font-bold mb-2 font-sans ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>
+                      {pkg.title}
+                    </h3>
+                    <p className={`mb-4 font-inter ${pkg.popular ? 'text-white/90' : 'text-gray-600'}`}>
+                      {pkg.description}
+                    </p>
+                    <div className={`text-4xl font-bold mb-2 ${pkg.popular ? 'text-brand-gold' : 'text-brand'}`}>
+                      {pkg.price}
+                    </div>
+                    <p className={`text-sm ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>
+                      {pkg.duration} of service
+                    </p>
                   </div>
                   
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3 font-sans">{service.title}</h3>
-                  <p className="text-gray-600 mb-4 font-inter">{service.description}</p>
-                  
-                  <ul className="space-y-2 mb-6">
-                    {service.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center text-sm text-gray-600">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                        {feature}
+                  <ul className="space-y-3 mb-6">
+                    {pkg.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-start text-sm">
+                        <CheckCircle className={`w-5 h-5 mr-2 flex-shrink-0 mt-0.5 ${
+                          pkg.popular ? 'text-brand-gold' : 'text-green-500'
+                        }`} />
+                        <span className={pkg.popular ? 'text-white' : 'text-gray-700'}>{feature}</span>
                       </li>
                     ))}
                   </ul>
                   
-                  <div className="text-brand font-semibold text-lg mb-4">{service.price}</div>
+                  <div className={`text-sm mb-6 p-3 rounded-lg ${
+                    pkg.popular ? 'bg-white/10' : 'bg-blue-50'
+                  }`}>
+                    <p className={`font-semibold mb-1 ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>
+                      Best For:
+                    </p>
+                    <p className={pkg.popular ? 'text-white/90' : 'text-gray-600'}>
+                      {pkg.bestFor}
+                    </p>
+                  </div>
                   
-                  <Link href="#contact" className="btn-outline w-full text-center">
-                    Get Quote
+                  <Link href="#contact" className={`block w-full text-center py-3 rounded-lg font-semibold transition-colors ${
+                    pkg.popular 
+                      ? 'bg-brand-gold text-black hover:bg-brand-gold/90' 
+                      : 'bg-brand text-white hover:bg-brand/90'
+                  }`}>
+                    Get Started
                   </Link>
                 </div>
               ))}
+            </div>
+
+            {/* Add-On Services */}
+            <div className="bg-gray-50 rounded-2xl p-8 md:p-12">
+              <div className="text-center mb-8">
+                <h3 className="text-3xl font-bold text-gray-900 mb-4 font-sans">Add-On Services & Enhancements</h3>
+                <p className="text-lg text-gray-600 font-inter">
+                  Customize your package with these popular add-ons
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {addOnServices.map((addon, index) => (
+                  <div key={index} className="bg-white rounded-xl p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className="font-bold text-gray-900 font-sans">{addon.name}</h4>
+                      <span className="text-brand font-bold text-lg">{addon.price}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 font-inter">{addon.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-center mt-8 p-6 bg-white rounded-xl">
+                <p className="text-gray-700 mb-4">
+                  <strong>All packages include:</strong> Professional setup & teardown, backup equipment, liability insurance, pre-event consultation, and professional attire
+                </p>
+                <p className="text-lg text-brand font-semibold">
+                  📞 Call (901) 410-2020 for custom quotes | ⚐ Serving Memphis & surrounding areas
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -253,67 +316,6 @@ export default function CorporateEvents() {
           </div>
         </section>
 
-        {/* Pricing Education Section */}
-        <section className="py-20 bg-gray-50">
-          <div className="section-container">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-12">
-                <h2 className="text-4xl font-bold text-gray-900 mb-6 font-sans">Understanding Memphis Corporate Event DJ Pricing</h2>
-                <p className="text-xl text-gray-600 font-inter">
-                  Professional corporate event entertainment typically ranges from <strong>$500-$2,000+</strong> depending on event type, duration, and services required. Most Memphis businesses invest <strong>$800-$1,500</strong> for complete professional entertainment services.
-                </p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-8 md:p-12 shadow-lg mb-12">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">What Affects Corporate Event DJ Pricing?</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <div className="flex items-start mb-4">
-                      <Clock className="w-6 h-6 text-brand mr-3 flex-shrink-0 mt-1" />
-                      <div>
-                        <h4 className="font-bold text-gray-900 mb-2">Event Duration</h4>
-                        <p className="text-gray-600 text-sm">2-8 hours typical, longer events and multi-day conferences available</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start mb-4">
-                      <Users className="w-6 h-6 text-brand mr-3 flex-shrink-0 mt-1" />
-                      <div>
-                        <h4 className="font-bold text-gray-900 mb-2">Guest Count & Venue Size</h4>
-                        <p className="text-gray-600 text-sm">Larger venues require additional equipment and speakers</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-start mb-4">
-                      <Volume2 className="w-6 h-6 text-brand mr-3 flex-shrink-0 mt-1" />
-                      <div>
-                        <h4 className="font-bold text-gray-900 mb-2">Technical Requirements</h4>
-                        <p className="text-gray-600 text-sm">Presentation support, multiple microphones, lighting needs</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start">
-                      <Award className="w-6 h-6 text-brand mr-3 flex-shrink-0 mt-1" />
-                      <div>
-                        <h4 className="font-bold text-gray-900 mb-2">Professional Experience</h4>
-                        <p className="text-gray-600 text-sm">10+ years corporate event experience commands premium rates</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 p-6 bg-blue-50 rounded-xl border-l-4 border-blue-600">
-                  <p className="text-gray-800 mb-3">
-                    <strong>M10 DJ Company</strong> offers professional Memphis corporate event entertainment with transparent, all-inclusive quotes and no hidden fees. Our pricing reflects 10+ years of corporate event experience, professional-grade equipment, backup systems, and full liability insurance.
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    <strong>💡 Pro Tip:</strong> While you may find cheaper options ($200-$400), these often lack professional equipment, backup systems, insurance, and corporate event experience. <strong>Investing in a professional DJ protects your company's reputation and event investment.</strong>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Venues Section */}
         <section className="py-20 bg-white">
           <div className="section-container">
@@ -352,10 +354,10 @@ export default function CorporateEvents() {
                     How much does a corporate event DJ cost in Memphis?
                   </h3>
                   <p className="text-gray-600 leading-relaxed mb-4">
-                    Professional corporate event DJ services in Memphis typically range from <strong>$500-$2,000+</strong> depending on event type, duration, technical requirements, and guest count. Most Memphis businesses invest <strong>$800-$1,500</strong> for complete professional entertainment services including DJ, sound system, microphones, and technical support.
+                    M10 DJ Company offers <strong>transparent corporate event pricing</strong> starting at <strong>$850 for 3 hours</strong> (Just the Basics package). Our most popular Package #1 is <strong>$1,095 for 4 hours</strong> and includes DJ/MC services, professional sound system, microphones, and dance floor lighting. Premium Package #2 is <strong>$1,345 for 4 hours</strong> with added uplighting (up to 16 fixtures) for enhanced venue ambiance.
                   </p>
                   <p className="text-gray-600 leading-relaxed text-sm">
-                    <strong>Note:</strong> Budget DJs ($200-$400) often lack professional equipment, backup systems, corporate event experience, and liability insurance. For business events representing your company's reputation, investing in professional entertainment ensures flawless execution.
+                    <strong>All packages include:</strong> Professional equipment, backup systems, liability insurance, professional attire, setup/teardown, and pre-event consultation. Additional hours are $150/hour. See our complete pricing above with add-on services available.
                   </p>
                 </div>
 
