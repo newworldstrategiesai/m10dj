@@ -31,49 +31,79 @@ export default function PrivateParties() {
     setIsVisible(true);
   }, []);
 
+  const privatePartyPackages = [
+    {
+      title: 'Just the Basics',
+      description: 'Essential DJ services for smaller intimate gatherings',
+      duration: '3 hours',
+      features: ['Professional DJ/MC services', 'Premium sound system', 'Wireless microphone', 'Party lighting', 'Professional setup & coordination'],
+      price: '$850',
+      bestFor: 'Small birthday parties, anniversaries, intimate gatherings'
+    },
+    {
+      title: 'Package #1',
+      description: 'Complete entertainment for most private celebrations',
+      duration: '4 hours',
+      features: ['Professional DJ/MC services', 'Premium sound system & microphones', 'Multi-color LED dance floor lighting', 'Party atmosphere lighting', 'Professional setup & coordination', 'Backup equipment'],
+      price: '$1,095',
+      bestFor: 'Birthday parties, graduations, family reunions, retirement parties',
+      popular: true
+    },
+    {
+      title: 'Package #2',
+      description: 'Premium private party experience',
+      duration: '4 hours',
+      features: ['Everything in Package #1, PLUS:', 'Up to 16 elegant uplighting fixtures', 'Enhanced venue ambiance', 'Professional lighting design', 'Complete A/V support', 'Special effects options'],
+      price: '$1,345',
+      bestFor: 'Large birthday milestones, anniversary celebrations, special occasions'
+    }
+  ];
+
   const partyTypes = [
     {
       title: 'Birthday Parties',
       description: 'Celebrate life with music that spans all ages and keeps everyone dancing',
       features: ['Age-appropriate music', 'Interactive DJ services', 'Party games & activities', 'Special birthday announcements'],
-      price: 'Starting at $395',
       icon: Cake
     },
     {
       title: 'Anniversary Celebrations',
       description: 'Honor your milestone with romantic music and elegant entertainment',
       features: ['Romantic music selection', 'Special dedication announcements', 'Dance floor lighting', 'Memory lane music'],
-      price: 'Starting at $495',
       icon: Award
     },
     {
       title: 'Graduation Parties',
       description: 'Celebrate achievements with upbeat music for the new graduate',
       features: ['Current hits & classics', 'Graduation ceremony music', 'Photo booth coordination', 'Achievement announcements'],
-      price: 'Starting at $445',
       icon: PartyPopper
     },
     {
       title: 'Retirement Parties',
       description: 'Send off your retiree with their favorite music from through the years',
       features: ['Music from their era', 'Career milestone recognition', 'Elegant presentation', 'Special tribute music'],
-      price: 'Starting at $425',
       icon: Gift
     },
     {
       title: 'Family Reunions',
       description: 'Bring generations together with music everyone can enjoy',
       features: ['Multi-generational playlists', 'Family activity music', 'Group photo coordination', 'Cultural music options'],
-      price: 'Starting at $525',
       icon: Users
     },
     {
       title: 'Backyard Parties',
       description: 'Transform your outdoor space into the perfect party venue',
       features: ['Weather-resistant equipment', 'Outdoor sound optimization', 'Ambient lighting options', 'Neighbor-friendly volume'],
-      price: 'Starting at $375',
       icon: Sparkles
     }
+  ];
+
+  const addOnServices = [
+    { name: 'Additional Hour', price: '$150', description: 'Extend your party beyond package hours' },
+    { name: 'Monogram/Custom Projection', price: '$300', description: 'Custom graphic or name projection' },
+    { name: 'Flat Screen TV w/ Stand', price: '$300', description: '65" TV for photos or slideshows' },
+    { name: 'Additional Speaker', price: '$150', description: 'Extra speaker for separate areas' },
+    { name: 'Cold Spark Fountain Effect', price: '$500', description: 'Dramatic indoor-safe spark effects for grand entrances or cake cutting' }
   ];
 
   const ageGroups = [
@@ -213,11 +243,117 @@ export default function PrivateParties() {
           </div>
         </section>
 
-        {/* Party Types Section */}
+        {/* Pricing Section */}
         <section id="party-types" className="py-20 bg-white">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Types of Private Parties</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Private Party DJ Packages</h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
+                Transparent pricing for professional private party entertainment. All packages include premium equipment, professional MC services, and backup systems.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+              {privatePartyPackages.map((pkg, index) => (
+                <div key={index} className={`rounded-2xl p-8 transition-all ${
+                  pkg.popular 
+                    ? 'bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-2xl transform scale-105 relative' 
+                    : 'bg-gray-50 hover:shadow-xl'
+                }`}>
+                  {pkg.popular && (
+                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                      <span className="bg-brand-gold text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                        ⭐ MOST POPULAR ⭐
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="text-center mb-6">
+                    <h3 className={`text-2xl font-bold mb-2 font-sans ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>
+                      {pkg.title}
+                    </h3>
+                    <p className={`mb-4 font-inter ${pkg.popular ? 'text-white/90' : 'text-gray-600'}`}>
+                      {pkg.description}
+                    </p>
+                    <div className={`text-4xl font-bold mb-2 ${pkg.popular ? 'text-brand-gold' : 'text-brand'}`}>
+                      {pkg.price}
+                    </div>
+                    <p className={`text-sm ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>
+                      {pkg.duration} of service
+                    </p>
+                  </div>
+                  
+                  <ul className="space-y-3 mb-6">
+                    {pkg.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-start text-sm">
+                        <CheckCircle className={`w-5 h-5 mr-2 flex-shrink-0 mt-0.5 ${
+                          pkg.popular ? 'text-brand-gold' : 'text-green-500'
+                        }`} />
+                        <span className={pkg.popular ? 'text-white' : 'text-gray-700'}>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <div className={`text-sm mb-6 p-3 rounded-lg ${
+                    pkg.popular ? 'bg-white/10' : 'bg-purple-50'
+                  }`}>
+                    <p className={`font-semibold mb-1 ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>
+                      Best For:
+                    </p>
+                    <p className={pkg.popular ? 'text-white/90' : 'text-gray-600'}>
+                      {pkg.bestFor}
+                    </p>
+                  </div>
+                  
+                  <Link href="#contact" className={`block w-full text-center py-3 rounded-lg font-semibold transition-colors ${
+                    pkg.popular 
+                      ? 'bg-brand-gold text-black hover:bg-brand-gold/90' 
+                      : 'bg-brand text-white hover:bg-brand/90'
+                  }`}>
+                    Get Started
+                  </Link>
+                </div>
+              ))}
+            </div>
+
+            {/* Add-On Services */}
+            <div className="bg-gray-50 rounded-2xl p-8 md:p-12">
+              <div className="text-center mb-8">
+                <h3 className="text-3xl font-bold text-gray-900 mb-4 font-sans">Add-On Services & Enhancements</h3>
+                <p className="text-lg text-gray-600 font-inter">
+                  Customize your package with these popular add-ons
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {addOnServices.map((addon, index) => (
+                  <div key={index} className="bg-white rounded-xl p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className="font-bold text-gray-900 font-sans">{addon.name}</h4>
+                      <span className="text-brand font-bold text-lg">{addon.price}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 font-inter">{addon.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-center mt-8 p-6 bg-white rounded-xl">
+                <p className="text-gray-700 mb-4">
+                  <strong>All packages include:</strong> Professional setup & teardown, backup equipment, liability insurance, pre-event consultation, and professional attire
+                </p>
+                <p className="text-lg text-brand font-semibold">
+                  📞 Call (901) 410-2020 for custom quotes | ⚐ Serving Memphis & surrounding areas
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Party Types We Serve Section */}
+        <section className="py-20 bg-gray-50">
+          <div className="section-container">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Types of Private Parties We Serve</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
                 Whatever you're celebrating, we have the experience and music to make it memorable.
               </p>
@@ -242,8 +378,6 @@ export default function PrivateParties() {
                     ))}
                   </ul>
                   
-                  <div className="text-brand font-semibold text-lg mb-4">{party.price}</div>
-                  
                   <Link href="#contact" className="btn-outline w-full text-center">
                     Book This Party
                   </Link>
@@ -254,7 +388,7 @@ export default function PrivateParties() {
         </section>
 
         {/* Age Groups Section */}
-        <section className="py-20 bg-gray-50">
+        <section className="py-20 bg-white">
           <div className="section-container">
             <div className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Music for Every Age Group</h2>
@@ -284,41 +418,6 @@ export default function PrivateParties() {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* What's Included Section */}
-        <section className="py-20 bg-white">
-          <div className="section-container">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">What's Included in Every Private Party</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="text-center">
-                <Volume2 className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 p-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-3 font-sans">Professional Sound System</h3>
-                <p className="text-gray-600 font-inter text-sm">High-quality speakers and equipment sized for your venue and guest count</p>
-              </div>
-              
-              <div className="text-center">
-                <Mic2 className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 p-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-3 font-sans">Wireless Microphones</h3>
-                <p className="text-gray-600 font-inter text-sm">For toasts, speeches, karaoke, or special announcements</p>
-              </div>
-              
-              <div className="text-center">
-                <Sparkles className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 p-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-3 font-sans">Party Lighting</h3>
-                <p className="text-gray-600 font-inter text-sm">Colorful dance floor lighting to create the perfect party atmosphere</p>
-              </div>
-              
-              <div className="text-center">
-                <Music className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 p-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-3 font-sans">Custom Playlist</h3>
-                <p className="text-gray-600 font-inter text-sm">Pre-event consultation to create the perfect music mix for your celebration</p>
-              </div>
             </div>
           </div>
         </section>
