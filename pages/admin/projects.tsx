@@ -339,7 +339,7 @@ export default function ProjectsDashboard() {
                 type="text"
                 placeholder="Search projects..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(value) => setSearchQuery(value)}
                 className="pl-10"
               />
             </div>
