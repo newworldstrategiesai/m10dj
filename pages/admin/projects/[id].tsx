@@ -22,14 +22,17 @@ interface Project {
   client_phone: string | null;
   event_type: string;
   event_date: string;
+  start_time: string | null;
+  end_time: string | null;
   event_time: string | null;
   venue_name: string | null;
   venue_address: string | null;
   number_of_guests: number | null;
   event_duration: number | null;
   special_requests: string | null;
+  playlist_notes: string | null;
+  timeline_notes: string | null;
   status: string;
-  notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -136,14 +139,16 @@ export default function ProjectDetailPage() {
           client_phone: project.client_phone,
           event_type: project.event_type,
           event_date: project.event_date,
-          event_time: project.event_time,
+          start_time: project.start_time,
+          end_time: project.end_time,
           venue_name: project.venue_name,
           venue_address: project.venue_address,
           number_of_guests: project.number_of_guests,
           event_duration: project.event_duration,
           special_requests: project.special_requests,
+          playlist_notes: project.playlist_notes,
+          timeline_notes: project.timeline_notes,
           status: project.status,
-          notes: project.notes,
           updated_at: new Date().toISOString()
         })
         .eq('id', project.id);
@@ -163,6 +168,7 @@ export default function ProjectDetailPage() {
         description: "Project updated successfully",
       });
       setIsEditing(false);
+      await fetchProject(); // Refresh the project data
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -457,14 +463,29 @@ export default function ProjectDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Project Notes</label>
                   {isEditing ? (
                     <Textarea
-                      value={project.notes || ''}
-                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                      value={project.timeline_notes || ''}
+                      onChange={(e) => handleInputChange('timeline_notes', e.target.value)}
                       rows={6}
                       placeholder="Add notes about this project..."
                     />
                   ) : (
                     <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-gray-900 whitespace-pre-wrap">{project.notes || 'No notes added yet.'}</p>
+                      <p className="text-gray-900 whitespace-pre-wrap">{project.timeline_notes || 'No notes added yet.'}</p>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Playlist Notes</label>
+                  {isEditing ? (
+                    <Textarea
+                      value={project.playlist_notes || ''}
+                      onChange={(e) => handleInputChange('playlist_notes', e.target.value)}
+                      rows={4}
+                      placeholder="Add notes about music preferences, playlist, do-not-play list..."
+                    />
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-gray-900 whitespace-pre-wrap">{project.playlist_notes || 'No playlist notes added yet.'}</p>
                     </div>
                   )}
                 </div>
