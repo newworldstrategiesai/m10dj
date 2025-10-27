@@ -357,16 +357,14 @@ export default function AdminDashboard() {
                 </div>
                 <Button
                   onClick={handleRefresh}
-                  variant="outline"
-                  size="sm"
+                  variant="slim"
                   disabled={refreshing}
                 >
                   <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 </Button>
                 <Button
                   onClick={handleSignOut}
-                  variant="outline"
-                  size="sm"
+                  variant="slim"
                   className="text-red-600 border-red-200 hover:bg-red-50"
                 >
                   <LogOut className="h-4 w-4" />
