@@ -44,45 +44,54 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Get the contact submission ID for this contact
-    // We need to find the contact_submission_id that was used when creating projects
-    // Since projects are linked via contact_submission_id, we need to find the submission
-    const { data: submissions, error: submissionError } = await supabase
-      .from('contact_submissions')
-      .select('id')
-      .eq('email', contact.email_address)
-      .order('created_at', { ascending: false });
-
-    if (submissionError) {
-      console.error('Error fetching submissions:', submissionError);
-      return res.status(500).json({ error: 'Failed to fetch contact submissions' });
-    }
-
-    console.log('Contact email:', contact.email_address);
-    console.log('Found submissions:', submissions?.length || 0);
-
-    if (!submissions || submissions.length === 0) {
-      console.log('No submissions found for contact email:', contact.email_address);
-      return res.status(200).json({ projects: [] });
-    }
-
-    // Get projects for all submissions related to this contact
-    const submissionIds = submissions.map(sub => sub.id);
+    // Get projects linked to this contact
+    // Try multiple methods to find projects:
+    // 1. Direct contact_id link (for HoneyBook imports)
+    // 2. Submission-based link (for website contact forms)
+    // 3. Email matching (fallback)
     
-    console.log('Looking for projects with submission IDs:', submissionIds);
+    let projects = [];
     
-    const { data: projects, error: projectsError } = await supabase
+    // Method 1: Check if events table has a contact_id column and use it
+    const { data: directProjects, error: directError } = await supabase
       .from('events')
       .select('*')
-      .in('submission_id', submissionIds)
+      .or(`submission_id.eq.${contactId},client_email.eq.${contact.email_address}`)
       .order('created_at', { ascending: false });
 
-    if (projectsError) {
-      console.error('Error fetching projects:', projectsError);
-      return res.status(500).json({ error: 'Failed to fetch projects' });
+    if (directError) {
+      console.error('Error fetching direct projects:', directError);
+    } else if (directProjects && directProjects.length > 0) {
+      console.log(`Found ${directProjects.length} projects via direct/email match`);
+      projects = directProjects;
     }
+    
+    // Method 2: If no projects found, try submission-based lookup
+    if (projects.length === 0 && contact.email_address) {
+      const { data: submissions, error: submissionError } = await supabase
+        .from('contact_submissions')
+        .select('id')
+        .eq('email', contact.email_address)
+        .order('created_at', { ascending: false });
 
-    console.log('Found projects:', projects?.length || 0);
+      if (!submissionError && submissions && submissions.length > 0) {
+        const submissionIds = submissions.map(sub => sub.id);
+        console.log(`Found ${submissions.length} submissions, looking for projects...`);
+        
+        const { data: submissionProjects, error: projectsError } = await supabase
+          .from('events')
+          .select('*')
+          .in('submission_id', submissionIds)
+          .order('created_at', { ascending: false});
+
+        if (!projectsError && submissionProjects && submissionProjects.length > 0) {
+          console.log(`Found ${submissionProjects.length} projects via submissions`);
+          projects = submissionProjects;
+        }
+      }
+    }
+    
+    console.log(`Total projects found: ${projects.length}`);
 
     res.status(200).json({ 
       projects: projects || [],

@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/Toasts/use-toast';
 import Link from 'next/link';
 import ServiceSelectionButton from '@/components/admin/ServiceSelectionButton';
 import PaymentHistory from '@/components/admin/PaymentHistory';
+import InvoiceList from '@/components/admin/InvoiceList';
 
 interface Contact {
   id: string;
@@ -98,6 +99,8 @@ export default function ContactDetailPage() {
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [payments, setPayments] = useState<any[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -116,6 +119,7 @@ export default function ContactDetailPage() {
       fetchContact();
       fetchProjects();
       fetchPayments();
+      fetchInvoices();
     }
   }, [user, id]);
 
@@ -228,6 +232,29 @@ export default function ContactDetailPage() {
       console.error('Error fetching payments:', error);
     } finally {
       setPaymentsLoading(false);
+    }
+  };
+
+  const fetchInvoices = async () => {
+    if (!id) return;
+    
+    setInvoicesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('invoice_summary')
+        .select('*')
+        .eq('contact_id', id)
+        .order('invoice_date', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching invoices:', error);
+      } else {
+        setInvoices(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+    } finally {
+      setInvoicesLoading(false);
     }
   };
 
@@ -735,6 +762,14 @@ export default function ContactDetailPage() {
                   </div>
                 )}
               </div>
+
+              {/* Invoice List Section */}
+              <InvoiceList
+                contactId={id}
+                invoices={invoices}
+                onViewInvoice={(invoiceId) => router.push(`/admin/invoices/${invoiceId}`)}
+                onCreateInvoice={() => router.push(`/admin/invoices/new?contactId=${id}`)}
+              />
 
               {/* Payment History Section */}
               <PaymentHistory 
