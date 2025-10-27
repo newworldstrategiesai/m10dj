@@ -44,21 +44,9 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
-    // Create a mock contact submission for this contact
-    const mockSubmission = {
-      id: `mock-${Date.now()}`,
-      name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
-      email: contact.email_address,
-      phone: contact.phone,
-      eventType: contact.event_type || 'wedding',
-      eventDate: contact.event_date,
-      location: contact.venue_name,
-      message: contact.special_requests || 'Project created manually for existing contact'
-    };
-
-    // Create the project
+    // Create the project using the contact data
     try {
-      const project = await db.createProject(contact, mockSubmission.id);
+      const project = await db.createProject(contact, contact.id);
       res.status(200).json({
         success: true,
         project: project,
