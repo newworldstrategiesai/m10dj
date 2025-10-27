@@ -428,7 +428,7 @@ export default function AdminDashboard() {
           {/* Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               <Link href="/admin/contacts" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors">
                 <Users className="h-5 w-5 text-blue-600" />
                 <span className="text-sm font-medium text-gray-900">View Contacts</span>
@@ -444,6 +444,10 @@ export default function AdminDashboard() {
               <Link href="/admin/financial" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-orange-500 hover:bg-orange-50 transition-colors">
                 <BarChart3 className="h-5 w-5 text-orange-600" />
                 <span className="text-sm font-medium text-gray-900">Financial Reports</span>
+              </Link>
+              <Link href="/admin/instagram" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-pink-500 hover:bg-pink-50 transition-colors">
+                <Music className="h-5 w-5 text-pink-600" />
+                <span className="text-sm font-medium text-gray-900">Instagram Leads</span>
               </Link>
             </div>
           </div>
