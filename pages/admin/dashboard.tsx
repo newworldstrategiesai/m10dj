@@ -265,7 +265,9 @@ export default function AdminDashboard() {
       if (!error && data) {
         const formattedPayments = data.map(p => ({
           id: p.id,
-          contact_name: p.contacts ? `${p.contacts.first_name} ${p.contacts.last_name}` : 'Unknown',
+          contact_name: p.contacts && Array.isArray(p.contacts) && p.contacts[0] 
+            ? `${p.contacts[0].first_name} ${p.contacts[0].last_name}` 
+            : 'Unknown',
           amount: p.total_amount,
           payment_date: p.payment_date,
           payment_method: p.payment_method
