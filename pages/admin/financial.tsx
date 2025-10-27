@@ -213,12 +213,19 @@ export default function FinancialDashboard() {
     });
   };
 
-  const formatMonth = (monthString: string) => {
-    const date = new Date(monthString + '-01');
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric'
-    });
+  const formatMonth = (monthDate: string) => {
+    if (!monthDate) return 'Unknown';
+    try {
+      // monthDate comes as a full date from the database (e.g., "2024-01-01")
+      const date = new Date(monthDate);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      return date.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return 'Invalid Date';
+    }
   };
 
   const calculateGrowth = () => {
