@@ -375,7 +375,7 @@ export default function InvoicesDashboard() {
                   setStatusFilter('all');
                   setDateFilter('all');
                 }}
-                variant="outline"
+                variant="slim"
                 className="text-sm"
               >
                 Clear Filters
@@ -474,8 +474,8 @@ export default function InvoicesDashboard() {
                       <td className="py-4 px-6">
                         <div className="flex items-center justify-center gap-2">
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="slim"
+                            
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(`/admin/invoices/${invoice.id}`);

@@ -224,7 +224,7 @@ export default function ProjectDetailPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Link href={from === 'contacts' ? '/admin/contacts' : '/admin/dashboard'}>
-                <Button variant="outline" size="sm">
+                <Button variant="slim" >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
@@ -237,7 +237,7 @@ export default function ProjectDetailPage() {
             <div className="flex space-x-2">
               {isEditing ? (
                 <>
-                  <Button onClick={() => setIsEditing(false)} variant="outline">
+                  <Button onClick={() => setIsEditing(false)} variant="slim">
                     Cancel
                   </Button>
                   <Button onClick={handleSave} disabled={saving}>

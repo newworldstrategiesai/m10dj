@@ -215,7 +215,7 @@ export default function InvoiceDetailPage() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <Button
-            variant="outline"
+            variant="slim"
             onClick={() => router.push('/admin/invoices')}
             className="flex items-center gap-2"
           >
@@ -223,15 +223,15 @@ export default function InvoiceDetailPage() {
             Back to Invoices
           </Button>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
+            <Button variant="slim" >
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="slim" >
               <Download className="h-4 w-4 mr-2" />
               Download PDF
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="slim" >
               <Mail className="h-4 w-4 mr-2" />
               Send Email
             </Button>

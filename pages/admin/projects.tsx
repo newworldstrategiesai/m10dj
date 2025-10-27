@@ -401,7 +401,7 @@ export default function ProjectsDashboard() {
                   setEventTypeFilter('all');
                   setDateFilter('all');
                 }}
-                variant="outline"
+                variant="slim"
                 className="text-sm"
               >
                 Clear Filters
