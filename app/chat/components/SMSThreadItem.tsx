@@ -93,7 +93,7 @@ export function SMSThreadItem({ thread, isSelected, hasUnread = false, onClick }
               : thread.title}
           </p>
           {isSMS && thread.destinationNumber && (
-            <Badge variant="slim" className="ml-2 text-xs dark:border-gray-700 dark:text-gray-300 flex-shrink-0">
+            <Badge variant="outline" className="ml-2 text-xs dark:border-gray-700 dark:text-gray-300 flex-shrink-0">
               {thread.destinationNumber}
             </Badge>
           )}
