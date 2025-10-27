@@ -71,7 +71,14 @@ CREATE INDEX IF NOT EXISTS idx_payments_method ON public.payments(payment_method
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies - Allow authenticated users (admins) to manage payments
--- Adjust this policy based on your actual admin authentication setup
+-- Drop existing policy if it exists, then recreate
+DO $$ 
+BEGIN
+  DROP POLICY IF EXISTS "Authenticated users can manage all payments" ON public.payments;
+EXCEPTION
+  WHEN undefined_object THEN NULL;
+END $$;
+
 CREATE POLICY "Authenticated users can manage all payments"
   ON public.payments
   FOR ALL
