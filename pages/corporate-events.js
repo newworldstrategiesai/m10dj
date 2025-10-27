@@ -339,8 +339,9 @@ export default function CorporateEvents() {
 
         {/* Client Logo Carousel - Corporate Clients */}
         <ClientLogoCarousel 
+          logoSet="corporate"
           title="Trusted by Memphis's Leading Businesses"
-          subtitle="Proudly serving corporate events at Memphis Cook Convention Center, The Peabody Memphis, FedExForum, and premier Memphis corporate venues"
+          subtitle="Proudly serving corporate events for FedEx, AutoZone, International Paper, St. Jude, and Memphis's premier organizations"
         />
 
         {/* FAQ Section */}

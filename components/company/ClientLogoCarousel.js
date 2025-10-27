@@ -8,28 +8,58 @@ import React from 'react';
  * <ClientLogoCarousel 
  *   title="Trusted by Memphis's Premier Organizations"
  *   subtitle="Proudly serving these incredible clients"
+ *   logoSet="wedding" // or "corporate", "general"
  * />
  */
+
+// Different logo sets for different contexts
+const logoSets = {
+  wedding: [
+    { name: 'The Peabody Hotel', file: 'peabody-hotel.png', category: 'venue' },
+    { name: 'Memphis Botanic Garden', file: 'botanic-garden.png', category: 'venue' },
+    { name: 'Dixon Gallery & Gardens', file: 'dixon-gallery.png', category: 'venue' },
+    { name: 'The Columns', file: 'the-columns.png', category: 'venue' },
+    { name: 'Graceland Chapel', file: 'graceland-chapel.png', category: 'venue' },
+    { name: 'Annesdale Mansion', file: 'annesdale-mansion.png', category: 'venue' },
+    { name: 'Memphis Hunt & Country Club', file: 'hunt-country-club.png', category: 'venue' },
+    { name: 'Lichterman Nature Center', file: 'lichterman.png', category: 'venue' },
+    { name: 'Historic Elmwood Cemetery', file: 'elmwood-cemetery.png', category: 'venue' },
+    { name: 'AutoZone Park', file: 'autozone-park.png', category: 'venue' },
+  ],
+  corporate: [
+    { name: 'FedEx', file: 'fedex.png', category: 'corporate' },
+    { name: 'International Paper', file: 'international-paper.png', category: 'corporate' },
+    { name: 'AutoZone', file: 'autozone.png', category: 'corporate' },
+    { name: 'Memphis Cook Convention Center', file: 'convention-center.png', category: 'venue' },
+    { name: 'The Peabody Hotel', file: 'peabody-hotel.png', category: 'venue' },
+    { name: 'Crosstown Concourse', file: 'crosstown.png', category: 'venue' },
+    { name: 'FedExForum', file: 'fedexforum.png', category: 'venue' },
+    { name: 'Memphis Grizzlies', file: 'grizzlies.png', category: 'sports' },
+    { name: 'St. Jude', file: 'st-jude.png', category: 'nonprofit' },
+    { name: 'University of Memphis', file: 'u-of-memphis.png', category: 'education' },
+  ],
+  general: [
+    { name: 'The Peabody Hotel', file: 'peabody-hotel.png', category: 'venue' },
+    { name: 'FedEx', file: 'fedex.png', category: 'corporate' },
+    { name: 'Memphis Botanic Garden', file: 'botanic-garden.png', category: 'venue' },
+    { name: 'AutoZone', file: 'autozone.png', category: 'corporate' },
+    { name: 'Dixon Gallery & Gardens', file: 'dixon-gallery.png', category: 'venue' },
+    { name: 'Memphis Cook Convention Center', file: 'convention-center.png', category: 'venue' },
+    { name: 'Graceland', file: 'graceland.png', category: 'venue' },
+    { name: 'Memphis Grizzlies', file: 'grizzlies.png', category: 'sports' },
+    { name: 'St. Jude', file: 'st-jude.png', category: 'nonprofit' },
+    { name: 'University of Memphis', file: 'u-of-memphis.png', category: 'education' },
+  ]
+};
 
 export default function ClientLogoCarousel({ 
   title = "Trusted by Memphis's Leading Organizations",
   subtitle = "Proudly serving corporate clients, wedding venues, and event organizers across Memphis",
+  logoSet = "general", // "wedding", "corporate", or "general"
   className = ""
 }) {
-  // Placeholder logos - will be replaced with actual client logos
-  // Each logo should be ~200x100px, grayscale PNG with transparent background
-  const clientLogos = [
-    { name: 'Client 1', file: 'client-1.png' },
-    { name: 'Client 2', file: 'client-2.png' },
-    { name: 'Client 3', file: 'client-3.png' },
-    { name: 'Client 4', file: 'client-4.png' },
-    { name: 'Client 5', file: 'client-5.png' },
-    { name: 'Client 6', file: 'client-6.png' },
-    { name: 'Client 7', file: 'client-7.png' },
-    { name: 'Client 8', file: 'client-8.png' },
-    { name: 'Client 9', file: 'client-9.png' },
-    { name: 'Client 10', file: 'client-10.png' },
-  ];
+  // Get the appropriate logo set
+  const clientLogos = logoSets[logoSet] || logoSets.general;
 
   // Duplicate logos for seamless infinite scroll
   const duplicatedLogos = [...clientLogos, ...clientLogos];

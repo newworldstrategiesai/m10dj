@@ -43,6 +43,26 @@ interface Contact {
   updated_at: string;
 }
 
+interface Project {
+  id: string;
+  event_name: string;
+  client_name: string;
+  client_email: string;
+  client_phone: string | null;
+  event_type: string;
+  event_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  number_of_guests: number | null;
+  special_requests: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 const EVENT_TYPES = [
   'wedding',
   'corporate',
@@ -68,6 +88,8 @@ const COMMUNICATION_PREFERENCES = ['email', 'phone', 'text', 'any'];
 
 export default function ContactDetailPage() {
   const [contact, setContact] = useState<Contact | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -84,6 +106,7 @@ export default function ContactDetailPage() {
   useEffect(() => {
     if (user && id) {
       fetchContact();
+      fetchProjects();
     }
   }, [user, id]);
 
@@ -143,6 +166,35 @@ export default function ContactDetailPage() {
       });
       } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProjects = async () => {
+    if (!id) return;
+    
+    setProjectsLoading(true);
+    try {
+      const response = await fetch(`/api/get-contact-projects?contactId=${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data.projects || []);
+      } else {
+        console.error('Failed to fetch projects');
+        toast({
+          title: "Error",
+          description: "Failed to load projects",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load projects",
+        variant: "destructive"
+      });
+    } finally {
+      setProjectsLoading(false);
     }
   };
 
@@ -440,112 +492,199 @@ export default function ContactDetailPage() {
               </TabsContent>
 
           <TabsContent value="event">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold mb-4">Event Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                  {isEditing ? (
-                    <Select value={contact.event_type || ''} onValueChange={(value) => handleInputChange('event_type', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select event type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EVENT_TYPES.map(type => (
-                          <SelectItem key={type} value={type}>
-                            {type.replace('_', ' ').toUpperCase()}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-gray-900">{contact.event_type?.replace('_', ' ').toUpperCase() || 'Not specified'}</p>
-                  )}
-                      </div>
-                        <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
-                  {isEditing ? (
-                    <Input
-                      type="date"
-                      value={formatDate(contact.event_date)}
-                      onChange={(value) => handleInputChange('event_date', value)}
-                    />
-                  ) : (
-                    <p className="text-gray-900">{contact.event_date || 'Not set'}</p>
+            <div className="space-y-6">
+              {/* Contact Event Details */}
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <h3 className="text-lg font-semibold mb-4">Contact Event Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+                    {isEditing ? (
+                      <Select value={contact.event_type || ''} onValueChange={(value) => handleInputChange('event_type', value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select event type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EVENT_TYPES.map(type => (
+                            <SelectItem key={type} value={type}>
+                              {type.replace('_', ' ').toUpperCase()}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-gray-900">{contact.event_type?.replace('_', ' ').toUpperCase() || 'Not specified'}</p>
                     )}
                   </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Event Time</label>
-                  {isEditing ? (
-                    <Input
-                      type="time"
-                      value={contact.event_time || ''}
-                      onChange={(value) => handleInputChange('event_time', value)}
-                    />
-                  ) : (
-                    <p className="text-gray-900">{contact.event_time || 'Not set'}</p>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
+                    {isEditing ? (
+                      <Input
+                        type="date"
+                        value={formatDate(contact.event_date)}
+                        onChange={(value) => handleInputChange('event_date', value)}
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.event_date || 'Not set'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Time</label>
+                    {isEditing ? (
+                      <Input
+                        type="time"
+                        value={contact.event_time || ''}
+                        onChange={(value) => handleInputChange('event_time', value)}
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.event_time || 'Not set'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Guest Count</label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        value={contact.guest_count || ''}
+                        onChange={(value) => handleInputChange('guest_count', value ? parseInt(value) : null)}
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.guest_count || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
+                    {isEditing ? (
+                      <Input
+                        value={contact.venue_name || ''}
+                        onChange={(value) => handleInputChange('venue_name', value)}
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.venue_name || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Address</label>
+                    {isEditing ? (
+                      <Input
+                        value={contact.venue_address || ''}
+                        onChange={(value) => handleInputChange('venue_address', value)}
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.venue_address || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
+                    {isEditing ? (
+                      <Input
+                        value={contact.budget_range || ''}
+                        onChange={(value) => handleInputChange('budget_range', value)}
+                        placeholder="e.g., $2,000-$3,500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.budget_range || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
+                    {isEditing ? (
+                      <Textarea
+                        value={contact.special_requests || ''}
+                        onChange={(e) => handleInputChange('special_requests', e.target.value)}
+                        rows={3}
+                      />
+                    ) : (
+                      <p className="text-gray-900 whitespace-pre-wrap">{contact.special_requests || 'None'}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Guest Count</label>
-                  {isEditing ? (
-                    <Input
-                      type="number"
-                      value={contact.guest_count || ''}
-                      onChange={(value) => handleInputChange('guest_count', value ? parseInt(value) : null)}
-                    />
-                  ) : (
-                    <p className="text-gray-900">{contact.guest_count || 'Not specified'}</p>
-                  )}
-                    </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
-                  {isEditing ? (
-                    <Input
-                      value={contact.venue_name || ''}
-                      onChange={(value) => handleInputChange('venue_name', value)}
-                    />
-                  ) : (
-                    <p className="text-gray-900">{contact.venue_name || 'Not specified'}</p>
-                  )}
-                    </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Venue Address</label>
-                  {isEditing ? (
-                    <Input
-                      value={contact.venue_address || ''}
-                      onChange={(value) => handleInputChange('venue_address', value)}
-                    />
-                  ) : (
-                    <p className="text-gray-900">{contact.venue_address || 'Not specified'}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
-                  {isEditing ? (
-                    <Input
-                      value={contact.budget_range || ''}
-                      onChange={(value) => handleInputChange('budget_range', value)}
-                      placeholder="e.g., $2,000-$3,500"
-                    />
-                  ) : (
-                    <p className="text-gray-900">{contact.budget_range || 'Not specified'}</p>
-                  )}
-                    </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
-                  {isEditing ? (
-                    <Textarea
-                      value={contact.special_requests || ''}
-                      onChange={(e) => handleInputChange('special_requests', e.target.value)}
-                      rows={3}
-                    />
-                  ) : (
-                    <p className="text-gray-900 whitespace-pre-wrap">{contact.special_requests || 'None'}</p>
-                  )}
-                </div>
-          </div>
               </div>
+
+              {/* Projects Section */}
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Projects</h3>
+                  <Button 
+                    onClick={fetchProjects}
+                    disabled={projectsLoading}
+                    className="text-sm"
+                  >
+                    {projectsLoading ? 'Loading...' : 'Refresh'}
+                  </Button>
+                </div>
+                
+                {projectsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="text-gray-500 mt-2">Loading projects...</p>
+                  </div>
+                ) : projects.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No projects found for this contact.</p>
+                    <p className="text-sm text-gray-400 mt-1">Projects are automatically created when contact forms are submitted.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {projects.map((project) => (
+                      <div key={project.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-medium text-gray-900">{project.event_name}</h4>
+                              <Badge 
+                                className={
+                                  project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  project.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                  project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                  project.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                                  'bg-red-100 text-red-800'
+                                }
+                              >
+                                {project.status}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                              <div>
+                                <span className="font-medium">Event Type:</span> {project.event_type}
+                              </div>
+                              <div>
+                                <span className="font-medium">Date:</span> {project.event_date}
+                              </div>
+                              <div>
+                                <span className="font-medium">Venue:</span> {project.venue_name || 'Not specified'}
+                              </div>
+                              {project.number_of_guests && (
+                                <div>
+                                  <span className="font-medium">Guests:</span> {project.number_of_guests}
+                                </div>
+                              )}
+                              {project.event_duration && (
+                                <div>
+                                  <span className="font-medium">Duration:</span> {project.event_duration} hours
+                                </div>
+                              )}
+                            </div>
+                            {project.special_requests && (
+                              <div className="mt-2 text-sm text-gray-600">
+                                <span className="font-medium">Special Requests:</span> {project.special_requests}
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <Link href={`/admin/projects/${project.id}`}>
+                              <Button className="text-sm">
+                                View Project
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="business">

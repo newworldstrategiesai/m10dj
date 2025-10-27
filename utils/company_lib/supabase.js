@@ -496,5 +496,79 @@ export const db = {
 
   async getFeaturedGalleryImages(limit = 9) {
     return this.getGalleryImages(null, limit);
+  },
+
+  // Project/Event Management
+  async createProject(contactData, contactId) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
+    }
+
+    // Generate project name from available data
+    const generateProjectName = (contact) => {
+      const clientName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Client';
+      const eventType = contact.event_type || 'Event';
+      const eventDate = contact.event_date ? new Date(contact.event_date).toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      }) : '';
+      const venue = contact.venue_name ? ` - ${contact.venue_name}` : '';
+      
+      return `${clientName} - ${eventType}${eventDate ? ` - ${eventDate}` : ''}${venue}`;
+    };
+
+    // Map contact data to project data
+    const projectData = {
+      submission_id: contactId, // Link to the original submission
+      event_name: generateProjectName(contactData), // Use the generated name as event_name
+      client_name: `${contactData.first_name || ''} ${contactData.last_name || ''}`.trim() || 'Client',
+      client_email: contactData.email_address,
+      client_phone: contactData.phone || null,
+      event_type: contactData.event_type || 'other',
+      event_date: contactData.event_date || new Date().toISOString().split('T')[0], // Use today's date if no event date provided
+      start_time: contactData.event_time || null,
+      venue_name: contactData.venue_name || null,
+      venue_address: contactData.venue_address || null,
+      number_of_guests: contactData.guest_count || null,
+      special_requests: contactData.special_requests || null,
+      status: 'confirmed', // Default status for new projects (changed from 'pending' to match schema)
+      notes: `Auto-generated project from contact form submission. Created on ${new Date().toLocaleDateString()}.`
+    };
+
+    console.log('Creating project with data:', projectData);
+
+    const { data, error } = await supabase
+      .from('events')
+      .insert([projectData])
+      .select();
+
+    if (error) {
+      console.error('Error creating project:', error);
+      throw error;
+    }
+
+    console.log('Project created successfully:', data[0].id);
+    return data[0];
+  },
+
+  // Get projects for a contact
+  async getProjectsByContact(contactId) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
+    }
+
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('submission_id', contactId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching projects for contact:', error);
+      throw error;
+    }
+
+    return data;
   }
 }; 

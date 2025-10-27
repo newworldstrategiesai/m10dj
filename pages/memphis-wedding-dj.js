@@ -784,6 +784,7 @@ export default function MemphisWeddingDJ() {
 
         {/* Client Logo Carousel - Wedding Venues & Partners */}
         <ClientLogoCarousel 
+          logoSet="wedding"
           title="Trusted at Memphis's Premier Wedding Venues"
           subtitle="Preferred entertainment partner at The Peabody Hotel, Memphis Botanic Garden, Dixon Gallery & Gardens, and 27+ Memphis wedding venues"
         />

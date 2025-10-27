@@ -185,6 +185,17 @@ export default async function handler(req, res) {
           console.error('Error updating existing contact:', updateError);
         } else {
           console.log('Updated existing contact:', updatedContact.id);
+          
+          // Create project for the existing contact (new inquiry)
+          try {
+            console.log('Creating project for existing contact...');
+            const project = await db.createProject(contactData, dbSubmission.id);
+            console.log('Project created successfully:', project.id);
+          } catch (projectError) {
+            console.error('Error creating project for existing contact:', projectError);
+            console.error('Project creation failed, but contact was updated successfully');
+            // Don't fail the entire request if project creation fails
+          }
         }
       } else {
         // Create new contact
@@ -200,6 +211,17 @@ export default async function handler(req, res) {
           throw new Error(`Failed to create contact: ${createError.message}`);
         } else {
           console.log('Created new contact:', newContact.id);
+          
+          // Create project for the new contact
+          try {
+            console.log('Creating project for new contact...');
+            const project = await db.createProject(contactData, dbSubmission.id);
+            console.log('Project created successfully:', project.id);
+          } catch (projectError) {
+            console.error('Error creating project:', projectError);
+            console.error('Project creation failed, but contact was created successfully');
+            // Don't fail the entire request if project creation fails
+          }
         }
       }
     } catch (contactError) {
@@ -216,6 +238,7 @@ export default async function handler(req, res) {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
             <h1 style="color: #000; margin: 0; font-size: 28px;">Thank You for Contacting M10 DJ Company!</h1>
+            <p style="color: #000; margin: 10px 0 0 0; font-size: 16px; font-weight: 500;">Premium Event Entertainment</p>
           </div>
           
           <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
@@ -227,41 +250,51 @@ export default async function handler(req, res) {
               Thank you for reaching out to M10 DJ Company! We've received your inquiry for your ${eventType.toLowerCase()} and are excited to help make your event unforgettable.
             </p>
             
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; margin: 20px 0;">
-              <h3 style="color: #333; margin-top: 0;">Your Event Details:</h3>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #fcba00;">
+              <h3 style="color: #333; margin-top: 0; color: #fcba00;">Your Event Details:</h3>
               <p style="margin: 5px 0;"><strong>Event Type:</strong> ${eventType}</p>
               ${eventDate ? `<p style="margin: 5px 0;"><strong>Date:</strong> ${new Date(eventDate).toLocaleDateString()}</p>` : ''}
               ${location ? `<p style="margin: 5px 0;"><strong>Location:</strong> ${location}</p>` : ''}
             </div>
             
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin: 20px 0;">
+              <p style="color: #856404; margin: 0; font-weight: 600; text-align: center;">
+                ⚡ We'll respond within 24 hours with your personalized quote!
+              </p>
+            </div>
+            
             <p style="color: #333; line-height: 1.6; margin-bottom: 20px;">
-              We'll review your request and get back to you within 24 hours with:
+              Here's what you can expect from us:
             </p>
             
             <ul style="color: #333; line-height: 1.8; padding-left: 20px;">
-              <li>A personalized quote for your event</li>
-              <li>Package options tailored to your needs</li>
-              <li>Availability confirmation for your date</li>
-              <li>Next steps to secure your booking</li>
+              <li><strong>Personalized quote</strong> tailored to your specific needs</li>
+              <li><strong>Package options</strong> that fit your budget and vision</li>
+              <li><strong>Availability confirmation</strong> for your event date</li>
+              <li><strong>Next steps</strong> to secure your booking</li>
+              <li><strong>Free consultation</strong> to discuss your music preferences</li>
             </ul>
             
             <p style="color: #333; line-height: 1.6; margin: 30px 0 20px 0;">
               In the meantime, feel free to check out our recent work and client testimonials on our website, or reach out directly if you have any immediate questions.
             </p>
             
-            <div style="text-align: center; margin: 30px 0;">
-              <p style="color: #666; margin: 5px 0;">Call us directly: <strong style="color: #fcba00;">(901) 410-2020</strong></p>
-              <p style="color: #666; margin: 5px 0;">Email: <strong style="color: #fcba00;">info@m10djcompany.com</strong></p>
+            <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+              <h3 style="color: #333; margin-top: 0; margin-bottom: 15px;">Ready to talk now?</h3>
+              <p style="color: #666; margin: 5px 0; font-size: 18px;">Call us directly: <strong style="color: #fcba00; font-size: 20px;">(901) 497-7001</strong></p>
+              <p style="color: #666; margin: 5px 0;">Email: <strong style="color: #fcba00;">djbenmurray@gmail.com</strong></p>
+              <p style="color: #666; margin: 5px 0; font-size: 14px;">Available 7 days a week for urgent inquiries</p>
             </div>
             
-            <p style="color: #333; line-height: 1.6; text-align: center; margin-top: 30px;">
-              Thank you for considering M10 DJ Company for your special event!
+            <p style="color: #333; line-height: 1.6; text-align: center; margin-top: 30px; font-style: italic;">
+              Thank you for considering M10 DJ Company for your special event!<br>
+              We can't wait to help make your celebration unforgettable.
             </p>
             
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
               <p style="color: #999; font-size: 14px; margin: 0;">
                 M10 DJ Company - Premium Event Entertainment<br>
-                Memphis, Tennessee
+                Memphis, Tennessee & Surrounding Areas
               </p>
             </div>
           </div>
@@ -328,7 +361,7 @@ export default async function handler(req, res) {
         // Send admin notification email
         await resend.emails.send({
           from: 'M10 DJ Company <onboarding@resend.dev>', // Using Resend's verified domain
-          to: ['m10djcompany@gmail.com'], // Your actual email
+          to: ['djbenmurray@gmail.com'], // Your actual email
           subject: `New ${eventType} Inquiry from ${name}`,
           html: adminEmailHtml,
         });

@@ -33,6 +33,26 @@ interface Contact {
   updated_at: string;
 }
 
+interface Project {
+  id: string;
+  event_name: string;
+  client_name: string;
+  client_email: string;
+  client_phone: string | null;
+  event_type: string;
+  event_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  number_of_guests: number | null;
+  special_requests: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface ContactsWrapperProps {
   userId: string;
   apiKeys?: {
@@ -98,6 +118,8 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   const [summary, setSummary] = useState<any>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
 
   // Fetch contacts from API
   const fetchContacts = async () => {
@@ -132,6 +154,66 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch projects for selected contact
+  const fetchProjects = async (contactId: string) => {
+    setProjectsLoading(true);
+    try {
+      const response = await fetch(`/api/get-contact-projects?contactId=${contactId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data.projects || []);
+      } else {
+        console.error('Failed to fetch projects');
+        setProjects([]);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setProjects([]);
+    } finally {
+      setProjectsLoading(false);
+    }
+  };
+
+  // Create project for existing contact (for testing)
+  const createProjectForContact = async (contactId: string) => {
+    setProjectsLoading(true);
+    try {
+      const response = await fetch('/api/create-project-for-contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ contactId }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: "Success",
+          description: "Project created successfully",
+        });
+        // Refresh projects
+        await fetchProjects(contactId);
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Error",
+          description: errorData.error || "Failed to create project",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create project",
+        variant: "destructive"
+      });
+    } finally {
+      setProjectsLoading(false);
     }
   };
 
@@ -197,6 +279,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   const handleContactClick = (contact: Contact) => {
     setSelectedContact(contact);
     setShowContactModal(true);
+    fetchProjects(contact.id);
   };
 
   const handleSendSMS = (contact: Contact) => {
@@ -511,25 +594,111 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                 </TabsContent>
 
                 <TabsContent value="event" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Event Type</label>
-                      <p className="text-sm text-gray-900">
-                        {selectedContact.event_type?.replace('_', ' ').toUpperCase() || 'Not specified'}
-                      </p>
+                  {/* Contact Event Details */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Contact Event Details</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Event Type</label>
+                        <p className="text-sm text-gray-900">
+                          {selectedContact.event_type?.replace('_', ' ').toUpperCase() || 'Not specified'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Event Date</label>
+                        <p className="text-sm text-gray-900">{formatDate(selectedContact.event_date)}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-sm font-medium text-gray-700">Venue</label>
+                        <p className="text-sm text-gray-900">{selectedContact.venue_name || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Budget Range</label>
+                        <p className="text-sm text-gray-900">{selectedContact.budget_range || 'Not specified'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Event Date</label>
-                      <p className="text-sm text-gray-900">{formatDate(selectedContact.event_date)}</p>
+                  </div>
+
+                  {/* Projects Section */}
+                  <div className="border-t pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-gray-700">Projects</h4>
+                      <Button 
+                        onClick={() => selectedContact && fetchProjects(selectedContact.id)}
+                        disabled={projectsLoading}
+                        variant="flat"
+                      >
+                        {projectsLoading ? 'Loading...' : 'Refresh'}
+                      </Button>
                     </div>
-                    <div className="col-span-2">
-                      <label className="text-sm font-medium text-gray-700">Venue</label>
-                      <p className="text-sm text-gray-900">{selectedContact.venue_name || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Budget Range</label>
-                      <p className="text-sm text-gray-900">{selectedContact.budget_range || 'Not specified'}</p>
-                    </div>
+                    
+                    {projectsLoading ? (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="text-xs text-gray-500 mt-2">Loading projects...</p>
+                      </div>
+                    ) : projects.length === 0 ? (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-gray-500">No projects found for this contact.</p>
+                        <p className="text-xs text-gray-400 mt-1">Projects are automatically created when contact forms are submitted.</p>
+                        <Button 
+                          onClick={() => createProjectForContact(selectedContact.id)}
+                          disabled={projectsLoading}
+                          variant="flat"
+                          className="mt-2"
+                        >
+                          Create Project (Test)
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {projects.map((project) => (
+                          <div key={project.id} className="border rounded-lg p-3 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h5 className="text-sm font-medium text-gray-900">{project.event_name}</h5>
+                                  <Badge 
+                                    className={
+                                      project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                      project.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                      project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                      project.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                                      'bg-red-100 text-red-800'
+                                    }
+                                  >
+                                    {project.status}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                                  <div>
+                                    <span className="font-medium">Type:</span> {project.event_type}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Date:</span> {project.event_date}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Venue:</span> {project.venue_name || 'Not specified'}
+                                  </div>
+                                  {project.number_of_guests && (
+                                    <div>
+                                      <span className="font-medium">Guests:</span> {project.number_of_guests}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="ml-3">
+                                <Link href={`/admin/projects/${project.id}`}>
+                                  <Button variant="flat">
+                                    View
+                                  </Button>
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
 

@@ -177,6 +177,7 @@ export default function Home() {
 
         {/* Client Logo Carousel */}
         <ClientLogoCarousel 
+          logoSet="general"
           title="Trusted by Memphis's Premier Organizations"
           subtitle="Proudly serving 500+ weddings, corporate events, and celebrations at Memphis's top venues"
         />
