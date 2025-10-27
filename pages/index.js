@@ -7,6 +7,7 @@ import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import SEO from '../components/SEO';
 import ContactForm from '../components/company/ContactForm';
+import ClientLogoCarousel from '../components/company/ClientLogoCarousel';
 import { generateStructuredData } from '../utils/generateStructuredData';
 
 export default function Home() {
@@ -173,6 +174,12 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Client Logo Carousel */}
+        <ClientLogoCarousel 
+          title="Trusted by Memphis's Premier Organizations"
+          subtitle="Proudly serving 500+ weddings, corporate events, and celebrations at Memphis's top venues"
+        />
 
         {/* Simple Contact Section */}
         <section id="contact" className="py-section-lg bg-gray-50">

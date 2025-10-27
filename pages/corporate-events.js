@@ -23,6 +23,7 @@ import {
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
+import ClientLogoCarousel from '../components/company/ClientLogoCarousel';
 
 export default function CorporateEvents() {
   const [isVisible, setIsVisible] = useState(false);
@@ -335,6 +336,12 @@ export default function CorporateEvents() {
             </div>
           </div>
         </section>
+
+        {/* Client Logo Carousel - Corporate Clients */}
+        <ClientLogoCarousel 
+          title="Trusted by Memphis's Leading Businesses"
+          subtitle="Proudly serving corporate events at Memphis Cook Convention Center, The Peabody Memphis, FedExForum, and premier Memphis corporate venues"
+        />
 
         {/* FAQ Section */}
         <section className="py-20 bg-gray-50">

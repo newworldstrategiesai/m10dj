@@ -20,6 +20,7 @@ import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
+import ClientLogoCarousel from '../components/company/ClientLogoCarousel';
 import Breadcrumbs, { generateBreadcrumbs } from '../components/Breadcrumbs';
 import { AIAnswerBlock, AIFactBox, MemphisDJAIBlocks } from '../components/AIOverviewOptimization';
 import { generateStructuredData } from '../utils/generateStructuredData';
@@ -780,6 +781,12 @@ export default function MemphisWeddingDJ() {
             </div>
           </div>
         </section>
+
+        {/* Client Logo Carousel - Wedding Venues & Partners */}
+        <ClientLogoCarousel 
+          title="Trusted at Memphis's Premier Wedding Venues"
+          subtitle="Preferred entertainment partner at The Peabody Hotel, Memphis Botanic Garden, Dixon Gallery & Gardens, and 27+ Memphis wedding venues"
+        />
 
         {/* Contact Section */}
         <section id="contact" className="py-20 bg-gray-50">
