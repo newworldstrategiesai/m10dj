@@ -66,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-async function processMessagingEvent(event: any) {
+async function processMessagingEvent(event) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
@@ -155,7 +155,7 @@ async function processMessagingEvent(event: any) {
   }
 }
 
-async function processComment(commentData: any) {
+async function processComment(commentData) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
@@ -211,7 +211,7 @@ async function processComment(commentData: any) {
   }
 }
 
-async function processMention(mentionData: any) {
+async function processMention(mentionData) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
@@ -255,7 +255,7 @@ async function processMention(mentionData: any) {
   }
 }
 
-function checkIfLeadInquiry(text: string): boolean {
+function checkIfLeadInquiry(text) {
   if (!text) return false;
   
   const inquiryKeywords = [
@@ -268,7 +268,7 @@ function checkIfLeadInquiry(text: string): boolean {
   return inquiryKeywords.some(keyword => lowerText.includes(keyword));
 }
 
-async function getInstagramUserInfo(userId: string) {
+async function getInstagramUserInfo(userId) {
   try {
     const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
     
@@ -291,10 +291,10 @@ async function getInstagramUserInfo(userId: string) {
 }
 
 async function sendAdminNotification(data: {
-  type: string;
-  contactId: string;
-  message: string;
-  username?: string;
+  type;
+  contactId;
+  message;
+  username?;
 }) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

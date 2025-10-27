@@ -3,13 +3,12 @@
  * Receives Facebook Messenger messages in real-time
  */
 
-import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   // Webhook verification (GET request from Facebook)
   if (req.method === 'GET') {
     const mode = req.query['hub.mode'];
@@ -54,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-async function processMessagingEvent(event: any) {
+async function processMessagingEvent(event) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
@@ -76,7 +75,7 @@ async function processMessagingEvent(event: any) {
   }
 }
 
-async function handleMessage(event: any, supabase: any) {
+async function handleMessage(event, supabase) {
   const senderId = event.sender.id;
   const timestamp = event.timestamp;
   const message = event.message?.text || '';
@@ -175,7 +174,7 @@ async function handleMessage(event: any, supabase: any) {
   }]);
 }
 
-async function handlePostback(event: any, supabase: any) {
+async function handlePostback(event, supabase) {
   const senderId = event.sender.id;
   const payload = event.postback.payload;
   const title = event.postback.title;
@@ -221,7 +220,7 @@ async function handlePostback(event: any, supabase: any) {
   }
 }
 
-async function handleReferral(event: any, supabase: any) {
+async function handleReferral(event, supabase) {
   const senderId = event.sender.id;
   const referralSource = event.referral.source;
   const referralType = event.referral.type;
@@ -239,7 +238,7 @@ async function handleReferral(event: any, supabase: any) {
   }]);
 }
 
-function checkIfLeadInquiry(text: string): boolean {
+function checkIfLeadInquiry(text) {
   if (!text) return false;
   
   const inquiryKeywords = [
@@ -253,7 +252,7 @@ function checkIfLeadInquiry(text: string): boolean {
   return inquiryKeywords.some(keyword => lowerText.includes(keyword));
 }
 
-async function getFacebookUserInfo(userId: string) {
+async function getFacebookUserInfo(userId) {
   try {
     const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
     
@@ -275,7 +274,7 @@ async function getFacebookUserInfo(userId: string) {
   return { name: 'Facebook User', first_name: 'Facebook', last_name: 'User' };
 }
 
-async function sendMessengerReply(recipientId: string, message: string) {
+async function sendMessengerReply(recipientId, message) {
   try {
     const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
     
@@ -310,10 +309,10 @@ async function sendMessengerReply(recipientId: string, message: string) {
 }
 
 async function sendAdminNotification(data: {
-  type: string;
-  contactId: string;
-  message: string;
-  senderName?: string;
+  type;
+  contactId;
+  message;
+  senderName?;
 }) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
