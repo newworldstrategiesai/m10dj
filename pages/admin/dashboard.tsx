@@ -447,7 +447,7 @@ export default function AdminDashboard() {
               </Link>
               <Link href="/admin/instagram" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-pink-500 hover:bg-pink-50 transition-colors">
                 <Music className="h-5 w-5 text-pink-600" />
-                <span className="text-sm font-medium text-gray-900">Instagram Leads</span>
+                <span className="text-sm font-medium text-gray-900">Social Media</span>
               </Link>
             </div>
           </div>

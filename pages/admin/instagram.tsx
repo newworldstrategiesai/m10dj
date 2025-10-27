@@ -1,6 +1,6 @@
 /**
- * Instagram Integration Admin Page
- * Manage Instagram lead capture and monitoring
+ * Social Media Integration Admin Page
+ * Manage Instagram and Messenger lead capture and monitoring
  */
 
 import { useState, useEffect } from 'react';
@@ -8,7 +8,7 @@ import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { ArrowLeft } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import InstagramIntegration from '@/components/admin/InstagramIntegration';
+import SocialMediaIntegration from '@/components/admin/SocialMediaIntegration';
 import Link from 'next/link';
 
 export default function InstagramPage() {
@@ -67,17 +67,17 @@ export default function InstagramPage() {
         {/* Header */}
         <div className="mb-8">
           <Link href="/admin/dashboard">
-            <Button variant="slim" size="sm" className="mb-4">
+            <Button variant="slim" className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Instagram Integration</h1>
-          <p className="text-gray-600">Monitor Instagram DMs and comments for potential leads</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Social Media Integration</h1>
+          <p className="text-gray-600">Monitor Instagram and Messenger for potential leads</p>
         </div>
 
-        {/* Instagram Integration Component */}
-        <InstagramIntegration />
+        {/* Social Media Integration Component */}
+        <SocialMediaIntegration />
       </div>
     </div>
   );
