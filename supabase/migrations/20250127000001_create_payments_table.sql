@@ -60,12 +60,12 @@ CREATE TABLE IF NOT EXISTS public.payments (
 );
 
 -- Indexes for fast queries
-CREATE INDEX idx_payments_contact_id ON public.payments(contact_id);
-CREATE INDEX idx_payments_project_id ON public.payments(project_id);
-CREATE INDEX idx_payments_transaction_date ON public.payments(transaction_date);
-CREATE INDEX idx_payments_status ON public.payments(payment_status);
-CREATE INDEX idx_payments_due_date ON public.payments(due_date);
-CREATE INDEX idx_payments_method ON public.payments(payment_method);
+CREATE INDEX IF NOT EXISTS idx_payments_contact_id ON public.payments(contact_id);
+CREATE INDEX IF NOT EXISTS idx_payments_project_id ON public.payments(project_id);
+CREATE INDEX IF NOT EXISTS idx_payments_transaction_date ON public.payments(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments(payment_status);
+CREATE INDEX IF NOT EXISTS idx_payments_due_date ON public.payments(due_date);
+CREATE INDEX IF NOT EXISTS idx_payments_method ON public.payments(payment_method);
 
 -- Enable Row Level Security
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
