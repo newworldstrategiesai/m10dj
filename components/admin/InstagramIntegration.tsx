@@ -277,7 +277,7 @@ export default function InstagramIntegration() {
         <div className="bg-gray-50 rounded-lg p-4 mb-4">
           <div className="flex items-center justify-between">
             <code className="text-sm text-gray-900 break-all">{webhookUrl}</code>
-            <Button onClick={copyWebhookUrl} size="sm" variant="outline">
+            <Button onClick={copyWebhookUrl} variant="slim">
               Copy
             </Button>
           </div>
