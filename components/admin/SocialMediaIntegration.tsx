@@ -278,7 +278,7 @@ export default function SocialMediaIntegration() {
             <MessageCircle className="h-4 w-4" />
             Messenger
           </TabsTrigger>
-        </Tabs>
+        </TabsList>
 
         {/* Instagram Tab */}
         <TabsContent value="instagram" className="space-y-6">
