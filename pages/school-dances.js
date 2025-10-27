@@ -31,49 +31,80 @@ export default function SchoolDances() {
     setIsVisible(true);
   }, []);
 
+  const schoolPackages = [
+    {
+      title: 'Just the Basics',
+      description: 'Essential DJ services for smaller school events',
+      duration: '3 hours',
+      features: ['Professional DJ/MC services', 'Premium sound system', 'Wireless microphone', 'Age-appropriate music', 'Dance floor lighting', 'Professional setup & coordination'],
+      price: '$850',
+      bestFor: 'Spirit week events, pep rallies, small fundraisers, after-school events'
+    },
+    {
+      title: 'Package #1',
+      description: 'Complete entertainment for most school dances',
+      duration: '4 hours',
+      features: ['Professional DJ/MC services', 'Premium sound system & microphones', 'Multi-color LED dance floor lighting', 'School-appropriate music library', 'Professional setup & coordination', 'Backup equipment', 'Special announcements (court, awards, etc.)'],
+      price: '$1,095',
+      bestFor: 'Homecoming dances, winter formals, graduation parties, school fundraisers',
+      popular: true
+    },
+    {
+      title: 'Package #2',
+      description: 'Premium school dance experience',
+      duration: '4 hours',
+      features: ['Everything in Package #1, PLUS:', 'Up to 16 elegant uplighting fixtures', 'Enhanced venue ambiance', 'Professional lighting design', 'Complete A/V support', 'Special effects options', 'Photo-ready atmosphere'],
+      price: '$1,345',
+      bestFor: 'Prom night, senior balls, major school galas, large formal dances'
+    }
+  ];
+
   const schoolEvents = [
     {
       title: 'Homecoming Dances',
       description: 'Create lasting memories with professional DJ services for your homecoming celebration',
       features: ['Current hit music', 'Traditional homecoming songs', 'Royal court announcements', 'Photo-worthy lighting'],
-      price: 'Starting at $595',
       icon: Trophy
     },
     {
       title: 'Prom Night',
       description: 'Make prom magical with elegant entertainment and dance floor perfection',
       features: ['Sophisticated sound system', 'Romantic slow songs', 'High-energy dance music', 'Special lighting effects'],
-      price: 'Starting at $795',
       icon: Heart
     },
     {
       title: 'Winter Formal',
       description: 'Elegant entertainment for your winter dance with holiday spirit',
       features: ['Formal dance music', 'Holiday favorites', 'Elegant presentation', 'Professional MC services'],
-      price: 'Starting at $645',
       icon: Sparkles
     },
     {
       title: 'Graduation Parties',
       description: 'Celebrate achievements with music that honors the graduating class',
       features: ['Class year favorites', 'Achievement recognition', 'Senior class traditions', 'Memory lane music'],
-      price: 'Starting at $525',
       icon: GraduationCap
     },
     {
       title: 'School Fundraisers',
       description: 'Support your school with entertaining events that bring the community together',
       features: ['Family-friendly music', 'Community engagement', 'Fundraising announcements', 'Interactive activities'],
-      price: 'Starting at $495',
       icon: Users
     },
     {
       title: 'Spirit Week Events',
       description: 'Pump up school spirit with high-energy entertainment for pep rallies and events',
       features: ['School fight songs', 'Pump-up music', 'Spirit chants', 'Athletic event coordination'],
-      price: 'Starting at $395',
       icon: Award
     }
+  ];
+
+  const addOnServices = [
+    { name: 'Additional Hour', price: '$150', description: 'Extend your event beyond package hours' },
+    { name: 'Photo Booth Package', price: '$400', description: 'Digital photo booth with props and instant sharing' },
+    { name: 'Flat Screen TV w/ Stand', price: '$300', description: '65" TV for photo slideshows or announcements' },
+    { name: 'Additional Speaker', price: '$150', description: 'Extra speaker for cocktail hour or separate areas' },
+    { name: 'Fog Machine', price: '$200', description: 'Create dramatic dance floor atmosphere' },
+    { name: 'School Mascot Projection', price: '$300', description: 'Custom school logo/mascot projection' }
   ];
 
   const musicStyles = [
@@ -213,11 +244,117 @@ export default function SchoolDances() {
           </div>
         </section>
 
-        {/* School Events Section */}
+        {/* Pricing Section */}
         <section id="events" className="py-20 bg-white">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">School Event Services</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">School Dance DJ Packages</h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
+                Transparent pricing for professional school event entertainment. All packages include age-appropriate music, premium equipment, and backup systems.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+              {schoolPackages.map((pkg, index) => (
+                <div key={index} className={`rounded-2xl p-8 transition-all ${
+                  pkg.popular 
+                    ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-2xl transform scale-105 relative' 
+                    : 'bg-gray-50 hover:shadow-xl'
+                }`}>
+                  {pkg.popular && (
+                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                      <span className="bg-brand-gold text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                        ⭐ MOST POPULAR ⭐
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="text-center mb-6">
+                    <h3 className={`text-2xl font-bold mb-2 font-sans ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>
+                      {pkg.title}
+                    </h3>
+                    <p className={`mb-4 font-inter ${pkg.popular ? 'text-white/90' : 'text-gray-600'}`}>
+                      {pkg.description}
+                    </p>
+                    <div className={`text-4xl font-bold mb-2 ${pkg.popular ? 'text-brand-gold' : 'text-brand'}`}>
+                      {pkg.price}
+                    </div>
+                    <p className={`text-sm ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>
+                      {pkg.duration} of service
+                    </p>
+                  </div>
+                  
+                  <ul className="space-y-3 mb-6">
+                    {pkg.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-start text-sm">
+                        <CheckCircle className={`w-5 h-5 mr-2 flex-shrink-0 mt-0.5 ${
+                          pkg.popular ? 'text-brand-gold' : 'text-green-500'
+                        }`} />
+                        <span className={pkg.popular ? 'text-white' : 'text-gray-700'}>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <div className={`text-sm mb-6 p-3 rounded-lg ${
+                    pkg.popular ? 'bg-white/10' : 'bg-indigo-50'
+                  }`}>
+                    <p className={`font-semibold mb-1 ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>
+                      Best For:
+                    </p>
+                    <p className={pkg.popular ? 'text-white/90' : 'text-gray-600'}>
+                      {pkg.bestFor}
+                    </p>
+                  </div>
+                  
+                  <Link href="#contact" className={`block w-full text-center py-3 rounded-lg font-semibold transition-colors ${
+                    pkg.popular 
+                      ? 'bg-brand-gold text-black hover:bg-brand-gold/90' 
+                      : 'bg-brand text-white hover:bg-brand/90'
+                  }`}>
+                    Get Started
+                  </Link>
+                </div>
+              ))}
+            </div>
+
+            {/* Add-On Services */}
+            <div className="bg-gray-50 rounded-2xl p-8 md:p-12">
+              <div className="text-center mb-8">
+                <h3 className="text-3xl font-bold text-gray-900 mb-4 font-sans">School Event Add-On Services</h3>
+                <p className="text-lg text-gray-600 font-inter">
+                  Enhance your school dance with these popular add-ons
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {addOnServices.map((addon, index) => (
+                  <div key={index} className="bg-white rounded-xl p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className="font-bold text-gray-900 font-sans">{addon.name}</h4>
+                      <span className="text-brand font-bold text-lg">{addon.price}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 font-inter">{addon.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-center mt-8 p-6 bg-white rounded-xl">
+                <p className="text-gray-700 mb-4">
+                  <strong>All packages include:</strong> Professional setup & teardown, backup equipment, liability insurance, pre-event consultation, and professional attire
+                </p>
+                <p className="text-lg text-brand font-semibold">
+                  📞 Call (901) 410-2020 for custom quotes | 🎓 Serving Memphis area schools
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* School Events We Serve Section */}
+        <section className="py-20 bg-gray-50">
+          <div className="section-container">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">School Events We Serve</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
                 Professional entertainment for all your school's special events and celebrations.
               </p>
@@ -241,8 +378,6 @@ export default function SchoolDances() {
                       </li>
                     ))}
                   </ul>
-                  
-                  <div className="text-brand font-semibold text-lg mb-4">{event.price}</div>
                   
                   <Link href="#contact" className="btn-outline w-full text-center">
                     Book This Event
