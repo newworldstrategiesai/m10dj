@@ -55,17 +55,8 @@ function determineProjectStatus(payments, eventDate) {
     return 'confirmed';
   }
   
-  // If partially paid, mark as pending
-  if (totalPaid > 0) {
-    return 'pending';
-  }
-  
-  // If no payment yet but event is soon (<30 days), urgent
-  if (eventDate && new Date(eventDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) {
-    return 'pending';
-  }
-  
-  return 'pending';
+  // Otherwise mark as confirmed (since they have payments, they're booked)
+  return 'confirmed';
 }
 
 function estimateEventDuration(totalAmount, eventType) {
@@ -175,23 +166,20 @@ async function generateProjects() {
           }
         }
         
-        // Build notes
-        const notes = [];
-        notes.push(`Auto-generated project from ${payments.length} payment(s)`);
-        notes.push(`Total paid: $${totalPaid.toFixed(2)} of $${totalAmount.toFixed(2)}`);
+        // Build timeline notes
+        const timelineNotes = [];
+        timelineNotes.push(`Auto-generated project from ${payments.length} payment(s)`);
+        timelineNotes.push(`Total paid: $${totalPaid.toFixed(2)} of $${totalAmount.toFixed(2)}`);
         if (firstPaymentDate) {
-          notes.push(`First payment: ${new Date(firstPaymentDate).toLocaleDateString()}`);
+          timelineNotes.push(`First payment: ${new Date(firstPaymentDate).toLocaleDateString()}`);
         }
         if (payments.length > 1 && lastPaymentDate) {
-          notes.push(`Last payment: ${new Date(lastPaymentDate).toLocaleDateString()}`);
-        }
-        if (contact.special_requests) {
-          notes.push(`Special requests: ${contact.special_requests}`);
+          timelineNotes.push(`Last payment: ${new Date(lastPaymentDate).toLocaleDateString()}`);
         }
         
         // Create the project
         const projectData = {
-          submission_id: contact.id, // Link to contact
+          submission_id: null, // No submission since imported from HoneyBook
           event_name: projectName,
           client_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Client',
           client_email: contact.email_address,
@@ -205,7 +193,7 @@ async function generateProjects() {
           event_duration: estimatedDuration,
           special_requests: contact.special_requests,
           status: projectStatus,
-          notes: notes.join('\n'),
+          timeline_notes: timelineNotes.join('\n'),
           created_at: firstPaymentDate || contact.created_at
         };
         
