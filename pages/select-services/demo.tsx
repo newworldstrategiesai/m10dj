@@ -1,10 +1,10 @@
 /**
- * Service Selection Page (Public)
- * Unique link for each lead to select their DJ services
+ * Service Selection Demo Page
+ * Test the service selection form without needing a real token
+ * URL: /select-services/demo
  */
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import React, { useState } from 'react';
 import { 
   Music, 
   Clock, 
@@ -13,7 +13,6 @@ import {
   MapPin,
   DollarSign,
   CheckCircle,
-  Loader,
   AlertCircle,
   Sparkles,
   Phone
@@ -21,27 +20,31 @@ import {
 import Button from '@/components/ui/Button';
 import VenueAutocomplete from '@/components/VenueAutocomplete';
 
-export default function SelectServicesPage() {
-  const router = useRouter();
-  const { token } = router.query;
-
-  const [loading, setLoading] = useState(true);
+export default function ServiceSelectionDemo() {
   const [submitting, setSubmitting] = useState(false);
-  const [valid, setValid] = useState(false);
-  const [alreadyUsed, setAlreadyUsed] = useState(false);
-  const [contact, setContact] = useState<any>(null);
-  const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [submissionData, setSubmissionData] = useState<any>(null);
+
+  // Demo contact data
+  const contact = {
+    first_name: 'Sarah',
+    last_name: 'Johnson',
+    email_address: 'sarah@example.com',
+    phone: '(901) 555-1234',
+    event_type: 'wedding',
+    event_date: '2025-06-15',
+    venue_name: 'The Peabody Memphis',
+    venue_address: '149 Union Ave, Memphis, TN 38103',
+    guest_count: 150
+  };
 
   // Form state
   const [selections, setSelections] = useState({
-    eventType: '',
-    eventDate: '',
+    eventType: contact.event_type || 'wedding',
+    eventDate: contact.event_date || '',
     eventTime: '',
-    venueName: '',
-    venueAddress: '',
-    guestCount: '',
+    venueName: contact.venue_name || '',
+    venueAddress: contact.venue_address || '',
+    guestCount: contact.guest_count?.toString() || '',
     eventDuration: '4',
     package: '',
     services: [] as string[],
@@ -52,78 +55,20 @@ export default function SelectServicesPage() {
     afterParty: false,
     musicPreferences: '',
     specialRequests: '',
-    budgetRange: ''
+    budgetRange: '',
+    additionalQuestions: ''
   });
-
-  useEffect(() => {
-    if (token) {
-      validateToken();
-    }
-  }, [token]);
-
-  const validateToken = async () => {
-    try {
-      const response = await fetch(`/api/service-selection/validate-token?token=${token}`);
-      const data = await response.json();
-
-      if (data.valid) {
-        setValid(true);
-        setContact(data.contact);
-        setAlreadyUsed(data.already_used || false);
-
-        // Pre-fill form with contact data
-        if (data.contact) {
-          setSelections(prev => ({
-            ...prev,
-            eventType: data.contact.event_type || '',
-            eventDate: data.contact.event_date || '',
-            venueName: data.contact.venue_name || '',
-            venueAddress: data.contact.venue_address || '',
-            guestCount: data.contact.guest_count || '',
-            budgetRange: data.contact.budget_range || ''
-          }));
-        }
-      } else {
-        setError(data.error || 'Invalid or expired link');
-      }
-    } catch (err) {
-      setError('Failed to validate link. Please contact us directly.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
 
-    try {
-      const response = await fetch('/api/service-selection/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          selections: {
-            ...selections,
-            guestCount: parseInt(selections.guestCount) || null,
-            eventDuration: parseFloat(selections.eventDuration) || null
-          }
-        })
-      });
+    // Simulate submission delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setSubmissionData(data);
-        setSubmitted(true);
-      } else {
-        setError(data.error || 'Submission failed');
-      }
-    } catch (err) {
-      setError('Failed to submit. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+    console.log('Demo Submission:', selections);
+    setSubmitted(true);
+    setSubmitting(false);
   };
 
   const packages = [
@@ -178,79 +123,19 @@ export default function SelectServicesPage() {
     { id: 'uplighting_addon', name: 'Uplighting Add-on (Package 1 only)', price: '$300' }
   ];
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <Loader className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading your service selection...</p>
-        </div>
-      </div>
+  if (submitted) {
+    // Get selected package details
+    const selectedPkg = packages.find(p => p.id === selections.package);
+    const selectedAddOns = addOns.filter(a => selections.addOns.includes(a.id));
+    
+    // Calculate pricing
+    const packagePrice = selectedPkg ? parseFloat(selectedPkg.price.replace(/[$,]/g, '')) : 0;
+    const addOnsTotal = selectedAddOns.reduce((sum, addon) => 
+      sum + parseFloat(addon.price.replace(/[$,]/g, '')), 0
     );
-  }
-
-  if (error && !valid) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <AlertCircle className="h-16 w-16 text-red-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Link Invalid or Expired</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <p className="text-sm text-gray-500 mb-6">
-            Please contact us directly to discuss your event:
-          </p>
-          <a 
-            href="tel:+19014102020"
-            className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-          >
-            Call (901) 410-2020
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  if (alreadyUsed) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Already Submitted!</h1>
-          <p className="text-gray-600 mb-4">
-            Hi {contact?.first_name}! You've already submitted your service selections.
-          </p>
-          <p className="text-gray-500">
-            We'll be in touch within 24 hours with your custom quote!
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (submitted && submissionData) {
-    // Package details
-    const packageDetails = {
-      'package_1': { name: 'Package 1 - Reception Only', price: '$2,000', features: ['DJ/MC Services (4 hours)', 'Speakers & microphones', 'Dance floor lighting', 'Uplighting (16 LED fixtures)', 'Additional speaker'] },
-      'package_2': { name: 'Package 2 - Reception Only', price: '$2,500', features: ['DJ/MC Services (4 hours)', 'Speakers & microphones', 'Dance floor lighting', 'Uplighting (16 LED fixtures)', 'Ceremony audio & music', 'Monogram projection'] },
-      'package_3': { name: 'Package 3 - Ceremony & Reception', price: '$3,000', features: ['DJ/MC Services (4 hours)', 'Speakers & microphones', 'Ceremony audio & music', 'Dance floor lighting', 'Uplighting (16 LED fixtures)', 'Dancing on the Clouds effect', 'Monogram projection'] }
-    };
-
-    const addOnDetails = {
-      'additional_hour': { name: 'Additional Hour(s)', price: '$300' },
-      'additional_speaker': { name: 'Additional Speaker', price: '$250' },
-      'dancing_clouds': { name: 'Dancing on the Clouds', price: '$500' },
-      'cold_spark': { name: 'Cold Spark Fountain Effect', price: '$600' },
-      'monogram': { name: 'Monogram Projection', price: '$350' },
-      'uplighting_addon': { name: 'Uplighting Add-on', price: '$300' }
-    };
-
-    const selectedPackage = submissionData.selections?.package ? packageDetails[submissionData.selections.package as keyof typeof packageDetails] : null;
-    const selectedAddOns = (submissionData.selections?.addOns || [])
-      .map((id: string) => addOnDetails[id as keyof typeof addOnDetails])
-      .filter(Boolean);
-    const invoice = submissionData.invoice;
-    const timeline = submissionData.selections?.timeline || {};
-
+    const subtotal = packagePrice + addOnsTotal;
+    const invoiceNumber = `INV-${Date.now()}`;
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12 px-4">
         <div className="max-w-3xl mx-auto">
@@ -259,7 +144,7 @@ export default function SelectServicesPage() {
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="h-12 w-12 text-green-600" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">Thank You, {contact?.first_name}!</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-3">Thank You, {contact.first_name}!</h1>
             <p className="text-xl text-gray-600 mb-2">
               Your service selections have been received 🎉
             </p>
@@ -276,17 +161,17 @@ export default function SelectServicesPage() {
             </h2>
 
             {/* Selected Package */}
-            {selectedPackage && (
+            {selectedPkg && (
               <div className="mb-6 pb-6 border-b border-gray-200">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">{selectedPackage.name}</h3>
-                    <p className="text-2xl font-bold text-blue-600 mt-1">{selectedPackage.price}</p>
+                    <h3 className="text-lg font-bold text-gray-900">{selectedPkg.name}</h3>
+                    <p className="text-2xl font-bold text-blue-600 mt-1">{selectedPkg.price}</p>
                   </div>
                   <Sparkles className="h-6 w-6 text-purple-600" />
                 </div>
                 <ul className="space-y-2 mt-4">
-                  {selectedPackage.features.map((feature: string, idx: number) => (
+                  {selectedPkg.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
                       <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
                       {feature}
@@ -301,8 +186,8 @@ export default function SelectServicesPage() {
               <div className="mb-6 pb-6 border-b border-gray-200">
                 <h3 className="font-bold text-gray-900 mb-3">Add-ons Selected:</h3>
                 <ul className="space-y-3">
-                  {selectedAddOns.map((addon: any) => (
-                    <li key={addon.name} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                  {selectedAddOns.map(addon => (
+                    <li key={addon.id} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-5 w-5 text-purple-600" />
                         <span className="font-semibold text-gray-900">{addon.name}</span>
@@ -315,112 +200,114 @@ export default function SelectServicesPage() {
             )}
 
             {/* Event Details */}
-            {submissionData.selections && (
-              <div className="space-y-3">
-                <h3 className="font-bold text-gray-900 mb-3">Event Details:</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2 text-gray-700">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                    <span><strong>Event:</strong> {submissionData.selections.eventType} on {submissionData.selections.eventDate}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-700">
-                    <Users className="h-4 w-4 text-blue-600" />
-                    <span><strong>Guests:</strong> {submissionData.selections.guestCount}</span>
-                  </div>
-                  {submissionData.selections.venueName && (
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <MapPin className="h-4 w-4 text-blue-600" />
-                      <span><strong>Venue:</strong> {submissionData.selections.venueName}</span>
-                    </div>
-                  )}
-                  {submissionData.selections.budgetRange && (
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <DollarSign className="h-4 w-4 text-blue-600" />
-                      <span><strong>Budget:</strong> {submissionData.selections.budgetRange}</span>
-                    </div>
-                  )}
+            <div className="space-y-3">
+              <h3 className="font-bold text-gray-900 mb-3">Event Details:</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                  <span><strong>Event:</strong> {selections.eventType} on {selections.eventDate}</span>
                 </div>
-                {(timeline.ceremonyMusic || timeline.cocktailHour || timeline.reception || timeline.afterParty) && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <p className="text-sm text-gray-700"><strong>Timeline:</strong></p>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {timeline.ceremonyMusic && (
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                          ✓ Ceremony
-                        </span>
-                      )}
-                      {timeline.cocktailHour && (
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                          ✓ Cocktail Hour
-                        </span>
-                      )}
-                      {timeline.reception && (
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                          ✓ Reception
-                        </span>
-                      )}
-                      {timeline.afterParty && (
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                          ✓ After Party
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Users className="h-4 w-4 text-blue-600" />
+                  <span><strong>Guests:</strong> {selections.guestCount}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-700">
+                  <MapPin className="h-4 w-4 text-blue-600" />
+                  <span><strong>Venue:</strong> {selections.venueName}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                  <span><strong>Duration:</strong> {selections.eventDuration} hours</span>
+                </div>
               </div>
-            )}
+              {selections.budgetRange && (
+                <div className="flex items-center gap-2 text-gray-700 mt-3">
+                  <DollarSign className="h-4 w-4 text-blue-600" />
+                  <span><strong>Budget Range:</strong> {selections.budgetRange}</span>
+                </div>
+              )}
+              {(selections.ceremonyMusic || selections.cocktailHour || selections.reception || selections.afterParty) && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-sm text-gray-700"><strong>Timeline:</strong></p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selections.ceremonyMusic && (
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        ✓ Ceremony
+                      </span>
+                    )}
+                    {selections.cocktailHour && (
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        ✓ Cocktail Hour
+                      </span>
+                    )}
+                    {selections.reception && (
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        ✓ Reception
+                      </span>
+                    )}
+                    {selections.afterParty && (
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        ✓ After Party
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Invoice */}
-          {invoice && (
-            <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <DollarSign className="h-6 w-6 text-green-600" />
-                  Draft Invoice
-                </h2>
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold">
-                  DRAFT
-                </span>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-sm text-gray-600">Invoice #: <span className="font-mono">{invoice.invoice_number}</span></p>
-                <p className="text-sm text-gray-600">Date: {new Date(invoice.invoice_date).toLocaleDateString()}</p>
-              </div>
-
-              <table className="w-full mb-6">
-                <thead>
-                  <tr className="border-b-2 border-gray-300">
-                    <th className="text-left py-3 text-gray-700">Description</th>
-                    <th className="text-right py-3 text-gray-700">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.line_items?.map((item: any, idx: number) => (
-                    <tr key={idx} className="border-b border-gray-200">
-                      <td className="py-3 text-gray-900">{item.description}</td>
-                      <td className="py-3 text-right font-semibold text-gray-900">
-                        ${item.total.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-gray-300">
-                    <td className="py-4 text-lg font-bold text-gray-900">Total</td>
-                    <td className="py-4 text-right text-2xl font-bold text-green-600">
-                      ${invoice.total.toLocaleString()}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-
-              <p className="text-xs text-gray-500 italic">
-                * This is a draft estimate. Final quote may vary based on your specific requirements.
-              </p>
+          {/* Invoice Preview */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <DollarSign className="h-6 w-6 text-green-600" />
+                Draft Invoice
+              </h2>
+              <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold">
+                DRAFT
+              </span>
             </div>
-          )}
+
+            <div className="mb-6">
+              <p className="text-sm text-gray-600">Invoice #: <span className="font-mono">{invoiceNumber}</span></p>
+              <p className="text-sm text-gray-600">Date: {new Date().toLocaleDateString()}</p>
+            </div>
+
+            <table className="w-full mb-6">
+              <thead>
+                <tr className="border-b-2 border-gray-300">
+                  <th className="text-left py-3 text-gray-700">Description</th>
+                  <th className="text-right py-3 text-gray-700">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedPkg && (
+                  <tr className="border-b border-gray-200">
+                    <td className="py-3 text-gray-900">{selectedPkg.name}</td>
+                    <td className="py-3 text-right font-semibold text-gray-900">{selectedPkg.price}</td>
+                  </tr>
+                )}
+                {selectedAddOns.map(addon => (
+                  <tr key={addon.id} className="border-b border-gray-200">
+                    <td className="py-3 text-gray-900">{addon.name}</td>
+                    <td className="py-3 text-right font-semibold text-gray-900">{addon.price}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-300">
+                  <td className="py-4 text-lg font-bold text-gray-900">Total</td>
+                  <td className="py-4 text-right text-2xl font-bold text-green-600">
+                    ${subtotal.toLocaleString()}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <p className="text-xs text-gray-500 italic">
+              * This is a draft estimate. Final quote may vary based on your specific requirements.
+            </p>
+          </div>
 
           {/* Next Steps */}
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl shadow-xl p-8 mb-6">
@@ -439,25 +326,31 @@ export default function SelectServicesPage() {
                 <span className="text-gray-700">Reach out within 24 hours with pricing and next steps</span>
               </li>
             </ol>
-            <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <a 
-                href="tel:+19014102020"
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-              >
-                <Phone className="h-5 w-5" />
-                Call Us: (901) 410-2020
-              </a>
-              <a 
-                href="/"
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-white text-gray-700 border border-gray-300 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition"
-              >
-                Visit Our Website
+            <div className="mt-6 p-4 bg-white rounded-lg">
+              <p className="text-sm text-gray-700 mb-2">
+                <strong>Questions in the meantime?</strong>
+              </p>
+              <a href="tel:+19014102020" className="flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700">
+                <Phone className="h-4 w-4" />
+                Call us: (901) 410-2020
               </a>
             </div>
           </div>
 
-          <div className="text-center text-sm text-gray-500">
-            <p>Check your email for a confirmation of your selections.</p>
+          {/* Demo Controls */}
+          <div className="bg-yellow-100 border-2 border-yellow-400 rounded-xl p-6 text-center">
+            <p className="font-bold text-yellow-900 mb-4">🧪 DEMO MODE - Admin Controls</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={() => { setSubmitted(false); setSelections({...selections, package: '', addOns: []}); }}>
+                Test Again
+              </Button>
+              <Button variant="slim" onClick={() => window.location.href = '/admin/service-selection'}>
+                Admin Dashboard
+              </Button>
+            </div>
+            <p className="text-xs text-yellow-800 mt-4">
+              💡 Check browser console for full submission data
+            </p>
           </div>
         </div>
       </div>
@@ -466,6 +359,14 @@ export default function SelectServicesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-12 px-4">
+      {/* Demo Banner */}
+      <div className="max-w-4xl mx-auto mb-6">
+        <div className="bg-yellow-100 border-2 border-yellow-400 rounded-xl p-4 text-center">
+          <p className="font-bold text-yellow-900">🧪 DEMO MODE</p>
+          <p className="text-sm text-yellow-800">This is a test version. Real leads will see the actual token-protected page.</p>
+        </div>
+      </div>
+
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 text-center">
@@ -473,7 +374,7 @@ export default function SelectServicesPage() {
             <Music className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Hi {contact?.first_name}! Let's Plan Your Event 🎉
+            Hi {contact.first_name}! Let's Plan Your Event 🎉
           </h1>
           <p className="text-gray-600">
             Select your DJ services and we'll send you a custom quote within 24 hours
@@ -730,11 +631,13 @@ export default function SelectServicesPage() {
                 </select>
               </div>
               
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Questions or Services Not Listed?
                 </label>
                 <textarea
+                  value={selections.additionalQuestions}
+                  onChange={(e) => setSelections({...selections, additionalQuestions: e.target.value})}
                   placeholder="Any other services you're interested in or questions about our offerings?"
                   rows={3}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -752,13 +655,13 @@ export default function SelectServicesPage() {
             >
               {submitting ? (
                 <>
-                  <Loader className="h-5 w-5 mr-2 animate-spin" />
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2 inline-block"></div>
                   Submitting...
                 </>
               ) : (
                 <>
-                  <CheckCircle className="h-5 w-5 mr-2" />
-                  Submit Selections & Get Quote
+                  <CheckCircle className="h-5 w-5 mr-2 inline" />
+                  Test Submit (Demo Only)
                 </>
               )}
             </Button>
@@ -782,3 +685,4 @@ export default function SelectServicesPage() {
     </div>
   );
 }
+

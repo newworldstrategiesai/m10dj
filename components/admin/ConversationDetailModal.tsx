@@ -20,20 +20,28 @@ import {
   CheckCircle,
   AlertCircle,
   ExternalLink,
-  Zap
+  Zap,
+  Inbox
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Badge } from '@/components/ui/badge';
 
 interface Message {
   id: string;
-  sender_id: string;
-  message_text: string;
+  sender_id?: string;
+  message_text?: string;
   timestamp: string;
   is_lead_inquiry: boolean;
   processed: boolean;
   contact_id: string | null;
-  platform: 'instagram' | 'messenger';
+  platform: 'instagram' | 'messenger' | 'email';
+  // Email-specific fields
+  from_email?: string;
+  from_name?: string;
+  to_email?: string;
+  subject?: string;
+  body_text?: string;
+  message_type?: string;
 }
 
 interface Contact {
@@ -80,22 +88,42 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
   const fetchConversationData = async () => {
     setLoading(true);
     try {
-      // Fetch all messages from this sender
-      const table = message.platform === 'instagram' ? 'instagram_messages' : 'messenger_messages';
-      const { data: messages } = await supabase
-        .from(table)
-        .select('*')
-        .eq('sender_id', message.sender_id)
-        .order('timestamp', { ascending: true });
+      // Fetch all messages from this sender based on platform
+      let messages: any[] = [];
+      
+      if (message.platform === 'email') {
+        // For email, fetch all messages from/to this email address
+        const email = message.from_email || message.to_email;
+        if (email) {
+          const { data: emailMessages } = await supabase
+            .from('email_messages')
+            .select('*')
+            .or(`from_email.eq.${email},to_email.eq.${email}`)
+            .order('timestamp', { ascending: true });
+          
+          if (emailMessages) {
+            messages = emailMessages.map(m => ({ ...m, platform: 'email' }));
+          }
+        }
+      } else {
+        // For Instagram/Messenger, use sender_id
+        const table = message.platform === 'instagram' ? 'instagram_messages' : 'messenger_messages';
+        const { data: socialMessages } = await supabase
+          .from(table)
+          .select('*')
+          .eq('sender_id', message.sender_id)
+          .order('timestamp', { ascending: true });
 
-      if (messages) {
-        const messagesWithPlatform = messages.map(m => ({ ...m, platform: message.platform }));
-        setAllMessages(messagesWithPlatform);
-        
-        // Detect event data from conversation
-        const detected = detectEventData(messagesWithPlatform);
-        setDetectedData(detected);
+        if (socialMessages) {
+          messages = socialMessages.map(m => ({ ...m, platform: message.platform }));
+        }
       }
+
+      setAllMessages(messages);
+      
+      // Detect event data from conversation
+      const detected = detectEventData(messages);
+      setDetectedData(detected);
 
       // Fetch contact if exists
       if (message.contact_id) {
@@ -117,7 +145,12 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
   };
 
   const detectEventData = (messages: Message[]): DetectedEventData => {
-    const fullConversation = messages.map(m => m.message_text).join(' ');
+    const fullConversation = messages.map(m => {
+      if (m.platform === 'email') {
+        return `${m.subject || ''} ${m.body_text || ''}`;
+      }
+      return m.message_text || '';
+    }).join(' ');
     
     // Detect event type
     let eventType = null;
@@ -228,23 +261,32 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
 
       // Create contact from message data
       const newContact = {
-        first_name: null,
-        last_name: null,
+        first_name: message.platform === 'email' && message.from_name 
+          ? message.from_name.split(' ')[0] || 'Email'
+          : null,
+        last_name: message.platform === 'email' && message.from_name 
+          ? message.from_name.split(' ').slice(1).join(' ') || 'Lead'
+          : null,
         phone: null,
-        email_address: null,
+        email_address: message.platform === 'email' ? message.from_email : null,
+        primary_email: message.platform === 'email' ? message.from_email : null,
         event_type: detectedData?.eventType || 'other',
         event_date: parsedDate,
         guest_count: detectedData?.guestCount || null,
         venue_name: detectedData?.venueName || null,
         budget_range: detectedData?.priceRange || null,
         lead_status: 'New',
-        lead_source: message.platform === 'instagram' ? 'Instagram' : 'Facebook Messenger',
+        lead_source: message.platform === 'instagram' 
+          ? 'Instagram' 
+          : message.platform === 'messenger' 
+            ? 'Facebook Messenger'
+            : 'Email',
         lead_temperature: 'Warm',
         instagram_id: message.platform === 'instagram' ? message.sender_id : null,
         facebook_id: message.platform === 'messenger' ? message.sender_id : null,
-        communication_preference: 'text',
+        communication_preference: message.platform === 'email' ? 'email' : 'text',
         last_contacted_date: new Date().toISOString(),
-        last_contact_type: 'social'
+        last_contact_type: message.platform === 'email' ? 'email' : 'social'
       };
 
       const { data: createdContact, error: contactError } = await supabase
@@ -256,21 +298,43 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
       if (contactError) throw contactError;
 
       // Update all messages from this sender with contact_id
-      const table = message.platform === 'instagram' ? 'instagram_messages' : 'messenger_messages';
-      await supabase
-        .from(table)
-        .update({ 
-          contact_id: createdContact.id,
-          processed: true
-        })
-        .eq('sender_id', message.sender_id);
+      if (message.platform === 'email') {
+        const email = message.from_email || message.to_email;
+        if (email) {
+          await supabase
+            .from('email_messages')
+            .update({ 
+              contact_id: createdContact.id,
+              processed: true
+            })
+            .or(`from_email.eq.${email},to_email.eq.${email}`);
+        }
+      } else {
+        const table = message.platform === 'instagram' ? 'instagram_messages' : 'messenger_messages';
+        await supabase
+          .from(table)
+          .update({ 
+            contact_id: createdContact.id,
+            processed: true
+          })
+          .eq('sender_id', message.sender_id);
+      }
 
       // Create a project/event for this contact
-      const eventName = `${detectedData?.eventType ? detectedData.eventType.replace('_', ' ').charAt(0).toUpperCase() + detectedData.eventType.replace('_', ' ').slice(1) : 'Event'} - ${message.platform === 'instagram' ? 'Instagram' : 'Facebook'} Lead`;
+      const platformName = message.platform === 'instagram' 
+        ? 'Instagram' 
+        : message.platform === 'messenger' 
+          ? 'Facebook'
+          : 'Email';
+      const eventName = `${detectedData?.eventType ? detectedData.eventType.replace('_', ' ').charAt(0).toUpperCase() + detectedData.eventType.replace('_', ' ').slice(1) : 'Event'} - ${platformName} Lead`;
       
-      const conversationNotes = allMessages.map(msg => 
-        `[${new Date(msg.timestamp).toLocaleString()}] ${msg.message_text}`
-      ).join('\n\n');
+      const conversationNotes = allMessages.map(msg => {
+        const timestamp = new Date(msg.timestamp).toLocaleString();
+        if (msg.platform === 'email') {
+          return `[${timestamp}] ${msg.subject || '(No subject)'}\n${msg.body_text || ''}`;
+        }
+        return `[${timestamp}] ${msg.message_text || ''}`;
+      }).join('\n\n');
 
       const projectData = {
         submission_id: null,
@@ -287,7 +351,7 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
         number_of_guests: detectedData?.guestCount || null,
         event_duration: null,
         special_requests: null,
-        timeline_notes: `Social Media Inquiry (${message.platform === 'instagram' ? 'Instagram' : 'Facebook Messenger'})\n\nConversation History:\n${conversationNotes}\n\nLead Source: ${message.platform}\nSender ID: ${message.sender_id}\nCreated: ${new Date().toLocaleString()}`,
+        timeline_notes: `${message.platform === 'email' ? 'Email' : 'Social Media'} Inquiry (${platformName})\n\nConversation History:\n${conversationNotes}\n\nLead Source: ${message.platform}\n${message.platform === 'email' ? `Email: ${message.from_email}` : `Sender ID: ${message.sender_id}`}\nCreated: ${new Date().toLocaleString()}`,
         playlist_notes: null,
         status: 'confirmed',
         created_at: new Date().toISOString(),
@@ -441,18 +505,26 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
       {/* Modal */}
       <div className="absolute right-0 top-0 h-full w-full max-w-4xl bg-white shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 dark:border-gray-700">
           <div className="flex items-center gap-3">
             {message.platform === 'instagram' ? (
-              <Instagram className="h-6 w-6 text-pink-600" />
+              <Instagram className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+            ) : message.platform === 'email' ? (
+              <Inbox className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             ) : (
-              <Facebook className="h-6 w-6 text-blue-600" />
+              <Facebook className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             )}
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Conversation Details</h2>
-              <p className="text-sm text-gray-600">
-                {message.platform === 'instagram' ? 'Instagram' : 'Facebook Messenger'} • 
-                Sender ID: {message.sender_id.substring(0, 12)}...
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Conversation Details</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {message.platform === 'instagram' 
+                  ? 'Instagram' 
+                  : message.platform === 'email' 
+                    ? 'Email'
+                    : 'Facebook Messenger'} • 
+                {message.platform === 'email' 
+                  ? `${message.from_email}` 
+                  : `Sender ID: ${message.sender_id?.substring(0, 12)}...`}
               </p>
             </div>
           </div>
@@ -485,26 +557,42 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
                         key={msg.id}
                         className={`p-4 rounded-lg ${
                           msg.is_lead_inquiry
-                            ? 'bg-green-50 border border-green-200'
-                            : 'bg-gray-50 border border-gray-200'
+                            ? 'bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                            : 'bg-gray-50 border border-gray-200 dark:bg-gray-700 dark:border-gray-600'
                         }`}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-gray-400" />
-                            <span className="text-xs text-gray-600">
+                            <Clock className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
                               {formatDate(msg.timestamp)}
                             </span>
                           </div>
                           {msg.is_lead_inquiry && (
-                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200 dark:border-green-700">
                               Lead Inquiry
                             </Badge>
                           )}
                         </div>
-                        <p className="text-gray-900 whitespace-pre-wrap">{msg.message_text}</p>
+                        {msg.platform === 'email' ? (
+                          <>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                              {msg.subject || '(No subject)'}
+                            </p>
+                            <p className="text-gray-900 dark:text-gray-200 whitespace-pre-wrap">
+                              {msg.body_text}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                              From: {msg.from_name || msg.from_email}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-gray-900 dark:text-gray-200 whitespace-pre-wrap">
+                            {msg.message_text}
+                          </p>
+                        )}
                         {msg.processed && (
-                          <div className="mt-2 flex items-center gap-1 text-xs text-green-600">
+                          <div className="mt-2 flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                             <CheckCircle className="h-3 w-3" />
                             Processed
                           </div>
