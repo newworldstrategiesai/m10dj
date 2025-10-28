@@ -236,6 +236,11 @@ export default function Footer() {
             <p className="text-gray-500 text-sm font-inter mt-1">
               Licensed & Insured • Professional Event Entertainment
             </p>
+            <p className="text-gray-500 text-sm font-inter mt-2">
+              <Link href="/privacy-policy" className="hover:text-brand transition-colors">Privacy Policy</Link>
+              {' • '}
+              <Link href="/terms-of-service" className="hover:text-brand transition-colors">Terms of Service</Link>
+            </p>
             {/* Mobile Sign In Link */}
             <div className="md:hidden mt-3">
               <Link 
