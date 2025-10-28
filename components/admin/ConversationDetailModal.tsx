@@ -56,11 +56,21 @@ interface ConversationDetailModalProps {
   onClose: () => void;
 }
 
+interface DetectedEventData {
+  eventType: string | null;
+  eventDate: string | null;
+  guestCount: number | null;
+  venueName: string | null;
+  priceRange: string | null;
+}
+
 export default function ConversationDetailModal({ message, onClose }: ConversationDetailModalProps) {
   const supabase = createClientComponentClient();
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
   const [contact, setContact] = useState<Contact | null>(null);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [detectedData, setDetectedData] = useState<DetectedEventData | null>(null);
 
   useEffect(() => {
     fetchConversationData();
@@ -78,7 +88,12 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
         .order('timestamp', { ascending: true });
 
       if (messages) {
-        setAllMessages(messages.map(m => ({ ...m, platform: message.platform })));
+        const messagesWithPlatform = messages.map(m => ({ ...m, platform: message.platform }));
+        setAllMessages(messagesWithPlatform);
+        
+        // Detect event data from conversation
+        const detected = detectEventData(messagesWithPlatform);
+        setDetectedData(detected);
       }
 
       // Fetch contact if exists
@@ -98,6 +113,133 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
     } finally {
       setLoading(false);
     }
+  };
+
+  const detectEventData = (messages: Message[]): DetectedEventData => {
+    const fullConversation = messages.map(m => m.message_text).join(' ').toLowerCase();
+    
+    // Detect event type
+    let eventType = null;
+    if (fullConversation.match(/\bwedding\b/i)) eventType = 'wedding';
+    else if (fullConversation.match(/\bcorporate\b|\bcompany\b|\bbusiness\b/i)) eventType = 'corporate';
+    else if (fullConversation.match(/\bbirthday\b|\bsweet 16\b/i)) eventType = 'private_party';
+    else if (fullConversation.match(/\bgraduation\b/i)) eventType = 'school_dance';
+    else if (fullConversation.match(/\bholiday\b|\bchristmas\b/i)) eventType = 'holiday_party';
+    
+    // Detect date (various formats)
+    let eventDate = null;
+    const datePatterns = [
+      /(?:on|for)\s+([a-z]+\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?)/i,
+      /(\d{1,2}\/\d{1,2}\/\d{2,4})/,
+      /([a-z]+\s+\d{1,2}(?:st|nd|rd|th)?)/i
+    ];
+    
+    for (const pattern of datePatterns) {
+      const match = fullConversation.match(pattern);
+      if (match) {
+        eventDate = match[1];
+        break;
+      }
+    }
+    
+    // Detect guest count
+    let guestCount = null;
+    const guestMatch = fullConversation.match(/(\d+)\s+(?:people|guests|attendees)/i);
+    if (guestMatch) {
+      guestCount = parseInt(guestMatch[1]);
+    }
+    
+    // Detect venue
+    let venueName = null;
+    const venueMatch = fullConversation.match(/(?:at|venue|location):\s*([^.,\n]+)/i);
+    if (venueMatch) {
+      venueName = venueMatch[1].trim();
+    }
+    
+    // Detect budget/price range
+    let priceRange = null;
+    const priceMatch = fullConversation.match(/\$[\d,]+(?:\s*-\s*\$[\d,]+)?/);
+    if (priceMatch) {
+      priceRange = priceMatch[0];
+    }
+    
+    return {
+      eventType,
+      eventDate,
+      guestCount,
+      venueName,
+      priceRange
+    };
+  };
+
+  const handleCreateContact = async () => {
+    setCreating(true);
+    try {
+      // Create contact from message data
+      const newContact = {
+        first_name: null,
+        last_name: null,
+        phone: null,
+        email_address: null,
+        event_type: detectedData?.eventType || 'other',
+        event_date: detectedData?.eventDate ? parseDetectedDate(detectedData.eventDate) : null,
+        guest_count: detectedData?.guestCount || null,
+        venue_name: detectedData?.venueName || null,
+        budget_range: detectedData?.priceRange || null,
+        lead_status: 'New',
+        lead_source: message.platform === 'instagram' ? 'Instagram' : 'Facebook Messenger',
+        lead_temperature: 'Warm',
+        instagram_id: message.platform === 'instagram' ? message.sender_id : null,
+        facebook_id: message.platform === 'messenger' ? message.sender_id : null,
+        communication_preference: 'text',
+        last_contacted_date: new Date().toISOString(),
+        last_contact_type: 'social'
+      };
+
+      const { data: createdContact, error: contactError } = await supabase
+        .from('contacts')
+        .insert(newContact)
+        .select()
+        .single();
+
+      if (contactError) throw contactError;
+
+      // Update message with contact_id
+      const table = message.platform === 'instagram' ? 'instagram_messages' : 'messenger_messages';
+      await supabase
+        .from(table)
+        .update({ 
+          contact_id: createdContact.id,
+          processed: true
+        })
+        .eq('sender_id', message.sender_id);
+
+      setContact(createdContact);
+      
+      // Show success notification
+      alert('Contact created successfully! You can now edit details in the full contact view.');
+      
+      // Refresh the data
+      await fetchConversationData();
+    } catch (error) {
+      console.error('Error creating contact:', error);
+      alert('Failed to create contact. Please try again.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const parseDetectedDate = (dateStr: string): string | null => {
+    try {
+      // Try to parse various date formats
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.error('Error parsing date:', e);
+    }
+    return null;
   };
 
   const getLeadTemperatureBadge = (temp: string | null) => {
@@ -364,20 +506,75 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
                     </div>
                   </>
                 ) : (
-                  <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-6">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <h3 className="font-semibold text-yellow-900 mb-1">No Contact Created</h3>
-                        <p className="text-sm text-yellow-800 mb-4">
-                          This message hasn't been converted to a contact yet. Would you like to create one?
-                        </p>
-                        <Button variant="slim" className="w-full">
-                          Create Contact
-                        </Button>
+                  <>
+                    {/* Detected Event Data */}
+                    {detectedData && (detectedData.eventType || detectedData.eventDate || detectedData.guestCount) && (
+                      <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
+                        <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                          <Zap className="h-5 w-5 text-blue-600" />
+                          Detected Event Details
+                        </h3>
+                        <div className="space-y-3 text-sm">
+                          {detectedData.eventType && (
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">Event Type:</span>
+                              <span className="font-medium text-blue-900 capitalize">
+                                {detectedData.eventType.replace('_', ' ')}
+                              </span>
+                            </div>
+                          )}
+                          {detectedData.eventDate && (
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">Date:</span>
+                              <span className="font-medium text-blue-900">{detectedData.eventDate}</span>
+                            </div>
+                          )}
+                          {detectedData.guestCount && (
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">Guest Count:</span>
+                              <span className="font-medium text-blue-900">{detectedData.guestCount}</span>
+                            </div>
+                          )}
+                          {detectedData.venueName && (
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">Venue:</span>
+                              <span className="font-medium text-blue-900">{detectedData.venueName}</span>
+                            </div>
+                          )}
+                          {detectedData.priceRange && (
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">Budget:</span>
+                              <span className="font-medium text-blue-900">{detectedData.priceRange}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Create Contact Action */}
+                    <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-6">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-yellow-900 mb-1">No Contact Created</h3>
+                          <p className="text-sm text-yellow-800 mb-4">
+                            This message hasn't been converted to a contact yet. 
+                            {detectedData && (detectedData.eventType || detectedData.eventDate) 
+                              ? ' Event details will be automatically added.'
+                              : ' Would you like to create one?'}
+                          </p>
+                          <Button 
+                            variant="slim" 
+                            className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
+                            onClick={handleCreateContact}
+                            disabled={creating}
+                          >
+                            {creating ? 'Creating...' : 'Create Contact'}
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
