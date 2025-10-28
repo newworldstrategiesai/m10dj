@@ -23,6 +23,7 @@ import Button from '@/components/ui/Button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ConversationDetailModal from './ConversationDetailModal';
 
 interface SocialMessage {
   id: string;
@@ -52,6 +53,7 @@ export default function SocialMediaIntegration() {
   const [messengerStats, setMessengerStats] = useState<PlatformStats | null>(null);
   const [recentMessages, setRecentMessages] = useState<SocialMessage[]>([]);
   const [webhookUrls, setWebhookUrls] = useState({ instagram: '', messenger: '' });
+  const [selectedMessage, setSelectedMessage] = useState<SocialMessage | null>(null);
 
   useEffect(() => {
     fetchAllStats();
@@ -389,7 +391,11 @@ export default function SocialMediaIntegration() {
             </div>
           ) : (
             recentMessages.map(message => (
-              <div key={message.id} className="p-4 hover:bg-gray-50">
+              <div 
+                key={message.id} 
+                className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => setSelectedMessage(message)}
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
@@ -401,7 +407,7 @@ export default function SocialMediaIntegration() {
                       <p className="text-sm font-medium text-gray-900 capitalize">{message.platform}</p>
                       <span className="text-xs text-gray-500">From: {message.sender_id}</span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{message.message_text}</p>
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{message.message_text}</p>
                     <p className="text-xs text-gray-500 mt-2">{formatDate(message.timestamp)}</p>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
@@ -417,6 +423,7 @@ export default function SocialMediaIntegration() {
                         Contact
                       </Badge>
                     )}
+                    <ExternalLink className="h-4 w-4 text-gray-400" />
                   </div>
                 </div>
               </div>
@@ -440,6 +447,14 @@ export default function SocialMediaIntegration() {
           View Setup Guide
         </Button>
       </div>
+
+      {/* Conversation Detail Modal */}
+      {selectedMessage && (
+        <ConversationDetailModal
+          message={selectedMessage}
+          onClose={() => setSelectedMessage(null)}
+        />
+      )}
     </div>
   );
 }
