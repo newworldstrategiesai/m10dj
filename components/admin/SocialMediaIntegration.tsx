@@ -92,13 +92,13 @@ export default function SocialMediaIntegration() {
         .is('deleted_at', null);
 
       // Skip sync_log query for now - table not accessible
-      const lastSync = null;
+      // const lastSync = null;
 
       setInstagramStats({
         totalMessages: totalMessages || 0,
         leadInquiries: leadInquiries || 0,
         contactsCreated: contactsCreated || 0,
-        lastSyncTime: lastSync?.completed_at || null
+        lastSyncTime: null // Temporarily disabled
       });
     } catch (error) {
       console.error('Error fetching Instagram stats:', error);
@@ -123,13 +123,13 @@ export default function SocialMediaIntegration() {
         .is('deleted_at', null);
 
       // Skip sync_log query for now - table not accessible
-      const lastSync = null;
+      // const lastSync = null;
 
       setMessengerStats({
         totalMessages: totalMessages || 0,
         leadInquiries: leadInquiries || 0,
         contactsCreated: contactsCreated || 0,
-        lastSyncTime: lastSync?.completed_at || null
+        lastSyncTime: null // Temporarily disabled
       });
     } catch (error) {
       console.error('Error fetching Messenger stats:', error);
