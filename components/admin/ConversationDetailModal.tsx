@@ -117,7 +117,7 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
   };
 
   const detectEventData = (messages: Message[]): DetectedEventData => {
-    const fullConversation = messages.map(m => m.message_text).join(' ').toLowerCase();
+    const fullConversation = messages.map(m => m.message_text).join(' ');
     
     // Detect event type
     let eventType = null;
@@ -127,41 +127,85 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
     else if (fullConversation.match(/\bgraduation\b/i)) eventType = 'school_dance';
     else if (fullConversation.match(/\bholiday\b|\bchristmas\b/i)) eventType = 'holiday_party';
     
-    // Detect date (various formats)
+    // Detect date (improved patterns - more specific)
     let eventDate = null;
     const datePatterns = [
-      /(?:on|for)\s+([a-z]+\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?)/i,
-      /(\d{1,2}\/\d{1,2}\/\d{2,4})/,
-      /([a-z]+\s+\d{1,2}(?:st|nd|rd|th)?)/i
+      // Full dates: "June 15th, 2025" or "June 15, 2025"
+      /\b((?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})\b/i,
+      // Month and day with "on" or "for": "on June 15th" or "for March 20"
+      /(?:on|for)\s+((?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?)/i,
+      // Numeric dates: "6/15/2024" or "06/15/24"
+      /\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/,
+      // Month and day only: "June 15th" or "March 20"
+      /\b((?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?)\b/i,
     ];
     
     for (const pattern of datePatterns) {
       const match = fullConversation.match(pattern);
-      if (match) {
-        eventDate = match[1];
-        break;
+      if (match && match[1]) {
+        // Validate it's actually a date (not part of "about 200")
+        const dateStr = match[1];
+        if (!dateStr.match(/about/i) && !dateStr.match(/\d+\s+(?:people|guests)/i)) {
+          eventDate = dateStr;
+          break;
+        }
       }
     }
     
-    // Detect guest count
+    // Detect guest count (more precise)
     let guestCount = null;
-    const guestMatch = fullConversation.match(/(\d+)\s+(?:people|guests|attendees)/i);
-    if (guestMatch) {
-      guestCount = parseInt(guestMatch[1]);
+    const guestPatterns = [
+      /(?:for|about|around|approximately)\s+(\d+)\s+(?:people|guests|attendees)/i,
+      /(\d+)\s+(?:people|guests|attendees)/i,
+      /(?:party|event)\s+(?:for|of)\s+(\d+)/i
+    ];
+    
+    for (const pattern of guestPatterns) {
+      const match = fullConversation.match(pattern);
+      if (match && match[1]) {
+        const count = parseInt(match[1]);
+        // Reasonable guest count (10-10000)
+        if (count >= 10 && count <= 10000) {
+          guestCount = count;
+          break;
+        }
+      }
     }
     
-    // Detect venue
+    // Detect venue (improved)
     let venueName = null;
-    const venueMatch = fullConversation.match(/(?:at|venue|location):\s*([^.,\n]+)/i);
-    if (venueMatch) {
-      venueName = venueMatch[1].trim();
+    const venuePatterns = [
+      /(?:at|venue|location):\s*([^.,\n]+)/i,
+      /\bat\s+(?:the\s+)?([A-Z][a-zA-Z\s&'-]+(?:Hotel|Garden|Center|Hall|Club|Manor|Estate|Ballroom))/,
+      /\bin\s+(downtown|midtown|east|west|north|south)\s+(\w+)/i
+    ];
+    
+    for (const pattern of venuePatterns) {
+      const match = fullConversation.match(pattern);
+      if (match && match[1]) {
+        venueName = match[1].trim();
+        // Clean up common trailing words
+        venueName = venueName.replace(/\s+(for|about|with|and)\s*$/i, '');
+        if (venueName.length > 3) {
+          break;
+        }
+      }
     }
     
     // Detect budget/price range
     let priceRange = null;
-    const priceMatch = fullConversation.match(/\$[\d,]+(?:\s*-\s*\$[\d,]+)?/);
-    if (priceMatch) {
-      priceRange = priceMatch[0];
+    const pricePatterns = [
+      /\$[\d,]+\s*-\s*\$[\d,]+/, // Range: "$1,000 - $2,000"
+      /\$[\d,]+(?:\+)?/, // Single amount: "$2,500" or "$2,500+"
+      /budget\s+(?:of|is|around)\s+\$[\d,]+/i
+    ];
+    
+    for (const pattern of pricePatterns) {
+      const match = fullConversation.match(pattern);
+      if (match) {
+        priceRange = match[0].replace(/budget\s+(?:of|is|around)\s+/i, '');
+        break;
+      }
     }
     
     return {
