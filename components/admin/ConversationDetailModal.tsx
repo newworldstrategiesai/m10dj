@@ -19,7 +19,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Zap
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Badge } from '@/components/ui/badge';
