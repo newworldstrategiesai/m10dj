@@ -220,6 +220,12 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
   const handleCreateContact = async () => {
     setCreating(true);
     try {
+      // Parse the date first for both contact and project
+      const parsedDate = detectedData?.eventDate ? parseDetectedDate(detectedData.eventDate) : null;
+      
+      console.log('Detected event data:', detectedData);
+      console.log('Parsed date:', parsedDate);
+
       // Create contact from message data
       const newContact = {
         first_name: null,
@@ -227,7 +233,7 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
         phone: null,
         email_address: null,
         event_type: detectedData?.eventType || 'other',
-        event_date: detectedData?.eventDate ? parseDetectedDate(detectedData.eventDate) : null,
+        event_date: parsedDate,
         guest_count: detectedData?.guestCount || null,
         venue_name: detectedData?.venueName || null,
         budget_range: detectedData?.priceRange || null,
@@ -269,11 +275,11 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
       const projectData = {
         submission_id: null,
         event_name: eventName,
-        client_name: 'Pending',
+        client_name: 'Social Media Lead',
         client_email: null,
         client_phone: null,
         event_type: detectedData?.eventType || 'other',
-        event_date: detectedData?.eventDate ? parseDetectedDate(detectedData.eventDate) : null,
+        event_date: parsedDate,
         start_time: null,
         end_time: null,
         venue_name: detectedData?.venueName || null,
@@ -283,7 +289,7 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
         special_requests: null,
         timeline_notes: `Social Media Inquiry (${message.platform === 'instagram' ? 'Instagram' : 'Facebook Messenger'})\n\nConversation History:\n${conversationNotes}\n\nLead Source: ${message.platform}\nSender ID: ${message.sender_id}\nCreated: ${new Date().toLocaleString()}`,
         playlist_notes: null,
-        status: 'confirmed', // New inquiry
+        status: 'confirmed',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -296,13 +302,19 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
 
       if (projectError) {
         console.error('Error creating project:', projectError);
-        // Don't fail the whole operation if project creation fails
+        alert(`Contact created but project creation failed: ${projectError.message}\n\nYou may need to create the project manually.`);
+      } else {
+        console.log('Project created successfully:', createdProject);
       }
 
       setContact(createdContact);
       
       // Show success notification
-      alert(`Contact and project created successfully!\n\nContact ID: ${createdContact.id}\nProject: ${eventName}\n\nView the full contact to see the conversation history.`);
+      const successMessage = projectError 
+        ? `Contact created successfully!\n\nContact ID: ${createdContact.id}\n\nNote: Project creation failed - please create manually.`
+        : `Contact and project created successfully!\n\nContact ID: ${createdContact.id}\nProject: ${eventName}\nEvent Date: ${parsedDate || 'Not detected'}\n\nView the contact page to see the conversation history and project details.`;
+      
+      alert(successMessage);
       
       // Refresh the data
       await fetchConversationData();
@@ -316,10 +328,53 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
 
   const parseDetectedDate = (dateStr: string): string | null => {
     try {
-      // Try to parse various date formats
-      const date = new Date(dateStr);
+      // Clean up the date string
+      let cleanedDate = dateStr.trim();
+      
+      // Remove ordinal suffixes (st, nd, rd, th)
+      cleanedDate = cleanedDate.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
+      
+      // Try to parse the date
+      const date = new Date(cleanedDate);
+      
+      // If valid, return ISO format (YYYY-MM-DD)
       if (!isNaN(date.getTime())) {
+        // If no year was specified, the date might be in the past, so add current or next year
+        const now = new Date();
+        if (date.getFullYear() === 1970 || date.getFullYear() < now.getFullYear()) {
+          // No year specified, or date is in past - use current year or next year
+          date.setFullYear(now.getFullYear());
+          
+          // If the date has already passed this year, use next year
+          if (date < now) {
+            date.setFullYear(now.getFullYear() + 1);
+          }
+        }
+        
         return date.toISOString().split('T')[0];
+      }
+      
+      // If standard parsing failed, try manual parsing for common formats
+      const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
+                         'july', 'august', 'september', 'october', 'november', 'december'];
+      
+      const monthMatch = cleanedDate.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d+)/i);
+      if (monthMatch) {
+        const month = monthNames.indexOf(monthMatch[1].toLowerCase());
+        const day = parseInt(monthMatch[2]);
+        const now = new Date();
+        let year = now.getFullYear();
+        
+        // Create date with current year
+        const testDate = new Date(year, month, day);
+        
+        // If date has passed, use next year
+        if (testDate < now) {
+          year++;
+        }
+        
+        const finalDate = new Date(year, month, day);
+        return finalDate.toISOString().split('T')[0];
       }
     } catch (e) {
       console.error('Error parsing date:', e);
