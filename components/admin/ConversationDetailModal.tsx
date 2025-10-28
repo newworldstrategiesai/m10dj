@@ -249,7 +249,7 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
 
       if (contactError) throw contactError;
 
-      // Update message with contact_id
+      // Update all messages from this sender with contact_id
       const table = message.platform === 'instagram' ? 'instagram_messages' : 'messenger_messages';
       await supabase
         .from(table)
@@ -259,10 +259,50 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
         })
         .eq('sender_id', message.sender_id);
 
+      // Create a project/event for this contact
+      const eventName = `${detectedData?.eventType ? detectedData.eventType.replace('_', ' ').charAt(0).toUpperCase() + detectedData.eventType.replace('_', ' ').slice(1) : 'Event'} - ${message.platform === 'instagram' ? 'Instagram' : 'Facebook'} Lead`;
+      
+      const conversationNotes = allMessages.map(msg => 
+        `[${new Date(msg.timestamp).toLocaleString()}] ${msg.message_text}`
+      ).join('\n\n');
+
+      const projectData = {
+        submission_id: null,
+        event_name: eventName,
+        client_name: 'Pending',
+        client_email: null,
+        client_phone: null,
+        event_type: detectedData?.eventType || 'other',
+        event_date: detectedData?.eventDate ? parseDetectedDate(detectedData.eventDate) : null,
+        start_time: null,
+        end_time: null,
+        venue_name: detectedData?.venueName || null,
+        venue_address: null,
+        number_of_guests: detectedData?.guestCount || null,
+        event_duration: null,
+        special_requests: null,
+        timeline_notes: `Social Media Inquiry (${message.platform === 'instagram' ? 'Instagram' : 'Facebook Messenger'})\n\nConversation History:\n${conversationNotes}\n\nLead Source: ${message.platform}\nSender ID: ${message.sender_id}\nCreated: ${new Date().toLocaleString()}`,
+        playlist_notes: null,
+        status: 'confirmed', // New inquiry
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data: createdProject, error: projectError } = await supabase
+        .from('events')
+        .insert(projectData)
+        .select()
+        .single();
+
+      if (projectError) {
+        console.error('Error creating project:', projectError);
+        // Don't fail the whole operation if project creation fails
+      }
+
       setContact(createdContact);
       
       // Show success notification
-      alert('Contact created successfully! You can now edit details in the full contact view.');
+      alert(`Contact and project created successfully!\n\nContact ID: ${createdContact.id}\nProject: ${eventName}\n\nView the full contact to see the conversation history.`);
       
       // Refresh the data
       await fetchConversationData();

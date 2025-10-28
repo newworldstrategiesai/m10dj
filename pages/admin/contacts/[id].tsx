@@ -101,6 +101,8 @@ export default function ContactDetailPage() {
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [socialMessages, setSocialMessages] = useState<any[]>([]);
+  const [socialMessagesLoading, setSocialMessagesLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -120,6 +122,7 @@ export default function ContactDetailPage() {
       fetchProjects();
       fetchPayments();
       fetchInvoices();
+      fetchSocialMessages();
     }
   }, [user, id]);
 
@@ -255,6 +258,39 @@ export default function ContactDetailPage() {
       console.error('Error fetching invoices:', error);
     } finally {
       setInvoicesLoading(false);
+    }
+  };
+
+  const fetchSocialMessages = async () => {
+    if (!id) return;
+    
+    setSocialMessagesLoading(true);
+    try {
+      // Fetch Instagram messages
+      const { data: instagramMessages } = await supabase
+        .from('instagram_messages')
+        .select('*')
+        .eq('contact_id', id)
+        .order('timestamp', { ascending: true });
+
+      // Fetch Messenger messages
+      const { data: messengerMessages } = await supabase
+        .from('messenger_messages')
+        .select('*')
+        .eq('contact_id', id)
+        .order('timestamp', { ascending: true });
+
+      // Combine and sort by timestamp
+      const allMessages = [
+        ...(instagramMessages || []).map(m => ({ ...m, platform: 'instagram' })),
+        ...(messengerMessages || []).map(m => ({ ...m, platform: 'messenger' }))
+      ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+      setSocialMessages(allMessages);
+    } catch (error) {
+      console.error('Error fetching social messages:', error);
+    } finally {
+      setSocialMessagesLoading(false);
     }
   };
 
@@ -480,6 +516,11 @@ export default function ContactDetailPage() {
             <TabsTrigger value="details">Contact Details</TabsTrigger>
             <TabsTrigger value="event">Event Information</TabsTrigger>
             <TabsTrigger value="business">Business Details</TabsTrigger>
+            {socialMessages.length > 0 && (
+              <TabsTrigger value="social">
+                Social Media ({socialMessages.length})
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="details">
@@ -929,6 +970,104 @@ export default function ContactDetailPage() {
                 </div>
               )}
               </div>
+          </TabsContent>
+
+          {/* Social Media Tab */}
+          <TabsContent value="social">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Social Media Conversation History</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Messages from Instagram and Facebook Messenger
+                  </p>
+                </div>
+                {socialMessages.length > 0 && socialMessages[0].platform && (
+                  <Badge className={socialMessages[0].platform === 'instagram' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}>
+                    {socialMessages[0].platform === 'instagram' ? 'Instagram' : 'Facebook Messenger'}
+                  </Badge>
+                )}
+              </div>
+
+              {socialMessagesLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-4">Loading messages...</p>
+                </div>
+              ) : socialMessages.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-600">No social media messages found</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Messages from Instagram or Facebook Messenger will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {socialMessages.map((message, index) => (
+                    <div
+                      key={message.id}
+                      className={`p-4 rounded-lg border ${
+                        message.is_lead_inquiry
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {message.platform === 'instagram' ? (
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">IG</span>
+                            </div>
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">FB</span>
+                            </div>
+                          )}
+                          <span className="text-xs text-gray-600">
+                            {new Date(message.timestamp).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                          {index === 0 && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                              First message
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {message.is_lead_inquiry && (
+                            <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300">
+                              Lead Inquiry
+                            </Badge>
+                          )}
+                          {message.processed && (
+                            <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
+                              Processed
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-gray-900 whitespace-pre-wrap">{message.message_text}</p>
+                    </div>
+                  ))}
+                  
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-900 font-medium mb-1">
+                      💡 Tip: Conversation captured automatically
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      This conversation was automatically captured from {socialMessages[0]?.platform === 'instagram' ? 'Instagram' : 'Facebook Messenger'} and linked to this contact. 
+                      All messages are preserved for reference and follow-up.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
             </div>
