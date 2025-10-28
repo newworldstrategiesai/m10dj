@@ -91,13 +91,8 @@ export default function SocialMediaIntegration() {
         .not('instagram_id', 'is', null)
         .is('deleted_at', null);
 
-      const { data: lastSync } = await supabase
-        .from('instagram_sync_log')
-        .select('completed_at')
-        .eq('sync_status', 'success')
-        .order('completed_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Skip sync_log query for now - table not accessible
+      const lastSync = null;
 
       setInstagramStats({
         totalMessages: totalMessages || 0,
@@ -127,13 +122,8 @@ export default function SocialMediaIntegration() {
         .not('facebook_id', 'is', null)
         .is('deleted_at', null);
 
-      const { data: lastSync } = await supabase
-        .from('messenger_sync_log')
-        .select('completed_at')
-        .eq('sync_status', 'success')
-        .order('completed_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Skip sync_log query for now - table not accessible
+      const lastSync = null;
 
       setMessengerStats({
         totalMessages: totalMessages || 0,
