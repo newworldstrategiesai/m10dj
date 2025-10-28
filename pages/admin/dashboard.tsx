@@ -160,28 +160,32 @@ export default function AdminDashboard() {
         .gte('event_date', new Date().toISOString().split('T')[0])
         .in('status', ['confirmed', 'in_progress']);
 
-      // Revenue stats
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      const { data: payments } = await supabase
-        .from('payments')
-        .select('total_amount, payment_date, payment_status')
-        .eq('payment_status', 'Paid');
+      // Revenue stats - temporarily disabled (payments table not migrated)
+      const thisMonthRevenue = 0;
+      const totalRevenue = 0;
+      const outstandingBalance = 0;
+      
+      // TODO: Re-enable after running payments migration
+      // const startOfMonth = new Date();
+      // startOfMonth.setDate(1);
+      // const { data: payments } = await supabase
+      //   .from('payments')
+      //   .select('total_amount, payment_date, payment_status')
+      //   .eq('payment_status', 'Paid');
 
-      const thisMonthRevenue = (payments || [])
-        .filter(p => new Date(p.payment_date) >= startOfMonth)
-        .reduce((sum, p) => sum + (p.total_amount || 0), 0);
+      // const thisMonthRevenue = (payments || [])
+      //   .filter(p => new Date(p.payment_date) >= startOfMonth)
+      //   .reduce((sum, p) => sum + (p.total_amount || 0), 0);
 
-      const totalRevenue = (payments || [])
-        .reduce((sum, p) => sum + (p.total_amount || 0), 0);
+      // const totalRevenue = (payments || [])
+      //   .reduce((sum, p) => sum + (p.total_amount || 0), 0);
 
-      // Outstanding balance
-      const { data: outstanding } = await supabase
-        .from('outstanding_balances')
-        .select('balance_due');
+      // const { data: outstanding } = await supabase
+      //   .from('outstanding_balances')
+      //   .select('balance_due');
 
-      const outstandingBalance = (outstanding || [])
-        .reduce((sum, o) => sum + (o.balance_due || 0), 0);
+      // const outstandingBalance = (outstanding || [])
+      //   .reduce((sum, o) => sum + (o.balance_due || 0), 0);
 
       // New leads
       const { count: newLeads } = await supabase
@@ -247,33 +251,35 @@ export default function AdminDashboard() {
   };
 
   const fetchRecentPayments = async () => {
+    // Temporarily disabled - payments table not yet migrated
     try {
-      const { data, error } = await supabase
-        .from('payments')
-        .select(`
-          id,
-          total_amount,
-          payment_date,
-          payment_method,
-          contact_id,
-          contacts (first_name, last_name)
-        `)
-        .eq('payment_status', 'Paid')
-        .order('payment_date', { ascending: false })
-        .limit(5);
+      // const { data, error } = await supabase
+      //   .from('payments')
+      //   .select(`
+      //     id,
+      //     total_amount,
+      //     payment_date,
+      //     payment_method,
+      //     contact_id,
+      //     contacts (first_name, last_name)
+      //   `)
+      //   .eq('payment_status', 'Paid')
+      //   .order('payment_date', { ascending: false })
+      //   .limit(5);
 
-      if (!error && data) {
-        const formattedPayments = data.map(p => ({
-          id: p.id,
-          contact_name: p.contacts && Array.isArray(p.contacts) && p.contacts[0] 
-            ? `${p.contacts[0].first_name} ${p.contacts[0].last_name}` 
-            : 'Unknown',
-          amount: p.total_amount,
-          payment_date: p.payment_date,
-          payment_method: p.payment_method
-        }));
-        setRecentPayments(formattedPayments);
-      }
+      // if (!error && data) {
+      //   const formattedPayments = data.map(p => ({
+      //     id: p.id,
+      //     contact_name: p.contacts && Array.isArray(p.contacts) && p.contacts[0] 
+      //       ? `${p.contacts[0].first_name} ${p.contacts[0].last_name}` 
+      //       : 'Unknown',
+      //     amount: p.total_amount,
+      //     payment_date: p.payment_date,
+      //     payment_method: p.payment_method
+      //   }));
+      //   setRecentPayments(formattedPayments);
+      // }
+      setRecentPayments([]); // Empty array for now
     } catch (error) {
       console.error('Error fetching recent payments:', error);
     }
