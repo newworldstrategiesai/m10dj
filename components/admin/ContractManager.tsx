@@ -46,7 +46,7 @@ interface Contact {
   first_name: string;
   last_name: string;
   email_address: string;
-  event_name: string;
+  event_type: string;
   event_date: string;
 }
 
@@ -65,6 +65,7 @@ export default function ContractManager() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchContracts();
@@ -111,7 +112,7 @@ export default function ContractManager() {
     try {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, email_address, event_name, event_date')
+        .select('id, first_name, last_name, email_address, event_type, event_date')
         .not('event_date', 'is', null)
         .order('event_date', { ascending: false })
         .limit(100);
@@ -198,7 +199,9 @@ export default function ContractManager() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to generate contract');
+        const errorMessage = data.details || data.error || 'Failed to generate contract';
+        console.error('Contract generation error:', data);
+        throw new Error(errorMessage);
       }
 
       toast({
@@ -264,21 +267,48 @@ export default function ContractManager() {
   };
 
   const handleDownload = async (contract: Contract) => {
-    // Create a blob from the contract content and download it
-    const blob = new Blob([contract.contract_html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${contract.contract_number}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      setDownloading(contract.id);
+      
+      // Generate PDF via API
+      const res = await fetch('/api/contracts/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractId: contract.id })
+      });
 
-    toast({
-      title: 'Contract Downloaded',
-      description: 'Contract has been downloaded successfully',
-    });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || error.details || 'Failed to generate PDF');
+      }
+
+      // Get PDF blob
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      
+      // Download PDF
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${contract.contract_number}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'PDF Downloaded',
+        description: `Contract ${contract.contract_number} has been downloaded as PDF`,
+      });
+    } catch (error: any) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to generate PDF. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloading(null);
+    }
   };
 
   if (loading) {
@@ -292,56 +322,135 @@ export default function ContractManager() {
   if (showPreview && selectedContract) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              {selectedContract.contract_number}
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {selectedContract.contacts.first_name} {selectedContract.contacts.last_name} - {selectedContract.event_name}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleCopySigningLink(selectedContract)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <Copy className="w-4 h-4" />
-              Copy Link
-            </button>
-            <button
-              onClick={() => handleDownload(selectedContract)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Download
-            </button>
-            {selectedContract.status === 'draft' && (
+        {/* Improved Header Section with Better Layout */}
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg p-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1">
+                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    {selectedContract.contract_number}
+                  </h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {getStatusBadge(selectedContract.status)}
+                    {selectedContract.signed_at && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Signed: {new Date(selectedContract.signed_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Contract Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Client</p>
+                  <p className="text-base font-semibold text-gray-900 dark:text-white">
+                    {selectedContract.contacts.first_name} {selectedContract.contacts.last_name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {selectedContract.contacts.email_address}
+                  </p>
+                </div>
+                
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Event</p>
+                  <p className="text-base font-semibold text-gray-900 dark:text-white">
+                    {selectedContract.event_name || 'N/A'}
+                  </p>
+                  {selectedContract.event_date && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {new Date(selectedContract.event_date).toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </p>
+                  )}
+                </div>
+                
+                {selectedContract.total_amount && (
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Contract Value</p>
+                    <p className="text-xl font-bold text-green-600 dark:text-green-400">
+                      ${selectedContract.total_amount.toFixed(2)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Action Buttons - Improved Layout */}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-2 lg:w-56">
               <button
-                onClick={() => handleSendContract(selectedContract)}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                onClick={() => handleCopySigningLink(selectedContract)}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium bg-white dark:bg-gray-800"
+                title="Copy signing link"
               >
-                <Send className="w-4 h-4" />
-                Send for Signature
+                <Copy className="w-4 h-4" />
+                Copy Link
               </button>
-            )}
-            <button
-              onClick={() => {
-                setShowPreview(false);
-                setSelectedContract(null);
-              }}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Close
-            </button>
+              <button
+                onClick={() => handleDownload(selectedContract)}
+                disabled={downloading === selectedContract.id}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
+                title="Download as PDF"
+              >
+                {downloading === selectedContract.id ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Download PDF
+                  </>
+                )}
+              </button>
+              {selectedContract.status === 'draft' && (
+                <button
+                  onClick={() => handleSendContract(selectedContract)}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium shadow-sm"
+                  title="Send contract for signature"
+                >
+                  <Send className="w-4 h-4" />
+                  Send for Signature
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowPreview(false);
+                  setSelectedContract(null);
+                }}
+                className="px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium bg-white dark:bg-gray-800"
+                title="Close preview"
+              >
+                Close Preview
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8">
-          <div 
-            className="prose prose-sm max-w-none dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: selectedContract.contract_html }}
-          />
+        {/* Improved Contract Preview */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
+          <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Contract Preview</h3>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Read-only preview</span>
+            </div>
+          </div>
+          <div className="p-8 max-h-[70vh] overflow-y-auto">
+            <div 
+              className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-strong:text-gray-900 dark:prose-strong:text-white
+                prose-ul:text-gray-700 dark:prose-ul:text-gray-300
+                prose-li:text-gray-700 dark:prose-li:text-gray-300
+                min-w-full"
+              dangerouslySetInnerHTML={{ __html: selectedContract.contract_html }}
+            />
+          </div>
         </div>
       </div>
     );
@@ -570,8 +679,8 @@ export default function ContractManager() {
               <option value="">Select a contact...</option>
               {contacts.map((contact) => (
                 <option key={contact.id} value={contact.id}>
-                  {contact.first_name} {contact.last_name} - {contact.event_name || 'Event'} 
-                  {contact.event_date && ` (${new Date(contact.event_date).toLocaleDateString()})`}
+                  {contact.first_name} {contact.last_name} - {contact.event_type || 'Event'} 
+                  {contact.event_date && `(${new Date(contact.event_date).toLocaleDateString()})`}
                 </option>
               ))}
             </select>
@@ -599,4 +708,3 @@ export default function ContractManager() {
     </div>
   );
 }
-

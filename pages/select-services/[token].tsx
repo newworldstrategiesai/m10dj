@@ -16,7 +16,8 @@ import {
   Loader,
   AlertCircle,
   Sparkles,
-  Phone
+  Phone,
+  FileText
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import VenueAutocomplete from '@/components/VenueAutocomplete';
@@ -39,10 +40,10 @@ export default function SelectServicesPage() {
     eventType: '',
     eventDate: '',
     eventTime: '',
+    endTime: '',
     venueName: '',
     venueAddress: '',
     guestCount: '',
-    eventDuration: '4',
     package: '',
     services: [] as string[],
     addOns: [] as string[],
@@ -51,8 +52,7 @@ export default function SelectServicesPage() {
     reception: true,
     afterParty: false,
     musicPreferences: '',
-    specialRequests: '',
-    budgetRange: ''
+    specialRequests: ''
   });
 
   useEffect(() => {
@@ -79,8 +79,7 @@ export default function SelectServicesPage() {
             eventDate: data.contact.event_date || '',
             venueName: data.contact.venue_name || '',
             venueAddress: data.contact.venue_address || '',
-            guestCount: data.contact.guest_count || '',
-            budgetRange: data.contact.budget_range || ''
+            guestCount: data.contact.guest_count || ''
           }));
         }
       } else {
@@ -105,8 +104,7 @@ export default function SelectServicesPage() {
           token,
           selections: {
             ...selections,
-            guestCount: parseInt(selections.guestCount) || null,
-            eventDuration: parseFloat(selections.eventDuration) || null
+            guestCount: parseInt(selections.guestCount) || null
           }
         })
       });
@@ -323,20 +321,28 @@ export default function SelectServicesPage() {
                     <Calendar className="h-4 w-4 text-blue-600" />
                     <span><strong>Event:</strong> {submissionData.selections.eventType} on {submissionData.selections.eventDate}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-700">
-                    <Users className="h-4 w-4 text-blue-600" />
-                    <span><strong>Guests:</strong> {submissionData.selections.guestCount}</span>
-                  </div>
+                  {submissionData.selections.guestCount && (
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Users className="h-4 w-4 text-blue-600" />
+                      <span><strong>Guests:</strong> {submissionData.selections.guestCount}</span>
+                    </div>
+                  )}
                   {submissionData.selections.venueName && (
                     <div className="flex items-center gap-2 text-gray-700">
                       <MapPin className="h-4 w-4 text-blue-600" />
                       <span><strong>Venue:</strong> {submissionData.selections.venueName}</span>
                     </div>
                   )}
-                  {submissionData.selections.budgetRange && (
+                  {submissionData.selections.eventTime && (
                     <div className="flex items-center gap-2 text-gray-700">
-                      <DollarSign className="h-4 w-4 text-blue-600" />
-                      <span><strong>Budget:</strong> {submissionData.selections.budgetRange}</span>
+                      <Clock className="h-4 w-4 text-blue-600" />
+                      <span><strong>Start Time:</strong> {submissionData.selections.eventTime}</span>
+                    </div>
+                  )}
+                  {submissionData.selections.endTime && (
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Clock className="h-4 w-4 text-blue-600" />
+                      <span><strong>End Time:</strong> {submissionData.selections.endTime}</span>
                     </div>
                   )}
                 </div>
@@ -418,6 +424,54 @@ export default function SelectServicesPage() {
 
               <p className="text-xs text-gray-500 italic">
                 * This is a draft estimate. Final quote may vary based on your specific requirements.
+              </p>
+            </div>
+          )}
+
+          {/* Contract */}
+          {submissionData.contract && submissionData.contract.signing_url && (
+            <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <FileText className="h-6 w-6 text-blue-600" />
+                  Your Contract
+                </h2>
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">
+                  READY TO SIGN
+                </span>
+              </div>
+
+              <p className="text-gray-700 mb-6">
+                Your contract has been generated and is ready for your signature. Please review and sign at your earliest convenience.
+              </p>
+
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 mb-2">
+                  Contract #: <span className="font-mono font-semibold">{submissionData.contract.contract_number}</span>
+                </p>
+                {submissionData.contract.expires_at && (
+                  <p className="text-sm text-gray-600">
+                    Link expires: {new Date(submissionData.contract.expires_at).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                )}
+              </div>
+
+              <a
+                href={submissionData.contract.signing_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 w-full bg-blue-600 text-white px-6 py-4 rounded-lg font-semibold hover:bg-blue-700 transition shadow-lg hover:shadow-xl"
+              >
+                <FileText className="h-5 w-5" />
+                Review & Sign Contract
+              </a>
+
+              <p className="text-xs text-gray-500 mt-4 italic">
+                * This contract is valid for 30 days. After signing, you'll receive a copy via email.
               </p>
             </div>
           )}
@@ -536,31 +590,25 @@ export default function SelectServicesPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Duration (hours)
+                  End Time
                 </label>
-                <select
-                  value={selections.eventDuration}
-                  onChange={(e) => setSelections({...selections, eventDuration: e.target.value})}
+                <input
+                  type="time"
+                  value={selections.endTime}
+                  onChange={(e) => setSelections({...selections, endTime: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="3">3 hours</option>
-                  <option value="4">4 hours</option>
-                  <option value="5">5 hours</option>
-                  <option value="6">6 hours</option>
-                  <option value="8">8 hours</option>
-                </select>
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Guest Count *
+                  Guest Count
                 </label>
                 <input
                   type="number"
                   value={selections.guestCount}
                   onChange={(e) => setSelections({...selections, guestCount: e.target.value})}
                   placeholder="100"
-                  required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -712,24 +760,6 @@ export default function SelectServicesPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Budget Range
-                </label>
-                <select
-                  value={selections.budgetRange}
-                  onChange={(e) => setSelections({...selections, budgetRange: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select range...</option>
-                  <option value="$1,500 - $2,000">$1,500 - $2,000</option>
-                  <option value="$2,000 - $2,500">$2,000 - $2,500</option>
-                  <option value="$2,500 - $3,000">$2,500 - $3,000</option>
-                  <option value="$3,000 - $4,000">$3,000 - $4,000</option>
-                  <option value="$4,000+">$4,000+</option>
-                </select>
-              </div>
-              
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Questions or Services Not Listed?

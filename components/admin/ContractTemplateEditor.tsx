@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import { 
@@ -12,7 +12,20 @@ import {
   ChevronDown,
   X,
   AlertCircle,
-  Check
+  Check,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  Link as LinkIcon,
+  Settings,
+  Type,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Star,
+  PenTool
 } from 'lucide-react';
 
 interface Template {
@@ -21,6 +34,7 @@ interface Template {
   description: string;
   template_content: string;
   is_active: boolean;
+  is_default?: boolean;
   created_at: string;
   updated_at: string;
   version: number;
@@ -45,6 +59,12 @@ export default function ContractTemplateEditor() {
   const [showPreview, setShowPreview] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedSmartField, setSelectedSmartField] = useState<SmartField | null>(null);
+  const [showConfigPanel, setShowConfigPanel] = useState(false);
+  
+  // Editor refs
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [isEditingHTML, setIsEditingHTML] = useState(false);
 
   // Form state
   const [templateName, setTemplateName] = useState('');
@@ -60,6 +80,19 @@ export default function ContractTemplateEditor() {
     { id: '{{client_full_name}}', label: 'Client Full Name', placeholder: 'John Smith', source: 'contacts.first_name + last_name', category: 'Client Info' },
     { id: '{{client_email}}', label: 'Client Email', placeholder: 'john@example.com', source: 'contacts.email_address', category: 'Client Info' },
     { id: '{{client_phone}}', label: 'Client Phone', placeholder: '(901) 555-1234', source: 'contacts.phone', category: 'Client Info' },
+    
+    // Signature Fields
+    { id: '{{signature_area}}', label: 'Signature Area', placeholder: '[Signature Area - Client signs here]', source: 'signature_component', category: 'Signature' },
+    { id: '{{signature_date}}', label: 'Signature Date', placeholder: 'Jan 28, 2025', source: 'contracts.signed_at', category: 'Signature' },
+    { id: '{{signature_client_name}}', label: 'Client Signature Name', placeholder: 'John Smith', source: 'signature_name', category: 'Signature' },
+    { id: '{{signature_company_name}}', label: 'Company Rep Signature Name', placeholder: 'Ben Murray', source: 'config', category: 'Signature' },
+    { id: '{{signature_title}}', label: 'Signature Title/Role', placeholder: 'Owner, M10 DJ Company', source: 'config', category: 'Signature' },
+    
+    // Editable Signature Fields (for form inputs)
+    { id: '{{editable_signer_name}}', label: 'Editable Signer Name (Input Field)', placeholder: 'John Smith', source: 'signature_name (editable)', category: 'Signature' },
+    { id: '{{editable_signer_email}}', label: 'Editable Signer Email (Input Field)', placeholder: 'john@example.com', source: 'signature_email (editable)', category: 'Signature' },
+    { id: '{{editable_company_name}}', label: 'Editable Company Name (Input Field)', placeholder: 'Ben Murray', source: 'config (editable)', category: 'Signature' },
+    { id: '{{editable_company_email}}', label: 'Editable Company Email (Input Field)', placeholder: 'm10djcompany@gmail.com', source: 'config (editable)', category: 'Signature' },
     
     // Event Details
     { id: '{{event_name}}', label: 'Event Name', placeholder: 'Smith Wedding', source: 'contacts.event_name', category: 'Event Details' },
@@ -131,6 +164,15 @@ export default function ContractTemplateEditor() {
     setTemplateDescription('');
     setTemplateContent('');
     setIsEditing(true);
+    setShowConfigPanel(false);
+    setSelectedSmartField(null);
+    setIsEditingHTML(false);
+    // Initialize empty editor
+    setTimeout(() => {
+      if (editorRef.current && !isEditingHTML) {
+        editorRef.current.innerHTML = '';
+      }
+    }, 100);
   };
 
   const handleEditTemplate = (template: Template) => {
@@ -140,13 +182,49 @@ export default function ContractTemplateEditor() {
     setTemplateContent(template.template_content);
     setIsEditing(true);
     setShowPreview(false);
+    setShowConfigPanel(false);
+    setSelectedSmartField(null);
+    // Initialize editor with content after a brief delay to ensure DOM is ready
+    setTimeout(() => {
+      if (editorRef.current && !isEditingHTML) {
+        editorRef.current.innerHTML = highlightSmartFields(template.template_content);
+      }
+    }, 100);
   };
 
   const handleSaveTemplate = async () => {
-    if (!templateName.trim() || !templateContent.trim()) {
+    // Ensure we have the latest content from editor
+    let contentToSave = templateContent;
+    if (editorRef.current && !isEditingHTML) {
+      contentToSave = editorRef.current.innerHTML;
+    }
+
+    // Debug logging
+    console.log('Save attempted:', {
+      templateName: templateName.trim(),
+      contentLength: contentToSave.trim().length,
+      isEditingHTML,
+      templateContent: templateContent.substring(0, 100)
+    });
+
+    if (!templateName.trim()) {
+      toast({
+        title: 'Template Name Required',
+        description: 'Please enter a template name before saving',
+        variant: 'destructive',
+      });
+      // Focus the template name input
+      const nameInput = document.querySelector('input[placeholder*="Standard DJ Services Contract"]') as HTMLInputElement;
+      if (nameInput) {
+        nameInput.focus();
+      }
+      return;
+    }
+
+    if (!contentToSave.trim()) {
       toast({
         title: 'Validation Error',
-        description: 'Template name and content are required',
+        description: 'Template content is required - please add some content to your template',
         variant: 'destructive',
       });
       return;
@@ -161,13 +239,16 @@ export default function ContractTemplateEditor() {
           .update({
             name: templateName,
             description: templateDescription,
-            template_content: templateContent,
+            template_content: contentToSave,
             version: selectedTemplate.version + 1,
             updated_at: new Date().toISOString(),
           })
           .eq('id', selectedTemplate.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
 
         toast({
           title: 'Template Updated',
@@ -175,17 +256,24 @@ export default function ContractTemplateEditor() {
         });
       } else {
         // Create new template
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const { error } = await supabase
           .from('contract_templates')
           .insert({
             name: templateName,
             description: templateDescription,
-            template_content: templateContent,
+            template_type: 'service_agreement',
+            template_content: contentToSave,
             is_active: true,
+            is_default: false,
             version: 1,
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
 
         toast({
           title: 'Template Created',
@@ -193,13 +281,22 @@ export default function ContractTemplateEditor() {
         });
       }
 
+      // Clear form state
+      setSelectedTemplate(null);
+      setTemplateName('');
+      setTemplateDescription('');
+      setTemplateContent('');
       setIsEditing(false);
-      fetchTemplates();
+      setShowConfigPanel(false);
+      setSelectedSmartField(null);
+      
+      // Refresh templates list
+      await fetchTemplates();
     } catch (error) {
       console.error('Error saving template:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save template',
+        description: error instanceof Error ? error.message : 'Failed to save template',
         variant: 'destructive',
       });
     } finally {
@@ -294,37 +391,233 @@ export default function ContractTemplateEditor() {
     }
   };
 
+  const handleSetDefault = async (template: Template) => {
+    try {
+      // First, unset all other default templates
+      const { error: unsetError } = await supabase
+        .from('contract_templates')
+        .update({ is_default: false })
+        .neq('id', template.id);
+
+      if (unsetError) throw unsetError;
+
+      // Then set this one as default
+      const { error } = await supabase
+        .from('contract_templates')
+        .update({ 
+          is_default: true,
+          is_active: true // Also activate if setting as default
+        })
+        .eq('id', template.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Default Template Set',
+        description: `${template.name} is now the default template`,
+      });
+
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error setting default template:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to set default template',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Rich text formatting functions
+  const formatText = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      editorRef.current.focus();
+      updateContentFromEditor();
+    }
+  };
+
+  const updateContentFromEditor = () => {
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      setTemplateContent(html);
+    }
+  };
+
+  // Handle smart field click in editor
+  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('smart-field')) {
+      const fieldId = target.getAttribute('data-field-id');
+      if (fieldId) {
+        const field = smartFields.find(f => f.id === fieldId);
+        if (field) {
+          setSelectedSmartField(field);
+          setShowConfigPanel(true);
+        }
+      }
+    }
+  };
+
+  // Highlight smart fields in content (only if not already highlighted)
+  const highlightSmartFields = (content: string): string => {
+    // If content already has smart-field spans, extract plain text first
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+    
+    let highlighted = plainText;
+    smartFields.forEach(field => {
+      const regex = new RegExp(field.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      // Special styling for different field types
+      let bgColor = 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300';
+      let borderStyle = '';
+      
+      if (field.id === '{{signature_area}}') {
+        bgColor = 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300';
+        borderStyle = 'border-2 border-blue-300 dark:border-blue-700';
+      } else if (field.id.includes('editable_')) {
+        bgColor = 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300';
+        borderStyle = 'border-2 border-green-300 dark:border-green-700';
+      }
+      
+      highlighted = highlighted.replace(
+        regex,
+        `<span class="smart-field ${bgColor} ${borderStyle} px-2 py-1 rounded cursor-pointer hover:opacity-80 font-medium" data-field-id="${field.id}" contenteditable="false">${field.id}</span>`
+      );
+    });
+    return highlighted;
+  };
+
   const insertSmartField = (field: SmartField) => {
-    const textarea = document.getElementById('template-content') as HTMLTextAreaElement;
-    if (!textarea) return;
+    if (editorRef.current) {
+      const selection = window.getSelection();
+      
+      // Check if there's a valid selection with a range
+      if (!selection || selection.rangeCount === 0) {
+        // No selection, append to end of content
+        editorRef.current.focus();
+        const smartFieldElement = document.createElement('span');
+        smartFieldElement.className = 'smart-field bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1 rounded cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-800';
+        smartFieldElement.setAttribute('data-field-id', field.id);
+        smartFieldElement.textContent = field.id;
+        smartFieldElement.contentEditable = 'false';
+        
+        // Append to editor
+        editorRef.current.appendChild(smartFieldElement);
+        
+        // Add a space after for text to continue
+        const space = document.createTextNode(' ');
+        editorRef.current.appendChild(space);
+        
+        // Move cursor after the field
+        const newRange = document.createRange();
+        newRange.setStartAfter(space);
+        newRange.collapse(true);
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+        
+        updateContentFromEditor();
+      } else {
+        // There's a valid selection, insert at cursor position
+        const range = selection.getRangeAt(0);
+        
+        const smartFieldElement = document.createElement('span');
+        smartFieldElement.className = 'smart-field bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1 rounded cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-800';
+        smartFieldElement.setAttribute('data-field-id', field.id);
+        smartFieldElement.textContent = field.id;
+        smartFieldElement.contentEditable = 'false';
+        
+        range.deleteContents();
+        range.insertNode(smartFieldElement);
+        
+        // Move cursor after the smart field
+        range.setStartAfter(smartFieldElement);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        updateContentFromEditor();
+      }
+      
+      editorRef.current.focus();
+    } else {
+      // Fallback to textarea method if editor not available
+      const textarea = document.getElementById('template-content') as HTMLTextAreaElement;
+      if (!textarea) return;
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = templateContent;
-    const before = text.substring(0, start);
-    const after = text.substring(end);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = templateContent;
+      const before = text.substring(0, start);
+      const after = text.substring(end);
 
-    const newContent = before + field.id + after;
-    setTemplateContent(newContent);
+      const newContent = before + field.id + after;
+      setTemplateContent(newContent);
 
-    // Set cursor position after the inserted field
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + field.id.length, start + field.id.length);
-    }, 0);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + field.id.length, start + field.id.length);
+      }, 0);
+    }
 
     setShowSmartFields(false);
   };
 
   const generatePreview = () => {
-    // Replace smart fields with example data for preview
+    // Extract text from HTML and replace smart fields with example data
     let preview = templateContent;
+    
     smartFields.forEach(field => {
       const regex = new RegExp(field.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      preview = preview.replace(regex, field.placeholder);
+      if (field.id === '{{signature_area}}') {
+        // Special visual placeholder for signature area
+        preview = preview.replace(
+          regex,
+          `<div style="border: 2px dashed #3b82f6; padding: 20px; margin: 20px 0; text-align: center; background-color: #eff6ff; border-radius: 8px;">
+            <div style="color: #1e40af; font-weight: 600; margin-bottom: 10px;">📝 Signature Area</div>
+            <div style="color: #64748b; font-size: 14px;">Client will sign here</div>
+            <div style="margin-top: 20px; height: 80px; border-top: 1px solid #94a3b8; padding-top: 15px; color: #64748b; font-size: 12px;">Signature line</div>
+          </div>`
+        );
+      } else {
+        preview = preview.replace(regex, field.placeholder);
+      }
     });
+    
     return preview;
   };
+
+  // Handle editor content change
+  const handleEditorInput = () => {
+    updateContentFromEditor();
+  };
+
+  // Convert HTML content to plain text for storage
+  const getPlainContent = (html: string): string => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    return tempDiv.textContent || tempDiv.innerText || '';
+  };
+
+  // Convert plain text back to HTML with smart field highlighting
+  const getHtmlContent = (text: string): string => {
+    // Preserve any existing HTML formatting, but highlight smart fields
+    return highlightSmartFields(text);
+  };
+
+  // Sync editor content when templateContent changes externally (only when not actively editing)
+  useEffect(() => {
+    if (editorRef.current && !isEditingHTML && !document.activeElement?.isSameNode(editorRef.current)) {
+      const currentContent = editorRef.current.innerHTML;
+      const newContent = highlightSmartFields(templateContent);
+      if (currentContent !== newContent && !editorRef.current.matches(':focus')) {
+        editorRef.current.innerHTML = newContent;
+      }
+    }
+  }, [templateContent, isEditingHTML]);
 
   if (loading) {
     return (
@@ -391,7 +684,96 @@ export default function ContractTemplateEditor() {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           {/* Toolbar */}
           <div className="border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Formatting Buttons */}
+              <div className="flex items-center gap-1 border-r border-gray-300 dark:border-gray-600 pr-2 mr-2">
+                <button
+                  type="button"
+                  onClick={() => formatText('bold')}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Bold"
+                >
+                  <Bold className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText('italic')}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Italic"
+                >
+                  <Italic className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText('underline')}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Underline"
+                >
+                  <Underline className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 border-r border-gray-300 dark:border-gray-600 pr-2 mr-2">
+                <button
+                  type="button"
+                  onClick={() => formatText('insertUnorderedList')}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Bullet List"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText('insertOrderedList')}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Numbered List"
+                >
+                  <ListOrdered className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 border-r border-gray-300 dark:border-gray-600 pr-2 mr-2">
+                <button
+                  type="button"
+                  onClick={() => formatText('justifyLeft')}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Align Left"
+                >
+                  <AlignLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText('justifyCenter')}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Align Center"
+                >
+                  <AlignCenter className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText('justifyRight')}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Align Right"
+                >
+                  <AlignRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <button
+                onClick={() => {
+                  // Insert signature area directly
+                  const signatureField = smartFields.find(f => f.id === '{{signature_area}}');
+                  if (signatureField) {
+                    insertSmartField(signatureField);
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                title="Insert Signature Area"
+              >
+                <PenTool className="w-4 h-4" />
+                Add Signature Area
+              </button>
+
               <button
                 onClick={() => setShowSmartFields(!showSmartFields)}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
@@ -408,6 +790,32 @@ export default function ContractTemplateEditor() {
                 <Eye className="w-4 h-4" />
                 {showPreview ? 'Edit' : 'Preview'}
               </button>
+
+              <button
+                onClick={() => {
+                  const newMode = !isEditingHTML;
+                  if (newMode) {
+                    // Switching to HTML mode - get plain text
+                    if (editorRef.current) {
+                      const tempDiv = document.createElement('div');
+                      tempDiv.innerHTML = editorRef.current.innerHTML;
+                      const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                      setTemplateContent(plainText);
+                    }
+                  } else {
+                    // Switching to Rich mode - convert plain text to HTML with highlights
+                    if (editorRef.current) {
+                      editorRef.current.innerHTML = highlightSmartFields(templateContent);
+                    }
+                  }
+                  setIsEditingHTML(newMode);
+                }}
+                className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                title="Toggle Rich Text/HTML mode"
+              >
+                <Type className="w-4 h-4" />
+                {isEditingHTML ? 'Rich' : 'HTML'}
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -415,6 +823,7 @@ export default function ContractTemplateEditor() {
                 onClick={() => {
                   setIsEditing(false);
                   setShowPreview(false);
+                  setShowConfigPanel(false);
                 }}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
@@ -465,20 +874,187 @@ export default function ContractTemplateEditor() {
             </div>
           )}
 
-          {/* Content Area */}
-          <div className="p-6">
-            {showPreview ? (
-              <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
-                {generatePreview()}
+          {/* Content Area - Split View */}
+          <div className="flex gap-4 p-6">
+            {/* Editor */}
+            <div className={`flex-1 ${showConfigPanel ? 'w-2/3' : 'w-full'}`}>
+              {showPreview ? (
+                <div 
+                  className="prose prose-sm max-w-none dark:prose-invert min-h-[600px] p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                  dangerouslySetInnerHTML={{ __html: generatePreview() }}
+                />
+              ) : isEditingHTML ? (
+                <textarea
+                  id="template-content"
+                  value={templateContent}
+                  onChange={(e) => setTemplateContent(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Prevent tab from losing focus
+                    if (e.key === 'Tab') {
+                      e.preventDefault();
+                      const textarea = e.target as HTMLTextAreaElement;
+                      const start = textarea.selectionStart;
+                      const end = textarea.selectionEnd;
+                      const newContent = templateContent.substring(0, start) + '  ' + templateContent.substring(end);
+                      setTemplateContent(newContent);
+                      setTimeout(() => {
+                        textarea.setSelectionRange(start + 2, start + 2);
+                      }, 0);
+                    }
+                  }}
+                  className="w-full h-[600px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Start typing your contract template. Use Insert Smart Field to add dynamic data..."
+                />
+              ) : (
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={handleEditorInput}
+                  onClick={handleEditorClick}
+                  onKeyDown={(e) => {
+                    // Prevent smart fields from being edited
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                      const range = selection.getRangeAt(0);
+                      const parent = range.commonAncestorContainer.parentElement;
+                      if (parent?.classList.contains('smart-field')) {
+                        if (e.key !== 'Delete' && e.key !== 'Backspace') {
+                          e.preventDefault();
+                          // Move cursor after smart field
+                          range.setStartAfter(parent);
+                          range.collapse(true);
+                          selection.removeAllRanges();
+                          selection.addRange(range);
+                        }
+                      }
+                    }
+                  }}
+                  className="w-full h-[600px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 overflow-y-auto prose prose-sm max-w-none dark:prose-invert"
+                  style={{ whiteSpace: 'pre-wrap', minHeight: '600px' }}
+                  dangerouslySetInnerHTML={{ __html: highlightSmartFields(templateContent || '') }}
+                  suppressContentEditableWarning
+                />
+              )}
+            </div>
+
+            {/* Smart Field Configuration Panel */}
+            {showConfigPanel && selectedSmartField && (
+              <div className="w-1/3 border-l border-gray-200 dark:border-gray-700 pl-6">
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sticky top-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                      <Settings className="w-5 h-5 text-purple-600" />
+                      Smart Field Config
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setShowConfigPanel(false);
+                        setSelectedSmartField(null);
+                      }}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Field Info */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Field Name
+                      </label>
+                      <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-2 font-mono text-sm text-purple-600 dark:text-purple-400">
+                        {selectedSmartField.id}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Label
+                      </label>
+                      <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm">
+                        {selectedSmartField.label}
+                      </div>
+                    </div>
+
+                    {/* Data Source Mapping */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Data Source
+                      </label>
+                      <select
+                        value={selectedSmartField.source}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+                        disabled
+                      >
+                        <option>{selectedSmartField.source}</option>
+                      </select>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Automatically mapped to: {selectedSmartField.source}
+                      </p>
+                    </div>
+
+                    {/* Category */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Category
+                      </label>
+                      <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm">
+                        {selectedSmartField.category}
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Preview Value
+                      </label>
+                      {selectedSmartField.id === '{{signature_area}}' ? (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded p-4 text-center">
+                          <div className="text-blue-700 dark:text-blue-300 font-semibold mb-1">📝 Signature Area</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">Client will sign here</div>
+                          <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400">
+                            Signature line
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded p-3 text-sm">
+                          <span className="text-purple-700 dark:text-purple-300 font-medium">
+                            {selectedSmartField.placeholder}
+                          </span>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {selectedSmartField.id === '{{signature_area}}' 
+                          ? 'This will be replaced with the signature component when the contract is signed'
+                          : 'This is how it will appear in preview mode'}
+                      </p>
+                    </div>
+
+                    {/* Special Instructions for Signature Area */}
+                    {selectedSmartField.id === '{{signature_area}}' && (
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-3">
+                        <p className="text-xs text-green-800 dark:text-green-200 font-semibold mb-1">
+                          💡 How Signature Areas Work:
+                        </p>
+                        <ul className="text-xs text-green-700 dark:text-green-300 space-y-1 list-disc list-inside">
+                          <li>Replaced with SignatureCapture component when signing</li>
+                          <li>Client can draw or type their signature</li>
+                          <li>Saved as image data when contract is signed</li>
+                          <li>Multiple signature areas can be added if needed</li>
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Instructions */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3">
+                      <p className="text-xs text-blue-800 dark:text-blue-200">
+                        <strong>Tip:</strong> Click anywhere in the editor to edit this field, or click on another smart field to configure it.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <textarea
-                id="template-content"
-                value={templateContent}
-                onChange={(e) => setTemplateContent(e.target.value)}
-                className="w-full h-[600px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Start typing your contract template. Use Insert Smart Field to add dynamic data..."
-              />
             )}
           </div>
         </div>
@@ -488,13 +1064,28 @@ export default function ContractTemplateEditor() {
           <div className="flex gap-3">
             <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-800 dark:text-blue-200">
-              <p className="font-medium mb-1">How to use Smart Fields:</p>
-              <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300">
-                <li>Click "Insert Smart Field" to add dynamic data that auto-populates</li>
-                <li>Smart fields appear as <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">{'{{field_name}}'}</code> in your template</li>
-                <li>Use Preview to see how the contract will look with sample data</li>
-                <li>All fields will be replaced with actual client data when generating contracts</li>
-              </ul>
+              <p className="font-medium mb-2">How to use the Contract Template Editor:</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="font-semibold mb-1 text-blue-900 dark:text-blue-100">Rich Text Formatting:</p>
+                  <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300 text-xs">
+                    <li>Use formatting buttons for <strong>Bold</strong>, <em>Italic</em>, Underline</li>
+                    <li>Create lists and align text</li>
+                    <li>Toggle between Rich Text and HTML modes</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-semibold mb-1 text-blue-900 dark:text-blue-100">Smart Fields & Signatures:</p>
+                  <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300 text-xs">
+                    <li>Click "Insert Smart Field" to add dynamic data</li>
+                    <li>Click "Add Signature Area" to insert a signature field</li>
+                    <li>Click any highlighted smart field to configure it</li>
+                    <li>Smart fields appear highlighted (purple) for easy identification</li>
+                    <li>Signature areas appear highlighted in blue</li>
+                    <li>Use Preview to see how the contract will look</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -547,9 +1138,19 @@ export default function ContractTemplateEditor() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                       {template.name}
+                      {template.is_default && (
+                        <span title="Default Template">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        </span>
+                      )}
                     </h3>
+                    {template.is_default && (
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                        Default
+                      </span>
+                    )}
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${
                         template.is_active
@@ -579,6 +1180,15 @@ export default function ContractTemplateEditor() {
                 </div>
 
                 <div className="flex items-center gap-2 ml-4">
+                  {!template.is_default && (
+                    <button
+                      onClick={() => handleSetDefault(template)}
+                      className="p-2 text-gray-600 hover:text-yellow-600 dark:text-gray-400 dark:hover:text-yellow-400 transition-colors"
+                      title="Set as Default"
+                    >
+                      <Star className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleEditTemplate(template)}
                     className="p-2 text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
@@ -616,4 +1226,5 @@ export default function ContractTemplateEditor() {
     </div>
   );
 }
+
 

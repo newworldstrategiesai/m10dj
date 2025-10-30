@@ -60,10 +60,10 @@ export default async function handler(req, res) {
         event_type: selections.eventType || contact.event_type,
         event_date: selections.eventDate || contact.event_date,
         event_time: selections.eventTime,
+        end_time: selections.endTime,
         venue_name: selections.venueName || contact.venue_name,
         venue_address: selections.venueAddress,
         guest_count: selections.guestCount || contact.guest_count,
-        event_duration_hours: selections.eventDuration,
         services_selected: selections.services || [],
         add_ons: selections.addOns || [],
         package_selected: selections.package,
@@ -190,6 +190,109 @@ export default async function handler(req, res) {
       // Don't fail the request if invoice generation fails
     }
 
+    // Generate contract automatically
+    let contractData = null;
+    try {
+      // Import contract generation function
+      const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+      const crypto = require('crypto');
+      
+      const contractSupabase = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+
+      // Get default template
+      const { data: template, error: templateError } = await contractSupabase
+        .from('contract_templates')
+        .select('*')
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .single();
+
+      if (!templateError && template && invoiceData && invoiceData.total > 0) {
+        // Calculate amounts from invoice
+        const totalAmount = invoiceData.total;
+        const depositAmount = totalAmount * 0.5;
+
+        // Prepare template variables
+        const variables = {
+          client_name: `${contact.first_name} ${contact.last_name}`,
+          client_first_name: contact.first_name,
+          client_last_name: contact.last_name,
+          client_email: contact.email_address || contact.primary_email || '',
+          client_phone: contact.phone || '',
+          event_name: contact.event_name || `${contact.first_name} ${contact.last_name} ${contact.event_type || 'Event'}`,
+          event_type: contact.event_type || selections.eventType || 'Event',
+          event_date: contact.event_date ? new Date(contact.event_date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '',
+          event_date_short: contact.event_date ? new Date(contact.event_date).toLocaleDateString('en-US') : '',
+          venue_name: contact.venue_name || selections.venueName || '',
+          venue_address: contact.venue_address || selections.venueAddress || '',
+          guest_count: contact.guest_count || selections.guestCount || '',
+          total_amount: `$${totalAmount.toFixed(2)}`,
+          deposit_amount: `$${depositAmount.toFixed(2)}`,
+          remaining_balance: `$${(totalAmount - depositAmount).toFixed(2)}`,
+          effective_date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+          company_name: 'M10 DJ Company',
+          company_address: '65 Stewart Rd, Eads, Tennessee 38028',
+          company_email: 'm10djcompany@gmail.com',
+          company_phone: '(901) 410-2020',
+          owner_name: 'Ben Murray'
+        };
+
+        // Replace template variables
+        let contractHtml = template.template_content;
+        Object.keys(variables).forEach(key => {
+          const regex = new RegExp(`{{${key}}}`, 'g');
+          contractHtml = contractHtml.replace(regex, variables[key]);
+        });
+
+        // Generate signing token
+        const signingToken = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
+        // Create contract
+        const { data: newContract, error: contractError } = await contractSupabase
+          .from('contracts')
+          .insert({
+            contact_id: contact.id,
+            invoice_id: invoiceData?.id || null,
+            service_selection_id: selection.id,
+            event_name: variables.event_name,
+            event_type: variables.event_type,
+            event_date: contact.event_date || selections.eventDate,
+            venue_name: variables.venue_name,
+            venue_address: variables.venue_address,
+            guest_count: contact.guest_count || selections.guestCount,
+            total_amount: totalAmount,
+            deposit_amount: depositAmount,
+            deposit_percentage: 50,
+            status: 'draft',
+            contract_template: template.name,
+            contract_html: contractHtml,
+            signing_token: signingToken,
+            signing_token_expires_at: expiresAt.toISOString(),
+            effective_date: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (!contractError && newContract) {
+          contractData = {
+            id: newContract.id,
+            contract_number: newContract.contract_number,
+            signing_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/sign-contract/${signingToken}`,
+            expires_at: expiresAt.toISOString()
+          };
+          console.log(`✅ Contract ${contractData.contract_number} generated`);
+        }
+      }
+    } catch (contractError) {
+      console.error('Error generating contract:', contractError);
+      // Don't fail the request if contract generation fails
+    }
+
     // Send admin notification
     await supabase.from('notification_log').insert({
       notification_type: 'service_selection_completed',
@@ -253,14 +356,16 @@ export default async function handler(req, res) {
       success: true,
       selection_id: selection.id,
       invoice: invoiceData,
+      contract: contractData,
       selections: {
         package: selections.package,
         addOns: selections.addOns || [],
         eventType: selections.eventType,
         eventDate: selections.eventDate,
+        eventTime: selections.eventTime,
+        endTime: selections.endTime,
         venueName: selections.venueName,
         guestCount: selections.guestCount,
-        budgetRange: selections.budgetRange,
         timeline: {
           ceremonyMusic: selections.ceremonyMusic,
           cocktailHour: selections.cocktailHour,

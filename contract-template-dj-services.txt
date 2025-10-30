@@ -1,0 +1,150 @@
+CONTRACT FOR DJ SERVICES
+
+This Contract is effective as of {{effective_date}} ("Effective Date"), between {{client_full_name}} ("Client") and {{company_name}} ("M10") located at {{company_address}}.
+
+WHEREAS, Client desires to engage M10 to provide DJ services for {{event_name}} ("Event") to be held on {{event_date}} at {{venue_name}}, located at {{venue_address}}; and
+
+WHEREAS, M10 desires to provide such services subject to the terms and conditions set forth herein.
+
+NOW, THEREFORE, in consideration of the mutual promises and covenants contained herein, the parties agree as follows:
+
+1. DESCRIPTION OF SERVICES
+
+M10 agrees to provide professional DJ services for {{event_type}} ("Event") to be held on {{event_date}} at {{venue_name}}, {{venue_address}} (the "Venue"). Services include, but are not limited to:
+
+- Professional DJ and MC services
+- Sound system and audio equipment
+- Microphones for speeches and announcements
+- Music programming and playlist management
+- Lighting effects (if included in package)
+- Equipment setup and breakdown
+
+The Event is scheduled to accommodate approximately {{guest_count}} guests.
+
+2. PERFORMANCE OF SERVICES
+
+M10 agrees to:
+
+a) Arrive at the Venue at least one (1) hour prior to the scheduled start time to set up equipment and perform sound check;
+
+b) Provide continuous music and sound services throughout the Event duration as specified;
+
+c) Maintain a professional playlist incorporating Client's requested music selections and accommodating guest requests when appropriate;
+
+d) Ensure music plays continuously without interruption except for speeches, announcements, or technical difficulties beyond M10's reasonable control;
+
+e) Accommodate reasonable requests for extended playing time, subject to availability and additional fees as agreed upon;
+
+f) Provide high-quality sound mixing, multi-color lighting effects, high-quality microphone(s), and professional-grade sound system appropriate for the Event size.
+
+3. TERM
+
+This Contract shall commence on the Effective Date and shall terminate upon completion of the Event services on {{event_date}}, unless earlier terminated in accordance with the provisions of this Contract.
+
+4. PAYMENT
+
+a) Total Contract Price: The total amount due for services rendered under this Contract is {{invoice_total}}.
+
+b) Deposit: Client shall pay a non-refundable deposit of {{deposit_amount}} (50% of total contract price) upon signing this Contract.
+
+c) Final Payment: The remaining balance of {{remaining_balance}} shall be due and payable no later than thirty (30) days before the Event date.
+
+d) Payment Methods: Payments may be made by credit card, check, or cash. Late payments may result in additional fees and/or cancellation of services.
+
+e) Additional Services: Any additional services requested by Client beyond the scope of this Contract shall be subject to additional fees as agreed upon in writing.
+
+5. CANCELLATION POLICY
+
+a) Client Cancellation: If Client cancels this Contract:
+   - More than sixty (60) days before the Event date: Client forfeits the deposit only.
+   - Between thirty (30) and sixty (60) days before the Event date: Client forfeits the deposit and is liable for 50% of the remaining balance.
+   - Less than thirty (30) days before the Event date: Client is liable for 100% of the total contract price.
+
+b) M10 Cancellation: In the unlikely event M10 must cancel due to circumstances beyond its reasonable control, M10 will provide a full refund of all payments made and use best efforts to provide a qualified replacement DJ service. If no replacement can be found, M10's liability shall be limited to the amount paid by Client.
+
+6. WARRANTY
+
+M10 warrants that all services will be performed in a timely, professional, and workmanlike manner consistent with industry standards. M10 shall use professional-grade equipment that is properly maintained and in good working order.
+
+7. DEFAULT
+
+Either party shall be in default under this Contract if such party:
+a) Fails to perform any material obligation required by this Contract;
+b) Becomes insolvent or bankrupt;
+c) Makes an assignment for the benefit of creditors;
+d) Files or has filed against it a petition in bankruptcy; or
+e) Fails to remedy any breach of this Contract within ten (10) days after written notice of such breach.
+
+8. REMEDIES
+
+In the event of default by either party, the non-defaulting party may, at its option:
+a) Terminate this Contract upon written notice to the defaulting party;
+b) Seek all remedies available at law or in equity, including but not limited to recovery of damages;
+c) If Client is in default, M10 may retain all payments made and pursue recovery of the remaining balance due.
+
+9. FORCE MAJEURE
+
+Neither party shall be liable for any delay or failure to perform its obligations under this Contract due to causes beyond its reasonable control, including but not limited to acts of God, natural disasters, war, terrorism, labor strikes, government action, pandemic, or other similar events ("Force Majeure Events"). If a Force Majeure Event prevents performance, the affected party shall notify the other party as soon as practicable, and the parties shall work together in good faith to reschedule or otherwise accommodate the Event if feasible.
+
+10. DISPUTE RESOLUTION
+
+a) The parties agree to first attempt to resolve any disputes arising from this Contract through good faith negotiations.
+
+b) If the parties cannot resolve a dispute through negotiation, they agree to submit the dispute to Alternative Dispute Resolution (ADR) or mediation before pursuing litigation.
+
+c) Any mediation or ADR proceedings shall be conducted in the state of Tennessee in accordance with Tennessee law.
+
+11. ENTIRE AGREEMENT
+
+This Contract contains the entire agreement between the parties and supersedes all prior negotiations, representations, or agreements, whether oral or written, relating to the subject matter hereof. No modification of this Contract shall be binding unless in writing and signed by both parties.
+
+12. SEVERABILITY
+
+If any provision of this Contract is held to be invalid or unenforceable, the remainder of this Contract shall remain in full force and effect, and the invalid or unenforceable provision shall be modified to the minimum extent necessary to make it valid and enforceable.
+
+13. AMENDMENT
+
+This Contract may only be amended, modified, or supplemented by an agreement in writing signed by both parties.
+
+14. GOVERNING LAW
+
+This Contract shall be governed by and construed in accordance with the laws of the State of Tennessee, without regard to its conflict of laws principles.
+
+15. NOTICE
+
+All notices, requests, and other communications required or permitted under this Contract shall be in writing and delivered to the addresses set forth below:
+
+Client:
+{{client_full_name}}
+{{client_email}}
+{{client_phone}}
+
+M10:
+{{company_name}}
+{{company_address}}
+{{company_email}}
+{{company_phone}}
+
+16. WAIVER OF CONTRACTUAL RIGHT
+
+The failure of either party to enforce any provision of this Contract shall not be deemed a waiver of such provision or of the right of such party thereafter to enforce such provision or any other provision of this Contract.
+
+17. SIGNATORIES
+
+This Contract shall be executed by the parties' authorized representatives below.
+
+CLIENT:
+_________________________________________
+{{client_full_name}}
+Date: _______________
+
+M10 DJ COMPANY:
+_________________________________________
+{{owner_name}}, Manager
+{{company_name}}
+Date: _______________
+
+CONTRACT NUMBER: {{contract_number}}
+
+IN WITNESS WHEREOF, the parties have executed this Contract as of the date first written above.
+

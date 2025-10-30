@@ -42,10 +42,10 @@ export default function ServiceSelectionDemo() {
     eventType: contact.event_type || 'wedding',
     eventDate: contact.event_date || '',
     eventTime: '',
+    endTime: '',
     venueName: contact.venue_name || '',
     venueAddress: contact.venue_address || '',
     guestCount: contact.guest_count?.toString() || '',
-    eventDuration: '4',
     package: '',
     services: [] as string[],
     addOns: [] as string[],
@@ -55,7 +55,6 @@ export default function ServiceSelectionDemo() {
     afterParty: false,
     musicPreferences: '',
     specialRequests: '',
-    budgetRange: '',
     additionalQuestions: ''
   });
 
@@ -207,25 +206,29 @@ export default function ServiceSelectionDemo() {
                   <Calendar className="h-4 w-4 text-blue-600" />
                   <span><strong>Event:</strong> {selections.eventType} on {selections.eventDate}</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-700">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <span><strong>Guests:</strong> {selections.guestCount}</span>
-                </div>
+                {selections.guestCount && (
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Users className="h-4 w-4 text-blue-600" />
+                    <span><strong>Guests:</strong> {selections.guestCount}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-gray-700">
                   <MapPin className="h-4 w-4 text-blue-600" />
                   <span><strong>Venue:</strong> {selections.venueName}</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-700">
-                  <Clock className="h-4 w-4 text-blue-600" />
-                  <span><strong>Duration:</strong> {selections.eventDuration} hours</span>
-                </div>
+                {selections.eventTime && (
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Clock className="h-4 w-4 text-blue-600" />
+                    <span><strong>Start Time:</strong> {selections.eventTime}</span>
+                  </div>
+                )}
+                {selections.endTime && (
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Clock className="h-4 w-4 text-blue-600" />
+                    <span><strong>End Time:</strong> {selections.endTime}</span>
+                  </div>
+                )}
               </div>
-              {selections.budgetRange && (
-                <div className="flex items-center gap-2 text-gray-700 mt-3">
-                  <DollarSign className="h-4 w-4 text-blue-600" />
-                  <span><strong>Budget Range:</strong> {selections.budgetRange}</span>
-                </div>
-              )}
               {(selections.ceremonyMusic || selections.cocktailHour || selections.reception || selections.afterParty) && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <p className="text-sm text-gray-700"><strong>Timeline:</strong></p>
@@ -437,31 +440,25 @@ export default function ServiceSelectionDemo() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Duration (hours)
+                  End Time
                 </label>
-                <select
-                  value={selections.eventDuration}
-                  onChange={(e) => setSelections({...selections, eventDuration: e.target.value})}
+                <input
+                  type="time"
+                  value={selections.endTime}
+                  onChange={(e) => setSelections({...selections, endTime: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="3">3 hours</option>
-                  <option value="4">4 hours</option>
-                  <option value="5">5 hours</option>
-                  <option value="6">6 hours</option>
-                  <option value="8">8 hours</option>
-                </select>
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Guest Count *
+                  Guest Count
                 </label>
                 <input
                   type="number"
                   value={selections.guestCount}
                   onChange={(e) => setSelections({...selections, guestCount: e.target.value})}
                   placeholder="100"
-                  required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -613,24 +610,6 @@ export default function ServiceSelectionDemo() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Budget Range
-                </label>
-                <select
-                  value={selections.budgetRange}
-                  onChange={(e) => setSelections({...selections, budgetRange: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select range...</option>
-                  <option value="$1,500 - $2,000">$1,500 - $2,000</option>
-                  <option value="$2,000 - $2,500">$2,000 - $2,500</option>
-                  <option value="$2,500 - $3,000">$2,500 - $3,000</option>
-                  <option value="$3,000 - $4,000">$3,000 - $4,000</option>
-                  <option value="$4,000+">$4,000+</option>
-                </select>
-              </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Questions or Services Not Listed?
