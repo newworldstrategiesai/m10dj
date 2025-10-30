@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { db } from '../../utils/company_lib/supabase';
 import { sendAdminSMS, formatContactSubmissionSMS } from '../../utils/sms-helper.js';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { sendServiceSelectionToLead } from '../../utils/service-selection-helper.js';
 
 // Initialize Resend with API key from environment variable
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -229,6 +230,52 @@ export default async function handler(req, res) {
       console.error('This means the contact was not saved to the contacts system!');
       // Continue with email sending, but log this as a critical issue
       // You may want to check the database policies and permissions
+    }
+
+    // Auto-send service selection link for wedding leads
+    if (standardizedEventType === 'wedding' || standardizedEventType === 'Wedding') {
+      console.log('🎯 Detected wedding inquiry - preparing to send service selection link...');
+      
+      try {
+        // Re-fetch the contact to get the complete record with ID
+        const { createClient } = require('@supabase/supabase-js');
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+
+        const { data: contact, error: fetchError } = await supabase
+          .from('contacts')
+          .select('*')
+          .eq('email_address', email)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (fetchError || !contact) {
+          console.error('Could not fetch contact for service selection:', fetchError);
+        } else {
+          const serviceSelectionResult = await sendServiceSelectionToLead(contact, supabase);
+          
+          if (serviceSelectionResult.success) {
+            console.log(`✅ Service selection link sent to ${email}`);
+            console.log(`   Link: ${serviceSelectionResult.link}`);
+            if (serviceSelectionResult.emailSent) {
+              console.log('   ✅ Email delivered successfully');
+            } else {
+              console.log('   ⚠️ Email failed:', serviceSelectionResult.emailError);
+            }
+          } else {
+            console.log('❌ Failed to send service selection:', serviceSelectionResult.error);
+          }
+        }
+      } catch (serviceSelectionError) {
+        console.error('Error sending service selection:', serviceSelectionError);
+        // Don't fail the entire request if service selection fails
+      }
+    } else {
+      console.log(`ℹ️ Event type "${standardizedEventType}" - skipping service selection (only sent for weddings)`);
     }
 
     // Only send emails if Resend API key is configured
