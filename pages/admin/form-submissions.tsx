@@ -59,6 +59,7 @@ export default function FormSubmissionsPage() {
   const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null);
   const [communicationHistory, setCommunicationHistory] = useState<CommunicationLog[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -662,15 +663,13 @@ export default function FormSubmissionsPage() {
 
             {/* Modal Footer */}
             <div className="bg-white px-6 py-4 border-t border-gray-200 flex gap-3">
-              <a
-                href={`mailto:${selectedSubmission.email}?subject=${encodeURIComponent(`Re: ${selectedSubmission.event_type} Inquiry - ${selectedSubmission.name}`)}&body=${encodeURIComponent(`Hi ${selectedSubmission.name.split(' ')[0]},\n\nThank you for your interest in M10 DJ services for your ${selectedSubmission.event_type}${selectedSubmission.event_date ? ` on ${formatEventDate(selectedSubmission.event_date)}` : ''}.\n\n`)}`}
+              <button
+                onClick={() => setShowEmailModal(true)}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                target="_blank"
-                rel="noopener noreferrer"
               >
                 <Mail className="w-4 h-4" />
                 <span>Send Email</span>
-              </a>
+              </button>
               {selectedSubmission.phone && (
                 <a
                   href={`tel:${selectedSubmission.phone}`}
@@ -695,7 +694,358 @@ export default function FormSubmissionsPage() {
           </div>
         </div>
       )}
+
+      {/* Email Compose Modal */}
+      {showEmailModal && selectedSubmission && (
+        <EmailComposeModal
+          submission={selectedSubmission}
+          onClose={() => setShowEmailModal(false)}
+          onSuccess={() => {
+            setShowEmailModal(false);
+            fetchCommunicationHistory(selectedSubmission.id);
+          }}
+        />
+      )}
     </AdminLayout>
+  );
+}
+
+// Email Compose Modal Component
+function EmailComposeModal({ 
+  submission, 
+  onClose, 
+  onSuccess 
+}: { 
+  submission: FormSubmission; 
+  onClose: () => void; 
+  onSuccess: () => void;
+}) {
+  const supabase = createClientComponentClient();
+  const [sending, setSending] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('custom');
+  const [includeServiceLink, setIncludeServiceLink] = useState(submission.event_type === 'Wedding' || submission.event_type === 'wedding');
+  const [formData, setFormData] = useState({
+    subject: `Re: ${submission.event_type} Inquiry - ${submission.name}`,
+    body: ''
+  });
+
+  const emailTemplates = {
+    custom: {
+      name: 'Custom Email',
+      subject: `Re: ${submission.event_type} Inquiry - ${submission.name}`,
+      body: ''
+    },
+    initial_response: {
+      name: 'Initial Response',
+      subject: `Thank you for contacting M10 DJ - ${submission.event_type}`,
+      body: `Hi ${submission.name.split(' ')[0]},
+
+Thank you for reaching out to M10 DJ Company! I'm excited to learn more about your ${submission.event_type.toLowerCase()}${submission.event_date ? ` on ${new Date(submission.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}.
+
+I'd love to discuss how we can make your event unforgettable with professional DJ services, lighting, and entertainment.
+
+Are you available for a quick call this week to discuss your vision and answer any questions you might have?
+
+Looking forward to connecting!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    quote_ready: {
+      name: 'Quote Ready',
+      subject: `Your Custom Quote - M10 DJ Services`,
+      body: `Hi ${submission.name.split(' ')[0]},
+
+Great news! I've prepared a custom quote for your ${submission.event_type.toLowerCase()}${submission.event_date ? ` on ${new Date(submission.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}.
+
+I've tailored our services to match your specific needs and budget. The quote includes:
+
+• Professional DJ Services
+• Premium Sound System
+• Uplighting & Ambiance
+• Wireless Microphone
+• Music Consultation
+
+Please review the attached quote and let me know if you have any questions. I'm happy to adjust the package to better fit your vision!
+
+Ready to move forward? Let's get you booked!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    follow_up: {
+      name: 'Follow Up',
+      subject: `Following up - ${submission.event_type} on ${submission.event_date ? new Date(submission.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'your event date'}`,
+      body: `Hi ${submission.name.split(' ')[0]},
+
+I wanted to follow up on our previous conversation about your ${submission.event_type.toLowerCase()}.
+
+I know planning an event can be overwhelming with so many vendors to coordinate, so I wanted to make sure I answered all your questions about our DJ services.
+
+Do you have any additional questions? I'm here to help make this process as smooth as possible!
+
+Looking forward to hearing from you!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    booking_confirmation: {
+      name: 'Booking Confirmation',
+      subject: `You're Booked! - ${submission.event_type} Details`,
+      body: `Hi ${submission.name.split(' ')[0]},
+
+Congratulations! 🎉 Your ${submission.event_type.toLowerCase()} is officially on my calendar${submission.event_date ? ` for ${new Date(submission.event_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}` : ''}!
+
+I'm thrilled to be part of your special day and can't wait to help create an amazing experience for you and your guests.
+
+Next Steps:
+1. Contract signing (attached or link below)
+2. Deposit payment to secure your date
+3. Schedule a planning meeting closer to the date
+
+Please review and sign the contract at your earliest convenience. Once I receive the signed contract and deposit, your date will be 100% secured.
+
+Thank you for choosing M10 DJ Company!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    }
+  };
+
+  useEffect(() => {
+    if (selectedTemplate !== 'custom') {
+      const template = emailTemplates[selectedTemplate as keyof typeof emailTemplates];
+      setFormData({
+        subject: template.subject,
+        body: template.body
+      });
+    }
+  }, [selectedTemplate]);
+
+  const handleSendEmail = async () => {
+    if (!formData.body.trim()) {
+      alert('Please enter a message');
+      return;
+    }
+
+    setSending(true);
+    try {
+      let emailBody = formData.body;
+
+      // Add service selection link if included
+      if (includeServiceLink) {
+        // Generate service selection link
+        const linkResponse = await fetch('/api/service-selection/generate-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: submission.email,
+            name: submission.name,
+            eventType: submission.event_type,
+            eventDate: submission.event_date
+          })
+        });
+
+        if (linkResponse.ok) {
+          const { link } = await linkResponse.json();
+          emailBody += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 SELECT YOUR SERVICES\n\nI've created a personalized service selection page for you. Please review and select the services that best fit your needs:\n\n👉 ${link}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        }
+      }
+
+      // Send email via API
+      const response = await fetch('/api/admin/communications/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: submission.email,
+          subject: formData.subject,
+          body: emailBody,
+          submissionId: submission.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send email');
+      }
+
+      // Log communication
+      await supabase.from('communication_log').insert({
+        contact_submission_id: submission.id,
+        communication_type: 'email',
+        direction: 'outbound',
+        subject: formData.subject,
+        content: emailBody,
+        status: 'sent',
+        sent_to: submission.email,
+        created_at: new Date().toISOString()
+      });
+
+      // Update submission status if it was "new"
+      if (submission.status === 'new') {
+        await supabase
+          .from('contact_submissions')
+          .update({ status: 'contacted', updated_at: new Date().toISOString() })
+          .eq('id', submission.id);
+      }
+
+      alert('Email sent successfully!');
+      onSuccess();
+    } catch (error) {
+      console.error('Error sending email:', error);
+      alert('Failed to send email. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Mail className="w-6 h-6 text-white" />
+            <div>
+              <h2 className="text-xl font-bold text-white">Send Email</h2>
+              <p className="text-blue-100 text-sm">To: {submission.name} ({submission.email})</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="text-white hover:bg-white/20 p-1 rounded-lg transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* Template Selector */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Email Template
+            </label>
+            <select
+              value={selectedTemplate}
+              onChange={(e) => setSelectedTemplate(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="custom">Custom Email</option>
+              <option value="initial_response">Initial Response</option>
+              <option value="quote_ready">Quote Ready</option>
+              <option value="follow_up">Follow Up</option>
+              <option value="booking_confirmation">Booking Confirmation</option>
+            </select>
+          </div>
+
+          {/* Subject */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Subject
+            </label>
+            <input
+              type="text"
+              value={formData.subject}
+              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Email subject..."
+            />
+          </div>
+
+          {/* Include Service Selection Link */}
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeServiceLink}
+                onChange={(e) => setIncludeServiceLink(e.target.checked)}
+                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+              />
+              <div className="flex-1">
+                <div className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4 text-purple-600" />
+                  Include Service Selection Link
+                </div>
+                <p className="text-xs text-gray-600 mt-1">
+                  Add a personalized link where the client can select their preferred services and packages. 
+                  This helps provide accurate quotes and streamlines the booking process.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* Body */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Message
+            </label>
+            <textarea
+              value={formData.body}
+              onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+              rows={12}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              placeholder="Type your message here..."
+            />
+          </div>
+
+          {/* Preview */}
+          {includeServiceLink && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                Service Selection Link Preview
+              </p>
+              <div className="text-sm text-gray-600 bg-white p-3 rounded border border-gray-300">
+                <p className="mb-2">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
+                <p className="font-semibold">📋 SELECT YOUR SERVICES</p>
+                <p className="mt-2 text-xs">A personalized service selection page will be automatically generated and included at the end of your email.</p>
+                <p className="mt-2">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={sending}
+            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSendEmail}
+            disabled={sending || !formData.body.trim()}
+            className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {sending ? (
+              <>
+                <Loader className="w-4 h-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Mail className="w-4 h-4" />
+                Send Email
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

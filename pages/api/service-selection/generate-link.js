@@ -1,8 +1,9 @@
 /**
- * Generate Service Selection Link
- * Creates a unique, secure link for a contact to select their services
+ * API: Generate Service Selection Link
+ * Creates a secure token and returns a personalized service selection URL
  */
 
+import crypto from 'crypto';
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,80 +14,90 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { contactId, expiresInDays = 30 } = req.body;
+  const { email, name, eventType, eventDate } = req.body;
 
-  if (!contactId) {
-    return res.status(400).json({ error: 'contactId required' });
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
   }
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get contact details
-    const { data: contact, error: contactError } = await supabase
+    // Find or create contact
+    let contact;
+    const { data: existingContact, error: fetchError } = await supabase
       .from('contacts')
       .select('*')
-      .eq('id', contactId)
+      .eq('email_address', email)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
-    if (contactError) throw contactError;
+    if (existingContact) {
+      contact = existingContact;
+    } else {
+      // Create new contact
+      const nameParts = (name || 'Guest').split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
-    if (!contact) {
-      return res.status(404).json({ error: 'Contact not found' });
+      const { data: newContact, error: createError } = await supabase
+        .from('contacts')
+        .insert({
+          first_name: firstName,
+          last_name: lastName,
+          email_address: email,
+          event_type: eventType || 'other',
+          event_date: eventDate || null,
+          lead_status: 'new',
+          lead_source: 'Email Link',
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating contact:', createError);
+        return res.status(500).json({ error: 'Failed to create contact' });
+      }
+
+      contact = newContact;
     }
 
-    // Generate token using database function
-    const { data: tokenData } = await supabase
-      .rpc('generate_selection_token');
+    // Generate secure token
+    const token = crypto.randomBytes(32).toString('hex');
 
-    const token = tokenData;
-
-    // Calculate expiration
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + expiresInDays);
-
-    // Store token
-    const { data: createdToken, error: tokenError } = await supabase
-      .from('service_selection_tokens')
-      .insert({
-        contact_id: contactId,
-        token: token,
-        expires_at: expiresAt.toISOString()
-      })
-      .select()
-      .single();
-
-    if (tokenError) throw tokenError;
-
-    // Update contact
-    await supabase
+    // Store token with contact
+    const { error: updateError } = await supabase
       .from('contacts')
       .update({
-        service_selection_sent: true,
-        service_selection_sent_at: new Date().toISOString()
+        service_selection_token: token,
+        service_selection_sent_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
-      .eq('id', contactId);
+      .eq('id', contact.id);
 
-    // Generate the link
+    if (updateError) {
+      console.error('Error updating contact with token:', updateError);
+      return res.status(500).json({ error: 'Failed to generate link' });
+    }
+
+    // Generate link
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    const selectionLink = `${baseUrl}/select-services/${token}`;
+    const link = `${baseUrl}/select-services/${token}`;
 
-    console.log(`✅ Generated service selection link for contact ${contactId}`);
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      token: token,
-      link: selectionLink,
-      expires_at: expiresAt.toISOString(),
-      contact_id: contactId
+      link,
+      contactId: contact.id
     });
 
   } catch (error) {
-    console.error('❌ Error generating service selection link:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate link',
+    console.error('Error generating service selection link:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error',
       message: error.message 
     });
   }
 }
-
