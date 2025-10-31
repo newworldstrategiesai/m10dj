@@ -82,18 +82,18 @@ export default function ContactsPage() {
             <div className="absolute top-1/3 right-1/4 w-72 h-72 bg-[#fcba00]/5 rounded-full blur-3xl opacity-20 animate-pulse"></div>
             
             {/* Main content */}
-            <div className="relative z-10 container mx-auto px-4 py-8">
+            <div className="relative z-10 container mx-auto px-3 lg:px-4 py-4 lg:py-8">
                 <div className="rounded-2xl backdrop-blur-sm bg-white/90 border border-gray-200 shadow-xl overflow-hidden">
-                    <div className="pt-6 px-6">
+                    <div className="pt-4 lg:pt-6 px-4 lg:px-6">
                         <div className="flex items-center justify-between mb-2">
-                            <h1 className="text-3xl font-bold text-gray-800 flex items-center font-sans">
+                            <h1 className="text-2xl lg:text-3xl font-bold text-gray-800 flex items-center font-sans">
                                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#fcba00] to-black">
                                     M10 DJ Contacts
                                 </span>
-                                <div className="ml-3 h-2 w-2 rounded-full bg-green-400 animate-pulse"></div>
+                                <div className="ml-2 lg:ml-3 h-2 w-2 rounded-full bg-green-400 animate-pulse"></div>
                             </h1>
                         </div>
-                        <p className="text-gray-600 text-sm mb-2 font-sans">Manage your DJ business leads and client contacts</p>
+                        <p className="text-gray-600 text-xs lg:text-sm mb-2 font-sans">Manage your DJ business leads and client contacts</p>
                     </div>
                     
                     <ContactsWrapper userId={user.id} apiKeys={apiKeys} />

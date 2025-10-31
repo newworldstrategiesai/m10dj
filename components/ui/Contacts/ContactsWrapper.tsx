@@ -288,75 +288,77 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Summary Cards */}
+    <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
+      {/* Summary Cards - Mobile Optimized: 2 cols mobile, 4 cols desktop */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 rounded-lg p-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+          <div className="bg-blue-50 rounded-lg p-3 lg:p-4">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <IconUser className="h-6 w-6 text-blue-600" />
+              <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                <IconUser className="h-5 w-5 lg:h-6 lg:w-6 text-blue-600" />
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-blue-600">Total Contacts</p>
-                <p className="text-2xl font-bold text-blue-900">{summary.total_contacts || 0}</p>
+              <div className="ml-2 lg:ml-3 min-w-0">
+                <p className="text-xs lg:text-sm font-medium text-blue-600 truncate">Total Contacts</p>
+                <p className="text-xl lg:text-2xl font-bold text-blue-900">{summary.total_contacts || 0}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-green-50 rounded-lg p-4">
+          <div className="bg-green-50 rounded-lg p-3 lg:p-4">
             <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <IconTarget className="h-6 w-6 text-green-600" />
+              <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
+                <IconTarget className="h-5 w-5 lg:h-6 lg:w-6 text-green-600" />
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-green-600">New Leads</p>
-                <p className="text-2xl font-bold text-green-900">{summary.new_leads || 0}</p>
+              <div className="ml-2 lg:ml-3 min-w-0">
+                <p className="text-xs lg:text-sm font-medium text-green-600 truncate">New Leads</p>
+                <p className="text-xl lg:text-2xl font-bold text-green-900">{summary.new_leads || 0}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-purple-50 rounded-lg p-4">
+          <div className="bg-purple-50 rounded-lg p-3 lg:p-4">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <IconCalendar className="h-6 w-6 text-purple-600" />
+              <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
+                <IconCalendar className="h-5 w-5 lg:h-6 lg:w-6 text-purple-600" />
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-purple-600">Booked Events</p>
-                <p className="text-2xl font-bold text-purple-900">{summary.booked_events || 0}</p>
+              <div className="ml-2 lg:ml-3 min-w-0">
+                <p className="text-xs lg:text-sm font-medium text-purple-600 truncate">Booked</p>
+                <p className="text-xl lg:text-2xl font-bold text-purple-900">{summary.booked_events || 0}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-orange-50 rounded-lg p-4">
+          <div className="bg-orange-50 rounded-lg p-3 lg:p-4">
             <div className="flex items-center">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <IconClock className="h-6 w-6 text-orange-600" />
+              <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
+                <IconClock className="h-5 w-5 lg:h-6 lg:w-6 text-orange-600" />
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-orange-600">Follow-ups Due</p>
-                <p className="text-2xl font-bold text-orange-900">{summary.follow_ups_due || 0}</p>
+              <div className="ml-2 lg:ml-3 min-w-0">
+                <p className="text-xs lg:text-sm font-medium text-orange-600 truncate">Follow-ups</p>
+                <p className="text-xl lg:text-2xl font-bold text-orange-900">{summary.follow_ups_due || 0}</p>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Filters and Search */}
-      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <div className="relative flex-1 max-w-md">
-            <IconSearch className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search contacts..."
-              value={searchQuery}
-              onChange={(value) => setSearchQuery(value)}
-              className="pl-10"
-            />
-          </div>
-          
+      {/* Filters and Search - Mobile Optimized */}
+      <div className="flex flex-col gap-3 lg:gap-4">
+        {/* Search Bar - Full Width on Mobile */}
+        <div className="relative w-full">
+          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <Input
+            placeholder="Search contacts..."
+            value={searchQuery}
+            onChange={(value) => setSearchQuery(value)}
+            className="pl-10 h-12 lg:h-10"
+          />
+        </div>
+        
+        {/* Filters - 2 cols on mobile, row on desktop */}
+        <div className="grid grid-cols-2 lg:flex gap-2 lg:gap-3">
           <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-full lg:w-48 h-12 lg:h-10">
               <SelectValue placeholder="Event Type" />
             </SelectTrigger>
             <SelectContent>
@@ -369,7 +371,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
           </Select>
           
           <Select value={leadStatusFilter} onValueChange={setLeadStatusFilter}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-full lg:w-48 h-12 lg:h-10">
               <SelectValue placeholder="Lead Status" />
             </SelectTrigger>
             <SelectContent>
@@ -380,11 +382,9 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
               ))}
             </SelectContent>
           </Select>
-        </div>
-        
-        <div className="flex gap-2">
+          
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full lg:w-40 h-12 lg:h-10">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -398,9 +398,11 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
           <Button
             variant="flat"
             onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            className="px-3"
+            className="h-12 lg:h-10 lg:w-auto lg:px-3"
+            title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
           >
-            <IconArrowUp className={`h-4 w-4 ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
+            <IconArrowUp className={`h-4 w-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
+            <span className="ml-2 lg:hidden">{sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</span>
           </Button>
         </div>
       </div>
@@ -417,11 +419,11 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
           <p className="text-gray-600">Try adjusting your search or filters.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
           {filteredContacts.map((contact) => (
             <div
               key={contact.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer"
+              className="bg-white rounded-lg border border-gray-200 p-4 lg:p-6 hover:shadow-lg transition-shadow cursor-pointer active:scale-[0.98]"
               onClick={() => handleContactClick(contact)}
             >
               <div className="flex items-start justify-between mb-4">
@@ -488,39 +490,39 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
               <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
                 <Button
                   variant="flat"
-                  className="flex-1 text-xs"
+                  className="flex-1 text-xs lg:text-sm h-10 lg:h-9"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleContactClick(contact);
                   }}
                 >
-                  <IconEye className="h-3 w-3 mr-1" />
-                  View
+                  <IconEye className="h-4 w-4 lg:h-3 lg:w-3 lg:mr-1" />
+                  <span className="hidden lg:inline">View</span>
                 </Button>
                 {contact.phone && (
                   <Button
                     variant="flat"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs lg:text-sm h-10 lg:h-9"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleSendSMS(contact);
                     }}
                   >
-                    <IconMessage className="h-3 w-3 mr-1" />
-                    SMS
+                    <IconMessage className="h-4 w-4 lg:h-3 lg:w-3 lg:mr-1" />
+                    <span className="hidden lg:inline">SMS</span>
                   </Button>
                 )}
                 {contact.email_address && (
                   <Button
                     variant="flat"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs lg:text-sm h-10 lg:h-9"
                     onClick={(e) => {
                       e.stopPropagation();
                       window.open(`mailto:${contact.email_address}`, '_blank');
                     }}
                   >
-                    <IconMail className="h-3 w-3 mr-1" />
-                    Email
+                    <IconMail className="h-4 w-4 lg:h-3 lg:w-3 lg:mr-1" />
+                    <span className="hidden lg:inline">Email</span>
                   </Button>
                 )}
               </div>
@@ -529,9 +531,9 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
         </div>
       )}
 
-      {/* Contact Details Modal */}
+      {/* Contact Details Modal - Mobile Optimized */}
       <Dialog open={showContactModal} onOpenChange={setShowContactModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] lg:max-h-[80vh] overflow-y-auto mx-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
