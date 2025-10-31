@@ -405,7 +405,7 @@ export default function FormSubmissionsPage() {
 
       {/* Submission Detail Modal */}
       {selectedSubmission && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-[#fcba00] to-[#d99f00] px-6 py-5 flex items-center justify-between">
