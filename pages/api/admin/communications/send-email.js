@@ -31,8 +31,14 @@ export default async function handler(req, res) {
   }
 
   if (!resend) {
-    return res.status(500).json({ error: 'Email service not configured. Please set RESEND_API_KEY.' });
+    console.error('❌ RESEND_API_KEY is not configured');
+    return res.status(500).json({ error: 'Email service not configured. Please set RESEND_API_KEY environment variable.' });
   }
+
+  console.log('📧 Attempting to send email via Resend...');
+  console.log(`   To: ${emailTo}`);
+  console.log(`   Subject: ${emailSubject}`);
+  console.log(`   From: M10 DJ Company <onboarding@resend.dev>`);
 
   try {
     // Create professional HTML email template
@@ -68,6 +74,15 @@ ${emailContent}
       html: htmlContent,
       text: emailContent // Plain text fallback
     });
+
+    console.log('✅ Email sent via Resend successfully');
+    console.log(`   Email ID: ${emailResult.data?.id}`);
+    console.log(`   Status: ${emailResult.error ? 'ERROR' : 'SUCCESS'}`);
+    
+    if (emailResult.error) {
+      console.error('❌ Resend API Error:', emailResult.error);
+      throw new Error(`Resend API error: ${JSON.stringify(emailResult.error)}`);
+    }
 
     // Log the communication in database (if recordId provided)
     if (recordId) {
@@ -116,7 +131,9 @@ ${emailContent}
     });
 
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('❌ Error sending email:', error);
+    console.error('   Error message:', error.message);
+    console.error('   Error stack:', error.stack);
     
     // Try to log the failed attempt (if recordId provided)
     if (recordId) {
