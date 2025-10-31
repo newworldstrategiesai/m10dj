@@ -838,36 +838,66 @@ djbenmurray@gmail.com`
   }, [selectedTemplate]);
 
   const handleSendEmail = async () => {
+    console.log('🔵 Send Email button clicked');
+    console.log('   Subject:', formData.subject);
+    console.log('   Body length:', formData.body.length);
+    console.log('   Include service link:', includeServiceLink);
+    
     if (!formData.body.trim()) {
+      console.error('❌ No email body');
       alert('Please enter a message');
       return;
     }
 
+    if (!formData.subject.trim()) {
+      console.error('❌ No subject');
+      alert('Please enter a subject');
+      return;
+    }
+
+    console.log('✅ Validation passed, starting send...');
     setSending(true);
+    
     try {
       let emailBody = formData.body;
 
       // Add service selection link if included
       if (includeServiceLink) {
-        // Generate service selection link
-        const linkResponse = await fetch('/api/service-selection/generate-link', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: submission.email,
-            name: submission.name,
-            eventType: submission.event_type,
-            eventDate: submission.event_date
-          })
-        });
+        console.log('🔗 Generating service selection link...');
+        try {
+          const linkResponse = await fetch('/api/service-selection/generate-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: submission.email,
+              name: submission.name,
+              eventType: submission.event_type,
+              eventDate: submission.event_date
+            })
+          });
 
-        if (linkResponse.ok) {
-          const { link } = await linkResponse.json();
-          emailBody += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 SELECT YOUR SERVICES\n\nI've created a personalized service selection page for you. Please review and select the services that best fit your needs:\n\n👉 ${link}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+          console.log('   Link API response status:', linkResponse.status);
+          
+          if (linkResponse.ok) {
+            const linkData = await linkResponse.json();
+            console.log('   ✅ Link generated:', linkData.link);
+            emailBody += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 SELECT YOUR SERVICES\n\nI've created a personalized service selection page for you. Please review and select the services that best fit your needs:\n\n👉 ${linkData.link}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+          } else {
+            const errorData = await linkResponse.json();
+            console.error('   ❌ Link generation failed:', errorData);
+            alert('Warning: Could not generate service selection link. Sending email without it.');
+          }
+        } catch (linkError) {
+          console.error('   ❌ Link generation error:', linkError);
+          alert('Warning: Could not generate service selection link. Sending email without it.');
         }
       }
 
       // Send email via API
+      console.log('📧 Sending email via API...');
+      console.log('   To:', submission.email);
+      console.log('   Subject:', formData.subject);
+      
       const response = await fetch('/api/admin/communications/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -879,12 +909,20 @@ djbenmurray@gmail.com`
         })
       });
 
+      console.log('   Email API response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to send email');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('   ❌ Email API error:', errorData);
+        throw new Error(errorData.error || errorData.message || 'Failed to send email');
       }
 
+      const responseData = await response.json();
+      console.log('   ✅ Email API success:', responseData);
+
       // Log communication
-      await supabase.from('communication_log').insert({
+      console.log('📝 Logging communication to database...');
+      const { error: logError } = await supabase.from('communication_log').insert({
         contact_submission_id: submission.id,
         communication_type: 'email',
         direction: 'outbound',
@@ -895,21 +933,39 @@ djbenmurray@gmail.com`
         created_at: new Date().toISOString()
       });
 
+      if (logError) {
+        console.error('   ⚠️ Failed to log communication:', logError);
+      } else {
+        console.log('   ✅ Communication logged');
+      }
+
       // Update submission status if it was "new"
       if (submission.status === 'new') {
-        await supabase
+        console.log('📊 Updating submission status to "contacted"...');
+        const { error: updateError } = await supabase
           .from('contact_submissions')
           .update({ status: 'contacted', updated_at: new Date().toISOString() })
           .eq('id', submission.id);
+          
+        if (updateError) {
+          console.error('   ⚠️ Failed to update status:', updateError);
+        } else {
+          console.log('   ✅ Status updated');
+        }
       }
 
-      alert('Email sent successfully!');
+      console.log('🎉 Email sent successfully!');
+      alert('✅ Email sent successfully! Check your email logs.');
       onSuccess();
     } catch (error) {
-      console.error('Error sending email:', error);
-      alert('Failed to send email. Please try again.');
+      console.error('❌ Error sending email:', error);
+      console.error('   Error name:', error.name);
+      console.error('   Error message:', error.message);
+      console.error('   Error stack:', error.stack);
+      alert(`Failed to send email: ${error.message}\n\nCheck console for details.`);
     } finally {
       setSending(false);
+      console.log('🔵 Send email process complete');
     }
   };
 
