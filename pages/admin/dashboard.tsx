@@ -380,80 +380,80 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+          {/* Stats Cards - Mobile Optimized: 2 cols on mobile, 4 on desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
             <Link href="/admin/contacts" className="block group">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <Users className="h-8 w-8" />
-                  <TrendingUp className="h-5 w-5 opacity-75" />
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 lg:p-6 text-white shadow-lg hover:shadow-xl transition-shadow min-h-[140px] lg:min-h-[160px]">
+                <div className="flex items-center justify-between mb-3 lg:mb-4">
+                  <Users className="h-6 w-6 lg:h-8 lg:w-8" />
+                  <TrendingUp className="h-4 w-4 lg:h-5 lg:w-5 opacity-75" />
                 </div>
-                <h3 className="text-sm font-medium opacity-90 mb-1">Total Contacts</h3>
-                <p className="text-3xl font-bold mb-1">{stats?.totalContacts || 0}</p>
-                <p className="text-sm opacity-75">{stats?.newLeads || 0} new leads</p>
+                <h3 className="text-xs lg:text-sm font-medium opacity-90 mb-1">Total Contacts</h3>
+                <p className="text-2xl lg:text-3xl font-bold mb-1">{stats?.totalContacts || 0}</p>
+                <p className="text-xs lg:text-sm opacity-75">{stats?.newLeads || 0} new</p>
               </div>
             </Link>
 
             <Link href="/admin/projects" className="block group">
-              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <Briefcase className="h-8 w-8" />
-                  <Clock className="h-5 w-5 opacity-75" />
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 lg:p-6 text-white shadow-lg hover:shadow-xl transition-shadow min-h-[140px] lg:min-h-[160px]">
+                <div className="flex items-center justify-between mb-3 lg:mb-4">
+                  <Briefcase className="h-6 w-6 lg:h-8 lg:w-8" />
+                  <Clock className="h-4 w-4 lg:h-5 lg:w-5 opacity-75" />
                 </div>
-                <h3 className="text-sm font-medium opacity-90 mb-1">Active Projects</h3>
-                <p className="text-3xl font-bold mb-1">{stats?.totalProjects || 0}</p>
-                <p className="text-sm opacity-75">{stats?.upcomingEvents || 0} upcoming</p>
+                <h3 className="text-xs lg:text-sm font-medium opacity-90 mb-1">Projects</h3>
+                <p className="text-2xl lg:text-3xl font-bold mb-1">{stats?.totalProjects || 0}</p>
+                <p className="text-xs lg:text-sm opacity-75">{stats?.upcomingEvents || 0} upcoming</p>
               </div>
             </Link>
 
             <Link href="/admin/financial" className="block group">
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <DollarSign className="h-8 w-8" />
-                  <CheckCircle className="h-5 w-5 opacity-75" />
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 lg:p-6 text-white shadow-lg hover:shadow-xl transition-shadow min-h-[140px] lg:min-h-[160px]">
+                <div className="flex items-center justify-between mb-3 lg:mb-4">
+                  <DollarSign className="h-6 w-6 lg:h-8 lg:w-8" />
+                  <CheckCircle className="h-4 w-4 lg:h-5 lg:w-5 opacity-75" />
                 </div>
-                <h3 className="text-sm font-medium opacity-90 mb-1">This Month Revenue</h3>
-                <p className="text-3xl font-bold mb-1">{formatCurrency(stats?.thisMonthRevenue || 0)}</p>
-                <p className="text-sm opacity-75">{formatCurrency(stats?.totalRevenue || 0)} total</p>
+                <h3 className="text-xs lg:text-sm font-medium opacity-90 mb-1">Revenue</h3>
+                <p className="text-xl lg:text-3xl font-bold mb-1 truncate">{formatCurrency(stats?.thisMonthRevenue || 0)}</p>
+                <p className="text-xs lg:text-sm opacity-75 truncate">{formatCurrency(stats?.totalRevenue || 0)} total</p>
               </div>
             </Link>
 
             <Link href="/admin/invoices" className="block group">
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <AlertCircle className="h-8 w-8" />
+              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 lg:p-6 text-white shadow-lg hover:shadow-xl transition-shadow min-h-[140px] lg:min-h-[160px]">
+                <div className="flex items-center justify-between mb-3 lg:mb-4">
+                  <AlertCircle className="h-6 w-6 lg:h-8 lg:w-8" />
                 </div>
-                <h3 className="text-sm font-medium opacity-90 mb-1">Outstanding</h3>
-                <p className="text-3xl font-bold mb-1">{formatCurrency(stats?.outstandingBalance || 0)}</p>
-                <p className="text-sm opacity-75">Pending payment</p>
+                <h3 className="text-xs lg:text-sm font-medium opacity-90 mb-1">Outstanding</h3>
+                <p className="text-xl lg:text-3xl font-bold mb-1 truncate">{formatCurrency(stats?.outstandingBalance || 0)}</p>
+                <p className="text-xs lg:text-sm opacity-75">Pending</p>
               </div>
             </Link>
           </div>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              <Link href="/admin/contacts" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors">
-                <Users className="h-5 w-5 text-blue-600" />
-                <span className="text-sm font-medium text-gray-900">View Contacts</span>
+          {/* Quick Actions - Mobile Optimized */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 mb-6 lg:mb-8">
+            <h2 className="text-base lg:text-lg font-bold text-gray-900 mb-3 lg:mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+              <Link href="/admin/contacts" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors min-h-[80px] lg:min-h-0">
+                <Users className="h-6 w-6 lg:h-5 lg:w-5 text-blue-600 flex-shrink-0" />
+                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Contacts</span>
               </Link>
-              <Link href="/admin/projects" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-colors">
-                <Briefcase className="h-5 w-5 text-purple-600" />
-                <span className="text-sm font-medium text-gray-900">View Projects</span>
+              <Link href="/admin/projects" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-colors min-h-[80px] lg:min-h-0">
+                <Briefcase className="h-6 w-6 lg:h-5 lg:w-5 text-purple-600 flex-shrink-0" />
+                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Projects</span>
               </Link>
-              <Link href="/admin/invoices" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-colors">
-                <FileText className="h-5 w-5 text-green-600" />
-                <span className="text-sm font-medium text-gray-900">View Invoices</span>
+              <Link href="/admin/invoices" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-colors min-h-[80px] lg:min-h-0">
+                <FileText className="h-6 w-6 lg:h-5 lg:w-5 text-green-600 flex-shrink-0" />
+                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Invoices</span>
               </Link>
-              <Link href="/admin/financial" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-orange-500 hover:bg-orange-50 transition-colors">
-                <BarChart3 className="h-5 w-5 text-orange-600" />
-                <span className="text-sm font-medium text-gray-900">Financial Reports</span>
+              <Link href="/admin/financial" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-orange-500 hover:bg-orange-50 transition-colors min-h-[80px] lg:min-h-0">
+                <BarChart3 className="h-6 w-6 lg:h-5 lg:w-5 text-orange-600 flex-shrink-0" />
+                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Financial</span>
               </Link>
-              <Link href="/admin/instagram" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-pink-500 hover:bg-pink-50 transition-colors">
-                <Music className="h-5 w-5 text-pink-600" />
-                <span className="text-sm font-medium text-gray-900">Social Media</span>
+              <Link href="/admin/instagram" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-pink-500 hover:bg-pink-50 transition-colors min-h-[80px] lg:min-h-0">
+                <Music className="h-6 w-6 lg:h-5 lg:w-5 text-pink-600 flex-shrink-0" />
+                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Social</span>
               </Link>
             </div>
           </div>

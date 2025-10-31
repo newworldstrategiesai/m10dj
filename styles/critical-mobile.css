@@ -257,3 +257,150 @@ input, textarea, select {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
+
+/* Enhanced Touch Targets (iOS HIG: 44px, Material: 48px) */
+@media (max-width: 768px) {
+  button:not(.no-min-size),
+  a[role="button"]:not(.no-min-size),
+  input[type="submit"]:not(.no-min-size),
+  input[type="button"]:not(.no-min-size) {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Larger primary buttons on mobile */
+  .btn-primary,
+  .btn-secondary {
+    min-height: 48px;
+    padding: 14px 28px;
+    font-size: 16px;
+  }
+
+  /* Mobile-optimized spacing */
+  .mobile-spacing {
+    padding: 1rem;
+  }
+
+  /* Text sizes for mobile readability */
+  .mobile-text-lg {
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .mobile-text-base {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .mobile-text-sm {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+}
+
+/* Mobile-specific card improvements */
+@media (max-width: 768px) {
+  .card-mobile {
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  /* Stack cards vertically on mobile */
+  .grid-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Full-width on mobile for better UX */
+  .mobile-full-width {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* Prevent text from being too small */
+@media (max-width: 768px) {
+  body {
+    font-size: 16px;
+  }
+
+  small, .text-sm {
+    font-size: 14px;
+  }
+
+  .text-xs {
+    font-size: 12px;
+  }
+}
+
+/* Better mobile tables (card view) */
+@media (max-width: 1024px) {
+  .responsive-table {
+    display: block;
+  }
+
+  .responsive-table thead {
+    display: none;
+  }
+
+  .responsive-table tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+    background: white;
+  }
+
+  .responsive-table td {
+    display: block;
+    text-align: left;
+    padding: 0.5rem 0;
+  }
+
+  .responsive-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #6b7280;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+}
+
+/* Improve touch scrolling */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Mobile-optimized modals */
+@media (max-width: 768px) {
+  .modal-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    border-radius: 24px 24px 0 0;
+    max-height: 90vh;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-out;
+  }
+
+  .modal-mobile.open {
+    transform: translateY(0);
+  }
+}
+
+/* Haptic feedback preparation */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  a[role="button"]:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}
