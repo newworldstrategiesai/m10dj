@@ -1,6 +1,8 @@
 import { Resend } from 'resend';
-import { createClient } from '@/utils/supabase/server';
+const { createClient } = require('@supabase/supabase-js');
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export default async function handler(req, res) {
@@ -69,7 +71,7 @@ ${emailContent}
 
     // Log the communication in database (if recordId provided)
     if (recordId) {
-      const supabase = createClient();
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
       
       const { error: logError } = await supabase
         .from('communication_log')
@@ -119,7 +121,7 @@ ${emailContent}
     // Try to log the failed attempt (if recordId provided)
     if (recordId) {
       try {
-        const supabase = createClient();
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
         await supabase
           .from('communication_log')
           .insert([{

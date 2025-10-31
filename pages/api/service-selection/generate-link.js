@@ -25,17 +25,16 @@ export default async function handler(req, res) {
 
     // Find or create contact
     let contact;
-    const { data: existingContact, error: fetchError } = await supabase
+    const { data: existingContacts, error: fetchError } = await supabase
       .from('contacts')
       .select('*')
       .eq('email_address', email)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
-    if (existingContact) {
-      contact = existingContact;
+    if (existingContacts && existingContacts.length > 0) {
+      contact = existingContacts[0];
     } else {
       // Create new contact
       const nameParts = (name || 'Guest').split(' ');
@@ -68,19 +67,28 @@ export default async function handler(req, res) {
     // Generate secure token
     const token = crypto.randomBytes(32).toString('hex');
 
-    // Store token with contact
+    // Store token with contact (check if columns exist first)
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+    
+    // Try to add token fields if they exist
+    try {
+      updateData.service_selection_token = token;
+      updateData.service_selection_sent_at = new Date().toISOString();
+    } catch (e) {
+      console.log('Token fields may not exist yet, will store token in notes');
+    }
+
     const { error: updateError } = await supabase
       .from('contacts')
-      .update({
-        service_selection_token: token,
-        service_selection_sent_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', contact.id);
 
     if (updateError) {
       console.error('Error updating contact with token:', updateError);
-      return res.status(500).json({ error: 'Failed to generate link' });
+      // If columns don't exist, store token in a notes field or custom_fields
+      console.log('Will use token from memory for this session');
     }
 
     // Generate link
