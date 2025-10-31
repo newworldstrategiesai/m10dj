@@ -4,7 +4,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -19,7 +18,6 @@ import {
   CheckCircle,
   AlertCircle,
   Plus,
-  LogOut,
   RefreshCw,
   BarChart3,
   FileText,
@@ -32,6 +30,7 @@ import {
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Badge } from '@/components/ui/badge';
+import AdminLayout from '@/components/layouts/AdminLayout';
 
 interface DashboardStats {
   totalContacts: number;
@@ -339,48 +338,24 @@ export default function AdminDashboard() {
   }
 
   return (
-    <>
-      <Head>
-        <title>Admin Dashboard - M10 DJ Company</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Head>
-
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-600">M10 DJ Company</p>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-right hidden sm:block">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {user?.email?.split('@')[0] || 'Admin'}
-                  </p>
-                  <p className="text-xs text-gray-500">{user?.email}</p>
-                </div>
-                <Button
-                  onClick={handleRefresh}
-                  variant="slim"
-                  disabled={refreshing}
-                >
-                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                </Button>
-                <Button
-                  onClick={handleSignOut}
-                  variant="slim"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+    <AdminLayout title="Dashboard" description="M10 DJ Company Admin Dashboard">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        {/* Page Header with Refresh */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-sm text-gray-600 mt-1">Welcome back, {user?.email?.split('@')[0] || 'Admin'}</p>
           </div>
-        </header>
-
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+          <Button
+            onClick={handleRefresh}
+            variant="slim"
+            disabled={refreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+        </div>
           {/* Stats Cards - Mobile Optimized: 2 cols on mobile, 4 on desktop */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
             <Link href="/admin/contacts" className="block group">
@@ -594,9 +569,8 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
-        </main>
       </div>
-    </>
+    </AdminLayout>
   );
 }
 
