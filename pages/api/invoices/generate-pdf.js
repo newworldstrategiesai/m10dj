@@ -52,26 +52,40 @@ export default async function handler(req, res) {
       bufferPages: true
     });
 
+    // Collect PDF in buffer
+    const chunks = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    
+    // Wait for PDF to finish
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      
+      // Generate PDF content
+      generateInvoicePDF(doc, invoice, lineItems || []);
+      
+      // Finalize PDF
+      doc.end();
+    });
+
     // Set response headers
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice.invoice_number}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
-    // Pipe the PDF to response
-    doc.pipe(res);
-
-    // Generate PDF content
-    generateInvoicePDF(doc, invoice, lineItems || []);
-
-    // Finalize PDF
-    doc.end();
+    // Send the buffer
+    res.status(200).send(pdfBuffer);
 
   } catch (error) {
     console.error('Error generating PDF:', error);
+    console.error('Error stack:', error.stack);
     
     if (!res.headersSent) {
       return res.status(500).json({
         error: 'Failed to generate PDF',
-        message: error.message
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
   }
