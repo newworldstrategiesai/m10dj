@@ -19,7 +19,8 @@ import {
   LogOut,
   ChevronRight,
   Menu,
-  X
+  X,
+  ClipboardList
 } from 'lucide-react';
 
 interface NavItem {
@@ -42,6 +43,7 @@ export default function AdminSidebar({ onSignOut }: AdminSidebarProps) {
     { label: 'Dashboard', href: '/admin/dashboard', icon: <Home className="w-5 h-5" /> },
     { label: 'Projects', href: '/admin/projects', icon: <Briefcase className="w-5 h-5" /> },
     { label: 'Contacts', href: '/admin/contacts', icon: <Users className="w-5 h-5" /> },
+    { label: 'Form Submissions', href: '/admin/form-submissions', icon: <ClipboardList className="w-5 h-5" /> },
     { label: 'Calendar', href: '/admin/calendar', icon: <Calendar className="w-5 h-5" /> },
     { label: 'Contracts', href: '/admin/contracts', icon: <FileText className="w-5 h-5" /> },
     { label: 'Invoices', href: '/admin/invoices', icon: <DollarSign className="w-5 h-5" /> },
