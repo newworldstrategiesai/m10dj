@@ -405,156 +405,184 @@ export default function FormSubmissionsPage() {
 
       {/* Submission Detail Modal */}
       {selectedSubmission && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-[#fcba00] to-[#d99f00] px-6 py-5 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">Submission Details</h2>
               <button
                 onClick={() => setSelectedSubmission(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-800 hover:text-black transition-colors p-1 hover:bg-black/10 rounded-lg"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Status Update */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Update Status
                 </label>
                 <select
                   value={selectedSubmission.status}
                   onChange={(e) => updateSubmissionStatus(selectedSubmission.id, e.target.value as FormSubmission['status'])}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent bg-white font-medium"
                 >
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="quoted">Quoted</option>
-                  <option value="booked">Booked</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="new">🆕 New</option>
+                  <option value="contacted">📞 Contacted</option>
+                  <option value="quoted">💰 Quoted</option>
+                  <option value="booked">✅ Booked</option>
+                  <option value="completed">🎉 Completed</option>
+                  <option value="cancelled">❌ Cancelled</option>
                 </select>
               </div>
 
               {/* Contact Info */}
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <User className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Name</p>
-                    <p className="text-sm text-gray-600">{selectedSubmission.name}</p>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Contact Information</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-[#fcba00] transition-colors">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <User className="w-5 h-5 text-gray-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-500 uppercase">Name</p>
+                      <p className="text-sm font-semibold text-gray-900">{selectedSubmission.name}</p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-start gap-3">
-                  <Mail className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Email</p>
-                    <a
-                      href={`mailto:${selectedSubmission.email}`}
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      {selectedSubmission.email}
-                    </a>
-                  </div>
-                </div>
-
-                {selectedSubmission.phone && (
-                  <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Phone</p>
+                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-[#fcba00] transition-colors">
+                    <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-500 uppercase">Email</p>
                       <a
-                        href={`tel:${selectedSubmission.phone}`}
-                        className="text-sm text-blue-600 hover:underline"
+                        href={`mailto:${selectedSubmission.email}`}
+                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                       >
-                        {selectedSubmission.phone}
+                        {selectedSubmission.email}
                       </a>
                     </div>
                   </div>
-                )}
 
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Event Type</p>
-                    <p className="text-sm text-gray-600">{selectedSubmission.event_type}</p>
-                  </div>
+                  {selectedSubmission.phone && (
+                    <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-[#fcba00] transition-colors">
+                      <div className="flex-shrink-0 w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+                        <Phone className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-500 uppercase">Phone</p>
+                        <a
+                          href={`tel:${selectedSubmission.phone}`}
+                          className="text-sm font-semibold text-green-600 hover:text-green-700 hover:underline"
+                        >
+                          {selectedSubmission.phone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Event Date</p>
-                    <p className="text-sm text-gray-600">{formatEventDate(selectedSubmission.event_date)}</p>
-                  </div>
-                </div>
-
-                {selectedSubmission.location && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Location</p>
-                      <p className="text-sm text-gray-600">{selectedSubmission.location}</p>
+              {/* Event Details */}
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Event Details</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
+                    <div className="flex-shrink-0 w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-500 uppercase">Event Type</p>
+                      <p className="text-sm font-semibold text-gray-900">{selectedSubmission.event_type}</p>
                     </div>
                   </div>
-                )}
 
-                {selectedSubmission.message && (
-                  <div className="flex items-start gap-3">
-                    <MessageSquare className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
+                    <div className="flex-shrink-0 w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-orange-600" />
+                    </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 mb-1">Message</p>
-                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+                      <p className="text-xs font-medium text-gray-500 uppercase">Event Date</p>
+                      <p className="text-sm font-semibold text-gray-900">{formatEventDate(selectedSubmission.event_date)}</p>
+                    </div>
+                  </div>
+
+                  {selectedSubmission.location && (
+                    <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
+                      <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+                        <MapPin className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-500 uppercase">Location</p>
+                        <p className="text-sm font-semibold text-gray-900">{selectedSubmission.location}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Message */}
+              {selectedSubmission.message && (
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Message</h3>
+                  <div className="relative">
+                    <div className="absolute top-3 left-3">
+                      <MessageSquare className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <div className="pl-11 pr-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl">
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                         {selectedSubmission.message}
                       </p>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Timestamps */}
-              <div className="pt-4 border-t border-gray-200 text-xs text-gray-500">
-                <p>Submitted: {formatDate(selectedSubmission.created_at)}</p>
-                <p>Updated: {formatDate(selectedSubmission.updated_at)}</p>
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>Submitted: {formatDate(selectedSubmission.created_at)}</span>
+                  </div>
+                  <span>Updated: {formatDate(selectedSubmission.updated_at)}</span>
+                </div>
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex gap-3">
-              <Button
+            <div className="bg-white px-6 py-4 border-t border-gray-200 flex gap-3">
+              <button
                 onClick={() => window.location.href = `mailto:${selectedSubmission.email}`}
-                variant="slim"
-                className="flex-1"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
-                <Mail className="w-4 h-4 mr-2" />
-                Send Email
-              </Button>
+                <Mail className="w-4 h-4" />
+                <span>Send Email</span>
+              </button>
               {selectedSubmission.phone && (
-                <Button
+                <button
                   onClick={() => window.location.href = `tel:${selectedSubmission.phone}`}
-                  variant="slim"
-                  className="flex-1"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                 >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call
-                </Button>
+                  <Phone className="w-4 h-4" />
+                  <span>Call</span>
+                </button>
               )}
-              <Button
+              <button
                 onClick={() => {
                   if (confirm('Delete this submission?')) {
                     deleteSubmission(selectedSubmission.id);
                   }
                 }}
-                variant="slim"
-                className="text-red-600 hover:text-red-700"
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-200"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </Button>
+                <Trash2 className="w-4 h-4" />
+                <span>Delete</span>
+              </button>
             </div>
           </div>
         </div>
