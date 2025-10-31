@@ -21,7 +21,10 @@ import {
   ExternalLink,
   Filter,
   Search,
-  RefreshCw
+  RefreshCw,
+  Link as LinkIcon,
+  Loader,
+  X
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Button from '@/components/ui/Button';
@@ -1049,12 +1052,4 @@ djbenmurray@gmail.com`
   );
 }
 
-// X icon component (if not already imported)
-function X({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  );
-}
 
