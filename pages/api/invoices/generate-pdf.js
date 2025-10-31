@@ -57,16 +57,24 @@ export default async function handler(req, res) {
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-software-rasterizer'
       ]
     });
 
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    // Set content and wait for it to load
+    await page.setContent(html, { 
+      waitUntil: ['load', 'networkidle0'],
+      timeout: 30000 
+    });
 
-    const pdf = await page.pdf({
+    // Generate PDF with proper settings
+    const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
+      preferCSSPageSize: false,
       margin: {
         top: '20mm',
         right: '15mm',
@@ -76,27 +84,52 @@ export default async function handler(req, res) {
     });
 
     await browser.close();
+    browser = null;
 
-    // Set headers for PDF download
+    // Set proper headers for PDF
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice.invoice_number}.pdf"`);
-    res.setHeader('Content-Length', pdf.length);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
-    res.status(200).send(pdf);
+    // Send the PDF buffer
+    return res.status(200).end(pdfBuffer, 'binary');
 
   } catch (error) {
     console.error('Error generating PDF:', error);
+    console.error('Error stack:', error.stack);
     
     if (browser) {
-      await browser.close();
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error closing browser:', closeError);
+      }
     }
 
-    res.status(500).json({
-      error: 'Failed to generate PDF',
-      message: error.message
-    });
+    // Don't send JSON if headers already sent
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: 'Failed to generate PDF',
+        message: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
   }
 }
+
+// Increase timeout for PDF generation
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+    responseLimit: '10mb',
+    externalResolver: true,
+  },
+};
 
 function generateInvoiceHTML(invoice, lineItems) {
   const formatCurrency = (amount) => {
