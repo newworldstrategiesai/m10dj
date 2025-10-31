@@ -959,10 +959,14 @@ djbenmurray@gmail.com`
       onSuccess();
     } catch (error) {
       console.error('❌ Error sending email:', error);
-      console.error('   Error name:', error.name);
-      console.error('   Error message:', error.message);
-      console.error('   Error stack:', error.stack);
-      alert(`Failed to send email: ${error.message}\n\nCheck console for details.`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorName = error instanceof Error ? error.name : 'Error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      
+      console.error('   Error name:', errorName);
+      console.error('   Error message:', errorMessage);
+      console.error('   Error stack:', errorStack);
+      alert(`Failed to send email: ${errorMessage}\n\nCheck console for details.`);
     } finally {
       setSending(false);
       console.log('🔵 Send email process complete');
