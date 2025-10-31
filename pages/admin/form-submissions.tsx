@@ -40,6 +40,16 @@ interface FormSubmission {
   updated_at: string;
 }
 
+interface CommunicationLog {
+  id: string;
+  communication_type: 'email' | 'sms' | 'call' | 'note' | 'meeting';
+  direction: 'inbound' | 'outbound';
+  subject: string | null;
+  content: string;
+  status: string;
+  created_at: string;
+}
+
 export default function FormSubmissionsPage() {
   const supabase = createClientComponentClient();
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
@@ -47,6 +57,8 @@ export default function FormSubmissionsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null);
+  const [communicationHistory, setCommunicationHistory] = useState<CommunicationLog[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -57,6 +69,12 @@ export default function FormSubmissionsPage() {
   useEffect(() => {
     filterSubmissions();
   }, [submissions, searchQuery, statusFilter]);
+
+  useEffect(() => {
+    if (selectedSubmission) {
+      fetchCommunicationHistory(selectedSubmission.id);
+    }
+  }, [selectedSubmission]);
 
   const fetchSubmissions = async () => {
     setLoading(true);
@@ -79,6 +97,25 @@ export default function FormSubmissionsPage() {
     setRefreshing(true);
     await fetchSubmissions();
     setRefreshing(false);
+  };
+
+  const fetchCommunicationHistory = async (submissionId: string) => {
+    setLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('communication_log')
+        .select('*')
+        .eq('contact_submission_id', submissionId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCommunicationHistory(data || []);
+    } catch (error) {
+      console.error('Error fetching communication history:', error);
+      setCommunicationHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const filterSubmissions = () => {
@@ -542,6 +579,75 @@ export default function FormSubmissionsPage() {
                 </div>
               )}
 
+              {/* Communication History */}
+              {communicationHistory.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Communication History ({communicationHistory.length})
+                  </h3>
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {communicationHistory.map((comm) => (
+                      <div
+                        key={comm.id}
+                        className={`
+                          p-3 rounded-lg border-l-4
+                          ${comm.direction === 'outbound'
+                            ? 'bg-blue-50 border-blue-500'
+                            : 'bg-green-50 border-green-500'
+                          }
+                        `}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {comm.communication_type === 'email' && <Mail className="w-4 h-4 text-gray-600" />}
+                            {comm.communication_type === 'sms' && <MessageSquare className="w-4 h-4 text-gray-600" />}
+                            {comm.communication_type === 'call' && <Phone className="w-4 h-4 text-gray-600" />}
+                            <span className="text-xs font-semibold text-gray-900 uppercase">
+                              {comm.communication_type}
+                            </span>
+                            <span className={`
+                              text-xs px-2 py-0.5 rounded-full
+                              ${comm.direction === 'outbound'
+                                ? 'bg-blue-200 text-blue-800'
+                                : 'bg-green-200 text-green-800'
+                              }
+                            `}>
+                              {comm.direction === 'outbound' ? '→ Sent' : '← Received'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {formatDate(comm.created_at)}
+                          </span>
+                        </div>
+                        {comm.subject && (
+                          <div className="text-sm font-semibold text-gray-900 mb-1">
+                            {comm.subject}
+                          </div>
+                        )}
+                        <div className="text-sm text-gray-700 line-clamp-3">
+                          {comm.content}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {loadingHistory && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#fcba00]"></div>
+                </div>
+              )}
+
+              {!loadingHistory && communicationHistory.length === 0 && (
+                <div className="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
+                  <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">No communication history yet</p>
+                  <p className="text-xs text-gray-500 mt-1">Messages will appear here once you interact with this contact</p>
+                </div>
+              )}
+
               {/* Timestamps */}
               <div className="pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between text-xs text-gray-500">
@@ -556,21 +662,23 @@ export default function FormSubmissionsPage() {
 
             {/* Modal Footer */}
             <div className="bg-white px-6 py-4 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => window.location.href = `mailto:${selectedSubmission.email}`}
+              <a
+                href={`mailto:${selectedSubmission.email}?subject=${encodeURIComponent(`Re: ${selectedSubmission.event_type} Inquiry - ${selectedSubmission.name}`)}&body=${encodeURIComponent(`Hi ${selectedSubmission.name.split(' ')[0]},\n\nThank you for your interest in M10 DJ services for your ${selectedSubmission.event_type}${selectedSubmission.event_date ? ` on ${formatEventDate(selectedSubmission.event_date)}` : ''}.\n\n`)}`}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 <Mail className="w-4 h-4" />
                 <span>Send Email</span>
-              </button>
+              </a>
               {selectedSubmission.phone && (
-                <button
-                  onClick={() => window.location.href = `tel:${selectedSubmission.phone}`}
+                <a
+                  href={`tel:${selectedSubmission.phone}`}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                 >
                   <Phone className="w-4 h-4" />
                   <span>Call</span>
-                </button>
+                </a>
               )}
               <button
                 onClick={() => {
