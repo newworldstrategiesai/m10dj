@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS payment_installments (
   -- Metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  notes TEXT
+  notes TEXT,
+  deleted_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Discount Codes Table
@@ -203,7 +204,7 @@ JOIN invoices inv ON i.invoice_id = inv.id
 LEFT JOIN contacts c ON pp.contact_id = c.id
 WHERE i.status = 'pending'
   AND i.due_date < CURRENT_DATE
-  AND i.deleted_at IS NULL
+  AND pp.deleted_at IS NULL
 ORDER BY i.due_date ASC;
 
 -- Create view for upcoming payments
@@ -224,7 +225,7 @@ LEFT JOIN contacts c ON pp.contact_id = c.id
 WHERE i.status = 'pending'
   AND i.due_date >= CURRENT_DATE
   AND i.due_date <= CURRENT_DATE + INTERVAL '7 days'
-  AND i.deleted_at IS NULL
+  AND pp.deleted_at IS NULL
 ORDER BY i.due_date ASC;
 
 -- Function to calculate late fees
