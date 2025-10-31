@@ -88,6 +88,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -182,6 +183,48 @@ export default function InvoiceDetailPage() {
     });
   };
 
+  const handleDownloadPDF = async () => {
+    if (!invoice) return;
+    
+    setDownloading(true);
+    try {
+      const response = await fetch('/api/invoices/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoice.id })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice-${invoice.invoice_number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -223,15 +266,19 @@ export default function InvoiceDetailPage() {
             Back to Invoices
           </Button>
           <div className="flex items-center gap-3">
-            <Button variant="slim" >
+            <Button variant="slim" onClick={handlePrint}>
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
-            <Button variant="slim" >
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
+            <Button 
+              variant="slim" 
+              onClick={handleDownloadPDF}
+              disabled={downloading}
+            >
+              <Download className={`h-4 w-4 mr-2 ${downloading ? 'animate-spin' : ''}`} />
+              {downloading ? 'Generating...' : 'Download PDF'}
             </Button>
-            <Button variant="slim" >
+            <Button variant="slim">
               <Mail className="h-4 w-4 mr-2" />
               Send Email
             </Button>
