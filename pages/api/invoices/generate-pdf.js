@@ -54,28 +54,47 @@ export default async function handler(req, res) {
 
     // Collect PDF in buffer
     const chunks = [];
-    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('data', (chunk) => {
+      console.log(`Received chunk of size: ${chunk.length}`);
+      chunks.push(chunk);
+    });
     
     // Wait for PDF to finish
     const pdfBuffer = await new Promise((resolve, reject) => {
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
+      doc.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        console.log(`PDF generation complete. Total size: ${buffer.length} bytes`);
+        resolve(buffer);
+      });
+      doc.on('error', (err) => {
+        console.error('PDFKit error:', err);
+        reject(err);
+      });
       
       // Generate PDF content
-      generateInvoicePDF(doc, invoice, lineItems || []);
+      try {
+        generateInvoicePDF(doc, invoice, lineItems || []);
+      } catch (pdfError) {
+        console.error('Error in generateInvoicePDF:', pdfError);
+        reject(pdfError);
+      }
       
       // Finalize PDF
       doc.end();
     });
+
+    console.log(`Sending PDF: ${pdfBuffer.length} bytes`);
 
     // Set response headers
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice.invoice_number}.pdf"`);
     res.setHeader('Content-Length', pdfBuffer.length);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
-    // Send the buffer
-    res.status(200).send(pdfBuffer);
+    // Send the buffer as binary
+    return res.status(200).end(pdfBuffer, 'binary');
 
   } catch (error) {
     console.error('Error generating PDF:', error);
