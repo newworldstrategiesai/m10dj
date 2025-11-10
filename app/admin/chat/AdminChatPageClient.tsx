@@ -21,7 +21,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -366,7 +366,7 @@ export default function AdminChatPageClient() {
                   {isLoading && (
                     <Button
                       type="button"
-                      variant="flat"
+                      variant="outline"
                       onClick={stop}
                       className="rounded-full border border-border bg-card px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
                     >

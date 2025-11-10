@@ -39,6 +39,9 @@ export default function Navlinks({ user }: NavlinksProps) {
               <Link href="/admin/chat" className={s.link}>
                 Chat
               </Link>
+              <Link href="/admin/email-client" className={s.link}>
+                Email Client
+              </Link>
             </>
           )}
         </nav>
