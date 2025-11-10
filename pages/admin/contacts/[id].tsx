@@ -5,8 +5,8 @@ import { useRouter } from 'next/router';
 import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -411,7 +411,7 @@ export default function ContactDetailPage() {
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <Link href={from === 'lead' ? `/admin/leads/${id}` : "/admin/contacts"}>
-              <Button variant="flat" className="flex items-center gap-2">
+              <Button variant="outline" className="flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" />
                 {from === 'lead' ? 'Back to Lead Details' : 'Back to Contacts'}
               </Button>
@@ -425,7 +425,7 @@ export default function ContactDetailPage() {
               ) : (
                 <div className="flex gap-2">
                   <Button
-                    variant="flat"
+                    variant="outline"
                     onClick={() => {
                       setIsEditing(false);
                       fetchContact(); // Reset changes
@@ -474,17 +474,17 @@ export default function ContactDetailPage() {
                     </div>
             <div className="flex gap-2">
               {contact.phone && (
-                <Button variant="flat" onClick={() => window.open(`tel:${contact.phone}`)}>
+                <Button variant="outline" onClick={() => window.open(`tel:${contact.phone}`)}>
                   <Phone className="h-4 w-4" />
                         </Button>
               )}
               {contact.email_address && (
-                <Button variant="flat" onClick={() => window.open(`mailto:${contact.email_address}`)}>
+                <Button variant="outline" onClick={() => window.open(`mailto:${contact.email_address}`)}>
                   <Mail className="h-4 w-4" />
                         </Button>
               )}
               {contact.phone && (
-                <Button variant="flat" onClick={() => window.open(`/chat/sms?contact=${encodeURIComponent(contact.phone || '')}`)}>
+                <Button variant="outline" onClick={() => window.open(`/chat/sms?contact=${encodeURIComponent(contact.phone || '')}`)}>
                   <MessageSquare className="h-4 w-4" />
                         </Button>
               )}

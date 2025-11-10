@@ -9,9 +9,9 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { IconPlus, IconX, IconPhone, IconUserPlus, IconUser, IconSearch } from "@tabler/icons-react";
-import Input from "@/components/ui/Input";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/Toasts/use-toast";
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
@@ -540,7 +540,7 @@ export const NewSMSDialog = ({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="flat" onClick={onClose}>
+          <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={!isValidNumber || !selectedTwilioNumber}>

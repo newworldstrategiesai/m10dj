@@ -1,6 +1,6 @@
 import { cn } from '@/utils/cn';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { IconCheck, IconChecks } from '@tabler/icons-react';
 import { format } from 'date-fns';
 import { useEffect, useState } from 'react';

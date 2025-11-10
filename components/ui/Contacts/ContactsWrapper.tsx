@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { IconSearch, IconPlus, IconPhone, IconMail, IconCalendar, IconMapPin, IconFilter, IconArrowUp, IconUser, IconMusic, IconCurrencyDollar, IconTarget, IconClock, IconEdit, IconTrash, IconEye, IconMessage } from '@tabler/icons-react';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Card from '@/components/ui/Card';
@@ -396,7 +396,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
           </Select>
           
           <Button
-            variant="flat"
+            variant="outline"
             onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
             className="h-12 lg:h-10 lg:w-auto lg:px-3"
             title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
@@ -489,7 +489,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
 
               <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
                 <Button
-                  variant="flat"
+                  variant="outline"
                   className="flex-1 text-xs lg:text-sm h-10 lg:h-9"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -501,7 +501,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                 </Button>
                 {contact.phone && (
                   <Button
-                    variant="flat"
+                    variant="outline"
                     className="flex-1 text-xs lg:text-sm h-10 lg:h-9"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -514,7 +514,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                 )}
                 {contact.email_address && (
                   <Button
-                    variant="flat"
+                    variant="outline"
                     className="flex-1 text-xs lg:text-sm h-10 lg:h-9"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -628,7 +628,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                       <Button 
                         onClick={() => selectedContact && fetchProjects(selectedContact.id)}
                         disabled={projectsLoading}
-                        variant="flat"
+                        variant="outline"
                       >
                         {projectsLoading ? 'Loading...' : 'Refresh'}
                       </Button>
@@ -646,7 +646,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                         <Button 
                           onClick={() => createProjectForContact(selectedContact.id)}
                           disabled={projectsLoading}
-                          variant="flat"
+                          variant="outline"
                           className="mt-2"
                         >
                           Create Project (Test)
@@ -691,7 +691,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                               </div>
                               <div className="ml-3">
                                 <Link href={`/admin/projects/${project.id}`}>
-                                  <Button variant="flat">
+                                  <Button variant="outline">
                                     View
                                   </Button>
                                 </Link>
@@ -729,7 +729,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                 </Link>
                 {selectedContact.phone && (
                   <Button
-                    variant="flat"
+                    variant="outline"
                     className="flex-1"
                     onClick={() => handleSendSMS(selectedContact)}
                   >

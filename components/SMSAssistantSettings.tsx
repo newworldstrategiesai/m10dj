@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 interface SMSAssistantSettingsProps {
   enabled: boolean;

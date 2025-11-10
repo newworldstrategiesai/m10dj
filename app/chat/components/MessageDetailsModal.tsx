@@ -10,7 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/Toasts/use-toast";
@@ -131,7 +131,7 @@ export function MessageDetailsModal({ message, twilioNumbers, onClose }: Message
             <div className="flex items-center justify-between mb-1">
               <h4 className="font-medium">Message</h4>
               <Button
-                variant="flat"
+                variant="outline"
                 className="h-8"
                 onClick={() => handleCopyText(message.body)}
               >

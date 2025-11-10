@@ -1,6 +1,6 @@
 'use client';
 
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import type { Tables } from '@/types_db';
 import { User } from '@supabase/supabase-js';
 

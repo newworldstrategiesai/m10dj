@@ -9,7 +9,7 @@ import {
   Sparkles,
   AlertCircle,
 } from 'lucide-react';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -300,7 +300,7 @@ export default function FloatingLeadImportWidget() {
 
           <DialogFooter className="gap-3">
             <Button
-              variant="flat"
+              variant="outline"
               className="w-full sm:w-auto"
               onClick={handleImport}
               disabled={!threadText.trim() || status.state === 'processing'}

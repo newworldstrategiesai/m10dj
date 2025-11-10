@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -203,7 +203,7 @@ export default function NewMessageModal({
               </div>
             </div>
             <Button
-              variant="flat"
+              variant="outline"
               onClick={handleClose}
               className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
             >
@@ -357,7 +357,7 @@ export default function NewMessageModal({
                   <p className="text-sm text-gray-600">{phoneNumber}</p>
                 </div>
                 <Button
-                  variant="flat"
+                  variant="outline"
                   onClick={() => setStep('contact')}
                   className="text-xs"
                 >
@@ -436,7 +436,7 @@ export default function NewMessageModal({
 
         {/* Footer */}
         <div className="px-6 py-4 border-t bg-gray-50 flex justify-between">
-          <Button variant="flat" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           

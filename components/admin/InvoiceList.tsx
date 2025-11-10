@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { FileText, Calendar, DollarSign, AlertCircle, CheckCircle, Clock, Eye } from 'lucide-react';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 interface Invoice {
   id: string;

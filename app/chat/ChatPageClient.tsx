@@ -32,8 +32,8 @@ import {
 import { cn } from '@/utils/cn';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -715,7 +715,7 @@ export default function ChatPageClient() {
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold text-gray-900">SMS Chat</h1>
               <Button
-                variant="flat"
+                variant="outline"
                 onClick={() => setNewMessageModalOpen(true)}
                 className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-full"
               >
@@ -816,7 +816,7 @@ export default function ChatPageClient() {
             <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
               <div className="flex items-center">
                 <Button
-                  variant="flat"
+                  variant="outline"
                   onClick={() => {
                     if (isMobile) {
                       setMobileOpen(true);
@@ -845,7 +845,7 @@ export default function ChatPageClient() {
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                  variant="flat"
+                  variant="outline"
                   onClick={() => setShowDetailsPanel(!showDetailsPanel)}
                   className="p-2 hover:bg-gray-100 rounded-full hidden lg:flex"
                 >
@@ -963,7 +963,7 @@ export default function ChatPageClient() {
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Contact Details</h3>
             <Button
-              variant="flat"
+              variant="outline"
               onClick={() => setShowDetailsPanel(false)}
               className="p-2 hover:bg-gray-100 rounded-full"
             >

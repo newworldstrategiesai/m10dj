@@ -19,7 +19,7 @@ import {
   Phone,
   FileText
 } from 'lucide-react';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import VenueAutocomplete from '@/components/VenueAutocomplete';
 
 export default function SelectServicesPage() {
