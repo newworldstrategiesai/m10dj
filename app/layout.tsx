@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import Footer from '@/components/company/Footer';
+import FloatingLeadImportWidget from '@/components/chat/FloatingLeadImportWidget';
 import Navbar from '@/components/ui/Navbar';
 import { Toaster } from '@/components/ui/Toasts/toaster';
 import { PropsWithChildren, Suspense } from 'react';
@@ -253,6 +254,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         <Suspense>
           <Toaster />
         </Suspense>
+        {!isSignInPage && <FloatingLeadImportWidget />}
         {/* Performance components disabled during SEO recovery */}
         {/* TODO: Re-enable after traffic recovery with proper optimization */}
         {/* <OptimizedScriptLoader>

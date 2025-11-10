@@ -36,7 +36,7 @@ export default function Navlinks({ user }: NavlinksProps) {
               <Link href="/admin/contracts" className={s.link}>
                 Contracts
               </Link>
-              <Link href="/chat" className={s.link}>
+              <Link href="/admin/chat" className={s.link}>
                 Chat
               </Link>
             </>

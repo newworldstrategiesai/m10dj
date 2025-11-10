@@ -283,8 +283,8 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   };
 
   const handleSendSMS = (contact: Contact) => {
-    // Navigate to chat with this contact pre-filled
-    window.open(`/chat?contact=${encodeURIComponent(contact.phone || '')}`, '_blank');
+    // Navigate to SMS chat with this contact pre-filled
+    window.open(`/chat/sms?contact=${encodeURIComponent(contact.phone || '')}`, '_blank');
   };
 
   return (

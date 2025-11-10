@@ -1,42 +1,123 @@
 /**
  * API: Generate Service Selection Link
- * Creates a secure token and returns a personalized service selection URL
+ * Creates a secure token record and returns a personalized service selection URL
  */
 
-import crypto from 'crypto';
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const DEFAULT_EXPIRATION_DAYS = 30;
+const INFINITE_EXPIRATION_DAYS = 365 * 100; // ~100 years
+
+const normalizeBaseUrl = (url) => {
+  if (!url) return 'http://localhost:3000';
+  return url.replace(/\/+$/, '');
+};
+
+const generateToken = () => {
+  return crypto
+    .randomBytes(24)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+};
+
+const resolveExpirationDays = (override) => {
+  const parse = (value) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : undefined;
+  };
+
+  const envValue = parse(process.env.SERVICE_SELECTION_TOKEN_EXPIRATION_DAYS);
+  const overrideValue = parse(override);
+
+  let days = overrideValue ?? envValue ?? DEFAULT_EXPIRATION_DAYS;
+
+  if (!Number.isFinite(days)) {
+    days = DEFAULT_EXPIRATION_DAYS;
+  }
+
+  if (days <= 0) {
+    return INFINITE_EXPIRATION_DAYS;
+  }
+
+  return days;
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, name, eventType, eventDate } = req.body;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return res.status(500).json({ error: 'Missing Supabase configuration' });
+  }
 
-  if (!email) {
-    return res.status(400).json({ error: 'Email is required' });
+  const {
+    contactId,
+    email,
+    name,
+    eventType,
+    eventDate,
+    expiresInDays,
+    forceNewToken = false
+  } = req.body;
+
+  if (!contactId && !email) {
+    return res.status(400).json({ error: 'contactId or email is required' });
   }
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const now = new Date();
+    const nowIso = now.toISOString();
 
-    // Find or create contact
-    let contact;
-    const { data: existingContacts, error: fetchError } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('email_address', email)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(1);
+    // ------------------------------------------------------------------
+    // Fetch or create contact
+    // ------------------------------------------------------------------
+    let contact = null;
 
-    if (existingContacts && existingContacts.length > 0) {
-      contact = existingContacts[0];
+    if (contactId) {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('id', contactId)
+        .is('deleted_at', null)
+        .single();
+
+      if (error) {
+        console.error('Error fetching contact by ID:', error);
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+
+      contact = data;
     } else {
-      // Create new contact
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('email_address', email)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('Error fetching contact by email:', error);
+        return res.status(500).json({ error: 'Failed to look up contact' });
+      }
+
+      if (data && data.length > 0) {
+        contact = data[0];
+      }
+    }
+
+    if (!contact) {
+      if (!email) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+
       const nameParts = (name || 'Guest').split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
@@ -47,11 +128,12 @@ export default async function handler(req, res) {
           first_name: firstName,
           last_name: lastName,
           email_address: email,
-          event_type: eventType || 'other',
+          event_type: eventType || null,
           event_date: eventDate || null,
-          lead_status: 'new',
-          lead_source: 'Email Link',
-          created_at: new Date().toISOString()
+          lead_status: 'Service Selection Sent',
+          lead_source: 'Service Selection',
+          created_at: nowIso,
+          updated_at: nowIso
         })
         .select()
         .single();
@@ -64,48 +146,97 @@ export default async function handler(req, res) {
       contact = newContact;
     }
 
-    // Generate secure token
-    const token = crypto.randomBytes(32).toString('hex');
+    // ------------------------------------------------------------------
+    // If there's an existing active token, reuse it unless forcing new
+    // ------------------------------------------------------------------
+    let tokenRecord = null;
 
-    // Store token with contact (check if columns exist first)
-    const updateData = {
-      updated_at: new Date().toISOString()
-    };
-    
-    // Try to add token fields if they exist
-    try {
-      updateData.service_selection_token = token;
-      updateData.service_selection_sent_at = new Date().toISOString();
-    } catch (e) {
-      console.log('Token fields may not exist yet, will store token in notes');
+    if (!forceNewToken) {
+      const { data: existingTokens, error: existingError } = await supabase
+        .from('service_selection_tokens')
+        .select('*')
+        .eq('contact_id', contact.id)
+        .eq('is_used', false)
+        .gt('expires_at', nowIso)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (existingError) {
+        console.error('Error checking existing tokens:', existingError);
+      } else if (existingTokens && existingTokens.length > 0) {
+        tokenRecord = existingTokens[0];
+      }
     }
 
-    const { error: updateError } = await supabase
+    // ------------------------------------------------------------------
+    // Otherwise create a brand-new token
+    // ------------------------------------------------------------------
+    if (!tokenRecord) {
+      const token = generateToken();
+      const expiresAt = new Date(now);
+      const expirationDays = resolveExpirationDays(expiresInDays);
+      expiresAt.setDate(expiresAt.getDate() + expirationDays);
+
+      const { data: insertedToken, error: insertError } = await supabase
+        .from('service_selection_tokens')
+        .insert({
+          contact_id: contact.id,
+          token,
+          expires_at: expiresAt.toISOString()
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error inserting service selection token:', insertError);
+        return res.status(500).json({ error: 'Failed to create service selection token' });
+      }
+
+      tokenRecord = insertedToken;
+    }
+
+    // ------------------------------------------------------------------
+    // Update contact metadata
+    // ------------------------------------------------------------------
+    const contactUpdates = {
+      service_selection_token: tokenRecord.token,
+      service_selection_sent: true,
+      service_selection_sent_at: nowIso,
+      updated_at: nowIso
+    };
+
+    if (eventType) {
+      contactUpdates.event_type = eventType;
+    }
+    if (eventDate) {
+      contactUpdates.event_date = eventDate;
+    }
+
+    const { error: contactUpdateError } = await supabase
       .from('contacts')
-      .update(updateData)
+      .update(contactUpdates)
       .eq('id', contact.id);
 
-    if (updateError) {
-      console.error('Error updating contact with token:', updateError);
-      // If columns don't exist, store token in a notes field or custom_fields
-      console.log('Will use token from memory for this session');
+    if (contactUpdateError) {
+      console.error('Error updating contact with token metadata:', contactUpdateError);
     }
 
-    // Generate link
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    const link = `${baseUrl}/select-services/${token}`;
+    const baseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL);
+    const link = `${baseUrl}/select-services/${tokenRecord.token}`;
 
     return res.status(200).json({
       success: true,
       link,
-      contactId: contact.id
+      contactId: contact.id,
+      tokenId: tokenRecord.id,
+      token: tokenRecord.token,
+      expiresAt: tokenRecord.expires_at
     });
-
   } catch (error) {
     console.error('Error generating service selection link:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Internal server error',
-      message: error.message 
+      message: error.message
     });
   }
 }

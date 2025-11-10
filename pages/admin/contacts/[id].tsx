@@ -484,7 +484,7 @@ export default function ContactDetailPage() {
                         </Button>
               )}
               {contact.phone && (
-                <Button variant="flat" onClick={() => window.open(`/chat?contact=${encodeURIComponent(contact.phone || '')}`)}>
+                <Button variant="flat" onClick={() => window.open(`/chat/sms?contact=${encodeURIComponent(contact.phone || '')}`)}>
                   <MessageSquare className="h-4 w-4" />
                         </Button>
               )}

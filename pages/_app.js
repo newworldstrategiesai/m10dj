@@ -1,5 +1,6 @@
-import '../styles/company-globals.css'
-import Head from 'next/head'
+import '../styles/company-globals.css';
+import Head from 'next/head';
+import FloatingLeadImportWidget from '@/components/chat/FloatingLeadImportWidget';
 // Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
 
@@ -42,8 +43,9 @@ export default function App({ Component, pageProps }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </Head>
       <Component {...pageProps} />
+      <FloatingLeadImportWidget />
       {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}
     </>
-  )
-} 
+  );
+}
