@@ -3,7 +3,7 @@
  * Shows full conversation thread with lead/opportunity details
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   X, 
@@ -81,11 +81,7 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
   const [allMessages, setAllMessages] = useState<Message[]>([]);
   const [detectedData, setDetectedData] = useState<DetectedEventData | null>(null);
 
-  useEffect(() => {
-    fetchConversationData();
-  }, [message]);
-
-  const fetchConversationData = async () => {
+  const fetchConversationData = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch all messages from this sender based on platform
@@ -142,7 +138,11 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
     } finally {
       setLoading(false);
     }
-  };
+  }, [message]);
+
+  useEffect(() => {
+    fetchConversationData();
+  }, [fetchConversationData]);
 
   const detectEventData = (messages: Message[]): DetectedEventData => {
     const fullConversation = messages.map(m => {
@@ -723,7 +723,7 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                       <div className="space-y-2">
                         <Button
-                          variant="slim"
+                          variant="outline"
                           className="w-full justify-start"
                           onClick={() => window.open(`/admin/contacts/${contact.id}`, '_blank')}
                         >
@@ -786,13 +786,13 @@ export default function ConversationDetailModal({ message, onClose }: Conversati
                         <div className="flex-1">
                           <h3 className="font-semibold text-yellow-900 mb-1">No Contact Created</h3>
                           <p className="text-sm text-yellow-800 mb-4">
-                            This message hasn't been converted to a contact yet. 
+                            This message hasn&apos;t been converted to a contact yet. 
                             {detectedData && (detectedData.eventType || detectedData.eventDate) 
                               ? ' Event details will be automatically added.'
                               : ' Would you like to create one?'}
                           </p>
                           <Button 
-                            variant="slim" 
+                            variant="outline" 
                             className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
                             onClick={handleCreateContact}
                             disabled={creating}

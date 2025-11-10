@@ -222,7 +222,8 @@ export default function NewMessageModal({
                 <Input
                   placeholder="Search contacts or enter phone number..."
                   value={searchQuery || phoneNumber}
-                  onChange={(value) => {
+                  onChange={(e) => {
+                    const value = e.target.value;
                     if (value.replace(/[^\d]/g, '').length > 0) {
                       handlePhoneChange(value);
                     } else {
@@ -265,7 +266,7 @@ export default function NewMessageModal({
                   <Input
                     placeholder="Contact name (optional)"
                     value={contactName}
-                    onChange={setContactName}
+                    onChange={(e) => setContactName(e.target.value)}
                     className="h-11"
                   />
                 </div>

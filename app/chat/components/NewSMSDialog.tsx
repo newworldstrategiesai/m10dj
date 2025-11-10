@@ -455,7 +455,7 @@ export const NewSMSDialog = ({
           <Input
             placeholder="Search contacts"
             value={searchQuery}
-            onChange={handleSearchChange}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10 h-10 text-[15px] bg-[#333336] border-0 rounded-lg placeholder:text-[#8E8E93] text-white"
           />
         </div>
@@ -512,7 +512,7 @@ export const NewSMSDialog = ({
             <Input
               id="phoneNumber"
               value={phoneNumber}
-              onChange={(value) => setPhoneNumber(value)}
+              onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="+1234567890"
             />
           </div>
@@ -523,7 +523,7 @@ export const NewSMSDialog = ({
             <Input
               id="contactName"
               value={searchQuery}
-              onChange={(value) => setSearchQuery(value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="John Doe"
             />
           </div>
@@ -534,7 +534,7 @@ export const NewSMSDialog = ({
             <Input
               id="fromNumber"
               value={selectedTwilioNumber}
-              onChange={(value) => setSelectedTwilioNumber(value)}
+              onChange={(e) => setSelectedTwilioNumber(e.target.value)}
               placeholder="Your Twilio number"
             />
           </div>
