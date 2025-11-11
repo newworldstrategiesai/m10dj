@@ -216,6 +216,14 @@ export default function EmailClient() {
     }
   }
 
+  // Handle compose/send email
+  const handleSendEmail = (email: any) => {
+    toast({
+      title: "Compose",
+      description: "Email composition feature coming soon",
+    })
+  }
+
   // Select first email by default
   useEffect(() => {
     if (emails.length > 0 && !selectedEmail) {
