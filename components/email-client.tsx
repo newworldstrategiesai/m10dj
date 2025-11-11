@@ -12,21 +12,31 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 export default function EmailClient() {
   const [selectedFolder, setSelectedFolder] = useState<EmailFolder>("unified")
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
+  const [selectedAccount, setSelectedAccount] = useState<string>("hello") // Account ID
   const [emails, setEmails] = useState<Email[]>([])
-  const [accounts, setAccounts] = useState<EmailAccount[]>([
-    {
-      id: "m10djcompany",
-      name: "M10 DJ Company",
-      email: "hello@m10djcompany.com",
-      avatar: "🎵",
-    },
-  ])
+  const [accounts, setAccounts] = useState<EmailAccount[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [detailOpen, setDetailOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const isMobile = useMobile()
   const { toast } = useToast()
+
+  // Fetch available email accounts
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const response = await fetch("/api/emails/accounts")
+        if (response.ok) {
+          const data = await response.json()
+          setAccounts(data.accounts || [])
+        }
+      } catch (err) {
+        console.error("Error fetching accounts:", err)
+      }
+    }
+    fetchAccounts()
+  }, [])
 
   // Transform received email from API to Email type
   const transformReceivedEmail = (data: any): Email => ({
@@ -49,12 +59,26 @@ export default function EmailClient() {
     attachments: data.attachments || [],
   })
 
+  // Get the selected account email address
+  const selectedAccountEmail = accounts.find((acc) => acc.id === selectedAccount)?.email
+
   // Fetch emails from API
   const fetchEmails = async () => {
     try {
       setIsLoading(true)
       setError(null)
-      const response = await fetch(`/api/emails?folder=${selectedFolder}&limit=50`)
+      
+      // Build URL with folder and account filters
+      const params = new URLSearchParams({
+        folder: selectedFolder,
+        limit: "50",
+      })
+      
+      if (selectedAccountEmail) {
+        params.append("account", selectedAccountEmail)
+      }
+      
+      const response = await fetch(`/api/emails?${params.toString()}`)
 
       if (!response.ok) {
         throw new Error(`Failed to fetch emails: ${response.statusText}`)
@@ -76,16 +100,16 @@ export default function EmailClient() {
     }
   }
 
-  // Fetch emails on mount and when folder changes
+  // Fetch emails on mount and when folder or account changes
   useEffect(() => {
     fetchEmails()
-  }, [selectedFolder])
+  }, [selectedFolder, selectedAccount])
 
   // Poll for new emails every 10 seconds
   useEffect(() => {
     const interval = setInterval(fetchEmails, 10000)
     return () => clearInterval(interval)
-  }, [selectedFolder])
+  }, [selectedFolder, selectedAccount])
 
   // Filter emails based on selected folder
   const filteredEmails = useMemo(() => {
@@ -243,7 +267,9 @@ export default function EmailClient() {
         <Sidebar
           accounts={accounts}
           selectedFolder={selectedFolder}
+          selectedAccount={selectedAccount}
           onSelectFolder={setSelectedFolder}
+          onSelectAccount={setSelectedAccount}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onSendEmail={handleSendEmail}
         />

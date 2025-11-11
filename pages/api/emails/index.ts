@@ -3,7 +3,13 @@ import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 /**
  * API route to fetch received emails
- * GET /api/emails?folder=unified&account=hello@m10djcompany.com
+ * GET /api/emails?folder=unified&account=hello@m10djcompany.com&limit=50&offset=0
+ * 
+ * Parameters:
+ * - folder: 'unified' (default), 'unread', 'flagged', 'archived', 'snoozed'
+ * - account: specific email address to filter by (optional)
+ * - limit: number of emails per page (default 50)
+ * - offset: pagination offset (default 0)
  */
 export default async function handler(
   req: NextApiRequest,
@@ -35,6 +41,11 @@ export default async function handler(
       .eq('deleted', false)
       .order('received_at', { ascending: false });
 
+    // Filter by specific account if provided
+    if (account && typeof account === 'string') {
+      query = query.contains('to_emails', [account]);
+    }
+
     // Apply filters based on folder
     if (folder === 'unread') {
       query = query.eq('read', false).eq('archived', false).eq('snoozed', false);
@@ -46,9 +57,6 @@ export default async function handler(
       query = query.eq('snoozed', true);
     } else if (folder === 'unified') {
       query = query.eq('archived', false).eq('snoozed', false);
-    } else if (account) {
-      // Filter by specific account (to_emails contains the account)
-      query = query.contains('to_emails', [account]).eq('archived', false).eq('snoozed', false);
     }
 
     // Apply pagination
