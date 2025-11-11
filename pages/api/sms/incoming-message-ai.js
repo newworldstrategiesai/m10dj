@@ -4,7 +4,8 @@ import {
   generateAIResponse, 
   saveConversationMessage, 
   updateContactLastCommunication,
-  extractLeadInfo 
+  extractLeadInfo,
+  updateContactName
 } from '../../../utils/chatgpt-sms-assistant.js';
 
 export default async function handler(req, res) {
@@ -28,6 +29,21 @@ export default async function handler(req, res) {
     // 3. Extract any new lead information from the message
     const extractedInfo = extractLeadInfo(Body, customerContext);
     console.log('Extracted info:', extractedInfo);
+    
+    // 3.5. Update contact name if detected in message
+    if (extractedInfo.nameDetected && extractedInfo.firstName) {
+      console.log(`🏷️ Name detected: ${extractedInfo.firstName} ${extractedInfo.lastName || ''}`);
+      const nameUpdateResult = await updateContactName(
+        From, 
+        extractedInfo.firstName, 
+        extractedInfo.lastName
+      );
+      if (nameUpdateResult.updated) {
+        console.log('✅ Contact name automatically updated from SMS introduction');
+      } else if (nameUpdateResult.skipped) {
+        console.log('ℹ️ Contact already has a name, skipped update');
+      }
+    }
     
     // 4. Generate AI response with full context
     const aiResponse = await generateAIResponse(Body, customerContext);
@@ -157,6 +173,9 @@ async function sendEnhancedAdminNotification(customerPhone, customerMessage, con
     // Extracted information
     if (Object.keys(extractedInfo).length > 0) {
       adminMessage += `📋 Detected info:\n`;
+      if (extractedInfo.nameDetected && extractedInfo.firstName) {
+        adminMessage += `👤 Name: ${extractedInfo.firstName} ${extractedInfo.lastName || ''}\n`;
+      }
       if (extractedInfo.eventType) adminMessage += `Event: ${extractedInfo.eventType}\n`;
       if (extractedInfo.possibleDate) adminMessage += `Date: ${extractedInfo.possibleDate}\n`;
       if (extractedInfo.guestCount) adminMessage += `Guests: ${extractedInfo.guestCount}\n`;

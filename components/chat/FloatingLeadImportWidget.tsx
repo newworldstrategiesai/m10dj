@@ -83,7 +83,18 @@ export default function FloatingLeadImportWidget() {
       const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to import lead.');
+        const errorMessage = payload?.error || 'Failed to import lead.';
+        const errorDetails = payload?.details 
+          ? (typeof payload.details === 'string' 
+              ? payload.details 
+              : payload.details?.message || JSON.stringify(payload.details))
+          : null;
+        
+        throw new Error(
+          errorDetails 
+            ? `${errorMessage}\n\nDetails: ${errorDetails}`
+            : errorMessage
+        );
       }
 
       setStatus({
@@ -255,7 +266,7 @@ export default function FloatingLeadImportWidget() {
             {status.state === 'error' && (
               <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/60 dark:text-red-100">
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <p>{status.message}</p>
+                <p className="whitespace-pre-wrap break-words">{status.message}</p>
               </div>
             )}
 
@@ -300,7 +311,7 @@ export default function FloatingLeadImportWidget() {
 
           <DialogFooter className="gap-3">
             <Button
-              variant="outline"
+              variant="flat"
               className="w-full sm:w-auto"
               onClick={handleImport}
               disabled={!threadText.trim() || status.state === 'processing'}

@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   console.log('📧 Attempting to send email via Resend...');
   console.log(`   To: ${emailTo}`);
   console.log(`   Subject: ${emailSubject}`);
-  console.log(`   From: M10 DJ Company <onboarding@resend.dev>`);
+  console.log(`   From: M10 DJ Company <hello@m10djcompany.com>`);
 
   try {
     // Create professional HTML email template
@@ -68,7 +68,7 @@ ${emailContent}
 
     // Send email via Resend
     const emailResult = await resend.emails.send({
-      from: 'M10 DJ Company <onboarding@resend.dev>', // Using Resend's verified domain initially
+      from: 'M10 DJ Company <hello@m10djcompany.com>', // Using verified custom domain
       to: [emailTo],
       subject: emailSubject,
       html: htmlContent,

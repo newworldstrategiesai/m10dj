@@ -267,6 +267,71 @@ export async function saveConversationMessage(phoneNumber, message, direction, m
 }
 
 /**
+ * Update contact name when they introduce themselves
+ * @param {string} phoneNumber - Customer phone number  
+ * @param {string} firstName - First name
+ * @param {string} lastName - Last name (optional)
+ * @returns {Object} Update result
+ */
+export async function updateContactName(phoneNumber, firstName, lastName = null) {
+  try {
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    
+    // Find existing contact
+    const { data: contact, error: findError } = await supabase
+      .from('contacts')
+      .select('*')
+      .ilike('phone', `%${cleanPhone}%`)
+      .is('deleted_at', null)
+      .limit(1)
+      .single();
+
+    if (findError || !contact) {
+      console.log('No contact found to update name for:', phoneNumber);
+      return { success: false, error: findError || 'Contact not found' };
+    }
+
+    // Only update if name is currently empty or "Unknown"
+    const shouldUpdate = !contact.first_name || 
+                        contact.first_name === 'Unknown' || 
+                        contact.first_name === '';
+
+    if (!shouldUpdate) {
+      console.log('Contact already has a name, skipping update:', contact.first_name, contact.last_name);
+      return { success: true, skipped: true, message: 'Contact already has a name' };
+    }
+
+    // Update the contact with the new name
+    const updateData = {
+      first_name: firstName,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (lastName) {
+      updateData.last_name = lastName;
+    }
+
+    const { data, error: updateError } = await supabase
+      .from('contacts')
+      .update(updateData)
+      .eq('id', contact.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error updating contact name:', updateError);
+      return { success: false, error: updateError };
+    }
+
+    console.log(`✅ Updated contact name: ${firstName} ${lastName || ''} for ${phoneNumber}`);
+    return { success: true, data, updated: true };
+  } catch (error) {
+    console.error('Error in updateContactName:', error);
+    return { success: false, error };
+  }
+}
+
+/**
  * Update contact's last communication info
  * @param {string} phoneNumber - Customer phone number
  * @param {string} contactType - Type of contact ('sms', 'ai_chat')
@@ -304,8 +369,98 @@ export async function updateContactLastCommunication(phoneNumber, contactType = 
  * @param {Object} context - Current customer context
  * @returns {Object} Extracted lead information
  */
+/**
+ * Extract name from message when someone introduces themselves
+ * @param {string} message - The message content
+ * @returns {Object|null} Object with firstName and lastName, or null
+ */
+export function extractNameFromMessage(message) {
+  // Common name introduction patterns
+  const namePatterns = [
+    // "Hi this is Haywood Williams" or "Hey, this is Haywood Williams"
+    /(?:hi|hey|hello)[,\s]+(?:this is|i'm|i am|my name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?:,|$|\s)/i,
+    // "This is Haywood Williams" at start
+    /^this is\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?=[\s,]|$))/i,
+    // "My name is Haywood Williams"
+    /my name is\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?=[\s,]|$))/i,
+    // "Hey, I'm Chris Anderson"
+    /(?:hi|hey|hello)[,\s]+i'?m\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?=[\s,]|$))/i,
+    // "I am Jennifer Lee"
+    /(?:^|\.\s+)i\s+am\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?=[\s,]|$))/i,
+    // "This is Haywood calling" - name before action verb
+    /^this is\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:calling|texting|reaching|contacting)/i,
+    // "Michael Davis here" at the start
+    /^([A-Z][a-z]+\s+[A-Z][a-z]+)\s+here/
+  ];
+  
+  for (const pattern of namePatterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      let fullName = match[1].trim();
+      
+      // Remove trailing punctuation
+      fullName = fullName.replace(/[,;:!?\.]$/, '');
+      
+      // Validate name (must be at least 2 chars, only letters and spaces)
+      if (fullName.length < 2 || fullName.length > 50) continue;
+      if (!/^[A-Za-z\s'-]+$/.test(fullName)) continue;
+      
+      // Filter out common words that aren't names
+      const commonWords = [
+        'calling', 'texting', 'reaching', 'contacting', 'interested', 'looking',
+        'needing', 'asking', 'inquiring', 'wondering', 'hoping', 'wanting',
+        'about', 'regarding', 'concerning', 'booking',
+        'the', 'a', 'an', 'and', 'or', 'but', 'for', 'with', 'from', 'in', 'my'
+      ];
+      
+      const lowerName = fullName.toLowerCase().trim();
+      
+      // Check if the entire name is a common word
+      if (commonWords.includes(lowerName)) continue;
+      
+      // Split into first and last name
+      const nameParts = fullName.trim().split(/\s+/);
+      
+      // Filter out parts that are definitely not names
+      const validParts = nameParts.filter(part => {
+        const lower = part.toLowerCase();
+        // Keep parts that look like names (capitalized and not common words)
+        return !['about', 'regarding', 'concerning'].includes(lower);
+      });
+      
+      // Need at least one valid name part
+      if (validParts.length === 0) continue;
+      
+      // Capitalize properly
+      const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+      
+      if (validParts.length === 1) {
+        return {
+          firstName: capitalize(validParts[0]),
+          lastName: null
+        };
+      } else {
+        return {
+          firstName: capitalize(validParts[0]),
+          lastName: validParts.slice(1).map(capitalize).join(' ')
+        };
+      }
+    }
+  }
+  
+  return null;
+}
+
 export function extractLeadInfo(message, context) {
   const info = {};
+  
+  // Extract name if person introduces themselves
+  const extractedName = extractNameFromMessage(message);
+  if (extractedName) {
+    info.firstName = extractedName.firstName;
+    info.lastName = extractedName.lastName;
+    info.nameDetected = true;
+  }
   
   // Extract event types
   const eventTypes = {

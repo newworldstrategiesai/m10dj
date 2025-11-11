@@ -1,11 +1,30 @@
 // Enhanced SMS webhook with instant auto-reply + delayed AI response
-import { getCustomerContext, generateAIResponse } from '../../../utils/chatgpt-sms-assistant.js';
+import { getCustomerContext, generateAIResponse, extractLeadInfo, updateContactName } from '../../../utils/chatgpt-sms-assistant.js';
 
 export default async function handler(req, res) {
   try {
     const { From, To, Body, MessageSid, NumMedia, MediaUrl0, MediaContentType0 } = req.body;
     
     console.log(`📱 Incoming SMS from ${From}: ${Body}`);
+    
+    // 0. Extract lead info and update contact name if introduced
+    try {
+      const extractedInfo = extractLeadInfo(Body, {});
+      if (extractedInfo.nameDetected && extractedInfo.firstName) {
+        console.log(`🏷️ Name detected: ${extractedInfo.firstName} ${extractedInfo.lastName || ''}`);
+        const nameUpdateResult = await updateContactName(
+          From, 
+          extractedInfo.firstName, 
+          extractedInfo.lastName
+        );
+        if (nameUpdateResult.updated) {
+          console.log('✅ Contact name automatically updated from SMS introduction');
+        }
+      }
+    } catch (nameError) {
+      console.error('❌ Error extracting/updating name:', nameError);
+      // Non-critical, continue processing
+    }
     
     // 1. FIRST: Generate AI preview and send enhanced admin notification
     let aiPreview = null;

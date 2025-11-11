@@ -1,145 +1,193 @@
-// API endpoint for testing notification system health
-import { testNotificationSystem } from '../../utils/notification-system.js';
-import { createClient } from '@supabase/supabase-js';
+// Test notification systems (SMS and Email)
+import { sendAdminSMS, formatContactSubmissionSMS } from '../../utils/sms-helper.js';
+import { Resend } from 'resend';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Basic auth check - only allow admin users
-  const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${process.env.ADMIN_API_KEY}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  const results = {
+    environment: {},
+    sms: {},
+    email: {}
+  };
 
+  // 1. Check environment variables
+  console.log('🔍 Checking environment variables...');
+  results.environment = {
+    RESEND_API_KEY: !!process.env.RESEND_API_KEY,
+    ADMIN_PHONE_NUMBER: !!process.env.ADMIN_PHONE_NUMBER,
+    ADMIN_PHONE_VALUE: process.env.ADMIN_PHONE_NUMBER ? 
+      `${process.env.ADMIN_PHONE_NUMBER.substring(0, 5)}...` : 'NOT SET',
+    TWILIO_ACCOUNT_SID: !!process.env.TWILIO_ACCOUNT_SID,
+    TWILIO_AUTH_TOKEN: !!process.env.TWILIO_AUTH_TOKEN,
+    TWILIO_PHONE_NUMBER: !!process.env.TWILIO_PHONE_NUMBER,
+    TWILIO_PHONE_VALUE: process.env.TWILIO_PHONE_NUMBER || 'NOT SET'
+  };
+
+  // 2. Test SMS notification
   try {
-    console.log('🔍 Running notification system health check...');
-    const healthResults = await testNotificationSystem();
-
-    const response = {
-      timestamp: new Date().toISOString(),
-      status: healthResults.summary.successfulMethods > 0 ? 'HEALTHY' : 'CRITICAL',
-      results: {
-        sms: {
-          success: healthResults.sms.success,
-          attempts: healthResults.sms.attempts,
-          error: healthResults.sms.error,
-          phoneUsed: healthResults.sms.phoneUsed
-        },
-        email: {
-          success: healthResults.email.success,
-          error: healthResults.email.error
-        },
-        database: {
-          success: healthResults.database.success,
-          error: healthResults.database.error
-        }
-      },
-      summary: {
-        totalAttempts: healthResults.summary.totalAttempts,
-        successfulMethods: healthResults.summary.successfulMethods,
-        overallHealth: healthResults.summary.successfulMethods > 0 ? 'HEALTHY' : 'CRITICAL'
-      },
-      recommendations: generateHealthRecommendations(healthResults)
+    console.log('📱 Testing SMS notification...');
+    
+    const testSubmission = {
+      name: 'Test User',
+      email: 'test@example.com',
+      phone: '+12345678900',
+      eventType: 'Wedding',
+      eventDate: '2025-12-31',
+      location: 'Test Venue',
+      message: 'This is a test notification from the diagnostic tool'
     };
 
-    // Log health check to database
-    await logHealthCheck(response);
+    const smsMessage = formatContactSubmissionSMS(testSubmission);
+    console.log('📝 SMS Message:', smsMessage);
 
-    res.status(200).json(response);
+    // Try direct Twilio approach
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+      const twilio = require('twilio');
+      const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      
+      const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+      
+      if (!adminPhone) {
+        throw new Error('ADMIN_PHONE_NUMBER not configured');
+      }
 
-  } catch (error) {
-    console.error('Health check failed:', error);
-    res.status(500).json({ 
-      error: 'Health check failed',
-      details: error.message,
-      status: 'CRITICAL'
-    });
+      const smsResult = await twilioClient.messages.create({
+        body: `🧪 TEST NOTIFICATION\n\n${smsMessage}\n\n✅ If you received this, SMS notifications are working!`,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: adminPhone
+      });
+
+      results.sms = {
+        success: true,
+        method: 'direct_twilio',
+        sid: smsResult.sid,
+        status: smsResult.status,
+        to: adminPhone,
+        from: process.env.TWILIO_PHONE_NUMBER
+      };
+
+      console.log('✅ SMS test successful:', smsResult.sid);
+    } else {
+      results.sms = {
+        success: false,
+        error: 'Twilio credentials not configured'
+      };
+    }
+
+  } catch (smsError) {
+    console.error('❌ SMS test failed:', smsError);
+    results.sms = {
+      success: false,
+      error: smsError.message,
+      stack: smsError.stack
+    };
   }
+
+  // 3. Test Email notification
+  try {
+    console.log('📧 Testing email notification...');
+    
+    if (!resend || !process.env.RESEND_API_KEY) {
+      results.email = {
+        success: false,
+        error: 'Resend API key not configured'
+      };
+    } else {
+      const emailResult = await resend.emails.send({
+        from: 'M10 DJ Company <onboarding@resend.dev>',
+        to: ['djbenmurray@gmail.com'],
+        subject: '🧪 TEST: Contact Form Notification System',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #10b981; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h2 style="margin: 0;">🧪 Notification Test</h2>
+              <p style="margin: 5px 0 0 0;">This is a test email from the diagnostic tool</p>
+            </div>
+            
+            <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #ddd;">
+              <h3 style="color: #333;">Test Results</h3>
+              <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+              <p><strong>SMS Test:</strong> ${results.sms.success ? '✅ Passed' : '❌ Failed'}</p>
+              <p><strong>Email Test:</strong> ✅ You're reading this!</p>
+              
+              ${!results.sms.success ? `
+                <div style="margin-top: 20px; padding: 15px; background: #fee; border-left: 4px solid #f00; border-radius: 4px;">
+                  <p style="margin: 0; color: #c00;"><strong>SMS Error:</strong> ${results.sms.error || 'Unknown'}</p>
+                </div>
+              ` : ''}
+              
+              <div style="margin-top: 30px; padding: 20px; background: #fcba00; border-radius: 6px;">
+                <p style="margin: 0; color: #000;">
+                  <strong>✅ If you received this email, email notifications are working!</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+
+      results.email = {
+        success: true,
+        emailId: emailResult.id,
+        to: 'djbenmurray@gmail.com'
+      };
+
+      console.log('✅ Email test successful:', emailResult.id);
+    }
+
+  } catch (emailError) {
+    console.error('❌ Email test failed:', emailError);
+    results.email = {
+      success: false,
+      error: emailError.message,
+      stack: emailError.stack
+    };
+  }
+
+  // Return comprehensive results
+  return res.status(200).json({
+    success: results.sms.success || results.email.success,
+    timestamp: new Date().toISOString(),
+    results,
+    summary: {
+      sms: results.sms.success ? '✅ Working' : '❌ Failed',
+      email: results.email.success ? '✅ Working' : '❌ Failed',
+      recommendations: getRecommendations(results)
+    }
+  });
 }
 
-function generateHealthRecommendations(results) {
+function getRecommendations(results) {
   const recommendations = [];
 
-  if (!results.sms.success) {
-    recommendations.push({
-      type: 'SMS_FAILURE',
-      priority: 'HIGH',
-      message: 'SMS notifications are failing. Check Twilio configuration and admin phone numbers.',
-      actions: [
-        'Verify TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER environment variables',
-        'Check ADMIN_PHONE_NUMBER format (should be +1XXXXXXXXXX)',
-        'Verify Twilio account has sufficient balance',
-        'Test Twilio credentials manually'
-      ]
-    });
+  if (!results.environment.RESEND_API_KEY) {
+    recommendations.push('Set RESEND_API_KEY environment variable');
   }
 
-  if (!results.email.success) {
-    recommendations.push({
-      type: 'EMAIL_FAILURE',
-      priority: 'HIGH',
-      message: 'Email notifications are failing. Check Resend configuration.',
-      actions: [
-        'Verify RESEND_API_KEY environment variable',
-        'Check admin email addresses',
-        'Verify Resend account status'
-      ]
-    });
+  if (!results.environment.ADMIN_PHONE_NUMBER) {
+    recommendations.push('Set ADMIN_PHONE_NUMBER environment variable (format: +1234567890)');
   }
 
-  if (results.summary.successfulMethods === 0) {
-    recommendations.push({
-      type: 'TOTAL_FAILURE',
-      priority: 'CRITICAL',
-      message: 'ALL notification methods are failing! This is a critical issue that will cause missed leads.',
-      actions: [
-        'Immediately check all environment variables',
-        'Verify third-party service accounts (Twilio, Resend)',
-        'Consider manual monitoring until fixed',
-        'Set up alternative notification channels'
-      ]
-    });
+  if (!results.environment.TWILIO_ACCOUNT_SID || !results.environment.TWILIO_AUTH_TOKEN) {
+    recommendations.push('Configure Twilio credentials (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER)');
+  }
+
+  if (!results.sms.success && results.sms.error) {
+    recommendations.push(`SMS Error: ${results.sms.error}`);
+  }
+
+  if (!results.email.success && results.email.error) {
+    recommendations.push(`Email Error: ${results.email.error}`);
   }
 
   if (recommendations.length === 0) {
-    recommendations.push({
-      type: 'HEALTHY',
-      priority: 'INFO',
-      message: 'All notification systems are functioning correctly.',
-      actions: ['Continue regular monitoring']
-    });
+    recommendations.push('All systems operational! ✅');
   }
 
   return recommendations;
-}
-
-async function logHealthCheck(results) {
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { error } = await supabase
-      .from('notification_log')
-      .insert([{
-        contact_submission_id: null, // Health checks don't have submissions
-        notification_type: 'health_check',
-        sms_success: results.results.sms.success,
-        sms_attempts: results.results.sms.attempts,
-        sms_error: results.results.sms.error,
-        email_success: results.results.email.success,
-        email_error: results.results.email.error,
-        total_attempts: results.summary.totalAttempts,
-        successful_methods: results.summary.successfulMethods
-      }]);
-
-    if (error) {
-      console.error('Failed to log health check:', error);
-    }
-  } catch (error) {
-    console.error('Health check logging error:', error);
-  }
 }

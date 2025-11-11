@@ -27,9 +27,9 @@ import { cn } from '@/utils/cn';
 
 interface Contact {
   id: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
   email_address?: string;
   company?: string;
   lead_status?: string;
@@ -91,11 +91,11 @@ export default function NewMessageModal({
   const filteredContacts = contacts.filter(contact => {
     const query = searchQuery.toLowerCase();
     const fullName = `${contact.first_name} ${contact.last_name}`.toLowerCase();
-    const phone = contact.phone.replace(/[^\d]/g, '');
+    const phone = contact.phone ? contact.phone.replace(/[^\d]/g, '') : '';
     const searchPhone = searchQuery.replace(/[^\d]/g, '');
-    
-    return fullName.includes(query) || 
-           phone.includes(searchPhone) ||
+
+    return fullName.includes(query) ||
+           (contact.phone && phone.includes(searchPhone)) ||
            contact.company?.toLowerCase().includes(query);
   });
 
@@ -123,20 +123,20 @@ export default function NewMessageModal({
     
     // Auto-search for matching contact
     const digits = value.replace(/[^\d]/g, '');
-    const matchingContact = contacts.find(c => 
-      c.phone.replace(/[^\d]/g, '').includes(digits) && digits.length >= 4
+    const matchingContact = contacts.find(c =>
+      c.phone && c.phone.replace(/[^\d]/g, '').includes(digits) && digits.length >= 4
     );
     
     if (matchingContact && digits.length >= 7) {
       setSelectedContact(matchingContact);
-      setContactName(`${matchingContact.first_name} ${matchingContact.last_name}`);
+      setContactName(`${matchingContact.first_name || ''} ${matchingContact.last_name || ''}`.trim());
     }
   };
 
   const handleContactSelect = (contact: Contact) => {
     setSelectedContact(contact);
-    setPhoneNumber(contact.phone);
-    setContactName(`${contact.first_name} ${contact.last_name}`);
+    setPhoneNumber(contact.phone || '');
+    setContactName(`${contact.first_name || ''} ${contact.last_name || ''}`.trim());
     setSearchQuery('');
   };
 
@@ -182,22 +182,22 @@ export default function NewMessageModal({
   };
 
   const getContactInitials = (contact: Contact) => {
-    return `${contact.first_name?.[0] || ''}${contact.last_name?.[0] || ''}`.toUpperCase();
+    return `${(contact.first_name || '')[0] || ''}${(contact.last_name || '')[0] || ''}`.toUpperCase();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] p-0 gap-0 bg-white">
+      <DialogContent className="sm:max-w-[500px] p-0 gap-0 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
         {/* Header */}
-        <DialogHeader className="px-6 py-4 border-b">
+        <DialogHeader className="px-6 py-4 border-b bg-slate-50 dark:bg-slate-900/40">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                 <IconMessage className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-semibold">New Message</DialogTitle>
-                <p className="text-sm text-gray-500">
+                <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">New Message</DialogTitle>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {step === 'contact' ? 'Choose recipient' : 'Compose message'}
                 </p>
               </div>
@@ -213,12 +213,12 @@ export default function NewMessageModal({
         </DialogHeader>
 
         {/* Content */}
-        <div className="flex-1">
+        <div className="flex-1 bg-white dark:bg-slate-900">
           {step === 'contact' ? (
             <div className="p-6 space-y-6">
               {/* Search Bar */}
               <div className="relative">
-                <IconSearch className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <IconSearch className="absolute left-3 top-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <Input
                   placeholder="Search contacts or enter phone number..."
                   value={searchQuery || phoneNumber}
@@ -231,26 +231,26 @@ export default function NewMessageModal({
                       setPhoneNumber('');
                     }
                   }}
-                  className="pl-10 h-12 text-base border-2 focus:border-blue-500"
+                  className="pl-10 h-12 text-base border-2 focus:border-blue-500 dark:border-gray-700 dark:bg-slate-800 dark:text-slate-50 dark:placeholder:text-slate-400 dark:focus:border-blue-400"
                 />
               </div>
 
               {/* Selected Contact Preview */}
               {selectedContact && (
-                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <Avatar className="h-10 w-10">
+                <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-500/50">
+                  <Avatar className="h-10 w-10 ring-2 ring-offset-2 ring-blue-200 dark:ring-blue-500 dark:ring-offset-slate-900">
                     <AvatarFallback className="bg-blue-600 text-white">
                       {getContactInitials(selectedContact)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="font-medium">{contactName}</p>
-                    <p className="text-sm text-gray-600">{phoneNumber}</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">{contactName}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{phoneNumber}</p>
                     {selectedContact.company && (
-                      <p className="text-xs text-gray-500">{selectedContact.company}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{selectedContact.company}</p>
                     )}
                   </div>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs border border-blue-200 dark:border-blue-500/70 dark:bg-blue-900/40">
                     {selectedContact.lead_status || 'Contact'}
                   </Badge>
                 </div>
@@ -259,7 +259,7 @@ export default function NewMessageModal({
               {/* Manual Entry */}
               {!selectedContact && phoneNumber && (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                     <IconPlus className="h-4 w-4" />
                     <span>New contact</span>
                   </div>
@@ -267,7 +267,7 @@ export default function NewMessageModal({
                     placeholder="Contact name (optional)"
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
-                    className="h-11"
+                    className="h-11 dark:border-gray-700 dark:bg-slate-800 dark:text-slate-50"
                   />
                 </div>
               )}
@@ -276,26 +276,26 @@ export default function NewMessageModal({
               {searchQuery === '' && recentContacts.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <IconClock className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">Recent</span>
+                    <IconClock className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Recent</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {recentContacts.map((contact) => (
                       <button
                         key={contact.id}
                         onClick={() => handleContactSelect(contact)}
-                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors text-left"
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors text-left border-gray-200 dark:border-gray-700"
                       >
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-8 w-8 ring-1 ring-offset-2 ring-gray-200 dark:ring-offset-slate-900 dark:ring-gray-600">
                           <AvatarFallback className="bg-gray-600 text-white text-xs">
                             {getContactInitials(contact)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">
-                            {contact.first_name} {contact.last_name}
+                          <p className="text-sm font-medium truncate text-slate-900 dark:text-slate-100">
+                            {contact.first_name || ''} {contact.last_name || ''}
                           </p>
-                          <p className="text-xs text-gray-500 truncate">{contact.phone}</p>
+                          <p className="text-xs text-gray-500 truncate dark:text-gray-400">{contact.phone || 'No phone'}</p>
                         </div>
                       </button>
                     ))}
@@ -308,37 +308,40 @@ export default function NewMessageModal({
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <IconUsers className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                       Contacts ({filteredContacts.length})
                     </span>
                   </div>
                   <ScrollArea className="h-64">
                     <div className="space-y-1">
-                      {filteredContacts.map((contact) => (
-                        <button
-                          key={contact.id}
-                          onClick={() => handleContactSelect(contact)}
-                          className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left w-full"
-                        >
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback className="bg-gray-600 text-white">
-                              {getContactInitials(contact)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium">
-                              {contact.first_name} {contact.last_name}
-                            </p>
-                            <p className="text-sm text-gray-600">{contact.phone}</p>
-                            {contact.company && (
-                              <p className="text-xs text-gray-500">{contact.company}</p>
-                            )}
-                          </div>
-                          <Badge variant="secondary" className="text-xs">
-                            {contact.lead_status || 'Contact'}
-                          </Badge>
-                        </button>
-                      ))}
+                      {filteredContacts.map((contact) => {
+                        const fullName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Unknown contact';
+                        return (
+                          <button
+                            key={contact.id}
+                            onClick={() => handleContactSelect(contact)}
+                            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors text-left w-full border border-transparent hover:border-blue-200 dark:hover:border-blue-500/40"
+                          >
+                            <Avatar className="h-10 w-10 ring-2 ring-offset-2 ring-gray-100 dark:ring-offset-slate-900 dark:ring-blue-500/30">
+                              <AvatarFallback className="bg-gray-600 text-white">
+                                {getContactInitials(contact)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-slate-900 dark:text-slate-100">
+                                {fullName}
+                              </p>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">{contact.phone || 'No phone number'}</p>
+                              {contact.company && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{contact.company}</p>
+                              )}
+                            </div>
+                            <Badge variant="secondary" className="text-xs border border-blue-100 dark:border-blue-500/50 dark:bg-blue-900/30">
+                              {contact.lead_status || 'Contact'}
+                            </Badge>
+                          </button>
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 </div>
@@ -347,15 +350,15 @@ export default function NewMessageModal({
           ) : (
             <div className="p-6 space-y-6">
               {/* Recipient Summary */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <Avatar className="h-10 w-10">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800/60 rounded-lg">
+                <Avatar className="h-10 w-10 ring-2 ring-offset-2 ring-blue-200 dark:ring-blue-500 dark:ring-offset-slate-900">
                   <AvatarFallback className="bg-blue-600 text-white">
                     {selectedContact ? getContactInitials(selectedContact) : <IconUser className="h-5 w-5" />}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <p className="font-medium">{contactName || phoneNumber}</p>
-                  <p className="text-sm text-gray-600">{phoneNumber}</p>
+                  <p className="font-medium text-slate-900 dark:text-slate-100">{contactName || phoneNumber}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{phoneNumber}</p>
                 </div>
                 <Button
                   variant="outline"
@@ -369,15 +372,15 @@ export default function NewMessageModal({
               {/* Message Templates */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <IconTemplate className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Quick Templates</span>
+                  <IconTemplate className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Quick Templates</span>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
                   {MESSAGE_TEMPLATES.map((template, index) => (
                     <button
                       key={index}
                       onClick={() => handleTemplateSelect(template)}
-                      className="text-left p-3 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border"
+                      className="text-left p-3 text-sm bg-gray-50 hover:bg-gray-100 dark:bg-slate-800/60 dark:hover:bg-slate-700/70 rounded-lg transition-colors border border-gray-200 dark:border-gray-700 text-slate-900 dark:text-slate-100"
                     >
                       {template}
                     </button>
@@ -389,7 +392,7 @@ export default function NewMessageModal({
 
               {/* Message Composer */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Your Message
                 </label>
                 <Textarea
@@ -397,14 +400,14 @@ export default function NewMessageModal({
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   rows={4}
-                  className="resize-none"
+                  className="resize-none dark:bg-slate-800 dark:border-gray-700 dark:text-slate-100"
                 />
                 <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {message.length}/160 characters
                   </span>
                   {message.length > 160 && (
-                    <span className="text-xs text-orange-600">
+                    <span className="text-xs text-orange-600 dark:text-orange-400">
                       Long messages may be split
                     </span>
                   )}
@@ -414,14 +417,14 @@ export default function NewMessageModal({
               {/* From Number */}
               {fromNumbers.length > 1 && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Send From
                   </label>
                   <Select value={selectedFromNumber} onValueChange={setSelectedFromNumber}>
-                    <SelectTrigger>
+                    <SelectTrigger className="dark:bg-slate-800 dark:border-gray-700 dark:text-slate-100">
                       <SelectValue placeholder="Select phone number" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="dark:bg-slate-800 dark:border-gray-700">
                       {fromNumbers.map((number) => (
                         <SelectItem key={number} value={number}>
                           {number}

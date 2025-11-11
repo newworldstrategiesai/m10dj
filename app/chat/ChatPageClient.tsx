@@ -412,6 +412,13 @@ export default function ChatPageClient() {
     }
   };
 
+  // Ensure contact details panel is open on desktop when selecting a thread
+  useEffect(() => {
+    if (selectedUser && !isMobile) {
+      setShowDetailsPanel(true);
+    }
+  }, [selectedUser, isMobile]);
+
   // Fetch SMS history and build conversation threads
   const fetchSMSHistory = async () => {
     if (!user?.id) {
@@ -538,6 +545,173 @@ export default function ChatPageClient() {
       fetchSMSHistory();
     }
   }, [smsContacts, isLoadingContacts, user]);
+
+  // Generate reply suggestions when user is selected
+  useEffect(() => {
+    if (selectedUser && selectedUser.messages.length > 0) {
+      const lastMessage = selectedUser.messages[selectedUser.messages.length - 1];
+      
+      // Only generate suggestions for inbound messages
+      if (lastMessage.direction === 'inbound') {
+        generateReplySuggestions(selectedUser.messages);
+      } else {
+        setSuggestions([]);
+      }
+    }
+  }, [selectedUser?.id, selectedUser?.messages.length]);
+
+  // Extract lead information from conversation history
+  const extractLeadDataFromConversation = (messages: Message[]) => {
+    const conversationText = messages.map(m => m.content).join(' ').toLowerCase();
+    
+    // Event type detection
+    const eventTypes = ['wedding', 'birthday', 'corporate', 'party', 'anniversary', 'graduation', 'reunion', 'gala', 'fundraiser'];
+    const detectedEventType = eventTypes.find(type => conversationText.includes(type));
+    
+    // Date detection (look for date patterns)
+    const datePatterns = [
+      /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(st|nd|rd|th)?,?\s+\d{4}\b/i,
+      /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/,
+      /\b(next|this)\s+(week|month|year|weekend|friday|saturday|sunday|monday|tuesday|wednesday|thursday)\b/i
+    ];
+    const hasDate = datePatterns.some(pattern => pattern.test(conversationText));
+    
+    // Venue detection (look for address patterns or "venue" keyword with context)
+    const venuePatterns = [
+      /\bvenue:?\s+([^\n,.]+)/i,
+      /\b\d+\s+[a-z\s]+\b(street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|place|pl|court|ct)\b/i,
+      /\bat\s+([A-Z][a-z\s]+(?:Hall|Center|Hotel|Resort|Venue|Estate|Manor|House|Club|Garden))/
+    ];
+    const hasVenue = venuePatterns.some(pattern => pattern.test(conversationText));
+    
+    // Budget detection
+    const hasBudget = /\$\d+|budget|price range/i.test(conversationText);
+    
+    // Guest count detection
+    const hasGuestCount = /\b\d+\s*(guests?|people|attendees)/i.test(conversationText);
+    
+    return {
+      hasEventType: !!detectedEventType,
+      eventType: detectedEventType,
+      hasDate,
+      hasVenue,
+      hasBudget,
+      hasGuestCount,
+      conversationText
+    };
+  };
+
+  // Function to generate AI reply suggestions
+  const generateReplySuggestions = async (messages: Message[]) => {
+    const lastMessage = messages[messages.length - 1].content;
+    const leadData = extractLeadDataFromConversation(messages);
+    
+    // Check if all required data is captured
+    const requiredDataComplete = leadData.hasEventType && leadData.hasDate && leadData.hasVenue;
+    
+    let suggestions: string[] = [];
+    
+    if (!requiredDataComplete) {
+      // Use simple templated responses for missing required data
+      const msg = lastMessage.toLowerCase();
+      
+      // Priority 1: Event Type
+      if (!leadData.hasEventType) {
+        if (msg.includes('hi') || msg.includes('hello') || msg.includes('interested') || msg.includes('dj') || msg.includes('need')) {
+          suggestions.push("Thanks for reaching out! What type of event are you planning?");
+          suggestions.push("I'd love to help! Is this for a wedding, birthday, or another celebration?");
+        } else {
+          suggestions.push("That sounds great! What type of event is this for?");
+          suggestions.push("I can help with that! What kind of event are you planning?");
+        }
+      }
+      // Priority 2: Date
+      else if (!leadData.hasDate) {
+        suggestions.push(`Perfect! When is your ${leadData.eventType || 'event'}?`);
+        suggestions.push("What date are you looking at for your event?");
+        suggestions.push("Great! What's the date of your event?");
+      }
+      // Priority 3: Venue
+      else if (!leadData.hasVenue) {
+        suggestions.push("Sounds good! What venue are you considering?");
+        suggestions.push("Awesome! Where will the event be held?");
+        suggestions.push("Great! Do you have a venue in mind, or do you need recommendations?");
+      }
+      
+      // If we have some suggestions from basic matching, return them
+      if (suggestions.length > 0) {
+        setSuggestions(suggestions.slice(0, 3));
+        return;
+      }
+    }
+    
+    // All required data captured - use OpenAI for intelligent suggestions
+    if (requiredDataComplete) {
+      setIsLoadingSuggestions(true);
+      try {
+        const conversationHistory = messages.slice(-10).map(m => ({
+          role: m.direction === 'inbound' ? 'customer' : 'business',
+          content: m.content
+        }));
+        
+        const response = await fetch('/api/generate-reply-suggestions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lastMessage,
+            conversationHistory,
+            leadData: {
+              eventType: leadData.eventType,
+              hasDate: leadData.hasDate,
+              hasVenue: leadData.hasVenue,
+              hasBudget: leadData.hasBudget,
+              hasGuestCount: leadData.hasGuestCount
+            }
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSuggestions(data.suggestions || []);
+        } else {
+          // Fallback to basic suggestions if API fails
+          suggestions = [
+            "That sounds perfect! I'd love to discuss the details further.",
+            "Great! Let me put together a custom package for your event.",
+            "I'm excited to work with you on this! When would be a good time to chat about specifics?"
+          ];
+          setSuggestions(suggestions);
+        }
+      } catch (error) {
+        console.error('Error generating AI suggestions:', error);
+        // Fallback suggestions
+        suggestions = [
+          "That sounds perfect! I'd love to discuss the details further.",
+          "Great! Let me put together a custom package for your event.",
+          "I'm excited to work with you on this! When would be a good time to chat?"
+        ];
+        setSuggestions(suggestions);
+      } finally {
+        setIsLoadingSuggestions(false);
+      }
+    } else {
+      // Fallback to basic contextual suggestions
+      const msg = lastMessage.toLowerCase();
+      
+      if (msg.includes('price') || msg.includes('cost') || msg.includes('how much')) {
+        suggestions.push("I'd be happy to provide pricing! Can you tell me more about your event?");
+        suggestions.push("Pricing depends on the details. What type of event and date are you considering?");
+      } else if (msg.includes('?')) {
+        suggestions.push('Great question! Let me get you that information.');
+        suggestions.push('Absolutely! I can help with that.');
+      } else {
+        suggestions.push('Thanks for your message! How can I help with your event?');
+        suggestions.push("I'd be happy to discuss this further.");
+      }
+      
+      setSuggestions(suggestions.slice(0, 3));
+    }
+  };
 
   // Auto-refresh every 5 minutes
   useEffect(() => {
@@ -711,16 +885,21 @@ export default function ChatPageClient() {
       )}>
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="p-4 border-b border-gray-200 bg-white">
+          <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50 shadow-sm">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl font-semibold text-gray-900">SMS Chat</h1>
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <IconMessages className="h-5 w-5 text-blue-600" />
+                </div>
+                <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+              </div>
               <Button
                 variant="outline"
                 onClick={() => setNewMessageModalOpen(true)}
-                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-full"
+                className="flex items-center gap-2 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-full border-0 shadow-md hover:shadow-lg transition-all"
               >
                 <IconMessagePlus className="h-4 w-4" />
-                <span className="hidden sm:inline">New</span>
+                <span className="hidden sm:inline font-medium">New</span>
               </Button>
             </div>
           </div>
@@ -761,41 +940,43 @@ export default function ChatPageClient() {
                     setTimeout(scrollToBottom, 50);
                   }}
                   className={cn(
-                    "flex items-center p-3 rounded-lg mb-2 cursor-pointer transition-colors",
+                    "flex items-center p-3 rounded-lg mb-2 cursor-pointer transition-all duration-200",
                     selectedUser?.id === thread.id 
-                      ? "bg-blue-50 border border-blue-200" 
-                      : "hover:bg-gray-50"
+                      ? "bg-blue-50 border-2 border-blue-300 shadow-sm" 
+                      : "hover:bg-gray-100 hover:shadow-sm border border-transparent"
                   )}
                 >
-                  <Avatar className="h-12 w-12 mr-3">
-                    <AvatarFallback className="bg-blue-500 text-white">
+                  <Avatar className="h-12 w-12 mr-3 ring-2 ring-offset-1 ring-blue-100">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
                       {thread.first_name?.[0]?.toUpperCase() || thread.phone[1]?.toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-1">
                       <p className="font-semibold text-gray-900 truncate">
                         {thread.first_name || thread.last_name
                           ? `${thread.first_name || ''} ${thread.last_name || ''}`.trim()
                           : thread.phone}
                       </p>
                       {thread.messages.length > 0 && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 font-medium ml-2">
                           {dayjs(thread.messages[thread.messages.length - 1].timestamp).format('h:mm A')}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 truncate">
-                      {thread.messages.length > 0 
-                        ? thread.messages[thread.messages.length - 1].content
-                        : 'No messages'}
-                    </p>
-                  </div>
-                  {thread.unreadCount > 0 && (
-                    <div className="bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center ml-2">
-                      {thread.unreadCount}
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 truncate flex-1">
+                        {thread.messages.length > 0 
+                          ? thread.messages[thread.messages.length - 1].content
+                          : 'No messages'}
+                      </p>
+                      {thread.unreadCount > 0 && (
+                        <div className="bg-blue-500 text-white text-xs rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center">
+                          {thread.unreadCount}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
                 ))
               )}
@@ -813,7 +994,7 @@ export default function ChatPageClient() {
         {selectedUser ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
+            <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50 flex items-center justify-between shadow-sm">
               <div className="flex items-center">
                 <Button
                   variant="outline"
@@ -823,22 +1004,23 @@ export default function ChatPageClient() {
                       setSelectedUser(null);
                     }
                   }}
-                  className="mr-3 lg:hidden p-2 hover:bg-gray-100 rounded-full"
+                  className="mr-3 lg:hidden p-2 hover:bg-gray-100 rounded-full border-none"
                 >
                   <IconArrowLeft className="h-5 w-5 text-gray-600" />
                 </Button>
-                <Avatar className="h-10 w-10 mr-3">
-                  <AvatarFallback className="bg-blue-500 text-white">
+                <Avatar className="h-11 w-11 mr-3 ring-2 ring-offset-2 ring-blue-100">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
                     {selectedUser.first_name?.[0]?.toUpperCase() || selectedUser.phone[1]?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h2 className="font-semibold text-gray-900">
+                  <h2 className="font-semibold text-gray-900 text-base">
                     {selectedUser.first_name || selectedUser.last_name
                       ? `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim()
                       : selectedUser.phone}
                   </h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 flex items-center gap-1">
+                    <IconPhone className="h-3 w-3" />
                     {selectedUser.phone}
                   </p>
                 </div>
@@ -847,7 +1029,7 @@ export default function ChatPageClient() {
                 <Button
                   variant="outline"
                   onClick={() => setShowDetailsPanel(!showDetailsPanel)}
-                  className="p-2 hover:bg-gray-100 rounded-full hidden lg:flex"
+                  className="p-2 hover:bg-gray-100 rounded-full hidden lg:flex border-gray-300"
                 >
                   <IconUser className="h-5 w-5 text-gray-600" />
                 </Button>
@@ -857,13 +1039,13 @@ export default function ChatPageClient() {
             {/* Messages Area */}
             <div 
               ref={chatContainerRef}
-              className="flex-1 overflow-y-auto bg-gray-50 p-4"
+              className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-gray-100 p-4"
             >
               <div className="max-w-4xl mx-auto space-y-6">
                 {Object.entries(currentMessage).map(([date, messages]) => (
                   <div key={date}>
                     <div className="flex justify-center mb-4">
-                      <span className="bg-gray-200 px-3 py-1 rounded-full text-xs text-gray-600">
+                      <span className="bg-white shadow-sm px-4 py-1.5 rounded-full text-xs font-medium text-gray-600 border border-gray-200">
                         {date}
                       </span>
                     </div>
@@ -878,21 +1060,32 @@ export default function ChatPageClient() {
                         >
                           <div
                             className={cn(
-                              "max-w-xs lg:max-w-md px-4 py-2 rounded-2xl",
+                              "max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl shadow-sm",
                               message.direction === 'outbound'
-                                ? "bg-blue-500 text-white"
+                                ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
                                 : "bg-white text-gray-900 border border-gray-200"
                             )}
                           >
-                            <p className="text-sm">{message.content || message.message}</p>
-                            <p className={cn(
-                              "text-xs mt-1",
-                              message.direction === 'outbound' 
-                                ? "text-blue-100" 
-                                : "text-gray-500"
-                            )}>
-                              {dayjs(message.timestamp).format('h:mm A')}
-                            </p>
+                            <p className="text-sm leading-relaxed">{message.content || message.message}</p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <p className={cn(
+                                "text-xs",
+                                message.direction === 'outbound' 
+                                  ? "text-blue-100" 
+                                  : "text-gray-500"
+                              )}>
+                                {dayjs(message.timestamp).format('h:mm A')}
+                              </p>
+                              {message.direction === 'outbound' && (
+                                <span className="ml-1">
+                                  {message.status === 'delivered' || message.status === 'sent' ? (
+                                    <IconChecks className="h-3 w-3 text-blue-100" />
+                                  ) : message.status === 'pending' ? (
+                                    <IconCheck className="h-3 w-3 text-blue-200" />
+                                  ) : null}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -904,36 +1097,96 @@ export default function ChatPageClient() {
 
             {/* Message Input */}
             <div className="p-4 border-t border-gray-200 bg-white">
-              <div className="flex items-end gap-3 max-w-4xl mx-auto">
-                <div className="flex-1">
-                  <Textarea
-                    placeholder="Type a message..."
-                    value={inputMessage}
-                    onChange={(e) => {
-                      setInputMessage(e.target.value);
-                      handleTyping();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage(inputMessage);
+              <div className="max-w-4xl mx-auto space-y-3">
+                {/* Reply Suggestions */}
+                {(suggestions.length > 0 || isLoadingSuggestions) && (
+                  <div className="flex flex-wrap gap-2 animate-in slide-in-from-bottom-2">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mr-2">
+                      {isLoadingSuggestions ? (
+                        <>
+                          <IconLoader2 className="h-4 w-4 animate-spin" />
+                          <span className="font-medium">Generating smart replies...</span>
+                        </>
+                      ) : (
+                        <>
+                          <IconRobot className="h-4 w-4" />
+                          <span className="font-medium">Quick replies:</span>
+                        </>
+                      )}
+                    </div>
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setInputMessage(suggestion)}
+                        disabled={isLoadingSuggestions}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-full text-sm transition-colors border border-gray-200 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                    {!isLoadingSuggestions && (
+                      <button
+                        onClick={() => setSuggestions([])}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                      >
+                        <IconX className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Message Input */}
+                <div className="flex items-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (selectedUser && selectedUser.messages.length > 0) {
+                        const lastMessage = selectedUser.messages[selectedUser.messages.length - 1];
+                        if (lastMessage.direction === 'inbound') {
+                          generateReplySuggestions(selectedUser.messages);
+                        }
                       }
                     }}
-                    className="min-h-[44px] resize-none border-gray-300 rounded-2xl bg-gray-50 border focus:border-blue-500 focus:ring-blue-500"
-                    rows={1}
-                  />
+                    disabled={isLoadingSuggestions}
+                    className="p-3 rounded-full flex-shrink-0 hover:bg-gray-100 border-gray-300 disabled:opacity-50"
+                    title="Generate AI suggestions"
+                  >
+                    {isLoadingSuggestions ? (
+                      <IconLoader2 className="h-5 w-5 text-gray-600 animate-spin" />
+                    ) : (
+                      <IconRobot className="h-5 w-5 text-gray-600" />
+                    )}
+                  </Button>
+                  <div className="flex-1">
+                    <Textarea
+                      placeholder="Type a message..."
+                      value={inputMessage}
+                      onChange={(e) => {
+                        setInputMessage(e.target.value);
+                        handleTyping();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage(inputMessage);
+                        }
+                      }}
+                      className="min-h-[44px] resize-none border-gray-300 rounded-2xl bg-gray-50 text-gray-900 placeholder:text-gray-500 border focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      rows={1}
+                    />
+                  </div>
+                  <Button
+                    disabled={!inputMessage.trim() || isLoading}
+                    onClick={() => handleSendMessage(inputMessage)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 flex-shrink-0"
+                  >
+                    {isLoading ? (
+                      <IconLoader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <IconSend className="h-5 w-5" />
+                    )}
+                  </Button>
                 </div>
-                <Button
-                  disabled={!inputMessage.trim() || isLoading}
-                  onClick={() => handleSendMessage(inputMessage)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 flex-shrink-0"
-                >
-                  {isLoading ? (
-                    <IconLoader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <IconSend className="h-5 w-5" />
-                  )}
-                </Button>
               </div>
             </div>
           </>

@@ -265,6 +265,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
 
   useEffect(() => {
     fetchContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatDate = (dateString: string | null) => {
@@ -350,7 +351,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
           <Input
             placeholder="Search contacts..."
             value={searchQuery}
-            onChange={(value) => setSearchQuery(value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-12 lg:h-10"
           />
         </div>

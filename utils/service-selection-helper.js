@@ -186,7 +186,7 @@ If you have any questions, just reply to this email or give us a call.
 
   try {
     const result = await resend.emails.send({
-      from: 'M10 DJ Company <onboarding@resend.dev>',
+      from: 'M10 DJ Company <hello@m10djcompany.com>',
       to: [contact.email_address],
       subject: `🎵 Select Your ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} DJ Package - M10 DJ Company`,
       html: emailHtml,

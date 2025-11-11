@@ -169,7 +169,7 @@ async function sendEmailNotification(submissionData, dbSubmission, results) {
     ].filter(email => email && email.trim());
 
     await resend.emails.send({
-      from: 'M10 DJ Company URGENT <onboarding@resend.dev>',
+      from: 'M10 DJ Company <hello@m10djcompany.com>',
       to: adminEmails,
       subject: `🚨 URGENT: New ${eventType} Inquiry from ${name} ${!results.sms.success ? '- SMS FAILED' : ''}`,
       html: adminEmailHtml,

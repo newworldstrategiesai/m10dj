@@ -92,6 +92,9 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   
   // Hide navbar on sign-in pages
   const isSignInPage = pathname.includes('/signin');
+  const isChatPage = pathname.startsWith('/chat');
+  const hideNavbar = isSignInPage || isChatPage;
+  const hideFooter = isSignInPage || isChatPage;
 
   return (
     <html lang="en">
@@ -243,14 +246,14 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         {/* All tracking now handled in _document.js with proper defer loading */}
       </head>
       <body className="bg-black">
-        {!isSignInPage && <Navbar />}
+        {!hideNavbar && <Navbar />}
         <main
           id="skip"
-          className={`${!isSignInPage ? 'min-h-[calc(100dvh-4rem)] md:min-h[calc(100dvh-5rem)]' : 'min-h-screen'}`}
+          className={`${!hideNavbar ? 'min-h-[calc(100dvh-4rem)] md:min-h[calc(100dvh-5rem)]' : 'min-h-screen'}`}
         >
           {children}
         </main>
-        {!isSignInPage && <Footer />}
+        {!hideFooter && <Footer />}
         <Suspense>
           <Toaster />
         </Suspense>

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { parseLeadThread } from '@/utils/lead-thread-parser';
 
 const ADMIN_EMAILS = [
@@ -48,10 +49,34 @@ export default async function handler(
       });
     }
 
-    const userEmail = session.user.email || '';
-    const isAdmin = ADMIN_EMAILS.includes(userEmail);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!isAdmin) {
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('[lead-import-thread] Missing Supabase service role credentials');
+      return res.status(500).json({
+        success: false,
+        error: 'Supabase service role credentials are not configured.',
+      });
+    }
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
+    });
+
+    const userEmail = session.user.email || '';
+    const userMetadata = session.user.raw_user_meta_data || {};
+    const isAdminByEmail = ADMIN_EMAILS.includes(userEmail);
+    const isAdminByRole = userMetadata.role === 'admin';
+
+    console.log('[lead-import-thread] User auth check:', {
+      userEmail,
+      isAdminByEmail,
+      isAdminByRole,
+      userMetadata,
+    });
+
+    if (!isAdminByEmail && !isAdminByRole) {
       return res.status(403).json({
         success: false,
         error: 'Forbidden',
@@ -67,7 +92,19 @@ export default async function handler(
       });
     }
 
-    const parsed = parseLeadThread(thread);
+    let parsed;
+    try {
+      parsed = parseLeadThread(thread);
+    } catch (parseError: any) {
+      console.error('[lead-import-thread] Parse error:', parseError);
+      return res.status(400).json({
+        success: false,
+        error: 'Failed to parse thread',
+        details: process.env.NODE_ENV === 'development' 
+          ? { message: parseError?.message || String(parseError) }
+          : undefined,
+      });
+    }
 
     if (!parsed.contact.phoneDigits && !parsed.contact.email) {
       return res.status(422).json({
@@ -82,29 +119,52 @@ export default async function handler(
     const phoneDigits = parsed.contact.phoneDigits;
     const email = parsed.contact.email;
 
+    console.log('[lead-import-thread] Parsed data:', {
+      phoneDigits,
+      email,
+      hasPhone: !!phoneDigits,
+      hasEmail: !!email,
+    });
+
     let existingContact: Record<string, any> | null = null;
 
     if (email) {
-      const { data } = await supabase
+      console.log('[lead-import-thread] Searching for existing contact by email:', email);
+      const { data, error } = await adminClient
         .from('contacts')
         .select('*')
         .eq('email_address', email)
         .is('deleted_at', null)
         .maybeSingle();
 
+      if (error) {
+        console.error('[lead-import-thread] Error searching by email:', error);
+      } else {
+        console.log('[lead-import-thread] Email search result:', data ? 'found' : 'not found');
+      }
+
       existingContact = data || null;
     }
 
     if (!existingContact && phoneDigits) {
-      const { data } = await supabase
+      console.log('[lead-import-thread] Searching for existing contact by phone:', phoneDigits);
+      const { data, error } = await adminClient
         .from('contacts')
         .select('*')
         .ilike('phone', `%${phoneDigits}%`)
         .is('deleted_at', null)
         .maybeSingle();
 
+      if (error) {
+        console.error('[lead-import-thread] Error searching by phone:', error);
+      } else {
+        console.log('[lead-import-thread] Phone search result:', data ? 'found' : 'not found');
+      }
+
       existingContact = data || null;
     }
+
+    console.log('[lead-import-thread] Final existing contact check:', existingContact ? 'exists' : 'none found');
 
     const conversationText = parsed.messages
       .map((message) => `${message.speakerLabel}: ${message.message}`)
@@ -138,8 +198,8 @@ export default async function handler(
         updatePayload.email_address = parsed.contact.email;
       }
 
-      if (parsed.contact.phoneE164 && !existingContact.phone) {
-        updatePayload.phone = parsed.contact.phoneE164;
+      if ((parsed.contact.phoneE164 || parsed.contact.phoneDigits) && !existingContact.phone) {
+        updatePayload.phone = parsed.contact.phoneE164 || parsed.contact.phoneDigits;
       }
 
       if (parsed.contact.eventType && !existingContact.event_type) {
@@ -162,8 +222,13 @@ export default async function handler(
         updatePayload.event_time = parsed.contact.eventTime;
       }
 
-      if (parsed.contact.guestCount && !existingContact.guest_count) {
-        updatePayload.guest_count = parsed.contact.guestCount;
+      if (parsed.contact.guestCount !== null && parsed.contact.guestCount !== undefined && !existingContact.guest_count) {
+        const guestCountNum = typeof parsed.contact.guestCount === 'number' 
+          ? parsed.contact.guestCount 
+          : parseInt(String(parsed.contact.guestCount), 10);
+        if (!isNaN(guestCountNum) && guestCountNum > 0) {
+          updatePayload.guest_count = guestCountNum;
+        }
       }
 
       if (parsed.contact.budgetRange && !existingContact.budget_range) {
@@ -184,7 +249,10 @@ export default async function handler(
         ? `${importNote}\n\n---\n${existingContact.notes}`
         : importNote;
 
-      const { data, error: updateError } = await supabase
+      console.log('[lead-import-thread] Updating existing contact:', existingContact.id);
+      console.log('[lead-import-thread] Update payload:', updatePayload);
+
+      const { data, error: updateError } = await adminClient
         .from('contacts')
         .update(updatePayload)
         .eq('id', existingContact.id)
@@ -192,12 +260,15 @@ export default async function handler(
         .single();
 
       if (updateError) {
+        console.error('[lead-import-thread] Update error:', updateError);
         return res.status(500).json({
           success: false,
           error: 'Failed to update contact',
           details: updateError,
         });
       }
+
+      console.log('[lead-import-thread] Contact updated successfully:', data.id);
 
       return res.status(200).json({
         success: true,
@@ -211,17 +282,24 @@ export default async function handler(
 
     const insertPayload: Record<string, any> = {
       user_id: session.user.id,
-      first_name: parsed.contact.firstName,
-      last_name: parsed.contact.lastName,
-      email_address: parsed.contact.email,
-      phone: parsed.contact.phoneE164 || parsed.contact.phoneDigits,
-      event_type: parsed.contact.eventType,
-      event_date: parsed.contact.eventDate,
-      venue_name: parsed.contact.venueName,
-      venue_address: parsed.contact.venueAddress,
-      event_time: parsed.contact.eventTime,
-      guest_count: parsed.contact.guestCount,
-      budget_range: parsed.contact.budgetRange,
+      first_name: parsed.contact.firstName || null,
+      last_name: parsed.contact.lastName || null,
+      email_address: parsed.contact.email || null,
+      phone: parsed.contact.phoneE164 || parsed.contact.phoneDigits || null,
+      event_type: parsed.contact.eventType || null,
+      event_date: parsed.contact.eventDate || null,
+      venue_name: parsed.contact.venueName || null,
+      venue_address: parsed.contact.venueAddress || null,
+      event_time: parsed.contact.eventTime || null,
+      guest_count: parsed.contact.guestCount !== null && parsed.contact.guestCount !== undefined
+        ? (typeof parsed.contact.guestCount === 'number' 
+            ? parsed.contact.guestCount 
+            : (() => {
+                const num = parseInt(String(parsed.contact.guestCount), 10);
+                return !isNaN(num) && num > 0 ? num : null;
+              })())
+        : null,
+      budget_range: parsed.contact.budgetRange || null,
       lead_status: 'New',
       lead_source: 'Conversation Import',
       lead_stage: 'Initial Inquiry',
@@ -234,19 +312,25 @@ export default async function handler(
       tags: ['sms_import'],
     };
 
-    const { data, error: insertError } = await supabase
+    console.log('[lead-import-thread] Creating new contact');
+    console.log('[lead-import-thread] Insert payload:', insertPayload);
+
+    const { data, error: insertError } = await adminClient
       .from('contacts')
       .insert(insertPayload)
       .select('*')
       .single();
 
     if (insertError) {
+      console.error('[lead-import-thread] Insert error:', insertError);
       return res.status(500).json({
         success: false,
         error: 'Failed to create contact',
         details: insertError,
       });
     }
+
+    console.log('[lead-import-thread] Contact created successfully:', data.id);
 
     return res.status(200).json({
       success: true,
@@ -256,11 +340,29 @@ export default async function handler(
       notes: importNote,
       parsed,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[lead-import-thread] Unexpected error:', error);
+    const errorMessage = error?.message || String(error);
+    const errorStack = error?.stack;
+    const errorName = error?.name || 'Error';
+    
+    console.error('[lead-import-thread] Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      name: errorName,
+      error: error,
+    });
+    
     return res.status(500).json({
       success: false,
       error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' 
+        ? {
+            message: errorMessage,
+            name: errorName,
+            stack: errorStack?.split('\n').slice(0, 5).join('\n'),
+          }
+        : undefined,
     });
   }
 }
