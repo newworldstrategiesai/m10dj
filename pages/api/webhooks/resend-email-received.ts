@@ -1,11 +1,40 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const webhookSecret = process.env.RESEND_WEBHOOK_SECRET!;
 
 // Create Supabase admin client (bypasses RLS)
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+/**
+ * Verify webhook signature from Resend
+ * https://resend.com/docs/dashboard/webhooks/verify-webhooks-requests
+ */
+function verifyWebhookSignature(
+  payload: string,
+  signature: string,
+  secret: string
+): boolean {
+  if (!secret) {
+    console.warn('[Webhook] No RESEND_WEBHOOK_SECRET configured, skipping verification');
+    return true; // Allow if secret not configured
+  }
+
+  try {
+    const hash = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
+
+    return hash === signature;
+  } catch (error) {
+    console.error('[Webhook] Signature verification error:', error);
+    return false;
+  }
+}
 
 interface ResendAttachment {
   id: string;
@@ -55,6 +84,21 @@ export default async function handler(
   }
 
   try {
+    // Verify webhook signature
+    const signature = req.headers['x-resend-signature'] as string;
+    const payload = JSON.stringify(req.body);
+
+    if (!signature) {
+      console.warn('[Webhook] Missing x-resend-signature header');
+      // Allow for testing, but warn in production
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(401).json({ error: 'Unauthorized - missing signature' });
+      }
+    } else if (!verifyWebhookSignature(payload, signature, webhookSecret)) {
+      console.error('[Webhook] Invalid signature');
+      return res.status(401).json({ error: 'Unauthorized - invalid signature' });
+    }
+
     const event: ResendEmailReceivedEvent = req.body;
 
     // Validate event type
@@ -69,9 +113,6 @@ export default async function handler(
       to: event.data.to,
       subject: event.data.subject,
     });
-
-    // TODO: Add webhook signature verification for security
-    // See: https://resend.com/docs/dashboard/webhooks/verify-webhooks-requests
 
     // Parse from email (format: "Name <email@domain.com>" or "email@domain.com")
     const fromMatch = event.data.from.match(/<(.+)>/) || [null, event.data.from];
