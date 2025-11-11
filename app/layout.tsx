@@ -93,6 +93,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   // Hide navbar on sign-in pages
   const isSignInPage = pathname.includes('/signin');
   const isChatPage = pathname.startsWith('/chat');
+  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/chat');
   const hideNavbar = isSignInPage || isChatPage;
   const hideFooter = isSignInPage || isChatPage;
 
@@ -257,7 +258,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         <Suspense>
           <Toaster />
         </Suspense>
-        {!isSignInPage && <FloatingLeadImportWidget />}
+        {isAdminRoute && !isSignInPage && <FloatingLeadImportWidget />}
         {/* Performance components disabled during SEO recovery */}
         {/* TODO: Re-enable after traffic recovery with proper optimization */}
         {/* <OptimizedScriptLoader>

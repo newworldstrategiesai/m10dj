@@ -1,10 +1,14 @@
 import '../styles/company-globals.css';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import FloatingLeadImportWidget from '@/components/chat/FloatingLeadImportWidget';
 // Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
 
 export default function App({ Component, pageProps }) {
+  const router = useRouter();
+  const isAdminRoute = router.pathname.startsWith('/admin') || router.pathname.startsWith('/chat');
+  
   return (
     <>
       <Head>
@@ -43,7 +47,7 @@ export default function App({ Component, pageProps }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </Head>
       <Component {...pageProps} />
-      <FloatingLeadImportWidget />
+      {isAdminRoute && <FloatingLeadImportWidget />}
       {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}
     </>
