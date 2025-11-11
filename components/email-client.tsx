@@ -5,7 +5,6 @@ import Sidebar from "@/components/sidebar"
 import EmailList from "@/components/email-list"
 import EmailDetail from "@/components/email-detail"
 import type { Email, EmailAccount, EmailFolder } from "@/types/email"
-import { mockEmails, mockAccounts } from "@/utils/mock-data"
 import { useMobile } from "@/hooks/use-mobile"
 import { useToast } from "@/hooks/use-toast"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
@@ -13,12 +12,80 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 export default function EmailClient() {
   const [selectedFolder, setSelectedFolder] = useState<EmailFolder>("unified")
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
-  const [emails, setEmails] = useState<Email[]>(mockEmails)
-  const [accounts, setAccounts] = useState<EmailAccount[]>(mockAccounts)
+  const [emails, setEmails] = useState<Email[]>([])
+  const [accounts, setAccounts] = useState<EmailAccount[]>([
+    {
+      id: "m10djcompany",
+      name: "M10 DJ Company",
+      email: "hello@m10djcompany.com",
+      avatar: "🎵",
+    },
+  ])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const isMobile = useMobile()
   const { toast } = useToast()
+
+  // Transform received email from API to Email type
+  const transformReceivedEmail = (data: any): Email => ({
+    id: data.id,
+    from: data.from_name ? `${data.from_name} <${data.from_email}>` : data.from_email,
+    to: data.to_emails?.join(", ") || "",
+    cc: data.cc_emails?.join(", ") || "",
+    subject: data.subject || "(No subject)",
+    preview: data.text_body?.substring(0, 100) || data.html_body?.substring(0, 100) || "",
+    body: data.html_body || data.text_body || "",
+    timestamp: new Date(data.received_at),
+    read: data.read || false,
+    flagged: data.flagged || false,
+    archived: data.archived || false,
+    deleted: data.deleted || false,
+    snoozed: data.snoozed || false,
+    snoozeUntil: data.snooze_until ? new Date(data.snooze_until) : undefined,
+    account: "m10djcompany",
+    avatar: data.from_email,
+    attachments: data.attachments || [],
+  })
+
+  // Fetch emails from API
+  const fetchEmails = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await fetch(`/api/emails?folder=${selectedFolder}&limit=50`)
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch emails: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const transformedEmails = (data.emails || []).map(transformReceivedEmail)
+      setEmails(transformedEmails)
+    } catch (err: any) {
+      console.error("Error fetching emails:", err)
+      setError(err.message)
+      toast({
+        title: "Error",
+        description: "Failed to load emails",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fetch emails on mount and when folder changes
+  useEffect(() => {
+    fetchEmails()
+  }, [selectedFolder])
+
+  // Poll for new emails every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchEmails, 10000)
+    return () => clearInterval(interval)
+  }, [selectedFolder])
 
   // Filter emails based on selected folder
   const filteredEmails = useMemo(() => {
@@ -51,12 +118,25 @@ export default function EmailClient() {
     }
   }, [selectedEmail])
 
-  // Handle email selection
-  const handleEmailSelect = (email: Email) => {
+  // Handle email selection and mark as read
+  const handleEmailSelect = async (email: Email) => {
     setSelectedEmail(email)
 
-    // Mark as read
+    // Mark as read in UI
     setEmails(emails.map((e) => (e.id === email.id ? { ...e, read: true } : e)))
+
+    // Mark as read in API
+    if (!email.read) {
+      try {
+        await fetch(`/api/emails/${email.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ read: true }),
+        })
+      } catch (err) {
+        console.error("Error marking email as read:", err)
+      }
+    }
 
     // Open detail view on mobile
     if (isMobile) {
@@ -65,36 +145,75 @@ export default function EmailClient() {
   }
 
   // Handle email snooze
-  const handleSnoozeEmail = (emailId: string, snoozeUntil: Date) => {
+  const handleSnoozeEmail = async (emailId: string, snoozeUntil: Date) => {
+    // Update UI
     setEmails(emails.map((email) => (email.id === emailId ? { ...email, snoozed: true, snoozeUntil } : email)))
+
+    // Update in API
+    try {
+      await fetch(`/api/emails/${emailId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ snoozed: true, snooze_until: snoozeUntil.toISOString() }),
+      })
+      toast({
+        title: "Email snoozed",
+        description: `Until ${snoozeUntil.toLocaleString()}`,
+      })
+    } catch (err) {
+      console.error("Error snoozing email:", err)
+      toast({
+        title: "Error",
+        description: "Failed to snooze email",
+        variant: "destructive",
+      })
+    }
   }
 
   // Handle email archive
-  const handleArchiveEmail = (emailId: string) => {
+  const handleArchiveEmail = async (emailId: string) => {
+    // Update UI
     setEmails(emails.map((email) => (email.id === emailId ? { ...email, archived: true } : email)))
 
     if (selectedEmail?.id === emailId) {
       setSelectedEmail(null)
     }
+
+    // Update in API
+    try {
+      await fetch(`/api/emails/${emailId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: true }),
+      })
+      toast({
+        title: "Email archived",
+      })
+    } catch (err) {
+      console.error("Error archiving email:", err)
+    }
   }
 
   // Handle email delete
-  const handleDeleteEmail = (emailId: string) => {
+  const handleDeleteEmail = async (emailId: string) => {
+    // Update UI
     setEmails(emails.map((email) => (email.id === emailId ? { ...email, deleted: true } : email)))
 
     if (selectedEmail?.id === emailId) {
       setSelectedEmail(null)
     }
-  }
 
-  // Handle sending email
-  const handleSendEmail = (email: any) => {
-    // In a real app, you would send the email to a server
-    // For now, we'll just show a toast notification
-    toast({
-      title: "Email Sent",
-      description: `Your email to ${email.to} has been sent.`,
-    })
+    // Update in API
+    try {
+      await fetch(`/api/emails/${emailId}`, {
+        method: "DELETE",
+      })
+      toast({
+        title: "Email deleted",
+      })
+    } catch (err) {
+      console.error("Error deleting email:", err)
+    }
   }
 
   // Select first email by default
@@ -103,9 +222,6 @@ export default function EmailClient() {
       const firstVisibleEmail = filteredEmails[0]
       if (firstVisibleEmail) {
         setSelectedEmail(firstVisibleEmail)
-
-        // Mark as read
-        setEmails(emails.map((e) => (e.id === firstVisibleEmail.id ? { ...e, read: true } : e)))
       }
     }
   }, [emails, filteredEmails, selectedEmail])
@@ -169,7 +285,18 @@ export default function EmailClient() {
           <ResizableHandle withHandle />
 
           <ResizablePanel defaultSize={70}>
-            {selectedEmail ? (
+            {isLoading ? (
+              <div className="flex h-full items-center justify-center text-zinc-500 dark:text-zinc-400">
+                <div className="text-center">
+                  <p className="mb-2">Loading emails...</p>
+                  <div className="animate-spin">⏳</div>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex h-full items-center justify-center text-red-500 dark:text-red-400">
+                <p>{error}</p>
+              </div>
+            ) : selectedEmail ? (
               <EmailDetail
                 email={selectedEmail}
                 onClose={() => setSelectedEmail(null)}
@@ -179,7 +306,7 @@ export default function EmailClient() {
               />
             ) : (
               <div className="flex h-full items-center justify-center text-zinc-500 dark:text-zinc-400">
-                <p>Select an email to view</p>
+                <p>{emails.length === 0 ? "No emails yet" : "Select an email to view"}</p>
               </div>
             )}
           </ResizablePanel>
