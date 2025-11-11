@@ -328,7 +328,7 @@ export default function EmailIntegration() {
                 {syncing ? 'Syncing...' : 'Sync Now'}
               </Button>
               <Button
-                variant="slim"
+                variant="ghost"
                 onClick={handleDisconnect}
                 className="flex items-center gap-2 text-red-600 hover:text-red-700"
               >
