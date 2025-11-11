@@ -65,7 +65,7 @@ export default async function handler(
     });
 
     const userEmail = session.user.email || '';
-    const userMetadata = session.user.raw_user_meta_data || {};
+    const userMetadata = session.user.user_metadata || {};
     const isAdminByEmail = ADMIN_EMAILS.includes(userEmail);
     const isAdminByRole = userMetadata.role === 'admin';
 

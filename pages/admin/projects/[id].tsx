@@ -271,7 +271,7 @@ export default function ProjectDetailPage() {
                   {isEditing ? (
                     <Input
                       value={project.event_name}
-                      onChange={(value) => handleInputChange('event_name', value)}
+                      onChange={(e) => handleInputChange('event_name', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{project.event_name}</p>
@@ -318,7 +318,7 @@ export default function ProjectDetailPage() {
                     <Input
                       type="date"
                       value={formatDate(project.event_date)}
-                      onChange={(value) => handleInputChange('event_date', value)}
+                      onChange={(e) => handleInputChange('event_date', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{project.event_date}</p>
@@ -330,7 +330,7 @@ export default function ProjectDetailPage() {
                     <Input
                       type="time"
                       value={project.event_time || ''}
-                      onChange={(value) => handleInputChange('event_time', value)}
+                      onChange={(e) => handleInputChange('event_time', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{project.event_time || 'Not set'}</p>
@@ -342,7 +342,7 @@ export default function ProjectDetailPage() {
                     <Input
                       type="number"
                       value={project.event_duration || ''}
-                      onChange={(value) => handleInputChange('event_duration', value ? parseInt(value) : null)}
+                      onChange={(e) => handleInputChange('event_duration', e.target.value ? parseInt(e.target.value) : null)}
                     />
                   ) : (
                     <p className="text-gray-900">{project.event_duration ? `${project.event_duration} hours` : 'Not specified'}</p>
@@ -354,7 +354,7 @@ export default function ProjectDetailPage() {
                     <Input
                       type="number"
                       value={project.number_of_guests || ''}
-                      onChange={(value) => handleInputChange('number_of_guests', value ? parseInt(value) : null)}
+                      onChange={(e) => handleInputChange('number_of_guests', e.target.value ? parseInt(e.target.value) : null)}
                     />
                   ) : (
                     <p className="text-gray-900">{project.number_of_guests || 'Not specified'}</p>
@@ -365,7 +365,7 @@ export default function ProjectDetailPage() {
                   {isEditing ? (
                     <Input
                       value={project.venue_name || ''}
-                      onChange={(value) => handleInputChange('venue_name', value)}
+                      onChange={(e) => handleInputChange('venue_name', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{project.venue_name || 'Not specified'}</p>
@@ -376,7 +376,7 @@ export default function ProjectDetailPage() {
                   {isEditing ? (
                     <Input
                       value={project.venue_address || ''}
-                      onChange={(value) => handleInputChange('venue_address', value)}
+                      onChange={(e) => handleInputChange('venue_address', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{project.venue_address || 'Not specified'}</p>
@@ -407,7 +407,7 @@ export default function ProjectDetailPage() {
                   {isEditing ? (
                     <Input
                       value={project.client_name}
-                      onChange={(value) => handleInputChange('client_name', value)}
+                      onChange={(e) => handleInputChange('client_name', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{project.client_name}</p>
@@ -419,7 +419,7 @@ export default function ProjectDetailPage() {
                     <Input
                       type="email"
                       value={project.client_email}
-                      onChange={(value) => handleInputChange('client_email', value)}
+                      onChange={(e) => handleInputChange('client_email', e.target.value)}
                     />
                   ) : (
                     <div className="flex items-center gap-2">
@@ -436,7 +436,7 @@ export default function ProjectDetailPage() {
                     <Input
                       type="tel"
                       value={project.client_phone || ''}
-                      onChange={(value) => handleInputChange('client_phone', value)}
+                      onChange={(e) => handleInputChange('client_phone', e.target.value)}
                     />
                   ) : (
                     <div className="flex items-center gap-2">

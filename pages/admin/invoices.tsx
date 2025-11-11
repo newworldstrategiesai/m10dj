@@ -328,7 +328,7 @@ export default function InvoicesDashboard() {
                 type="text"
                 placeholder="Search invoices..."
                 value={searchQuery}
-                onChange={(value) => setSearchQuery(value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>

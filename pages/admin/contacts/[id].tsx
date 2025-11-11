@@ -532,7 +532,7 @@ export default function ContactDetailPage() {
                   {isEditing ? (
                     <Input
                       value={contact.first_name || ''}
-                      onChange={(value) => handleInputChange('first_name', value)}
+                      onChange={(e) => handleInputChange('first_name', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{contact.first_name || 'Not provided'}</p>
@@ -543,7 +543,7 @@ export default function ContactDetailPage() {
                   {isEditing ? (
                     <Input
                       value={contact.last_name || ''}
-                      onChange={(value) => handleInputChange('last_name', value)}
+                      onChange={(e) => handleInputChange('last_name', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{contact.last_name || 'Not provided'}</p>
@@ -555,7 +555,7 @@ export default function ContactDetailPage() {
                     <Input
                       type="email"
                       value={contact.email_address || ''}
-                      onChange={(value) => handleInputChange('email_address', value)}
+                      onChange={(e) => handleInputChange('email_address', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{contact.email_address || 'Not provided'}</p>
@@ -567,7 +567,7 @@ export default function ContactDetailPage() {
                     <Input
                       type="tel"
                       value={contact.phone || ''}
-                      onChange={(value) => handleInputChange('phone', value)}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{contact.phone || 'Not provided'}</p>
@@ -578,7 +578,7 @@ export default function ContactDetailPage() {
                   {isEditing ? (
                     <Input
                       value={contact.address || ''}
-                      onChange={(value) => handleInputChange('address', value)}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{contact.address || 'Not provided'}</p>
@@ -589,7 +589,7 @@ export default function ContactDetailPage() {
                   {isEditing ? (
                     <Input
                       value={contact.city || ''}
-                      onChange={(value) => handleInputChange('city', value)}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{contact.city || 'Not provided'}</p>
@@ -600,7 +600,7 @@ export default function ContactDetailPage() {
                   {isEditing ? (
                     <Input
                       value={contact.state || ''}
-                      onChange={(value) => handleInputChange('state', value)}
+                      onChange={(e) => handleInputChange('state', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{contact.state || 'Not provided'}</p>
@@ -641,7 +641,7 @@ export default function ContactDetailPage() {
                       <Input
                         type="date"
                         value={formatDate(contact.event_date)}
-                        onChange={(value) => handleInputChange('event_date', value)}
+                        onChange={(e) => handleInputChange('event_date', e.target.value)}
                       />
                     ) : (
                       <p className="text-gray-900">{contact.event_date || 'Not set'}</p>
@@ -653,7 +653,7 @@ export default function ContactDetailPage() {
                       <Input
                         type="time"
                         value={contact.event_time || ''}
-                        onChange={(value) => handleInputChange('event_time', value)}
+                        onChange={(e) => handleInputChange('event_time', e.target.value)}
                       />
                     ) : (
                       <p className="text-gray-900">{contact.event_time || 'Not set'}</p>
@@ -665,7 +665,7 @@ export default function ContactDetailPage() {
                       <Input
                         type="number"
                         value={contact.guest_count || ''}
-                        onChange={(value) => handleInputChange('guest_count', value ? parseInt(value) : null)}
+                        onChange={(e) => handleInputChange('guest_count', e.target.value ? parseInt(e.target.value) : null)}
                       />
                     ) : (
                       <p className="text-gray-900">{contact.guest_count || 'Not specified'}</p>
@@ -676,7 +676,7 @@ export default function ContactDetailPage() {
                     {isEditing ? (
                       <Input
                         value={contact.venue_name || ''}
-                        onChange={(value) => handleInputChange('venue_name', value)}
+                        onChange={(e) => handleInputChange('venue_name', e.target.value)}
                       />
                     ) : (
                       <p className="text-gray-900">{contact.venue_name || 'Not specified'}</p>
@@ -687,7 +687,7 @@ export default function ContactDetailPage() {
                     {isEditing ? (
                       <Input
                         value={contact.venue_address || ''}
-                        onChange={(value) => handleInputChange('venue_address', value)}
+                        onChange={(e) => handleInputChange('venue_address', e.target.value)}
                       />
                     ) : (
                       <p className="text-gray-900">{contact.venue_address || 'Not specified'}</p>
@@ -698,7 +698,7 @@ export default function ContactDetailPage() {
                     {isEditing ? (
                       <Input
                         value={contact.budget_range || ''}
-                        onChange={(value) => handleInputChange('budget_range', value)}
+                        onChange={(e) => handleInputChange('budget_range', e.target.value)}
                         placeholder="e.g., $2,000-$3,500"
                       />
                     ) : (
@@ -868,7 +868,7 @@ export default function ContactDetailPage() {
                   {isEditing ? (
                     <Input
                       value={contact.lead_source || ''}
-                      onChange={(value) => handleInputChange('lead_source', value)}
+                      onChange={(e) => handleInputChange('lead_source', e.target.value)}
                     />
                   ) : (
                     <p className="text-gray-900">{contact.lead_source || 'Not specified'}</p>
