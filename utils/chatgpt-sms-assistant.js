@@ -378,7 +378,7 @@ export function extractNameFromMessage(message) {
   // Common name introduction patterns
   const namePatterns = [
     // "Hi this is Haywood Williams" or "Hey, this is Haywood Williams"
-    /(?:hi|hey|hello)[,\s]+(?:this is|i'm|i am|my name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?:,|$|\s)/i,
+    /(?:hi|hey|hello)[,\s]+(?:this is|i'm|i am|my name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?:,|$|\s))/i,
     // "This is Haywood Williams" at start
     /^this is\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?=[\s,]|$))/i,
     // "My name is Haywood Williams"
