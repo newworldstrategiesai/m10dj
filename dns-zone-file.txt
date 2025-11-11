@@ -1,0 +1,21 @@
+; DNS Zone File for m10djcompany.com
+; Upload this file to Vercel DNS using "Upload Zone File" button
+
+; DKIM Record (for email authentication)
+resend._domainkey	3600	TXT	"p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDMqH8Yl0DV8G8HUW9VvSh30RTrM741vnUpFHbrhfRu8uqarkhA7Hz/CBlPRkwmJmiXCKqd+LJ9qIcrZzSa00+y/pfhCN3c40TQuKAexSHtu5+o75QxMxcScu0uIJjWcqJ5eD0PfKzBsXRto9KUku/RvQ7EkxGpnKDaKZ5FZ1C00QIDAQAB"
+
+; SPF Record (for send subdomain - prevents spoofing)
+send	3600	TXT	"v=spf1 include:amazonses.com ~all"
+
+; MX Record for sending (send subdomain)
+send	3600	MX	10	feedback-smtp.us-east-1.amazonses.com
+
+; MX Record for receiving (root domain - required for Resend verification)
+@	3600	MX	10	inbound-smtp.us-east-1.amazonaws.com
+
+; MX Record for receiving emails at inbound subdomain
+inbound	3600	MX	10	inbound-smtp.us-east-1.amazonaws.com
+
+; DMARC Record (recommended - prevents email spoofing)
+_dmarc	3600	TXT	"v=DMARC1; p=none;"
+
