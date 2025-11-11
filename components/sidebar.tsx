@@ -28,7 +28,9 @@ import ComposeEmail from "@/components/compose-email"
 interface SidebarProps {
   accounts: EmailAccount[]
   selectedFolder: EmailFolder
+  selectedAccount?: string
   onSelectFolder: (folder: EmailFolder) => void
+  onSelectAccount?: (accountId: string) => void
   onToggleSidebar: () => void
   onSendEmail?: (email: any) => void
 }
@@ -36,7 +38,9 @@ interface SidebarProps {
 export default function Sidebar({
   accounts,
   selectedFolder,
+  selectedAccount,
   onSelectFolder,
+  onSelectAccount,
   onToggleSidebar,
   onSendEmail,
 }: SidebarProps) {
@@ -104,12 +108,17 @@ export default function Sidebar({
               {accounts.map((account) => (
                 <Button
                   key={account.id}
-                  variant={selectedFolder === account.id ? "secondary" : "ghost"}
+                  variant={selectedAccount === account.id ? "secondary" : "ghost"}
                   className="w-full justify-start"
-                  onClick={() => onSelectFolder(account.id as EmailFolder)}
+                  onClick={() => onSelectAccount?.(account.id)}
                 >
-                  <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: account.color }} />
-                  {account.name}
+                  <span className="mr-2">{account.avatar || "📧"}</span>
+                  <span className="text-sm">{account.name}</span>
+                  {account.unreadCount ? (
+                    <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                      {account.unreadCount}
+                    </span>
+                  ) : null}
                 </Button>
               ))}
               <Button variant="ghost" className="w-full justify-start text-zinc-500 dark:text-zinc-400">

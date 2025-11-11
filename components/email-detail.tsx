@@ -62,7 +62,7 @@ export default function EmailDetail({ email, onClose, onArchive, onDelete, onSno
   const handleSendReply = (replyEmail: any) => {
     toast({
       title: "Reply Sent",
-      description: `Your reply to ${email.sender.name} has been sent.`,
+      description: `Your reply to ${email.sender?.name || email.from} has been sent.`,
     })
   }
 
@@ -124,16 +124,16 @@ export default function EmailDetail({ email, onClose, onArchive, onDelete, onSno
         <div className="p-4">
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-start gap-3">
-              <AvatarWithLogo sender={email.sender} size="lg" />
+              {email.sender && <AvatarWithLogo sender={email.sender} size="lg" />}
 
               <div>
-                <div className="font-medium">{email.sender.name}</div>
-                <div className="text-sm text-zinc-500 dark:text-zinc-400">{email.sender.email}</div>
-                {email.sender.organization && (
+                <div className="font-medium">{email.sender?.name || email.from}</div>
+                <div className="text-sm text-zinc-500 dark:text-zinc-400">{email.sender?.email || email.from}</div>
+                {email.sender?.organization && (
                   <div className="text-sm text-zinc-500 dark:text-zinc-400">{email.sender.organization.name}</div>
                 )}
                 <div className="text-sm text-zinc-500 flex items-center gap-2 mt-1 dark:text-zinc-400">
-                  <span>To: me</span>
+                  <span>To: {email.to}</span>
                   <button className="text-xs underline" onClick={() => setShowDetails(!showDetails)}>
                     {showDetails ? "Hide" : "Show"} details
                   </button>
@@ -142,13 +142,13 @@ export default function EmailDetail({ email, onClose, onArchive, onDelete, onSno
                 {showDetails && (
                   <div className="mt-2 text-sm border border-zinc-200 rounded-md p-2 bg-zinc-100/50 border-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-800/50 dark:border-zinc-800/50">
                     <div>
-                      <strong>From:</strong> {email.sender.name} &lt;{email.sender.email}&gt;
+                      <strong>From:</strong> {email.from}
                     </div>
                     <div>
-                      <strong>To:</strong> Your Name &lt;your.email@example.com&gt;
+                      <strong>To:</strong> {email.to}
                     </div>
                     <div>
-                      <strong>Date:</strong> {formatDate(new Date(email.date))}
+                      <strong>Date:</strong> {formatDate(email.timestamp || new Date(email.date || ''))}
                     </div>
                     <div>
                       <strong>Subject:</strong> {email.subject}
@@ -158,11 +158,11 @@ export default function EmailDetail({ email, onClose, onArchive, onDelete, onSno
               </div>
             </div>
 
-            <div className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(new Date(email.date))}</div>
+            <div className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(email.timestamp || new Date())}</div>
           </div>
 
           <div className="prose prose-sm max-w-none">
-            {email.content.split("").map((paragraph, index) => (
+            {(email.body || email.content)?.split("\n").map((paragraph, index) => (
               <p key={index}>{paragraph}</p>
             ))}
 

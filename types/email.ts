@@ -37,10 +37,12 @@ export interface EmailAttachment {
 export interface Email {
   id: string
   subject: string
-  sender: EmailSender
-  recipients: EmailSender[]
-  content: string
-  date: string
+  from: string
+  to: string
+  cc?: string
+  body: string
+  preview: string
+  timestamp: Date
   read: boolean
   flagged: boolean
   snoozed: boolean
@@ -49,12 +51,20 @@ export interface Email {
   deleted: boolean
   attachments?: EmailAttachment[]
   account: string
+  avatar?: string
   categories?: EmailCategory[]
+  // Legacy fields for compatibility
+  sender?: EmailSender
+  recipients?: EmailSender[]
+  content?: string
+  date?: string
 }
 
 export interface EmailAccount {
   id: string
   name: string
   email: string
-  color: string
+  avatar?: string
+  color?: string
+  unreadCount?: number
 }
