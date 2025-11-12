@@ -440,6 +440,7 @@ export default async function handler(req, res) {
       const customerEmailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <img src="https://m10djcompany.com/M10-Gold-Logo.png" alt="M10 DJ Company Logo" style="max-width: 120px; height: auto; margin-bottom: 15px;">
             <h1 style="color: #000; margin: 0; font-size: 28px;">Thank You for Contacting M10 DJ Company!</h1>
             <p style="color: #000; margin: 10px 0 0 0; font-size: 16px; font-weight: 500;">Premium Event Entertainment</p>
           </div>
@@ -507,7 +508,8 @@ export default async function handler(req, res) {
       // Format the admin notification email
       const adminEmailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #1a1a1a; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+          <div style="background: #1a1a1a; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+            <img src="https://m10djcompany.com/M10-Gold-Logo.png" alt="M10 DJ Company Logo" style="max-width: 100px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
             <h2 style="margin: 0; color: #fcba00;">New Contact Form Submission</h2>
             <p style="margin: 5px 0 0 0; color: #ccc;">M10 DJ Company Admin</p>
           </div>

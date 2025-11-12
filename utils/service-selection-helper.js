@@ -65,6 +65,7 @@ export async function sendServiceSelectionEmail(contact, serviceSelectionLink) {
   const emailHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+        <img src="https://m10djcompany.com/M10-Gold-Logo.png" alt="M10 DJ Company Logo" style="max-width: 120px; height: auto; margin-bottom: 15px;">
         <h1 style="color: #000; margin: 0; font-size: 28px;">Select Your Perfect Package</h1>
         <p style="color: #000; margin: 10px 0 0 0; font-size: 16px; font-weight: 500;">M10 DJ Company - Premium Wedding Entertainment</p>
       </div>
