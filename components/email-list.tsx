@@ -40,8 +40,8 @@ export default function EmailList({
   const filteredEmails = emails.filter(
     (email) =>
       email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.sender.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.content.toLowerCase().includes(searchQuery.toLowerCase()),
+      (email.sender?.name || email.from).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (email.body || email.content || "").toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   // Get folder name for display
@@ -183,21 +183,21 @@ function EmailListItem({ email, isSelected, onSelect, onArchive, onDelete, onSno
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <AvatarWithLogo sender={email.sender} />
+      {email.sender && <AvatarWithLogo sender={email.sender} />}
 
       <div className="flex-1 min-w-0">
         {/* Combined subject and sender name on one line */}
         <div className="flex justify-between items-center mb-1">
           <div className="truncate text-sm">
-            {email.subject} <span className="text-zinc-500 dark:text-zinc-400">from {email.sender.name}</span>
+            {email.subject} <span className="text-zinc-500 dark:text-zinc-400">from {email.sender?.name || email.from}</span>
           </div>
           <div className="text-xs text-zinc-500 whitespace-nowrap ml-2 dark:text-zinc-400">
-            {formatDistanceToNow(new Date(email.date))}
+            {formatDistanceToNow(email.timestamp || new Date())}
           </div>
         </div>
 
         {/* Preview of email content */}
-        <div className="text-xs text-zinc-500 truncate mb-2 dark:text-zinc-400">{email.content.substring(0, 100)}...</div>
+        <div className="text-xs text-zinc-500 truncate mb-2 dark:text-zinc-400">{(email.body || email.content || "").substring(0, 100)}...</div>
 
         {/* Badges for email categories */}
         <div className="flex flex-wrap gap-1.5">

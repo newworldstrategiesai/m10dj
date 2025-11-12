@@ -262,9 +262,9 @@ export default function EmailDetail({ email, onClose, onArchive, onDelete, onSno
         onClose={() => setReplyOpen(false)}
         onSend={handleSendReply}
         replyTo={{
-          to: email.sender.email,
+          to: email.sender?.email || email.from,
           subject: email.subject,
-          content: email.content,
+          content: email.body || email.content || "",
         }}
       />
     </div>
