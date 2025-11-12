@@ -57,6 +57,8 @@ export default async function handler(req, res) {
     let refreshed = false;
     let created = false;
 
+    console.log(`🔍 Validating service selection token: ${token.substring(0, 10)}...`);
+
     // ------------------------------------------------------------------
     // Attempt to fetch the token record
     // ------------------------------------------------------------------
@@ -68,10 +70,16 @@ export default async function handler(req, res) {
       .limit(1)
       .single();
 
+    console.log(`Token lookup result: ${tokenData ? 'Found' : 'Not found'}`, { 
+      tokenError: tokenError?.message,
+      expiresAt: tokenData?.expires_at
+    });
+
     // ------------------------------------------------------------------
     // If no token row, fall back to the contacts table using stored token
     // ------------------------------------------------------------------
     if (tokenError || !tokenData) {
+      console.log('Token not in service_selection_tokens, checking contacts table...');
       const { data: contactFallback, error: contactFallbackError } = await supabase
         .from('contacts')
         .select('*')
@@ -80,9 +88,18 @@ export default async function handler(req, res) {
         .single();
 
       if (contactFallbackError || !contactFallback) {
+        console.error('❌ Token not found in either table:', {
+          tokenError: tokenError?.message,
+          contactFallbackError: contactFallbackError?.message,
+          token: token.substring(0, 10) + '...'
+        });
         return res.status(404).json({
           valid: false,
-          error: 'Token not found'
+          error: 'Token not found',
+          debug: process.env.NODE_ENV === 'development' ? {
+            tokenError: tokenError?.message,
+            contactError: contactFallbackError?.message
+          } : undefined
         });
       }
 
@@ -159,9 +176,11 @@ export default async function handler(req, res) {
     }
 
     // ------------------------------------------------------------------
-    // If already submitted, keep existing messaging but never error
+    // If already submitted, provide helpful messaging
+    // Guide them to request a new link if they need to re-submit
     // ------------------------------------------------------------------
     if (tokenData.is_used) {
+      console.log(`⚠️  Token already used (submitted at: ${tokenData.used_at})`);
       return res.status(200).json({
         valid: true,
         already_used: true,
@@ -174,7 +193,8 @@ export default async function handler(req, res) {
               event_type: contact.event_type
             }
           : null,
-        message: 'You have already submitted your selections. We\'ll be in touch soon!'
+        message: 'You have already submitted your selections. We\'ll be in touch soon!',
+        help: 'If you need to submit again or make changes, please contact us at (901) 410-2020 or email djbenmurray@gmail.com'
       });
     }
 

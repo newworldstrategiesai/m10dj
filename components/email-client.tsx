@@ -26,13 +26,29 @@ export default function EmailClient() {
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const response = await fetch("/api/emails/accounts")
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+        
+        const response = await fetch("/api/emails/accounts", {
+          signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+        
         if (response.ok) {
           const data = await response.json()
           setAccounts(data.accounts || [])
+        } else {
+          console.error("Error fetching accounts: HTTP", response.status)
+          setError(`Failed to fetch accounts: ${response.statusText}`)
         }
-      } catch (err) {
-        console.error("Error fetching accounts:", err)
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          console.error("Accounts request timeout")
+          setError("Request timeout - accounts service is not responding")
+        } else {
+          console.error("Error fetching accounts:", err)
+          setError(`Error fetching accounts: ${err.message}`)
+        }
       }
     }
     fetchAccounts()
@@ -78,23 +94,41 @@ export default function EmailClient() {
         params.append("account", selectedAccountEmail)
       }
       
-      const response = await fetch(`/api/emails?${params.toString()}`)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout for emails
+      
+      const response = await fetch(`/api/emails?${params.toString()}`, {
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch emails: ${response.statusText}`)
+        throw new Error(`Failed to fetch emails: ${response.statusText} (HTTP ${response.status})`)
       }
 
       const data = await response.json()
       const transformedEmails = (data.emails || []).map(transformReceivedEmail)
       setEmails(transformedEmails)
+      setError(null) // Clear any previous errors
     } catch (err: any) {
       console.error("Error fetching emails:", err)
-      setError(err.message)
-      toast({
-        title: "Error",
-        description: "Failed to load emails",
-        variant: "destructive",
-      })
+      
+      if (err.name === 'AbortError') {
+        const timeoutError = "Request timeout - emails service is not responding"
+        setError(timeoutError)
+        toast({
+          title: "Error",
+          description: timeoutError,
+          variant: "destructive",
+        })
+      } else {
+        setError(err.message)
+        toast({
+          title: "Error",
+          description: "Failed to load emails",
+          variant: "destructive",
+        })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -105,11 +139,16 @@ export default function EmailClient() {
     fetchEmails()
   }, [selectedFolder, selectedAccount])
 
-  // Poll for new emails every 10 seconds
+  // Poll for new emails every 10 seconds, but only if not in error state
   useEffect(() => {
+    // Don't poll if we have an error
+    if (error) {
+      return
+    }
+    
     const interval = setInterval(fetchEmails, 10000)
     return () => clearInterval(interval)
-  }, [selectedFolder, selectedAccount])
+  }, [selectedFolder, selectedAccount, error])
 
   // Filter emails based on selected folder
   const filteredEmails = useMemo(() => {

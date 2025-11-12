@@ -312,7 +312,7 @@ export default async function handler(req, res) {
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-            <img src="${siteUrl}/M10-Gold-Logo.png" alt="M10 DJ Company Logo" style="max-width: 100px; height: auto; margin-bottom: 15px;">
+            <img src="${siteUrl}/M10-Rotating-Logo-200px-Small.gif" alt="M10 DJ Company Animated Logo" style="max-width: 100px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
             <h2 style="color: #000; margin: 0; font-size: 24px;">Your Selections Received! 🎉</h2>
           </div>
           
@@ -420,7 +420,7 @@ export default async function handler(req, res) {
     const adminEmailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-          <img src="${siteUrl}/M10-Gold-Logo.png" alt="M10 DJ Company Logo" style="max-width: 100px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
+          <img src="${siteUrl}/M10-Rotating-Logo-200px-Small.gif" alt="M10 DJ Company Animated Logo" style="max-width: 100px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
           <h2 style="color: #000; margin: 0; font-size: 24px;">🎯 New Service Selection Received!</h2>
           <p style="color: #000; margin: 5px 0 0 0; font-size: 14px;">Respond quickly to secure this booking</p>
         </div>

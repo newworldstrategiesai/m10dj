@@ -63,7 +63,8 @@ export default async function handler(req, res) {
     eventType,
     eventDate,
     expiresInDays,
-    forceNewToken = false
+    forceNewToken = false,
+    isResendingLink = false  // Set to true when resending to a contact who already submitted
   } = req.body;
 
   if (!contactId && !email) {
@@ -148,10 +149,13 @@ export default async function handler(req, res) {
 
     // ------------------------------------------------------------------
     // If there's an existing active token, reuse it unless forcing new
+    // For resends to contacts who already submitted, always force new token
     // ------------------------------------------------------------------
     let tokenRecord = null;
+    const shouldForceNew = forceNewToken || isResendingLink;
 
-    if (!forceNewToken) {
+    if (!shouldForceNew) {
+      console.log(`🔍 Checking for existing active tokens for contact ${contact.id}`);
       const { data: existingTokens, error: existingError } = await supabase
         .from('service_selection_tokens')
         .select('*')
@@ -165,7 +169,24 @@ export default async function handler(req, res) {
         console.error('Error checking existing tokens:', existingError);
       } else if (existingTokens && existingTokens.length > 0) {
         tokenRecord = existingTokens[0];
+        console.log(`✅ Found existing active token, expires at: ${tokenRecord.expires_at}`);
+      } else {
+        // Check if there are any used tokens (contact has submitted before)
+        const { data: usedTokens, error: usedError } = await supabase
+          .from('service_selection_tokens')
+          .select('*')
+          .eq('contact_id', contact.id)
+          .eq('is_used', true)
+          .limit(1);
+        
+        if (usedTokens && usedTokens.length > 0) {
+          console.log(`⚠️  Contact has previously submitted (${usedTokens.length} used token(s)), creating fresh token for re-submission`);
+        } else {
+          console.log(`ℹ️  No active tokens found, will create new one`);
+        }
       }
+    } else if (isResendingLink) {
+      console.log(`🔄 Force creating new token for resend to contact ${contact.id} who previously submitted`);
     }
 
     // ------------------------------------------------------------------
@@ -176,6 +197,12 @@ export default async function handler(req, res) {
       const expiresAt = new Date(now);
       const expirationDays = resolveExpirationDays(expiresInDays);
       expiresAt.setDate(expiresAt.getDate() + expirationDays);
+
+      console.log(`🔐 Creating new token for contact ${contact.id}`, {
+        tokenPreview: token.substring(0, 10) + '...',
+        expiresAt: expiresAt.toISOString(),
+        expirationDays
+      });
 
       const { data: insertedToken, error: insertError } = await supabase
         .from('service_selection_tokens')
@@ -188,10 +215,15 @@ export default async function handler(req, res) {
         .single();
 
       if (insertError) {
-        console.error('Error inserting service selection token:', insertError);
+        console.error('❌ Error inserting service selection token:', {
+          error: insertError,
+          contact_id: contact.id,
+          token: token.substring(0, 10) + '...'
+        });
         return res.status(500).json({ error: 'Failed to create service selection token' });
       }
 
+      console.log(`✅ Token created successfully, expires at: ${insertedToken.expires_at}`);
       tokenRecord = insertedToken;
     }
 

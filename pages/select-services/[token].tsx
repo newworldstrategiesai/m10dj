@@ -207,20 +207,140 @@ export default function SelectServicesPage() {
 
   if (error && !valid) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <AlertCircle className="h-16 w-16 text-red-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Link Invalid or Expired</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <p className="text-sm text-gray-500 mb-6">
-            Please contact us directly to discuss your event:
-          </p>
-          <a 
-            href="tel:+19014102020"
-            className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-          >
-            Call (901) 410-2020
-          </a>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          {/* Main Recovery Card */}
+          <div className="bg-white rounded-2xl shadow-2xl p-8 mb-6">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="h-12 w-12 text-amber-600" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-3">Link Needs Refreshing</h1>
+              <p className="text-lg text-gray-600 mb-2">No worries! This happens sometimes.</p>
+              <p className="text-gray-500">Let's get you back to securing your date →</p>
+            </div>
+
+            {/* Why This Happened (Build Trust) */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+              <p className="text-sm text-blue-900">
+                <span className="font-semibold">Why?</span> Links can expire after 30 days or if the system was updated. No problem—let's fix this in 2 minutes.
+              </p>
+            </div>
+
+            {/* Three Path Options (Choice Architecture) */}
+            <div className="space-y-4 mb-8">
+              <p className="font-semibold text-gray-900 text-center mb-6">Choose your fastest path forward:</p>
+              
+              {/* Option 1: Quick Call (Lowest Friction) */}
+              <a 
+                href="tel:+19014102020"
+                className="block w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-xl hover:shadow-lg transition transform hover:scale-105 text-center font-semibold"
+              >
+                <Phone className="h-5 w-5 inline mr-2" />
+                Call Now (Fastest) - 2 mins
+                <div className="text-sm font-normal text-blue-100 mt-1">Direct to Ben for instant approval</div>
+              </a>
+
+              {/* Option 2: Chat (Medium Friction) */}
+              <button 
+                onClick={() => window.location.href = '/#contact'}
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-xl hover:shadow-lg transition transform hover:scale-105 text-center font-semibold"
+              >
+                <Sparkles className="h-5 w-5 inline mr-2" />
+                Chat via Website - 3 mins
+                <div className="text-sm font-normal text-purple-100 mt-1">Quick questions? AI assistant available 24/7</div>
+              </button>
+
+              {/* Option 3: Email New Link (Self-Service) */}
+              <button 
+                onClick={() => {
+                  const email = prompt('📧 What email should we send the new link to?');
+                  if (email) {
+                    fetch('/api/service-selection/generate-link', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        email: email,
+                        eventType: 'wedding',
+                        forceNewToken: true,
+                        isResendingLink: true
+                      })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.link) {
+                        alert(`✅ New link sent to ${email}! Check your inbox in 1-2 minutes.`);
+                      } else {
+                        alert('Error generating link. Please call us instead.');
+                      }
+                    });
+                  }
+                }}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-xl hover:shadow-lg transition transform hover:scale-105 text-center font-semibold"
+              >
+                <FileText className="h-5 w-5 inline mr-2" />
+                Email Me New Link - 1 min
+                <div className="text-sm font-normal text-green-100 mt-1">Fresh link sent directly to your inbox</div>
+              </button>
+            </div>
+
+            {/* Social Proof / Urgency */}
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-5 mb-8">
+              <p className="text-sm text-gray-700">
+                <span className="font-bold text-orange-600">⚡ Pro Tip:</span> December is our busiest month. Getting this locked in now guarantees your date. Most couples book within 24 hours of viewing packages.
+              </p>
+            </div>
+
+            {/* Direct Contact Info (Fallback) */}
+            <div className="border-t border-gray-200 pt-8">
+              <p className="text-center text-gray-600 mb-6 text-sm">
+                Prefer to discuss everything first? Totally fine.
+              </p>
+              <div className="grid md:grid-cols-2 gap-4 text-center">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">📞 CALL (Fastest)</p>
+                  <a href="tel:+19014102020" className="text-xl font-bold text-blue-600 hover:text-blue-700">
+                    (901) 410-2020
+                  </a>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">📧 EMAIL</p>
+                  <a href="mailto:djbenmurray@gmail.com" className="text-xl font-bold text-blue-600 hover:text-blue-700">
+                    djbenmurray@gmail.com
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Secondary Trust Builders */}
+          <div className="grid md:grid-cols-3 gap-4 text-center">
+            <div className="bg-white rounded-lg p-4 shadow">
+              <CheckCircle className="h-6 w-6 text-green-600 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-gray-900">100% Free Quotes</p>
+              <p className="text-xs text-gray-500">No hidden fees</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow">
+              <Clock className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-gray-900">24-Hour Response</p>
+              <p className="text-xs text-gray-500">Guaranteed reply</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow">
+              <Music className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-gray-900">50+ Weddings/Year</p>
+              <p className="text-xs text-gray-500">Most trusted in Memphis</p>
+            </div>
+          </div>
+
+          {/* Bottom CTA - Return to Site */}
+          <div className="text-center mt-8">
+            <a 
+              href="/"
+              className="text-gray-600 hover:text-gray-900 font-semibold underline transition"
+            >
+              ← Back to M10 DJ Company
+            </a>
+          </div>
         </div>
       </div>
     );

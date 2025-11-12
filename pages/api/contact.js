@@ -434,13 +434,41 @@ export default async function handler(req, res) {
       console.log(`ℹ️ Event type "${standardizedEventType}" - skipping service selection (only sent for weddings)`);
     }
 
+    // Generate service selection link
+    let serviceSelectionLink = null;
+    try {
+      const linkResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/service-selection/generate-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId: newContact?.id || existingContact?.id,
+          email: email,
+          name: name,
+          eventType: eventType,
+          eventDate: eventDate,
+          expiresInDays: 30
+        })
+      });
+
+      if (linkResponse.ok) {
+        const linkData = await linkResponse.json();
+        serviceSelectionLink = linkData.link;
+        console.log('✅ Service selection link generated:', serviceSelectionLink);
+      } else {
+        console.warn('⚠️ Failed to generate service selection link, continuing without it');
+      }
+    } catch (linkError) {
+      console.warn('⚠️ Error generating service selection link:', linkError.message);
+      // Continue without the link - not critical
+    }
+
     // Only send emails if Resend API key is configured
     if (resend && process.env.RESEND_API_KEY) {
       // Format the customer email content
       const customerEmailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-            <img src="https://m10djcompany.com/M10-Gold-Logo.png" alt="M10 DJ Company Logo" style="max-width: 120px; height: auto; margin-bottom: 15px;">
+            <img src="https://m10djcompany.com/M10-Rotating-Logo-200px-Small.gif" alt="M10 DJ Company Animated Logo" style="max-width: 120px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
             <h1 style="color: #000; margin: 0; font-size: 28px;">Thank You for Contacting M10 DJ Company!</h1>
             <p style="color: #000; margin: 10px 0 0 0; font-size: 16px; font-weight: 500;">Premium Event Entertainment</p>
           </div>
@@ -509,7 +537,7 @@ export default async function handler(req, res) {
       const adminEmailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #1a1a1a; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-            <img src="https://m10djcompany.com/M10-Gold-Logo.png" alt="M10 DJ Company Logo" style="max-width: 100px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
+            <img src="https://m10djcompany.com/M10-Rotating-Logo-200px-Small.gif" alt="M10 DJ Company Animated Logo" style="max-width: 100px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
             <h2 style="margin: 0; color: #fcba00;">New Contact Form Submission</h2>
             <p style="margin: 5px 0 0 0; color: #ccc;">M10 DJ Company Admin</p>
           </div>
