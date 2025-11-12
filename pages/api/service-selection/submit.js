@@ -412,6 +412,137 @@ export default async function handler(req, res) {
       }
     }
 
+    // ============================================
+    // SEND ADMIN NOTIFICATIONS
+    // ============================================
+
+    // Prepare admin email content
+    const adminEmailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <img src="${siteUrl}/M10-Gold-Logo.png" alt="M10 DJ Company Logo" style="max-width: 100px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
+          <h2 style="color: #000; margin: 0; font-size: 24px;">🎯 New Service Selection Received!</h2>
+          <p style="color: #000; margin: 5px 0 0 0; font-size: 14px;">Respond quickly to secure this booking</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <h3 style="color: #fcba00; margin-top: 0;">📊 Lead Details</h3>
+          
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; border-left: 4px solid #fcba00; margin-bottom: 20px;">
+            <p style="margin: 5px 0;"><strong>Name:</strong> ${contact.first_name} ${contact.last_name}</p>
+            <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:${contact.email_address || contact.primary_email}">${contact.email_address || contact.primary_email}</a></p>
+            <p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:${contact.phone}">${contact.phone || 'Not provided'}</a></p>
+          </div>
+
+          <h3 style="color: #fcba00;">🎉 Event Information</h3>
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+            <p style="margin: 5px 0;"><strong>Event Type:</strong> ${selections.eventType}</p>
+            <p style="margin: 5px 0;"><strong>Event Date:</strong> ${selections.eventDate}</p>
+            <p style="margin: 5px 0;"><strong>Venue:</strong> ${selections.venueName || 'Not specified'}</p>
+            <p style="margin: 5px 0;"><strong>Guest Count:</strong> ${selections.guestCount || 'Not specified'}</p>
+          </div>
+
+          <h3 style="color: #fcba00;">💰 Service Selection</h3>
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+            <p style="margin: 5px 0;"><strong>Package:</strong> ${selections.package}</p>
+            ${selections.addOns && selections.addOns.length > 0 ? `
+              <p style="margin: 15px 0 5px 0;"><strong>Add-ons:</strong></p>
+              <ul style="margin: 5px 0; padding-left: 20px;">
+                ${selections.addOns.map(addon => `<li>${addon}</li>`).join('')}
+              </ul>
+            ` : ''}
+            ${invoiceData ? `
+              <p style="margin: 15px 0 5px 0; border-top: 1px solid #e0e0e0; padding-top: 10px;"><strong>Total:</strong> $${invoiceData.total.toFixed(2)}</p>
+            ` : ''}
+          </div>
+
+          <h3 style="color: #fcba00;">⏰ Timeline</h3>
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+            ${selections.ceremonyMusic ? '<p style="margin: 3px 0;">✓ Ceremony Music</p>' : ''}
+            ${selections.cocktailHour ? '<p style="margin: 3px 0;">✓ Cocktail Hour</p>' : ''}
+            ${selections.reception ? '<p style="margin: 3px 0;">✓ Reception</p>' : ''}
+            ${selections.afterParty ? '<p style="margin: 3px 0;">✓ After Party</p>' : ''}
+          </div>
+
+          <div style="background: #e3f2fd; border: 2px solid #2196f3; border-radius: 6px; padding: 20px; margin: 20px 0;">
+            <h3 style="color: #1565c0; margin-top: 0;">📋 Next Steps</h3>
+            <ol style="margin: 10px 0; padding-left: 20px; color: #333;">
+              <li>Review the customer's selections and invoice</li>
+              <li>Prepare a detailed custom quote</li>
+              <li>Review and sign the contract (if generated)</li>
+              <li>Send follow-up email with pricing and next steps</li>
+              <li>Confirm booking and collect deposit</li>
+            </ol>
+          </div>
+
+          <div style="background: #fff3cd; border: 2px solid #fcba00; border-radius: 6px; padding: 20px; text-align: center;">
+            <p style="margin: 0; color: #856404; font-weight: bold;">
+              ⏱️ RESPOND WITHIN 24 HOURS TO SECURE THIS BOOKING
+            </p>
+          </div>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center;">
+            <a href="${siteUrl}/admin/contacts/${contact.id}" style="display: inline-block; background: #fcba00; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-right: 10px;">
+              👁️ View in Admin Panel
+            </a>
+            <a href="${documentLink}" style="display: inline-block; background: #2196f3; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              📄 View Documents
+            </a>
+          </div>
+
+          <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">
+            Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+      </div>
+    `;
+
+    // Send admin email notification
+    try {
+      const adminEmails = [
+        process.env.ADMIN_EMAIL || 'm10djcompany@gmail.com',
+        ...(process.env.BACKUP_ADMIN_EMAIL ? [process.env.BACKUP_ADMIN_EMAIL] : []),
+        ...(process.env.EMERGENCY_CONTACT_EMAIL ? [process.env.EMERGENCY_CONTACT_EMAIL] : [])
+      ].filter(Boolean);
+
+      await fetch(`${siteUrl}/api/email/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: adminEmails,
+          subject: `🎯 New Service Selection: ${contact.first_name} ${contact.last_name} - ${selections.eventType}`,
+          body: adminEmailHtml,
+          contactId: contact.id
+        })
+      });
+
+      console.log(`✅ Admin email sent to ${adminEmails.join(', ')}`);
+    } catch (adminEmailError) {
+      console.error('Error sending admin email:', adminEmailError);
+      // Don't fail the request if admin email fails
+    }
+
+    // Send admin SMS notification if configured
+    if (process.env.ADMIN_PHONE && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+      try {
+        const twilio = require('twilio');
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        
+        const adminSmsMessage = `🎯 NEW BOOKING LEAD! ${contact.first_name} ${contact.last_name} selected ${selections.eventType} for ${selections.eventDate}. Package: ${selections.package}. Total: $${invoiceData?.total.toFixed(2) || '?'}. Review: ${siteUrl}/admin/contacts/${contact.id}`;
+        
+        await client.messages.create({
+          body: adminSmsMessage,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: process.env.ADMIN_PHONE
+        });
+        
+        console.log(`✅ Admin SMS sent to ${process.env.ADMIN_PHONE}`);
+      } catch (adminSmsError) {
+        console.error('Error sending admin SMS:', adminSmsError);
+        // Don't fail the request if SMS fails
+      }
+    }
+
     const successResponse = {
       success: true,
       selection_id: selection.id,
