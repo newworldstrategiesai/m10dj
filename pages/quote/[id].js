@@ -37,57 +37,52 @@ export default function PersonalizedQuote() {
     {
       id: 'package1',
       name: 'Package 1',
-      price: 1245,
-      description: 'Reception Only - Most Popular for Memphis Weddings',
+      price: 2000,
+      description: 'Reception Only',
       features: [
-        '4 Hours of DJ and MC Services',
-        'Dance Floor Lighting and Speaker',
-        'Professional Sound System',
-        'Music Consultation & Planning',
-        'Timeline Coordination',
-        'Wireless Microphones (2)',
-        'Setup & Breakdown'
+        'Up to 4 hours of DJ/MC services at reception',
+        'Speakers & microphones included',
+        'Dance Floor Lighting',
+        'Multi-color LED fixtures for dance floor',
+        'Uplighting (16 multicolor LED fixtures)',
+        'Additional Speaker',
+        'Perfect for cocktail hours separate from reception'
       ],
-      addOn: 'Add Ceremony Audio Package for $395',
-      popular: true
+      popular: false
     },
     {
       id: 'package2',
       name: 'Package 2',
-      price: 1395,
-      description: 'Reception + Enhanced Options',
+      price: 2500,
+      description: 'Reception Only - Most Popular',
       features: [
-        '4 Hours of DJ and MC Services',
-        'Dance Floor Lighting and Speaker',
-        'Professional Sound System',
-        'Music Consultation & Planning',
-        'Timeline Coordination',
-        'Wireless Microphones (2)',
-        'Plus ONE of the following:',
-        '   • Uplighting (16 lights)',
-        '   • Additional hour of time',
-        'Setup & Breakdown'
+        'Up to 4 hours of DJ/MC services at reception',
+        'Speakers & microphones included',
+        'Dance Floor Lighting',
+        'Multi-color LED fixtures for dance floor',
+        'Uplighting (16 multicolor LED fixtures)',
+        'Ceremony Audio (additional hour + ceremony music)',
+        'Monogram Projection',
+        'Custom graphic with your names or initials'
       ],
-      addOn: 'Add Ceremony Audio Package for $395',
-      popular: false
+      popular: true
     },
     {
       id: 'package3',
       name: 'Package 3',
-      price: 1500,
-      description: 'Complete Wedding Experience',
+      price: 3000,
+      description: 'Ceremony & Reception - Premium Experience',
       features: [
-        '4 Hours of DJ and MC Services',
-        'Dance Floor Lighting and Speaker',
-        'Professional Sound System',
-        'Music Consultation & Planning',
-        'Timeline Coordination',
-        'Wireless Microphones (2)',
-        'Plus TWO of the following:',
-        '   • Ceremony audio package (+1 hour)',
-        '   • Additional hour of time',
-        '   • Additional speaker',
-        'Setup & Breakdown'
+        'Up to 4 hours of DJ/MC services at reception',
+        'Speakers & microphones included',
+        'Ceremony Audio (additional hour + ceremony music)',
+        'Dance Floor Lighting',
+        'Multi-color LED fixtures for dance floor',
+        'Uplighting (16 multicolor LED fixtures)',
+        'Dancing on the Clouds',
+        'Sophisticated dry ice effect for first dance',
+        'Monogram Projection',
+        'Custom graphic with your names or initials'
       ],
       popular: false
     }
@@ -96,41 +91,65 @@ export default function PersonalizedQuote() {
   const addons = [
     {
       id: 'ceremony',
-      name: 'Ceremony Audio Package',
-      price: 395,
-      description: 'Ceremony sound system, prelude music, wireless mics for officiant',
+      name: 'Ceremony Audio (a la carte with music)',
+      price: 500,
+      description: 'Speakers, microphones, and music before, during, and after ceremony',
       popular: true
-    },
-    {
-      id: 'uplighting',
-      name: 'Uplighting Package',
-      price: 150,
-      description: '16 wireless uplighting fixtures (included in Package 2 as option)',
-      note: 'Already included as an option in Packages 2 & 3'
-    },
-    {
-      id: 'overtime',
-      name: 'Additional Hour',
-      price: 150,
-      description: 'Extend DJ services by 1 hour (included as option in Packages 2 & 3)'
     },
     {
       id: 'speaker',
       name: 'Additional Speaker',
-      price: 100,
-      description: 'Extra speaker for larger venues or outdoor areas'
+      price: 250,
+      description: 'Powered speaker with built-in mixer. Perfect for cocktail hours separate from reception'
     },
     {
       id: 'monogram',
-      name: 'Custom Monogram Projection',
-      price: 200,
-      description: 'Your names, initials, or custom design projected on wall/floor'
+      name: 'Monogram Projection',
+      price: 350,
+      description: 'Custom graphic with your names or initials, fully customizable'
     },
     {
-      id: 'photobooth',
-      name: 'Photo Booth Addition',
+      id: 'uplighting',
+      name: 'Uplighting Add-on',
+      price: 300,
+      description: 'Up to 16 multi-color LED fixtures (only for Package 1 - others include this)'
+    },
+    {
+      id: 'overtime',
+      name: 'Additional Hour(s)',
+      price: 300,
+      description: 'Extend your wedding beyond the included time'
+    },
+    {
+      id: 'dj4hours',
+      name: '4 Hours DJ/MC Services (a la carte)',
+      price: 1500,
+      description: 'Live DJ and speakers for up to 4 hours. No dance floor lighting or uplighting'
+    },
+    {
+      id: 'dj3hours',
+      name: '3 Hours DJ/MC Services',
+      price: 1300,
+      description: 'Live DJ and speakers for up to 3 hours at reception. No lighting'
+    },
+    {
+      id: 'dancelighting',
+      name: 'Dance Floor Lighting (a la carte)',
+      price: 350,
+      description: 'Multi-color LED fixtures for dance floor (included in all packages)'
+    },
+    {
+      id: 'clouds',
+      name: 'Dancing on the Clouds',
       price: 500,
-      description: '3 hours with unlimited prints, props, and attendant'
+      description: 'Sophisticated dry ice system for enchanting first dance photos',
+      popular: true
+    },
+    {
+      id: 'coldspark',
+      name: 'Cold Spark Fountain Effect',
+      price: 600,
+      description: 'Stunning spark effect for entrances, dances, or send-offs. Safe for indoors'
     }
   ];
 
