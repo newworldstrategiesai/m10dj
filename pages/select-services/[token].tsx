@@ -94,9 +94,19 @@ export default function SelectServicesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate package selection
+    if (!selections.package) {
+      setError('Please select a package to continue');
+      return;
+    }
+
+    setError(''); // Clear any previous errors
     setSubmitting(true);
 
     try {
+      console.log('📤 Submitting service selections:', selections);
+      
       const response = await fetch('/api/service-selection/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -110,15 +120,23 @@ export default function SelectServicesPage() {
       });
 
       const data = await response.json();
+      console.log('📥 Response:', { status: response.status, data });
 
-      if (response.ok) {
+      if (response.ok && data.success) {
+        console.log('✅ Submission successful!');
         setSubmissionData(data);
         setSubmitted(true);
+        // Scroll to top to see success message
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        setError(data.error || 'Submission failed');
+        const errorMsg = data.error || data.message || 'Submission failed. Please try again.';
+        console.error('❌ Submission error:', errorMsg);
+        setError(errorMsg);
       }
-    } catch (err) {
-      setError('Failed to submit. Please try again.');
+    } catch (err: any) {
+      const errorMsg = err.message || 'Failed to submit. Please try again.';
+      console.error('❌ Network or parsing error:', err);
+      setError(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -533,6 +551,20 @@ export default function SelectServicesPage() {
             Select your DJ services and we'll send you a custom quote within 24 hours
           </p>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 mb-8">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-800 mb-1">Something went wrong</h3>
+                <p className="text-red-700 text-sm">{error}</p>
+                <p className="text-red-600 text-xs mt-2">Please try again or call us at (901) 410-2020 for assistance.</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Event Details */}

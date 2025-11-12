@@ -352,7 +352,7 @@ export default async function handler(req, res) {
       // Don't fail the request if email fails
     }
 
-    res.status(200).json({
+    const successResponse = {
       success: true,
       selection_id: selection.id,
       invoice: invoiceData,
@@ -374,13 +374,18 @@ export default async function handler(req, res) {
         }
       },
       message: 'Thank you! Your selections have been submitted. We\'ll be in touch within 24 hours with a custom quote.'
-    });
+    };
+    
+    console.log('✅ Sending success response:', successResponse);
+    res.status(200).json(successResponse);
 
   } catch (error) {
     console.error('❌ Error submitting service selection:', error);
+    const errorMessage = error?.message || 'An unexpected error occurred during submission';
     res.status(500).json({ 
-      error: 'Submission failed',
-      message: error.message 
+      success: false,
+      error: errorMessage,
+      message: `Failed to submit your selections: ${errorMessage}. Please try again or contact us at (901) 410-2020.`
     });
   }
 }
