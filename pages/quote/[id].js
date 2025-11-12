@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Header from '../../components/company/Header';
 import Footer from '../../components/company/Footer';
@@ -13,13 +13,7 @@ export default function PersonalizedQuote() {
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedAddons, setSelectedAddons] = useState([]);
 
-  useEffect(() => {
-    if (id) {
-      fetchLeadData();
-    }
-  }, [id]);
-
-  const fetchLeadData = async () => {
+  const fetchLeadData = useCallback(async () => {
     try {
       const response = await fetch(`/api/leads/${id}`);
       if (response.ok) {
@@ -31,61 +25,69 @@ export default function PersonalizedQuote() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchLeadData();
+    }
+  }, [id, fetchLeadData]);
 
   const packages = [
     {
-      id: 'essentials',
-      name: 'Wedding Essentials',
-      price: 1200,
-      description: 'Perfect for intimate weddings',
+      id: 'package1',
+      name: 'Package 1',
+      price: 1245,
+      description: 'Reception Only - Most Popular for Memphis Weddings',
       features: [
-        '4 Hours of DJ Services',
+        '4 Hours of DJ and MC Services',
+        'Dance Floor Lighting and Speaker',
         'Professional Sound System',
-        'Music for Ceremony & Reception',
-        'Wireless Microphone',
-        'Pre-Event Planning Meeting',
-        'Custom Playlist Creation',
-        'Professional MC Services'
+        'Music Consultation & Planning',
+        'Timeline Coordination',
+        'Wireless Microphones (2)',
+        'Setup & Breakdown'
       ],
-      popular: false
-    },
-    {
-      id: 'celebration',
-      name: 'Wedding Celebration',
-      price: 1800,
-      description: 'Our most popular package',
-      features: [
-        '6 Hours of DJ Services',
-        'Premium Sound System',
-        'Music for All Events',
-        '2 Wireless Microphones',
-        'Elegant Uplighting (4 Fixtures)',
-        'Pre-Event Planning Meeting',
-        'Custom Playlist Creation',
-        'Professional MC Services',
-        'Online Planning Portal'
-      ],
+      addOn: 'Add Ceremony Audio Package for $395',
       popular: true
     },
     {
-      id: 'ultimate',
-      name: 'Wedding Ultimate',
-      price: 2500,
-      description: 'The complete experience',
+      id: 'package2',
+      name: 'Package 2',
+      price: 1395,
+      description: 'Reception + Enhanced Options',
       features: [
-        'Unlimited DJ Services',
-        'Premium Sound System',
-        'Music for All Events',
-        '4 Wireless Microphones',
-        'Premium Uplighting (8 Fixtures)',
-        'Monogram Projection',
-        'Photo Booth Integration',
-        'Pre-Event Planning Meeting',
-        'Custom Playlist Creation',
-        'Professional MC Services',
-        'Online Planning Portal',
-        'Ceremony Sound Setup'
+        '4 Hours of DJ and MC Services',
+        'Dance Floor Lighting and Speaker',
+        'Professional Sound System',
+        'Music Consultation & Planning',
+        'Timeline Coordination',
+        'Wireless Microphones (2)',
+        'Plus ONE of the following:',
+        '   • Uplighting (16 lights)',
+        '   • Additional hour of time',
+        'Setup & Breakdown'
+      ],
+      addOn: 'Add Ceremony Audio Package for $395',
+      popular: false
+    },
+    {
+      id: 'package3',
+      name: 'Package 3',
+      price: 1500,
+      description: 'Complete Wedding Experience',
+      features: [
+        '4 Hours of DJ and MC Services',
+        'Dance Floor Lighting and Speaker',
+        'Professional Sound System',
+        'Music Consultation & Planning',
+        'Timeline Coordination',
+        'Wireless Microphones (2)',
+        'Plus TWO of the following:',
+        '   • Ceremony audio package (+1 hour)',
+        '   • Additional hour of time',
+        '   • Additional speaker',
+        'Setup & Breakdown'
       ],
       popular: false
     }
@@ -93,40 +95,42 @@ export default function PersonalizedQuote() {
 
   const addons = [
     {
-      id: 'uplighting',
-      name: 'Additional Uplighting',
-      price: 150,
-      description: '4 additional uplighting fixtures'
-    },
-    {
-      id: 'monogram',
-      name: 'Custom Monogram',
-      price: 200,
-      description: 'Your names or initials projected'
-    },
-    {
-      id: 'photobooth',
-      name: 'Photo Booth',
-      price: 500,
-      description: '3 hours with props and prints'
-    },
-    {
       id: 'ceremony',
-      name: 'Ceremony Sound',
-      price: 250,
-      description: 'Separate ceremony sound system'
+      name: 'Ceremony Audio Package',
+      price: 395,
+      description: 'Ceremony sound system, prelude music, wireless mics for officiant',
+      popular: true
     },
     {
-      id: 'cocktail',
-      name: 'Cocktail Hour Music',
-      price: 200,
-      description: 'Dedicated cocktail hour sound'
+      id: 'uplighting',
+      name: 'Uplighting Package',
+      price: 150,
+      description: '16 wireless uplighting fixtures (included in Package 2 as option)',
+      note: 'Already included as an option in Packages 2 & 3'
     },
     {
       id: 'overtime',
       name: 'Additional Hour',
+      price: 150,
+      description: 'Extend DJ services by 1 hour (included as option in Packages 2 & 3)'
+    },
+    {
+      id: 'speaker',
+      name: 'Additional Speaker',
+      price: 100,
+      description: 'Extra speaker for larger venues or outdoor areas'
+    },
+    {
+      id: 'monogram',
+      name: 'Custom Monogram Projection',
       price: 200,
-      description: 'Extend your celebration'
+      description: 'Your names, initials, or custom design projected on wall/floor'
+    },
+    {
+      id: 'photobooth',
+      name: 'Photo Booth Addition',
+      price: 500,
+      description: '3 hours with unlimited prints, props, and attendant'
     }
   ];
 
@@ -199,7 +203,7 @@ export default function PersonalizedQuote() {
               Welcome, {firstName}! 💍
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Based on your {leadData?.eventType || 'wedding'} details, we've prepared these personalized packages for you.
+              Based on your {leadData?.eventType || 'wedding'} details, we&apos;ve prepared these personalized packages for you.
             </p>
             
             {leadData?.eventDate && (
