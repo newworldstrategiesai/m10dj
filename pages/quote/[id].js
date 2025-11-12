@@ -1,17 +1,20 @@
 import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import Header from '../../components/company/Header';
 import Footer from '../../components/company/Footer';
-import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star } from 'lucide-react';
+import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function PersonalizedQuote() {
   const router = useRouter();
   const { id } = router.query;
   const [leadData, setLeadData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedAddons, setSelectedAddons] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   const fetchLeadData = useCallback(async () => {
     try {
@@ -19,9 +22,13 @@ export default function PersonalizedQuote() {
       if (response.ok) {
         const data = await response.json();
         setLeadData(data);
+        setError(null);
+      } else {
+        setError('Quote not found');
       }
     } catch (error) {
       console.error('Error fetching lead data:', error);
+      setError('Failed to load quote');
     } finally {
       setLoading(false);
     }
@@ -170,35 +177,127 @@ export default function PersonalizedQuote() {
     );
   };
 
-  const handleContinue = () => {
-    // Here you would save the selections and redirect to next step
-    const selections = {
-      leadId: id,
-      package: selectedPackage,
-      addons: selectedAddons,
-      total: calculateTotal()
-    };
+  const handleContinue = async () => {
+    if (!selectedPackage) {
+      alert('Please select a package to continue');
+      return;
+    }
+
+    setSaving(true);
     
-    // Save selections
-    fetch('/api/quote/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(selections)
-    }).then(() => {
-      // Redirect to confirmation or next step
-      router.push(`/quote/${id}/confirm`);
-    });
+    try {
+      const selectedPkg = packages.find(p => p.id === selectedPackage);
+      const selectedAddonDetails = selectedAddons.map(addonId => 
+        addons.find(a => a.id === addonId)
+      ).filter(Boolean);
+
+      const selections = {
+        leadId: id,
+        packageId: selectedPackage,
+        packageName: selectedPkg?.name,
+        packagePrice: selectedPkg?.price,
+        addons: selectedAddonDetails.map(a => ({
+          id: a.id,
+          name: a.name,
+          price: a.price
+        })),
+        totalPrice: calculateTotal()
+      };
+      
+      // Save selections to database
+      const response = await fetch('/api/quote/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selections)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save selections');
+      }
+
+      // Show success message and redirect to confirmation
+      alert('Your selections have been saved! Our team will contact you soon with the next steps.');
+      
+      // Redirect back to homepage or contact page
+      router.push('/');
+    } catch (error) {
+      console.error('Error saving selections:', error);
+      alert('There was an error saving your selections. Please try again or contact us directly at (901) 410-2020.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Better first name extraction
+  const extractFirstName = (fullName) => {
+    if (!fullName) return 'there';
+    
+    // Remove common titles
+    const cleanName = fullName.replace(/^(Dr\.|Mr\.|Mrs\.|Ms\.|Miss)\s+/i, '').trim();
+    
+    // Get first word (first name)
+    const firstName = cleanName.split(/\s+/)[0];
+    
+    // Capitalize first letter
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand"></div>
-      </div>
+      <>
+        <Head>
+          <title>Loading Your Quote | M10 DJ Company</title>
+        </Head>
+        <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+          <Header />
+          <div className="flex flex-col items-center justify-center min-h-[60vh] py-20">
+            <Loader2 className="w-12 h-12 text-brand animate-spin mb-4" />
+            <p className="text-xl text-gray-600 dark:text-gray-300">Loading your personalized quote...</p>
+          </div>
+          <Footer />
+        </div>
+      </>
     );
   }
 
-  const firstName = leadData?.name?.split(' ')[0] || 'there';
+  if (error || !leadData) {
+    return (
+      <>
+        <Head>
+          <title>Quote Not Found | M10 DJ Company</title>
+        </Head>
+        <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+          <Header />
+          <div className="flex flex-col items-center justify-center min-h-[60vh] py-20 px-4">
+            <div className="max-w-md text-center">
+              <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <span className="text-4xl">⚠️</span>
+              </div>
+              <h1 className="text-3xl font-bold mb-4">Quote Not Found</h1>
+              <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+                {error || "We couldn't find the quote you're looking for. It may have been moved or deleted."}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/#contact" className="btn-primary inline-flex items-center gap-2">
+                  <ArrowLeft className="w-5 h-5" />
+                  Get a New Quote
+                </Link>
+                <Link href="/" className="btn-outline inline-flex items-center gap-2">
+                  Go to Homepage
+                </Link>
+              </div>
+              <p className="mt-8 text-sm text-gray-500">
+                Need help? Call us at <a href="tel:+19014102020" className="text-brand hover:underline">(901) 410-2020</a>
+              </p>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      </>
+    );
+  }
+
+  const firstName = extractFirstName(leadData?.name);
 
   return (
     <>
@@ -259,8 +358,16 @@ export default function PersonalizedQuote() {
                     pkg.popular ? 'bg-gradient-to-br from-brand/5 to-white dark:from-brand/10 dark:to-gray-800' : 'bg-white dark:bg-gray-800'
                   }`}
                 >
+                  {/* Selected Indicator */}
+                  {selectedPackage === pkg.id && (
+                    <div className="absolute top-4 left-4 bg-brand text-white rounded-full p-2 shadow-lg animate-bounce">
+                      <CheckCircle className="w-6 h-6" />
+                    </div>
+                  )}
+                  
+                  {/* Popular Badge */}
                   {pkg.popular && (
-                    <div className="absolute top-4 right-4 bg-brand text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
+                    <div className={`absolute top-4 ${selectedPackage === pkg.id ? 'right-4' : 'right-4'} bg-brand text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1`}>
                       <Star className="w-4 h-4" />
                       Most Popular
                     </div>
@@ -272,7 +379,7 @@ export default function PersonalizedQuote() {
                   </div>
                   
                   <div className="mb-6">
-                    <span className="text-4xl font-bold text-brand">${pkg.price}</span>
+                    <span className="text-4xl font-bold text-brand">${pkg.price.toLocaleString()}</span>
                   </div>
                   
                   <ul className="space-y-3 mb-6">
@@ -283,10 +390,6 @@ export default function PersonalizedQuote() {
                       </li>
                     ))}
                   </ul>
-                  
-                  {selectedPackage === pkg.id && (
-                    <div className="absolute inset-0 border-4 border-brand rounded-2xl pointer-events-none animate-pulse"></div>
-                  )}
                 </div>
               ))}
             </div>
@@ -330,19 +433,33 @@ export default function PersonalizedQuote() {
           {/* Total & Continue */}
           {selectedPackage && (
             <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6 rounded-t-2xl shadow-2xl animate-fade-in">
-              <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Your Total Investment</p>
-                  <p className="text-3xl font-bold text-brand">${calculateTotal()}</p>
+                  <p className="text-3xl font-bold text-brand">${calculateTotal().toLocaleString()}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {selectedAddons.length > 0 && `Package + ${selectedAddons.length} add-on${selectedAddons.length > 1 ? 's' : ''}`}
+                    {selectedAddons.length > 0 
+                      ? `Package + ${selectedAddons.length} add-on${selectedAddons.length > 1 ? 's' : ''}`
+                      : 'Package only'}
                   </p>
                 </div>
                 <button
                   onClick={handleContinue}
-                  className="btn-primary text-lg px-8 py-4 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all"
+                  disabled={saving}
+                  className={`btn-primary text-lg px-8 py-4 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all inline-flex items-center gap-2 ${
+                    saving ? 'opacity-75 cursor-not-allowed' : ''
+                  }`}
                 >
-                  Continue to Next Step →
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      Continue to Next Step →
+                    </>
+                  )}
                 </button>
               </div>
             </div>
