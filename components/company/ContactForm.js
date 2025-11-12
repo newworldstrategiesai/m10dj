@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Phone, Mail, MapPin, Clock, Send, AlertCircle } from 'lucide-react';
+import { Mail, MapPin, Clock, AlertCircle } from 'lucide-react';
 import { FormErrorLogger } from '../../utils/form-error-logger';
 import { FormStateManager } from '../../utils/form-state-manager';
 import { ClientIdempotencyTracker } from '../../utils/idempotency';
@@ -330,55 +330,10 @@ export default function ContactForm({ className = '' }) {
     }
   };
 
-  if (submitted) {
-    return (
-      <div className={`bg-white rounded-2xl p-8 text-center min-h-[400px] flex flex-col justify-center ${className}`}>
-        <div className="w-16 h-16 bg-brand text-white rounded-full flex items-center justify-center mx-auto mb-6">
-          <Send className="w-8 h-8" />
-        </div>
-        <h3 className="text-2xl font-semibold text-gray-900 mb-4 font-sans">Thank You!</h3>
-        <p className="text-gray-600 mb-8 font-inter max-w-md mx-auto">
-          We've received your message and will get back to you within 24 hours with a personalized quote for your event.
-        </p>
-        <div className="space-y-4">
-          <div className="flex items-center justify-center space-x-2 text-brand">
-            <Phone className="w-4 h-4" />
-            <span className="font-semibold">(901) 410-2020</span>
-          </div>
-          <button
-            onClick={() => {
-              setSubmitted(false);
-              setError('');
-              setFieldWarnings({});
-              setFormData({
-                name: '',
-                email: '',
-                phone: '',
-                eventType: '',
-                eventDate: '',
-                guests: '',
-                venue: '',
-                message: '',
-                honeypot: ''
-              });
-              // Clear saved state
-              if (stateManager.current) {
-                stateManager.current.clearState();
-              }
-            }}
-            className="btn-secondary"
-          >
-            Send Another Message
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // Show chat interface after successful submission
   if (submitted) {
     return (
-      <div className={`${className} h-full`}>
+      <div className={`${className} h-full animate-fadeIn`}>
         <ContactFormChat formData={formData} onClose={() => setSubmitted(false)} />
       </div>
     );
