@@ -205,39 +205,42 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-200 shadow-lg animate-fade-in">
-            <div className="section-container py-4">
-              <nav className="space-y-4">
+          <div className="lg:hidden bg-gradient-to-b from-white via-gray-50/50 to-white border-t border-gray-200 shadow-2xl animate-fade-in max-h-[calc(100vh-80px)] overflow-y-auto">
+            <div className="section-container py-6">
+              <nav className="space-y-2">
                 <Link 
                   href="/" 
-                  className="block text-gray-700 hover:text-brand font-semibold font-inter py-2 transition-colors"
+                  className="block text-gray-900 hover:text-brand hover:bg-brand/5 font-semibold font-inter py-3 px-4 rounded-lg transition-all"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Home
                 </Link>
                 
                 {/* Mobile Services */}
-                <div>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <button
-                    className="flex items-center justify-between w-full text-gray-700 font-semibold font-inter py-2"
+                    className="flex items-center justify-between w-full text-gray-900 font-bold font-inter py-3 px-4 bg-gradient-to-r from-amber-50/50 to-orange-50/50 hover:from-amber-50 hover:to-orange-50 transition-all"
                     onClick={() => toggleDropdown('mobile-services')}
                   >
-                    Services
-                    <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === 'mobile-services' ? 'rotate-180' : ''}`} />
+                    <span className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-brand rounded-full"></span>
+                      Services
+                    </span>
+                    <ChevronDown className={`w-5 h-5 text-brand transition-transform ${openDropdown === 'mobile-services' ? 'rotate-180' : ''}`} />
                   </button>
                   {openDropdown === 'mobile-services' && (
-                    <div className="pl-4 pt-2 space-y-2">
+                    <div className="bg-white p-3 space-y-1">
                       {services.map((service) => (
                         <Link
                           key={service.name}
                           href={service.href}
-                          className="block text-gray-600 hover:text-brand font-inter py-1 transition-colors"
+                          className="block text-gray-700 hover:text-brand hover:bg-brand/5 font-inter py-2 px-3 rounded-md transition-all text-sm"
                           onClick={() => {
                             setIsMobileMenuOpen(false);
                             // trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'mobile_menu');
                           }}
                         >
-                          {service.name}
+                          → {service.name}
                         </Link>
                       ))}
                     </div>
@@ -245,21 +248,24 @@ export default function Header() {
                 </div>
 
                 {/* Mobile Areas */}
-                <div>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <button
-                    className="flex items-center justify-between w-full text-gray-700 font-semibold font-inter py-2"
+                    className="flex items-center justify-between w-full text-gray-900 font-bold font-inter py-3 px-4 bg-gradient-to-r from-blue-50/50 to-purple-50/50 hover:from-blue-50 hover:to-purple-50 transition-all"
                     onClick={() => toggleDropdown('mobile-areas')}
                   >
-                    Service Areas
-                    <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === 'mobile-areas' ? 'rotate-180' : ''}`} />
+                    <span className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-blue-600" />
+                      Service Areas
+                    </span>
+                    <ChevronDown className={`w-5 h-5 text-blue-600 transition-transform ${openDropdown === 'mobile-areas' ? 'rotate-180' : ''}`} />
                   </button>
                   {openDropdown === 'mobile-areas' && (
-                    <div className="pl-4 pt-2 space-y-2">
+                    <div className="bg-white p-3 grid grid-cols-2 gap-1">
                       {areas.map((area) => (
                         <Link
                           key={area.name}
                           href={area.href}
-                          className="block text-gray-600 hover:text-brand font-inter py-1 transition-colors"
+                          className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 font-inter py-2 px-3 rounded-md transition-all text-sm"
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           {area.name}
@@ -271,7 +277,7 @@ export default function Header() {
 
                 <Link 
                   href="/about" 
-                  className="block text-gray-700 hover:text-brand font-semibold font-inter py-2 transition-colors"
+                  className="block text-gray-900 hover:text-brand hover:bg-brand/5 font-semibold font-inter py-3 px-4 rounded-lg transition-all"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   About
@@ -282,31 +288,39 @@ export default function Header() {
                     setIsMobileMenuOpen(false);
                     scrollToContact();
                   }}
-                  className="block text-gray-700 hover:text-brand font-semibold font-inter py-2 transition-colors"
+                  className="block w-full text-left text-gray-900 hover:text-brand hover:bg-brand/5 font-semibold font-inter py-3 px-4 rounded-lg transition-all"
                 >
                   Contact
                 </button>
               </nav>
 
               {/* Mobile Contact Info */}
-              <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
-                <div className="flex items-center space-x-3 bg-gray-50 px-3 py-3 rounded-lg">
-                  <Phone className="w-5 h-5 text-brand" />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 font-inter">Call or Text</p>
-                    <a href="tel:+19014102020" className="text-brand hover:text-brand-600 font-semibold font-inter transition-colors">
-(901) 410-2020
-                    </a>
+              <div className="mt-6 pt-6 border-t border-gray-300 space-y-3">
+                <div className="bg-gradient-to-br from-brand/10 to-amber-100/50 border border-brand/20 px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-brand rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
+                      <Phone className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-700 font-inter mb-0.5">Call or Text</p>
+                      <a href="tel:+19014102020" className="text-brand hover:text-amber-700 font-bold font-inter text-lg transition-colors">
+                        (901) 410-2020
+                      </a>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-3 bg-gray-50 px-3 py-3 rounded-lg">
-                  <Mail className="w-5 h-5 text-brand" />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 font-inter">Email Us</p>
-                    <a href="mailto:info@m10djcompany.com" className="text-brand hover:text-brand-600 font-semibold font-inter transition-colors">
-                      info@m10djcompany.com
-                    </a>
+                <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
+                      <Mail className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-700 font-inter mb-0.5">Email Us</p>
+                      <a href="mailto:info@m10djcompany.com" className="text-blue-600 hover:text-blue-700 font-bold font-inter text-sm transition-colors break-all">
+                        info@m10djcompany.com
+                      </a>
+                    </div>
                   </div>
                 </div>
 
@@ -315,7 +329,7 @@ export default function Header() {
                     setIsMobileMenuOpen(false);
                     scrollToContact();
                   }}
-                  className="btn-primary w-full text-center"
+                  className="btn-primary w-full text-center shadow-lg hover:shadow-xl min-h-[48px] text-base font-bold"
                 >
                   Get Your Free Quote
                 </button>

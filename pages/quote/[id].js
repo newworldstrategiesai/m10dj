@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../components/company/Header';
 import Footer from '../../components/company/Footer';
-import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2 } from 'lucide-react';
+import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function PersonalizedQuote() {
   const router = useRouter();
@@ -15,6 +15,7 @@ export default function PersonalizedQuote() {
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [expandedBreakdown, setExpandedBreakdown] = useState(null);
 
   const fetchLeadData = useCallback(async () => {
     try {
@@ -45,6 +46,7 @@ export default function PersonalizedQuote() {
       id: 'package1',
       name: 'Package 1',
       price: 2000,
+      aLaCartePrice: 2400,
       description: 'Reception Only',
       features: [
         'Up to 4 hours of DJ/MC services at reception',
@@ -61,6 +63,7 @@ export default function PersonalizedQuote() {
       id: 'package2',
       name: 'Package 2',
       price: 2500,
+      aLaCartePrice: 3000,
       description: 'Reception Only - Most Popular',
       features: [
         'Up to 4 hours of DJ/MC services at reception',
@@ -78,6 +81,7 @@ export default function PersonalizedQuote() {
       id: 'package3',
       name: 'Package 3',
       price: 3000,
+      aLaCartePrice: 3500,
       description: 'Ceremony & Reception - Premium Experience',
       features: [
         'Up to 4 hours of DJ/MC services at reception',
@@ -169,6 +173,34 @@ export default function PersonalizedQuote() {
     return packagePrice + addonsPrice;
   };
 
+  // Get a la carte breakdown for a package to show savings
+  const getPackageBreakdown = (packageId) => {
+    const breakdowns = {
+      'package1': [
+        { item: '4 Hours DJ/MC Services', price: 1500 },
+        { item: 'Dance Floor Lighting', price: 350 },
+        { item: 'Uplighting (16 fixtures)', price: 300 },
+        { item: 'Additional Speaker', price: 250 }
+      ],
+      'package2': [
+        { item: '4 Hours DJ/MC Services', price: 1500 },
+        { item: 'Dance Floor Lighting', price: 350 },
+        { item: 'Uplighting (16 fixtures)', price: 300 },
+        { item: 'Ceremony Audio', price: 500 },
+        { item: 'Monogram Projection', price: 350 }
+      ],
+      'package3': [
+        { item: '4 Hours DJ/MC Services', price: 1500 },
+        { item: 'Dance Floor Lighting', price: 350 },
+        { item: 'Uplighting (16 fixtures)', price: 300 },
+        { item: 'Ceremony Audio', price: 500 },
+        { item: 'Monogram Projection', price: 350 },
+        { item: 'Dancing on the Clouds', price: 500 }
+      ]
+    };
+    return breakdowns[packageId] || [];
+  };
+
   const toggleAddon = (addonId) => {
     setSelectedAddons(prev =>
       prev.includes(addonId)
@@ -215,11 +247,8 @@ export default function PersonalizedQuote() {
         throw new Error('Failed to save selections');
       }
 
-      // Show success message and redirect to confirmation
-      alert('Your selections have been saved! Our team will contact you soon with the next steps.');
-      
-      // Redirect back to homepage or contact page
-      router.push('/');
+      // Redirect to contract page
+      router.push(`/quote/${id}/contract`);
     } catch (error) {
       console.error('Error saving selections:', error);
       alert('There was an error saving your selections. Please try again or contact us directly at (901) 410-2020.');
@@ -342,9 +371,12 @@ export default function PersonalizedQuote() {
 
           {/* Package Selection */}
           <div className="mb-16">
-            <h2 className="text-3xl font-bold text-center mb-8">
+            <h2 className="text-3xl font-bold text-center mb-4">
               Choose Your Perfect Package
             </h2>
+            <p className="text-center text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+              Our packages bundle services at a discounted rate. Compare the package price to a la carte pricing and see your savings! 🎉
+            </p>
             <div className="grid md:grid-cols-3 gap-6">
               {packages.map((pkg) => (
                 <div
@@ -379,7 +411,58 @@ export default function PersonalizedQuote() {
                   </div>
                   
                   <div className="mb-6">
-                    <span className="text-4xl font-bold text-brand">${pkg.price.toLocaleString()}</span>
+                    <div className="flex items-baseline gap-3 mb-2">
+                      <span className="text-4xl font-bold text-brand">${pkg.price.toLocaleString()}</span>
+                      <span className="text-lg text-gray-400 dark:text-gray-500 line-through">${pkg.aLaCartePrice.toLocaleString()}</span>
+                    </div>
+                    <div className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
+                      <CheckCircle className="w-4 h-4" />
+                      Save ${(pkg.aLaCartePrice - pkg.price).toLocaleString()}
+                    </div>
+                    
+                    {/* A La Carte Breakdown Toggle */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedBreakdown(expandedBreakdown === pkg.id ? null : pkg.id);
+                      }}
+                      className="mt-3 text-sm text-brand hover:text-brand-dark flex items-center gap-1 transition-colors"
+                    >
+                      {expandedBreakdown === pkg.id ? (
+                        <>
+                          <ChevronUp className="w-4 h-4" />
+                          Hide breakdown
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-4 h-4" />
+                          See a la carte breakdown
+                        </>
+                      )}
+                    </button>
+                    
+                    {/* A La Carte Price Breakdown */}
+                    {expandedBreakdown === pkg.id && (
+                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">If purchased separately:</p>
+                        <ul className="space-y-1 mb-2">
+                          {getPackageBreakdown(pkg.id).map((item, idx) => (
+                            <li key={idx} className="flex justify-between text-xs">
+                              <span className="text-gray-600 dark:text-gray-400">{item.item}</span>
+                              <span className="font-semibold text-gray-700 dark:text-gray-300">${item.price}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="pt-2 border-t border-gray-300 dark:border-gray-600 flex justify-between text-sm font-bold">
+                          <span>A La Carte Total:</span>
+                          <span className="text-gray-500 dark:text-gray-400 line-through">${pkg.aLaCartePrice.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold text-brand mt-1">
+                          <span>Package Price:</span>
+                          <span>${pkg.price.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <ul className="space-y-3 mb-6">
@@ -398,10 +481,13 @@ export default function PersonalizedQuote() {
           {/* Add-ons Selection */}
           {selectedPackage && (
             <div className="mb-16 animate-fade-in">
-              <h2 className="text-3xl font-bold text-center mb-8">
+              <h2 className="text-3xl font-bold text-center mb-4">
                 <Sparkles className="inline w-8 h-8 text-brand mr-2" />
                 Enhance Your Experience
               </h2>
+              <p className="text-center text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+                Add extra services to your package. These are optional upgrades that can be added to personalize your celebration even more! 
+              </p>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {addons.map((addon) => (
                   <div

@@ -92,11 +92,11 @@ export default function ClientLogoCarousel({
             {duplicatedLogos.map((logo, index) => (
               <div
                 key={`${logo.name}-${index}`}
-                className="flex-shrink-0 w-40 h-20 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-60 hover:opacity-100"
+                className="flex-shrink-0 w-40 h-20 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-90 hover:opacity-100"
               >
                 {/* Placeholder logo box */}
-                <div className="w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
+                <div className="w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                  <span className="text-xs text-gray-700 dark:text-gray-300 font-bold">
                     {logo.name}
                   </span>
                 </div>

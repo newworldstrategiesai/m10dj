@@ -10,7 +10,7 @@ export const scrollToContact = () => {
     
     if (isMobile) {
       // On mobile, scroll to form with some offset to account for header
-      const headerOffset = 80; // Account for fixed header height
+      const headerOffset = 120; // Account for fixed header height + breathing room
       const elementPosition = formElement.offsetTop - headerOffset;
       
       window.scrollTo({
@@ -34,7 +34,7 @@ export const scrollToContact = () => {
     
     if (isMobile) {
       // On mobile, add extra offset to get closer to the form
-      const headerOffset = 120; // Larger offset for mobile to account for contact info cards
+      const headerOffset = 160; // Larger offset for mobile to account for contact info cards
       const elementPosition = contactElement.offsetTop + (contactElement.offsetHeight * 0.6) - headerOffset;
       
       window.scrollTo({
@@ -53,7 +53,7 @@ export const scrollToContact = () => {
 /**
  * Generic scroll to element with mobile-aware offset
  */
-export const scrollToElement = (elementId, mobileOffset = 80) => {
+export const scrollToElement = (elementId, mobileOffset = 120) => {
   const element = document.getElementById(elementId);
   if (!element) return;
   
