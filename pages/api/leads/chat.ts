@@ -64,8 +64,9 @@ export default async function handler(
 
     console.log('📤 Sending request to OpenAI API...');
     console.log('Lead:', leadData.name);
+    console.log('Message count:', conversationMessages.length);
 
-    // Call OpenAI API
+    // Call OpenAI API with latest model
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -73,7 +74,7 @@ export default async function handler(
         Authorization: `Bearer ${openaiApiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4-turbo-preview',
+        model: 'gpt-4o',
         messages: conversationMessages,
         temperature: 0.7,
         max_tokens: 500,
@@ -84,14 +85,23 @@ export default async function handler(
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('❌ OpenAI API Error:', error);
+      const errorText = await response.text();
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { message: errorText };
+      }
+      console.error('❌ OpenAI API Error:');
+      console.error('Status:', response.status);
+      console.error('Error:', JSON.stringify(error, null, 2));
       
       // Return fallback response if API fails
       return res.status(200).json({
         message: getFallbackResponse(),
         error: 'Using fallback response',
-        type: 'fallback'
+        type: 'fallback',
+        debug: { status: response.status, error }
       });
     }
 

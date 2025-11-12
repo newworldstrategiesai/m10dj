@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageCircle, CheckCircle2, Zap, Loader } from 'lucide-react';
+import { Send, MessageCircle, CheckCircle2, Zap, Loader, X } from 'lucide-react';
 
 /**
  * Chat Window Component
@@ -135,25 +135,36 @@ export default function ContactFormChat({ formData, onClose }) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-lg overflow-hidden shadow-xl">
+    <div className="h-full w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
       {/* Chat Header */}
-      <div className="bg-gradient-to-r from-brand to-brand-600 text-white p-4 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-brand to-brand-600 text-white p-4 sm:p-6 flex items-center justify-between shadow-lg">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
             <MessageCircle className="w-6 h-6" />
           </div>
           <div>
             <h3 className="font-semibold text-lg">M10 DJ Assistant</h3>
-            <p className="text-sm text-white/80">Online now</p>
+            <p className="text-sm text-white/80 flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+              Online now
+            </p>
           </div>
         </div>
-        <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            aria-label="Close chat"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Messages Container */}
       <div 
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/50"
+        className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900"
       >
         {messages.map((message) => (
           <div
@@ -161,10 +172,10 @@ export default function ContactFormChat({ formData, onClose }) {
             className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
           >
             <div
-              className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
+              className={`max-w-[85%] sm:max-w-xl px-4 py-3 rounded-2xl ${
                 message.type === 'user'
-                  ? 'bg-brand text-white rounded-br-none'
-                  : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-none border border-gray-200 dark:border-gray-700'
+                  ? 'bg-brand text-white rounded-br-none shadow-md'
+                  : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-none border border-gray-200 dark:border-gray-700 shadow-sm'
               }`}
             >
               <p className="text-sm whitespace-pre-wrap leading-relaxed">
@@ -202,20 +213,20 @@ export default function ContactFormChat({ formData, onClose }) {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-        <form onSubmit={handleSendMessage} className="flex space-x-2">
+      <div className="p-4 sm:p-6 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+        <form onSubmit={handleSendMessage} className="flex space-x-3">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             disabled={isLoading}
             placeholder="Ask a question or share details..."
-            className="flex-1 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-5 py-3 text-base rounded-full border-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           />
           <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
-            className="flex-shrink-0 w-10 h-10 bg-brand text-white rounded-full flex items-center justify-center hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-110"
+            className="flex-shrink-0 w-12 h-12 bg-brand text-white rounded-full flex items-center justify-center hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg"
           >
             {isLoading ? (
               <Loader className="w-5 h-5 animate-spin" />
@@ -224,30 +235,30 @@ export default function ContactFormChat({ formData, onClose }) {
             )}
           </button>
         </form>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
           💬 We're here to help! Ask us anything.
         </p>
       </div>
 
       {/* Quick Actions */}
-      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
-        <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-semibold">Quick actions:</p>
+      <div className="px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 font-semibold">Quick actions:</p>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => window.location.href = 'tel:+19014102020'}
-            className="text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-brand transition-all"
           >
             📞 Call Now
           </button>
           <button
             onClick={() => setInputValue('Tell me more about your packages')}
-            className="text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-brand transition-all"
           >
             📦 Packages
           </button>
           <button
             onClick={() => setInputValue('What are your add-ons?')}
-            className="text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-brand transition-all"
           >
             ✨ Add-ons
           </button>

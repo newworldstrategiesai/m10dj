@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Mail, MapPin, Clock, AlertCircle, Send, Phone } from 'lucide-react';
 import { FormErrorLogger } from '../../utils/form-error-logger';
 import { FormStateManager } from '../../utils/form-state-manager';
@@ -55,28 +56,7 @@ export default function ContactForm({ className = '' }) {
     }
   }, []);
 
-  // Handle scroll positioning when success message appears
-  useEffect(() => {
-    if (submitted) {
-      // Ensure success message stays in view on mobile
-      const scrollToSuccess = () => {
-        const formElement = document.getElementById('contact-form');
-        if (formElement && window.innerWidth < 1024) { // Only on mobile
-          const headerOffset = 80;
-          const elementPosition = formElement.offsetTop - headerOffset;
-          
-          window.scrollTo({
-            top: elementPosition,
-            behavior: 'smooth'
-          });
-        }
-      };
-      
-      // Use multiple timeouts to handle different rendering timings
-      setTimeout(scrollToSuccess, 50);
-      setTimeout(scrollToSuccess, 200);
-    }
-  }, [submitted]);
+  // No scroll handling needed - chat opens full-screen
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -330,14 +310,36 @@ export default function ContactForm({ className = '' }) {
     }
   };
 
-  // Show chat interface after successful submission
-  if (submitted) {
-    return (
-      <div className={`${className} h-full animate-fadeIn`}>
-        <ContactFormChat formData={formData} onClose={() => setSubmitted(false)} />
-      </div>
-    );
-  }
+  // Show chat interface after successful submission - FULL SCREEN
+  useEffect(() => {
+    if (submitted) {
+      // Lock body scroll when chat opens
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+      // Ensure we're at the top of the page
+      window.scrollTo(0, 0);
+    }
+    return () => {
+      // Restore scroll when chat closes
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+    };
+  }, [submitted]);
+
+  // Render full-screen chat overlay using Portal
+  const chatOverlay = submitted && typeof document !== 'undefined' && createPortal(
+    <div 
+      className="fixed inset-0 z-[99999] bg-white dark:bg-gray-900"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
+    >
+      <ContactFormChat formData={formData} onClose={() => setSubmitted(false)} />
+    </div>,
+    document.body
+  );
 
   return (
     <div className={`${className}`}>
@@ -607,6 +609,7 @@ export default function ContactForm({ className = '' }) {
           </div>
         </div>
       </div>
+      {chatOverlay}
     </div>
   );
 } 
