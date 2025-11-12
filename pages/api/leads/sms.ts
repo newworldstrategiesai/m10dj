@@ -145,12 +145,16 @@ export default async function handler(
     }
 
     // Log SMS activity
-    await supabase.from('activity_log').insert({
-      contact_id: contact.id,
-      activity_type: 'sms_received',
-      description: `SMS from ${From}: "${Body.substring(0, 100)}"`,
-      metadata: { message_sid: MessageSid }
-    }).catch(err => console.error('Error logging activity:', err));
+    try {
+      await supabase.from('activity_log').insert({
+        contact_id: contact.id,
+        activity_type: 'sms_received',
+        description: `SMS from ${From}: "${Body.substring(0, 100)}"`,
+        metadata: { message_sid: MessageSid }
+      });
+    } catch (logError) {
+      console.error('Error logging activity:', logError);
+    }
 
     // Return 200 OK to Twilio
     res.status(200).send('');
