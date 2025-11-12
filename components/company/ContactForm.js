@@ -25,6 +25,7 @@ export default function ContactForm({ className = '' }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isChatMinimized, setIsChatMinimized] = useState(false);
+  const [submissionId, setSubmissionId] = useState(null);
   const [error, setError] = useState('');
   const [fieldWarnings, setFieldWarnings] = useState({});
   const [showRestoredNotice, setShowRestoredNotice] = useState(false);
@@ -276,6 +277,8 @@ export default function ContactForm({ className = '' }) {
           idempotencyKey: idempotencyKey.current
         });
         
+        // Store submission ID for personalized pages
+        setSubmissionId(result.data?.submissionId || result.data?.contactId);
         setSubmitted(true);
         
         // Reset idempotency key for potential future submissions
@@ -342,7 +345,8 @@ export default function ContactForm({ className = '' }) {
     isChatMinimized ? (
       // Minimized chat widget
       <ContactFormChat 
-        formData={formData} 
+        formData={formData}
+        submissionId={submissionId}
         onClose={() => setSubmitted(false)}
         isMinimized={true}
         onMinimize={() => setIsChatMinimized(false)}
@@ -354,7 +358,8 @@ export default function ContactForm({ className = '' }) {
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
       >
         <ContactFormChat 
-          formData={formData} 
+          formData={formData}
+          submissionId={submissionId}
           onClose={() => setSubmitted(false)}
           isMinimized={false}
           onMinimize={() => setIsChatMinimized(true)}

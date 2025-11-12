@@ -6,7 +6,7 @@ import { Send, MessageCircle, CheckCircle2, Zap, Loader, X, Minimize2, Maximize2
  * Transforms the lead form into an interactive chat experience
  * Uses OpenAI GPT-4 for intelligent, contextual responses
  */
-export default function ContactFormChat({ formData, onClose, isMinimized, onMinimize }) {
+export default function ContactFormChat({ formData, submissionId, onClose, isMinimized, onMinimize }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,17 +37,17 @@ export default function ContactFormChat({ formData, onClose, isMinimized, onMini
           timestamp: new Date()
         }];
 
-        // If it's a wedding, add service selection link
+        // If it's a wedding, add personalized service selection link
         const isWedding = formData.eventType && formData.eventType.toLowerCase().includes('wedding');
-        if (isWedding) {
+        if (isWedding && submissionId) {
           initialMessages.push({
             id: 2,
             type: 'bot',
-            text: `💍 Perfect! I've prepared a custom service selection page just for you. Click below to explore our wedding packages and add-ons:`,
+            text: `💍 Perfect! I've prepared a custom service selection page just for you, ${formData.name.split(' ')[0]}. Click below to explore our wedding packages and add-ons:`,
             timestamp: new Date(),
             hasLink: true,
-            link: '/memphis-wedding-dj',
-            linkText: '👉 View Wedding Services & Build Your Package'
+            link: `/quote/${submissionId}`,
+            linkText: '👉 View Your Personal Wedding Services Page'
           });
         }
 
@@ -64,7 +64,7 @@ export default function ContactFormChat({ formData, onClose, isMinimized, onMini
     };
 
     initializeChat();
-  }, [formData]);
+  }, [formData, submissionId]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
