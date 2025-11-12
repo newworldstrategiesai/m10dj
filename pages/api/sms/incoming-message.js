@@ -1,5 +1,5 @@
-// Enhanced SMS webhook with instant auto-reply + delayed AI response
-import { getCustomerContext, generateAIResponse, extractLeadInfo, updateContactName } from '../../../utils/chatgpt-sms-assistant.js';
+// Enhanced SMS webhook with instant auto-reply + delayed AI response using OpenAI Agents
+import { processSMSWithAgent, extractLeadInfo, updateContactName } from '../../../utils/sms-agent.js';
 
 export default async function handler(req, res) {
   try {
@@ -31,19 +31,16 @@ export default async function handler(req, res) {
     let aiGenerationSuccess = false;
     
     try {
-      console.log('🤖 Generating AI preview for admin...');
-      console.log('📋 Fetching customer context...');
-      
-      const customerContext = await getCustomerContext(From);
-      console.log('✅ Customer context retrieved');
-      
-      console.log('🧠 Calling OpenAI API...');
-      aiPreview = await generateAIResponse(Body, customerContext);
-      
+      console.log('🤖 Generating AI preview for admin using OpenAI Agents...');
+      console.log('📋 Processing SMS with agent...');
+
+      // Use the new SMS agent to generate response
+      aiPreview = await processSMSWithAgent(From, Body);
+
       // Validate the AI response
       if (aiPreview && aiPreview.trim().length > 0) {
         aiGenerationSuccess = true;
-        console.log('✅ AI preview generated successfully');
+        console.log('✅ AI preview generated successfully with OpenAI Agents');
         console.log(`📝 AI Response Preview: "${aiPreview.substring(0, 100)}..."`);
       } else {
         console.warn('⚠️ AI response was empty or invalid');
