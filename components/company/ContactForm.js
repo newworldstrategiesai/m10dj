@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mail, MapPin, Clock, AlertCircle } from 'lucide-react';
+import { Mail, MapPin, Clock, AlertCircle, Send, Phone } from 'lucide-react';
 import { FormErrorLogger } from '../../utils/form-error-logger';
 import { FormStateManager } from '../../utils/form-state-manager';
 import { ClientIdempotencyTracker } from '../../utils/idempotency';
