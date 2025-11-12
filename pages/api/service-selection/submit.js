@@ -303,53 +303,113 @@ export default async function handler(req, res) {
       sent_at: new Date().toISOString()
     });
 
+    // Build document link
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const documentLink = `${siteUrl}/api/documents/${invoiceData?.id || 'documents'}`;
+
     // Send confirmation email to customer
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/email/send`, {
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <img src="${siteUrl}/M10-Gold-Logo.png" alt="M10 DJ Company Logo" style="max-width: 100px; height: auto; margin-bottom: 15px;">
+            <h2 style="color: #000; margin: 0; font-size: 24px;">Your Selections Received! 🎉</h2>
+          </div>
+          
+          <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <p style="color: #333; font-size: 16px; margin-bottom: 20px;">
+              Hi ${contact.first_name}!
+            </p>
+            
+            <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+              Thank you for completing your service selection! We've received your choices and are putting together a detailed quote for your ${selections.eventType}.
+            </p>
+
+            <div style="background: #f8f9fa; border-left: 4px solid #fcba00; padding: 20px; margin-bottom: 25px; border-radius: 4px;">
+              <h3 style="color: #fcba00; margin-top: 0;">📋 Your Documents</h3>
+              <p style="margin: 10px 0; color: #555;">Your invoice and service agreement are ready to review:</p>
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="${documentLink}" style="display: inline-block; background: linear-gradient(135deg, #fcba00, #e6a800); color: #000; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                  📄 View Invoice & Contract
+                </a>
+              </div>
+              <p style="font-size: 13px; color: #999; margin: 10px 0 0 0;">
+                This link includes your invoice with pricing breakdown and your service agreement ready to sign.
+              </p>
+            </div>
+
+            <div style="background: #fff3cd; border: 2px solid #fcba00; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+              <p style="color: #856404; margin: 0; font-weight: 600; text-align: center;">
+                ⏰ We'll be in touch within 24 hours with any questions and next steps!
+              </p>
+            </div>
+
+            <h3 style="color: #333; margin: 25px 0 15px 0;">What You Selected:</h3>
+            <ul style="color: #555; line-height: 1.8; padding-left: 20px; margin: 0;">
+              <li><strong>Package:</strong> ${selections.package}</li>
+              <li><strong>Event Type:</strong> ${selections.eventType}</li>
+              <li><strong>Event Date:</strong> ${selections.eventDate}</li>
+              <li><strong>Guest Count:</strong> ${selections.guestCount || 'TBD'}</li>
+            </ul>
+
+            <h3 style="color: #333; margin: 25px 0 15px 0;">Next Steps:</h3>
+            <ol style="color: #555; line-height: 1.8; padding-left: 20px; margin: 0;">
+              <li>Review your invoice and service agreement using the link above</li>
+              <li>Sign your contract electronically</li>
+              <li>Submit your deposit to secure your date</li>
+              <li>We'll confirm everything and send additional details</li>
+            </ol>
+
+            <div style="margin-top: 30px; padding: 20px; background: #f0f0f0; border-radius: 6px; text-align: center;">
+              <p style="color: #333; margin: 0 0 10px 0;"><strong>Have Questions?</strong></p>
+              <p style="color: #666; margin: 0;">
+                📞 Call us: <strong>(901) 410-2020</strong><br>
+                📧 Email: <strong>djbenmurray@gmail.com</strong>
+              </p>
+            </div>
+
+            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
+              Thank you for choosing M10 DJ Company!<br>
+              We can't wait to be part of your special event.
+            </p>
+          </div>
+        </div>
+      `;
+
+      await fetch(`${siteUrl}/api/email/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: contact.email_address || contact.primary_email,
-          subject: '✅ Your M10 DJ Service Selection Received!',
-          body: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>Hi ${contact.first_name}!</h2>
-              
-              <p>Great news - we received your service selections! 🎉</p>
-              
-              <h3>What You Selected:</h3>
-              <ul>
-                <li><strong>Package:</strong> ${selections.package}</li>
-                <li><strong>Event Type:</strong> ${selections.eventType}</li>
-                <li><strong>Event Date:</strong> ${selections.eventDate}</li>
-                <li><strong>Guest Count:</strong> ${selections.guestCount}</li>
-                ${selections.ceremonyMusic ? '<li>✅ Ceremony Music</li>' : ''}
-                ${selections.cocktailHour ? '<li>✅ Cocktail Hour</li>' : ''}
-                ${selections.reception ? '<li>✅ Reception</li>' : ''}
-              </ul>
-              
-              <h3>What Happens Next:</h3>
-              <ol>
-                <li>We'll review your selections</li>
-                <li>Prepare a custom quote for your event</li>
-                <li>Reach out within 24 hours with pricing and next steps</li>
-              </ol>
-              
-              <p>Questions in the meantime? Just reply to this email or call us at (901) 410-2020.</p>
-              
-              <p>Excited to be part of your special day!</p>
-              
-              <p>Best,<br>
-              ${process.env.OWNER_NAME || 'M10 DJ Company'}<br>
-              (901) 410-2020</p>
-            </div>
-          `,
+          subject: '✅ Your M10 DJ Service Selection Received - Documents Ready!',
+          body: emailHtml,
           contactId: contact.id
         })
       });
     } catch (emailError) {
       console.error('Error sending confirmation email:', emailError);
       // Don't fail the request if email fails
+    }
+
+    // Send SMS notification if phone number exists
+    if (contact.phone && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+      try {
+        const twilio = require('twilio');
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        
+        const smsMessage = `Hi ${contact.first_name}! We received your service selections for your ${selections.eventType}. 📋 View your invoice & contract: ${documentLink} - M10 DJ Company (901) 410-2020`;
+        
+        await client.messages.create({
+          body: smsMessage,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: contact.phone
+        });
+        
+        console.log(`✅ SMS sent to ${contact.phone}`);
+      } catch (smsError) {
+        console.error('Error sending SMS:', smsError);
+        // Don't fail the request if SMS fails
+      }
     }
 
     const successResponse = {

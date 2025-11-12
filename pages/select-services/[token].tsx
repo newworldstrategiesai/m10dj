@@ -443,6 +443,20 @@ export default function SelectServicesPage() {
               <p className="text-xs text-gray-500 italic">
                 * This is a draft estimate. Final quote may vary based on your specific requirements.
               </p>
+
+              {invoice && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <a
+                    href={`/api/documents/${invoice.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+                  >
+                    <FileText className="h-5 w-5" />
+                    View Full Documents (Invoice & Contract)
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
