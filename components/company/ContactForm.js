@@ -4,6 +4,7 @@ import { FormErrorLogger } from '../../utils/form-error-logger';
 import { FormStateManager } from '../../utils/form-state-manager';
 import { ClientIdempotencyTracker } from '../../utils/idempotency';
 import { validateContactForm } from '../../utils/form-validator';
+import ContactFormChat from './ContactFormChat';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackLead, trackContactAction } from '../EnhancedTracking';
 
@@ -370,6 +371,15 @@ export default function ContactForm({ className = '' }) {
             Send Another Message
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Show chat interface after successful submission
+  if (submitted) {
+    return (
+      <div className={`${className} h-full`}>
+        <ContactFormChat formData={formData} onClose={() => setSubmitted(false)} />
       </div>
     );
   }
