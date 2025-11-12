@@ -5,25 +5,27 @@
 
 CREATE TABLE IF NOT EXISTS sms_conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
-  phone_number TEXT NOT NULL,
+  contact_id UUID,
+  phone_number TEXT NOT NULL UNIQUE,
   messages JSONB DEFAULT '[]'::jsonb, -- Array of {role, content, timestamp}
   last_message_at TIMESTAMP WITH TIME ZONE,
   last_message_from TEXT, -- 'user' or 'assistant'
   conversation_status TEXT DEFAULT 'active', -- active, resolved, archived
   resolved_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Indexes
-  CONSTRAINT unique_contact_sms UNIQUE(contact_id)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add foreign key constraint (separate from table creation for safety)
+ALTER TABLE sms_conversations
+ADD CONSTRAINT fk_sms_conversations_contact_id
+FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE;
+
 -- Create indexes for performance
-CREATE INDEX idx_sms_conversations_contact_id ON sms_conversations(contact_id);
-CREATE INDEX idx_sms_conversations_phone_number ON sms_conversations(phone_number);
-CREATE INDEX idx_sms_conversations_updated_at ON sms_conversations(updated_at DESC);
-CREATE INDEX idx_sms_conversations_status ON sms_conversations(conversation_status);
+CREATE INDEX IF NOT EXISTS idx_sms_conversations_contact_id ON sms_conversations(contact_id);
+CREATE INDEX IF NOT EXISTS idx_sms_conversations_phone_number ON sms_conversations(phone_number);
+CREATE INDEX IF NOT EXISTS idx_sms_conversations_updated_at ON sms_conversations(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sms_conversations_status ON sms_conversations(conversation_status);
 
 -- Enable RLS (Row Level Security)
 ALTER TABLE sms_conversations ENABLE ROW LEVEL SECURITY;
