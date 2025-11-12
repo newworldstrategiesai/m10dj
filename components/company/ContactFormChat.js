@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageCircle, CheckCircle2, Zap, Loader, X } from 'lucide-react';
+import { Send, MessageCircle, CheckCircle2, Zap, Loader, X, Minimize2, Maximize2 } from 'lucide-react';
 
 /**
  * Chat Window Component
  * Transforms the lead form into an interactive chat experience
  * Uses OpenAI GPT-4 for intelligent, contextual responses
  */
-export default function ContactFormChat({ formData, onClose }) {
+export default function ContactFormChat({ formData, onClose, isMinimized, onMinimize }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,18 +30,34 @@ export default function ContactFormChat({ formData, onClose }) {
         // Send initial greeting from AI
         const greetingMessage = `👋 Hey ${formData.name}! Thanks so much for reaching out! I'm the lead assistant at M10 DJ Company. I'm here to help answer any questions you have about your ${formData.eventType} and our services. What can I tell you about making your day absolutely unforgettable? 🎵`;
         
-        setMessages([{
+        const initialMessages = [{
           id: 1,
           type: 'bot',
           text: greetingMessage,
           timestamp: new Date()
-        }]);
+        }];
+
+        // If it's a wedding, add service selection link
+        const isWedding = formData.eventType && formData.eventType.toLowerCase().includes('wedding');
+        if (isWedding) {
+          initialMessages.push({
+            id: 2,
+            type: 'bot',
+            text: `💍 Perfect! I've prepared a custom service selection page just for you. Click below to explore our wedding packages and add-ons:`,
+            timestamp: new Date(),
+            hasLink: true,
+            link: '/memphis-wedding-dj',
+            linkText: '👉 View Wedding Services & Build Your Package'
+          });
+        }
+
+        setMessages(initialMessages);
 
         conversationHistoryRef.current = [
           { role: 'assistant', content: greetingMessage }
         ];
 
-        console.log('✅ Chat initialized with greeting');
+        console.log('✅ Chat initialized with greeting', isWedding ? '+ wedding service link' : '');
       } catch (error) {
         console.error('Error initializing chat:', error);
       }
@@ -134,6 +150,26 @@ export default function ContactFormChat({ formData, onClose }) {
     }
   };
 
+  // If minimized, show compact widget
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-4 right-4 z-[9999] animate-fadeIn">
+        <button
+          onClick={() => onMinimize && onMinimize()}
+          className="flex items-center gap-3 bg-gradient-to-r from-brand to-brand-600 text-white px-5 py-3 rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-105"
+        >
+          <MessageCircle className="w-6 h-6" />
+          <span className="font-semibold">Chat with us</span>
+          {messages.length > 1 && (
+            <span className="bg-white text-brand rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+              {messages.length - 1}
+            </span>
+          )}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
       {/* Chat Header */}
@@ -150,15 +186,26 @@ export default function ContactFormChat({ formData, onClose }) {
             </p>
           </div>
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-            aria-label="Close chat"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onMinimize && (
+            <button
+              onClick={onMinimize}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              aria-label="Minimize chat"
+            >
+              <Minimize2 className="w-5 h-5" />
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              aria-label="Close chat"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages Container */}
@@ -181,6 +228,23 @@ export default function ContactFormChat({ formData, onClose }) {
               <p className="text-sm whitespace-pre-wrap leading-relaxed">
                 {message.text}
               </p>
+              {message.hasLink && message.link && (
+                <a
+                  href={message.link}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // Minimize the chat so user can browse the page
+                    if (onMinimize) {
+                      onMinimize();
+                    }
+                    // Open link in new tab so chat state persists
+                    window.open(message.link, '_blank', 'noopener,noreferrer');
+                  }}
+                  className="inline-block mt-3 px-4 py-2 bg-brand hover:bg-brand-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg"
+                >
+                  {message.linkText || 'View Services'} →
+                </a>
+              )}
               <p className={`text-xs mt-1 ${
                 message.type === 'user' ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
               }`}>

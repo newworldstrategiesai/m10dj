@@ -24,6 +24,7 @@ export default function ContactForm({ className = '' }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
   const [error, setError] = useState('');
   const [fieldWarnings, setFieldWarnings] = useState({});
   const [showRestoredNotice, setShowRestoredNotice] = useState(false);
@@ -310,34 +311,56 @@ export default function ContactForm({ className = '' }) {
     }
   };
 
-  // Show chat interface after successful submission - FULL SCREEN
+  // Show chat interface after successful submission
   useEffect(() => {
-    if (submitted) {
-      // Lock body scroll when chat opens
+    if (submitted && !isChatMinimized) {
+      // Lock body scroll when chat is full-screen
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
       document.body.style.height = '100%';
       // Ensure we're at the top of the page
       window.scrollTo(0, 0);
+    } else {
+      // Restore scroll when chat is minimized or closed
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
     }
     return () => {
-      // Restore scroll when chat closes
+      // Restore scroll when component unmounts
       document.body.style.overflow = '';
       document.body.style.position = '';
       document.body.style.width = '';
       document.body.style.height = '';
     };
-  }, [submitted]);
+  }, [submitted, isChatMinimized]);
 
-  // Render full-screen chat overlay using Portal
+  // Render chat using Portal (full-screen or minimized)
   const chatOverlay = submitted && typeof document !== 'undefined' && createPortal(
-    <div 
-      className="fixed inset-0 z-[99999] bg-white dark:bg-gray-900"
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
-    >
-      <ContactFormChat formData={formData} onClose={() => setSubmitted(false)} />
-    </div>,
+    isChatMinimized ? (
+      // Minimized chat widget
+      <ContactFormChat 
+        formData={formData} 
+        onClose={() => setSubmitted(false)}
+        isMinimized={true}
+        onMinimize={() => setIsChatMinimized(false)}
+      />
+    ) : (
+      // Full-screen chat
+      <div 
+        className="fixed inset-0 z-[99999] bg-white dark:bg-gray-900"
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
+      >
+        <ContactFormChat 
+          formData={formData} 
+          onClose={() => setSubmitted(false)}
+          isMinimized={false}
+          onMinimize={() => setIsChatMinimized(true)}
+        />
+      </div>
+    ),
     document.body
   );
 
