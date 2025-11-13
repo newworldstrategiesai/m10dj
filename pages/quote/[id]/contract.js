@@ -1,27 +1,27 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
 import Footer from '../../../components/company/Footer';
-import { FileText, CheckCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, PenTool } from 'lucide-react';
 
 export default function ContractPage() {
   const router = useRouter();
   const { id } = router.query;
   const [leadData, setLeadData] = useState(null);
   const [quoteData, setQuoteData] = useState(null);
+  const [contractData, setContractData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [signing, setSigning] = useState(false);
-  const [agreed, setAgreed] = useState(false);
-  
-  // Signature canvas
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasSignature, setHasSignature] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  useEffect(() => {
+    if (id) {
+      fetchData();
+    }
+  }, [id]);
+
+  const fetchData = async () => {
     try {
       const [leadResponse, quoteResponse] = await Promise.all([
         fetch(`/api/leads/${id}`),
@@ -36,111 +36,63 @@ export default function ContractPage() {
       if (quoteResponse.ok) {
         const quote = await quoteResponse.json();
         setQuoteData(quote);
+        
+        // If quote has contract_id, fetch contract details
+        if (quote.contract_id) {
+          try {
+            const contractResponse = await fetch(`/api/contracts/${quote.contract_id}`);
+            if (contractResponse.ok) {
+              const contract = await contractResponse.json();
+              setContractData(contract);
+            }
+          } catch (e) {
+            console.log('Could not fetch contract details:', e);
+          }
+        }
       } else {
-        setError('Quote not found. Please complete service selection first.');
+        // Quote not found, but we can still show contract based on lead data
+        console.log('Quote not found, will display contract from lead data');
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      setError('Failed to load contract details');
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  };
 
-  useEffect(() => {
-    if (id) {
-      fetchData();
-    }
-  }, [id, fetchData]);
-
-  // Initialize canvas
-  useEffect(() => {
-    if (canvasRef.current && !loading) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-    }
-  }, [loading]);
-
-  const startDrawing = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  const handleSign = async () => {
+    if (!leadData || !quoteData) return;
     
-    const ctx = canvas.getContext('2d');
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-    setHasSignature(true);
-  };
-
-  const draw = (e) => {
-    if (!isDrawing) return;
-    
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const ctx = canvas.getContext('2d');
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
-  const clearSignature = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasSignature(false);
-  };
-
-  const handleSubmit = async () => {
-    if (!hasSignature || !agreed) {
-      alert('Please sign the contract and agree to the terms');
-      return;
-    }
-
     setSigning(true);
-
     try {
-      // Get signature as base64
-      const canvas = canvasRef.current;
-      const signatureData = canvas.toDataURL();
-
-      // Save signature
-      const response = await fetch('/api/quote/sign', {
+      const response = await fetch(`/api/quote/sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           leadId: id,
-          signature: signatureData,
-          agreedAt: new Date().toISOString()
+          clientName: leadData.name,
+          clientEmail: leadData.email
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save signature');
+      if (response.ok) {
+        const result = await response.json();
+        setContractData(result.contract);
+        alert('Contract signed successfully!');
+      } else {
+        throw new Error('Failed to sign contract');
       }
-
-      // Redirect to payment page
-      router.push(`/quote/${id}/payment`);
     } catch (error) {
-      console.error('Error saving signature:', error);
-      alert('There was an error saving your signature. Please try again or contact us at (901) 410-2020.');
+      console.error('Error signing contract:', error);
+      alert('Failed to sign contract. Please try again.');
     } finally {
       setSigning(false);
     }
   };
 
-  const firstName = leadData?.name?.split(' ')[0] || 'there';
-  const totalAmount = quoteData?.total_price || 0;
+  const handleDownload = () => {
+    window.print();
+  };
 
   if (loading) {
     return (
@@ -152,7 +104,7 @@ export default function ContractPage() {
           <Header />
           <div className="flex flex-col items-center justify-center min-h-[60vh] py-20">
             <Loader2 className="w-12 h-12 text-brand animate-spin mb-4" />
-            <p className="text-xl text-gray-600 dark:text-gray-300">Loading your contract...</p>
+            <p className="text-xl text-gray-600 dark:text-gray-300">Loading contract...</p>
           </div>
           <Footer />
         </div>
@@ -160,39 +112,16 @@ export default function ContractPage() {
     );
   }
 
-  if (error || !leadData || !quoteData) {
-    return (
-      <>
-        <Head>
-          <title>Contract Not Found | M10 DJ Company</title>
-        </Head>
-        <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-          <Header />
-          <div className="flex flex-col items-center justify-center min-h-[60vh] py-20 px-4">
-            <div className="max-w-md text-center">
-              <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-4xl">⚠️</span>
-              </div>
-              <h1 className="text-3xl font-bold mb-4">Contract Not Available</h1>
-              <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-                {error || "Please complete service selection first."}
-              </p>
-              <Link href={`/quote/${id}`} className="btn-primary inline-flex items-center gap-2">
-                <ArrowLeft className="w-5 h-5" />
-                Back to Service Selection
-              </Link>
-            </div>
-          </div>
-          <Footer />
-        </div>
-      </>
-    );
-  }
+  const totalAmount = quoteData?.total_price || 0;
+  const depositAmount = totalAmount * 0.5;
+  const remainingBalance = totalAmount - depositAmount;
+  const contractNumber = contractData?.contract_number || `CONT-${id.substring(0, 8).toUpperCase()}`;
+  const isSigned = contractData?.status === 'signed' || contractData?.signed_at;
 
   return (
     <>
       <Head>
-        <title>Service Agreement | M10 DJ Company</title>
+        <title>Service Contract {contractNumber} | M10 DJ Company</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
 
@@ -200,206 +129,219 @@ export default function ContractPage() {
         <Header />
 
         <main className="section-container py-12 md:py-20">
-          {/* Progress Indicator */}
-          <div className="max-w-4xl mx-auto mb-12">
-            <div className="flex items-center justify-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center font-bold">
-                  <CheckCircle className="w-6 h-6" />
+          {/* Header Actions */}
+          <div className="max-w-4xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <Link
+              href={`/quote/${id}/confirmation`}
+              className="inline-flex items-center gap-2 text-brand hover:text-brand-dark transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Confirmation
+            </Link>
+            <button
+              onClick={handleDownload}
+              className="btn-outline inline-flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Download PDF
+            </button>
+          </div>
+
+          {/* Contract Document */}
+          <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12 print:shadow-none print:rounded-none">
+            {/* Contract Header */}
+            <div className="border-b border-gray-200 dark:border-gray-700 pb-8 mb-8">
+              <div className="text-center mb-6">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Contract for Services</h1>
+                <p className="text-gray-600 dark:text-gray-400">Contract Number: {contractNumber}</p>
+              </div>
+              {isSigned && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
+                  <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
+                  <p className="text-green-800 dark:text-green-200 font-semibold">Contract Signed</p>
+                  {contractData?.signed_at && (
+                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                      Signed on {new Date(contractData.signed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  )}
                 </div>
-                <span className="text-sm font-semibold hidden sm:inline">Selection</span>
-              </div>
-              <div className="h-1 w-16 bg-brand"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center font-bold">2</div>
-                <span className="text-sm font-semibold hidden sm:inline">Contract</span>
-              </div>
-              <div className="h-1 w-16 bg-gray-300 dark:bg-gray-600"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-400 flex items-center justify-center font-bold">3</div>
-                <span className="text-sm font-semibold text-gray-500 hidden sm:inline">Payment</span>
-              </div>
+              )}
             </div>
-          </div>
 
-          {/* Header */}
-          <div className="text-center mb-8 animate-fade-in">
-            <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-4 py-2 rounded-full mb-4">
-              <FileText className="w-4 h-4" />
-              <span className="text-sm font-semibold">Service Agreement</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-              Review & Sign Your Contract
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300">
-              Please review the agreement and sign below to proceed to payment
-            </p>
-          </div>
-
-          {/* Contract Content */}
-          <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12 mb-8">
-            <div className="prose prose-lg dark:prose-invert max-w-none">
-              <h2 className="text-2xl font-bold mb-6">DJ Services Agreement</h2>
-              
-              <p className="mb-4">
-                <strong>Client:</strong> {leadData.name}<br />
-                <strong>Email:</strong> {leadData.email}<br />
-                <strong>Phone:</strong> {leadData.phone}<br />
-                <strong>Event Date:</strong> {leadData.event_date ? new Date(leadData.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'TBD'}<br />
-                <strong>Location:</strong> {leadData.location || 'TBD'}
+            {/* Contract Content */}
+            <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
+              <p className="text-gray-700 dark:text-gray-300 mb-6">
+                This Contract for Services (the &quot;Contract&quot;) is made effective as of <strong>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong> (the &quot;Effective Date&quot;), by and between <strong>{leadData?.name || 'Client'}</strong> (&quot;Client&quot;) and M10 DJ Company, (&quot;M10&quot;) of 65 Stewart Rd, Eads, Tennessee 38028 (collectively the &quot;Parties&quot;).
               </p>
 
-              <h3 className="text-xl font-bold mt-8 mb-4">Services Selected</h3>
-              <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg mb-6">
-                <div className="mb-4">
-                  <p className="font-bold text-brand">{quoteData.package_name}</p>
-                  <p className="text-2xl font-bold">${quoteData.package_price?.toLocaleString()}</p>
-                </div>
-                
-                {quoteData.addons && quoteData.addons.length > 0 && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-                    <p className="font-semibold mb-2">Add-ons:</p>
-                    <ul className="space-y-2">
-                      {quoteData.addons.map((addon, idx) => (
-                        <li key={idx} className="flex justify-between">
-                          <span>{addon.name}</span>
-                          <span className="font-semibold">${addon.price?.toLocaleString()}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+              <p className="text-gray-700 dark:text-gray-300 mb-6">
+                NOW, THEREFORE, FOR AND IN CONSIDERATION of the mutual promises and agreements contained herein, Client hires M10, and M10 agrees to provide Disc Jockey services (&quot;DJ&quot; services) to Client under the terms and conditions hereby agreed upon by the parties:
+              </p>
+
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">1. DESCRIPTION OF SERVICES</h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Client hereby agrees to engage M10 to provide Client with DJ services (collectively, the &quot;Services&quot;) to be performed at the following event(s):
+              </p>
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-gray-900 dark:text-white mb-2">Event Details:</p>
+                {leadData?.eventDate && (
+                  <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                    <Calendar className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <span><strong>Date:</strong> {new Date(leadData.eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                  </p>
                 )}
-                
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xl font-bold">Total:</span>
-                    <span className="text-3xl font-bold text-brand">${totalAmount.toLocaleString()}</span>
-                  </div>
-                </div>
+                {leadData?.location && (
+                  <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
+                    <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <span><strong>Location:</strong> {leadData.location}</span>
+                  </p>
+                )}
+              </div>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Services shall consist primarily of providing musical entertainment by means of a recorded music format.
+              </p>
+
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">2. PERFORMANCE OF SERVICES</h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                <strong>a.</strong> M10 shall arrive at the event location one hour before the starting time to set-up and conduct sound check. M10&apos;s playlist shall have an unlimited playlist of songs from both latest and old classics. M10 shall incorporate guest&apos;s requests into the playlist unless otherwise directed by Client. Music shall be played without any breaks unless requested by Client. Time is of the essence. Requests for extended playing time beyond the agreed-upon hours of service shall be accommodated if feasible.
+              </p>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                <strong>b.</strong> M10 shall be familiar with indoor and outdoor set-up and sound mixing. M10 shall provide multi-color lighting for a ball room effect. M10 shall have high quality microphone and sound system.
+              </p>
+
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">3. TERM</h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Client and M10 agree that this Contract between the Parties is for Services that shall commence on the above date and complete on <strong>{leadData?.eventDate ? new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'the event date'}</strong>. The Contract may be extended and/or renewed by agreement of all Parties in writing thereafter.
+              </p>
+
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">4. PAYMENT</h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                For your convenience, payments can be made online using a valid credit card. Otherwise, payment is to be made by cash or check.
+              </p>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                An initial retainer of <strong>${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> of total cost <strong>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> and a signed contract must be secured prior to any services being performed by Consultant. Remaining balance is due as indicated in the schedule below:
+              </p>
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-gray-900 dark:text-white mb-2">Payment Schedule:</p>
+                <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                  <li>Deposit: ${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Due upon signing)</li>
+                  <li>Remaining Balance: ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Due 7 days before event)</li>
+                </ul>
               </div>
 
-              <h3 className="text-xl font-bold mt-8 mb-4">Terms & Conditions</h3>
-              
-              <p className="mb-4">
-                This agreement is made between M10 DJ Company ("Service Provider") and {leadData.name} ("Client") for DJ entertainment services.
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">5. CANCELLATION POLICY</h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                All retainer fees are non-refundable. Cancellation of this Contract by Client which is received in writing more than 30 days prior to the event will result in a refund of any monies paid, less the retainer fee. Cancellation of Services received less than 30 days prior to the event obligate Client to make full remaining payment of the total fees agreed upon. If cancellation is initiated by M10 all monies paid to M10 from Client shall be fully refunded INCLUDING retainer fee. Any refund shall be paid out at month&apos;s end.
               </p>
 
-              <h4 className="font-bold mt-6 mb-2">1. Services</h4>
-              <p className="mb-4">
-                Service Provider agrees to provide professional DJ and entertainment services as selected above for the Client&apos;s event on {leadData.event_date ? new Date(leadData.event_date).toLocaleDateString() : 'the specified date'}.
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">6. WARRANTY</h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                M10 shall provide its services and meet its obligations under this Contract in a timely and workmanlike manner, using knowledge and recommendations for performing the services which meet generally acceptable standards in M10&apos;s industry and region, and will provide a standard of care equal to, or superior to, care used by service providers similar to M10 on similar projects.
               </p>
 
-              <h4 className="font-bold mt-6 mb-2">2. Payment Terms</h4>
-              <p className="mb-4">
-                Total fee: ${totalAmount.toLocaleString()}. A 50% deposit (${(totalAmount * 0.5).toLocaleString()}) is due upon signing this agreement. The remaining balance is due 7 days before the event date.
-              </p>
-
-              <h4 className="font-bold mt-6 mb-2">3. Cancellation Policy</h4>
-              <p className="mb-4">
-                Cancellations more than 90 days before the event: Full refund minus $200 administrative fee.<br />
-                Cancellations 60-90 days before: 50% refund.<br />
-                Cancellations less than 60 days before: No refund, but may reschedule within 1 year.
-              </p>
-
-              <h4 className="font-bold mt-6 mb-2">4. Service Provider Responsibilities</h4>
-              <ul className="list-disc pl-6 mb-4">
-                <li>Arrive on time and provide services as specified</li>
-                <li>Maintain professional equipment in good working condition</li>
-                <li>Dress professionally and maintain professional demeanor</li>
-                <li>Provide backup equipment for critical components</li>
-              </ul>
-
-              <h4 className="font-bold mt-6 mb-2">5. Client Responsibilities</h4>
-              <ul className="list-disc pl-6 mb-4">
-                <li>Provide accurate event details and timeline</li>
-                <li>Ensure venue has appropriate electrical power and space</li>
-                <li>Provide final music preferences at least 2 weeks before event</li>
-                <li>Ensure payment is received per the payment terms</li>
-              </ul>
-
-              <h4 className="font-bold mt-6 mb-2">6. Force Majeure</h4>
-              <p className="mb-4">
-                Neither party shall be liable for failure to perform due to circumstances beyond their reasonable control, including but not limited to acts of God, severe weather, or government restrictions.
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">7. SIGNATORIES</h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                This Agreement shall be signed on behalf of Client by <strong>{leadData?.name || 'Client'}</strong> and on behalf of M10 by Ben Murray, Manager and effective as of the date first above written.
               </p>
             </div>
 
             {/* Signature Section */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-8 mt-8">
-              <h3 className="text-xl font-bold mb-6">Electronic Signature</h3>
-              
-              <div className="mb-6">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agreed}
-                    onChange={(e) => setAgreed(e.target.checked)}
-                    className="mt-1 w-5 h-5 text-brand focus:ring-brand rounded"
-                  />
-                  <span className="text-sm">
-                    I have read and agree to the terms and conditions outlined in this service agreement. I understand that this electronic signature is legally binding.
-                  </span>
-                </label>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-semibold mb-2">
-                  Sign below:
-                </label>
-                <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white">
-                  <canvas
-                    ref={canvasRef}
-                    width={600}
-                    height={200}
-                    className="w-full cursor-crosshair"
-                    onMouseDown={startDrawing}
-                    onMouseMove={draw}
-                    onMouseUp={stopDrawing}
-                    onMouseLeave={stopDrawing}
-                  />
+            {!isSigned && (
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-8 mt-8">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-6">
+                  <p className="text-blue-800 dark:text-blue-200 font-semibold mb-2">Ready to Sign?</p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    By clicking &quot;Sign Contract&quot; below, you agree to the terms and conditions outlined in this contract.
+                  </p>
                 </div>
                 <button
-                  onClick={clearSignature}
-                  className="text-sm text-gray-600 hover:text-brand mt-2"
-                >
-                  Clear Signature
-                </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4 justify-between items-center pt-6">
-                <Link
-                  href={`/quote/${id}`}
-                  className="btn-outline inline-flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                  Back to Selection
-                </Link>
-                
-                <button
-                  onClick={handleSubmit}
-                  disabled={!hasSignature || !agreed || signing}
-                  className={`btn-primary inline-flex items-center gap-2 ${
-                    (!hasSignature || !agreed || signing) ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  onClick={handleSign}
+                  disabled={signing}
+                  className="btn-primary w-full inline-flex items-center justify-center gap-2"
                 >
                   {signing ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Saving...
+                      Signing...
                     </>
                   ) : (
                     <>
-                      Continue to Payment →
+                      <PenTool className="w-5 h-5" />
+                      Sign Contract
                     </>
                   )}
                 </button>
               </div>
-            </div>
+            )}
+
+            {isSigned && (
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-8 mt-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white mb-4">Client Signature</p>
+                    <div className="border-2 border-gray-300 dark:border-gray-600 rounded p-4 h-24 flex items-center justify-center">
+                      {contractData?.client_signature_data ? (
+                        <img src={contractData.client_signature_data} alt="Client Signature" className="max-h-full" />
+                      ) : (
+                        <p className="text-gray-500 dark:text-gray-400">{contractData?.signed_by_client || leadData?.name}</p>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{contractData?.signed_by_client || leadData?.name}</p>
+                    {contractData?.signed_at && (
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        {new Date(contractData.signed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white mb-4">M10 DJ Company Signature</p>
+                    <div className="border-2 border-gray-300 dark:border-gray-600 rounded p-4 h-24 flex items-center justify-center">
+                      <p className="text-gray-500 dark:text-gray-400">Ben Murray, Manager</p>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Ben Murray</p>
+                    {contractData?.signed_by_vendor_at && (
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        {new Date(contractData.signed_by_vendor_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="max-w-4xl mx-auto mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href={`/quote/${id}/invoice`}
+              className="btn-outline inline-flex items-center justify-center gap-2"
+            >
+              <FileText className="w-5 h-5" />
+              View Invoice
+            </Link>
+            <Link
+              href={`/quote/${id}/payment`}
+              className="btn-primary inline-flex items-center justify-center gap-2"
+            >
+              <CheckCircle className="w-5 h-5" />
+              Make Payment
+            </Link>
           </div>
         </main>
 
         <Footer />
       </div>
+
+      <style jsx global>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          body {
+            background: white !important;
+          }
+        }
+      `}</style>
     </>
   );
 }
-

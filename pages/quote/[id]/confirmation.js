@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
 import Footer from '../../../components/company/Footer';
-import { CheckCircle, Download, Calendar, Mail, Phone, Loader2 } from 'lucide-react';
+import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard } from 'lucide-react';
 
 export default function ConfirmationPage() {
   const router = useRouter();
@@ -234,6 +234,37 @@ export default function ConfirmationPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Document Links */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12">
+              <h2 className="text-2xl font-bold mb-6 text-center">Your Documents</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link
+                  href={`/quote/${id}/invoice`}
+                  className="btn-outline flex flex-col items-center justify-center gap-2 p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <FileText className="w-8 h-8 text-brand" />
+                  <span className="font-semibold">View Invoice</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Download PDF</span>
+                </Link>
+                <Link
+                  href={`/quote/${id}/contract`}
+                  className="btn-outline flex flex-col items-center justify-center gap-2 p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <FileText className="w-8 h-8 text-brand" />
+                  <span className="font-semibold">View Contract</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Sign & Download</span>
+                </Link>
+                <Link
+                  href={`/quote/${id}/payment`}
+                  className="btn-primary flex flex-col items-center justify-center gap-2 p-6"
+                >
+                  <CreditCard className="w-8 h-8" />
+                  <span className="font-semibold">Make Payment</span>
+                  <span className="text-sm opacity-90">Secure checkout</span>
+                </Link>
               </div>
             </div>
 

@@ -14,11 +14,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { invoiceId, successUrl, cancelUrl } = req.body;
-
-  if (!invoiceId) {
-    return res.status(400).json({ error: 'Invoice ID required' });
-  }
+  const { invoiceId, leadId, amount, description, successUrl, cancelUrl } = req.body;
 
   if (!process.env.STRIPE_SECRET_KEY) {
     return res.status(500).json({ error: 'Stripe not configured' });
@@ -26,6 +22,102 @@ export default async function handler(req, res) {
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Handle quote payment (leadId provided)
+    if (leadId) {
+      if (!amount || !description) {
+        return res.status(400).json({ error: 'Amount and description required for quote payment' });
+      }
+
+      // Get lead/quote data
+      const { data: quote, error: quoteError } = await supabase
+        .from('quote_selections')
+        .select('*')
+        .eq('lead_id', leadId)
+        .single();
+
+      // Get lead contact info
+      let customerEmail = null;
+      try {
+        const { data: lead } = await supabase
+          .from('contacts')
+          .select('email_address')
+          .eq('id', leadId)
+          .single();
+        if (lead) {
+          customerEmail = lead.email_address;
+        } else {
+          // Try contact_submissions
+          const { data: submission } = await supabase
+            .from('contact_submissions')
+            .select('email')
+            .eq('id', leadId)
+            .single();
+          if (submission) {
+            customerEmail = submission.email;
+          }
+        }
+      } catch (e) {
+        console.log('Could not fetch customer email:', e);
+      }
+
+      // Create line item for quote payment
+      const lineItems = [{
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: description,
+            description: quote?.package_name || 'DJ Services'
+          },
+          unit_amount: Math.round(amount) // Amount already in cents
+        },
+        quantity: 1
+      }];
+
+      // Create Stripe checkout session
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: lineItems,
+        mode: 'payment',
+        success_url: successUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/quote/${leadId}/confirmation?payment_intent={CHECKOUT_SESSION_ID}`,
+        cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/quote/${leadId}/payment`,
+        customer_email: customerEmail,
+        metadata: {
+          lead_id: leadId,
+          payment_type: amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'
+        },
+        payment_intent_data: {
+          metadata: {
+            lead_id: leadId,
+            payment_type: amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'
+          }
+        }
+      });
+
+      // Update quote_selections with payment intent
+      if (quote) {
+        await supabase
+          .from('quote_selections')
+          .update({
+            payment_intent_id: session.payment_intent,
+            updated_at: new Date().toISOString()
+          })
+          .eq('lead_id', leadId);
+      }
+
+      console.log(`✅ Created Stripe checkout session for quote payment (lead: ${leadId})`);
+
+      return res.status(200).json({
+        success: true,
+        sessionId: session.id,
+        url: session.url
+      });
+    }
+
+    // Handle invoice payment (invoiceId provided)
+    if (!invoiceId) {
+      return res.status(400).json({ error: 'Either invoiceId or leadId required' });
+    }
 
     // Get invoice details
     const { data: invoice, error: invoiceError } = await supabase

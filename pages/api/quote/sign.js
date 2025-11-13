@@ -8,60 +8,100 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { leadId, signature, agreedAt } = req.body;
+  const { leadId, clientName, clientEmail } = req.body;
 
-  if (!leadId || !signature) {
-    return res.status(400).json({ error: 'Lead ID and signature are required' });
+  if (!leadId || !clientName) {
+    return res.status(400).json({ error: 'Lead ID and client name are required' });
   }
 
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Log the signature save
-    console.log('📝 Contract Signed:', {
-      leadId,
-      agreedAt,
-      signatureLength: signature.length,
-      timestamp: new Date().toISOString()
-    });
-
-    // Update quote_selections with signature
-    const { data, error} = await supabase
+    // Get quote data
+    const { data: quote, error: quoteError } = await supabase
       .from('quote_selections')
-      .update({
-        signature,
-        signed_at: agreedAt,
-        updated_at: new Date().toISOString()
-      })
+      .select('*')
       .eq('lead_id', leadId)
+      .single();
+
+    if (quoteError || !quote) {
+      return res.status(404).json({ error: 'Quote not found' });
+    }
+
+    // Get or create contract
+    let contract = null;
+    if (quote.contract_id) {
+      const { data: existingContract } = await supabase
+        .from('contracts')
+        .select('*')
+        .eq('id', quote.contract_id)
+        .single();
+      contract = existingContract;
+    }
+
+    // If no contract exists, create one
+    if (!contract) {
+      const { data: newContract, error: contractError } = await supabase
+        .from('contracts')
+        .insert({
+          contact_id: leadId,
+          service_selection_id: quote.id,
+          event_name: quote.package_name,
+          total_amount: quote.total_price,
+          deposit_amount: quote.total_price * 0.5,
+          status: 'sent'
+        })
+        .select()
+        .single();
+
+      if (contractError) {
+        console.error('Error creating contract:', contractError);
+        return res.status(500).json({ error: 'Failed to create contract' });
+      }
+
+      contract = newContract;
+
+      // Update quote with contract_id
+      await supabase
+        .from('quote_selections')
+        .update({ contract_id: contract.id })
+        .eq('lead_id', leadId);
+    }
+
+    // Update contract with signature
+    const { data: updatedContract, error: updateError } = await supabase
+      .from('contracts')
+      .update({
+        status: 'signed',
+        signed_at: new Date().toISOString(),
+        signed_by_client: clientName,
+        signed_by_client_email: clientEmail,
+        signed_by_client_ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress
+      })
+      .eq('id', contract.id)
       .select()
       .single();
 
-    if (error) {
-      console.error('⚠️ Database error (continuing anyway):', error.message);
-      
-      // Return success even if DB fails - we've logged it
-      return res.status(200).json({
-        success: true,
-        message: 'Signature saved successfully',
-        logged: true
-      });
+    if (updateError) {
+      console.error('Error updating contract:', updateError);
+      return res.status(500).json({ error: 'Failed to sign contract' });
     }
 
+    // Update quote_selections with signature
+    await supabase
+      .from('quote_selections')
+      .update({
+        signature: clientName,
+        signed_at: new Date().toISOString()
+      })
+      .eq('lead_id', leadId);
+
     res.status(200).json({
       success: true,
-      message: 'Signature saved successfully',
-      data
+      contract: updatedContract
     });
   } catch (error) {
-    console.error('❌ Error in sign API:', error);
-    
-    // Always return success - we've logged the signature
-    res.status(200).json({
-      success: true,
-      message: 'Signature saved successfully',
-      logged: true
-    });
+    console.error('Error in sign contract API:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
-
