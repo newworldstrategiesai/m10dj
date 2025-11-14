@@ -159,7 +159,7 @@ export default function PersonalizedQuote() {
                             p.status === 'succeeded' || 
                             p.payment_status === 'completed'
                           )
-                          .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                          .reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
                         
                         // Calculate outstanding balance
                         const totalOwed = parseFloat(quoteData.total_price) || 0;
