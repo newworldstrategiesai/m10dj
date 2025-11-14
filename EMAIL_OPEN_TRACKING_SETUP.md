@@ -15,6 +15,8 @@ This system tracks when clients open the confirmation email sent after form subm
 
 ### Step 1: Configure Resend Webhook
 
+**Note:** You may already have a Resend webhook configured for `email.received` events. This is a separate webhook for tracking email opens.
+
 1. Go to [Resend Dashboard](https://resend.com/dashboard)
 2. Navigate to **Webhooks** → **Add Webhook**
 3. Configure the webhook:
@@ -22,7 +24,7 @@ This system tracks when clients open the confirmation email sent after form subm
    - **Events to listen for**: Select `email.opened` (and optionally `email.delivered`, `email.clicked`, `email.bounced`)
    - **Description**: "Track client email opens"
 
-4. Copy the **Signing Secret** (you'll need this for verification)
+4. **Important:** Both webhooks (`email.received` and `email.opened`) can use the same `RESEND_WEBHOOK_SECRET` - Resend uses one secret per account for all webhooks.
 
 ### Step 2: Verify Webhook Secret Environment Variable
 
