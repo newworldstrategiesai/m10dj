@@ -1117,53 +1117,71 @@ export default function PersonalizedQuote() {
           <section className="bg-gradient-to-r from-brand/10 to-brand/5 dark:from-brand/20 dark:to-brand/10 rounded-xl p-8 border border-brand/20">
             <div className="max-w-2xl mx-auto">
               {/* Savings Alert - Show when addons selected without package */}
-              {!selectedPackage && selectedAddons.length > 0 && bestPackageMatch && bestPackageMatch.includedCount > 0 && (
-                <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <h3 className="font-bold text-yellow-900 dark:text-yellow-200 mb-2">
-                        💰 Save Money with a Package!
-                      </h3>
-                      <p className="text-sm text-yellow-800 dark:text-yellow-300 mb-3">
-                        You&apos;ve selected {bestPackageMatch.includedCount} addon{bestPackageMatch.includedCount > 1 ? 's' : ''} that {bestPackageMatch.includedCount > 1 ? 'are' : 'is'} included in <strong>{bestPackageMatch.package.name}</strong>! The package includes these plus additional services.
-                      </p>
-                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 mb-3">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">If Purchased Separately (All Package Items):</span>
-                          <span className="text-lg font-semibold text-gray-700 dark:text-gray-300 line-through">
-                            ${bestPackageMatch.aLaCarteTotal.toLocaleString()}
-                          </span>
+              {!selectedPackage && selectedAddons.length > 0 && bestPackageMatch && bestPackageMatch.includedCount > 0 && (() => {
+                const currentAddonTotal = calculateALaCarteTotal();
+                const packageValue = bestPackageMatch.aLaCarteTotal;
+                const packagePrice = bestPackageMatch.packagePrice;
+                const additionalCost = packagePrice - currentAddonTotal;
+                const additionalValue = packageValue - currentAddonTotal;
+                const netValueGain = additionalValue - additionalCost;
+                
+                return (
+                  <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h3 className="font-bold text-yellow-900 dark:text-yellow-200 mb-2">
+                          💰 Better Value with {bestPackageMatch.package.name}!
+                        </h3>
+                        <p className="text-sm text-yellow-800 dark:text-yellow-300 mb-3">
+                          You&apos;ve selected {bestPackageMatch.includedCount} addon{bestPackageMatch.includedCount > 1 ? 's' : ''} that {bestPackageMatch.includedCount > 1 ? 'are' : 'is'} included in <strong>{bestPackageMatch.package.name}</strong>! Upgrade to the package and get much more for your money.
+                        </p>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 mb-3">
+                          <div className="space-y-2 mb-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600 dark:text-gray-400">What you&apos;re paying now:</span>
+                              <span className="text-base font-semibold text-gray-700 dark:text-gray-300">
+                                ${currentAddonTotal.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600 dark:text-gray-400">What you&apos;d get in {bestPackageMatch.package.name}:</span>
+                              <span className="text-base font-semibold text-gray-700 dark:text-gray-300">
+                                ${packageValue.toLocaleString()} <span className="text-xs text-gray-500">worth</span>
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
+                              <span className="text-sm font-semibold text-brand">Package Price:</span>
+                              <span className="text-lg font-bold text-brand">
+                                ${packagePrice.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="pt-2 border-t-2 border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/20 rounded p-2">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs text-gray-600 dark:text-gray-400">Pay ${additionalCost.toLocaleString()} more, get</span>
+                              <span className="text-xs font-semibold text-green-700 dark:text-green-400">${additionalValue.toLocaleString()} more value</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-semibold text-green-700 dark:text-green-400">Net Value Gain:</span>
+                              <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                                ${netValueGain.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">Package Price:</span>
-                          <span className="text-lg font-semibold text-brand">
-                            ${bestPackageMatch.packagePrice.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                          <span className="text-sm font-semibold text-green-700 dark:text-green-400">You Save:</span>
-                          <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                            ${bestPackageMatch.savings.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                          <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                            Your current selection: <strong>${calculateALaCarteTotal().toLocaleString()}</strong> (addons only, no base package)
-                          </p>
-                        </div>
+                        <button
+                          onClick={() => setSelectedPackage(bestPackageMatch.package)}
+                          className="w-full btn-primary text-sm py-2 flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Upgrade to {bestPackageMatch.package.name}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setSelectedPackage(bestPackageMatch.package)}
-                        className="w-full btn-primary text-sm py-2 flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        Select {bestPackageMatch.package.name} Instead
-                      </button>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Regular Total Display */}
               <div className="flex justify-between items-center mb-6">
