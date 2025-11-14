@@ -16,6 +16,9 @@ export default function PersonalizedQuote() {
   const [saving, setSaving] = useState(false);
   const [expandedBreakdown, setExpandedBreakdown] = useState(null);
   const [expandedPackages, setExpandedPackages] = useState(new Set()); // Track which packages are expanded
+  const [existingSelection, setExistingSelection] = useState(null);
+  const [contractSigned, setContractSigned] = useState(false);
+  const [showEditMode, setShowEditMode] = useState(false);
   
 
   const fetchLeadData = useCallback(async () => {
@@ -50,9 +53,13 @@ export default function PersonalizedQuote() {
     }
 
     try {
-      const response = await fetch(`/api/leads/${id}`);
-      if (response.ok) {
-        const data = await response.json();
+      const [leadResponse, quoteResponse] = await Promise.all([
+        fetch(`/api/leads/${id}`),
+        fetch(`/api/quote/${id}`).catch(() => null) // Quote might not exist yet
+      ]);
+
+      if (leadResponse.ok) {
+        const data = await leadResponse.json();
         if (data && data.id) {
           setLeadData(data);
           setError(null);
