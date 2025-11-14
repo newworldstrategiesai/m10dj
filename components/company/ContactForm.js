@@ -432,7 +432,7 @@ export default function ContactForm({ className = '' }) {
       <div className="mb-8">
         <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4 font-sans">Get Your Free Quote</h3>
         <p className="text-gray-600 dark:text-gray-400 font-inter">
-          Tell us about your event and we'll provide a customized quote within 24 hours.
+          Tell us about your event and we&apos;ll provide a customized quote within 24 hours.
         </p>
       </div>
 
