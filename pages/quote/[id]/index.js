@@ -1072,7 +1072,7 @@ export default function PersonalizedQuote() {
           <section id="addons-section" className="mb-12">
             <h2 className="text-3xl font-bold text-center mb-4">
               <Sparkles className="inline w-8 h-8 text-brand mr-2" />
-              Enhance Your Experience
+              A La Carte
             </h2>
             <p className="text-center text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
               Add extra services to your package. These are optional upgrades that can be added to personalize your celebration even more! 
