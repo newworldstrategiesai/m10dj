@@ -266,16 +266,6 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
               aria-label="Minimize chat"
               title="Minimize chat"
             >
-              <Minimize2 className="w-5 h-5" />
-            </button>
-          )}
-          {onMinimize && (
-            <button
-              onClick={onMinimize}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-              aria-label="Minimize chat"
-              title="Minimize chat"
-            >
               <X className="w-5 h-5" />
             </button>
           )}
