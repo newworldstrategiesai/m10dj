@@ -73,8 +73,13 @@ const INTERNAL_EMAIL_PATTERNS = [
   /@m10dj\.com$/i,
 ];
 
-const PHONE_REGEX =
-  /(\+?1?[\s.(\-]*\d{3}[\s.)\-]*\d{3}[\s.\-]*\d{4})/;
+// Enhanced phone regex patterns - matches various formats
+const PHONE_REGEXES = [
+  /(\+?1?[\s.(\-]*\d{3}[\s.)\-]*\d{3}[\s.\-]*\d{4})/, // Standard US format
+  /(\d{3}[\s.\-]?\d{3}[\s.\-]?\d{4})/, // Simple format: 901-555-1234 or 901.555.1234
+  /(\(\d{3}\)[\s.\-]?\d{3}[\s.\-]?\d{4})/, // (901) 555-1234
+  /(\d{10})/, // 10 consecutive digits
+];
 
 const DATE_REGEX =
   /\b(0?[1-9]|1[0-2])[\/\-](0?[1-9]|[12]\d|3[01])[\/\-](\d{2}|\d{4})\b/;
@@ -96,7 +101,13 @@ function extractContactInfo(thread: string): ParsedLeadContact {
   const structured = extractStructuredFields(thread);
 
   const emailMatch = thread.match(EMAIL_REGEX);
-  const phoneMatch = thread.match(PHONE_REGEX);
+  
+  // Try all phone regex patterns
+  let phoneMatch = null;
+  for (const regex of PHONE_REGEXES) {
+    phoneMatch = thread.match(regex);
+    if (phoneMatch) break;
+  }
 
   const phoneDigits = phoneMatch ? phoneMatch[0].replace(/\D/g, '') : null;
   const phoneE164 = phoneDigits
@@ -124,9 +135,68 @@ function extractContactInfo(thread: string): ParsedLeadContact {
     }
   }
 
-  const eventTime = structured.eventTime || null;
-  const guestCount = structured.guestCount ?? null;
-  const budgetRange = structured.budgetRange || null;
+  // Extract event time from natural language if not in structured fields
+  let eventTime = structured.eventTime || null;
+  if (!eventTime) {
+    const timePatterns = [
+      /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
+      /(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
+      /(?:time|event time|start time)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
+      /(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)/i,
+    ];
+    
+    for (const pattern of timePatterns) {
+      const match = thread.match(pattern);
+      if (match) {
+        eventTime = match[1].trim();
+        break;
+      }
+    }
+  }
+  
+  // Extract guest count from natural language if not in structured fields
+  let guestCount = structured.guestCount ?? null;
+  if (!guestCount) {
+    const guestPatterns = [
+      /(?:approximately|about|around|roughly|expecting|expect)?\s*(\d{1,4})\s+(?:guests?|people|attendees?|persons?)/i,
+      /(\d{1,4})\s+(?:guests?|people|attendees?|persons?)\s+(?:are|will|coming|expected)/i,
+      /(?:we|we're|we'll|there|have)\s+(?:have|got|will have|expecting)?\s*(\d{1,4})\s+(?:guests?|people)/i,
+      /guest[:\s]+(?:count|number|total)?[:\s]*(\d{1,4})/i,
+    ];
+    
+    for (const pattern of guestPatterns) {
+      const match = thread.match(pattern);
+      if (match) {
+        const count = parseInt(match[1], 10);
+        if (count > 0 && count < 10000) { // Sanity check
+          guestCount = count;
+          break;
+        }
+      }
+    }
+  }
+  
+  // Extract budget range from natural language if not in structured fields
+  let budgetRange = structured.budgetRange || null;
+  if (!budgetRange) {
+    const budgetPatterns = [
+      /budget[:\s]+(?:is|of|around|about)?\s*([$0-9,\s–—]+)/i,
+      /(?:looking|spending|budget)[:\s]+(?:for|around|about|is)?\s*([$0-9,\s–—]+)/i,
+      /\$(\d{1,3}(?:,\d{3})*(?:\s*[-–—]\s*\$?\d{1,3}(?:,\d{3})*)?)/, // $1,000-$2,500 or $1000-$2500
+      /(\d{1,3}(?:,\d{3})*(?:\s*[-–—]\s*\d{1,3}(?:,\d{3})*)?)\s*(?:dollars?|bucks?)/i,
+    ];
+    
+    for (const pattern of budgetPatterns) {
+      const match = thread.match(pattern);
+      if (match) {
+        budgetRange = match[1].trim().replace(/[–—]/g, ' – ');
+        if (!budgetRange.startsWith('$')) {
+          budgetRange = '$' + budgetRange;
+        }
+        break;
+      }
+    }
+  }
 
   if (!email) notes.push('Email not detected in thread.');
   if (!phoneDigits) notes.push('Phone number not detected in thread.');
@@ -267,18 +337,36 @@ function capitalize(value: string): string {
 }
 
 function extractVenue(thread: string): string | null {
-  const matches = Array.from(thread.matchAll(/\bat ([^.\n]+)/gi));
+  // Multiple venue patterns
+  const venuePatterns = [
+    /\bat ([^.\n]+)/gi, // "at [venue]"
+    /\bvenue[:\s]+([^.\n]+)/gi, // "venue: [venue]" or "venue [venue]"
+    /\blocation[:\s]+([^.\n]+)/gi, // "location: [venue]"
+    /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:venue|hall|center|club|hotel|resort|garden|park)/gi, // Capitalized venue names
+    /\b(?:at|in|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/g, // "at [Capitalized Name]"
+  ];
 
-  if (!matches.length) return null;
+  const allMatches: string[] = [];
+  for (const pattern of venuePatterns) {
+    const matches = Array.from(thread.matchAll(pattern));
+    for (const match of matches) {
+      const candidate = sanitizeVenueCandidate(match[1] || match[0]);
+      if (candidate) {
+        allMatches.push(candidate);
+      }
+    }
+  }
 
-  const candidates = matches
-    .map(match => sanitizeVenueCandidate(match[1]))
-    .filter((value): value is string => Boolean(value));
+  if (!allMatches.length) return null;
 
-  if (!candidates.length) return null;
+  // Score and sort candidates
+  const scored = allMatches.map(venue => ({
+    venue,
+    score: scoreVenueCandidate(venue),
+  }));
 
-  const sorted = candidates.sort((a, b) => scoreVenueCandidate(b) - scoreVenueCandidate(a));
-  return sorted[0];
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0].venue;
 }
 
 function sanitizeVenueCandidate(raw: string): string | null {
@@ -478,23 +566,80 @@ function extractStructuredFields(thread: string): StructuredFields {
     }
 
     if (!fields.budgetRange) {
-      const budgetInline = trimmed.match(/budget range[^:]*[:\-]?\s*([$0-9,\s–—]+)/i);
-      if (budgetInline) {
-        fields.budgetRange = budgetInline[1].trim().replace(/[–—]/g, ' – ');
+      // Enhanced budget patterns
+      const budgetPatterns = [
+        /budget[:\s]+(?:is|of|around|about)?\s*([$0-9,\s–—]+)/i,
+        /(?:looking|spending|budget)[:\s]+(?:for|around|about|is)?\s*([$0-9,\s–—]+)/i,
+        /\$(\d{1,3}(?:,\d{3})*(?:\s*[-–—]\s*\$?\d{1,3}(?:,\d{3})*)?)/, // $1,000-$2,500 or $1000-$2500
+        /(\d{1,3}(?:,\d{3})*(?:\s*[-–—]\s*\d{1,3}(?:,\d{3})*)?)\s*(?:dollars?|bucks?)/i,
+      ];
+      
+      for (const pattern of budgetPatterns) {
+        const budgetMatch = trimmed.match(pattern);
+        if (budgetMatch) {
+          fields.budgetRange = budgetMatch[1].trim().replace(/[–—]/g, ' – ');
+          if (!fields.budgetRange.startsWith('$')) {
+            fields.budgetRange = '$' + fields.budgetRange;
+          }
+          break;
+        }
       }
     }
 
     if (!fields.guestCount) {
-      const guestInline = trimmed.match(/(?:approximately|about)?\s*(\d{1,4})\s+(?:guests?|people)/i);
-      if (guestInline) {
-        fields.guestCount = parseInt(guestInline[1], 10);
+      // Enhanced guest count patterns
+      const guestPatterns = [
+        /(?:approximately|about|around|roughly|expecting|expect)?\s*(\d{1,4})\s+(?:guests?|people|attendees?|persons?)/i,
+        /(\d{1,4})\s+(?:guests?|people|attendees?|persons?)\s+(?:are|will|coming|expected)/i,
+        /(?:we|we're|we'll|there|have)\s+(?:have|got|will have|expecting)?\s*(\d{1,4})\s+(?:guests?|people)/i,
+        /guest[:\s]+(?:count|number|total)?[:\s]*(\d{1,4})/i,
+      ];
+      
+      for (const pattern of guestPatterns) {
+        const guestMatch = trimmed.match(pattern);
+        if (guestMatch) {
+          fields.guestCount = parseInt(guestMatch[1], 10);
+          break;
+        }
       }
     }
 
-    if (!fields.venueName && /\bat\s+/.test(trimmed.toLowerCase())) {
-      const venueCandidate = sanitizeVenueCandidate(trimmed.replace(/^.*\bat\s+/i, ''));
-      if (venueCandidate) {
-        fields.venueName = venueCandidate;
+    // Enhanced venue extraction from natural language
+    if (!fields.venueName) {
+      const venuePatterns = [
+        /\bat\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})/g, // "at [Capitalized Venue]"
+        /\bvenue[:\s]+([^.\n]+)/i,
+        /\blocation[:\s]+([^.\n]+)/i,
+        /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:venue|hall|center|club|hotel|resort|garden|park|ballroom)/i,
+      ];
+      
+      for (const pattern of venuePatterns) {
+        const venueMatch = trimmed.match(pattern);
+        if (venueMatch) {
+          const venueCandidate = sanitizeVenueCandidate(venueMatch[1]);
+          if (venueCandidate) {
+            fields.venueName = venueCandidate;
+            break;
+          }
+        }
+      }
+    }
+
+    // Enhanced event time extraction
+    if (!fields.eventTime) {
+      const timePatterns = [
+        /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
+        /(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
+        /(?:time|event time|start time)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
+        /(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)/i,
+      ];
+      
+      for (const pattern of timePatterns) {
+        const timeMatch = trimmed.match(pattern);
+        if (timeMatch) {
+          fields.eventTime = timeMatch[1].trim();
+          break;
+        }
       }
     }
   }

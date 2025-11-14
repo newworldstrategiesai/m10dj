@@ -31,48 +31,64 @@ export default function PasswordSignIn({
   };
 
   return (
-    <div className="my-8">
+    <div>
       <form
         noValidate={true}
-        className="mb-4"
+        className="mb-6"
         onSubmit={(e) => handleSubmit(e)}
       >
-        <div className="grid gap-2">
-          <div className="grid gap-1">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              placeholder="name@example.com"
-              type="email"
-              name="email"
-              autoCapitalize="none"
-              autoComplete="email"
-              autoCorrect="off"
-              className="w-full p-3 rounded-md bg-zinc-800"
-            />
-            <label htmlFor="password">Password</label>
-            <div className="relative">
-              <input
-                id="password"
-                placeholder="Password"
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                autoComplete="current-password"
-                className="w-full p-3 pr-10 rounded-md bg-zinc-800 dark:bg-zinc-800 text-zinc-100 dark:text-zinc-100"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+        <div className="space-y-5">
+          <div className="space-y-4">
+            <div>
+              <label 
+                htmlFor="email" 
+                className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2"
               >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
+                Email
+              </label>
+              <input
+                id="email"
+                placeholder="your.email@example.com"
+                type="email"
+                name="email"
+                autoCapitalize="none"
+                autoComplete="email"
+                autoCorrect="off"
+                className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+              />
             </div>
+            
+            <div>
+              <label 
+                htmlFor="password" 
+                className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  placeholder="Enter your password"
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  autoComplete="current-password"
+                  className="w-full px-4 py-3 pr-12 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand dark:text-gray-500 dark:hover:text-brand transition-colors focus:outline-none focus:ring-2 focus:ring-brand rounded p-1.5"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+            
             {redirectTo && (
               <input
                 type="hidden"
@@ -81,33 +97,46 @@ export default function PasswordSignIn({
               />
             )}
           </div>
+          
           <Button
             variant="slim"
             type="submit"
-            className="mt-1"
+            className="w-full bg-gradient-to-r from-brand to-amber-500 hover:from-amber-500 hover:to-brand text-black font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             loading={isSubmitting}
           >
             Sign in
           </Button>
         </div>
       </form>
-      <p>
-        <Link href="/signin/forgot_password" className="font-light text-sm">
-          Forgot your password?
-        </Link>
-      </p>
-      {allowEmail && (
-        <p>
-          <Link href="/signin/email_signin" className="font-light text-sm">
-            Sign in via magic link
+      
+      <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div>
+          <Link 
+            href="/signin/forgot_password" 
+            className="text-sm text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand transition-colors"
+          >
+            Forgot your password?
           </Link>
-        </p>
-      )}
-      <p>
-        <Link href="/signin/signup" className="font-light text-sm">
-          Don't have an account? Sign up
-        </Link>
-      </p>
+        </div>
+        {allowEmail && (
+          <div>
+            <Link 
+              href="/signin/email_signin" 
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand transition-colors"
+            >
+              Sign in via magic link
+            </Link>
+          </div>
+        )}
+        <div>
+          <Link 
+            href="/signin/signup" 
+            className="text-sm text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand transition-colors"
+          >
+            Don&apos;t have an account? Sign up
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

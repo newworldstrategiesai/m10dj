@@ -254,7 +254,8 @@ export default async function handler(req, res) {
     }
 
     const baseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL);
-    const link = `${baseUrl}/select-services/${tokenRecord.token}`;
+    // Use the new quote builder route instead of token-based route
+    const link = `${baseUrl}/quote/${contact.id}`;
 
     return res.status(200).json({
       success: true,

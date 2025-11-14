@@ -84,7 +84,8 @@ export default async function handler(req, res) {
       .eq('id', contactId);
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
-    const link = `${baseUrl}/select-services/${token}`;
+    // Use the new quote builder route instead of token-based route
+    const link = `${baseUrl}/quote/${contact.id}`;
 
     // Log the generation
     console.log(`✅ Generated service selection link for ${contact.first_name} ${contact.last_name}`);

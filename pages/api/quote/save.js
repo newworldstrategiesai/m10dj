@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import { sendAdminSMS } from '../../utils/sms-helper.js';
+import { sendAdminSMS } from '../../../utils/sms-helper';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

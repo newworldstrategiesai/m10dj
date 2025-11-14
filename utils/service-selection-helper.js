@@ -37,9 +37,9 @@ export function generateServiceSelectionToken(contact) {
  * @returns {string} Full URL to service selection page
  */
 export function generateServiceSelectionLink(contact) {
-  const token = generateServiceSelectionToken(contact);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
-  return `${baseUrl}/select-services/${token}`;
+  // Use the new quote builder route instead of token-based route
+  return `${baseUrl}/quote/${contact.id}`;
 }
 
 /**

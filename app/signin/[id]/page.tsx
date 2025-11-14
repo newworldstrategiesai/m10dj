@@ -64,22 +64,38 @@ export default async function SignIn({
   }
 
   return (
-    <div className="flex justify-center height-screen-helper">
-      <div className="flex flex-col justify-between max-w-lg p-3 m-auto w-80 ">
-        <div className="flex justify-center pb-12 ">
-          <Logo width="64px" height="64px" />
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo and Branding */}
+        <div className="flex justify-center mb-8">
+          <div className="text-center">
+            <div className="inline-block mb-4">
+              <Logo width="80px" height="80px" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">M10 DJ Company</h1>
+            <p className="text-gray-400 text-sm">Admin Portal</p>
+          </div>
         </div>
-        <Card
-          title={
-            viewProp === 'forgot_password'
-              ? 'Reset Password'
-              : viewProp === 'update_password'
-                ? 'Update Password'
-                : viewProp === 'signup'
-                  ? 'Sign Up'
-                  : 'Sign In'
-          }
-        >
+        
+        {/* Sign In Card */}
+        <Card className="bg-white dark:bg-gray-900 border-0 shadow-2xl">
+          <div className="p-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                {viewProp === 'forgot_password'
+                  ? 'Reset Password'
+                  : viewProp === 'update_password'
+                    ? 'Update Password'
+                    : viewProp === 'signup'
+                      ? 'Sign Up'
+                      : 'Sign In'}
+              </h2>
+              {viewProp === 'password_signin' && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Enter your credentials to access your account
+                </p>
+              )}
+            </div>
                   {viewProp === 'password_signin' && (
           <PasswordSignIn
             allowEmail={allowEmail}
@@ -115,7 +131,18 @@ export default async function SignIn({
                 <OauthSignIn />
               </>
             )}
+          </div>
         </Card>
+        
+        {/* Footer Links */}
+        <div className="mt-6 text-center">
+          <a 
+            href="/" 
+            className="text-gray-400 hover:text-brand text-sm transition-colors"
+          >
+            ← Back to Home
+          </a>
+        </div>
       </div>
     </div>
   );
