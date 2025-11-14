@@ -22,7 +22,8 @@ import {
   Zap,
   UserCheck,
   FileCheck,
-  Receipt
+  Receipt,
+  Trash2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -194,6 +195,7 @@ export default function PipelineView({
 }: PipelineViewProps) {
   const { toast } = useToast();
   const [updating, setUpdating] = useState(false);
+  const [deletingQuote, setDeletingQuote] = useState(false);
   
   const currentStage = contact.lead_status || 'New';
   const currentStageIndex = getStageIndex(currentStage);
@@ -404,14 +406,26 @@ export default function PipelineView({
                   <p className="font-medium">Service Selection / Quote</p>
                   <p className="text-sm text-gray-600">
                     Created {quoteSelections[0].created_at ? new Date(quoteSelections[0].created_at).toLocaleDateString() : 'N/A'}
+                    {quoteSelections[0].package_name && ` • ${quoteSelections[0].package_name}`}
                   </p>
                 </div>
               </div>
-              <Link href={`/quote/${quoteId}`} target="_blank">
-                <Button variant="outline" size="sm">
-                  View
+              <div className="flex items-center gap-2">
+                <Link href={`/quote/${quoteId}`} target="_blank">
+                  <Button variant="outline" size="sm">
+                    View
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleDeleteQuote}
+                  disabled={deletingQuote}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </Button>
-              </Link>
+              </div>
             </div>
           )}
 
