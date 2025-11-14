@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
@@ -11,15 +11,11 @@ export default function InvoicePage() {
   const [leadData, setLeadData] = useState(null);
   const [quoteData, setQuoteData] = useState(null);
   const [invoiceData, setInvoiceData] = useState(null);
+  const [paymentData, setPaymentData] = useState(null);
+  const [hasPayment, setHasPayment] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (id) {
-      fetchData();
-    }
-  }, [id]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [leadResponse, quoteResponse] = await Promise.all([
         fetch(`/api/leads/${id}`),
@@ -47,6 +43,30 @@ export default function InvoicePage() {
             console.log('Could not fetch invoice details:', e);
           }
         }
+
+        // Fetch payment data to show payment status
+        try {
+          const paymentsResponse = await fetch(`/api/payments?contact_id=${id}`);
+          if (paymentsResponse.ok) {
+            const paymentsData = await paymentsResponse.json();
+            if (paymentsData.payments && paymentsData.payments.length > 0) {
+              // Filter for paid payments
+              const paidPayments = paymentsData.payments.filter(p => p.payment_status === 'Paid');
+              if (paidPayments.length > 0) {
+                setHasPayment(true);
+                const totalPaid = paidPayments.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
+                setPaymentData({ totalPaid, payments: paidPayments });
+              } else {
+                setHasPayment(false);
+              }
+            } else {
+              setHasPayment(false);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking payments:', error);
+          setHasPayment(false);
+        }
       } else {
         // Quote not found, but we can still show invoice based on lead data
         console.log('Quote not found, will display invoice from lead data');
@@ -56,7 +76,13 @@ export default function InvoicePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchData();
+    }
+  }, [id, fetchData]);
 
   const handleDownload = () => {
     // Generate PDF or print
@@ -82,7 +108,10 @@ export default function InvoicePage() {
 
   const totalAmount = quoteData?.total_price || 0;
   const depositAmount = totalAmount * 0.5;
-  const remainingBalance = totalAmount - depositAmount;
+  const actualPaid = paymentData?.totalPaid || 0;
+  const remainingBalance = totalAmount - actualPaid;
+  const isFullyPaid = actualPaid >= totalAmount;
+  const isPartiallyPaid = actualPaid > 0 && actualPaid < totalAmount;
   const invoiceNumber = invoiceData?.invoice_number || `INV-${id.substring(0, 8).toUpperCase()}`;
   const invoiceDate = invoiceData?.invoice_date || new Date().toISOString().split('T')[0];
   const dueDate = invoiceData?.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -233,6 +262,46 @@ export default function InvoicePage() {
                       <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
+                  
+                  {/* Payment Status */}
+                  {hasPayment && (
+                    <>
+                      <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-2 mt-2">
+                        <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                          <span>Amount Paid:</span>
+                          <span className="text-green-600 dark:text-green-400 font-semibold">
+                            ${actualPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        {!isFullyPaid && (
+                          <div className="flex justify-between text-gray-600 dark:text-gray-400 mt-1">
+                            <span>Remaining Balance:</span>
+                            <span className="font-semibold text-gray-900 dark:text-white">
+                              ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {isFullyPaid && (
+                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                          <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
+                            <CheckCircle className="w-5 h-5" />
+                            <span className="font-semibold">Invoice Paid in Full</span>
+                          </div>
+                        </div>
+                      )}
+                      {isPartiallyPaid && (
+                        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                          <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                            <span className="font-semibold">Partially Paid</span>
+                          </div>
+                          <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                            ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
