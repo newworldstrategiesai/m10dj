@@ -343,15 +343,23 @@ export default function PersonalizedQuote() {
     
     // Check which package includes the most selected addons
     const packageMatches = packages.map(pkg => {
+      if (!pkg || !pkg.id) return null;
+      
       const packageBreakdown = getPackageBreakdown(pkg.id);
-      const packageItems = packageBreakdown.map(item => item.item.toLowerCase());
+      if (!packageBreakdown || !Array.isArray(packageBreakdown)) return null;
+      
+      const packageItems = packageBreakdown
+        .filter(item => item && item.item)
+        .map(item => item.item.toLowerCase());
       const packageDescriptions = packageBreakdown
-        .filter(item => item.description)
+        .filter(item => item && item.description)
         .map(item => item.description.toLowerCase());
       const allPackageText = [...packageItems, ...packageDescriptions].join(' ');
       
       // Count how many selected addons are included in this package
       const includedAddons = selectedAddons.filter(addon => {
+        if (!addon || !addon.id || !addon.name) return false;
+        
         const addonName = addon.name.toLowerCase();
         const keywords = addonKeywords[addon.id] || [addonName];
         
@@ -363,18 +371,27 @@ export default function PersonalizedQuote() {
         );
       });
       
+      const aLaCartePrice = pkg.aLaCartePrice || 0;
+      const packagePrice = pkg.price || 0;
+      
       return {
         package: pkg,
         includedCount: includedAddons.length,
         includedAddons,
-        aLaCarteTotal: pkg.aLaCartePrice,
-        packagePrice: pkg.price,
-        savings: pkg.aLaCartePrice - pkg.price
+        aLaCarteTotal: aLaCartePrice,
+        packagePrice: packagePrice,
+        savings: aLaCartePrice - packagePrice
       };
-    });
+    }).filter(match => match !== null);
     
     // Return the package with the most matches (only if at least 1 match)
-    const bestMatch = packageMatches.sort((a, b) => b.includedCount - a.includedCount)[0];
+    if (packageMatches.length === 0) return null;
+    
+    const bestMatch = packageMatches.sort((a, b) => {
+      if (!a || !b) return 0;
+      return b.includedCount - a.includedCount;
+    })[0];
+    
     return bestMatch && bestMatch.includedCount > 0 ? bestMatch : null;
   };
 
