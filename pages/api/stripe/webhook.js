@@ -52,7 +52,7 @@ export default async function handler(req, res) {
 
   // Handle the event
   try {
-    switch (event.type) {
+  switch (event.type) {
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
         console.log('💰 Payment succeeded:', {
@@ -69,13 +69,13 @@ export default async function handler(req, res) {
         if (leadId) {
           const { error } = await supabase
             .from('quote_selections')
-            .update({
+      .update({
               payment_status: 'deposit_paid',
               payment_intent_id: paymentIntent.id,
               deposit_amount: paymentIntent.amount / 100,
               paid_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
+        updated_at: new Date().toISOString()
+      })
             .eq('lead_id', leadId);
 
           if (error) {

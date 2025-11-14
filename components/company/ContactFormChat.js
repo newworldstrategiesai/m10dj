@@ -39,16 +39,26 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
 
         // If it's a wedding, add personalized service selection link
         const isWedding = formData.eventType && formData.eventType.toLowerCase().includes('wedding');
+        // Only show quote link if we have a valid submissionId (which could be contactId or submissionId)
         if (isWedding && submissionId) {
-          initialMessages.push({
-            id: 2,
-            type: 'bot',
-            text: `💍 Perfect! I've prepared a custom service selection page just for you, ${formData.name.split(' ')[0]}. Click below to explore our wedding packages and add-ons:`,
-            timestamp: new Date(),
-            hasLink: true,
-            link: `/quote/${submissionId}`,
-            linkText: '👉 View Your Personal Wedding Services Page'
-          });
+          // Ensure submissionId is a valid string
+          const quoteId = String(submissionId).trim();
+          if (quoteId && quoteId !== 'null' && quoteId !== 'undefined' && quoteId !== '') {
+            console.log('✅ Creating quote link with ID:', quoteId);
+            initialMessages.push({
+              id: 2,
+              type: 'bot',
+              text: `💍 Perfect! I've prepared a custom service selection page just for you, ${formData.name.split(' ')[0]}. Click below to explore our wedding packages and add-ons:`,
+              timestamp: new Date(),
+              hasLink: true,
+              link: `/quote/${quoteId}`,
+              linkText: '👉 View Your Personal Wedding Services Page'
+            });
+          } else {
+            console.error('❌ Invalid quote ID:', quoteId, '(original:', submissionId, ')');
+          }
+        } else if (isWedding && !submissionId) {
+          console.warn('⚠️ Wedding submission but no submissionId available for quote link');
         }
 
         setMessages(initialMessages);
@@ -233,12 +243,24 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
                   href={message.link}
                   onClick={(e) => {
                     e.preventDefault();
+                    // Validate link before navigating
+                    if (!message.link || message.link.includes('null') || message.link.includes('undefined')) {
+                      console.error('Invalid quote link:', message.link);
+                      alert('Sorry, there was an issue loading your quote page. Please contact us directly at (901) 410-2020.');
+                      return;
+                    }
                     // Minimize the chat so user can browse the page
                     if (onMinimize) {
                       onMinimize();
                     }
-                    // Open link in new tab so chat state persists
-                    window.open(message.link, '_blank', 'noopener,noreferrer');
+                    // On mobile, use window.location for better compatibility
+                    // On desktop, open in new tab
+                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                    if (isMobile) {
+                      window.location.href = message.link;
+                    } else {
+                      window.open(message.link, '_blank', 'noopener,noreferrer');
+                    }
                   }}
                   className="inline-block mt-3 px-4 py-2 bg-brand hover:bg-brand-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg"
                 >

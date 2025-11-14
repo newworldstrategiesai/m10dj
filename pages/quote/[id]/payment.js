@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
 import Footer from '../../../components/company/Footer';
-import { CreditCard, ArrowLeft, Loader2, CheckCircle, Lock, AlertCircle, FileText } from 'lucide-react';
+import { CreditCard, ArrowLeft, Loader2, CheckCircle, Lock, AlertCircle, FileText, X } from 'lucide-react';
 
 export default function PaymentPage() {
   const router = useRouter();
@@ -47,6 +47,62 @@ export default function PaymentPage() {
       setError('Failed to load payment information');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRemoveAddon = async (addonIndex) => {
+    if (!quoteData || !quoteData.addons || addonIndex < 0 || addonIndex >= quoteData.addons.length) {
+      return;
+    }
+
+    // Save original state for potential rollback
+    const originalQuoteData = { ...quoteData };
+
+    // Create updated addons array without the removed addon
+    const updatedAddons = quoteData.addons.filter((_, idx) => idx !== addonIndex);
+    
+    // Recalculate total price
+    const packagePrice = quoteData.package_price || 0;
+    const addonsTotal = updatedAddons.reduce((sum, addon) => sum + (addon.price || 0), 0);
+    const newTotalPrice = packagePrice + addonsTotal;
+
+    // Update local state immediately for better UX
+    const updatedQuoteData = {
+      ...quoteData,
+      addons: updatedAddons,
+      total_price: newTotalPrice
+    };
+    setQuoteData(updatedQuoteData);
+
+    // Save updated quote to database
+    try {
+      const response = await fetch('/api/quote/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: id,
+          packageId: quoteData.package_id,
+          packageName: quoteData.package_name,
+          packagePrice: packagePrice,
+          addons: updatedAddons,
+          totalPrice: newTotalPrice
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to update quote after removing addon');
+        // Revert local state if save failed
+        setQuoteData(originalQuoteData);
+        setError('Failed to remove addon. Please try again.');
+      } else {
+        // Clear any previous errors on success
+        setError(null);
+      }
+    } catch (error) {
+      console.error('Error updating quote:', error);
+      // Revert local state if save failed
+      setQuoteData(originalQuoteData);
+      setError('Failed to remove addon. Please try again.');
     }
   };
 
@@ -218,9 +274,19 @@ export default function PaymentPage() {
                       <p className="font-semibold text-gray-900 dark:text-white mb-2">Add-ons:</p>
                       <ul className="space-y-2">
                         {quoteData.addons.map((addon, idx) => (
-                          <li key={idx} className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                            <span>{addon.name}</span>
-                            <span>${addon.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <li key={idx} className="group flex items-center justify-between gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <span className="flex-1">{addon.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span>${addon.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <button
+                                onClick={() => handleRemoveAddon(idx)}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all"
+                                title="Remove addon"
+                                aria-label={`Remove ${addon.name}`}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
                           </li>
                         ))}
                       </ul>

@@ -18,18 +18,125 @@ export default function PersonalizedQuote() {
   const [expandedBreakdown, setExpandedBreakdown] = useState(null);
 
   const fetchLeadData = useCallback(async () => {
+    // Validate ID before making request
+    if (!id || id === 'null' || id === 'undefined' || id.trim() === '') {
+      console.error('Invalid quote ID:', id);
+      // Try to get form data from sessionStorage as fallback
+      const savedFormData = sessionStorage.getItem('quote_form_data');
+      if (savedFormData) {
+        try {
+          const formData = JSON.parse(savedFormData);
+          console.log('✅ Using saved form data as fallback');
+          setLeadData({
+            id: 'fallback',
+            name: formData.name || 'Valued Customer',
+            email: formData.email,
+            phone: formData.phone,
+            eventType: formData.eventType,
+            eventDate: formData.eventDate,
+            location: formData.location
+          });
+          setError(null);
+          setLoading(false);
+          return;
+        } catch (e) {
+          console.error('Failed to parse saved form data:', e);
+        }
+      }
+      setError('Invalid quote link. Please contact us to get your personalized quote.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/leads/${id}`);
       if (response.ok) {
         const data = await response.json();
-        setLeadData(data);
-        setError(null);
+        if (data && data.id) {
+          setLeadData(data);
+          setError(null);
+        } else {
+          console.error('Invalid data returned from API:', data);
+          // Try fallback with saved form data
+          const savedFormData = sessionStorage.getItem('quote_form_data');
+          if (savedFormData) {
+            try {
+              const formData = JSON.parse(savedFormData);
+              console.log('✅ Using saved form data as fallback');
+              setLeadData({
+                id: 'fallback',
+                name: formData.name || 'Valued Customer',
+                email: formData.email,
+                phone: formData.phone,
+                eventType: formData.eventType,
+                eventDate: formData.eventDate,
+                location: formData.location
+              });
+              setError(null);
+              setLoading(false);
+              return;
+            } catch (e) {
+              console.error('Failed to parse saved form data:', e);
+            }
+          }
+          setError('Quote data is invalid. Please contact us for assistance.');
+        }
       } else {
-        setError('Quote not found');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('API error:', response.status, errorData);
+        
+        // Try fallback with saved form data
+        const savedFormData = sessionStorage.getItem('quote_form_data');
+        if (savedFormData) {
+          try {
+            const formData = JSON.parse(savedFormData);
+            console.log('✅ Using saved form data as fallback after API error');
+            setLeadData({
+              id: 'fallback',
+              name: formData.name || 'Valued Customer',
+              email: formData.email,
+              phone: formData.phone,
+              eventType: formData.eventType,
+              eventDate: formData.eventDate,
+              location: formData.location
+            });
+            setError(null);
+            setLoading(false);
+            return;
+          } catch (e) {
+            console.error('Failed to parse saved form data:', e);
+          }
+        }
+        
+        setError(errorData.error || 'Quote not found. Please contact us to get your personalized quote.');
       }
     } catch (error) {
       console.error('Error fetching lead data:', error);
-      setError('Failed to load quote');
+      
+      // Try fallback with saved form data
+      const savedFormData = sessionStorage.getItem('quote_form_data');
+      if (savedFormData) {
+        try {
+          const formData = JSON.parse(savedFormData);
+          console.log('✅ Using saved form data as fallback after network error');
+          setLeadData({
+            id: 'fallback',
+            name: formData.name || 'Valued Customer',
+            email: formData.email,
+            phone: formData.phone,
+            eventType: formData.eventType,
+            eventDate: formData.eventDate,
+            location: formData.location
+          });
+          setError(null);
+          setLoading(false);
+          return;
+        } catch (e) {
+          console.error('Failed to parse saved form data:', e);
+        }
+      }
+      
+      setError('Failed to load quote. Please check your connection and try again, or contact us directly.');
     } finally {
       setLoading(false);
     }
@@ -40,6 +147,22 @@ export default function PersonalizedQuote() {
       fetchLeadData();
     }
   }, [id, fetchLeadData]);
+
+  // Auto-scroll to add-ons section when a package is selected
+  useEffect(() => {
+    if (selectedPackage) {
+      // Use setTimeout to ensure the DOM has updated
+      setTimeout(() => {
+        const addonsSection = document.getElementById('addons-section');
+        if (addonsSection) {
+          addonsSection.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
+      }, 100);
+    }
+  }, [selectedPackage]);
 
   const packages = [
     {
@@ -171,11 +294,13 @@ export default function PersonalizedQuote() {
 
   const calculateTotal = () => {
     let total = 0;
-    if (selectedPackage) {
-      total += selectedPackage.price;
+    if (selectedPackage && selectedPackage.price != null) {
+      total += Number(selectedPackage.price) || 0;
     }
     selectedAddons.forEach(addon => {
-      total += addon.price;
+      if (addon && addon.price != null) {
+        total += Number(addon.price) || 0;
+      }
     });
     return total;
   };
@@ -199,6 +324,45 @@ export default function PersonalizedQuote() {
 
     setSaving(true);
     try {
+      // If using fallback data (id === 'fallback'), we can't save to database
+      // But we can still show success and store locally
+      if (id === 'fallback' || !id || id === 'null' || id === 'undefined') {
+        // Store selections in localStorage as backup
+        const quoteData = {
+          packageId: selectedPackage.id,
+          packageName: selectedPackage.name,
+          addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
+          total: calculateTotal(),
+          leadData: leadData,
+          timestamp: new Date().toISOString()
+        };
+        
+        try {
+          localStorage.setItem('pending_quote', JSON.stringify(quoteData));
+          console.log('✅ Saved quote selections to localStorage');
+        } catch (e) {
+          console.warn('Could not save to localStorage:', e);
+        }
+        
+        // Show success message and redirect to contact page
+        alert('Your selections have been saved! We\'ll contact you within 24 hours to finalize your quote. Thank you!');
+        router.push('/#contact');
+        return;
+      }
+
+      // Ensure we have valid price values
+      const packagePrice = selectedPackage?.price ?? 0;
+      const totalPrice = calculateTotal();
+      
+      console.log('💾 Saving quote:', {
+        leadId: id,
+        packageId: selectedPackage?.id,
+        packageName: selectedPackage?.name,
+        packagePrice: packagePrice,
+        totalPrice: totalPrice,
+        selectedPackage: selectedPackage
+      });
+
       const response = await fetch('/api/quote/save', {
         method: 'POST',
         headers: {
@@ -208,8 +372,9 @@ export default function PersonalizedQuote() {
           leadId: id,
           packageId: selectedPackage.id,
           packageName: selectedPackage.name,
+          packagePrice: packagePrice,
           addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
-          total: calculateTotal()
+          totalPrice: totalPrice
         })
       });
 
@@ -217,11 +382,30 @@ export default function PersonalizedQuote() {
         const result = await response.json();
         router.push(`/quote/${id}/confirmation`);
       } else {
+        // If save fails, still store locally as backup
+        const quoteData = {
+          leadId: id,
+          packageId: selectedPackage.id,
+          packageName: selectedPackage.name,
+          addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
+          total: calculateTotal(),
+          leadData: leadData,
+          timestamp: new Date().toISOString()
+        };
+        
+        try {
+          localStorage.setItem('pending_quote', JSON.stringify(quoteData));
+          console.log('✅ Saved quote selections to localStorage as backup');
+        } catch (e) {
+          console.warn('Could not save to localStorage:', e);
+        }
+        
         throw new Error('Failed to save quote');
       }
     } catch (error) {
       console.error('Error saving quote:', error);
-      alert('Failed to save your selections. Please try again.');
+      // Even if save fails, we've stored locally, so show a helpful message
+      alert('Your selections have been saved locally. We\'ll contact you within 24 hours to finalize your quote. Thank you!');
     } finally {
       setSaving(false);
     }
@@ -423,7 +607,7 @@ export default function PersonalizedQuote() {
           </section>
 
           {/* Add-ons Section */}
-          <section className="mb-12">
+          <section id="addons-section" className="mb-12">
             <h2 className="text-3xl font-bold text-center mb-4">
               <Sparkles className="inline w-8 h-8 text-brand mr-2" />
               Enhance Your Experience

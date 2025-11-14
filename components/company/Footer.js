@@ -40,7 +40,7 @@ export default function Footer() {
                 <Phone className="w-4 h-4 md:w-5 md:h-5 text-brand flex-shrink-0 mt-1" />
                 <div className="min-w-0">
                   <a href="tel:+19014102020" className="text-white hover:text-brand transition-colors font-inter font-semibold text-sm md:text-base">
-                    (901) 410-2020
+(901) 410-2020
                   </a>
                   <p className="text-gray-400 text-xs md:text-sm font-inter">Call or text anytime</p>
                 </div>

@@ -3,7 +3,6 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   experimental: {
-    turbo: true,
     optimizeCss: true,
   },
   // Temporarily disable Fast Refresh to prevent infinite reloads
@@ -17,8 +16,6 @@ const nextConfig = {
     }
     return config;
   },
-  // Disable Fast Refresh temporarily
-  fastRefresh: false,
   images: {
     domains: ['m10djcompany.com', 'www.m10djcompany.com'],
     remotePatterns: [

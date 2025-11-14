@@ -224,7 +224,7 @@ export default function Header() {
                   >
                     <span className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-brand rounded-full"></span>
-                      Services
+                    Services
                     </span>
                     <ChevronDown className={`w-5 h-5 text-brand transition-transform ${openDropdown === 'mobile-services' ? 'rotate-180' : ''}`} />
                   </button>
@@ -255,7 +255,7 @@ export default function Header() {
                   >
                     <span className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-blue-600" />
-                      Service Areas
+                    Service Areas
                     </span>
                     <ChevronDown className={`w-5 h-5 text-blue-600 transition-transform ${openDropdown === 'mobile-areas' ? 'rotate-180' : ''}`} />
                   </button>
@@ -304,8 +304,8 @@ export default function Header() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-gray-700 font-inter mb-0.5">Call or Text</p>
                       <a href="tel:+19014102020" className="text-brand hover:text-amber-700 font-bold font-inter text-lg transition-colors">
-                        (901) 410-2020
-                      </a>
+(901) 410-2020
+                    </a>
                     </div>
                   </div>
                 </div>
@@ -318,8 +318,8 @@ export default function Header() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-gray-700 font-inter mb-0.5">Email Us</p>
                       <a href="mailto:info@m10djcompany.com" className="text-blue-600 hover:text-blue-700 font-bold font-inter text-sm transition-colors break-all">
-                        info@m10djcompany.com
-                      </a>
+                      info@m10djcompany.com
+                    </a>
                     </div>
                   </div>
                 </div>

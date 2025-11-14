@@ -14,35 +14,94 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Lead ID is required' });
   }
 
+  // Validate ID format (should not be null, undefined, or empty string)
+  if (id === 'null' || id === 'undefined' || id.trim() === '') {
+    console.error('Invalid lead ID format:', id);
+    return res.status(400).json({ error: 'Invalid lead ID format' });
+  }
+
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch lead data from contacts table
-    const { data, error } = await supabase
+    console.log('🔍 Looking up lead with ID:', id, '(type:', typeof id, ')');
+
+    // First, try to fetch from contacts table (UUID format)
+    let { data, error } = await supabase
       .from('contacts')
-      .select('id, name, email, phone, event_type, event_date, location, created_at')
+      .select('id, first_name, last_name, email_address, phone, event_type, event_date, venue_name, created_at')
       .eq('id', id)
+      .is('deleted_at', null)
       .single();
 
-    if (error) {
-      console.error('Error fetching lead:', error);
-      return res.status(404).json({ error: 'Lead not found' });
+    // If not found in contacts, try contact_submissions table (integer format)
+    if (error || !data) {
+      console.log('Contact not found in contacts table, trying contact_submissions...');
+      console.log('Contacts error:', error?.code, error?.message);
+      
+      // Try as integer if it looks like a number
+      let submissionId = id;
+      if (!isNaN(id) && !isNaN(parseInt(id))) {
+        submissionId = parseInt(id);
+      }
+      
+      const { data: submissionData, error: submissionError } = await supabase
+        .from('contact_submissions')
+        .select('id, name, email, phone, event_type, event_date, location, created_at')
+        .eq('id', submissionId)
+        .single();
+
+      if (submissionError || !submissionData) {
+        console.error('❌ Lead not found in either table');
+        console.error('Contacts error:', error?.code, error?.message);
+        console.error('Submissions error:', submissionError?.code, submissionError?.message);
+        return res.status(404).json({ 
+          error: 'Quote not found',
+          details: 'The quote link may be invalid or expired. Please contact us to get a new quote.'
+        });
+      }
+
+      console.log('✅ Found lead in contact_submissions table');
+
+      // Map submission data to expected format
+      const nameParts = (submissionData.name || '').split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+      return res.status(200).json({
+        id: submissionData.id,
+        name: submissionData.name || 'Valued Customer',
+        email: submissionData.email,
+        phone: submissionData.phone,
+        eventType: submissionData.event_type,
+        eventDate: submissionData.event_date,
+        location: submissionData.location,
+        createdAt: submissionData.created_at
+      });
     }
+
+    console.log('✅ Found lead in contacts table');
+
+    // Combine first and last name
+    const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Valued Customer';
 
     // Return sanitized lead data
     res.status(200).json({
       id: data.id,
-      name: data.name,
-      email: data.email,
+      name: fullName,
+      email: data.email_address,
       phone: data.phone,
       eventType: data.event_type,
       eventDate: data.event_date,
-      location: data.location,
+      location: data.venue_name,
       createdAt: data.created_at
     });
   } catch (error) {
-    console.error('Error in lead API:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ Error in lead API:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: 'An unexpected error occurred. Please try again or contact support.'
+    });
   }
 }
 

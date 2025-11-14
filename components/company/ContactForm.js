@@ -273,12 +273,39 @@ export default function ContactForm({ className = '' }) {
         // Log success for monitoring
         console.log('✅ Lead form submitted successfully:', {
           submissionId: result.data?.submissionId,
+          contactId: result.data?.contactId,
+          quoteId: result.data?.quoteId,
           timestamp: new Date().toISOString(),
           idempotencyKey: idempotencyKey.current
         });
         
-        // Store submission ID for personalized pages
-        setSubmissionId(result.data?.submissionId || result.data?.contactId);
+        // Store quote ID for personalized pages
+        // Use quoteId (explicit field), or fallback to contactId, then submissionId
+        const quoteId = result.data?.quoteId || result.data?.contactId || result.data?.submissionId;
+        
+        // Store form data in sessionStorage as fallback for quote page
+        if (result.data?.formData) {
+          try {
+            sessionStorage.setItem('quote_form_data', JSON.stringify(result.data.formData));
+            console.log('✅ Saved form data to sessionStorage as fallback');
+          } catch (e) {
+            console.warn('⚠️ Could not save form data to sessionStorage:', e);
+          }
+        }
+        
+        if (quoteId) {
+          console.log('📋 Setting quote ID:', quoteId, '(type:', typeof quoteId, ')');
+          setSubmissionId(String(quoteId)); // Ensure it's a string
+        } else {
+          console.error('❌ CRITICAL: No valid ID returned from API for quote page!');
+          console.error('API response:', result.data);
+          
+          // Even without quoteId, we can still show the chat
+          // The quote page will use form data from sessionStorage
+          if (result.data?.formData) {
+            console.log('✅ Will use form data fallback for quote page');
+          }
+        }
         setSubmitted(true);
         
         // Reset idempotency key for potential future submissions
@@ -367,7 +394,7 @@ export default function ContactForm({ className = '' }) {
       </div>
     ),
     document.body
-  );
+    );
 
   return (
     <div className={`${className}`}>

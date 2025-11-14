@@ -199,11 +199,11 @@ export default function Home() {
 
         {/* Client Logo Carousel - Enhanced */}
         <section className="py-section bg-white dark:bg-slate-900">
-          <ClientLogoCarousel 
-            logoSet="general"
-            title="Trusted by Memphis's Premier Organizations"
-            subtitle="Proudly serving 500+ weddings, corporate events, and celebrations at Memphis's top venues"
-          />
+        <ClientLogoCarousel 
+          logoSet="general"
+          title="Trusted by Memphis's Premier Organizations"
+          subtitle="Proudly serving 500+ weddings, corporate events, and celebrations at Memphis's top venues"
+        />
         </section>
 
         {/* Testimonials Section */}

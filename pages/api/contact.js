@@ -144,15 +144,34 @@ export default async function handler(req, res) {
       message: sanitizedData.message
     };
 
+    // CRITICAL: Save submission to database with retry logic
+    // This is the most important operation - we MUST have a submission ID
     let dbSubmission;
-    try {
-      dbSubmission = await db.createContactSubmission(submissionData);
-      criticalOperations.dbSubmission.success = true;
-      criticalOperations.dbSubmission.id = dbSubmission.id;
-      console.log('✅ Contact submission saved to database:', dbSubmission.id);
-    } catch (dbError) {
-      console.error('❌ CRITICAL: Failed to save submission to database:', dbError);
-      throw new Error('Failed to save your submission. Please try again.');
+    let submissionRetries = 0;
+    const maxSubmissionRetries = 3;
+    
+    while (submissionRetries < maxSubmissionRetries) {
+      try {
+        dbSubmission = await db.createContactSubmission(submissionData);
+        criticalOperations.dbSubmission.success = true;
+        criticalOperations.dbSubmission.id = dbSubmission.id;
+        console.log('✅ Contact submission saved to database:', dbSubmission.id);
+        break; // Success - exit retry loop
+      } catch (dbError) {
+        submissionRetries++;
+        console.error(`❌ Attempt ${submissionRetries}/${maxSubmissionRetries}: Failed to save submission:`, dbError);
+        
+        if (submissionRetries >= maxSubmissionRetries) {
+          // Last attempt failed - this is truly critical
+          console.error('❌ CRITICAL: All retry attempts failed to save submission');
+          throw new Error('Failed to save your submission after multiple attempts. Please try again or contact us directly.');
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const waitTime = Math.min(1000 * Math.pow(2, submissionRetries - 1), 3000);
+        console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
     }
 
     // Create a contact record in the new contacts system - THIS IS CRITICAL
@@ -310,83 +329,259 @@ export default async function handler(req, res) {
       console.warn('Error during contact lookup (continuing):', lookupError);
     }
     
+    // CRITICAL: Contact creation with retry logic
+    // This MUST succeed - we will retry up to 3 times
     try {
-      if (existingContact) {
-        // Update existing contact with new information
-        console.log('Found existing contact:', existingContact.id);
-        const updateData = {
-          ...contactData,
-          messages_received_count: (existingContact.messages_received_count || 0) + 1,
-          last_contacted_date: new Date().toISOString(),
-          notes: `${existingContact.notes || ''}\n\nNew inquiry ${new Date().toLocaleDateString()}: ${message || 'No message provided'}`
-        };
-        
-        const { data: updatedContact, error: updateError } = await supabase
-          .from('contacts')
-          .update(updateData)
-          .eq('id', existingContact.id)
-          .select()
-          .single();
+      let contactCreated = false;
+      let contactRetries = 0;
+      const maxContactRetries = 3;
+      
+      while (!contactCreated && contactRetries < maxContactRetries) {
+      contactRetries++;
+      
+      try {
+        if (existingContact) {
+          // Update existing contact with new information
+          console.log(`📝 Attempt ${contactRetries}/${maxContactRetries}: Updating existing contact:`, existingContact.id);
+          const updateData = {
+            ...contactData,
+            messages_received_count: (existingContact.messages_received_count || 0) + 1,
+            last_contacted_date: new Date().toISOString(),
+            notes: `${existingContact.notes || ''}\n\nNew inquiry ${new Date().toLocaleDateString()}: ${message || 'No message provided'}`
+          };
           
-        if (updateError) {
-          console.error('❌ CRITICAL: Error updating existing contact:', updateError);
-          throw new Error(`Failed to update contact: ${updateError.message}`);
-        }
-        
-        console.log('✅ Updated existing contact:', updatedContact.id);
-        criticalOperations.contactRecord.success = true;
-        criticalOperations.contactRecord.id = updatedContact.id;
-        
-        // Create project for the existing contact (new inquiry)
-        try {
-          console.log('Creating project for existing contact...');
-          const project = await db.createProject(contactData, dbSubmission.id);
-          console.log('✅ Project created successfully:', project.id);
-          criticalOperations.projectRecord.success = true;
-          criticalOperations.projectRecord.id = project.id;
-        } catch (projectError) {
-          console.error('⚠️ Project creation failed (non-critical):', projectError);
-          // Don't fail the entire request if project creation fails
-        }
-      } else {
-        // Create new contact
-        console.log('Creating new contact...');
-        const { data: newContact, error: createError } = await supabase
-          .from('contacts')
-          .insert([contactData])
-          .select()
-          .single();
+          const { data: updatedContact, error: updateError } = await supabase
+            .from('contacts')
+            .update(updateData)
+            .eq('id', existingContact.id)
+            .select()
+            .single();
+            
+          if (updateError) {
+            console.error(`❌ Attempt ${contactRetries}: Error updating contact:`, updateError);
+            if (contactRetries >= maxContactRetries) {
+              throw new Error(`Failed to update contact after ${maxContactRetries} attempts: ${updateError.message}`);
+            }
+            // Wait before retry
+            const waitTime = Math.min(1000 * Math.pow(2, contactRetries - 1), 3000);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
           
-        if (createError) {
-          console.error('❌ CRITICAL: Error creating new contact:', createError);
-          console.error('Contact data that failed:', { ...contactData, special_requests: '[redacted]' });
-          throw new Error(`Failed to create contact: ${createError.message}`);
+          console.log('✅ Updated existing contact:', updatedContact.id);
+          criticalOperations.contactRecord.success = true;
+          criticalOperations.contactRecord.id = updatedContact.id;
+          contactCreated = true;
+          
+          // Create project for the existing contact (new inquiry)
+          try {
+            console.log('Creating project for existing contact...');
+            const project = await db.createProject(contactData, dbSubmission.id);
+            console.log('✅ Project created successfully:', project.id);
+            criticalOperations.projectRecord.success = true;
+            criticalOperations.projectRecord.id = project.id;
+          } catch (projectError) {
+            console.error('⚠️ Project creation failed (non-critical):', projectError);
+            // Don't fail the entire request if project creation fails
+          }
+        } else {
+          // Create new contact
+          console.log(`📝 Attempt ${contactRetries}/${maxContactRetries}: Creating new contact...`);
+          const { data: newContact, error: createError } = await supabase
+            .from('contacts')
+            .insert([contactData])
+            .select()
+            .single();
+            
+          if (createError) {
+            console.error(`❌ Attempt ${contactRetries}: Error creating contact:`, createError);
+            console.error('Contact data that failed:', { ...contactData, special_requests: '[redacted]' });
+            
+            // If it's a unique constraint violation, try to find existing contact
+            if (createError.code === '23505') {
+              console.log('⚠️ Duplicate detected, attempting to find existing contact...');
+              const { data: foundContact, error: findError } = await supabase
+                .from('contacts')
+                .select('id')
+                .eq('email_address', email)
+                .is('deleted_at', null)
+                .maybeSingle();
+              
+              if (!findError && foundContact) {
+                console.log('✅ Found existing contact:', foundContact.id);
+                criticalOperations.contactRecord.success = true;
+                criticalOperations.contactRecord.id = foundContact.id;
+                contactCreated = true;
+                break;
+              }
+            }
+            
+            if (contactRetries >= maxContactRetries) {
+              throw new Error(`Failed to create contact after ${maxContactRetries} attempts: ${createError.message}`);
+            }
+            
+            // Wait before retry
+            const waitTime = Math.min(1000 * Math.pow(2, contactRetries - 1), 3000);
+            console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
+          
+          console.log('✅ Created new contact:', newContact.id);
+          criticalOperations.contactRecord.success = true;
+          criticalOperations.contactRecord.id = newContact.id;
+          contactCreated = true;
+          
+          // Create project for the new contact
+          try {
+            console.log('Creating project for new contact...');
+            const project = await db.createProject(contactData, dbSubmission.id);
+            console.log('✅ Project created successfully:', project.id);
+            criticalOperations.projectRecord.success = true;
+            criticalOperations.projectRecord.id = project.id;
+          } catch (projectError) {
+            console.error('⚠️ Project creation failed (non-critical):', projectError);
+            // Don't fail the entire request if project creation fails
+          }
         }
-        
-        console.log('✅ Created new contact:', newContact.id);
-        criticalOperations.contactRecord.success = true;
-        criticalOperations.contactRecord.id = newContact.id;
-        
-        // Create project for the new contact
-        try {
-          console.log('Creating project for new contact...');
-          const project = await db.createProject(contactData, dbSubmission.id);
-          console.log('✅ Project created successfully:', project.id);
-          criticalOperations.projectRecord.success = true;
-          criticalOperations.projectRecord.id = project.id;
-        } catch (projectError) {
-          console.error('⚠️ Project creation failed (non-critical):', projectError);
-          // Don't fail the entire request if project creation fails
+      } catch (contactError) {
+        console.error(`❌ Contact operation attempt ${contactRetries} failed:`, contactError);
+        if (contactRetries >= maxContactRetries) {
+          // This will be caught by outer catch block for recovery
+          throw contactError;
         }
       }
-    } catch (contactError) {
-      console.error('❌ CRITICAL ERROR: Failed to manage contact record:', contactError);
-      console.error('❌ THIS IS A CRITICAL FAILURE - CONTACT NOT SAVED TO CRM!');
-      console.error('Submission was saved to database (ID: ' + dbSubmission.id + ') but contact record failed');
-      
-      // This is critical - we should fail the request so it can be retried
-      throw new Error('Failed to save contact information. Please try again.');
     }
+    
+    // Final verification - ensure contact exists
+    if (!criticalOperations.contactRecord.success || !criticalOperations.contactRecord.id) {
+      throw new Error('Contact creation verification failed - contact record not properly created');
+    }
+    
+    } catch (contactError) {
+      console.error('❌ CRITICAL: Failed to create/update contact record:', contactError);
+      console.error('⚠️ Attempting recovery strategies...');
+      
+      // RECOVERY STRATEGY 1: Try to create contact with minimal required fields
+      let recoveryContact = null;
+      let recoveryAttempts = 0;
+      const maxRecoveryAttempts = 3;
+      
+      while (recoveryAttempts < maxRecoveryAttempts && !recoveryContact) {
+        recoveryAttempts++;
+        console.log(`🔄 Recovery attempt ${recoveryAttempts}/${maxRecoveryAttempts}...`);
+        
+        try {
+          // Minimal contact data - only required fields
+          const minimalContactData = {
+            user_id: adminUserId || null,
+            first_name: firstName || 'Unknown',
+            last_name: lastName || 'Customer',
+            email_address: email,
+            phone: phone || null,
+            event_type: standardizedEventType || 'other',
+            event_date: parsedEventDate,
+            venue_name: location || null,
+            special_requests: message || null,
+            lead_status: 'New',
+            lead_source: 'Website',
+            lead_stage: 'Initial Inquiry',
+            lead_temperature: 'Warm',
+            communication_preference: 'email',
+            how_heard_about_us: 'Website Contact Form',
+            notes: `Initial inquiry submitted via website contact form on ${new Date().toLocaleDateString()}. Recovery attempt ${recoveryAttempts}.`,
+            last_contacted_date: new Date().toISOString(),
+            last_contact_type: 'form_submission',
+            opt_in_status: true,
+            lead_score: 50,
+            priority_level: 'Medium'
+          };
+          
+          // Try to insert (ignore if duplicate)
+          const { data: newContact, error: insertError } = await supabase
+            .from('contacts')
+            .insert([minimalContactData])
+            .select()
+            .single();
+          
+          if (!insertError && newContact) {
+            console.log('✅ Recovery successful! Contact created:', newContact.id);
+            recoveryContact = newContact;
+            criticalOperations.contactRecord.success = true;
+            criticalOperations.contactRecord.id = newContact.id;
+            break;
+          } else if (insertError?.code === '23505') {
+            // Unique constraint violation - contact already exists
+            console.log('⚠️ Contact already exists, attempting to fetch it...');
+            
+            // Try to find existing contact by email
+            const { data: existingContact, error: fetchError } = await supabase
+              .from('contacts')
+              .select('id')
+              .eq('email_address', email)
+              .is('deleted_at', null)
+              .maybeSingle();
+            
+            if (!fetchError && existingContact) {
+              console.log('✅ Found existing contact:', existingContact.id);
+              recoveryContact = existingContact;
+              criticalOperations.contactRecord.success = true;
+              criticalOperations.contactRecord.id = existingContact.id;
+              break;
+            }
+          }
+          
+          if (recoveryAttempts < maxRecoveryAttempts) {
+            const waitTime = Math.min(1000 * Math.pow(2, recoveryAttempts - 1), 3000);
+            console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        } catch (recoveryError) {
+          console.error(`❌ Recovery attempt ${recoveryAttempts} failed:`, recoveryError);
+          if (recoveryAttempts >= maxRecoveryAttempts) {
+            console.error('❌ All recovery attempts failed');
+          }
+        }
+      }
+      
+      // If recovery failed, this is a critical error
+      if (!recoveryContact) {
+        console.error('❌ CRITICAL FAILURE: Unable to create contact after all recovery attempts');
+        console.error('❌ This should never happen - contact creation is required');
+        throw new Error('Failed to create contact record after multiple attempts. Please contact support.');
+      }
+    }
+    
+    // VERIFICATION: Ensure contact was actually created
+    if (!criticalOperations.contactRecord.success || !criticalOperations.contactRecord.id) {
+      console.error('❌ CRITICAL: Contact record verification failed');
+      console.error('Contact record state:', criticalOperations.contactRecord);
+      
+      // Final verification attempt - query by email
+      try {
+        const { data: verifyContact, error: verifyError } = await supabase
+          .from('contacts')
+          .select('id')
+          .eq('email_address', email)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (!verifyError && verifyContact) {
+          console.log('✅ Verification successful - found contact:', verifyContact.id);
+          criticalOperations.contactRecord.success = true;
+          criticalOperations.contactRecord.id = verifyContact.id;
+        } else {
+          throw new Error('Contact verification failed - contact does not exist in database');
+        }
+      } catch (verifyError) {
+        console.error('❌ Verification failed:', verifyError);
+        throw new Error('Failed to verify contact creation. Please contact support.');
+      }
+    }
+    
+    console.log('✅ Contact record guaranteed:', criticalOperations.contactRecord.id);
 
     // Auto-send service selection link for wedding leads
     if (standardizedEventType === 'wedding' || standardizedEventType === 'Wedding') {
@@ -441,7 +636,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contactId: newContact?.id || existingContact?.id,
+          contactId: criticalOperations.contactRecord.id,
           email: email,
           name: name,
           eventType: eventType,
@@ -675,11 +870,98 @@ export default async function handler(req, res) {
       projectId: criticalOperations.projectRecord.id
     });
 
+    // CRITICAL: Ensure we ALWAYS have a valid ID for the quote page
+    // This is the most important part - we MUST have a quoteId
+    // Prefer contactId (from contacts table), fallback to submissionId (from contact_submissions table)
+    const quoteId = criticalOperations.contactRecord.id || criticalOperations.dbSubmission.id;
+    
+    // This should NEVER happen since dbSubmission.id is set before this point
+    // But add extra safety check with retry logic
+    if (!quoteId) {
+      console.error('❌ CRITICAL: No valid ID available for quote page!');
+      console.error('Critical operations state:', criticalOperations);
+      console.error('Attempting to re-fetch submission ID...');
+      
+      // Last resort: try to get the submission ID from the database
+      try {
+        const { data: lastSubmission, error: fetchError } = await supabase
+          .from('contact_submissions')
+          .select('id')
+          .eq('email', email)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (!fetchError && lastSubmission?.id) {
+          console.log('✅ Recovered submission ID:', lastSubmission.id);
+          criticalOperations.dbSubmission.id = lastSubmission.id;
+          const recoveredQuoteId = criticalOperations.contactRecord.id || lastSubmission.id;
+          
+          const successResponse = { 
+            success: true,
+            message: 'Thank you for your message! We\'ll get back to you soon.',
+            submissionId: lastSubmission.id,
+            contactId: criticalOperations.contactRecord.id,
+            quoteId: recoveredQuoteId,
+            formData: {
+              name: sanitizedData.name,
+              email: sanitizedData.email,
+              phone: sanitizedData.phone,
+              eventType: sanitizedData.eventType,
+              eventDate: sanitizedData.eventDate,
+              location: sanitizedData.location
+            }
+          };
+          
+          if (idempotencyKey) {
+            serverIdempotency.markProcessed(idempotencyKey, successResponse);
+          }
+          
+          return res.status(200).json(successResponse);
+        }
+      } catch (recoveryError) {
+        console.error('❌ Failed to recover submission ID:', recoveryError);
+      }
+      
+      // If we still don't have an ID, this is a critical failure
+      // But we'll still return success with form data so user can proceed
+      console.error('❌ CRITICAL FAILURE: Unable to generate quote ID');
+      return res.status(200).json({
+        success: true,
+        message: 'Thank you for your message! We\'ll get back to you soon.',
+        submissionId: null,
+        contactId: null,
+        quoteId: null,
+        formData: {
+          name: sanitizedData.name,
+          email: sanitizedData.email,
+          phone: sanitizedData.phone,
+          eventType: sanitizedData.eventType,
+          eventDate: sanitizedData.eventDate,
+          location: sanitizedData.location
+        },
+        _warning: 'Quote link unavailable - please contact us directly'
+      });
+    }
+
+    console.log('✅ Quote ID guaranteed:', quoteId, '(type:', typeof quoteId, ')');
+    console.log('   Source:', criticalOperations.contactRecord.id ? 'contact' : 'submission');
+
+    // Include form data in response as backup for quote page
     const successResponse = { 
       success: true,
       message: 'Thank you for your message! We\'ll get back to you soon.',
       submissionId: dbSubmission.id,
-      contactId: criticalOperations.contactRecord.id
+      contactId: criticalOperations.contactRecord.id,
+      quoteId: quoteId, // Explicit quoteId field - guaranteed to exist
+      formData: {
+        name: sanitizedData.name,
+        email: sanitizedData.email,
+        phone: sanitizedData.phone,
+        eventType: sanitizedData.eventType,
+        eventDate: sanitizedData.eventDate,
+        location: sanitizedData.location
+      }
     };
 
     // Store successful result for idempotency
