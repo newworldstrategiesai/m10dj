@@ -1193,9 +1193,34 @@ Thank you for reaching out to M10 DJ Company! I'm excited to learn more about yo
 
 I'd love to discuss how we can make your event unforgettable with professional DJ services, lighting, and entertainment.
 
+I've created a personalized service selection page where you can view our packages, add-ons, and pricing. This will help me prepare a custom quote tailored to your needs.
+
 Are you available for a quick call this week to discuss your vision and answer any questions you might have?
 
 Looking forward to connecting!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    select_services: {
+      name: 'Select Your Services',
+      subject: `Select Your Services - M10 DJ Company`,
+      body: `Hi ${contact.first_name || 'there'},
+
+I've prepared a personalized service selection page for your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}.
+
+On this page, you'll be able to:
+• Browse our DJ service packages
+• Select add-ons and enhancements
+• See transparent pricing
+• Get an instant quote
+
+This will help me understand exactly what you need for your special day, and I can prepare a custom quote tailored to your event.
+
+If you have any questions while reviewing the options, feel free to reach out!
 
 Best regards,
 Ben Murray
@@ -1284,6 +1309,65 @@ djbenmurray@gmail.com`
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTemplate]);
 
+  const handleSendTestEmail = async () => {
+    if (!formData.body.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a message",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSending(true);
+    try {
+      // Generate quote link for the contact
+      const baseUrl = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com');
+      const quoteLink = `${baseUrl}/quote/${contact.id}`;
+      
+      // Add quote link button to email body if it's the Initial Response or Select Your Services template
+      let emailContent = formData.body;
+      if (selectedTemplate === 'initial_response' || selectedTemplate === 'select_services') {
+        // Add quote link section to the email
+        emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      }
+
+      // Send test email to admin
+      const response = await fetch('/api/admin/communications/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId: contact.id,
+          to: 'djbenmurray@gmail.com', // Admin email for testing
+          subject: `[TEST] ${formData.subject}`,
+          content: emailContent
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send test email');
+      }
+
+      toast({
+        title: "Test Email Sent",
+        description: "Test email sent to admin email (djbenmurray@gmail.com)"
+      });
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test email",
+        variant: "destructive"
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSendEmail = async () => {
     if (!formData.body.trim()) {
       toast({
@@ -1296,6 +1380,19 @@ djbenmurray@gmail.com`
 
     setSending(true);
     try {
+      // Generate quote link for the contact
+      const baseUrl = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com');
+      const quoteLink = `${baseUrl}/quote/${contact.id}`;
+      
+      // Add quote link button to email body if it's the Initial Response or Select Your Services template
+      let emailContent = formData.body;
+      if (selectedTemplate === 'initial_response' || selectedTemplate === 'select_services') {
+        // Add quote link section to the email
+        emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      }
+
       const response = await fetch('/api/admin/communications/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1303,7 +1400,7 @@ djbenmurray@gmail.com`
           contactId: contact.id,
           to: contact.email_address,
           subject: formData.subject,
-          content: formData.body
+          content: emailContent
         })
       });
 
@@ -1385,13 +1482,23 @@ djbenmurray@gmail.com`
           </div>
         </div>
 
-        <div className="p-6 border-t flex justify-end gap-3">
-          <Button variant="outline" onClick={onClose} disabled={sending}>
-            Cancel
+        <div className="p-6 border-t flex justify-between items-center">
+          <Button 
+            variant="outline" 
+            onClick={handleSendTestEmail} 
+            disabled={sending || !formData.body.trim()}
+            className="text-sm"
+          >
+            {sending ? 'Sending...' : 'Send Test Email'}
           </Button>
-          <Button onClick={handleSendEmail} disabled={sending || !formData.body.trim()}>
-            {sending ? 'Sending...' : 'Send Email'}
-          </Button>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onClose} disabled={sending}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendEmail} disabled={sending || !formData.body.trim()}>
+              {sending ? 'Sending...' : 'Send Email'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

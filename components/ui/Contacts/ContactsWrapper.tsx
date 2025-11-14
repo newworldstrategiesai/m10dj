@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/components/ui/Toasts/use-toast';
+import { toast, useToast } from '@/components/ui/Toasts/use-toast';
 import Link from 'next/link';
 import PipelineView from '@/components/admin/PipelineView';
 
@@ -128,6 +128,8 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
     quoteSelections: any[];
   } | null>(null);
   const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailContact, setEmailContact] = useState<Contact | null>(null);
 
   // Fetch contacts from API
   const fetchContacts = async () => {
@@ -310,6 +312,11 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   const handleSendSMS = (contact: Contact) => {
     // Navigate to SMS chat with this contact pre-filled
     window.open(`/chat/sms?contact=${encodeURIComponent(contact.phone || '')}`, '_blank');
+  };
+
+  const handleSendEmail = (contact: Contact) => {
+    setEmailContact(contact);
+    setShowEmailModal(true);
   };
 
   return (
@@ -543,7 +550,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                     className="flex-1 text-xs lg:text-sm h-10 lg:h-9"
                     onClick={(e) => {
                       e.stopPropagation();
-                      window.open(`mailto:${contact.email_address}`, '_blank');
+                      handleSendEmail(contact);
                     }}
                   >
                     <IconMail className="h-4 w-4 lg:h-3 lg:w-3 lg:mr-1" />
@@ -793,6 +800,367 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Email Compose Modal */}
+      {showEmailModal && emailContact && (
+        <EmailComposeModal
+          contact={emailContact}
+          onClose={() => {
+            setShowEmailModal(false);
+            setEmailContact(null);
+          }}
+          onSuccess={() => {
+            setShowEmailModal(false);
+            setEmailContact(null);
+            fetchContacts(); // Refresh contacts list
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Email Compose Modal Component
+function EmailComposeModal({ 
+  contact, 
+  onClose, 
+  onSuccess 
+}: { 
+  contact: Contact; 
+  onClose: () => void; 
+  onSuccess: () => void;
+}) {
+  const { toast } = useToast();
+  const [sending, setSending] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('custom');
+  const [formData, setFormData] = useState({
+    subject: `Re: ${contact.event_type || 'Event'} Inquiry - ${contact.first_name || 'Contact'}`,
+    body: ''
+  });
+
+  const emailTemplates = {
+    custom: {
+      name: 'Custom Email',
+      subject: `Re: ${contact.event_type || 'Event'} Inquiry - ${contact.first_name || 'Contact'}`,
+      body: ''
+    },
+    initial_response: {
+      name: 'Initial Response',
+      subject: `Thank you for contacting M10 DJ - ${contact.event_type || 'Event'}`,
+      body: `Hi ${contact.first_name || 'there'},
+
+Thank you for reaching out to M10 DJ Company! I'm excited to learn more about your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}.
+
+I'd love to discuss how we can make your event unforgettable with professional DJ services, lighting, and entertainment.
+
+I've created a personalized service selection page where you can view our packages, add-ons, and pricing. This will help me prepare a custom quote tailored to your needs.
+
+Are you available for a quick call this week to discuss your vision and answer any questions you might have?
+
+Looking forward to connecting!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    select_services: {
+      name: 'Select Your Services',
+      subject: `Select Your Services - M10 DJ Company`,
+      body: `Hi ${contact.first_name || 'there'},
+
+I've prepared a personalized service selection page for your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}.
+
+On this page, you'll be able to:
+• Browse our DJ service packages
+• Select add-ons and enhancements
+• See transparent pricing
+• Get an instant quote
+
+This will help me understand exactly what you need for your special day, and I can prepare a custom quote tailored to your event.
+
+If you have any questions while reviewing the options, feel free to reach out!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    quote_ready: {
+      name: 'Quote Ready',
+      subject: `Your Custom Quote - M10 DJ Services`,
+      body: `Hi ${contact.first_name || 'there'},
+
+Great news! I've prepared a custom quote for your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}.
+
+I've tailored our services to match your specific needs and budget. The quote includes:
+
+• Professional DJ Services
+• Premium Sound System
+• Uplighting & Ambiance
+• Wireless Microphone
+• Music Consultation
+
+Please review the attached quote and let me know if you have any questions. I'm happy to adjust the package to better fit your vision!
+
+Ready to move forward? Let's get you booked!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    follow_up: {
+      name: 'Follow Up',
+      subject: `Following up - ${contact.event_type || 'event'} on ${contact.event_date ? new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'your event date'}`,
+      body: `Hi ${contact.first_name || 'there'},
+
+I wanted to follow up on our previous conversation about your ${contact.event_type?.toLowerCase() || 'event'}.
+
+I know planning an event can be overwhelming with so many vendors to coordinate, so I wanted to make sure I answered all your questions about our DJ services.
+
+Do you have any additional questions? I'm here to help make this process as smooth as possible!
+
+Looking forward to hearing from you!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    booking_confirmation: {
+      name: 'Booking Confirmation',
+      subject: `You're Booked! - ${contact.event_type || 'Event'} Details`,
+      body: `Hi ${contact.first_name || 'there'},
+
+Congratulations! 🎉 Your ${contact.event_type?.toLowerCase() || 'event'} is officially on my calendar${contact.event_date ? ` for ${new Date(contact.event_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}` : ''}!
+
+I'm thrilled to be part of your special day and can't wait to help create an amazing experience for you and your guests.
+
+Next Steps:
+1. Contract signing (attached or link below)
+2. Deposit payment to secure your date
+3. Schedule a planning meeting closer to the date
+
+Please review and sign the contract at your earliest convenience. Once I receive the signed contract and deposit, your date will be 100% secured.
+
+Thank you for choosing M10 DJ Company!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    }
+  };
+
+  useEffect(() => {
+    if (selectedTemplate !== 'custom') {
+      const template = emailTemplates[selectedTemplate as keyof typeof emailTemplates];
+      setFormData({
+        subject: template.subject,
+        body: template.body
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTemplate]);
+
+  const handleSendTestEmail = async () => {
+    if (!formData.body.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a message",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSending(true);
+    try {
+      // Generate quote link for the contact
+      const baseUrl = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com');
+      const quoteLink = `${baseUrl}/quote/${contact.id}`;
+      
+      // Add quote link button to email body if it's the Initial Response or Select Your Services template
+      let emailContent = formData.body;
+      if (selectedTemplate === 'initial_response' || selectedTemplate === 'select_services') {
+        // Add quote link section to the email
+        emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      }
+
+      // Send test email to admin
+      const response = await fetch('/api/admin/communications/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId: contact.id,
+          to: 'djbenmurray@gmail.com', // Admin email for testing
+          subject: `[TEST] ${formData.subject}`,
+          content: emailContent
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send test email');
+      }
+
+      toast({
+        title: "Test Email Sent",
+        description: "Test email sent to admin email (djbenmurray@gmail.com)"
+      });
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test email",
+        variant: "destructive"
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!formData.body.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a message",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSending(true);
+    try {
+      // Generate quote link for the contact
+      const baseUrl = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com');
+      const quoteLink = `${baseUrl}/quote/${contact.id}`;
+      
+      // Add quote link button to email body if it's the Initial Response or Select Your Services template
+      let emailContent = formData.body;
+      if (selectedTemplate === 'initial_response' || selectedTemplate === 'select_services') {
+        // Add quote link section to the email
+        emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      }
+
+      const response = await fetch('/api/admin/communications/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId: contact.id,
+          to: contact.email_address,
+          subject: formData.subject,
+          content: emailContent
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      toast({
+        title: "Success",
+        description: "Email sent successfully"
+      });
+
+      onSuccess();
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send email",
+        variant: "destructive"
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Send Email to {contact.first_name || contact.email_address}</h2>
+            <Button variant="outline" onClick={onClose} className="h-8 w-8 p-0">
+              <span className="sr-only">Close</span>
+              ×
+            </Button>
+          </div>
+        </div>
+
+        <div className="p-6 overflow-y-auto flex-1">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Template</label>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(emailTemplates).map(([key, template]) => (
+                    <SelectItem key={key} value={key}>{template.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">To</label>
+              <Input value={contact.email_address || ''} disabled />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Subject</label>
+              <Input
+                value={formData.subject}
+                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Message</label>
+              <Textarea
+                value={formData.body}
+                onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+                rows={12}
+                className="font-mono text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 border-t flex justify-between items-center">
+          <Button 
+            variant="outline" 
+            onClick={handleSendTestEmail} 
+            disabled={sending || !formData.body.trim()}
+            className="text-sm"
+          >
+            {sending ? 'Sending...' : 'Send Test Email'}
+          </Button>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onClose} disabled={sending}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendEmail} disabled={sending || !formData.body.trim()}>
+              {sending ? 'Sending...' : 'Send Email'}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

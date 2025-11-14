@@ -41,6 +41,26 @@ export default async function handler(req, res) {
   console.log(`   From: M10 DJ Company <hello@m10djcompany.com>`);
 
   try {
+    // Convert plain text to HTML, converting quote links to buttons
+    let htmlEmailContent = emailContent;
+    
+    // Convert quote links to styled buttons
+    // Pattern: Look for quote links in format: https://.../quote/[uuid] or http://.../quote/[uuid]
+    const quoteLinkRegex = /(https?:\/\/[^\s]+\/quote\/[a-f0-9-]{36})/gi;
+    htmlEmailContent = htmlEmailContent.replace(quoteLinkRegex, (match) => {
+      return `<div style="text-align: center; margin: 25px 0;">
+        <a href="${match}" 
+           style="display: inline-block; background: linear-gradient(135deg, #fcba00, #e6a800); color: #000; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
+          📋 View Your Personalized Quote
+        </a>
+      </div>`;
+    });
+    
+    // Convert line breaks and preserve formatting
+    htmlEmailContent = htmlEmailContent
+      .replace(/\n/g, '<br>')
+      .replace(/━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g, '<hr style="border: none; border-top: 2px solid #fcba00; margin: 20px 0;">');
+    
     // Create professional HTML email template
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -50,8 +70,8 @@ export default async function handler(req, res) {
         </div>
         
         <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          <div style="color: #333; line-height: 1.6; white-space: pre-wrap;">
-${emailContent}
+          <div style="color: #333; line-height: 1.6;">
+${htmlEmailContent}
           </div>
           
           <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #fcba00; text-align: center;">
