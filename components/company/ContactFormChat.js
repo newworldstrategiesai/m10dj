@@ -119,12 +119,15 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
       const data = await response.json();
       const assistantText = data.message;
 
-      // Add assistant message to UI
+      // Add assistant message to UI with link if provided
       setMessages(prev => [...prev, {
         id: prev.length + 1,
         type: 'bot',
         text: assistantText,
-        timestamp: new Date()
+        timestamp: new Date(),
+        hasLink: data.hasLink,
+        link: data.link,
+        linkText: data.link ? '👉 View Your Packages' : null
       }]);
 
       // Add to conversation history
@@ -160,18 +163,44 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
     }
   };
 
+  // Check if we're on the quote page and auto-minimize on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const checkAndMinimize = () => {
+        const isQuotePage = window.location.pathname.includes('/quote/');
+        if (isQuotePage && !isMinimized) {
+          // Auto-minimize when on quote page
+          if (onMinimize) {
+            onMinimize();
+          }
+        }
+      };
+      
+      // Check immediately
+      checkAndMinimize();
+      
+      // Also listen for navigation changes (for client-side routing)
+      const handleRouteChange = () => {
+        setTimeout(checkAndMinimize, 100);
+      };
+      
+      window.addEventListener('popstate', handleRouteChange);
+      return () => window.removeEventListener('popstate', handleRouteChange);
+    }
+  }, [isMinimized, onMinimize]);
+
   // If minimized, show compact widget
   if (isMinimized) {
     return (
       <div className="fixed bottom-4 right-4 z-[9999] animate-fadeIn">
         <button
           onClick={() => onMinimize && onMinimize()}
-          className="flex items-center gap-3 bg-gradient-to-r from-brand to-brand-600 text-white px-5 py-3 rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-105"
+          className="flex items-center gap-2 bg-gradient-to-r from-brand to-brand-600 text-white px-3 py-2 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 text-sm"
         >
-          <MessageCircle className="w-6 h-6" />
-          <span className="font-semibold">Chat with us</span>
+          <MessageCircle className="w-4 h-4" />
+          <span className="font-medium hidden sm:inline">Chat</span>
           {messages.length > 1 && (
-            <span className="bg-white text-brand rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+            <span className="bg-white text-brand rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
               {messages.length - 1}
             </span>
           )}
@@ -223,58 +252,123 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900"
       >
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
-          >
+        {messages.map((message) => {
+          // Extract URLs from message text
+          const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|\/[^\s]+)/gi;
+          const urls = message.text.match(urlRegex) || [];
+          let textParts = [];
+          let lastIndex = 0;
+          
+          // Split text by URLs to preserve non-URL text
+          urls.forEach((url) => {
+            const index = message.text.indexOf(url, lastIndex);
+            if (index > lastIndex) {
+              textParts.push({ type: 'text', content: message.text.substring(lastIndex, index) });
+            }
+            // Normalize URL (add https if missing)
+            const normalizedUrl = url.startsWith('http') ? url : (url.startsWith('/') ? url : `https://${url}`);
+            textParts.push({ type: 'url', content: url, normalizedUrl });
+            lastIndex = index + url.length;
+          });
+          
+          if (lastIndex < message.text.length) {
+            textParts.push({ type: 'text', content: message.text.substring(lastIndex) });
+          }
+          
+          // If no URLs found, use original text
+          if (textParts.length === 0) {
+            textParts = [{ type: 'text', content: message.text }];
+          }
+
+          return (
             <div
-              className={`max-w-[85%] sm:max-w-xl px-4 py-3 rounded-2xl ${
-                message.type === 'user'
-                  ? 'bg-brand text-white rounded-br-none shadow-md'
-                  : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-none border border-gray-200 dark:border-gray-700 shadow-sm'
-              }`}
+              key={message.id}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
             >
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                {message.text}
-              </p>
-              {message.hasLink && message.link && (
-                <a
-                  href={message.link}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Validate link before navigating
-                    if (!message.link || message.link.includes('null') || message.link.includes('undefined')) {
-                      console.error('Invalid quote link:', message.link);
-                      alert('Sorry, there was an issue loading your quote page. Please contact us directly at (901) 410-2020.');
-                      return;
+              <div
+                className={`max-w-[85%] sm:max-w-xl px-4 py-3 rounded-2xl ${
+                  message.type === 'user'
+                    ? 'bg-brand text-white rounded-br-none shadow-md'
+                    : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-none border border-gray-200 dark:border-gray-700 shadow-sm'
+                }`}
+              >
+                <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {textParts.map((part, idx) => {
+                    if (part.type === 'url') {
+                      return (
+                        <a
+                          key={idx}
+                          href={part.normalizedUrl}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // Validate link before navigating
+                            if (!part.normalizedUrl || part.normalizedUrl.includes('null') || part.normalizedUrl.includes('undefined')) {
+                              console.error('Invalid link:', part.normalizedUrl);
+                              alert('Sorry, there was an issue loading that page. Please contact us directly at (901) 410-2020.');
+                              return;
+                            }
+                            // Minimize the chat so user can browse the page
+                            if (onMinimize) {
+                              onMinimize();
+                            }
+                            // On mobile, use window.location for better compatibility
+                            // On desktop, open in new tab for external URLs, same tab for internal
+                            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                            const isInternal = part.normalizedUrl.startsWith('/');
+                            
+                            if (isMobile || isInternal) {
+                              window.location.href = part.normalizedUrl;
+                            } else {
+                              window.open(part.normalizedUrl, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
+                          className="inline-block mt-2 px-4 py-2 bg-brand hover:bg-brand-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg"
+                        >
+                          {part.content} →
+                        </a>
+                      );
                     }
-                    // Minimize the chat so user can browse the page
-                    if (onMinimize) {
-                      onMinimize();
-                    }
-                    // On mobile, use window.location for better compatibility
-                    // On desktop, open in new tab
-                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                    if (isMobile) {
-                      window.location.href = message.link;
-                    } else {
-                      window.open(message.link, '_blank', 'noopener,noreferrer');
-                    }
-                  }}
-                  className="inline-block mt-3 px-4 py-2 bg-brand hover:bg-brand-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg"
-                >
-                  {message.linkText || 'View Services'} →
-                </a>
-              )}
-              <p className={`text-xs mt-1 ${
-                message.type === 'user' ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
-              }`}>
-                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
+                    return <span key={idx}>{part.content}</span>;
+                  })}
+                </div>
+                {message.hasLink && message.link && (
+                  <a
+                    href={message.link}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      // Validate link before navigating
+                      if (!message.link || message.link.includes('null') || message.link.includes('undefined')) {
+                        console.error('Invalid quote link:', message.link);
+                        alert('Sorry, there was an issue loading your quote page. Please contact us directly at (901) 410-2020.');
+                        return;
+                      }
+                      // Minimize the chat so user can browse the page
+                      if (onMinimize) {
+                        onMinimize();
+                      }
+                      // On mobile, use window.location for better compatibility
+                      // On desktop, open in new tab
+                      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                      if (isMobile) {
+                        window.location.href = message.link;
+                      } else {
+                        window.open(message.link, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    className="inline-block mt-3 px-4 py-2 bg-brand hover:bg-brand-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg"
+                  >
+                    {message.linkText || 'View Services'} →
+                  </a>
+                )}
+                <p className={`text-xs mt-1 ${
+                  message.type === 'user' ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {isLoading && (
           <div className="flex justify-start">

@@ -341,6 +341,16 @@ export default function ContactForm({ className = '' }) {
     }
   };
 
+  // Check if we're on quote page and auto-minimize chat
+  useEffect(() => {
+    if (typeof window !== 'undefined' && submitted) {
+      const isQuotePage = window.location.pathname.includes('/quote/');
+      if (isQuotePage) {
+        setIsChatMinimized(true);
+      }
+    }
+  }, [submitted]);
+
   // Show chat interface after successful submission
   useEffect(() => {
     if (submitted && !isChatMinimized) {

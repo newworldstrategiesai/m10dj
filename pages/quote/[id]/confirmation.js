@@ -12,6 +12,8 @@ export default function ConfirmationPage() {
   const [quoteData, setQuoteData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState('verifying');
+  const [paymentData, setPaymentData] = useState(null);
+  const [hasPayment, setHasPayment] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -30,15 +32,55 @@ export default function ConfirmationPage() {
         setQuoteData(quote);
       }
 
-      // Verify payment status
-      if (payment_intent) {
-        const paymentResponse = await fetch(`/api/stripe/verify-payment?payment_intent=${payment_intent}`);
-        if (paymentResponse.ok) {
-          const { status } = await paymentResponse.json();
-          setPaymentStatus(status);
+      // Check for actual payment records
+      try {
+        // Check if there are any payments for this quote/contact
+        const paymentsResponse = await fetch(`/api/payments?contact_id=${id}`);
+        if (paymentsResponse.ok) {
+          const paymentsData = await paymentsResponse.json();
+          if (paymentsData.payments && paymentsData.payments.length > 0) {
+            // Filter for paid payments
+            const paidPayments = paymentsData.payments.filter(p => p.payment_status === 'Paid');
+            if (paidPayments.length > 0) {
+              setHasPayment(true);
+              const totalPaid = paidPayments.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
+              setPaymentData({ totalPaid, payments: paidPayments });
+              setPaymentStatus('succeeded');
+            } else {
+              setHasPayment(false);
+              setPaymentStatus('pending');
+            }
+          } else {
+            setHasPayment(false);
+            setPaymentStatus('pending');
+          }
         }
-      } else {
-        setPaymentStatus('succeeded');
+      } catch (error) {
+        console.error('Error checking payments:', error);
+        setHasPayment(false);
+        setPaymentStatus('pending');
+      }
+
+      // Also check payment_intent if provided
+      if (payment_intent) {
+        try {
+          const paymentResponse = await fetch(`/api/stripe/get-payment?payment_intent=${payment_intent}`);
+          if (paymentResponse.ok) {
+            const paymentDetails = await paymentResponse.json();
+            if (paymentDetails.payment_status === 'paid' || paymentDetails.payment_status === 'succeeded') {
+              setHasPayment(true);
+              if (!paymentData) {
+                setPaymentData({ 
+                  totalPaid: paymentDetails.amount_total / 100,
+                  payments: [paymentDetails]
+                });
+              }
+              setPaymentStatus('succeeded');
+            }
+          }
+        } catch (error) {
+          console.error('Error verifying payment intent:', error);
+        }
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -55,7 +97,8 @@ export default function ConfirmationPage() {
 
   const totalAmount = quoteData?.total_price || 0;
   const depositAmount = totalAmount * 0.5;
-  const remainingBalance = totalAmount - depositAmount;
+  const actualPaid = paymentData?.totalPaid || 0;
+  const remainingBalance = totalAmount - actualPaid;
   const firstName = leadData?.name?.split(' ')[0] || 'there';
 
   if (loading) {
@@ -105,33 +148,67 @@ export default function ConfirmationPage() {
           {/* Confirmation Details */}
           <div className="max-w-4xl mx-auto space-y-8">
             {/* Payment Summary */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-                Payment Received
-              </h2>
-              
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-gray-600 dark:text-gray-400">Deposit Paid:</span>
-                  <span className="text-2xl font-bold text-green-600">${depositAmount.toLocaleString()}</span>
+            {hasPayment ? (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12">
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  Payment Received
+                </h2>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-gray-600 dark:text-gray-400">Amount Paid:</span>
+                    <span className="text-2xl font-bold text-green-600">${actualPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  {remainingBalance > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 dark:text-gray-400">Remaining Balance:</span>
+                      <span className="text-xl font-semibold">${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total Package Value:</span>
+                    <span className="text-2xl font-bold text-brand">${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-400">Remaining Balance:</span>
-                  <span className="text-xl font-semibold">${remainingBalance.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold">Total Package Value:</span>
-                  <span className="text-2xl font-bold text-brand">${totalAmount.toLocaleString()}</span>
-                </div>
-              </div>
 
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>💡 Reminder:</strong> The remaining balance of ${remainingBalance.toLocaleString()} is due 7 days before your event. We&apos;ll send you a reminder!
-                </p>
+                {remainingBalance > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>💡 Reminder:</strong> The remaining balance of ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} is due 7 days before your event. We&apos;ll send you a reminder!
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12">
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                  <CreditCard className="w-6 h-6 text-brand" />
+                  Payment Information
+                </h2>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-gray-600 dark:text-gray-400">Deposit Amount:</span>
+                    <span className="text-2xl font-bold text-brand">${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Remaining Balance:</span>
+                    <span className="text-xl font-semibold">${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total Package Value:</span>
+                    <span className="text-2xl font-bold text-brand">${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    <strong>📝 Next Step:</strong> Complete your payment to secure your booking. Click the &quot;Make Payment&quot; button below to proceed with secure checkout.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Event Details */}
             {leadData && (
