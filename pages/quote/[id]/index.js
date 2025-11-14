@@ -20,6 +20,7 @@ export default function PersonalizedQuote() {
   const [contractSigned, setContractSigned] = useState(false);
   const [showEditMode, setShowEditMode] = useState(false);
   const [hasPayment, setHasPayment] = useState(false);
+  const [outstandingBalance, setOutstandingBalance] = useState(0);
   
 
   const fetchLeadData = useCallback(async () => {
@@ -142,17 +143,30 @@ export default function PersonalizedQuote() {
                 if (contractData.status === 'signed' || contractData.signed_at) {
                   setContractSigned(true);
                   
-                  // Check if payment has been made
-                  if (contractData.contact_id) {
+                  // Check if payment has been made and calculate outstanding balance
+                  if (contractData.contact_id && quoteData.total_price) {
                     try {
                       const paymentsResponse = await fetch(`/api/payments?contact_id=${contractData.contact_id}`);
                       if (paymentsResponse.ok) {
                         const paymentsData = await paymentsResponse.json();
                         const payments = paymentsData.payments || paymentsData || [];
-                        const hasPaid = payments.length > 0 && payments.some(p => 
-                          p.payment_status === 'Paid' || p.payment_status === 'paid' || p.status === 'succeeded' || p.payment_status === 'completed'
-                        );
-                        setHasPayment(hasPaid);
+                        
+                        // Calculate total paid
+                        const totalPaid = payments
+                          .filter(p => 
+                            p.payment_status === 'Paid' || 
+                            p.payment_status === 'paid' || 
+                            p.status === 'succeeded' || 
+                            p.payment_status === 'completed'
+                          )
+                          .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                        
+                        // Calculate outstanding balance
+                        const totalOwed = parseFloat(quoteData.total_price) || 0;
+                        const balance = totalOwed - totalPaid;
+                        
+                        setHasPayment(totalPaid > 0);
+                        setOutstandingBalance(Math.max(0, balance)); // Ensure non-negative
                       }
                     } catch (e) {
                       console.log('Could not fetch payment details:', e);
