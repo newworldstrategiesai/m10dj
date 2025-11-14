@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/Toasts/use-toast';
 import Link from 'next/link';
+import PipelineView from '@/components/admin/PipelineView';
 
 interface Contact {
   id: string;
@@ -120,6 +121,13 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   const [showContactModal, setShowContactModal] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [pipelineData, setPipelineData] = useState<{
+    contracts: any[];
+    invoices: any[];
+    payments: any[];
+    quoteSelections: any[];
+  } | null>(null);
+  const [pipelineLoading, setPipelineLoading] = useState(false);
 
   // Fetch contacts from API
   const fetchContacts = async () => {
@@ -154,6 +162,22 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch pipeline data for selected contact
+  const fetchPipelineData = async (contactId: string) => {
+    setPipelineLoading(true);
+    try {
+      const response = await fetch(`/api/contacts/${contactId}/pipeline-data`);
+      if (response.ok) {
+        const data = await response.json();
+        setPipelineData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching pipeline data:', error);
+    } finally {
+      setPipelineLoading(false);
     }
   };
 
@@ -568,12 +592,38 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                 )}
               </div>
 
-              <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+              <Tabs defaultValue="pipeline" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="event">Event Info</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="pipeline" className="mt-4">
+                  {pipelineLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#fcba00] mx-auto"></div>
+                      <p className="text-sm text-gray-500 mt-2">Loading pipeline data...</p>
+                    </div>
+                  ) : selectedContact && pipelineData ? (
+                    <PipelineView
+                      contact={selectedContact as any}
+                      contracts={pipelineData.contracts}
+                      invoices={pipelineData.invoices}
+                      payments={pipelineData.payments}
+                      quoteSelections={pipelineData.quoteSelections}
+                      onStatusUpdate={(newStatus) => {
+                        setSelectedContact({ ...selectedContact, lead_status: newStatus });
+                        fetchContacts(); // Refresh the list
+                      }}
+                    />
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-gray-500">No pipeline data available</p>
+                    </div>
+                  )}
+                </TabsContent>
 
                 <TabsContent value="details" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">

@@ -16,6 +16,7 @@ import Link from 'next/link';
 import ServiceSelectionButton from '@/components/admin/ServiceSelectionButton';
 import PaymentHistory from '@/components/admin/PaymentHistory';
 import InvoiceList from '@/components/admin/InvoiceList';
+import PipelineView from '@/components/admin/PipelineView';
 
 interface Contact {
   id: string;
@@ -103,6 +104,10 @@ export default function ContactDetailPage() {
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [socialMessages, setSocialMessages] = useState<any[]>([]);
   const [socialMessagesLoading, setSocialMessagesLoading] = useState(false);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const [quoteSelections, setQuoteSelections] = useState<any[]>([]);
+  const [quoteSelectionsLoading, setQuoteSelectionsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -123,6 +128,8 @@ export default function ContactDetailPage() {
       fetchPayments();
       fetchInvoices();
       fetchSocialMessages();
+      fetchContracts();
+      fetchQuoteSelections();
     }
   }, [user, id]);
 
@@ -291,6 +298,52 @@ export default function ContactDetailPage() {
       console.error('Error fetching social messages:', error);
     } finally {
       setSocialMessagesLoading(false);
+    }
+  };
+
+  const fetchContracts = async () => {
+    if (!id) return;
+    
+    setContractsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('contracts')
+        .select('*')
+        .eq('contact_id', id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching contracts:', error);
+      } else {
+        setContracts(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching contracts:', error);
+    } finally {
+      setContractsLoading(false);
+    }
+  };
+
+  const fetchQuoteSelections = async () => {
+    if (!id) return;
+    
+    setQuoteSelectionsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('quote_selections')
+        .select('*')
+        .eq('contact_id', id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching quote selections:', error);
+      } else {
+        setQuoteSelections(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching quote selections:', error);
+    } finally {
+      setQuoteSelectionsLoading(false);
     }
   };
 
@@ -511,8 +564,9 @@ export default function ContactDetailPage() {
         )}
 
         {/* Main Content */}
-        <Tabs defaultValue="details" className="space-y-6">
+        <Tabs defaultValue="pipeline" className="space-y-6">
           <TabsList className="bg-white border rounded-lg p-1">
+            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="details">Contact Details</TabsTrigger>
             <TabsTrigger value="event">Event Information</TabsTrigger>
             <TabsTrigger value="business">Business Details</TabsTrigger>
@@ -522,6 +576,24 @@ export default function ContactDetailPage() {
               </TabsTrigger>
             )}
           </TabsList>
+
+          <TabsContent value="pipeline">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              {contact && (
+                <PipelineView
+                  contact={contact as any}
+                  contracts={contracts}
+                  invoices={invoices}
+                  payments={payments}
+                  quoteSelections={quoteSelections}
+                  onStatusUpdate={(newStatus) => {
+                    setContact({ ...contact, lead_status: newStatus });
+                    fetchContact();
+                  }}
+                />
+              )}
+            </div>
+          </TabsContent>
 
           <TabsContent value="details">
             <div className="bg-white rounded-lg shadow-sm border p-6">
