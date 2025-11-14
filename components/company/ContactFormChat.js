@@ -451,7 +451,7 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
           </button>
         </form>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
-          💬 We're here to help! Ask us anything.
+          💬 We&apos;re here to help! Ask us anything.
         </p>
       </div>
 
