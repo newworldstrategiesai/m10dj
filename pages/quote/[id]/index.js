@@ -1219,13 +1219,18 @@ export default function PersonalizedQuote() {
                         View Your Contract
                       </Link>
                     )}
-                    {!hasPayment && (
+                    {existingSelection && outstandingBalance > 0 && (
                       <Link
                         href={`/quote/${id}/payment`}
                         className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-dark text-white rounded-lg transition-colors text-sm font-semibold shadow-lg hover:shadow-xl"
                       >
                         <CheckCircle className="w-5 h-5" />
                         Make Payment
+                        {outstandingBalance > 0 && (
+                          <span className="ml-1 text-xs opacity-90">
+                            (${outstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining)
+                          </span>
+                        )}
                       </Link>
                     )}
                   </div>
