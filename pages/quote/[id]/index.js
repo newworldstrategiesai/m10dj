@@ -19,6 +19,7 @@ export default function PersonalizedQuote() {
   const [existingSelection, setExistingSelection] = useState(null);
   const [contractSigned, setContractSigned] = useState(false);
   const [showEditMode, setShowEditMode] = useState(false);
+  const [hasPayment, setHasPayment] = useState(false);
   
 
   const fetchLeadData = useCallback(async () => {
@@ -140,6 +141,22 @@ export default function PersonalizedQuote() {
                 const contractData = await contractResponse.json();
                 if (contractData.status === 'signed' || contractData.signed_at) {
                   setContractSigned(true);
+                  
+                  // Check if payment has been made
+                  if (contractData.contact_id) {
+                    try {
+                      const paymentsResponse = await fetch(`/api/payments?contact_id=${contractData.contact_id}`);
+                      if (paymentsResponse.ok) {
+                        const paymentsData = await paymentsResponse.json();
+                        const hasPaid = paymentsData && paymentsData.length > 0 && paymentsData.some(p => 
+                          p.payment_status === 'Paid' || p.payment_status === 'paid' || p.status === 'succeeded'
+                        );
+                        setHasPayment(hasPaid);
+                      }
+                    } catch (e) {
+                      console.log('Could not fetch payment details:', e);
+                    }
+                  }
                 }
               }
             } catch (e) {
