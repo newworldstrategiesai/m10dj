@@ -231,7 +231,7 @@ export default function PersonalizedQuote() {
       id: 'package2',
       name: 'Package 2',
       price: 2500,
-      aLaCartePrice: 3000,
+      aLaCartePrice: 3200,
       description: 'Reception Only - Most Popular',
       features: [
         'Up to 4 hours of DJ/MC services at reception',
@@ -249,7 +249,7 @@ export default function PersonalizedQuote() {
       id: 'package3',
       name: 'Package 3',
       price: 3000,
-      aLaCartePrice: 3500,
+      aLaCartePrice: 3700,
       description: 'Ceremony & Reception - Premium Experience',
       features: [
         'Up to 4 hours of DJ/MC services at reception',
@@ -305,7 +305,7 @@ export default function PersonalizedQuote() {
       id: 'corporate-package2',
       name: 'Package #2',
       price: 1345,
-      aLaCartePrice: 1345,
+      aLaCartePrice: 1495,
       description: 'Premium Corporate Experience',
       features: [
         'Up to 4 hours of DJ/MC services',
@@ -383,29 +383,34 @@ export default function PersonalizedQuote() {
   // Wedding Addons
   const weddingAddons = [
     {
-      id: 'additional_hour',
-      name: 'Additional Hour(s)',
-      description: 'Additional DJ/MC services beyond the 4-hour package',
-      price: 300,
-      per: 'hour'
+      id: 'dj_mc_4hours',
+      name: '4 Hours DJ/MC Services (A La Carte)',
+      description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library. Perfect for receptions.',
+      price: 1600
     },
     {
-      id: 'additional_speaker',
-      name: 'Additional Speaker',
-      description: 'Extra speaker for cocktail hour or separate areas',
-      price: 250
+      id: 'dj_mc_3hours',
+      name: '3 Hours DJ/MC Services (A La Carte)',
+      description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and music library.',
+      price: 1300
     },
     {
-      id: 'dancing_clouds',
-      name: 'Dancing on the Clouds',
-      description: 'Sophisticated dry ice effect for first dance and special moments',
+      id: 'ceremony_audio',
+      name: 'Ceremony Audio',
+      description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.',
       price: 500
     },
     {
-      id: 'cold_spark',
-      name: 'Cold Spark Fountain Effect',
-      description: 'Dramatic indoor-safe spark effects for grand entrances or special moments',
-      price: 600
+      id: 'dance_floor_lighting',
+      name: 'Dance Floor Lighting',
+      description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer. Creates an energetic atmosphere.',
+      price: 400
+    },
+    {
+      id: 'uplighting',
+      name: 'Uplighting (16 fixtures)',
+      description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance. Perfect for creating a romantic or energetic atmosphere.',
+      price: 350
     },
     {
       id: 'monogram',
@@ -414,10 +419,41 @@ export default function PersonalizedQuote() {
       price: 350
     },
     {
+      id: 'speaker_rental',
+      name: 'Speaker Rental (Basic Setup)',
+      description: 'Professional speaker system rental with built-in mixer. Perfect for cocktail hours, ceremonies, or separate areas. Includes microphone input.',
+      price: 250
+    },
+    {
+      id: 'additional_speaker',
+      name: 'Additional Speaker',
+      description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for cocktail hours that are separate from the reception.',
+      price: 250
+    },
+    {
+      id: 'additional_hour',
+      name: 'Additional Hour(s)',
+      description: 'Additional DJ/MC services beyond the 4-hour package. Perfect if your event runs longer than expected.',
+      price: 300,
+      per: 'hour'
+    },
+    {
       id: 'uplighting_addon',
       name: 'Uplighting Add-on',
-      description: 'Additional uplighting fixtures beyond package inclusion',
+      description: 'Additional uplighting fixtures beyond package inclusion (up to 16 fixtures included in base uplighting).',
       price: 300
+    },
+    {
+      id: 'dancing_clouds',
+      name: 'Dancing on the Clouds',
+      description: 'Sophisticated dry ice effect for first dance and special moments. Creates a magical, floor-hugging cloud effect.',
+      price: 500
+    },
+    {
+      id: 'cold_spark',
+      name: 'Cold Spark Fountain Effect',
+      description: 'Dramatic indoor-safe spark effects for grand entrances or special moments. Safe for indoor use, creates stunning visual effects.',
+      price: 600
     }
   ];
 
@@ -425,15 +461,27 @@ export default function PersonalizedQuote() {
   const corporateAddons = [
     {
       id: 'dj_mc_4hours',
-      name: '4 Hours DJ/MC Services a la carte',
-      description: 'Includes a live DJ and speakers for up to 4 hours. No dance floor lighting or uplighting.',
+      name: '4 Hours DJ/MC Services (A La Carte)',
+      description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library. Perfect for corporate events.',
       price: 945
     },
     {
       id: 'dj_mc_3hours',
-      name: '3 Hours DJ/MC Services',
-      description: 'Includes a live DJ and speakers for up to 3 hours at reception. No dance floor lighting or uplighting.',
+      name: '3 Hours DJ/MC Services (A La Carte)',
+      description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and music library.',
       price: 850
+    },
+    {
+      id: 'dance_floor_lighting',
+      name: 'Dance Floor Lighting',
+      description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer. Creates an energetic atmosphere.',
+      price: 250
+    },
+    {
+      id: 'uplighting',
+      name: 'Uplighting (16 fixtures)',
+      description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance. Perfect for creating a professional atmosphere.',
+      price: 300
     },
     {
       id: 'monogram',
@@ -442,27 +490,21 @@ export default function PersonalizedQuote() {
       price: 300
     },
     {
-      id: 'flat_screen_tv',
-      name: 'Flat Screen TV w/ Stand',
-      description: 'Includes a 65" TV mounted on a free-standing column. Many clients add our mounted TV to their event for displaying slideshows, karaoke lyrics, and visualizers.',
-      price: 300
+      id: 'speaker_rental',
+      name: 'Speaker Rental (Basic Setup)',
+      description: 'Professional speaker system rental with built-in mixer. Perfect for presentations, cocktail hours, or separate areas. Includes microphone input.',
+      price: 150
     },
     {
       id: 'additional_speaker',
       name: 'Additional Speaker',
-      description: 'Includes a powered speaker with built in mixer for microphone or auxiliary inputs. Perfect for cocktail hours that are separate from the reception.',
+      description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for separate areas or presentations.',
       price: 150
     },
     {
-      id: 'dance_floor_lighting_alacarte',
-      name: 'Dance Floor Lighting a la carte',
-      description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer. This is included with all of our packages. Only choose this if you are not purchasing a package and just need to rent lights.',
-      price: 250
-    },
-    {
-      id: 'uplighting_addon',
-      name: 'Uplighting Add-on',
-      description: 'Includes up to 16 multi-color LED fixtures',
+      id: 'flat_screen_tv',
+      name: 'Flat Screen TV w/ Stand',
+      description: 'Includes a 65" TV mounted on a free-standing column. Many clients add our mounted TV to their event for displaying slideshows, presentations, and visualizers.',
       price: 300
     },
     {
@@ -473,15 +515,21 @@ export default function PersonalizedQuote() {
       per: 'hour'
     },
     {
+      id: 'uplighting_addon',
+      name: 'Uplighting Add-on',
+      description: 'Additional uplighting fixtures beyond package inclusion (up to 16 fixtures included in base uplighting).',
+      price: 300
+    },
+    {
       id: 'dancing_clouds',
       name: 'Dancing on the Clouds',
-      description: 'Capture the magic with our "Dancing on the Clouds" effect. A sophisticated dry ice system creates a dense, floor-hugging cloud, transforming your first dance into an enchanting moment. It\'s safe, mesmerizing, and perfect for unforgettable photos.',
+      description: 'Capture the magic with our "Dancing on the Clouds" effect. A sophisticated dry ice system creates a dense, floor-hugging cloud, perfect for special moments.',
       price: 500
     },
     {
       id: 'cold_spark',
       name: 'Cold Spark Fountain Effect',
-      description: 'Elevate your event with the awe-inspiring spectacle of Cold Spark Machines. Safe for indoors, these machines produce a stunning spark effect, adding a dramatic flair to entrances, dances, or send-offs. Capture the magic and leave guests mesmerized without the heat or hazard of traditional pyrotechnics.',
+      description: 'Elevate your event with the awe-inspiring spectacle of Cold Spark Machines. Safe for indoors, these machines produce a stunning spark effect, adding a dramatic flair to entrances or special moments.',
       price: 500
     }
   ];
@@ -490,15 +538,27 @@ export default function PersonalizedQuote() {
   const schoolAddons = [
     {
       id: 'dj_mc_4hours',
-      name: '4 Hours DJ/MC Services a la carte',
-      description: 'Includes a live DJ and speakers for up to 4 hours. No dance floor lighting or uplighting. Age-appropriate music included.',
+      name: '4 Hours DJ/MC Services (A La Carte)',
+      description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and age-appropriate music library. Perfect for school dances and events.',
       price: 945
     },
     {
       id: 'dj_mc_3hours',
-      name: '3 Hours DJ/MC Services',
-      description: 'Includes a live DJ and speakers for up to 3 hours. No dance floor lighting or uplighting. Perfect for shorter school events.',
+      name: '3 Hours DJ/MC Services (A La Carte)',
+      description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and age-appropriate music library. Perfect for shorter school events.',
       price: 850
+    },
+    {
+      id: 'dance_floor_lighting',
+      name: 'Dance Floor Lighting',
+      description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer. Creates an energetic atmosphere perfect for school dances.',
+      price: 250
+    },
+    {
+      id: 'uplighting',
+      name: 'Uplighting (16 fixtures)',
+      description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance. Perfect for prom and formal dances.',
+      price: 300
     },
     {
       id: 'school_logo_projection',
@@ -507,27 +567,21 @@ export default function PersonalizedQuote() {
       price: 300
     },
     {
-      id: 'flat_screen_tv',
-      name: 'Flat Screen TV w/ Stand',
-      description: 'Includes a 65" TV mounted on a free-standing column. Great for displaying slideshows, announcements, or visualizers at school events.',
-      price: 300
+      id: 'speaker_rental',
+      name: 'Speaker Rental (Basic Setup)',
+      description: 'Professional speaker system rental with built-in mixer. Perfect for announcements, presentations, or separate areas. Includes microphone input.',
+      price: 150
     },
     {
       id: 'additional_speaker',
       name: 'Additional Speaker',
-      description: 'Includes a powered speaker with built in mixer for microphone or auxiliary inputs. Perfect for separate areas or outdoor school events.',
+      description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for separate areas or outdoor school events.',
       price: 150
     },
     {
-      id: 'dance_floor_lighting_alacarte',
-      name: 'Dance Floor Lighting a la carte',
-      description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer. This is included with all of our packages. Only choose this if you are not purchasing a package and just need to rent lights.',
-      price: 250
-    },
-    {
-      id: 'uplighting_addon',
-      name: 'Uplighting Add-on',
-      description: 'Includes up to 16 multi-color LED fixtures for enhanced venue ambiance. Perfect for prom and formal dances.',
+      id: 'flat_screen_tv',
+      name: 'Flat Screen TV w/ Stand',
+      description: 'Includes a 65" TV mounted on a free-standing column. Great for displaying slideshows, announcements, or visualizers at school events.',
       price: 300
     },
     {
@@ -536,6 +590,12 @@ export default function PersonalizedQuote() {
       description: 'If you anticipate that your event will run longer than the time included with your package, you can choose this ahead of time; or if we happen to run over on the day, we can invoice you for the extra time after the fact.',
       price: 150,
       per: 'hour'
+    },
+    {
+      id: 'uplighting_addon',
+      name: 'Uplighting Add-on',
+      description: 'Additional uplighting fixtures beyond package inclusion (up to 16 fixtures included in base uplighting).',
+      price: 300
     },
     {
       id: 'dancing_clouds',
@@ -560,51 +620,51 @@ export default function PersonalizedQuote() {
       ],
       // Wedding Package Breakdowns
       'package1': [
-        { item: '4 Hours DJ/MC Services', price: 1600 },
-        { item: 'Dance Floor Lighting', price: 400 },
-        { item: 'Uplighting (16 fixtures)', price: 350 },
-        { item: 'Additional Speaker', price: 250 }
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
+        { item: 'Additional Speaker', description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs.', price: 250 }
       ],
       'package2': [
-        { item: 'DJ MC Services at Reception', description: 'Up to 4 hours of DJ services at reception + speakers & microphones', price: 1600 },
-        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and or performer', price: 350 },
-        { item: 'Uplighting', description: 'Up to 16 multicolor LED fixtures', price: 350 },
-        { item: 'Ceremony Audio', description: 'Additional hour and ceremony music programming included', price: 500 },
-        { item: 'Monogram Projection', description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.', price: 200 }
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
+        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
+        { item: 'Monogram Projection', description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.', price: 350 }
       ],
       'package3': [
-        { item: '4 Hours DJ/MC Services', price: 1600 },
-        { item: 'Dance Floor Lighting', price: 400 },
-        { item: 'Uplighting (16 fixtures)', price: 350 },
-        { item: 'Ceremony Audio', price: 500 },
-        { item: 'Monogram Projection', price: 200 },
-        { item: 'Dancing on the Clouds', price: 450 }
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
+        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
+        { item: 'Monogram Projection', description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.', price: 350 },
+        { item: 'Dancing on the Clouds', description: 'Sophisticated dry ice effect for first dance and special moments. Creates a magical, floor-hugging cloud effect.', price: 500 }
       ],
       // Corporate Package Breakdowns
       'corporate-basics': [
-        { item: '3 Hours DJ/MC Services', description: 'Up to 3 hours of DJ/MC services + speakers & microphone', price: 850 }
+        { item: '3 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and music library.', price: 850 }
       ],
       'corporate-package1': [
-        { item: '4 Hours DJ/MC Services', description: 'Up to 4 hours of DJ/MC services + speakers & microphones', price: 945 },
-        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 250 }
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer.', price: 250 }
       ],
       'corporate-package2': [
-        { item: '4 Hours DJ/MC Services', description: 'Up to 4 hours of DJ/MC services + speakers & microphones', price: 945 },
-        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 150 },
-        { item: 'Uplighting', description: 'Up to 16 multicolor LED fixtures', price: 250 }
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer.', price: 250 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 300 }
       ],
       // School Package Breakdowns (same as corporate)
       'school-basics': [
-        { item: '3 Hours DJ/MC Services', description: 'Up to 3 hours of DJ/MC services + speakers & microphone', price: 850 }
+        { item: '3 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and age-appropriate music library.', price: 850 }
       ],
       'school-package1': [
-        { item: '4 Hours DJ/MC Services', description: 'Up to 4 hours of DJ/MC services + speakers & microphones', price: 945 },
-        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 250 }
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and age-appropriate music library.', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer.', price: 250 }
       ],
       'school-package2': [
-        { item: '4 Hours DJ/MC Services', description: 'Up to 4 hours of DJ/MC services + speakers & microphones', price: 945 },
-        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 150 },
-        { item: 'Uplighting', description: 'Up to 16 multicolor LED fixtures', price: 250 }
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and age-appropriate music library.', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer.', price: 250 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 300 }
       ]
     };
     return breakdowns[packageId] || [];
