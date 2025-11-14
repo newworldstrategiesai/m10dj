@@ -292,6 +292,14 @@ export default function Header() {
                 >
                   Contact
                 </button>
+                
+                <Link 
+                  href="/signin" 
+                  className="block text-gray-900 hover:text-brand hover:bg-brand/5 font-semibold font-inter py-3 px-4 rounded-lg transition-all"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Admin Sign In
+                </Link>
               </nav>
 
               {/* Mobile Contact Info */}

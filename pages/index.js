@@ -146,13 +146,6 @@ export default function Home() {
                   <Music className="mr-2 w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                   <span className="text-sm md:text-base">View Our Services</span>
                 </Link>
-                <Link 
-                  href="/signin" 
-                  className="btn-outline group text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-brand dark:hover:border-brand w-full sm:w-auto min-h-[48px]"
-                >
-                  <span className="text-sm md:text-base">Sign In</span>
-                  <ChevronRight className="ml-2 w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-                </Link>
               </div>
               
               {/* Enhanced Key Benefits with Better Icons */}
