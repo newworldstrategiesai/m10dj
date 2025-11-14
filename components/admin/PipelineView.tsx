@@ -388,6 +388,207 @@ export default function PipelineView({
         </ul>
       </Card>
 
+      {/* All Documents & Files */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <FileText className="w-5 h-5" />
+          All Documents & Files
+        </h3>
+        <div className="space-y-3">
+          {/* Quote/Service Selection */}
+          {hasQuote && quoteSelections.length > 0 && (
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+              <div className="flex items-center gap-3">
+                <FileText className="w-5 h-5 text-blue-500" />
+                <div>
+                  <p className="font-medium">Service Selection / Quote</p>
+                  <p className="text-sm text-gray-600">
+                    Created {quoteSelections[0].created_at ? new Date(quoteSelections[0].created_at).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+              </div>
+              <Link href={`/quote/${quoteId}`} target="_blank">
+                <Button variant="outline" size="sm">
+                  View
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* Contracts */}
+          {contracts && contracts.length > 0 ? (
+            contracts.map((contract, index) => (
+              <div key={contract.id || index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <FileCheck className={`w-5 h-5 ${
+                    contract.status === 'signed' || contract.signed_at 
+                      ? 'text-green-500' 
+                      : 'text-yellow-500'
+                  }`} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">Contract</p>
+                      {contract.status === 'signed' || contract.signed_at ? (
+                        <Badge className="bg-green-100 text-green-800 text-xs">Signed</Badge>
+                      ) : (
+                        <Badge className="bg-yellow-100 text-yellow-800 text-xs">Pending</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {contract.created_at ? new Date(contract.created_at).toLocaleDateString() : 'N/A'}
+                      {contract.signed_at && ` • Signed ${new Date(contract.signed_at).toLocaleDateString()}`}
+                    </p>
+                  </div>
+                </div>
+                <Link href={`/quote/${quoteId}/contract`} target="_blank">
+                  <Button variant="outline" size="sm">
+                    View
+                  </Button>
+                </Link>
+              </div>
+            ))
+          ) : (
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed">
+              <div className="flex items-center gap-3">
+                <FileCheck className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="font-medium text-gray-500">No Contract</p>
+                  <p className="text-sm text-gray-400">Contract not yet created</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Invoices */}
+          {invoices && invoices.length > 0 ? (
+            invoices.map((invoice, index) => {
+              const invoicePayments = payments?.filter(p => 
+                p.invoice_number === invoice.invoice_number || 
+                p.contact_id === contact.id
+              ) || [];
+              const totalPaid = invoicePayments
+                .filter(p => p.payment_status === 'Paid')
+                .reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
+              const invoiceTotal = parseFloat(invoice.total_amount) || 0;
+              const isPaid = totalPaid >= invoiceTotal;
+              const isPartiallyPaid = totalPaid > 0 && totalPaid < invoiceTotal;
+
+              return (
+                <div key={invoice.id || index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className={`w-5 h-5 ${
+                      isPaid ? 'text-green-500' : isPartiallyPaid ? 'text-yellow-500' : 'text-gray-500'
+                    }`} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Invoice {invoice.invoice_number || `#${index + 1}`}</p>
+                        {isPaid ? (
+                          <Badge className="bg-green-100 text-green-800 text-xs">Paid</Badge>
+                        ) : isPartiallyPaid ? (
+                          <Badge className="bg-yellow-100 text-yellow-800 text-xs">Partial</Badge>
+                        ) : (
+                          <Badge className="bg-gray-100 text-gray-800 text-xs">Unpaid</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        ${invoiceTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {isPartiallyPaid && ` • $${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} paid`}
+                        {invoice.invoice_date && ` • ${new Date(invoice.invoice_date).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                  </div>
+                  <Link href={`/quote/${quoteId}/invoice`} target="_blank">
+                    <Button variant="outline" size="sm">
+                      View
+                    </Button>
+                  </Link>
+                </div>
+              );
+            })
+          ) : (
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed">
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="font-medium text-gray-500">No Invoice</p>
+                  <p className="text-sm text-gray-400">Invoice not yet generated</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Receipts/Payments */}
+          {payments && payments.length > 0 ? (
+            payments
+              .filter(p => p.payment_status === 'Paid')
+              .map((payment, index) => (
+                <div key={payment.id || index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <Receipt className="w-5 h-5 text-green-500" />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Payment Receipt</p>
+                        <Badge className="bg-green-100 text-green-800 text-xs">Paid</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        ${(parseFloat(payment.total_amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {payment.transaction_date && ` • ${new Date(payment.transaction_date).toLocaleDateString()}`}
+                        {payment.payment_method && ` • ${payment.payment_method}`}
+                      </p>
+                    </div>
+                  </div>
+                  <Link href={`/quote/${quoteId}/receipt`} target="_blank">
+                    <Button variant="outline" size="sm">
+                      View
+                    </Button>
+                  </Link>
+                </div>
+              ))
+          ) : (
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed">
+              <div className="flex items-center gap-3">
+                <Receipt className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="font-medium text-gray-500">No Payments</p>
+                  <p className="text-sm text-gray-400">No payment receipts available</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Summary */}
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400">Documents</p>
+                <p className="font-semibold text-lg">
+                  {[
+                    hasQuote ? 1 : 0,
+                    contracts?.length || 0,
+                    invoices?.length || 0,
+                    payments?.filter(p => p.payment_status === 'Paid').length || 0
+                  ].reduce((a, b) => a + b, 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400">Contracts</p>
+                <p className="font-semibold text-lg">{contracts?.length || 0}</p>
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400">Invoices</p>
+                <p className="font-semibold text-lg">{invoices?.length || 0}</p>
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400">Receipts</p>
+                <p className="font-semibold text-lg">
+                  {payments?.filter(p => p.payment_status === 'Paid').length || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Quick Actions */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
