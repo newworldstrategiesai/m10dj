@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       adminSupabase
         .from('quote_selections')
         .select('*')
-        .eq('contact_id', id)
+        .eq('lead_id', id)
         .order('created_at', { ascending: false })
     ]);
 
