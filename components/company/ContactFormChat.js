@@ -264,15 +264,17 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
               onClick={onMinimize}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
               aria-label="Minimize chat"
+              title="Minimize chat"
             >
               <Minimize2 className="w-5 h-5" />
             </button>
           )}
-          {onClose && (
+          {onMinimize && (
             <button
-              onClick={onClose}
+              onClick={onMinimize}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-              aria-label="Close chat"
+              aria-label="Minimize chat"
+              title="Minimize chat"
             >
               <X className="w-5 h-5" />
             </button>
