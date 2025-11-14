@@ -273,11 +273,11 @@ export default function PersonalizedQuote() {
         { item: 'Additional Speaker', price: 250 }
       ],
       'package2': [
-        { item: '4 Hours DJ/MC Services', price: 1500 },
-        { item: 'Dance Floor Lighting', price: 350 },
-        { item: 'Uplighting (16 fixtures)', price: 300 },
-        { item: 'Ceremony Audio', price: 500 },
-        { item: 'Monogram Projection', price: 350 }
+        { item: 'DJ MC Services at Reception', description: 'Up to 4 hours of DJ services at reception + speakers & microphones', price: 1300 },
+        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and or performer', price: 250 },
+        { item: 'Uplighting', description: 'Up to 16 multicolor LED fixtures', price: 250 },
+        { item: 'Ceremony Audio', description: 'Additional hour and ceremony music programming included', price: 400 },
+        { item: 'Monogram Projection', description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.', price: 300 }
       ],
       'package3': [
         { item: '4 Hours DJ/MC Services', price: 1500 },
@@ -563,11 +563,16 @@ export default function PersonalizedQuote() {
                     {expandedBreakdown === pkg.id && (
                       <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
                         <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">If purchased separately:</p>
-                        <ul className="space-y-1 mb-2">
+                        <ul className="space-y-2 mb-2">
                           {getPackageBreakdown(pkg.id).map((item, idx) => (
                             <li key={idx} className="flex justify-between text-xs">
-                              <span className="text-gray-600 dark:text-gray-400">{item.item}</span>
-                              <span className="font-semibold text-gray-700 dark:text-gray-300">${item.price}</span>
+                              <div className="flex-1 pr-2">
+                                <span className="text-gray-600 dark:text-gray-400 font-medium">{item.item}</span>
+                                {item.description && (
+                                  <p className="text-gray-500 dark:text-gray-500 text-xs mt-0.5">{item.description}</p>
+                                )}
+                              </div>
+                              <span className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">${item.price.toLocaleString()}</span>
                             </li>
                           ))}
                         </ul>
