@@ -148,8 +148,9 @@ export default function PersonalizedQuote() {
                       const paymentsResponse = await fetch(`/api/payments?contact_id=${contractData.contact_id}`);
                       if (paymentsResponse.ok) {
                         const paymentsData = await paymentsResponse.json();
-                        const hasPaid = paymentsData && paymentsData.length > 0 && paymentsData.some(p => 
-                          p.payment_status === 'Paid' || p.payment_status === 'paid' || p.status === 'succeeded'
+                        const payments = paymentsData.payments || paymentsData || [];
+                        const hasPaid = payments.length > 0 && payments.some(p => 
+                          p.payment_status === 'Paid' || p.payment_status === 'paid' || p.status === 'succeeded' || p.payment_status === 'completed'
                         );
                         setHasPayment(hasPaid);
                       }
@@ -1191,18 +1192,29 @@ export default function PersonalizedQuote() {
                   <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-1">
                     Contract Signed
                   </h3>
-                  <p className="text-sm text-green-800 dark:text-green-200 mb-3">
+                  <p className="text-sm text-green-800 dark:text-green-200 mb-4">
                     Your selection has been finalized and your contract has been signed. Changes cannot be made at this time.
                   </p>
-                  {existingSelection.contract_id && (
-                    <Link
-                      href={`/quote/${id}/contract`}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
-                    >
-                      <FileText className="w-4 h-4" />
-                      View Your Contract
-                    </Link>
-                  )}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    {existingSelection.contract_id && (
+                      <Link
+                        href={`/quote/${id}/contract`}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border-2 border-green-600 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors text-sm font-medium"
+                      >
+                        <FileText className="w-4 h-4" />
+                        View Your Contract
+                      </Link>
+                    )}
+                    {!hasPayment && (
+                      <Link
+                        href={`/quote/${id}/payment`}
+                        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-dark text-white rounded-lg transition-colors text-sm font-semibold shadow-lg hover:shadow-xl"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        Make Payment
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
