@@ -472,7 +472,7 @@ export default function PersonalizedQuote() {
       id: 'school-package2',
       name: 'Package #2',
       price: 1345,
-      aLaCartePrice: 1345,
+      aLaCartePrice: 1495,
       description: 'Premium School Dance Experience',
       features: [
         'Up to 4 hours of DJ/MC services',
