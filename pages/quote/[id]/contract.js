@@ -32,19 +32,6 @@ export default function ContractPage() {
     }
   }, [id]);
 
-  useEffect(() => {
-    // Auto-show fields modal if validation fails
-    if (!loading && validationErrors.length > 0 && !isSigned) {
-      setShowFieldsModal(true);
-      // Pre-fill form with existing data
-      setFormData({
-        name: leadData?.name || '',
-        email: leadData?.email || '',
-        eventDate: leadData?.eventDate || ''
-      });
-    }
-  }, [loading, validationErrors, isSigned]);
-
   const fetchData = async () => {
     try {
       const [leadResponse, quoteResponse] = await Promise.all([
@@ -374,16 +361,33 @@ export default function ContractPage() {
                   </div>
                 )}
                 <button
-                  onClick={handleOpenSignatureModal}
-                  disabled={signing || !canSign}
+                  onClick={() => {
+                    if (validationErrors.length > 0) {
+                      setShowFieldsModal(true);
+                    } else {
+                      handleOpenSignatureModal();
+                    }
+                  }}
+                  disabled={signing || updatingFields}
                   className={`w-full inline-flex items-center justify-center gap-2 ${
                     canSign
+                      ? 'btn-primary'
+                      : validationErrors.length > 0
                       ? 'btn-primary'
                       : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                      <PenTool className="w-5 h-5" />
-                      {canSign ? 'Sign Contract' : 'Cannot Sign - Missing Required Fields'}
+                      {validationErrors.length > 0 ? (
+                        <>
+                          <Edit className="w-5 h-5" />
+                          Fill In Missing Information
+                        </>
+                      ) : (
+                        <>
+                          <PenTool className="w-5 h-5" />
+                          Sign Contract
+                        </>
+                      )}
                 </button>
               </div>
             )}
