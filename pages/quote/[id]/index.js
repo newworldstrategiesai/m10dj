@@ -166,6 +166,7 @@ export default function PersonalizedQuote() {
   // Determine event type from lead data
   const eventType = leadData?.eventType || leadData?.event_type || 'wedding';
   const isCorporate = eventType?.toLowerCase().includes('corporate') || eventType?.toLowerCase().includes('business');
+  const isSchool = eventType?.toLowerCase().includes('school') || eventType?.toLowerCase().includes('dance') || eventType?.toLowerCase().includes('prom') || eventType?.toLowerCase().includes('homecoming');
 
   // Wedding Packages
   const weddingPackages = [
@@ -292,7 +293,64 @@ export default function PersonalizedQuote() {
     }
   ];
 
-  const packages = isCorporate ? corporatePackages : weddingPackages;
+  // School Packages (same pricing as corporate)
+  const schoolPackages = [
+    {
+      id: 'school-basics',
+      name: 'Just the Basics',
+      price: 850,
+      aLaCartePrice: 850,
+      description: 'Essential School Event Services',
+      features: [
+        'Up to 3 hours of DJ/MC services',
+        'Speakers & microphone included',
+        'Age-appropriate music library',
+        'Dance floor lighting',
+        'Professional setup & coordination',
+        'School administrator approved content'
+      ],
+      popular: false
+    },
+    {
+      id: 'school-package1',
+      name: 'Package #1',
+      price: 1095,
+      aLaCartePrice: 1195,
+      description: 'Complete School Dance Entertainment - Most Popular',
+      features: [
+        'Up to 4 hours of DJ/MC services',
+        'Speakers & microphones included',
+        'Dance Floor Lighting',
+        'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer',
+        'School-appropriate music library',
+        'Special announcements (court, awards, etc.)',
+        'Professional setup & coordination',
+        'Backup equipment included'
+      ],
+      popular: true
+    },
+    {
+      id: 'school-package2',
+      name: 'Package #2',
+      price: 1345,
+      aLaCartePrice: 1345,
+      description: 'Premium School Dance Experience',
+      features: [
+        'Up to 4 hours of DJ/MC services',
+        'Speakers & microphones included',
+        'Dance Floor Lighting',
+        'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer',
+        'Uplighting (up to 16 multicolor LED fixtures)',
+        'Enhanced venue ambiance',
+        'School-appropriate music library',
+        'Photo-ready atmosphere',
+        'Professional setup & coordination'
+      ],
+      popular: false
+    }
+  ];
+
+  const packages = isSchool ? schoolPackages : (isCorporate ? corporatePackages : weddingPackages);
 
   // Wedding Addons
   const weddingAddons = [
@@ -400,7 +458,72 @@ export default function PersonalizedQuote() {
     }
   ];
 
-  const addons = isCorporate ? corporateAddons : weddingAddons;
+  // School Addons (similar to corporate but with school-appropriate descriptions)
+  const schoolAddons = [
+    {
+      id: 'dj_mc_4hours',
+      name: '4 Hours DJ/MC Services a la carte',
+      description: 'Includes a live DJ and speakers for up to 4 hours. No dance floor lighting or uplighting. Age-appropriate music included.',
+      price: 945
+    },
+    {
+      id: 'dj_mc_3hours',
+      name: '3 Hours DJ/MC Services',
+      description: 'Includes a live DJ and speakers for up to 3 hours. No dance floor lighting or uplighting. Perfect for shorter school events.',
+      price: 850
+    },
+    {
+      id: 'school_logo_projection',
+      name: 'School Logo/Graphic Projection',
+      description: 'Project your school logo, mascot, or custom graphics on walls or floors. Perfect for school spirit and themed events.',
+      price: 300
+    },
+    {
+      id: 'flat_screen_tv',
+      name: 'Flat Screen TV w/ Stand',
+      description: 'Includes a 65" TV mounted on a free-standing column. Great for displaying slideshows, announcements, or visualizers at school events.',
+      price: 300
+    },
+    {
+      id: 'additional_speaker',
+      name: 'Additional Speaker',
+      description: 'Includes a powered speaker with built in mixer for microphone or auxiliary inputs. Perfect for separate areas or outdoor school events.',
+      price: 150
+    },
+    {
+      id: 'dance_floor_lighting_alacarte',
+      name: 'Dance Floor Lighting a la carte',
+      description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer. This is included with all of our packages. Only choose this if you are not purchasing a package and just need to rent lights.',
+      price: 250
+    },
+    {
+      id: 'uplighting_addon',
+      name: 'Uplighting Add-on',
+      description: 'Includes up to 16 multi-color LED fixtures for enhanced venue ambiance. Perfect for prom and formal dances.',
+      price: 300
+    },
+    {
+      id: 'additional_hour',
+      name: 'Additional hour(s)',
+      description: 'If you anticipate that your event will run longer than the time included with your package, you can choose this ahead of time; or if we happen to run over on the day, we can invoice you for the extra time after the fact.',
+      price: 150,
+      per: 'hour'
+    },
+    {
+      id: 'dancing_clouds',
+      name: 'Dancing on the Clouds',
+      description: 'Create a magical atmosphere with our "Dancing on the Clouds" effect. A sophisticated dry ice system creates a dense, floor-hugging cloud, perfect for special moments and photo opportunities.',
+      price: 500
+    },
+    {
+      id: 'cold_spark',
+      name: 'Cold Spark Fountain Effect',
+      description: 'Elevate your school event with the awe-inspiring spectacle of Cold Spark Machines. Safe for indoors, these machines produce a stunning spark effect, adding dramatic flair to entrances or special moments.',
+      price: 500
+    }
+  ];
+
+  const addons = isSchool ? schoolAddons : (isCorporate ? corporateAddons : weddingAddons);
 
   const getPackageBreakdown = (packageId) => {
     const breakdowns = {
@@ -438,6 +561,19 @@ export default function PersonalizedQuote() {
         { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 250 }
       ],
       'corporate-package2': [
+        { item: '4 Hours DJ/MC Services', description: 'Up to 4 hours of DJ/MC services + speakers & microphones', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 150 },
+        { item: 'Uplighting', description: 'Up to 16 multicolor LED fixtures', price: 250 }
+      ],
+      // School Package Breakdowns (same as corporate)
+      'school-basics': [
+        { item: '3 Hours DJ/MC Services', description: 'Up to 3 hours of DJ/MC services + speakers & microphone', price: 850 }
+      ],
+      'school-package1': [
+        { item: '4 Hours DJ/MC Services', description: 'Up to 4 hours of DJ/MC services + speakers & microphones', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 250 }
+      ],
+      'school-package2': [
         { item: '4 Hours DJ/MC Services', description: 'Up to 4 hours of DJ/MC services + speakers & microphones', price: 945 },
         { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 150 },
         { item: 'Uplighting', description: 'Up to 16 multicolor LED fixtures', price: 250 }
@@ -695,10 +831,10 @@ export default function PersonalizedQuote() {
 
   return (
     <>
-        <Head>
-          <title>Your Personalized Quote | M10 DJ Company</title>
+      <Head>
+        <title>Your Personalized Quote | M10 DJ Company</title>
           <meta name="description" content={`Personalized ${isCorporate ? 'corporate event' : 'wedding'} DJ quote for ${leadData.name}`} />
-        </Head>
+      </Head>
       <Header />
       <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
@@ -709,7 +845,7 @@ export default function PersonalizedQuote() {
               Back to Home
             </Link>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Your Personalized {isCorporate ? 'Corporate Event' : 'Wedding'} Quote
+              Your Personalized {isSchool ? 'School Event' : isCorporate ? 'Corporate Event' : 'Wedding'} Quote
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-4 text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-2">
