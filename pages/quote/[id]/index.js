@@ -759,13 +759,13 @@ export default function PersonalizedQuote() {
                         💰 Save Money with a Package!
                       </h3>
                       <p className="text-sm text-yellow-800 dark:text-yellow-300 mb-3">
-                        You&apos;ve selected {bestPackageMatch.includedCount} addon{bestPackageMatch.includedCount > 1 ? 's' : ''} that {bestPackageMatch.includedCount > 1 ? 'are' : 'is'} included in <strong>{bestPackageMatch.package.name}</strong>!
+                        You&apos;ve selected {bestPackageMatch.includedCount} addon{bestPackageMatch.includedCount > 1 ? 's' : ''} that {bestPackageMatch.includedCount > 1 ? 'are' : 'is'} included in <strong>{bestPackageMatch.package.name}</strong>! The package includes these plus additional services.
                       </p>
                       <div className="bg-white dark:bg-gray-800 rounded-lg p-3 mb-3">
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">A La Carte (Addons Only):</span>
-                          <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-                            ${calculateALaCarteTotal().toLocaleString()}
+                          <span className="text-sm text-gray-600 dark:text-gray-400">If Purchased Separately (All Package Items):</span>
+                          <span className="text-lg font-semibold text-gray-700 dark:text-gray-300 line-through">
+                            ${bestPackageMatch.aLaCarteTotal.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center mb-2">
@@ -779,6 +779,11 @@ export default function PersonalizedQuote() {
                           <span className="text-xl font-bold text-green-600 dark:text-green-400">
                             ${bestPackageMatch.savings.toLocaleString()}
                           </span>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                          <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
+                            Your current selection: <strong>${calculateALaCarteTotal().toLocaleString()}</strong> (addons only, no base package)
+                          </p>
                         </div>
                       </div>
                       <button
