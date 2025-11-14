@@ -235,29 +235,41 @@ export default function PersonalizedQuote() {
 
   const addons = [
     {
-      id: 'extra-hours',
-      name: 'Extra Hours',
+      id: 'additional_hour',
+      name: 'Additional Hour(s)',
       description: 'Additional DJ/MC services beyond the 4-hour package',
       price: 300,
       per: 'hour'
     },
     {
-      id: 'photo-booth',
-      name: 'Photo Booth',
-      description: 'Professional photo booth with props and instant prints',
-      price: 800
+      id: 'additional_speaker',
+      name: 'Additional Speaker',
+      description: 'Extra speaker for cocktail hour or separate areas',
+      price: 250
     },
     {
-      id: 'karaoke',
-      name: 'Karaoke Setup',
-      description: 'Full karaoke system with microphones and song library',
-      price: 400
+      id: 'dancing_clouds',
+      name: 'Dancing on the Clouds',
+      description: 'Sophisticated dry ice effect for first dance and special moments',
+      price: 500
     },
     {
-      id: 'smoke-machine',
-      name: 'Smoke Machine',
-      description: 'Atmospheric smoke effects for special moments',
-      price: 200
+      id: 'cold_spark',
+      name: 'Cold Spark Fountain Effect',
+      description: 'Dramatic indoor-safe spark effects for grand entrances or special moments',
+      price: 600
+    },
+    {
+      id: 'monogram',
+      name: 'Monogram Projection',
+      description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.',
+      price: 350
+    },
+    {
+      id: 'uplighting_addon',
+      name: 'Uplighting Add-on',
+      description: 'Additional uplighting fixtures beyond package inclusion',
+      price: 300
     }
   ];
 
