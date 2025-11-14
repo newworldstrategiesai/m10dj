@@ -429,12 +429,6 @@ export default function ContactForm({ className = '' }) {
 
   return (
     <div className={`${className}`}>
-      <div className="mb-8">
-        <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4 font-sans">Get Your Free Quote</h3>
-        <p className="text-gray-600 dark:text-gray-400 font-inter">
-          Tell us about your event and we&apos;ll provide a customized quote within 24 hours.
-        </p>
-      </div>
 
       {showRestoredNotice && (
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start">
@@ -643,58 +637,38 @@ export default function ContactForm({ className = '' }) {
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="btn-primary w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          aria-busy={isSubmitting}
-          aria-live="polite"
-        >
-          {isSubmitting ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>Submitting Your Request...</span>
-            </>
-          ) : (
-            <>
-              <Send className="w-5 h-5" />
-              <span>Get My Free Quote</span>
-            </>
+        <div className="pt-4">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-gradient-to-r from-brand to-amber-500 hover:from-amber-500 hover:to-brand text-black font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
+            aria-busy={isSubmitting}
+            aria-live="polite"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                <span>Submitting...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-5 h-5" />
+                <span>Get My Free Quote</span>
+              </>
+            )}
+          </button>
+          
+          {isSubmitting && (
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3 animate-pulse font-inter">
+              Please wait, do not refresh or close this page...
+            </div>
           )}
-        </button>
-        
-        {isSubmitting && (
-          <div className="text-center text-sm text-gray-600 mt-2 animate-pulse">
-            Please wait, do not refresh or close this page...
-          </div>
-        )}
-      </form>
-
-      <div className="mt-8 pt-8 border-t border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-brand/10 text-brand rounded-lg flex items-center justify-center">
-              <Phone className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900 font-inter">Call us directly</p>
-              <a href="tel:+19014102020" className="text-brand hover:text-brand-600 transition-colors font-inter">
-(901) 410-2020
-              </a>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-brand/10 text-brand rounded-lg flex items-center justify-center">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900 font-inter">Response time</p>
-              <p className="text-gray-600 font-inter">Within 24 hours</p>
-            </div>
-          </div>
+          
+          <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4 font-inter">
+            We&apos;ll respond within 24 hours • <a href="tel:+19014102020" className="text-brand hover:underline font-semibold">Call (901) 410-2020</a> for immediate assistance
+          </p>
         </div>
-      </div>
+      </form>
       {chatOverlay}
     </div>
   );

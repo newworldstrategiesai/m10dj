@@ -291,11 +291,15 @@ export default function Home() {
               {/* Enhanced Contact Form */}
               <div id="contact-form" className="modern-card bg-white dark:bg-slate-800 shadow-2xl relative overflow-hidden mx-4 lg:mx-0">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand via-amber-400 to-brand"></div>
-                <div className="mb-4 md:mb-6">
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-2">Get Your Free Quote</h3>
-                  <p className="text-sm md:text-base text-gray-600 dark:text-gray-300">Fill out the form below and we'll get back to you within 24 hours</p>
+                <div className="p-6 md:p-8">
+                  <div className="mb-6">
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">Get Your Free Quote</h3>
+                    <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 font-inter leading-relaxed">
+                      Fill out the form below and we&apos;ll get back to you within 24 hours with a personalized quote.
+                    </p>
+                  </div>
+                  <ContactForm />
                 </div>
-                <ContactForm />
               </div>
             </div>
           </div>
