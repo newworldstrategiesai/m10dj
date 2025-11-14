@@ -232,14 +232,14 @@ export default function MemphisWeddingDJPrices2025() {
                   <div>
                     <div className="font-semibold text-gray-900">Multiple Package Options</div>
                     <div className="text-sm text-gray-600">From ceremony-only to full wedding packages</div>
-                  </div>
+                </div>
                 </div>
                 <div className="flex items-start space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-semibold text-gray-900">Transparent Pricing</div>
                     <div className="text-sm text-gray-600">No hidden fees or surprise charges</div>
-                  </div>
+                </div>
                 </div>
                 <div className="flex items-start space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
@@ -637,33 +637,33 @@ export default function MemphisWeddingDJPrices2025() {
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
                   Can I get a discount for off-peak Memphis wedding dates?
                 </h3>
-              <p className="text-gray-700">
+                <p className="text-gray-700">
                 Yes! We offer discounts for January-March and November-December weddings. Weekday and 
                 Sunday weddings also qualify for reduced pricing. Contact us to learn about current promotions 
                 and seasonal discounts.
-              </p>
+                </p>
               </div>
 
               <div className="border-b border-gray-200 pb-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
                   What's the payment schedule for Memphis wedding DJ services?
                 </h3>
-              <p className="text-gray-700">
+                <p className="text-gray-700">
                 We typically require a deposit to secure your date, with the balance due according to a payment 
                 schedule that works for you. We accept cash, check, and all major credit cards. Specific payment 
                 terms are outlined in your contract.
-              </p>
+                </p>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
                   Do you offer package deals for Memphis wedding weekends?
                 </h3>
-              <p className="text-gray-700">
-                Absolutely! We offer special pricing for rehearsal dinners, welcome parties, and post-wedding 
+                <p className="text-gray-700">
+                  Absolutely! We offer special pricing for rehearsal dinners, welcome parties, and post-wedding 
                 brunches when booked with your main wedding reception. Bundling multiple events often provides 
                 significant savings and ensures consistent quality across all your celebrations.
-              </p>
+                </p>
               </div>
             </div>
           </div>

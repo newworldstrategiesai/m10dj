@@ -131,11 +131,11 @@ export default async function handler(req, res) {
 
     // Update contract with signature
     const updateData = {
-      status: 'signed',
-      signed_at: new Date().toISOString(),
-      signed_by_client: clientName,
-      signed_by_client_email: clientEmail,
-      signed_by_client_ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress
+        status: 'signed',
+        signed_at: new Date().toISOString(),
+        signed_by_client: clientName,
+        signed_by_client_email: clientEmail,
+        signed_by_client_ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress
     };
     
     // Add signature data if provided

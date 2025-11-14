@@ -298,8 +298,8 @@ export default function ContractPage() {
                   disabled={signing}
                   className="btn-primary w-full inline-flex items-center justify-center gap-2"
                 >
-                  <PenTool className="w-5 h-5" />
-                  Sign Contract
+                      <PenTool className="w-5 h-5" />
+                      Sign Contract
                 </button>
               </div>
             )}
@@ -340,7 +340,7 @@ export default function ContractPage() {
                       {contractData?.vendor_signature_data ? (
                         <img src={contractData.vendor_signature_data} alt="M10 DJ Company Signature" className="max-h-full" />
                       ) : contractData?.signed_by_vendor_at ? (
-                        <p className="text-gray-500 dark:text-gray-400">Ben Murray, Manager</p>
+                      <p className="text-gray-500 dark:text-gray-400">Ben Murray, Manager</p>
                       ) : (
                         <div className="text-center">
                           <p className="text-yellow-700 dark:text-yellow-400 font-medium text-sm">Not Signed</p>

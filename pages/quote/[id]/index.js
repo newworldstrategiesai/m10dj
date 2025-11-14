@@ -163,7 +163,12 @@ export default function PersonalizedQuote() {
     }
   }, [selectedPackage]);
 
-  const packages = [
+  // Determine event type from lead data
+  const eventType = leadData?.eventType || leadData?.event_type || 'wedding';
+  const isCorporate = eventType?.toLowerCase().includes('corporate') || eventType?.toLowerCase().includes('business');
+
+  // Wedding Packages
+  const weddingPackages = [
     {
       id: 'test-package',
       name: 'Test Package',
@@ -233,7 +238,64 @@ export default function PersonalizedQuote() {
     }
   ];
 
-  const addons = [
+  // Corporate Packages
+  const corporatePackages = [
+    {
+      id: 'corporate-basics',
+      name: 'Just the Basics',
+      price: 850,
+      aLaCartePrice: 850,
+      description: 'Essential Corporate Services',
+      features: [
+        'Up to 3 hours of DJ/MC services',
+        'Speakers & microphone included',
+        'Professional setup & coordination',
+        'Background music during networking',
+        'Professional business attire'
+      ],
+      popular: false
+    },
+    {
+      id: 'corporate-package1',
+      name: 'Package #1',
+      price: 1095,
+      aLaCartePrice: 1195,
+      description: 'Complete Corporate Entertainment - Most Popular',
+      features: [
+        'Up to 4 hours of DJ/MC services',
+        'Speakers & microphones included',
+        'Dance Floor Lighting',
+        'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer',
+        'Professional setup & coordination',
+        'A/V support for presentations',
+        'Professional business attire'
+      ],
+      popular: true
+    },
+    {
+      id: 'corporate-package2',
+      name: 'Package #2',
+      price: 1345,
+      aLaCartePrice: 1345,
+      description: 'Premium Corporate Experience',
+      features: [
+        'Up to 4 hours of DJ/MC services',
+        'Speakers & microphones included',
+        'Dance Floor Lighting',
+        'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer',
+        'Uplighting (up to 16 multicolor LED fixtures)',
+        'Enhanced venue ambiance',
+        'Professional setup & coordination',
+        'A/V support for presentations'
+      ],
+      popular: false
+    }
+  ];
+
+  const packages = isCorporate ? corporatePackages : weddingPackages;
+
+  // Wedding Addons
+  const weddingAddons = [
     {
       id: 'additional_hour',
       name: 'Additional Hour(s)',
@@ -273,11 +335,79 @@ export default function PersonalizedQuote() {
     }
   ];
 
+  // Corporate Addons
+  const corporateAddons = [
+    {
+      id: 'dj_mc_4hours',
+      name: '4 Hours DJ/MC Services a la carte',
+      description: 'Includes a live DJ and speakers for up to 4 hours. No dance floor lighting or uplighting.',
+      price: 945
+    },
+    {
+      id: 'dj_mc_3hours',
+      name: '3 Hours DJ/MC Services',
+      description: 'Includes a live DJ and speakers for up to 3 hours at reception. No dance floor lighting or uplighting.',
+      price: 850
+    },
+    {
+      id: 'monogram',
+      name: 'Monogram/Graphic Projection',
+      description: 'A custom graphic displaying the names, initials or artwork of your choosing. The look is fully customizable to fit clients needs. Monograms and graphics can be projected on any floor or wall.',
+      price: 300
+    },
+    {
+      id: 'flat_screen_tv',
+      name: 'Flat Screen TV w/ Stand',
+      description: 'Includes a 65" TV mounted on a free-standing column. Many clients add our mounted TV to their event for displaying slideshows, karaoke lyrics, and visualizers.',
+      price: 300
+    },
+    {
+      id: 'additional_speaker',
+      name: 'Additional Speaker',
+      description: 'Includes a powered speaker with built in mixer for microphone or auxiliary inputs. Perfect for cocktail hours that are separate from the reception.',
+      price: 150
+    },
+    {
+      id: 'dance_floor_lighting_alacarte',
+      name: 'Dance Floor Lighting a la carte',
+      description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer. This is included with all of our packages. Only choose this if you are not purchasing a package and just need to rent lights.',
+      price: 250
+    },
+    {
+      id: 'uplighting_addon',
+      name: 'Uplighting Add-on',
+      description: 'Includes up to 16 multi-color LED fixtures',
+      price: 300
+    },
+    {
+      id: 'additional_hour',
+      name: 'Additional hour(s)',
+      description: 'If you anticipate that your event will run longer than the time included with your package, you can choose this ahead of time; or if we happen to run over on the day, we can invoice you for the extra time after the fact.',
+      price: 150,
+      per: 'hour'
+    },
+    {
+      id: 'dancing_clouds',
+      name: 'Dancing on the Clouds',
+      description: 'Capture the magic with our "Dancing on the Clouds" effect. A sophisticated dry ice system creates a dense, floor-hugging cloud, transforming your first dance into an enchanting moment. It\'s safe, mesmerizing, and perfect for unforgettable photos.',
+      price: 500
+    },
+    {
+      id: 'cold_spark',
+      name: 'Cold Spark Fountain Effect',
+      description: 'Elevate your event with the awe-inspiring spectacle of Cold Spark Machines. Safe for indoors, these machines produce a stunning spark effect, adding a dramatic flair to entrances, dances, or send-offs. Capture the magic and leave guests mesmerized without the heat or hazard of traditional pyrotechnics.',
+      price: 500
+    }
+  ];
+
+  const addons = isCorporate ? corporateAddons : weddingAddons;
+
   const getPackageBreakdown = (packageId) => {
     const breakdowns = {
       'test-package': [
         { item: 'Test Package', price: 1 }
       ],
+      // Wedding Package Breakdowns
       'package1': [
         { item: '4 Hours DJ/MC Services', price: 1600 },
         { item: 'Dance Floor Lighting', price: 400 },
@@ -298,6 +428,19 @@ export default function PersonalizedQuote() {
         { item: 'Ceremony Audio', price: 500 },
         { item: 'Monogram Projection', price: 200 },
         { item: 'Dancing on the Clouds', price: 450 }
+      ],
+      // Corporate Package Breakdowns
+      'corporate-basics': [
+        { item: '3 Hours DJ/MC Services', description: 'Up to 3 hours of DJ/MC services + speakers & microphone', price: 850 }
+      ],
+      'corporate-package1': [
+        { item: '4 Hours DJ/MC Services', description: 'Up to 4 hours of DJ/MC services + speakers & microphones', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 250 }
+      ],
+      'corporate-package2': [
+        { item: '4 Hours DJ/MC Services', description: 'Up to 4 hours of DJ/MC services + speakers & microphones', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and/or performer', price: 150 },
+        { item: 'Uplighting', description: 'Up to 16 multicolor LED fixtures', price: 250 }
       ]
     };
     return breakdowns[packageId] || [];
@@ -552,10 +695,10 @@ export default function PersonalizedQuote() {
 
   return (
     <>
-      <Head>
-        <title>Your Personalized Quote | M10 DJ Company</title>
-        <meta name="description" content={`Personalized wedding DJ quote for ${leadData.name}`} />
-      </Head>
+        <Head>
+          <title>Your Personalized Quote | M10 DJ Company</title>
+          <meta name="description" content={`Personalized ${isCorporate ? 'corporate event' : 'wedding'} DJ quote for ${leadData.name}`} />
+        </Head>
       <Header />
       <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
@@ -566,7 +709,7 @@ export default function PersonalizedQuote() {
               Back to Home
             </Link>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Your Personalized Quote
+              Your Personalized {isCorporate ? 'Corporate Event' : 'Wedding'} Quote
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-4 text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-2">
