@@ -316,6 +316,70 @@ export default function PersonalizedQuote() {
     return total;
   };
 
+  // Calculate what it would cost if purchased a la carte (addons only, no package)
+  const calculateALaCarteTotal = () => {
+    let total = 0;
+    selectedAddons.forEach(addon => {
+      if (addon && addon.price != null) {
+        total += Number(addon.price) || 0;
+      }
+    });
+    return total;
+  };
+
+  // Find which package would include the selected addons and show savings
+  const findBestPackageMatch = () => {
+    if (selectedAddons.length === 0 || selectedPackage) return null;
+    
+    // Map addon IDs to keywords that might appear in package breakdowns
+    const addonKeywords = {
+      'monogram': ['monogram', 'projection'],
+      'dancing_clouds': ['dancing', 'clouds', 'dry ice'],
+      'additional_hour': ['hour', 'additional'],
+      'additional_speaker': ['speaker', 'additional'],
+      'cold_spark': ['cold spark', 'spark', 'fountain'],
+      'uplighting_addon': ['uplighting']
+    };
+    
+    // Check which package includes the most selected addons
+    const packageMatches = packages.map(pkg => {
+      const packageBreakdown = getPackageBreakdown(pkg.id);
+      const packageItems = packageBreakdown.map(item => item.item.toLowerCase());
+      const packageDescriptions = packageBreakdown
+        .filter(item => item.description)
+        .map(item => item.description.toLowerCase());
+      const allPackageText = [...packageItems, ...packageDescriptions].join(' ');
+      
+      // Count how many selected addons are included in this package
+      const includedAddons = selectedAddons.filter(addon => {
+        const addonName = addon.name.toLowerCase();
+        const keywords = addonKeywords[addon.id] || [addonName];
+        
+        // Check if any package item or description matches the addon
+        return keywords.some(keyword => 
+          allPackageText.includes(keyword) ||
+          packageItems.some(item => item.includes(keyword)) ||
+          packageDescriptions.some(desc => desc.includes(keyword))
+        );
+      });
+      
+      return {
+        package: pkg,
+        includedCount: includedAddons.length,
+        includedAddons,
+        aLaCarteTotal: pkg.aLaCartePrice,
+        packagePrice: pkg.price,
+        savings: pkg.aLaCartePrice - pkg.price
+      };
+    });
+    
+    // Return the package with the most matches (only if at least 1 match)
+    const bestMatch = packageMatches.sort((a, b) => b.includedCount - a.includedCount)[0];
+    return bestMatch && bestMatch.includedCount > 0 ? bestMatch : null;
+  };
+
+  const bestPackageMatch = findBestPackageMatch();
+
   const toggleAddon = (addon) => {
     setSelectedAddons(prev => {
       const exists = prev.find(a => a.id === addon.id);
@@ -668,15 +732,85 @@ export default function PersonalizedQuote() {
           {/* Total and CTA */}
           <section className="bg-gradient-to-r from-brand/10 to-brand/5 dark:from-brand/20 dark:to-brand/10 rounded-xl p-8 border border-brand/20">
             <div className="max-w-2xl mx-auto">
+              {/* Savings Alert - Show when addons selected without package */}
+              {!selectedPackage && selectedAddons.length > 0 && bestPackageMatch && bestPackageMatch.includedCount > 0 && (
+                <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-yellow-900 dark:text-yellow-200 mb-2">
+                        💰 Save Money with a Package!
+                      </h3>
+                      <p className="text-sm text-yellow-800 dark:text-yellow-300 mb-3">
+                        You&apos;ve selected {bestPackageMatch.includedCount} addon{bestPackageMatch.includedCount > 1 ? 's' : ''} that {bestPackageMatch.includedCount > 1 ? 'are' : 'is'} included in <strong>{bestPackageMatch.package.name}</strong>!
+                      </p>
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 mb-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">A La Carte (Addons Only):</span>
+                          <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                            ${calculateALaCarteTotal().toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Package Price:</span>
+                          <span className="text-lg font-semibold text-brand">
+                            ${bestPackageMatch.packagePrice.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                          <span className="text-sm font-semibold text-green-700 dark:text-green-400">You Save:</span>
+                          <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                            ${bestPackageMatch.savings.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedPackage(bestPackageMatch.package)}
+                        className="w-full btn-primary text-sm py-2 flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Select {bestPackageMatch.package.name} Instead
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Regular Total Display */}
               <div className="flex justify-between items-center mb-6">
                 <span className="text-2xl font-bold text-gray-900 dark:text-white">Total:</span>
                 <span className="text-4xl font-bold text-brand">${calculateTotal().toLocaleString()}</span>
               </div>
               
-              {!selectedPackage && (
+              {!selectedPackage && selectedAddons.length === 0 && (
                 <p className="text-center text-gray-600 dark:text-gray-400 mb-4">
                   Please select a package to see your total
                 </p>
+              )}
+
+              {!selectedPackage && selectedAddons.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-300 text-center">
+                    <strong>Note:</strong> Addons are additions to packages. Select a package above to see your complete total and maximize your savings!
+                  </p>
+                </div>
+              )}
+
+              {/* Show package savings if package is selected */}
+              {selectedPackage && (
+                <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-green-800 dark:text-green-300">
+                      Package Savings:
+                    </span>
+                    <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                      ${(selectedPackage.aLaCartePrice - selectedPackage.price).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-700 dark:text-green-400 mt-1 text-center">
+                    You&apos;re saving ${(selectedPackage.aLaCartePrice - selectedPackage.price).toLocaleString()} compared to purchasing items separately!
+                  </p>
+                </div>
               )}
 
               <button
