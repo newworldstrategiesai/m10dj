@@ -973,18 +973,32 @@ export default function PersonalizedQuote() {
           <title>Loading Your Quote | M10 DJ Company</title>
         </Head>
         {/* Simplified Header with Logo Only */}
-        <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-          <div className="container mx-auto px-4 py-4">
-            <Link href="/" className="inline-block">
-              <Image
-                src="/logo-static.jpg"
-                alt="M10 DJ Company"
-                width={120}
-                height={40}
-                className="h-10 w-auto"
-                priority
-              />
-            </Link>
+        <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-200 dark:bg-gray-900/95 dark:border-gray-800">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center h-16">
+              <Link href="/" className="flex-shrink-0 group">
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <Image
+                      src="/logo-static.jpg"
+                      alt="M10 DJ Company"
+                      width={50}
+                      height={50}
+                      className="rounded-lg transition-transform group-hover:scale-105"
+                      priority
+                    />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white font-sans group-hover:text-brand transition-colors">
+                      M10 DJ Company
+                    </h1>
+                    <p className="text-xs text-brand font-semibold font-inter tracking-wide">
+                      Premium Event Entertainment
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            </div>
           </div>
         </header>
         <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
@@ -1004,18 +1018,32 @@ export default function PersonalizedQuote() {
           <title>Quote Not Found | M10 DJ Company</title>
         </Head>
         {/* Simplified Header with Logo Only */}
-        <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-          <div className="container mx-auto px-4 py-4">
-            <Link href="/" className="inline-block">
-              <Image
-                src="/logo-static.jpg"
-                alt="M10 DJ Company"
-                width={120}
-                height={40}
-                className="h-10 w-auto"
-                priority
-              />
-            </Link>
+        <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-200 dark:bg-gray-900/95 dark:border-gray-800">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center h-16">
+              <Link href="/" className="flex-shrink-0 group">
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <Image
+                      src="/logo-static.jpg"
+                      alt="M10 DJ Company"
+                      width={50}
+                      height={50}
+                      className="rounded-lg transition-transform group-hover:scale-105"
+                      priority
+                    />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white font-sans group-hover:text-brand transition-colors">
+                      M10 DJ Company
+                    </h1>
+                    <p className="text-xs text-brand font-semibold font-inter tracking-wide">
+                      Premium Event Entertainment
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            </div>
           </div>
         </header>
         <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
