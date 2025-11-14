@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
-import Footer from '../../../components/company/Footer';
 import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function PersonalizedQuote() {
@@ -424,7 +423,6 @@ export default function PersonalizedQuote() {
             <p className="text-gray-600 dark:text-gray-400">Loading your personalized quote...</p>
           </div>
         </main>
-        <Footer />
       </>
     );
   }
@@ -455,7 +453,6 @@ export default function PersonalizedQuote() {
             </p>
           </div>
         </main>
-        <Footer />
       </>
     );
   }
@@ -690,7 +687,6 @@ export default function PersonalizedQuote() {
           </section>
         </div>
       </main>
-      <Footer />
     </>
   );
 }

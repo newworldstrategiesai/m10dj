@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
-import Footer from '../../../components/company/Footer';
 import { CreditCard, ArrowLeft, Loader2, CheckCircle, Lock, AlertCircle, FileText, X } from 'lucide-react';
 
 export default function PaymentPage() {
@@ -132,7 +131,7 @@ export default function PaymentPage() {
           description: (isSmallAmount || paymentType === 'full')
             ? `Full payment for ${quoteData.package_name}`
             : `Deposit for ${quoteData.package_name}`,
-          successUrl: `${window.location.origin}/quote/${id}/confirmation?payment_intent={CHECKOUT_SESSION_ID}`,
+          successUrl: `${window.location.origin}/quote/${id}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/quote/${id}/payment`
         })
       });
@@ -171,7 +170,6 @@ export default function PaymentPage() {
             <Loader2 className="w-12 h-12 text-brand animate-spin mb-4" />
             <p className="text-xl text-gray-600 dark:text-gray-300">Loading payment information...</p>
           </div>
-          <Footer />
         </div>
       </>
     );
@@ -210,7 +208,6 @@ export default function PaymentPage() {
               </Link>
             </div>
           </main>
-          <Footer />
         </div>
       </>
     );
@@ -432,8 +429,6 @@ export default function PaymentPage() {
             </Link>
           </div>
         </main>
-
-        <Footer />
       </div>
     </>
   );

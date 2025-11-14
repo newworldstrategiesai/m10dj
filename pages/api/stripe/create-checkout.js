@@ -79,7 +79,7 @@ export default async function handler(req, res) {
         payment_method_types: ['card'],
         line_items: lineItems,
         mode: 'payment',
-        success_url: successUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/quote/${leadId}/confirmation?payment_intent={CHECKOUT_SESSION_ID}`,
+        success_url: successUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/quote/${leadId}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/quote/${leadId}/payment`,
         customer_email: customerEmail,
         metadata: {

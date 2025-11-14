@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
-import Footer from '../../../components/company/Footer';
 import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, Users } from 'lucide-react';
 
 export default function InvoicePage() {
@@ -76,7 +75,6 @@ export default function InvoicePage() {
             <Loader2 className="w-12 h-12 text-brand animate-spin mb-4" />
             <p className="text-xl text-gray-600 dark:text-gray-300">Loading invoice...</p>
           </div>
-          <Footer />
         </div>
       </>
     );
@@ -97,11 +95,11 @@ export default function InvoicePage() {
       </Head>
 
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        <Header />
+        <Header className="no-print" />
 
         <main className="section-container py-12 md:py-20">
           {/* Header Actions */}
-          <div className="max-w-4xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="no-print max-w-4xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <Link
               href={`/quote/${id}/confirmation`}
               className="inline-flex items-center gap-2 text-brand hover:text-brand-dark transition-colors"
@@ -257,7 +255,7 @@ export default function InvoicePage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="max-w-4xl mx-auto mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="no-print max-w-4xl mx-auto mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href={`/quote/${id}/payment`}
               className="btn-primary inline-flex items-center justify-center gap-2"
@@ -275,16 +273,79 @@ export default function InvoicePage() {
           </div>
         </main>
 
-        <Footer />
       </div>
 
       <style jsx global>{`
         @media print {
-          .no-print {
+          /* Hide all non-invoice elements */
+          .no-print,
+          header,
+          nav,
+          footer,
+          .no-print * {
             display: none !important;
           }
+          
+          /* Reset page styling */
           body {
             background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          /* Invoice container styling */
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          
+          /* Invoice document styling */
+          .max-w-4xl {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0.75in !important;
+            background: white !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+          }
+          
+          /* Ensure text is black for printing */
+          * {
+            color: #000 !important;
+          }
+          
+          /* Keep white backgrounds */
+          .bg-white,
+          .bg-gray-50 {
+            background: white !important;
+          }
+          
+          /* Dark mode text should be black in print */
+          .dark\\:text-white,
+          .dark\\:text-gray-300,
+          .dark\\:text-gray-400 {
+            color: #000 !important;
+          }
+          
+          /* Brand color should be dark for print */
+          .text-brand {
+            color: #000 !important;
+          }
+          
+          /* Page breaks */
+          .page-break {
+            page-break-before: always;
+          }
+          
+          /* No page breaks inside important sections */
+          h1, h2, h3 {
+            page-break-after: avoid;
+          }
+          
+          /* Print-friendly spacing */
+          @page {
+            margin: 0.75in;
+            size: letter;
           }
         }
       `}</style>

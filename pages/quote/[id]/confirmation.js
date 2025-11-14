@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
-import Footer from '../../../components/company/Footer';
 import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard } from 'lucide-react';
 
 export default function ConfirmationPage() {
@@ -71,7 +70,6 @@ export default function ConfirmationPage() {
             <Loader2 className="w-12 h-12 text-brand animate-spin mb-4" />
             <p className="text-xl text-gray-600 dark:text-gray-300">Confirming your booking...</p>
           </div>
-          <Footer />
         </div>
       </>
     );
@@ -303,8 +301,6 @@ export default function ConfirmationPage() {
             </div>
           </div>
         </main>
-
-        <Footer />
       </div>
     </>
   );

@@ -18,6 +18,7 @@ export default function SignatureCapture({
 }: SignatureCaptureProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'type'>(defaultMethod);
   const [typedName, setTypedName] = useState('');
   const [selectedFont, setSelectedFont] = useState('Allura');
@@ -31,6 +32,25 @@ export default function SignatureCapture({
     { name: 'Pacifico', value: 'Pacifico' },
     { name: 'Sacramento', value: 'Sacramento' },
   ];
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      ) || window.innerWidth <= 768;
+      setIsMobile(isMobileDevice);
+      
+      // If not mobile and default method is draw, switch to type
+      if (!isMobileDevice && defaultMethod === 'draw') {
+        setSignatureMethod('type');
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [defaultMethod]);
 
   useEffect(() => {
     if (defaultValue) {
@@ -184,22 +204,24 @@ export default function SignatureCapture({
 
       {/* Method Selector */}
       <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
-        <button
-          type="button"
-          onClick={() => switchMethod('draw')}
-          disabled={disabled}
-          className={`
-            flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors
-            ${signatureMethod === 'draw'
-              ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }
-            ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-          `}
-        >
-          <Pen className="w-4 h-4" />
-          Draw
-        </button>
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => switchMethod('draw')}
+            disabled={disabled}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors
+              ${signatureMethod === 'draw'
+                ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }
+              ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+            `}
+          >
+            <Pen className="w-4 h-4" />
+            Draw
+          </button>
+        )}
         <button
           type="button"
           onClick={() => switchMethod('type')}
