@@ -109,6 +109,8 @@ export default function ContactDetailPage() {
   const [contractsLoading, setContractsLoading] = useState(false);
   const [quoteSelections, setQuoteSelections] = useState<any[]>([]);
   const [quoteSelectionsLoading, setQuoteSelectionsLoading] = useState(false);
+  const [communications, setCommunications] = useState<any[]>([]);
+  const [communicationsLoading, setCommunicationsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -131,6 +133,7 @@ export default function ContactDetailPage() {
       fetchSocialMessages();
       fetchContracts();
       fetchQuoteSelections();
+      fetchCommunications();
     }
   }, [user, id]);
 
@@ -345,6 +348,116 @@ export default function ContactDetailPage() {
       console.error('Error fetching quote selections:', error);
     } finally {
       setQuoteSelectionsLoading(false);
+    }
+  };
+
+  const fetchCommunications = async () => {
+    if (!id) return;
+    
+    setCommunicationsLoading(true);
+    try {
+      const allCommunications: any[] = [];
+
+      // Fetch SMS conversations
+      const { data: smsMessages } = await supabase
+        .from('sms_conversations')
+        .select('*')
+        .eq('customer_id', id)
+        .order('created_at', { ascending: false });
+
+      if (smsMessages) {
+        smsMessages.forEach(msg => {
+          allCommunications.push({
+            id: msg.id,
+            type: 'sms',
+            direction: msg.direction,
+            content: msg.message_content,
+            subject: null,
+            status: msg.message_status,
+            sent_by: msg.direction === 'outbound' ? 'Admin' : contact?.first_name || 'Customer',
+            sent_to: msg.direction === 'outbound' ? contact?.first_name || 'Customer' : 'Admin',
+            created_at: msg.created_at,
+            metadata: {
+              message_type: msg.message_type,
+              twilio_message_sid: msg.twilio_message_sid
+            }
+          });
+        });
+      }
+
+      // Fetch email tracking (emails sent)
+      const { data: emailTracking } = await supabase
+        .from('email_tracking')
+        .select('*')
+        .eq('contact_id', id)
+        .order('created_at', { ascending: false });
+
+      if (emailTracking) {
+        emailTracking.forEach(email => {
+          if (email.event_type === 'sent') {
+            allCommunications.push({
+              id: email.id,
+              type: 'email',
+              direction: 'outbound',
+              content: email.subject || 'Email sent',
+              subject: email.subject,
+              status: email.opened_at ? 'read' : 'sent',
+              sent_by: 'Admin',
+              sent_to: email.recipient_email,
+              created_at: email.created_at,
+              metadata: {
+                email_id: email.email_id,
+                opened_at: email.opened_at
+              }
+            });
+          }
+        });
+      }
+
+      // Fetch communication_log (if contact_submission_id exists)
+      // First, try to find contact_submission_id for this contact
+      const { data: submissions } = await supabase
+        .from('contact_submissions')
+        .select('id')
+        .eq('email', contact?.email_address || '')
+        .limit(1);
+
+      if (submissions && submissions.length > 0) {
+        const submissionId = submissions[0].id;
+        const { data: commLogs } = await supabase
+          .from('communication_log')
+          .select('*')
+          .eq('contact_submission_id', submissionId)
+          .order('created_at', { ascending: false });
+
+        if (commLogs) {
+          commLogs.forEach(comm => {
+            allCommunications.push({
+              id: comm.id,
+              type: comm.communication_type,
+              direction: comm.direction,
+              content: comm.content,
+              subject: comm.subject,
+              status: comm.status,
+              sent_by: comm.sent_by || 'Admin',
+              sent_to: comm.sent_to || contact?.email_address || '',
+              created_at: comm.created_at,
+              metadata: comm.metadata || {}
+            });
+          });
+        }
+      }
+
+      // Sort all communications by date (newest first)
+      allCommunications.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setCommunications(allCommunications);
+    } catch (error) {
+      console.error('Error fetching communications:', error);
+    } finally {
+      setCommunicationsLoading(false);
     }
   };
 
@@ -568,6 +681,9 @@ export default function ContactDetailPage() {
         <Tabs defaultValue="pipeline" className="space-y-6">
           <TabsList className="bg-white border rounded-lg p-1">
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+            <TabsTrigger value="communications">
+              Communications {communications.length > 0 && `(${communications.length})`}
+            </TabsTrigger>
             <TabsTrigger value="details">Contact Details</TabsTrigger>
             <TabsTrigger value="event">Event Information</TabsTrigger>
             <TabsTrigger value="business">Business Details</TabsTrigger>
@@ -1043,6 +1159,132 @@ export default function ContactDetailPage() {
                 </div>
               )}
               </div>
+          </TabsContent>
+
+          {/* Communications Tab */}
+          <TabsContent value="communications">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">All Communications</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Complete history of emails, SMS, and other correspondences
+                  </p>
+                </div>
+              </div>
+
+              {communicationsLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-4">Loading communications...</p>
+                </div>
+              ) : communications.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-600">No communications found</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    All emails, SMS messages, and other correspondences will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {communications.map((comm) => {
+                    const isOutbound = comm.direction === 'outbound';
+                    const getIcon = () => {
+                      switch (comm.type) {
+                        case 'email':
+                          return <Mail className="h-5 w-5" />;
+                        case 'sms':
+                          return <MessageSquare className="h-5 w-5" />;
+                        case 'call':
+                          return <Phone className="h-5 w-5" />;
+                        case 'note':
+                          return <Edit3 className="h-5 w-5" />;
+                        default:
+                          return <MessageSquare className="h-5 w-5" />;
+                      }
+                    };
+
+                    const getTypeColor = () => {
+                      switch (comm.type) {
+                        case 'email':
+                          return 'bg-blue-100 text-blue-800 border-blue-200';
+                        case 'sms':
+                          return 'bg-green-100 text-green-800 border-green-200';
+                        case 'call':
+                          return 'bg-purple-100 text-purple-800 border-purple-200';
+                        case 'note':
+                          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                        default:
+                          return 'bg-gray-100 text-gray-800 border-gray-200';
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={comm.id}
+                        className={`p-4 rounded-lg border ${
+                          isOutbound ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${getTypeColor()}`}>
+                              {getIcon()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-900">
+                                  {comm.type.toUpperCase()}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {isOutbound ? 'Outbound' : 'Inbound'}
+                                </Badge>
+                                {comm.status && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-xs ${
+                                      comm.status === 'read' || comm.status === 'delivered'
+                                        ? 'bg-green-50 text-green-700 border-green-300'
+                                        : comm.status === 'sent'
+                                        ? 'bg-blue-50 text-blue-700 border-blue-300'
+                                        : 'bg-gray-50 text-gray-700 border-gray-300'
+                                    }`}
+                                  >
+                                    {comm.status}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {isOutbound ? `To: ${comm.sent_to}` : `From: ${comm.sent_by}`}
+                                {comm.subject && ` • ${comm.subject}`}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {new Date(comm.created_at).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <div className="mt-3 pl-12">
+                          <p className="text-gray-900 whitespace-pre-wrap">{comm.content}</p>
+                          {comm.metadata?.opened_at && (
+                            <p className="text-xs text-gray-500 mt-2">
+                              Opened: {new Date(comm.metadata.opened_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* Social Media Tab */}
