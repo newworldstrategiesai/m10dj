@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
-import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard, Receipt, ExternalLink, Sparkles } from 'lucide-react';
+import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard, Receipt, ExternalLink, Sparkles, Link as LinkIcon, Copy, Bookmark } from 'lucide-react';
 
 export default function ThankYouPage() {
   const router = useRouter();
@@ -16,6 +16,7 @@ export default function ThankYouPage() {
   const [accountStatus, setAccountStatus] = useState(null);
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [accountMessage, setAccountMessage] = useState(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -65,6 +66,26 @@ export default function ThankYouPage() {
       setAccountMessage({ type: 'error', text: 'An error occurred. Please try again later.' });
     } finally {
       setCreatingAccount(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    const quoteUrl = `${window.location.origin}/quote/${id}`;
+    try {
+      await navigator.clipboard.writeText(quoteUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = quoteUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
     }
   };
 
@@ -323,40 +344,56 @@ export default function ThankYouPage() {
               </div>
             </div>
 
-            {/* Customer Portal CTA */}
+            {/* Save Your Link - Most Important */}
             <div className="bg-gradient-to-r from-brand to-purple-600 rounded-2xl shadow-xl p-8 md:p-12 text-white">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                <ExternalLink className="w-6 h-6" />
-                Access Your Customer Portal
+                <Bookmark className="w-6 h-6" />
+                Save This Link to Continue Later
               </h2>
               <p className="text-lg mb-6 opacity-90">
-                View and manage all aspects of your booking in one convenient place:
+                You can return to your booking anytime using this link. No account needed!
               </p>
-              <ul className="space-y-3 mb-8 text-lg">
-                <li className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>View and download your signed contract</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>Access all invoices and payment receipts</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>Track payment history and remaining balance</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>Update event details and preferences</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>Communicate directly with Ben</span>
-                </li>
-              </ul>
-              <div className="space-y-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 mb-6 border border-white/20">
+                <div className="flex items-center gap-3 mb-3">
+                  <LinkIcon className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm font-medium opacity-90">Your Booking Link:</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/5 rounded p-3">
+                  <code className="text-sm flex-1 break-all text-white/90">
+                    {typeof window !== 'undefined' ? `${window.location.origin}/quote/${id}` : `/quote/${id}`}
+                  </code>
+                  <button
+                    onClick={handleCopyLink}
+                    className="flex items-center gap-2 bg-white text-brand px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors whitespace-nowrap"
+                  >
+                    {linkCopied ? (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="bg-yellow-400/20 border border-yellow-300/30 rounded-lg p-4 mb-6">
+                <p className="text-sm font-medium flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>Bookmark this page or save the link to easily return and complete your booking, view your contract, make payments, and more.</span>
+                </p>
+              </div>
+              
+              {/* Optional Account Creation - Less Prominent */}
+              <div className="border-t border-white/20 pt-6 mt-6">
+                <p className="text-sm mb-4 opacity-75 text-center">
+                  Want a centralized dashboard? Create an account to access all your bookings in one place.
+                </p>
                 {accountMessage && (
-                  <div className={`p-4 rounded-lg ${
+                  <div className={`p-4 rounded-lg mb-4 ${
                     accountMessage.type === 'success' 
                       ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
                       : accountMessage.type === 'error'
@@ -366,40 +403,37 @@ export default function ThankYouPage() {
                     <p className="text-sm font-medium">{accountMessage.text}</p>
                   </div>
                 )}
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link
                     href={`/signin?redirect=${encodeURIComponent('/client/dashboard')}`}
-                    className="inline-flex items-center justify-center gap-2 bg-white text-brand px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-colors shadow-lg"
+                    className="inline-flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg font-semibold transition-colors border border-white/30"
                   >
-                    Sign In to Portal
-                    <ExternalLink className="w-5 h-5" />
+                    Sign In
+                    <ExternalLink className="w-4 h-4" />
                   </Link>
                   <button
                     onClick={handleCreateAccount}
                     disabled={creatingAccount || accountStatus === 'link-sent'}
-                    className="inline-flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-8 py-4 rounded-lg font-semibold text-lg transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg font-semibold transition-colors border border-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {creatingAccount ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                         Sending...
                       </>
                     ) : accountStatus === 'link-sent' ? (
                       <>
-                        <CheckCircle className="w-5 h-5" />
+                        <CheckCircle className="w-4 h-4" />
                         Link Sent!
                       </>
                     ) : (
                       <>
                         Create Account
-                        <Mail className="w-5 h-5" />
+                        <Mail className="w-4 h-4" />
                       </>
                     )}
                   </button>
                 </div>
-                <p className="text-sm opacity-75 text-center">
-                  Don&apos;t have an account? Click &quot;Create Account&quot; to receive a magic link via email.
-                </p>
               </div>
             </div>
 
