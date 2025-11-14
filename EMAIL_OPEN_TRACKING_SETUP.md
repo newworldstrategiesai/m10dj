@@ -24,13 +24,15 @@ This system tracks when clients open the confirmation email sent after form subm
 
 4. Copy the **Signing Secret** (you'll need this for verification)
 
-### Step 2: Add Webhook Secret to Environment Variables
+### Step 2: Verify Webhook Secret Environment Variable
 
-Add to your `.env.local` or production environment:
+The `RESEND_WEBHOOK_SECRET` environment variable should already be configured in your deployment platform (Vercel, etc.). If it's not set, add it:
 
 ```env
 RESEND_WEBHOOK_SECRET=your_webhook_signing_secret_here
 ```
+
+**Note:** Currently, the webhook endpoint doesn't verify signatures (this is optional for security). The webhook will work without signature verification, but adding it is recommended for production.
 
 ### Step 3: Run Database Migration
 
