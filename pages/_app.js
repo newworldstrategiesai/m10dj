@@ -2,12 +2,14 @@ import '../styles/company-globals.css';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import FloatingLeadImportWidget from '@/components/chat/FloatingLeadImportWidget';
+import GlobalChatWidget from '@/components/company/GlobalChatWidget';
 // Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const isAdminRoute = router.pathname.startsWith('/admin') || router.pathname.startsWith('/chat');
+  const isSignInPage = router.pathname.startsWith('/signin');
   
   return (
     <>
@@ -48,6 +50,7 @@ export default function App({ Component, pageProps }) {
       </Head>
       <Component {...pageProps} />
       {isAdminRoute && <FloatingLeadImportWidget />}
+      {!isSignInPage && <GlobalChatWidget />}
       {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}
     </>
