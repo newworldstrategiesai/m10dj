@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You - M10 DJ Company</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f8fafc;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .logo-img {
+            height: auto;
+            max-width: 200px;
+            width: 100%;
+            display: block;
+        }
+
+        .logo-text {
+            color: #fcba00;
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: none;
+            margin-top: 10px;
+            letter-spacing: 2px;
+        }
+
+        .tagline {
+            color: #ffffff;
+            font-size: 16px;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 50px 30px;
+        }
+
+        .title {
+            color: #1a1a1a;
+            font-size: 28px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            color: #4a5568;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        .info-box {
+            background-color: #fff8e1;
+            border-left: 4px solid #fcba00;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 4px;
+        }
+
+        .info-box h3 {
+            color: #1a1a1a;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .info-box p {
+            color: #4a5568;
+            margin: 5px 0;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background-color: #fcba00;
+            color: #000000;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px auto;
+            display: table;
+            transition: background-color 0.3s ease;
+        }
+
+        .cta-button:hover {
+            background-color: #f5a500;
+        }
+
+        .footer {
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            padding: 40px 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .footer p {
+            margin: 10px 0;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                box-shadow: none;
+            }
+
+            .header, .content, .footer {
+                padding: 30px 20px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
+
+            .message {
+                font-size: 15px;
+            }
+
+            .cta-button {
+                width: 100%;
+                box-sizing: border-box;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Logo -->
+        <div class="header">
+            <div class="logo-container">
+                <img 
+                    src="https://m10djcompany.com/M10-Rotating-Logo-200px-Small.gif" 
+                    alt="M10 DJ Company Animated Logo" 
+                    class="logo-img"
+                    width="200"
+                    height="200"
+                    style="width: auto; height: auto; max-width: 200px;"
+                />
+            </div>
+            <div class="logo-text">M10 DJ COMPANY</div>
+            <p class="tagline">Premium DJ Services in Memphis & Beyond</p>
+        </div>
+
+        <!-- Content Section -->
+        <div class="content">
+            <h1 class="title">Thank You, {{name}}! 🎵</h1>
+            
+            <p class="message">
+                We've received your inquiry and we're excited to help make your {{eventType}} unforgettable!
+            </p>
+
+            <div class="info-box">
+                <h3>What Happens Next?</h3>
+                <p><strong>1.</strong> Our team will review your inquiry within 24 hours</p>
+                <p><strong>2.</strong> We'll send you a personalized quote and service selection link</p>
+                <p><strong>3.</strong> You can view packages, add-ons, and pricing at your convenience</p>
+                <p><strong>4.</strong> We'll follow up to answer any questions you have</p>
+            </div>
+
+            {{#if serviceSelectionLink}}
+            <a href="{{serviceSelectionLink}}" class="cta-button">
+                View Your Service Selection
+            </a>
+            {{/if}}
+
+            <div class="info-box" style="margin-top: 30px;">
+                <h3>Need Immediate Assistance?</h3>
+                <p><strong>Phone:</strong> <a href="tel:+19014102020" style="color: #fcba00; text-decoration: none;">(901) 410-2020</a></p>
+                <p><strong>Email:</strong> <a href="mailto:djbenmurray@gmail.com" style="color: #fcba00; text-decoration: none;">djbenmurray@gmail.com</a></p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>M10 DJ COMPANY</strong></p>
+            <p>Premium DJ Services | Memphis, TN & Surrounding Areas</p>
+            <p style="margin-top: 20px; font-size: 12px; opacity: 0.8;">
+                © {{year}} M10 DJ Company. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+
