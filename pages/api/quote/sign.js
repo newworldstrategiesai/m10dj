@@ -98,6 +98,32 @@ export default async function handler(req, res) {
 
     // If no contract exists, create one
     if (!contract) {
+      // Validate required fields before creating contract
+      const validationErrors = [];
+      
+      if (!quote.total_price || quote.total_price <= 0) {
+        validationErrors.push('Total price must be calculated and greater than zero');
+      }
+      
+      if (!quote.package_name) {
+        validationErrors.push('Service package must be selected');
+      }
+      
+      if (!clientName) {
+        validationErrors.push('Client name is required');
+      }
+      
+      if (!clientEmail) {
+        validationErrors.push('Client email is required');
+      }
+      
+      if (validationErrors.length > 0) {
+        return res.status(400).json({ 
+          error: 'Missing required contract information', 
+          details: validationErrors 
+        });
+      }
+
       const contractData = {
         contact_id: contactId,
         event_name: quote.package_name,

@@ -89,6 +89,13 @@ export default function ContractPage() {
   const handleSign = async () => {
     if (!leadData || !quoteData) return;
     
+    // Validate required fields before signing
+    const errors = validateContractFields();
+    if (errors.length > 0) {
+      alert(`Cannot sign contract. Missing required information:\n\n${errors.join('\n')}\n\nPlease contact us to complete this information.`);
+      return;
+    }
+    
     if (!signatureData) {
       alert('Please provide your signature before signing the contract.');
       return;
@@ -152,6 +159,40 @@ export default function ContractPage() {
   const remainingBalance = totalAmount - depositAmount;
   const contractNumber = contractData?.contract_number || `CONT-${id.substring(0, 8).toUpperCase()}`;
   const isSigned = contractData?.status === 'signed' || contractData?.signed_at;
+
+  // Validate required fields before signing
+  const validateContractFields = () => {
+    const errors = [];
+    
+    if (!totalAmount || totalAmount <= 0) {
+      errors.push('Total amount must be calculated and greater than zero');
+    }
+    
+    if (!depositAmount || depositAmount <= 0) {
+      errors.push('Deposit amount must be calculated');
+    }
+    
+    if (!leadData?.eventDate) {
+      errors.push('Event date is required');
+    }
+    
+    if (!leadData?.name) {
+      errors.push('Client name is required');
+    }
+    
+    if (!leadData?.email) {
+      errors.push('Client email is required');
+    }
+    
+    if (!quoteData?.package_name) {
+      errors.push('Service package must be selected');
+    }
+    
+    return errors;
+  };
+
+  const validationErrors = validateContractFields();
+  const canSign = validationErrors.length === 0 && !isSigned;
 
   return (
     <>
@@ -287,19 +328,41 @@ export default function ContractPage() {
             {/* Signature Section */}
             {!isSigned && (
               <div className="no-print border-t border-gray-200 dark:border-gray-700 pt-8 mt-8">
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-6">
-                  <p className="text-blue-800 dark:text-blue-200 font-semibold mb-2">Ready to Sign?</p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    By clicking &quot;Sign Contract&quot; below, you agree to the terms and conditions outlined in this contract.
-                  </p>
-                </div>
+                {validationErrors.length > 0 && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6">
+                    <p className="text-yellow-800 dark:text-yellow-200 font-semibold mb-2">⚠️ Missing Required Information</p>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                      The following required fields must be completed before signing:
+                    </p>
+                    <ul className="list-disc list-inside text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                      {validationErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-3">
+                      Please contact us to complete this information before signing the contract.
+                    </p>
+                  </div>
+                )}
+                {validationErrors.length === 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-6">
+                    <p className="text-blue-800 dark:text-blue-200 font-semibold mb-2">Ready to Sign?</p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      By clicking &quot;Sign Contract&quot; below, you agree to the terms and conditions outlined in this contract.
+                    </p>
+                  </div>
+                )}
                 <button
                   onClick={handleOpenSignatureModal}
-                  disabled={signing}
-                  className="btn-primary w-full inline-flex items-center justify-center gap-2"
+                  disabled={signing || !canSign}
+                  className={`w-full inline-flex items-center justify-center gap-2 ${
+                    canSign
+                      ? 'btn-primary'
+                      : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  }`}
                 >
                       <PenTool className="w-5 h-5" />
-                      Sign Contract
+                      {canSign ? 'Sign Contract' : 'Cannot Sign - Missing Required Fields'}
                 </button>
               </div>
             )}
