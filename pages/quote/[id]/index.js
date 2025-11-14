@@ -2,7 +2,8 @@ import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Header from '../../../components/company/Header';
+import Image from 'next/image';
+import Link from 'next/link';
 import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function PersonalizedQuote() {
@@ -972,7 +973,21 @@ export default function PersonalizedQuote() {
         <Head>
           <title>Loading Your Quote | M10 DJ Company</title>
         </Head>
-        <Header />
+        {/* Simplified Header with Logo Only */}
+        <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+          <div className="container mx-auto px-4 py-4">
+            <Link href="/" className="inline-block">
+              <Image
+                src="/logo-static.jpg"
+                alt="M10 DJ Company"
+                width={120}
+                height={40}
+                className="h-10 w-auto"
+                priority
+              />
+            </Link>
+          </div>
+        </header>
         <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-12 h-12 animate-spin text-brand mx-auto mb-4" />
@@ -989,7 +1004,21 @@ export default function PersonalizedQuote() {
         <Head>
           <title>Quote Not Found | M10 DJ Company</title>
         </Head>
-        <Header />
+        {/* Simplified Header with Logo Only */}
+        <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+          <div className="container mx-auto px-4 py-4">
+            <Link href="/" className="inline-block">
+              <Image
+                src="/logo-static.jpg"
+                alt="M10 DJ Company"
+                width={120}
+                height={40}
+                className="h-10 w-auto"
+                priority
+              />
+            </Link>
+          </div>
+        </header>
         <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
           <div className="text-center max-w-md">
             <div className="text-6xl mb-4">⚠️</div>
@@ -1019,7 +1048,21 @@ export default function PersonalizedQuote() {
         <title>Your Personalized Quote | M10 DJ Company</title>
           <meta name="description" content={`Personalized ${isCorporate ? 'corporate event' : 'wedding'} DJ quote for ${leadData.name}`} />
       </Head>
-      <Header />
+      {/* Simplified Header with Logo Only */}
+      <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="container mx-auto px-4 py-4">
+          <Link href="/" className="inline-block">
+            <Image
+              src="/logo-static.jpg"
+              alt="M10 DJ Company"
+              width={120}
+              height={40}
+              className="h-10 w-auto"
+              priority
+            />
+          </Link>
+        </div>
+      </header>
       <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
           {/* Header Section */}
