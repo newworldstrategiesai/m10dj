@@ -778,13 +778,49 @@ export default async function handler(req, res) {
       `;
 
       try {
-        // Send customer confirmation email
-        await resend.emails.send({
+        // Send customer confirmation email with tracking
+        const customerEmailResult = await resend.emails.send({
           from: 'M10 DJ Company <hello@m10djcompany.com>', // Using verified custom domain
           to: [email],
           subject: `Thank you for contacting M10 DJ Company - ${eventType} Inquiry`,
           html: customerEmailHtml,
+          // Enable email open tracking via Resend webhooks
+          headers: {
+            'X-Entity-Ref-ID': criticalOperations.contactRecord.id || 'unknown'
+          }
         });
+
+        // Store email tracking record for sent event
+        if (customerEmailResult.data?.id && criticalOperations.contactRecord.id) {
+          try {
+            const { createClient } = require('@supabase/supabase-js');
+            const supabase = createClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL,
+              process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+            
+            await supabase.from('email_tracking').insert({
+              email_id: customerEmailResult.data.id,
+              recipient_email: email,
+              sender_email: 'hello@m10djcompany.com',
+              subject: `Thank you for contacting M10 DJ Company - ${eventType} Inquiry`,
+              event_type: 'sent',
+              contact_id: criticalOperations.contactRecord.id,
+              metadata: {
+                name: name,
+                event_type: eventType,
+                email_type: 'confirmation'
+              },
+              created_at: new Date().toISOString()
+            });
+            
+            console.log('✅ Customer confirmation email sent and tracking record created');
+            console.log(`   Email ID: ${customerEmailResult.data.id}`);
+          } catch (trackingError) {
+            console.warn('⚠️ Failed to create email tracking record:', trackingError.message);
+            // Don't fail if tracking fails
+          }
+        }
 
         // Send admin notification email to multiple addresses for redundancy
         const adminEmails = [
