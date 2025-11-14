@@ -86,6 +86,38 @@ export default function ContractPage() {
     setSignatureMethod(method);
   };
 
+  // Validate required fields before signing
+  const validateContractFields = () => {
+    const errors = [];
+    
+    if (!quoteData?.total_price || quoteData.total_price <= 0) {
+      errors.push('Total amount must be calculated and greater than zero');
+    }
+    
+    const deposit = (quoteData?.total_price || 0) * 0.5;
+    if (!deposit || deposit <= 0) {
+      errors.push('Deposit amount must be calculated');
+    }
+    
+    if (!leadData?.eventDate) {
+      errors.push('Event date is required');
+    }
+    
+    if (!leadData?.name) {
+      errors.push('Client name is required');
+    }
+    
+    if (!leadData?.email) {
+      errors.push('Client email is required');
+    }
+    
+    if (!quoteData?.package_name) {
+      errors.push('Service package must be selected');
+    }
+    
+    return errors;
+  };
+
   const handleSign = async () => {
     if (!leadData || !quoteData) return;
     
@@ -159,37 +191,6 @@ export default function ContractPage() {
   const remainingBalance = totalAmount - depositAmount;
   const contractNumber = contractData?.contract_number || `CONT-${id.substring(0, 8).toUpperCase()}`;
   const isSigned = contractData?.status === 'signed' || contractData?.signed_at;
-
-  // Validate required fields before signing
-  const validateContractFields = () => {
-    const errors = [];
-    
-    if (!totalAmount || totalAmount <= 0) {
-      errors.push('Total amount must be calculated and greater than zero');
-    }
-    
-    if (!depositAmount || depositAmount <= 0) {
-      errors.push('Deposit amount must be calculated');
-    }
-    
-    if (!leadData?.eventDate) {
-      errors.push('Event date is required');
-    }
-    
-    if (!leadData?.name) {
-      errors.push('Client name is required');
-    }
-    
-    if (!leadData?.email) {
-      errors.push('Client email is required');
-    }
-    
-    if (!quoteData?.package_name) {
-      errors.push('Service package must be selected');
-    }
-    
-    return errors;
-  };
 
   const validationErrors = validateContractFields();
   const canSign = validationErrors.length === 0 && !isSigned;
