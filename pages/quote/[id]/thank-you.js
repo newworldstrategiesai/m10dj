@@ -440,7 +440,7 @@ export default function ThankYouPage() {
             {/* Quick Access Documents */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12">
               <h2 className="text-2xl font-bold mb-6 text-center">Quick Access to Your Documents</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link
                   href={`/quote/${id}/contract`}
                   className="btn-outline flex flex-col items-center justify-center gap-2 p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -453,17 +453,27 @@ export default function ThankYouPage() {
                   href={`/quote/${id}/invoice`}
                   className="btn-outline flex flex-col items-center justify-center gap-2 p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <Receipt className="w-8 h-8 text-brand" />
+                  <CreditCard className="w-8 h-8 text-brand" />
                   <span className="font-semibold">View Invoice</span>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Download PDF</span>
                 </Link>
+                {paymentData && (
+                  <Link
+                    href={`/quote/${id}/receipt`}
+                    className="btn-outline flex flex-col items-center justify-center gap-2 p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <Receipt className="w-8 h-8 text-brand" />
+                    <span className="font-semibold">View Receipt</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Payment confirmation</span>
+                  </Link>
+                )}
                 <Link
-                  href={`/quote/${id}/payment`}
+                  href={`/quote/${id}`}
                   className="btn-outline flex flex-col items-center justify-center gap-2 p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <CreditCard className="w-8 h-8 text-brand" />
-                  <span className="font-semibold">Make Payment</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Pay remaining balance</span>
+                  <Calendar className="w-8 h-8 text-brand" />
+                  <span className="font-semibold">View Booking</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Return to quote</span>
                 </Link>
               </div>
             </div>
