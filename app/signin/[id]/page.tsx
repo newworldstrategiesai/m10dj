@@ -39,7 +39,11 @@ export default async function SignIn({
     const preferredSignInView =
       cookies().get('preferredSignInView')?.value || null;
     viewProp = getDefaultSignInView(preferredSignInView);
-    return redirect(`/signin/${viewProp}`);
+    // Preserve redirect query parameter when redirecting to view-specific page
+    const redirectParam = searchParams?.redirect 
+      ? `?redirect=${encodeURIComponent(searchParams.redirect)}` 
+      : '';
+    return redirect(`/signin/${viewProp}${redirectParam}`);
   }
 
   // Check if the user is already logged in and redirect to the account page if so

@@ -307,7 +307,7 @@ export default function ThankYouPage() {
                 </li>
               </ul>
               <Link
-                href="/client/dashboard"
+                href={`/signin?redirect=${encodeURIComponent('/client/dashboard')}`}
                 className="inline-flex items-center gap-2 bg-white text-brand px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-colors shadow-lg"
               >
                 Go to Customer Portal
