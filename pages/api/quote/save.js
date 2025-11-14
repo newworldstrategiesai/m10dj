@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { sendAdminSMS } from '../../utils/sms-helper.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -106,10 +107,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // Send admin notification email (non-blocking)
-    sendAdminNotification(leadData, quoteData, addons || []).catch(error => {
-      console.error('⚠️ Failed to send admin notification email:', error);
-      // Don't fail the request if email fails
+    // Send admin notifications (SMS and email) - non-blocking
+    sendAdminNotifications(leadData, quoteData, addons || []).catch(error => {
+      console.error('⚠️ Failed to send admin notifications:', error);
+      // Don't fail the request if notifications fail
     });
 
     res.status(200).json({
@@ -145,9 +146,75 @@ function escapeHtml(text) {
 }
 
 /**
+ * Send admin notifications (SMS and email) when a customer makes a service selection
+ */
+async function sendAdminNotifications(leadData, quoteData, addons) {
+  // Send SMS notification first (faster)
+  await sendAdminSMSNotification(leadData, quoteData, addons);
+  
+  // Send email notification
+  await sendAdminEmailNotification(leadData, quoteData, addons);
+}
+
+/**
+ * Send SMS notification to admin when a service selection is made
+ */
+async function sendAdminSMSNotification(leadData, quoteData, addons) {
+  if (!leadData) {
+    console.warn('⚠️ No lead data available - skipping SMS notification');
+    return;
+  }
+
+  try {
+    // Format event date
+    const eventDate = leadData.eventDate 
+      ? new Date(leadData.eventDate).toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          year: 'numeric'
+        })
+      : 'TBD';
+
+    // Format add-ons summary
+    const addonsCount = addons && addons.length > 0 ? addons.length : 0;
+    const addonsTotal = addons && addons.length > 0
+      ? addons.reduce((sum, addon) => sum + (addon.price || 0), 0)
+      : 0;
+    
+    const addonsText = addonsCount > 0 
+      ? `+ ${addonsCount} add-on${addonsCount > 1 ? 's' : ''} ($${addonsTotal.toLocaleString()})`
+      : '';
+
+    // Create SMS message (keep it concise for SMS)
+    const smsMessage = `🎵 NEW SERVICE SELECTION
+
+${leadData.name || 'Customer'}
+${leadData.eventType || 'Event'} - ${eventDate}
+${leadData.location ? `📍 ${leadData.location}` : ''}
+
+📦 Package: ${quoteData.package_name}
+💰 Total: $${quoteData.total_price.toLocaleString()}${addonsText ? `\n${addonsText}` : ''}
+
+View: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${leadData.id}`;
+
+    const smsResult = await sendAdminSMS(smsMessage);
+    
+    if (smsResult.success) {
+      console.log('✅ Admin SMS notification sent successfully');
+      console.log(`   SMS ID: ${smsResult.smsId}`);
+    } else {
+      console.warn('⚠️ SMS notification failed:', smsResult.error);
+    }
+  } catch (error) {
+    console.error('❌ Error sending SMS notification:', error);
+    // Don't throw - email will still be sent
+  }
+}
+
+/**
  * Send admin notification email when a customer makes a service selection
  */
-async function sendAdminNotification(leadData, quoteData, addons) {
+async function sendAdminEmailNotification(leadData, quoteData, addons) {
   if (!resend) {
     console.warn('⚠️ RESEND_API_KEY is not configured - skipping admin notification email');
     return;
