@@ -310,18 +310,6 @@ export default function PersonalizedQuote() {
   // Wedding Packages
   const weddingPackages = [
     {
-      id: 'test-package',
-      name: 'Test Package',
-      price: 1,
-      aLaCartePrice: 1,
-      description: 'Test Package - $1 Only',
-      features: [
-        'Test package for payment testing',
-        'This is a temporary package for testing purposes'
-      ],
-      popular: false
-    },
-    {
       id: 'package1',
       name: 'Package 1',
       price: 2000,
@@ -726,9 +714,6 @@ export default function PersonalizedQuote() {
 
   const getPackageBreakdown = (packageId) => {
     const breakdowns = {
-      'test-package': [
-        { item: 'Test Package', price: 1 }
-      ],
       // Wedding Package Breakdowns
       'package1': [
         { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
