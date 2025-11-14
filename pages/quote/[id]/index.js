@@ -2,7 +2,9 @@ import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import Header from '../../../components/company/Header';
+import ContactFormChat from '../../../components/company/ContactFormChat';
 import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function PersonalizedQuote() {
@@ -15,6 +17,32 @@ export default function PersonalizedQuote() {
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [saving, setSaving] = useState(false);
   const [expandedBreakdown, setExpandedBreakdown] = useState(null);
+  
+  // Chat widget state - restore from sessionStorage if available
+  const [showChat, setShowChat] = useState(false);
+  const [isChatMinimized, setIsChatMinimized] = useState(true);
+  const [chatFormData, setChatFormData] = useState(null);
+  const [chatSubmissionId, setChatSubmissionId] = useState(null);
+  
+  // Restore chat widget from sessionStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const chatMinimized = sessionStorage.getItem('chat_minimized') === 'true';
+        const submissionId = sessionStorage.getItem('chat_submission_id');
+        const formDataStr = sessionStorage.getItem('chat_form_data');
+        
+        if (submissionId && formDataStr) {
+          setChatSubmissionId(submissionId);
+          setChatFormData(JSON.parse(formDataStr));
+          setIsChatMinimized(chatMinimized);
+          setShowChat(true);
+        }
+      } catch (e) {
+        console.warn('Could not restore chat from sessionStorage:', e);
+      }
+    }
+  }, []);
 
   const fetchLeadData = useCallback(async () => {
     // Validate ID before making request
@@ -1139,6 +1167,58 @@ export default function PersonalizedQuote() {
           </section>
         </div>
       </main>
+      
+      {/* Chat Widget - Restored from sessionStorage */}
+      {showChat && chatFormData && typeof document !== 'undefined' && createPortal(
+        isChatMinimized ? (
+          <ContactFormChat 
+            formData={chatFormData}
+            submissionId={chatSubmissionId}
+            onClose={() => {
+              setShowChat(false);
+              try {
+                sessionStorage.removeItem('chat_minimized');
+                sessionStorage.removeItem('chat_submission_id');
+                sessionStorage.removeItem('chat_form_data');
+              } catch (e) {
+                console.warn('Could not clear chat from sessionStorage:', e);
+              }
+            }}
+            isMinimized={true}
+            onMinimize={() => setIsChatMinimized(false)}
+          />
+        ) : (
+          <div 
+            className="fixed inset-0 z-[99999] bg-white dark:bg-gray-900"
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
+          >
+            <ContactFormChat 
+              formData={chatFormData}
+              submissionId={chatSubmissionId}
+              onClose={() => {
+                setShowChat(false);
+                try {
+                  sessionStorage.removeItem('chat_minimized');
+                  sessionStorage.removeItem('chat_submission_id');
+                  sessionStorage.removeItem('chat_form_data');
+                } catch (e) {
+                  console.warn('Could not clear chat from sessionStorage:', e);
+                }
+              }}
+              isMinimized={false}
+              onMinimize={() => {
+                setIsChatMinimized(true);
+                try {
+                  sessionStorage.setItem('chat_minimized', 'true');
+                } catch (e) {
+                  console.warn('Could not save chat state to sessionStorage:', e);
+                }
+              }}
+            />
+          </div>
+        ),
+        document.body
+      )}
     </>
   );
 }

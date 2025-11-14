@@ -379,14 +379,16 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
                       if (onMinimize) {
                         onMinimize();
                       }
-                      // On mobile, use window.location for better compatibility
-                      // On desktop, open in new tab
-                      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                      if (isMobile) {
-                        window.location.href = message.link;
-                      } else {
-                        window.open(message.link, '_blank', 'noopener,noreferrer');
+                      // Store chat state in sessionStorage so it persists across navigation
+                      try {
+                        sessionStorage.setItem('chat_minimized', 'true');
+                        sessionStorage.setItem('chat_submission_id', String(submissionId || ''));
+                        sessionStorage.setItem('chat_form_data', JSON.stringify(formData));
+                      } catch (e) {
+                        console.warn('Could not save chat state to sessionStorage:', e);
                       }
+                      // Navigate in the same tab (not new tab) so chat can persist
+                      window.location.href = message.link;
                     }}
                     className="inline-block mt-3 px-4 py-2 bg-brand hover:bg-brand-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg"
                   >

@@ -24,8 +24,29 @@ export default function ContactForm({ className = '' }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [isChatMinimized, setIsChatMinimized] = useState(false);
-  const [submissionId, setSubmissionId] = useState(null);
+  const [isChatMinimized, setIsChatMinimized] = useState(() => {
+    // Check if chat should be minimized from sessionStorage
+    if (typeof window !== 'undefined') {
+      try {
+        return sessionStorage.getItem('chat_minimized') === 'true';
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  });
+  const [submissionId, setSubmissionId] = useState(() => {
+    // Restore submissionId from sessionStorage if available
+    if (typeof window !== 'undefined') {
+      try {
+        const savedId = sessionStorage.getItem('chat_submission_id');
+        return savedId && savedId !== '' ? savedId : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [error, setError] = useState('');
   const [fieldWarnings, setFieldWarnings] = useState({});
   const [showRestoredNotice, setShowRestoredNotice] = useState(false);
