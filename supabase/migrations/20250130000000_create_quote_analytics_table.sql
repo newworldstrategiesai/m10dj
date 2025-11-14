@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS quote_analytics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   quote_id UUID NOT NULL,
-  event_type TEXT NOT NULL CHECK (event_type IN ('page_view', 'time_on_page', 'page_exit')),
+  event_type TEXT NOT NULL CHECK (event_type IN ('page_view', 'time_on_page', 'page_exit', 'package_expanded', 'package_selected', 'addon_selected')),
   time_spent INTEGER, -- Time in seconds
   metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),

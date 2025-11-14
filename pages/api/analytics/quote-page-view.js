@@ -10,7 +10,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  * 
  * Body:
  * - quote_id: string (the quote/contact ID)
- * - event_type: 'page_view' | 'time_on_page' | 'page_exit'
+ * - event_type: 'page_view' | 'time_on_page' | 'page_exit' | 'package_expanded' | 'package_selected'
  * - time_spent?: number (seconds, for time_on_page events)
  * - metadata?: object (additional data like selected package, addons, etc.)
  */

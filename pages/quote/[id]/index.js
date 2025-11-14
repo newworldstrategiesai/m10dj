@@ -15,6 +15,7 @@ export default function PersonalizedQuote() {
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [saving, setSaving] = useState(false);
   const [expandedBreakdown, setExpandedBreakdown] = useState(null);
+  const [expandedPackages, setExpandedPackages] = useState(new Set()); // Track which packages are expanded
   
 
   const fetchLeadData = useCallback(async () => {
