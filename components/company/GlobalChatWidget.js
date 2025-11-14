@@ -49,12 +49,20 @@ export default function GlobalChatWidget() {
     }
   }, [isQuotePage, isOpen, isMinimized]);
 
-  const handleOpenChat = () => {
+  const handleOpenChat = (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
     // If we have existing chat data, use it
     if (chatData) {
       setIsOpen(true);
       setIsMinimized(false);
       setIsMicro(isQuotePage);
+      try {
+        sessionStorage.setItem('chat_minimized', 'false');
+      } catch (e) {
+        console.warn('Could not save chat state:', e);
+      }
     } else {
       // Otherwise, create a default chat session
       const defaultFormData = {
@@ -74,6 +82,11 @@ export default function GlobalChatWidget() {
       setIsOpen(true);
       setIsMinimized(false);
       setIsMicro(isQuotePage);
+      try {
+        sessionStorage.setItem('chat_minimized', 'false');
+      } catch (e) {
+        console.warn('Could not save chat state:', e);
+      }
     }
   };
 

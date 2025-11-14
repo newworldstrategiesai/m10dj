@@ -196,21 +196,21 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
     }
   };
 
-  // Check if we're on the quote page and auto-minimize on mount
+  // Check if we're on the quote page and auto-minimize on mount (only if not already in micro view)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && !isMicro) {
       const checkAndMinimize = () => {
         const isQuotePage = window.location.pathname.includes('/quote/');
-        if (isQuotePage && !isMinimized) {
-          // Auto-minimize when on quote page
+        if (isQuotePage && !isMinimized && !isMicro) {
+          // Auto-minimize when on quote page (but only if not already in micro view)
           if (onMinimize) {
             onMinimize();
           }
         }
       };
       
-      // Check immediately
-      checkAndMinimize();
+      // Delay check to avoid interfering with initial open
+      const timer = setTimeout(checkAndMinimize, 300);
       
       // Also listen for navigation changes (for client-side routing)
       const handleRouteChange = () => {
@@ -218,9 +218,12 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
       };
       
       window.addEventListener('popstate', handleRouteChange);
-      return () => window.removeEventListener('popstate', handleRouteChange);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('popstate', handleRouteChange);
+      };
     }
-  }, [isMinimized, onMinimize]);
+  }, [isMinimized, onMinimize, isMicro]);
 
   // If minimized, show compact widget (icon only)
   if (isMinimized && !isMicro) {
