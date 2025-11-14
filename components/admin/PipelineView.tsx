@@ -242,6 +242,48 @@ export default function PipelineView({
     }
   };
 
+  const handleDeleteQuote = async () => {
+    if (!hasQuote || !quoteSelections || quoteSelections.length === 0) return;
+    
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this service selection? This action cannot be undone.'
+    );
+    
+    if (!confirmed) return;
+
+    setDeletingQuote(true);
+    try {
+      const quoteSelectionId = quoteSelections[0].id;
+      const response = await fetch(`/api/quote/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quoteSelectionId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to delete quote selection' }));
+        throw new Error(errorData.error || 'Failed to delete quote selection');
+      }
+
+      toast({
+        title: "Quote Selection Deleted",
+        description: "The service selection has been removed successfully.",
+      });
+
+      // Refresh the page to update the view
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error deleting quote selection:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete quote selection",
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingQuote(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Pipeline Progress Bar */}
