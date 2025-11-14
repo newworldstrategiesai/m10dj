@@ -142,40 +142,75 @@ export default function PersonalizedQuote() {
                 const contractData = await contractResponse.json();
                 if (contractData.status === 'signed' || contractData.signed_at) {
                   setContractSigned(true);
-                  
-                  // Check if payment has been made and calculate outstanding balance
-                  if (contractData.contact_id && quoteData.total_price) {
-                    try {
-                      const paymentsResponse = await fetch(`/api/payments?contact_id=${contractData.contact_id}`);
-                      if (paymentsResponse.ok) {
-                        const paymentsData = await paymentsResponse.json();
-                        const payments = paymentsData.payments || paymentsData || [];
-                        
-                        // Calculate total paid
-                        const totalPaid = payments
-                          .filter(p => 
-                            p.payment_status === 'Paid' || 
-                            p.payment_status === 'paid' || 
-                            p.status === 'succeeded' || 
-                            p.payment_status === 'completed'
-                          )
-                          .reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
-                        
-                        // Calculate outstanding balance
-                        const totalOwed = parseFloat(quoteData.total_price) || 0;
-                        const balance = totalOwed - totalPaid;
-                        
-                        setHasPayment(totalPaid > 0);
-                        setOutstandingBalance(Math.max(0, balance)); // Ensure non-negative
-                      }
-                    } catch (e) {
-                      console.log('Could not fetch payment details:', e);
-                    }
-                  }
                 }
               }
             } catch (e) {
               console.log('Could not fetch contract details:', e);
+            }
+          }
+          
+          // Calculate outstanding balance (works whether contract is signed or not)
+          if (quoteData.total_price) {
+            try {
+              // Try to get contact_id from contract first
+              let contactId = null;
+              if (quoteData.contract_id) {
+                try {
+                  const contractResponse = await fetch(`/api/contracts/${quoteData.contract_id}`);
+                  if (contractResponse.ok) {
+                    const contractData = await contractResponse.json();
+                    contactId = contractData.contact_id;
+                  }
+                } catch (e) {
+                  // Contract might not exist yet, that's okay
+                }
+              }
+              
+              // If no contact_id from contract, use lead_id from quote data (which is the contact/submission id)
+              if (!contactId && quoteData.lead_id) {
+                contactId = quoteData.lead_id;
+              }
+              
+              // If we have a contact_id, check for payments
+              if (contactId) {
+                const paymentsResponse = await fetch(`/api/payments?contact_id=${contactId}`);
+                if (paymentsResponse.ok) {
+                  const paymentsData = await paymentsResponse.json();
+                  const payments = paymentsData.payments || paymentsData || [];
+                  
+                  // Calculate total paid
+                  const totalPaid = payments
+                    .filter(p => 
+                      p.payment_status === 'Paid' || 
+                      p.payment_status === 'paid' || 
+                      p.status === 'succeeded' || 
+                      p.payment_status === 'completed'
+                    )
+                    .reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
+                  
+                  // Calculate outstanding balance
+                  const totalOwed = parseFloat(quoteData.total_price) || 0;
+                  const balance = totalOwed - totalPaid;
+                  
+                  setHasPayment(totalPaid > 0);
+                  setOutstandingBalance(Math.max(0, balance)); // Ensure non-negative
+                } else {
+                  // If payment fetch fails, assume full amount is outstanding
+                  const totalOwed = parseFloat(quoteData.total_price) || 0;
+                  setOutstandingBalance(totalOwed);
+                  setHasPayment(false);
+                }
+              } else {
+                // No contact yet, so no payments - full amount is outstanding
+                const totalOwed = parseFloat(quoteData.total_price) || 0;
+                setOutstandingBalance(totalOwed);
+                setHasPayment(false);
+              }
+            } catch (e) {
+              console.log('Could not fetch payment details:', e);
+              // If we can't fetch payments, assume full amount is outstanding
+              const totalOwed = parseFloat(quoteData.total_price) || 0;
+              setOutstandingBalance(totalOwed);
             }
           }
         }
@@ -1179,20 +1214,34 @@ export default function PersonalizedQuote() {
                       You&apos;ve Already Made a Selection
                     </h3>
                   </div>
-                  <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                  <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1 mb-4">
                     <p><strong>Package:</strong> {existingSelection.package_name}</p>
                     {existingSelection.addons && existingSelection.addons.length > 0 && (
                       <p><strong>Add-ons:</strong> {existingSelection.addons.map(a => typeof a === 'object' ? a.name || a.id : a).join(', ')}</p>
                     )}
                     <p><strong>Total:</strong> ${existingSelection.total_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</p>
+                    {outstandingBalance > 0 && (
+                      <p className="text-blue-900 dark:text-blue-100 font-semibold">
+                        <strong>Outstanding Balance:</strong> ${outstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Link
+                      href={`/quote/${id}/payment`}
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-dark text-white rounded-lg transition-colors text-sm font-semibold shadow-lg hover:shadow-xl"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      Make Payment Now
+                    </Link>
+                    <button
+                      onClick={() => setShowEditMode(!showEditMode)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+                    >
+                      {showEditMode ? 'Cancel Edit' : 'Edit Selection'}
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowEditMode(!showEditMode)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
-                >
-                  {showEditMode ? 'Cancel Edit' : 'Edit Selection'}
-                </button>
               </div>
             </div>
           )}
