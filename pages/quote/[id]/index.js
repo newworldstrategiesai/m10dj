@@ -180,7 +180,7 @@ export default function PersonalizedQuote() {
       id: 'package1',
       name: 'Package 1',
       price: 2000,
-      aLaCartePrice: 2400,
+      aLaCartePrice: 2600,
       description: 'Reception Only',
       features: [
         'Up to 4 hours of DJ/MC services at reception',
@@ -279,25 +279,25 @@ export default function PersonalizedQuote() {
         { item: 'Test Package', price: 1 }
       ],
       'package1': [
-        { item: '4 Hours DJ/MC Services', price: 1500 },
-        { item: 'Dance Floor Lighting', price: 350 },
-        { item: 'Uplighting (16 fixtures)', price: 300 },
+        { item: '4 Hours DJ/MC Services', price: 1600 },
+        { item: 'Dance Floor Lighting', price: 400 },
+        { item: 'Uplighting (16 fixtures)', price: 350 },
         { item: 'Additional Speaker', price: 250 }
       ],
       'package2': [
-        { item: 'DJ MC Services at Reception', description: 'Up to 4 hours of DJ services at reception + speakers & microphones', price: 1300 },
-        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and or performer', price: 250 },
-        { item: 'Uplighting', description: 'Up to 16 multicolor LED fixtures', price: 250 },
-        { item: 'Ceremony Audio', description: 'Additional hour and ceremony music programming included', price: 400 },
-        { item: 'Monogram Projection', description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.', price: 300 }
+        { item: 'DJ MC Services at Reception', description: 'Up to 4 hours of DJ services at reception + speakers & microphones', price: 1600 },
+        { item: 'Dance Floor Lighting', description: 'Includes multi-color LED fixtures for lighting the audience, dance floor, and or performer', price: 350 },
+        { item: 'Uplighting', description: 'Up to 16 multicolor LED fixtures', price: 350 },
+        { item: 'Ceremony Audio', description: 'Additional hour and ceremony music programming included', price: 500 },
+        { item: 'Monogram Projection', description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.', price: 200 }
       ],
       'package3': [
-        { item: '4 Hours DJ/MC Services', price: 1500 },
-        { item: 'Dance Floor Lighting', price: 350 },
-        { item: 'Uplighting (16 fixtures)', price: 300 },
+        { item: '4 Hours DJ/MC Services', price: 1600 },
+        { item: 'Dance Floor Lighting', price: 400 },
+        { item: 'Uplighting (16 fixtures)', price: 350 },
         { item: 'Ceremony Audio', price: 500 },
-        { item: 'Monogram Projection', price: 350 },
-        { item: 'Dancing on the Clouds', price: 500 }
+        { item: 'Monogram Projection', price: 200 },
+        { item: 'Dancing on the Clouds', price: 450 }
       ]
     };
     return breakdowns[packageId] || [];
