@@ -20,7 +20,8 @@ export default function PersonalizedQuote() {
   
   // Chat widget state - restore from sessionStorage if available
   const [showChat, setShowChat] = useState(false);
-  const [isChatMinimized, setIsChatMinimized] = useState(true);
+  const [isChatMinimized, setIsChatMinimized] = useState(false); // Start as micro view, not minimized
+  const [isChatMicro, setIsChatMicro] = useState(true); // Use micro view on quote page
   const [chatFormData, setChatFormData] = useState(null);
   const [chatSubmissionId, setChatSubmissionId] = useState(null);
   
@@ -35,7 +36,9 @@ export default function PersonalizedQuote() {
         if (submissionId && formDataStr) {
           setChatSubmissionId(submissionId);
           setChatFormData(JSON.parse(formDataStr));
+          // On quote page, use micro view unless explicitly minimized
           setIsChatMinimized(chatMinimized);
+          setIsChatMicro(!chatMinimized); // Micro view if not minimized
           setShowChat(true);
         }
       } catch (e) {
@@ -1249,6 +1252,7 @@ export default function PersonalizedQuote() {
       {/* Chat Widget - Restored from sessionStorage */}
       {showChat && chatFormData && typeof document !== 'undefined' && createPortal(
         isChatMinimized ? (
+          // Minimized icon view
           <ContactFormChat 
             formData={chatFormData}
             submissionId={chatSubmissionId}
@@ -1263,9 +1267,41 @@ export default function PersonalizedQuote() {
               }
             }}
             isMinimized={true}
-            onMinimize={() => setIsChatMinimized(false)}
+            isMicro={false}
+            onMinimize={() => {
+              setIsChatMinimized(false);
+              setIsChatMicro(true);
+            }}
+          />
+        ) : isChatMicro ? (
+          // Micro view (compact window)
+          <ContactFormChat 
+            formData={chatFormData}
+            submissionId={chatSubmissionId}
+            onClose={() => {
+              setShowChat(false);
+              try {
+                sessionStorage.removeItem('chat_minimized');
+                sessionStorage.removeItem('chat_submission_id');
+                sessionStorage.removeItem('chat_form_data');
+              } catch (e) {
+                console.warn('Could not clear chat from sessionStorage:', e);
+              }
+            }}
+            isMinimized={false}
+            isMicro={true}
+            onMinimize={() => {
+              setIsChatMinimized(true);
+              setIsChatMicro(false);
+              try {
+                sessionStorage.setItem('chat_minimized', 'true');
+              } catch (e) {
+                console.warn('Could not save chat state to sessionStorage:', e);
+              }
+            }}
           />
         ) : (
+          // Full screen view
           <div 
             className="fixed inset-0 z-[99999] bg-white dark:bg-gray-900"
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
@@ -1284,10 +1320,11 @@ export default function PersonalizedQuote() {
                 }
               }}
               isMinimized={false}
+              isMicro={false}
               onMinimize={() => {
-                setIsChatMinimized(true);
+                setIsChatMicro(true);
                 try {
-                  sessionStorage.setItem('chat_minimized', 'true');
+                  sessionStorage.setItem('chat_minimized', 'false');
                 } catch (e) {
                   console.warn('Could not save chat state to sessionStorage:', e);
                 }
