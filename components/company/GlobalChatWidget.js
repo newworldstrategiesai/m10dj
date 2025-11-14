@@ -141,7 +141,7 @@ export default function GlobalChatWidget() {
               isMinimized={false}
               isMicro={false}
               onMinimize={() => {
-                setIsMicro(true);
+                setIsMicro(isQuotePage);
                 try {
                   sessionStorage.setItem('chat_minimized', 'false');
                 } catch (e) {
