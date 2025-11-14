@@ -23,12 +23,15 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
     scrollToBottom();
   }, [messages]);
 
+  // State for info banner visibility
+  const [showInfoBanner, setShowInfoBanner] = useState(true);
+
   // Initialize chat with AI greeting
   useEffect(() => {
     const initializeChat = async () => {
       try {
-        // Send initial greeting from AI
-        const greetingMessage = `👋 Hey ${formData.name}! Thanks so much for reaching out! I'm the lead assistant at M10 DJ Company. I'm here to help answer any questions you have about your ${formData.eventType} and our services. What can I tell you about making your day absolutely unforgettable? 🎵`;
+        // Send initial greeting from AI - more casual and natural
+        const greetingMessage = `Hey ${formData.name.split(' ')[0]}! 👋 Thanks for reaching out about your ${formData.eventType || 'event'}. I'm here to help with any questions you have about our DJ services. What would you like to know?`;
         
         const initialMessages = [{
           id: 1,
@@ -37,28 +40,48 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
           timestamp: new Date()
         }];
 
-        // If it's a wedding, add personalized service selection link
-        const isWedding = formData.eventType && formData.eventType.toLowerCase().includes('wedding');
-        // Only show quote link if we have a valid submissionId (which could be contactId or submissionId)
-        if (isWedding && submissionId) {
+        // Add personalized service selection link for any event type with valid submissionId
+        const eventType = formData.eventType?.toLowerCase() || '';
+        const isWedding = eventType.includes('wedding');
+        const isCorporate = eventType.includes('corporate') || eventType.includes('business');
+        const isSchool = eventType.includes('school') || eventType.includes('dance') || eventType.includes('prom') || eventType.includes('homecoming');
+        
+        // Only show quote link if we have a valid submissionId
+        if (submissionId) {
           // Ensure submissionId is a valid string
           const quoteId = String(submissionId).trim();
           if (quoteId && quoteId !== 'null' && quoteId !== 'undefined' && quoteId !== '') {
             console.log('✅ Creating quote link with ID:', quoteId);
+            
+            let linkMessage = '';
+            let linkText = '';
+            
+            if (isWedding) {
+              linkMessage = `We've prepared a service selection page for you! Check it out to see our wedding packages and add-ons:`;
+              linkText = 'View Your Wedding Services Page →';
+            } else if (isCorporate) {
+              linkMessage = `We've prepared a service selection page for you! Check it out to see our corporate event packages:`;
+              linkText = 'View Your Corporate Services Page →';
+            } else if (isSchool) {
+              linkMessage = `We've prepared a service selection page for you! Check it out to see our school dance packages:`;
+              linkText = 'View Your School Event Services Page →';
+            } else {
+              linkMessage = `We've prepared a service selection page for you! Check it out to see our packages:`;
+              linkText = 'View Your Services Page →';
+            }
+            
             initialMessages.push({
               id: 2,
               type: 'bot',
-              text: `💍 Perfect! I've prepared a custom service selection page just for you, ${formData.name.split(' ')[0]}. Click below to explore our wedding packages and add-ons:`,
+              text: linkMessage,
               timestamp: new Date(),
               hasLink: true,
               link: `/quote/${quoteId}`,
-              linkText: '👉 View Your Personal Wedding Services Page'
+              linkText: linkText
             });
           } else {
             console.error('❌ Invalid quote ID:', quoteId, '(original:', submissionId, ')');
           }
-        } else if (isWedding && !submissionId) {
-          console.warn('⚠️ Wedding submission but no submissionId available for quote link');
         }
 
         setMessages(initialMessages);
@@ -67,7 +90,7 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
           { role: 'assistant', content: greetingMessage }
         ];
 
-        console.log('✅ Chat initialized with greeting', isWedding ? '+ wedding service link' : '');
+        console.log('✅ Chat initialized with greeting + service selection link');
       } catch (error) {
         console.error('Error initializing chat:', error);
       }
@@ -75,6 +98,16 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
 
     initializeChat();
   }, [formData, submissionId]);
+
+  // Auto-hide info banner after 5 seconds
+  useEffect(() => {
+    if (showInfoBanner) {
+      const timer = setTimeout(() => {
+        setShowInfoBanner(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showInfoBanner]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -382,15 +415,17 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Info Banner */}
-      <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
-        <div className="flex items-start space-x-3">
-          <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-700 dark:text-blue-300">
-            Check your email for your invoice, service agreement, and next steps. Ben will reach out within 24 hours!
-          </p>
+      {/* Info Banner - Auto-fades after 5 seconds */}
+      {showInfoBanner && (
+        <div className={`px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800 transition-opacity duration-500 ${showInfoBanner ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex items-start space-x-3">
+            <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              Check your email for your invoice, service agreement, and next steps. Ben will reach out within 24 hours!
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Input Area */}
       <div className="p-4 sm:p-6 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
