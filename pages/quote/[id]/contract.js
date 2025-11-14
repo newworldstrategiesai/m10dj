@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
 import SignatureCapture from '../../../components/SignatureCapture';
-import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, PenTool, X } from 'lucide-react';
+import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, PenTool, X, Edit } from 'lucide-react';
 
 export default function ContractPage() {
   const router = useRouter();
@@ -18,12 +18,32 @@ export default function ContractPage() {
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [signatureData, setSignatureData] = useState('');
   const [signatureMethod, setSignatureMethod] = useState('draw');
+  const [showFieldsModal, setShowFieldsModal] = useState(false);
+  const [updatingFields, setUpdatingFields] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    eventDate: ''
+  });
 
   useEffect(() => {
     if (id) {
       fetchData();
     }
   }, [id]);
+
+  useEffect(() => {
+    // Auto-show fields modal if validation fails
+    if (!loading && validationErrors.length > 0 && !isSigned) {
+      setShowFieldsModal(true);
+      // Pre-fill form with existing data
+      setFormData({
+        name: leadData?.name || '',
+        email: leadData?.email || '',
+        eventDate: leadData?.eventDate || ''
+      });
+    }
+  }, [loading, validationErrors, isSigned]);
 
   const fetchData = async () => {
     try {
