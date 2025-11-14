@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 
 export default function PersonalizedQuote() {
   const router = useRouter();
@@ -1134,18 +1134,102 @@ export default function PersonalizedQuote() {
             </div>
           </div>
 
+          {/* Existing Selection Banner */}
+          {existingSelection && !contractSigned && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 mb-8">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                      You've Already Made a Selection
+                    </h3>
+                  </div>
+                  <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                    <p><strong>Package:</strong> {existingSelection.package_name}</p>
+                    {existingSelection.addons && existingSelection.addons.length > 0 && (
+                      <p><strong>Add-ons:</strong> {existingSelection.addons.map(a => typeof a === 'object' ? a.name || a.id : a).join(', ')}</p>
+                    )}
+                    <p><strong>Total:</strong> ${existingSelection.total_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowEditMode(!showEditMode)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+                >
+                  {showEditMode ? 'Cancel Edit' : 'Edit Selection'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Contract Signed Notice */}
+          {contractSigned && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6 mb-8">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <div>
+                  <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-1">
+                    Contract Signed
+                  </h3>
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    Your selection has been finalized and your contract has been signed. Changes cannot be made at this time.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons for Existing Selection */}
+          {existingSelection && !contractSigned && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8 border border-gray-200 dark:border-gray-700 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
+                Next Steps
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                <Link
+                  href={`/quote/${id}/invoice`}
+                  className="flex flex-col items-center justify-center p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-brand transition-colors text-center"
+                >
+                  <FileText className="w-8 h-8 text-brand mb-2" />
+                  <span className="font-medium text-gray-900 dark:text-white">View Invoice</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 mt-1">See payment details</span>
+                </Link>
+                <Link
+                  href={`/quote/${id}/contract`}
+                  className="flex flex-col items-center justify-center p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-brand transition-colors text-center"
+                >
+                  <FileText className="w-8 h-8 text-brand mb-2" />
+                  <span className="font-medium text-gray-900 dark:text-white">Sign Contract</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 mt-1">Review and sign</span>
+                </Link>
+                <Link
+                  href={`/quote/${id}/payment`}
+                  className="flex flex-col items-center justify-center p-4 border-2 border-brand rounded-lg bg-brand/10 hover:bg-brand/20 transition-colors text-center"
+                >
+                  <CheckCircle className="w-8 h-8 text-brand mb-2" />
+                  <span className="font-medium text-gray-900 dark:text-white">Make Payment</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 mt-1">Secure checkout</span>
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Savings Explanation */}
-          <div className="bg-gradient-to-r from-brand/10 to-brand/5 dark:from-brand/20 dark:to-brand/10 rounded-xl p-6 mb-8 border border-brand/20">
-            <p className="text-center text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Our packages bundle services at a discounted rate. Compare the package price to a la carte pricing and see your savings! 🎉
-            </p>
-          </div>
+          {(!existingSelection || showEditMode) && (
+            <div className="bg-gradient-to-r from-brand/10 to-brand/5 dark:from-brand/20 dark:to-brand/10 rounded-xl p-6 mb-8 border border-brand/20">
+              <p className="text-center text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                Our packages bundle services at a discounted rate. Compare the package price to a la carte pricing and see your savings! 🎉
+              </p>
+            </div>
+          )}
 
           {/* Packages Section */}
+          {(!existingSelection || showEditMode || contractSigned) && (
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-center mb-4">
               <Music className="inline w-8 h-8 text-brand mr-2" />
-              Choose Your Package
+              {showEditMode ? 'Edit Your Package Selection' : 'Choose Your Package'}
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
               {packages.map((pkg) => {
