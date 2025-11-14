@@ -1448,8 +1448,10 @@ export default function PersonalizedQuote() {
               })}
             </div>
           </section>
+          )}
 
           {/* Total and CTA */}
+          {(!existingSelection || showEditMode || contractSigned) && (
           <section className="bg-gradient-to-r from-brand/10 to-brand/5 dark:from-brand/20 dark:to-brand/10 rounded-xl p-8 border border-brand/20">
             <div className="max-w-2xl mx-auto">
               {/* Savings Alert - Show when addons selected without package */}
@@ -1579,6 +1581,7 @@ export default function PersonalizedQuote() {
               </p>
             </div>
           </section>
+          )}
         </div>
       </main>
     </>
