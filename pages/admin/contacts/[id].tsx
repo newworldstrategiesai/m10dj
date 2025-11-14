@@ -336,7 +336,7 @@ export default function ContactDetailPage() {
       const { data, error } = await supabase
         .from('quote_selections')
         .select('*')
-        .eq('contact_id', id)
+        .eq('lead_id', id)
         .order('created_at', { ascending: false });
       
       if (error) {
