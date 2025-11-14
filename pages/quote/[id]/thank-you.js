@@ -133,6 +133,67 @@ export default function ThankYouPage() {
                   <span className="text-gray-600 dark:text-gray-400">Amount Paid:</span>
                   <span className="text-3xl font-bold text-green-600">${paymentAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
+                
+                {/* What You Paid For */}
+                {quoteData && (
+                  <div className="pt-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">What You Paid For:</h3>
+                    <div className="space-y-3">
+                      {/* Package */}
+                      {quoteData.package_name && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900 dark:text-white">{quoteData.package_name}</p>
+                              {quoteData.package_price && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                  ${quoteData.package_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Add-ons */}
+                      {quoteData.addons && Array.isArray(quoteData.addons) && quoteData.addons.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Add-ons:</p>
+                          {quoteData.addons.map((addon, index) => (
+                            <div key={index} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900 dark:text-white">{addon.name || 'Add-on'}</p>
+                                  {addon.description && (
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{addon.description}</p>
+                                  )}
+                                </div>
+                                {addon.price && (
+                                  <p className="text-sm font-semibold text-gray-900 dark:text-white ml-4">
+                                    ${addon.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Total */}
+                      {quoteData.total_price && (
+                        <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-gray-900 dark:text-white">Total:</span>
+                            <span className="text-lg font-bold text-gray-900 dark:text-white">
+                              ${quoteData.total_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
                 {paymentData?.payment_intent && (
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 dark:text-gray-400">Transaction ID:</span>

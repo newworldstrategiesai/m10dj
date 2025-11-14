@@ -6,16 +6,16 @@ import { LogOut, Heart } from 'lucide-react';
 import ClientDashboardContent from '@/components/client/ClientDashboardContent';
 
 export default async function ClientDashboard() {
-  // Check if user is authenticated and is a client
+  // Check if user is authenticated
   const userRole = await getUserRole();
   
   if (!userRole) {
     redirect('/signin');
   }
   
-  if (userRole.isAdmin) {
-    redirect('/admin/dashboard');
-  }
+  // Allow admins to access client dashboard for testing purposes
+  // But regular clients should not be redirected away
+  // Admin routes are still protected separately
 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
