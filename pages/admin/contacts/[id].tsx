@@ -1222,6 +1222,8 @@ This will help me understand exactly what you need for your special day, and I c
 
 If you have any questions while reviewing the options, feel free to reach out!
 
+Here's the link:
+
 Best regards,
 Ben Murray
 M10 DJ Company
@@ -1330,8 +1332,13 @@ djbenmurray@gmail.com`
       // Add quote link button to email body if it's the Initial Response or Select Your Services template
       let emailContent = formData.body;
       if (selectedTemplate === 'initial_response' || selectedTemplate === 'select_services') {
-        // Add quote link section to the email
-        emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        // For Select Your Services, replace "Here's the link:" placeholder with the actual link
+        if (selectedTemplate === 'select_services') {
+          emailContent = emailContent.replace(/Here's the link:\s*/i, `Here's the link:\n\n${quoteLink}\n\n`);
+        } else {
+          // For Initial Response, add quote link section to the email
+          emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        }
       }
 
       // Send test email to admin
