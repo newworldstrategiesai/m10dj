@@ -1080,102 +1080,173 @@ export default function PersonalizedQuote() {
               Choose Your Package
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
-              {packages.map((pkg) => (
-                <div
-                  key={pkg.id}
-                  onClick={() => setSelectedPackage(pkg)}
-                  className={`relative bg-white dark:bg-gray-800 rounded-xl p-6 border-2 cursor-pointer transition-all hover:shadow-xl ${
-                    selectedPackage?.id === pkg.id
-                      ? 'border-brand shadow-lg scale-105'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-brand/50'
-                  } ${pkg.popular ? 'ring-2 ring-brand/30' : ''}`}
-                >
-                  {pkg.popular && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-brand text-black px-4 py-1 rounded-full text-sm font-bold">
-                      Most Popular
-                    </div>
-                  )}
-                  
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{pkg.name}</h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">{pkg.description}</p>
-                  
-                  <div className="mb-6">
-                    <div className="flex items-baseline gap-3 mb-2">
-                      <span className="text-4xl font-bold text-brand">${pkg.price.toLocaleString()}</span>
-                      <span className="text-lg text-gray-400 dark:text-gray-500 line-through">${pkg.aLaCartePrice.toLocaleString()}</span>
-                    </div>
-                    <div className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
-                      <CheckCircle className="w-4 h-4" />
-                      Save ${(pkg.aLaCartePrice - pkg.price).toLocaleString()}
-                    </div>
-                    
-                    {/* A La Carte Breakdown Toggle */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedBreakdown(expandedBreakdown === pkg.id ? null : pkg.id);
-                      }}
-                      className="mt-3 text-sm text-brand hover:text-brand-dark flex items-center gap-1 transition-colors"
-                    >
-                      {expandedBreakdown === pkg.id ? (
-                        <>
-                          <ChevronUp className="w-4 h-4" />
-                          Hide breakdown
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="w-4 h-4" />
-                          See a la carte breakdown
-                        </>
-                      )}
-                    </button>
-                    
-                    {/* A La Carte Price Breakdown */}
-                    {expandedBreakdown === pkg.id && (
-                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
-                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">If purchased separately:</p>
-                        <ul className="space-y-2 mb-2">
-                          {getPackageBreakdown(pkg.id).map((item, idx) => (
-                            <li key={idx} className="flex justify-between text-xs">
-                              <div className="flex-1 pr-2">
-                                <span className="text-gray-600 dark:text-gray-400 font-medium">{item.item}</span>
-                                {item.description && (
-                                  <p className="text-gray-500 dark:text-gray-500 text-xs mt-0.5">{item.description}</p>
-                                )}
-                              </div>
-                              <span className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">${item.price.toLocaleString()}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="pt-2 border-t border-gray-300 dark:border-gray-600 flex justify-between text-sm font-bold">
-                          <span>A La Carte Total:</span>
-                          <span className="text-gray-500 dark:text-gray-400 line-through">${pkg.aLaCartePrice.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-bold text-brand mt-1">
-                          <span>Package Price:</span>
-                          <span>${pkg.price.toLocaleString()}</span>
-                        </div>
+              {packages.map((pkg) => {
+                const isExpanded = expandedPackages.has(pkg.id);
+                const isSelected = selectedPackage?.id === pkg.id;
+                
+                // Track package expansion for analytics
+                const handleExpand = (e) => {
+                  e.stopPropagation();
+                  const newExpanded = new Set(expandedPackages);
+                  if (isExpanded) {
+                    newExpanded.delete(pkg.id);
+                  } else {
+                    newExpanded.add(pkg.id);
+                    // Track package expansion
+                    if (id && leadData) {
+                      fetch('/api/analytics/quote-page-view', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          quote_id: id,
+                          event_type: 'package_expanded',
+                          metadata: {
+                            package_id: pkg.id,
+                            package_name: pkg.name,
+                            package_price: pkg.price,
+                            event_type: leadData.eventType || leadData.event_type
+                          }
+                        })
+                      }).catch(err => console.error('Error tracking package expansion:', err));
+                    }
+                  }
+                  setExpandedPackages(newExpanded);
+                };
+
+                return (
+                  <div
+                    key={pkg.id}
+                    className={`relative bg-white dark:bg-gray-800 rounded-xl border-2 transition-all hover:shadow-xl ${
+                      isSelected
+                        ? 'border-brand shadow-lg'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-brand/50'
+                    } ${pkg.popular ? 'ring-2 ring-brand/30' : ''}`}
+                  >
+                    {pkg.popular && (
+                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-brand text-black px-4 py-1 rounded-full text-sm font-bold z-10">
+                        Most Popular
                       </div>
                     )}
-                  </div>
+                    
+                    <div className="p-6">
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{pkg.name}</h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">{pkg.description}</p>
+                      
+                      {/* Price & Savings - Always Visible */}
+                      <div className="mb-4">
+                        <div className="flex items-baseline gap-3 mb-2">
+                          <span className="text-4xl font-bold text-brand">${pkg.price.toLocaleString()}</span>
+                          <span className="text-lg text-gray-400 dark:text-gray-500 line-through">${pkg.aLaCartePrice.toLocaleString()}</span>
+                        </div>
+                        <div className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
+                          <CheckCircle className="w-4 h-4" />
+                          Save ${(pkg.aLaCartePrice - pkg.price).toLocaleString()}
+                        </div>
+                      </div>
 
-                  <ul className="space-y-2 mb-4">
-                    {pkg.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <CheckCircle className="w-5 h-5 text-brand flex-shrink-0 mt-0.5" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                      {/* Expand/Collapse Button */}
+                      <button
+                        onClick={handleExpand}
+                        className="w-full mb-4 py-2 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp className="w-4 h-4" />
+                            Hide Details
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4" />
+                            View What&apos;s Included
+                          </>
+                        )}
+                      </button>
 
-                  {selectedPackage?.id === pkg.id && (
-                    <div className="mt-4 p-3 bg-brand/10 dark:bg-brand/20 rounded-lg text-center">
-                      <CheckCircle className="w-6 h-6 text-brand mx-auto mb-2" />
-                      <span className="text-sm font-semibold text-brand">Selected</span>
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <div className="space-y-4 animate-fadeIn">
+                          {/* Features List */}
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">What&apos;s Included:</h4>
+                            <ul className="space-y-2">
+                              {pkg.features.map((feature, idx) => (
+                                <li key={idx} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                  <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                                  <span>{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          {/* A La Carte Breakdown */}
+                          <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">If purchased separately:</p>
+                            <ul className="space-y-2 mb-2">
+                              {getPackageBreakdown(pkg.id).map((item, idx) => (
+                                <li key={idx} className="flex justify-between text-xs">
+                                  <div className="flex-1 pr-2">
+                                    <span className="text-gray-600 dark:text-gray-400 font-medium">{item.item}</span>
+                                    {item.description && (
+                                      <p className="text-gray-500 dark:text-gray-500 text-xs mt-0.5">{item.description}</p>
+                                    )}
+                                  </div>
+                                  <span className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">${item.price.toLocaleString()}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            <div className="pt-2 border-t border-gray-300 dark:border-gray-600 flex justify-between text-sm font-bold">
+                              <span>A La Carte Total:</span>
+                              <span className="text-gray-500 dark:text-gray-400 line-through">${pkg.aLaCartePrice.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-sm font-bold text-brand mt-1">
+                              <span>Package Price:</span>
+                              <span>${pkg.price.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Select Package Button */}
+                      <button
+                        onClick={() => {
+                          setSelectedPackage(pkg);
+                          // Track package selection
+                          if (id && leadData) {
+                            fetch('/api/analytics/quote-page-view', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                quote_id: id,
+                                event_type: 'package_selected',
+                                metadata: {
+                                  package_id: pkg.id,
+                                  package_name: pkg.name,
+                                  package_price: pkg.price,
+                                  event_type: leadData.eventType || leadData.event_type
+                                }
+                              })
+                            }).catch(err => console.error('Error tracking package selection:', err));
+                          }
+                        }}
+                        className={`w-full mt-4 py-3 px-4 rounded-lg font-semibold transition-all ${
+                          isSelected
+                            ? 'bg-brand text-white shadow-lg'
+                            : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100'
+                        }`}
+                      >
+                        {isSelected ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <CheckCircle className="w-5 h-5" />
+                            Selected
+                          </span>
+                        ) : (
+                          'Select This Package'
+                        )}
+                      </button>
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </section>
 
