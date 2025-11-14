@@ -1089,18 +1089,20 @@ export default function PersonalizedQuote() {
           <meta name="description" content={`Personalized ${isCorporate ? 'corporate event' : 'wedding'} DJ quote for ${leadData.name}`} />
       </Head>
       {/* Simplified Header with Logo Only */}
-      <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="container mx-auto px-4 py-4">
-          <Link href="/" className="inline-block">
-            <Image
-              src="/logo-static.jpg"
-              alt="M10 DJ Company"
-              width={120}
-              height={40}
-              className="h-10 w-auto"
-              priority
-            />
-          </Link>
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center h-10 md:h-12">
+            <Link href="/" className="flex-shrink-0">
+              <Image
+                src="/logo-static.jpg"
+                alt="M10 DJ Company"
+                width={120}
+                height={40}
+                className="h-6 md:h-8 w-auto"
+                priority
+              />
+            </Link>
+          </div>
         </div>
       </header>
       <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
