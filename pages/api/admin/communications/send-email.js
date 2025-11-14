@@ -51,7 +51,7 @@ export default async function handler(req, res) {
       return `<div style="text-align: center; margin: 25px 0;">
         <a href="${match}" 
            style="display: inline-block; background: linear-gradient(135deg, #fcba00, #e6a800); color: #000; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
-          📋 View Your Personalized Quote
+          View Pricing
         </a>
       </div>`;
     });
