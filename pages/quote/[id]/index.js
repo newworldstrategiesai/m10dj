@@ -1166,17 +1166,26 @@ export default function PersonalizedQuote() {
           )}
 
           {/* Contract Signed Notice */}
-          {contractSigned && (
+          {contractSigned && existingSelection && (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6 mb-8">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                <div>
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
                   <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-1">
                     Contract Signed
                   </h3>
-                  <p className="text-sm text-green-800 dark:text-green-200">
+                  <p className="text-sm text-green-800 dark:text-green-200 mb-3">
                     Your selection has been finalized and your contract has been signed. Changes cannot be made at this time.
                   </p>
+                  {existingSelection.contract_id && (
+                    <Link
+                      href={`/quote/${id}/contract`}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
+                    >
+                      <FileText className="w-4 h-4" />
+                      View Your Contract
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
