@@ -1142,7 +1142,7 @@ export default function PersonalizedQuote() {
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                      You've Already Made a Selection
+                      You&apos;ve Already Made a Selection
                     </h3>
                   </div>
                   <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
