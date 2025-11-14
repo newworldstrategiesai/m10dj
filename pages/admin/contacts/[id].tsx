@@ -359,7 +359,7 @@ export default function ContactDetailPage() {
       const allCommunications: any[] = [];
       
       // Get contact data if not already loaded
-      let contactData = contact;
+      let contactData: { first_name?: string | null; last_name?: string | null; email_address?: string | null } | null = contact;
       if (!contactData) {
         const { data } = await supabase
           .from('contacts')
