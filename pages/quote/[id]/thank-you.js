@@ -13,12 +13,60 @@ export default function ThankYouPage() {
   const [invoiceData, setInvoiceData] = useState(null);
   const [paymentData, setPaymentData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [accountStatus, setAccountStatus] = useState(null);
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [accountMessage, setAccountMessage] = useState(null);
 
   useEffect(() => {
     if (id) {
       fetchData();
     }
   }, [id, payment_intent, session_id]);
+
+  const handleCreateAccount = async () => {
+    if (!leadData?.email) {
+      setAccountMessage({ type: 'error', text: 'Email address not found' });
+      return;
+    }
+
+    setCreatingAccount(true);
+    setAccountMessage(null);
+
+    try {
+      const response = await fetch('/api/client/create-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: leadData.email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.hasAccount) {
+          setAccountStatus('exists');
+          setAccountMessage({ 
+            type: 'info', 
+            text: 'An account already exists for this email. Please sign in to access your portal.' 
+          });
+        } else {
+          setAccountStatus('link-sent');
+          setAccountMessage({ 
+            type: 'success', 
+            text: 'Account creation link sent! Check your email for a magic link to create your account.' 
+          });
+        }
+      } else {
+        setAccountMessage({ type: 'error', text: data.message || data.error || 'Failed to create account' });
+      }
+    } catch (error) {
+      console.error('Error creating account:', error);
+      setAccountMessage({ type: 'error', text: 'An error occurred. Please try again later.' });
+    } finally {
+      setCreatingAccount(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -306,13 +354,53 @@ export default function ThankYouPage() {
                   <span>Communicate directly with Ben</span>
                 </li>
               </ul>
-              <Link
-                href={`/signin?redirect=${encodeURIComponent('/client/dashboard')}`}
-                className="inline-flex items-center gap-2 bg-white text-brand px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-colors shadow-lg"
-              >
-                Go to Customer Portal
-                <ExternalLink className="w-5 h-5" />
-              </Link>
+              <div className="space-y-4">
+                {accountMessage && (
+                  <div className={`p-4 rounded-lg ${
+                    accountMessage.type === 'success' 
+                      ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
+                      : accountMessage.type === 'error'
+                      ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
+                      : 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800'
+                  }`}>
+                    <p className="text-sm font-medium">{accountMessage.text}</p>
+                  </div>
+                )}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Link
+                    href={`/signin?redirect=${encodeURIComponent('/client/dashboard')}`}
+                    className="inline-flex items-center justify-center gap-2 bg-white text-brand px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-colors shadow-lg"
+                  >
+                    Sign In to Portal
+                    <ExternalLink className="w-5 h-5" />
+                  </Link>
+                  <button
+                    onClick={handleCreateAccount}
+                    disabled={creatingAccount || accountStatus === 'link-sent'}
+                    className="inline-flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-8 py-4 rounded-lg font-semibold text-lg transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {creatingAccount ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Sending...
+                      </>
+                    ) : accountStatus === 'link-sent' ? (
+                      <>
+                        <CheckCircle className="w-5 h-5" />
+                        Link Sent!
+                      </>
+                    ) : (
+                      <>
+                        Create Account
+                        <Mail className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-sm opacity-75 text-center">
+                  Don&apos;t have an account? Click &quot;Create Account&quot; to receive a magic link via email.
+                </p>
+              </div>
             </div>
 
             {/* Quick Access Documents */}
