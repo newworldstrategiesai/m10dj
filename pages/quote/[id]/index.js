@@ -118,6 +118,36 @@ export default function PersonalizedQuote() {
         
         setError(errorData.error || 'Quote not found. Please contact us to get your personalized quote.');
       }
+
+      // Check for existing quote selection
+      if (quoteResponse && quoteResponse.ok) {
+        const quoteData = await quoteResponse.json();
+        if (quoteData) {
+          setExistingSelection(quoteData);
+          // Pre-populate selections if they exist
+          if (quoteData.package_id) {
+            setSelectedPackage(quoteData.package_id);
+          }
+          if (quoteData.addons && Array.isArray(quoteData.addons)) {
+            setSelectedAddons(quoteData.addons);
+          }
+
+          // Check if contract exists and is signed
+          if (quoteData.contract_id) {
+            try {
+              const contractResponse = await fetch(`/api/contracts/${quoteData.contract_id}`);
+              if (contractResponse.ok) {
+                const contractData = await contractResponse.json();
+                if (contractData.status === 'signed' || contractData.signed_at) {
+                  setContractSigned(true);
+                }
+              }
+            } catch (e) {
+              console.log('Could not fetch contract details:', e);
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error('Error fetching lead data:', error);
       
@@ -1287,8 +1317,10 @@ export default function PersonalizedQuote() {
               })}
             </div>
           </section>
+          )}
 
           {/* Add-ons Section */}
+          {(!existingSelection || showEditMode || contractSigned) && (
           <section id="addons-section" className="mb-12">
             <h2 className="text-3xl font-bold text-center mb-4">
               <Sparkles className="inline w-8 h-8 text-brand mr-2" />
