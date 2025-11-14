@@ -148,6 +148,143 @@ export default function PersonalizedQuote() {
     }
   }, [id, fetchLeadData]);
 
+  // Track page view and time on page
+  useEffect(() => {
+    if (!id || !leadData || loading) return;
+
+    const quoteId = id;
+    const startTime = Date.now();
+    let timeTrackingInterval = null;
+    let hasTrackedView = false;
+
+    // Track initial page view
+    const trackPageView = async () => {
+      if (hasTrackedView) return;
+      hasTrackedView = true;
+
+      try {
+        await fetch('/api/analytics/quote-page-view', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            quote_id: quoteId,
+            event_type: 'page_view',
+            metadata: {
+              event_type: leadData.eventType || leadData.event_type,
+              event_date: leadData.eventDate || leadData.event_date,
+              location: leadData.location,
+              name: leadData.name
+            }
+          })
+        });
+      } catch (error) {
+        console.error('Error tracking page view:', error);
+      }
+    };
+
+    // Track time on page at intervals
+    const trackTimeOnPage = async (seconds) => {
+      try {
+        await fetch('/api/analytics/quote-page-view', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            quote_id: quoteId,
+            event_type: 'time_on_page',
+            time_spent: seconds,
+            metadata: {
+              selected_package: selectedPackage?.id || null,
+              selected_addons_count: selectedAddons.length,
+              event_type: leadData.eventType || leadData.event_type
+            }
+          })
+        });
+      } catch (error) {
+        console.error('Error tracking time on page:', error);
+      }
+    };
+
+    // Track page view immediately
+    trackPageView();
+
+    // Track time milestones: 10s, 30s, 60s, 2min, 5min
+    const milestones = [10, 30, 60, 120, 300];
+    let milestoneIndex = 0;
+
+    timeTrackingInterval = setInterval(() => {
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+      
+      // Track milestone if reached
+      if (milestoneIndex < milestones.length && timeSpent >= milestones[milestoneIndex]) {
+        trackTimeOnPage(milestones[milestoneIndex]);
+        milestoneIndex++;
+      }
+    }, 5000); // Check every 5 seconds
+
+    // Track final time when user leaves page
+    const handleBeforeUnload = () => {
+      const finalTime = Math.floor((Date.now() - startTime) / 1000);
+      if (finalTime > 0) {
+        // Use sendBeacon for reliable tracking on page unload
+        const data = JSON.stringify({
+          quote_id: quoteId,
+          event_type: 'page_exit',
+          time_spent: finalTime,
+          metadata: {
+            selected_package: selectedPackage?.id || null,
+            selected_addons_count: selectedAddons.length
+          }
+        });
+        
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/analytics/quote-page-view', data);
+        } else {
+          // Fallback for browsers without sendBeacon
+          fetch('/api/analytics/quote-page-view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: data,
+            keepalive: true
+          }).catch(() => {}); // Ignore errors on unload
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      if (timeTrackingInterval) {
+        clearInterval(timeTrackingInterval);
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+      
+      // Track final time on cleanup
+      const finalTime = Math.floor((Date.now() - startTime) / 1000);
+      if (finalTime > 0) {
+        fetch('/api/analytics/quote-page-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quote_id: quoteId,
+            event_type: 'page_exit',
+            time_spent: finalTime,
+            metadata: {
+              selected_package: selectedPackage?.id || null,
+              selected_addons_count: selectedAddons.length
+            }
+          }),
+          keepalive: true
+        }).catch(() => {}); // Ignore errors on cleanup
+      }
+    };
+  }, [id, leadData, loading, selectedPackage, selectedAddons]);
+
   // Auto-scroll to add-ons section when a package is selected
   useEffect(() => {
     if (selectedPackage) {
