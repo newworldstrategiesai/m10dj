@@ -357,6 +357,17 @@ export default function ContactDetailPage() {
     setCommunicationsLoading(true);
     try {
       const allCommunications: any[] = [];
+      
+      // Get contact data if not already loaded
+      let contactData = contact;
+      if (!contactData) {
+        const { data } = await supabase
+          .from('contacts')
+          .select('first_name, last_name, email_address')
+          .eq('id', id)
+          .single();
+        contactData = data;
+      }
 
       // Fetch SMS conversations
       const { data: smsMessages } = await supabase
@@ -374,8 +385,8 @@ export default function ContactDetailPage() {
             content: msg.message_content,
             subject: null,
             status: msg.message_status,
-            sent_by: msg.direction === 'outbound' ? 'Admin' : contact?.first_name || 'Customer',
-            sent_to: msg.direction === 'outbound' ? contact?.first_name || 'Customer' : 'Admin',
+            sent_by: msg.direction === 'outbound' ? 'Admin' : contactData?.first_name || 'Customer',
+            sent_to: msg.direction === 'outbound' ? contactData?.first_name || 'Customer' : 'Admin',
             created_at: msg.created_at,
             metadata: {
               message_type: msg.message_type,
@@ -416,35 +427,37 @@ export default function ContactDetailPage() {
 
       // Fetch communication_log (if contact_submission_id exists)
       // First, try to find contact_submission_id for this contact
-      const { data: submissions } = await supabase
-        .from('contact_submissions')
-        .select('id')
-        .eq('email', contact?.email_address || '')
-        .limit(1);
+      if (contactData?.email_address) {
+        const { data: submissions } = await supabase
+          .from('contact_submissions')
+          .select('id')
+          .eq('email', contactData.email_address)
+          .limit(1);
 
-      if (submissions && submissions.length > 0) {
-        const submissionId = submissions[0].id;
-        const { data: commLogs } = await supabase
-          .from('communication_log')
-          .select('*')
-          .eq('contact_submission_id', submissionId)
-          .order('created_at', { ascending: false });
+        if (submissions && submissions.length > 0) {
+          const submissionId = submissions[0].id;
+          const { data: commLogs } = await supabase
+            .from('communication_log')
+            .select('*')
+            .eq('contact_submission_id', submissionId)
+            .order('created_at', { ascending: false });
 
-        if (commLogs) {
-          commLogs.forEach(comm => {
-            allCommunications.push({
-              id: comm.id,
-              type: comm.communication_type,
-              direction: comm.direction,
-              content: comm.content,
-              subject: comm.subject,
-              status: comm.status,
-              sent_by: comm.sent_by || 'Admin',
-              sent_to: comm.sent_to || contact?.email_address || '',
-              created_at: comm.created_at,
-              metadata: comm.metadata || {}
+          if (commLogs) {
+            commLogs.forEach(comm => {
+              allCommunications.push({
+                id: comm.id,
+                type: comm.communication_type,
+                direction: comm.direction,
+                content: comm.content,
+                subject: comm.subject,
+                status: comm.status,
+                sent_by: comm.sent_by || 'Admin',
+                sent_to: comm.sent_to || contactData?.email_address || '',
+                created_at: comm.created_at,
+                metadata: comm.metadata || {}
+              });
             });
-          });
+          }
         }
       }
 
