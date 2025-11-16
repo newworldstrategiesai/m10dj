@@ -112,6 +112,17 @@ export default async function handler(req, res) {
       console.error('⚠️ Failed to send admin notifications:', error);
       // Don't fail the request if notifications fail
     });
+    
+    // Send admin notification for service selection
+    const { sendAdminNotification } = await import('../../../utils/admin-notifications');
+    sendAdminNotification('service_selection', {
+      leadId: leadId,
+      leadName: leadData?.name,
+      packageName: packageName,
+      totalPrice: totalPrice,
+      eventType: leadData?.eventType,
+      eventDate: leadData?.eventDate
+    }).catch(err => console.error('Failed to send admin notification:', err));
 
     res.status(200).json({
       success: true,

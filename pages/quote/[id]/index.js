@@ -66,6 +66,21 @@ export default function PersonalizedQuote() {
         if (data && data.id) {
           setLeadData(data);
           setError(null);
+          
+          // Notify admin that quote page was opened
+          fetch('/api/admin/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              eventType: 'quote_page_open',
+              data: {
+                leadId: id,
+                leadName: data.name,
+                eventType: data.eventType || data.event_type,
+                eventDate: data.eventDate || data.event_date
+              }
+            })
+          }).catch(err => console.error('Failed to notify admin:', err));
         } else {
           console.error('Invalid data returned from API:', data);
           // Try fallback with saved form data

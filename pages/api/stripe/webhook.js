@@ -82,6 +82,38 @@ export default async function handler(req, res) {
             console.error('⚠️ Error updating database:', error);
           } else {
             console.log('✅ Database updated for lead:', leadId);
+            
+            // Notify admin about payment (non-blocking)
+            (async () => {
+              try {
+                const { sendAdminNotification } = await import('../../../utils/admin-notifications');
+                const { data: contactData } = await supabase
+                  .from('contacts')
+                  .select('id, first_name, last_name')
+                  .eq('id', leadId)
+                  .single();
+                
+                const { data: payments } = await supabase
+                  .from('payments')
+                  .select('total_amount')
+                  .eq('contact_id', leadId)
+                  .eq('payment_status', 'Paid');
+                
+                const totalPaid = payments?.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0) || 0;
+                const paymentAmount = paymentIntent.amount / 100;
+                
+                sendAdminNotification('payment_made', {
+                  leadId: leadId,
+                  contactId: leadId,
+                  leadName: contactData ? `${contactData.first_name || ''} ${contactData.last_name || ''}`.trim() : 'Client',
+                  amount: paymentAmount,
+                  totalPaid: totalPaid,
+                  remaining: (paymentIntent.metadata.totalPrice ? parseFloat(paymentIntent.metadata.totalPrice) - totalPaid : 0)
+                }).catch(err => console.error('Failed to notify admin:', err));
+              } catch (err) {
+                console.error('Error sending payment notification:', err);
+              }
+            })();
           }
 
           // TODO: Send confirmation email here

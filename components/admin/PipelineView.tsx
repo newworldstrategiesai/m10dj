@@ -196,6 +196,7 @@ export default function PipelineView({
   const { toast } = useToast();
   const [updating, setUpdating] = useState(false);
   const [deletingQuote, setDeletingQuote] = useState(false);
+  const [counterSigning, setCounterSigning] = useState<string | null>(null);
   
   const currentStage = contact.lead_status || 'New';
   const currentStageIndex = getStageIndex(currentStage);
@@ -473,36 +474,60 @@ export default function PipelineView({
 
           {/* Contracts */}
           {contracts && contracts.length > 0 ? (
-            contracts.map((contract, index) => (
-              <div key={contract.id || index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <FileCheck className={`w-5 h-5 ${
-                    contract.status === 'signed' || contract.signed_at 
-                      ? 'text-green-500' 
-                      : 'text-yellow-500'
-                  }`} />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">Contract</p>
-                      {contract.status === 'signed' || contract.signed_at ? (
-                        <Badge className="bg-green-100 text-green-800 text-xs">Signed</Badge>
-                      ) : (
-                        <Badge className="bg-yellow-100 text-yellow-800 text-xs">Pending</Badge>
-                      )}
+            contracts.map((contract, index) => {
+              const isSigned = contract.status === 'signed' || contract.signed_at;
+              const isCounterSigned = contract.counter_signed_at || contract.admin_signed_at;
+              const needsCounterSign = isSigned && !isCounterSigned;
+              
+              return (
+                <div key={contract.id || index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <FileCheck className={`w-5 h-5 ${
+                      isCounterSigned 
+                        ? 'text-green-500' 
+                        : isSigned 
+                        ? 'text-blue-500' 
+                        : 'text-yellow-500'
+                    }`} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Contract</p>
+                        {isCounterSigned ? (
+                          <Badge className="bg-green-100 text-green-800 text-xs">Fully Executed</Badge>
+                        ) : isSigned ? (
+                          <Badge className="bg-blue-100 text-blue-800 text-xs">Client Signed</Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-800 text-xs">Pending</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {contract.created_at ? new Date(contract.created_at).toLocaleDateString() : 'N/A'}
+                        {contract.signed_at && ` • Client signed ${new Date(contract.signed_at).toLocaleDateString()}`}
+                        {isCounterSigned && ` • Counter-signed ${new Date(contract.counter_signed_at || contract.admin_signed_at).toLocaleDateString()}`}
+                      </p>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      {contract.created_at ? new Date(contract.created_at).toLocaleDateString() : 'N/A'}
-                      {contract.signed_at && ` • Signed ${new Date(contract.signed_at).toLocaleDateString()}`}
-                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/quote/${quoteId}/contract`} target="_blank">
+                      <Button variant="outline" size="sm">
+                        View
+                      </Button>
+                    </Link>
+                    {needsCounterSign && (
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={() => handleCounterSign(contract.id)}
+                        disabled={counterSigning === contract.id}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {counterSigning === contract.id ? 'Signing...' : 'Counter-Sign'}
+                      </Button>
+                    )}
                   </div>
                 </div>
-                <Link href={`/quote/${quoteId}/contract`} target="_blank">
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
-                </Link>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed">
               <div className="flex items-center gap-3">
