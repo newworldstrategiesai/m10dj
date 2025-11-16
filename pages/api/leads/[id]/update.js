@@ -43,6 +43,30 @@ export default async function handler(req, res) {
       if (updateData.eventDate) {
         contactUpdate.event_date = updateData.eventDate;
       }
+      
+      if (updateData.eventTime) {
+        contactUpdate.event_time = updateData.eventTime;
+      }
+      
+      if (updateData.location) {
+        contactUpdate.venue_address = updateData.location;
+      }
+      
+      if (updateData.venueName) {
+        contactUpdate.venue_name = updateData.venueName;
+      }
+      
+      if (updateData.guestCount) {
+        contactUpdate.guest_count = parseInt(updateData.guestCount) || null;
+      }
+      
+      if (updateData.specialRequests !== undefined) {
+        contactUpdate.special_requests = updateData.specialRequests;
+      }
+      
+      if (updateData.phone) {
+        contactUpdate.phone = updateData.phone;
+      }
 
       const { data: updatedContact, error: updateError } = await supabase
         .from('contacts')
@@ -96,6 +120,30 @@ export default async function handler(req, res) {
     
     if (updateData.eventDate) {
       submissionUpdate.event_date = updateData.eventDate;
+    }
+    
+    if (updateData.eventTime) {
+      submissionUpdate.event_time = updateData.eventTime;
+    }
+    
+    if (updateData.location) {
+      submissionUpdate.location = updateData.location;
+    }
+    
+    if (updateData.venueName) {
+      submissionUpdate.venue_name = updateData.venueName;
+    }
+    
+    if (updateData.guestCount) {
+      submissionUpdate.guest_count = parseInt(updateData.guestCount) || null;
+    }
+    
+    if (updateData.specialRequests !== undefined) {
+      submissionUpdate.special_requests = updateData.specialRequests;
+    }
+    
+    if (updateData.phone) {
+      submissionUpdate.phone = updateData.phone;
     }
 
     const { data: updatedSubmission, error: updateSubmissionError } = await supabase

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X } from 'lucide-react';
 
 export default function PersonalizedQuote() {
   const router = useRouter();
@@ -21,6 +21,7 @@ export default function PersonalizedQuote() {
   const [showEditMode, setShowEditMode] = useState(false);
   const [hasPayment, setHasPayment] = useState(false);
   const [outstandingBalance, setOutstandingBalance] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
 
   const fetchLeadData = useCallback(async () => {
@@ -1158,7 +1159,8 @@ export default function PersonalizedQuote() {
       {/* Simplified Header with Logo Only */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center h-10 md:h-12">
+          <div className="flex items-center justify-between h-10 md:h-12">
+            <div className="flex-1"></div>
             <Link href="/" className="flex-shrink-0">
               <Image
                 src="/logo-static.jpg"
@@ -1169,8 +1171,70 @@ export default function PersonalizedQuote() {
                 priority
               />
             </Link>
+            <div className="flex-1 flex justify-end">
+              {existingSelection && (
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="p-2 text-gray-700 dark:text-gray-300 hover:text-brand dark:hover:text-brand transition-colors"
+                  aria-label="Open menu"
+                >
+                  {isMobileMenuOpen ? (
+                    <X className="w-6 h-6" />
+                  ) : (
+                    <Menu className="w-6 h-6" />
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
+        
+        {/* Mobile Menu Dropdown */}
+        {isMobileMenuOpen && existingSelection && (
+          <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-lg z-40">
+            <div className="container mx-auto px-4 py-4">
+              <nav className="space-y-2">
+                <Link
+                  href={`/quote/${id}/contract`}
+                  className="flex items-center gap-3 px-4 py-3 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FileText className="w-5 h-5 text-brand" />
+                  <span className="font-medium">My Contracts</span>
+                </Link>
+                <Link
+                  href={`/quote/${id}/invoice`}
+                  className="flex items-center gap-3 px-4 py-3 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FileText className="w-5 h-5 text-brand" />
+                  <span className="font-medium">My Invoices</span>
+                </Link>
+                <Link
+                  href={`/quote/${id}/events`}
+                  className="flex items-center gap-3 px-4 py-3 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Calendar className="w-5 h-5 text-brand" />
+                  <span className="font-medium">My Events</span>
+                </Link>
+                {outstandingBalance > 0 && (
+                  <Link
+                    href={`/quote/${id}/payment`}
+                    className="flex items-center gap-3 px-4 py-3 bg-brand hover:bg-brand-dark text-white rounded-lg transition-colors font-semibold shadow-lg"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    <span>Make Payment</span>
+                    <span className="ml-auto text-sm opacity-90">
+                      ${outstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </Link>
+                )}
+              </nav>
+            </div>
+          </div>
+        )}
       </header>
       <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
@@ -1240,6 +1304,41 @@ export default function PersonalizedQuote() {
                     >
                       {showEditMode ? 'Cancel Edit' : 'Edit Selection'}
                     </button>
+                    {!existingSelection.contract_id && !existingSelection.invoice_id && (
+                      <button
+                        onClick={async () => {
+                          if (confirm('Are you sure you want to remove your selection? You can always make a new selection later.')) {
+                            try {
+                              const response = await fetch('/api/quote/delete', {
+                                method: 'DELETE',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  quoteSelectionId: existingSelection.id
+                                })
+                              });
+                              
+                              if (response.ok) {
+                                setExistingSelection(null);
+                                setSelectedPackage(null);
+                                setSelectedAddons([]);
+                                setShowEditMode(false);
+                                window.location.reload();
+                              } else {
+                                alert('Failed to remove selection. Please try again.');
+                              }
+                            } catch (error) {
+                              console.error('Error removing selection:', error);
+                              alert('Failed to remove selection. Please try again.');
+                            }
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+                      >
+                        Remove Selection
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
