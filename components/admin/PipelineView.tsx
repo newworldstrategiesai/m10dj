@@ -243,6 +243,42 @@ export default function PipelineView({
     }
   };
 
+  const handleCounterSign = async (contractId: string) => {
+    setCounterSigning(contractId);
+    try {
+      const response = await fetch('/api/contracts/counter-sign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contractId: contractId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to counter-sign contract');
+      }
+
+      toast({
+        title: "Success",
+        description: "Contract counter-signed successfully. Customer will receive a copy via email.",
+      });
+
+      // Refresh the page to show updated status
+      window.location.reload();
+    } catch (error) {
+      console.error('Error counter-signing contract:', error);
+      toast({
+        title: "Error",
+        description: "Failed to counter-sign contract. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setCounterSigning(null);
+    }
+  };
+
   const handleDeleteQuote = async () => {
     if (!hasQuote || !quoteSelections || quoteSelections.length === 0) return;
     
