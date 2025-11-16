@@ -1,6 +1,9 @@
 import { MetadataRoute } from 'next';
 import { getURL } from '@/utils/helpers';
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // Revalidate every hour
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Force www subdomain for sitemap URLs to avoid redirect errors in Google Search Console
@@ -133,7 +136,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Dynamically fetch blog posts from Supabase
   let blogPages: MetadataRoute.Sitemap = [];
   try {
-    const supabase = createClient();
+    // Use service role client for sitemap (no cookies needed)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
     
     // Fetch all published blog posts
     const { data: posts, error } = await supabase
