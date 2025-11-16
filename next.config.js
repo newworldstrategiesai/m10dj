@@ -10,8 +10,13 @@ const nextConfig = {
     if (dev && !isServer) {
       config.watchOptions = {
         ...config.watchOptions,
-        poll: false,
-        ignored: /node_modules/,
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.next/**',
+        ],
       };
     }
     return config;
