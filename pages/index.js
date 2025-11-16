@@ -7,15 +7,25 @@ import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import SEO from '../components/SEO';
 import ContactForm from '../components/company/ContactForm';
+import ContactFormModal from '../components/company/ContactFormModal';
 import ClientLogoCarousel from '../components/company/ClientLogoCarousel';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import { generateStructuredData } from '../utils/generateStructuredData';
 
 export default function Home() {
   const [isVisible, setIsVisible] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
+    
+    // Listen for global modal open event
+    const handleOpenModal = () => setIsContactModalOpen(true);
+    window.addEventListener('openContactModal', handleOpenModal);
+    
+    return () => {
+      window.removeEventListener('openContactModal', handleOpenModal);
+    };
   }, []);
 
   // Generate structured data for SEO
@@ -127,12 +137,7 @@ export default function Home() {
               {/* Enhanced CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-stretch sm:items-center mb-12 md:mb-16 px-4">
                 <button 
-                  onClick={() => {
-                    const contactForm = document.getElementById('contact');
-                    if (contactForm) {
-                      contactForm.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  }}
+                  onClick={() => setIsContactModalOpen(true)}
                   className="btn-primary group shadow-lg hover:shadow-2xl w-full sm:w-auto min-h-[48px]"
                 >
                   <Star className="mr-2 w-4 h-4 md:w-5 md:h-5 fill-current flex-shrink-0" />
@@ -307,6 +312,12 @@ export default function Home() {
       </main>
 
       <Footer />
+      
+      {/* Contact Form Modal */}
+      <ContactFormModal 
+        isOpen={isContactModalOpen} 
+        onClose={() => setIsContactModalOpen(false)} 
+      />
     </>
   );
 } 

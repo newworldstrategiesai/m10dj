@@ -5,11 +5,13 @@ import { Phone, Mail, Menu, X, ChevronDown, MapPin } from 'lucide-react';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackContactAction, trackLead, trackServiceInterest } from '../EnhancedTracking';
 import { scrollToContact } from '../../utils/scroll-helpers';
+import ContactFormModal from './ContactFormModal';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -182,10 +184,17 @@ export default function Header() {
                 </div>
               </div>
               
+              <Link
+                href="/signin"
+                className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors px-3 py-2 rounded-lg hover:bg-gray-50"
+              >
+                Admin
+              </Link>
+              
               <button 
                 onClick={() => {
                   // trackLead('quote_request_start', { source: 'header_desktop' });
-                  scrollToContact();
+                  setIsContactModalOpen(true);
                 }}
                 className="btn-primary"
               >
@@ -362,6 +371,12 @@ export default function Header() {
           onClick={closeDropdown}
         />
       )}
+      
+      {/* Contact Form Modal */}
+      <ContactFormModal 
+        isOpen={isContactModalOpen} 
+        onClose={() => setIsContactModalOpen(false)} 
+      />
     </>
   );
 } 
