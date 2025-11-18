@@ -46,7 +46,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PricingPage() {
-  const supabase = createClient();
+  const supabase = createClient() as any;
   const [user, products, subscription] = await Promise.all([
     getUser(supabase),
     getProducts(supabase),

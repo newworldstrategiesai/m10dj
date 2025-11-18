@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X } from 'lucide-react';
+import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X, Tag, XCircle } from 'lucide-react';
 
 export default function PersonalizedQuote() {
   const router = useRouter();
@@ -22,6 +22,10 @@ export default function PersonalizedQuote() {
   const [hasPayment, setHasPayment] = useState(false);
   const [outstandingBalance, setOutstandingBalance] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountData, setDiscountData] = useState(null);
+  const [discountError, setDiscountError] = useState('');
+  const [validatingDiscount, setValidatingDiscount] = useState(false);
   
 
   const fetchLeadData = useCallback(async () => {
@@ -57,7 +61,7 @@ export default function PersonalizedQuote() {
 
     try {
       const [leadResponse, quoteResponse] = await Promise.all([
-        fetch(`/api/leads/${id}`),
+        fetch(`/api/leads/get-lead?id=${id}`),
         fetch(`/api/quote/${id}`).catch(() => null) // Quote might not exist yet
       ]);
 
@@ -278,12 +282,16 @@ export default function PersonalizedQuote() {
     let timeTrackingInterval = null;
     let hasTrackedView = false;
 
-    // Track initial page view
+    // Track initial page view (with delay to ensure existingSelection is checked)
     const trackPageView = async () => {
       if (hasTrackedView) return;
       hasTrackedView = true;
 
+      // Wait a bit to ensure existingSelection state is set
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       try {
+        // Track page view for analytics
         await fetch('/api/analytics/quote-page-view', {
           method: 'POST',
           headers: {
@@ -296,10 +304,32 @@ export default function PersonalizedQuote() {
               event_type: leadData.eventType || leadData.event_type,
               event_date: leadData.eventDate || leadData.event_date,
               location: leadData.location,
-              name: leadData.name
+              name: leadData.name,
+              has_selection: !!existingSelection
             }
           })
         });
+
+        // Track for follow-up system if no existing selection
+        // Check again in case selection was loaded after initial render
+        const hasSelection = existingSelection || false;
+        if (!hasSelection && leadData.id) {
+          await fetch('/api/followups/track-view', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contactId: leadData.id,
+              quoteId: quoteId,
+              metadata: {
+                event_type: leadData.eventType || leadData.event_type,
+                event_date: leadData.eventDate || leadData.event_date,
+                location: leadData.location
+              }
+            })
+          }).catch(err => console.log('Follow-up tracking failed:', err));
+        }
       } catch (error) {
         console.error('Error tracking page view:', error);
       }
@@ -404,7 +434,7 @@ export default function PersonalizedQuote() {
         }).catch(() => {}); // Ignore errors on cleanup
       }
     };
-  }, [id, leadData, loading, selectedPackage, selectedAddons]);
+  }, [id, leadData, loading, selectedPackage, selectedAddons, existingSelection]);
 
   // Auto-scroll to add-ons section when a package is selected
   useEffect(() => {
@@ -832,6 +862,42 @@ export default function PersonalizedQuote() {
 
   const addons = isSchool ? schoolAddons : (isCorporate ? corporateAddons : weddingAddons);
 
+  // Auto-select recommended package from URL parameter
+  useEffect(() => {
+    if (router.isReady && router.query.recommended && packages.length > 0 && !selectedPackage && !existingSelection && leadData) {
+      const recommendedPackageId = router.query.recommended;
+      const recommendedPackage = packages.find(pkg => pkg.id === recommendedPackageId);
+      
+      if (recommendedPackage) {
+        console.log('Auto-selecting recommended package:', recommendedPackageId);
+        setSelectedPackage(recommendedPackage);
+        
+        // Also handle recommended addons if provided
+        if (router.query.addons && addons && addons.length > 0) {
+          const addonIds = router.query.addons.split(',');
+          const recommendedAddons = addons.filter(addon => 
+            addonIds.some(id => {
+              const normalizedId = id.toLowerCase().replace(/_/g, '');
+              const normalizedAddonId = addon.id.toLowerCase().replace(/_/g, '');
+              return normalizedAddonId.includes(normalizedId) || normalizedId.includes(normalizedAddonId);
+            })
+          );
+          if (recommendedAddons.length > 0) {
+            setSelectedAddons(recommendedAddons);
+          }
+        }
+        
+        // Scroll to packages section after a brief delay
+        setTimeout(() => {
+          const packagesSection = document.getElementById('packages-section') || document.querySelector('[data-packages]');
+          if (packagesSection) {
+            packagesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 500);
+      }
+    }
+  }, [router.isReady, router.query.recommended, router.query.addons, packages, addons, selectedPackage, existingSelection, leadData]);
+
   const getPackageBreakdown = (packageId) => {
     const breakdowns = {
       // Wedding Package Breakdowns
@@ -896,7 +962,78 @@ export default function PersonalizedQuote() {
         total += Number(addon.price) || 0;
       }
     });
+    
+    // Apply discount if available
+    if (discountData && discountData.discountAmount) {
+      total -= discountData.discountAmount;
+    }
+    
+    return Math.max(0, total);
+  };
+
+  const calculateSubtotal = () => {
+    let total = 0;
+    if (selectedPackage && selectedPackage.price != null) {
+      total += Number(selectedPackage.price) || 0;
+    }
+    selectedAddons.forEach(addon => {
+      if (addon && addon.price != null) {
+        total += Number(addon.price) || 0;
+      }
+    });
     return total;
+  };
+
+  const handleValidateDiscount = async () => {
+    if (!discountCode.trim()) {
+      setDiscountError('Please enter a discount code');
+      return;
+    }
+
+    if (!selectedPackage) {
+      setDiscountError('Please select a package first');
+      return;
+    }
+
+    setValidatingDiscount(true);
+    setDiscountError('');
+
+    try {
+      const subtotal = calculateSubtotal();
+      const response = await fetch('/api/discount/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: discountCode,
+          amount: subtotal,
+          packageId: selectedPackage.id
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.valid && data.discountCode) {
+        setDiscountData(data.discountCode);
+        setDiscountError('');
+      } else {
+        setDiscountData(null);
+        setDiscountError(data.error || 'Invalid discount code');
+      }
+    } catch (error) {
+      console.error('Error validating discount:', error);
+      setDiscountData(null);
+      setDiscountError('Failed to validate discount code. Please try again.');
+    } finally {
+      setValidatingDiscount(false);
+    }
+  };
+
+  const handleRemoveDiscount = () => {
+    setDiscountCode('');
+    setDiscountData(null);
+    setDiscountError('');
   };
 
   // Calculate what it would cost if purchased a la carte (addons only, no package)
@@ -1038,49 +1175,70 @@ export default function PersonalizedQuote() {
         selectedPackage: selectedPackage
       });
 
-      const response = await fetch('/api/quote/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          leadId: id,
-          packageId: selectedPackage.id,
-          packageName: selectedPackage.name,
-          packagePrice: packagePrice,
-          addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
-          totalPrice: totalPrice
-        })
-      });
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      if (response.ok) {
-        const result = await response.json();
-        router.push(`/quote/${id}/confirmation`);
-      } else {
-        // If save fails, still store locally as backup
-        const quoteData = {
-          leadId: id,
-          packageId: selectedPackage.id,
-          packageName: selectedPackage.name,
-          addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
-          total: calculateTotal(),
-          leadData: leadData,
-          timestamp: new Date().toISOString()
-        };
+      try {
+        const response = await fetch('/api/quote/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            leadId: id,
+            packageId: selectedPackage.id,
+            packageName: selectedPackage.name,
+            packagePrice: packagePrice,
+            addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
+            totalPrice: totalPrice
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        console.log('📡 Save response status:', response.status, response.statusText);
         
+        let result;
         try {
-          localStorage.setItem('pending_quote', JSON.stringify(quoteData));
-          console.log('✅ Saved quote selections to localStorage as backup');
-        } catch (e) {
-          console.warn('Could not save to localStorage:', e);
+          result = await response.json();
+          console.log('📦 Save response data:', result);
+        } catch (jsonError) {
+          console.error('❌ Failed to parse response JSON:', jsonError);
+          const text = await response.text();
+          console.error('Response text:', text);
+          // Still redirect even if JSON parsing fails
+          router.push(`/quote/${id}/confirmation`);
+          return;
+        }
+
+        // The API always returns 200, so check for success in the response
+        if (response.ok && (result.success || result.message)) {
+          console.log('✅ Quote saved successfully, redirecting to confirmation...');
+        } else {
+          console.log('⚠️ API response indicates potential issue, but redirecting anyway');
         }
         
-        throw new Error('Failed to save quote');
+        // Always redirect to confirmation page
+        router.push(`/quote/${id}/confirmation`);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.error('❌ Request timed out after 10 seconds');
+        } else {
+          console.error('❌ Fetch error:', fetchError);
+        }
+        // Even on timeout/error, redirect to confirmation
+        console.log('⚠️ Redirecting to confirmation despite error');
+        router.push(`/quote/${id}/confirmation`);
       }
     } catch (error) {
       console.error('Error saving quote:', error);
-      // Even if save fails, we've stored locally, so show a helpful message
-      alert('Your selections have been saved locally. We\'ll contact you within 24 hours to finalize your quote. Thank you!');
+      // Even if save fails, redirect to confirmation page
+      // The API always returns success, so this should rarely happen
+      // But if it does, we still want to show the confirmation page
+      console.log('⚠️ Error occurred, but redirecting to confirmation anyway');
+      router.push(`/quote/${id}/confirmation`);
     } finally {
       setSaving(false);
     }
@@ -1743,10 +1901,98 @@ export default function PersonalizedQuote() {
                 );
               })()}
 
+              {/* Discount Code Section */}
+              {selectedPackage && (
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  {!discountData ? (
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Have a discount code?
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={discountCode}
+                          onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                          onKeyPress={(e) => e.key === 'Enter' && handleValidateDiscount()}
+                          placeholder="Enter code"
+                          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent dark:bg-gray-700 dark:text-white"
+                        />
+                        <button
+                          onClick={handleValidateDiscount}
+                          disabled={validatingDiscount || !discountCode.trim()}
+                          className="px-6 py-2 bg-brand hover:bg-brand-dark text-black font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                        >
+                          {validatingDiscount ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Validating...
+                            </>
+                          ) : (
+                            <>
+                              <Tag className="w-4 h-4" />
+                              Apply
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      {discountError && (
+                        <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                          <XCircle className="w-4 h-4" />
+                          {discountError}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Tag className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            {discountData.code} Applied
+                          </span>
+                          {discountData.description && (
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              - {discountData.description}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={handleRemoveDiscount}
+                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                          title="Remove discount code"
+                        >
+                          <XCircle className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+                        You saved ${discountData.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Price Breakdown */}
+              {selectedPackage && (
+                <div className="mb-4 space-y-2 text-sm">
+                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span>Subtotal:</span>
+                    <span>${calculateSubtotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  {discountData && discountData.discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                      <span>Discount ({discountData.code}):</span>
+                      <span>-${discountData.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Regular Total Display */}
               <div className="flex justify-between items-center mb-6">
                 <span className="text-2xl font-bold text-gray-900 dark:text-white">Total:</span>
-                <span className="text-4xl font-bold text-brand">${calculateTotal().toLocaleString()}</span>
+                <span className="text-4xl font-bold text-brand">${calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               
               {!selectedPackage && selectedAddons.length === 0 && (

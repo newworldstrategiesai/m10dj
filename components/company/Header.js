@@ -73,26 +73,26 @@ export default function Header() {
           ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200' 
           : 'bg-white/90 backdrop-blur-sm'
       }`}>
-        <div className="section-container">
-          <div className="flex items-center justify-between h-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20 gap-4">
             {/* Logo */}
             <Link href="/" className="flex-shrink-0 group">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
+              <div className="flex items-center space-x-2.5">
+                <div className="relative flex-shrink-0">
                   <Image
                     src="/logo-static.jpg"
                     alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
-                    width={50}
-                    height={50}
+                    width={45}
+                    height={45}
                     className="rounded-lg transition-transform group-hover:scale-105"
                     priority
                   />
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 font-sans group-hover:text-brand transition-colors">
+                <div className="flex-shrink-0">
+                  <h1 className="text-xl font-bold text-gray-900 font-sans group-hover:text-brand transition-colors leading-tight">
                     M10 DJ Company
                   </h1>
-                  <p className="text-sm text-brand font-semibold font-inter tracking-wide">
+                  <p className="text-xs text-brand font-semibold font-inter tracking-wide leading-tight">
                     Premium Event Entertainment
                   </p>
                 </div>
@@ -100,27 +100,27 @@ export default function Header() {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-8">
-              <Link href="/" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+            <nav className="hidden lg:flex items-center space-x-6">
+              <Link href="/" className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2">
                 Home
               </Link>
               
               {/* Services Dropdown */}
               <div className="relative group">
                 <button
-                  className="flex items-center text-gray-700 hover:text-brand font-semibold font-inter transition-colors"
+                  className="flex items-center text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2"
                   onClick={() => toggleDropdown('services')}
                 >
                   Services
                   <ChevronDown className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" />
                 </button>
                 {openDropdown === 'services' && (
-                  <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-premium border border-gray-200 py-2 z-50 animate-fade-in">
+                  <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 animate-fade-in">
                     {services.map((service) => (
                       <Link
                         key={service.name}
                         href={service.href}
-                        className="block px-4 py-3 text-gray-700 hover:bg-brand/5 hover:text-brand font-inter transition-colors"
+                        className="block px-4 py-2.5 text-gray-700 hover:bg-brand/5 hover:text-brand font-inter text-sm transition-colors"
                         onClick={() => {
                           closeDropdown();
                           // trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'header_dropdown');
@@ -136,19 +136,19 @@ export default function Header() {
               {/* Areas Dropdown */}
               <div className="relative group">
                 <button
-                  className="flex items-center text-gray-700 hover:text-brand font-semibold font-inter transition-colors"
+                  className="flex items-center text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2"
                   onClick={() => toggleDropdown('areas')}
                 >
                   Service Areas
                   <ChevronDown className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" />
                 </button>
                 {openDropdown === 'areas' && (
-                  <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-premium border border-gray-200 py-2 z-50 animate-fade-in">
+                  <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 animate-fade-in max-h-96 overflow-y-auto">
                     {areas.map((area) => (
                       <Link
                         key={area.name}
                         href={area.href}
-                        className="block px-4 py-3 text-gray-700 hover:bg-brand/5 hover:text-brand font-inter transition-colors"
+                        className="block px-4 py-2.5 text-gray-700 hover:bg-brand/5 hover:text-brand font-inter text-sm transition-colors"
                         onClick={closeDropdown}
                       >
                         {area.name}
@@ -158,45 +158,48 @@ export default function Header() {
                 )}
               </div>
 
-              <Link href="/about" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+              <Link href="/about" className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2">
                 About
               </Link>
               
-              <Link href="/contact" className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors">
+              <Link href="/contact" className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2">
                 Contact
               </Link>
             </nav>
 
             {/* Contact Info & CTA */}
-            <div className="hidden lg:flex items-center space-x-6">
-              <div className="flex items-center space-x-4 text-sm">
-                <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg">
-                  <Phone className="w-4 h-4 text-brand" />
-                  <a 
-                    href="tel:+19014102020" 
-                    className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors"
-                    onClick={() => {
-                      // trackContactAction('phone', 'header_desktop');
-                    }}
-                  >
-(901) 410-2020
-                  </a>
-                </div>
-              </div>
+            <div className="hidden lg:flex items-center space-x-4">
+              {/* Phone Number */}
+              <a 
+                href="tel:+19014102020" 
+                className="flex items-center space-x-2 text-gray-700 hover:text-brand font-medium text-sm transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
+                onClick={() => {
+                  // trackContactAction('phone', 'header_desktop');
+                }}
+              >
+                <Phone className="w-4 h-4 text-brand" />
+                <span className="hidden xl:inline">(901) 410-2020</span>
+                <span className="xl:hidden">(901) 410-2020</span>
+              </a>
               
+              {/* Divider */}
+              <div className="h-6 w-px bg-gray-300"></div>
+              
+              {/* Admin Link */}
               <Link
                 href="/signin"
-                className="text-gray-700 hover:text-brand font-semibold font-inter transition-colors px-3 py-2 rounded-lg hover:bg-gray-50"
+                className="text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
               >
                 Admin
               </Link>
               
+              {/* CTA Button */}
               <button 
                 onClick={() => {
                   // trackLead('quote_request_start', { source: 'header_desktop' });
                   setIsContactModalOpen(true);
                 }}
-                className="btn-primary"
+                className="btn-primary whitespace-nowrap"
               >
                 Get Quote
               </button>

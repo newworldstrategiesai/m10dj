@@ -9,7 +9,7 @@ import ContactFormChat from './ContactFormChat';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackLead, trackContactAction } from '../EnhancedTracking';
 
-export default function ContactForm({ className = '' }) {
+export default function ContactForm({ className = '', showSubmitButton = true, isSubmitOnly = false, modalLayout = false }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -427,30 +427,326 @@ export default function ContactForm({ className = '' }) {
     document.body
     );
 
+  const isModal = className.includes('modal-form');
+
+  // If submit-only mode, only render the submit button section
+  if (isSubmitOnly) {
+    return (
+      <div className={`${className}`}>
+        <form onSubmit={handleSubmit} className="space-y-0">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full bg-gradient-to-r from-brand to-amber-500 hover:from-amber-500 hover:to-brand text-black font-bold ${isModal ? 'py-3 px-4 text-sm' : 'py-4 px-6'} rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]`}
+            aria-busy={isSubmitting}
+            aria-live="polite"
+          >
+            {isSubmitting ? (
+              <>
+                <div className={`${isModal ? 'w-4 h-4' : 'w-5 h-5'} border-2 border-black border-t-transparent rounded-full animate-spin`}></div>
+                <span>Submitting...</span>
+              </>
+            ) : (
+              <>
+                <Send className={isModal ? 'w-4 h-4' : 'w-5 h-5'} />
+                <span>Get My Free Quote</span>
+              </>
+            )}
+          </button>
+          
+          {isSubmitting && (
+            <div className={`text-center ${isModal ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 ${isModal ? 'mt-2' : 'mt-3'} animate-pulse font-inter`}>
+              Please wait, do not refresh or close this page...
+            </div>
+          )}
+          
+          <p className={`text-center text-xs text-gray-500 dark:text-gray-400 ${isModal ? 'mt-2' : 'mt-4'} font-inter`}>
+            We&apos;ll respond within 24 hours • <a href="tel:+19014102020" className="text-brand hover:underline font-semibold">Call (901) 410-2020</a> for immediate assistance
+          </p>
+        </form>
+      </div>
+    );
+  }
+
+  // Modal layout: form spans scrollable area and sticky footer
+  if (modalLayout) {
+    return (
+      <div className={`${className} flex flex-col`} style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <form onSubmit={handleSubmit} className={`flex flex-col flex-1 min-h-0 ${isModal ? 'space-y-3' : 'space-y-6'}`} style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0, overflow: 'hidden' }}>
+          {/* Scrollable form fields */}
+          <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
+            <div className="p-4">
+              {showRestoredNotice && (
+                <div className={`${isModal ? 'mb-3 p-2' : 'mb-6 p-4'} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start`}>
+                  <AlertCircle className={`${isModal ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400 mr-2 mt-0.5 flex-shrink-0`} />
+                  <div>
+                    <p className={`text-blue-800 dark:text-blue-300 ${isModal ? 'text-xs' : 'text-sm'} font-inter font-semibold`}>
+                      Your previous form data was restored
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className={`${isModal ? 'mb-3 p-2' : 'mb-6 p-4'} bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg`}>
+                  <p className={`text-red-700 dark:text-red-400 ${isModal ? 'text-xs' : 'text-sm'} font-inter`}>{error}</p>
+                </div>
+              )}
+
+              {/* Honeypot field */}
+              <div style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
+                <label htmlFor="website">Website (leave blank)</label>
+                <input
+                  type="text"
+                  id="website"
+                  name="honeypot"
+                  value={formData.honeypot}
+                  onChange={handleInputChange}
+                  tabIndex="-1"
+                  autoComplete="off"
+                />
+              </div>
+
+              {/* Form fields - same as below */}
+              <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
+                <div>
+                  <label htmlFor="name" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+                    placeholder="Your full name"
+                  />
+                  {fieldWarnings.name && (
+                    <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+                      <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                      {fieldWarnings.name}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="email" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+                    placeholder="your.email@example.com"
+                  />
+                  {fieldWarnings.email && (
+                    <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+                      <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                      {fieldWarnings.email}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
+                <div>
+                  <label htmlFor="phone" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    required
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+                    placeholder="(901) 410-2020"
+                  />
+                  {fieldWarnings.phone && (
+                    <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+                      <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                      {fieldWarnings.phone}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="eventType" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
+                    Event Type *
+                  </label>
+                  <select
+                    id="eventType"
+                    name="eventType"
+                    required
+                    value={formData.eventType}
+                    onChange={handleInputChange}
+                    className={`modern-select ${isModal ? 'py-2 text-sm' : ''}`}
+                  >
+                    <option value="">Select event type</option>
+                    <option value="Wedding">Wedding</option>
+                    <option value="Corporate Event">Corporate Event</option>
+                    <option value="Birthday Party">Birthday Party</option>
+                    <option value="Anniversary">Anniversary</option>
+                    <option value="Graduation">Graduation</option>
+                    <option value="Holiday Party">Holiday Party</option>
+                    <option value="School Dance">School Dance/Event</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
+                <div>
+                  <label htmlFor="eventDate" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
+                    Event Date
+                  </label>
+                  <input
+                    type="date"
+                    id="eventDate"
+                    name="eventDate"
+                    value={formData.eventDate}
+                    onChange={handleInputChange}
+                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+                  />
+                  {fieldWarnings.eventDate && (
+                    <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+                      <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                      {fieldWarnings.eventDate}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="guests" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
+                    Number of Guests
+                  </label>
+                  <select
+                    id="guests"
+                    name="guests"
+                    value={formData.guests}
+                    onChange={handleInputChange}
+                    className={`modern-select ${isModal ? 'py-2 text-sm' : ''}`}
+                  >
+                    <option value="">Select guest count</option>
+                    <option value="1-25">1-25 guests</option>
+                    <option value="26-50">26-50 guests</option>
+                    <option value="51-100">51-100 guests</option>
+                    <option value="101-200">101-200 guests</option>
+                    <option value="201-300">201-300 guests</option>
+                    <option value="300+">300+ guests</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="venue" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
+                  Venue/Location
+                </label>
+                <input
+                  type="text"
+                  id="venue"
+                  name="venue"
+                  value={formData.venue}
+                  onChange={handleInputChange}
+                  className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+                  placeholder="Event venue or location"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="message" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
+                  Additional Details
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  rows={isModal ? "2" : "4"}
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  className={`modern-textarea ${isModal ? 'py-2 text-sm' : ''}`}
+                  placeholder="Tell us more about your event, special requests, or any questions you have..."
+                />
+                {fieldWarnings.message && (
+                  <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+                    <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                    {fieldWarnings.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Sticky Submit Button Footer */}
+          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg" style={{ flexShrink: 0, flex: '0 0 auto', padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`w-full bg-gradient-to-r from-brand to-amber-500 hover:from-amber-500 hover:to-brand text-black font-bold ${isModal ? 'py-3 px-4 text-sm' : 'py-4 px-6'} rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]`}
+              aria-busy={isSubmitting}
+              aria-live="polite"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className={`${isModal ? 'w-4 h-4' : 'w-5 h-5'} border-2 border-black border-t-transparent rounded-full animate-spin`}></div>
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <>
+                  <Send className={isModal ? 'w-4 h-4' : 'w-5 h-5'} />
+                  <span>Get My Free Quote</span>
+                </>
+              )}
+            </button>
+            
+            {isSubmitting && (
+              <div className={`text-center ${isModal ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 ${isModal ? 'mt-2' : 'mt-3'} animate-pulse font-inter`}>
+                Please wait, do not refresh or close this page...
+              </div>
+            )}
+            
+            <p className={`text-center text-xs text-gray-500 dark:text-gray-400 ${isModal ? 'mt-2' : 'mt-4'} font-inter`}>
+              We&apos;ll respond within 24 hours • <a href="tel:+19014102020" className="text-brand hover:underline font-semibold">Call (901) 410-2020</a> for immediate assistance
+            </p>
+          </div>
+        </form>
+        {chatOverlay}
+      </div>
+    );
+  }
+
   return (
     <div className={`${className}`}>
 
       {showRestoredNotice && (
-        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start">
-          <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+        <div className={`${isModal ? 'mb-3 p-2' : 'mb-6 p-4'} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start`}>
+          <AlertCircle className={`${isModal ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400 mr-2 mt-0.5 flex-shrink-0`} />
           <div>
-            <p className="text-blue-800 dark:text-blue-300 text-sm font-inter font-semibold">
+            <p className={`text-blue-800 dark:text-blue-300 ${isModal ? 'text-xs' : 'text-sm'} font-inter font-semibold`}>
               Your previous form data was restored
             </p>
-            <p className="text-blue-700 dark:text-blue-400 text-xs font-inter mt-1">
-              We saved your progress automatically. Feel free to continue or start fresh.
-            </p>
+            {!isModal && (
+              <p className="text-blue-700 dark:text-blue-400 text-xs font-inter mt-1">
+                We saved your progress automatically. Feel free to continue or start fresh.
+              </p>
+            )}
           </div>
         </div>
       )}
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-700 dark:text-red-400 text-sm font-inter">{error}</p>
+        <div className={`${isModal ? 'mb-3 p-2' : 'mb-6 p-4'} bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg`}>
+          <p className={`text-red-700 dark:text-red-400 ${isModal ? 'text-xs' : 'text-sm'} font-inter`}>{error}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className={isModal ? 'space-y-3' : 'space-y-6'}>
         {/* Honeypot field - hidden from users, visible to bots */}
         <div style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
           <label htmlFor="website">Website (leave blank)</label>
@@ -464,9 +760,9 @@ export default function ContactForm({ className = '' }) {
             autoComplete="off"
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
           <div>
-            <label htmlFor="name" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+            <label htmlFor="name" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
               Full Name *
             </label>
             <input
@@ -476,11 +772,11 @@ export default function ContactForm({ className = '' }) {
               required
               value={formData.name}
               onChange={handleInputChange}
-              className="modern-input"
+              className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
               placeholder="Your full name"
             />
             {fieldWarnings.name && (
-              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+              <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                 <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 {fieldWarnings.name}
               </p>
@@ -488,7 +784,7 @@ export default function ContactForm({ className = '' }) {
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+            <label htmlFor="email" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
               Email Address *
             </label>
             <input
@@ -498,11 +794,11 @@ export default function ContactForm({ className = '' }) {
               required
               value={formData.email}
               onChange={handleInputChange}
-              className="modern-input"
+              className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
               placeholder="your.email@example.com"
             />
             {fieldWarnings.email && (
-              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+              <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                 <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 {fieldWarnings.email}
               </p>
@@ -510,9 +806,9 @@ export default function ContactForm({ className = '' }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
           <div>
-            <label htmlFor="phone" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+            <label htmlFor="phone" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
               Phone Number *
             </label>
             <input
@@ -522,11 +818,11 @@ export default function ContactForm({ className = '' }) {
               required
               value={formData.phone}
               onChange={handleInputChange}
-              className="modern-input"
+              className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
               placeholder="(901) 410-2020"
             />
             {fieldWarnings.phone && (
-              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+              <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                 <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 {fieldWarnings.phone}
               </p>
@@ -534,7 +830,7 @@ export default function ContactForm({ className = '' }) {
           </div>
 
           <div>
-            <label htmlFor="eventType" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+            <label htmlFor="eventType" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
               Event Type *
             </label>
             <select
@@ -543,7 +839,7 @@ export default function ContactForm({ className = '' }) {
               required
               value={formData.eventType}
               onChange={handleInputChange}
-              className="modern-select"
+              className={`modern-select ${isModal ? 'py-2 text-sm' : ''}`}
             >
               <option value="">Select event type</option>
               <option value="Wedding">Wedding</option>
@@ -558,9 +854,9 @@ export default function ContactForm({ className = '' }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
           <div>
-            <label htmlFor="eventDate" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+            <label htmlFor="eventDate" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
               Event Date
             </label>
             <input
@@ -569,10 +865,10 @@ export default function ContactForm({ className = '' }) {
               name="eventDate"
               value={formData.eventDate}
               onChange={handleInputChange}
-              className="modern-input"
+              className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
             />
             {fieldWarnings.eventDate && (
-              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+              <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                 <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 {fieldWarnings.eventDate}
               </p>
@@ -580,7 +876,7 @@ export default function ContactForm({ className = '' }) {
           </div>
 
           <div>
-            <label htmlFor="guests" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+            <label htmlFor="guests" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
               Number of Guests
             </label>
             <select
@@ -588,7 +884,7 @@ export default function ContactForm({ className = '' }) {
               name="guests"
               value={formData.guests}
               onChange={handleInputChange}
-              className="modern-select"
+              className={`modern-select ${isModal ? 'py-2 text-sm' : ''}`}
             >
               <option value="">Select guest count</option>
               <option value="1-25">1-25 guests</option>
@@ -602,7 +898,7 @@ export default function ContactForm({ className = '' }) {
         </div>
 
         <div>
-          <label htmlFor="venue" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+          <label htmlFor="venue" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
             Venue/Location
           </label>
           <input
@@ -611,63 +907,65 @@ export default function ContactForm({ className = '' }) {
             name="venue"
             value={formData.venue}
             onChange={handleInputChange}
-            className="modern-input"
+            className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
             placeholder="Event venue or location"
           />
         </div>
 
         <div>
-          <label htmlFor="message" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+          <label htmlFor="message" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
             Additional Details
           </label>
           <textarea
             id="message"
             name="message"
-            rows="4"
+            rows={isModal ? "2" : "4"}
             value={formData.message}
             onChange={handleInputChange}
-            className="modern-textarea"
+            className={`modern-textarea ${isModal ? 'py-2 text-sm' : ''}`}
             placeholder="Tell us more about your event, special requests, or any questions you have..."
           />
           {fieldWarnings.message && (
-            <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+            <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
               <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
               {fieldWarnings.message}
             </p>
           )}
         </div>
 
-        <div className="pt-4">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-gradient-to-r from-brand to-amber-500 hover:from-amber-500 hover:to-brand text-black font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
-            aria-busy={isSubmitting}
-            aria-live="polite"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                <span>Submitting...</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-5 h-5" />
-                <span>Get My Free Quote</span>
-              </>
+        {showSubmitButton && (
+          <div className={isModal ? 'pt-2' : 'pt-4'}>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`w-full bg-gradient-to-r from-brand to-amber-500 hover:from-amber-500 hover:to-brand text-black font-bold ${isModal ? 'py-3 px-4 text-sm' : 'py-4 px-6'} rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]`}
+              aria-busy={isSubmitting}
+              aria-live="polite"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className={`${isModal ? 'w-4 h-4' : 'w-5 h-5'} border-2 border-black border-t-transparent rounded-full animate-spin`}></div>
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <>
+                  <Send className={isModal ? 'w-4 h-4' : 'w-5 h-5'} />
+                  <span>Get My Free Quote</span>
+                </>
+              )}
+            </button>
+            
+            {isSubmitting && (
+              <div className={`text-center ${isModal ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 ${isModal ? 'mt-2' : 'mt-3'} animate-pulse font-inter`}>
+                Please wait, do not refresh or close this page...
+              </div>
             )}
-          </button>
-          
-          {isSubmitting && (
-            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3 animate-pulse font-inter">
-              Please wait, do not refresh or close this page...
-            </div>
-          )}
-          
-          <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4 font-inter">
-            We&apos;ll respond within 24 hours • <a href="tel:+19014102020" className="text-brand hover:underline font-semibold">Call (901) 410-2020</a> for immediate assistance
-          </p>
-        </div>
+            
+            <p className={`text-center text-xs text-gray-500 dark:text-gray-400 ${isModal ? 'mt-2' : 'mt-4'} font-inter`}>
+              We&apos;ll respond within 24 hours • <a href="tel:+19014102020" className="text-brand hover:underline font-semibold">Call (901) 410-2020</a> for immediate assistance
+            </p>
+          </div>
+        )}
       </form>
       {chatOverlay}
     </div>

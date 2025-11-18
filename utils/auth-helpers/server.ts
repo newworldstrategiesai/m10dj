@@ -358,7 +358,7 @@ export async function updateAdminPhoneNumber(formData: FormData) {
   }
 
   // Update or insert admin phone number setting
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('admin_settings')
     .upsert(
       {

@@ -73,7 +73,7 @@ export default function NewBlogPost() {
       };
 
       // Use API endpoint instead of direct database call
-      const response = await fetch('/api/admin/blog', {
+      const response = await fetch('/api/admin/blog-create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

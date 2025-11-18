@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { leadId, packageId, packageName, packagePrice, addons, totalPrice } = req.body;
+  const { leadId, packageId, packageName, packagePrice, addons, totalPrice, discountCode, discountAmount } = req.body;
 
   if (!leadId || !packageId) {
     return res.status(400).json({ error: 'Lead ID and package are required' });
@@ -74,6 +74,8 @@ export default async function handler(req, res) {
       package_price: packagePrice,
       addons: addons || [],
       total_price: totalPrice,
+      discount_code: discountCode || null,
+      discount_amount: discountAmount || 0,
       updated_at: new Date().toISOString()
     };
 
@@ -113,6 +115,54 @@ export default async function handler(req, res) {
       // Don't fail the request if notifications fail
     });
     
+    // Record discount code usage if applicable
+    if (discountCode && discountAmount > 0) {
+      try {
+        // Get discount code ID
+        const { data: codeData } = await supabase
+          .from('discount_codes')
+          .select('id')
+          .eq('code', discountCode.toUpperCase().trim())
+          .single();
+
+        if (codeData) {
+          // Record usage
+          await supabase
+            .from('discount_code_usage')
+            .insert({
+              discount_code_id: codeData.id,
+              lead_id: leadId,
+              quote_id: data?.id,
+              discount_amount: discountAmount,
+              original_amount: totalPrice + discountAmount, // Add back discount to get original
+              final_amount: totalPrice
+            });
+
+          // Increment usage count
+          await supabase.rpc('increment_discount_usage', {
+            code_id: codeData.id
+          }).catch(async () => {
+            // Fallback if RPC doesn't exist - manual update
+            const { data: currentCode } = await supabase
+              .from('discount_codes')
+              .select('usage_count')
+              .eq('id', codeData.id)
+              .single();
+            
+            if (currentCode) {
+              await supabase
+                .from('discount_codes')
+                .update({ usage_count: (currentCode.usage_count || 0) + 1 })
+                .eq('id', codeData.id);
+            }
+          });
+        }
+      } catch (error) {
+        console.error('⚠️ Error recording discount code usage:', error);
+        // Don't fail the request if usage tracking fails
+      }
+    }
+
     // Send admin notification for service selection
     const { sendAdminNotification } = await import('../../../utils/admin-notifications');
     sendAdminNotification('service_selection', {

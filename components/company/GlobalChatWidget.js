@@ -15,9 +15,15 @@ export default function GlobalChatWidget() {
   const [isMinimized, setIsMinimized] = useState(true);
   const [isMicro, setIsMicro] = useState(false);
   const [chatData, setChatData] = useState(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   // Check if we're on a quote page - use micro view there
   const isQuotePage = router.pathname?.includes('/quote/');
+
+  // Only render on client to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Restore chat data from sessionStorage
   useEffect(() => {
@@ -107,8 +113,8 @@ export default function GlobalChatWidget() {
     // Don't clear sessionStorage - keep chat data for next time
   };
 
-  // Always show the icon button
-  if (typeof document === 'undefined') return null;
+  // Don't render until mounted on client to avoid hydration mismatch
+  if (!isMounted || typeof document === 'undefined') return null;
 
   return (
     <>

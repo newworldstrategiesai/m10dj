@@ -60,14 +60,14 @@
     "googleapis": "^164.1.0",
     "libphonenumber-js": "^1.12.10",
     "lucide-react": "^0.330.0",
-    "next": "14.2.3",
+    "next": "13.5.6",
     "next-themes": "^0.4.6",
     "openai": "^5.12.2",
     "pdfkit": "^0.17.2",
     "puppeteer": "^24.27.0",
-    "react": "^18.3.1",
+    "react": "^18.2.0",
     "react-day-picker": "^9.11.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^18.2.0",
     "react-merge-refs": "^2.1.1",
     "react-resizable": "^3.0.5",
     "react-resizable-panels": "^3.0.6",
@@ -99,5 +99,23 @@
     "prettier-plugin-tailwindcss": "^0.5.14",
     "supabase": "^1.172.2",
     "typescript": "^5.4.5"
-  }
+  },
+  "name": "m10dj",
+  "version": "1.0.0",
+  "description": "",
+  "main": "next.config.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/newworldstrategiesai/m10dj.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/newworldstrategiesai/m10dj/issues"
+  },
+  "homepage": "https://github.com/newworldstrategiesai/m10dj#readme"
 }

@@ -26,19 +26,42 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Insert tracking event into analytics table (or create one if it doesn't exist)
-    // For now, we'll use a simple approach and store in a quote_analytics table
+    // Insert tracking event into analytics table
+    // Also track in quote_page_views for follow-up system
+    const insertData = {
+      quote_id: quote_id,
+      event_type: event_type,
+      time_spent: time_spent || null,
+      metadata: metadata || {},
+      created_at: new Date().toISOString()
+    };
+
+    // Insert into quote_analytics
     const { data, error } = await supabase
       .from('quote_analytics')
-      .insert({
-        quote_id: quote_id,
-        event_type: event_type,
-        time_spent: time_spent || null,
-        metadata: metadata || {},
-        created_at: new Date().toISOString()
-      })
+      .insert(insertData)
       .select()
       .single();
+
+    // Also track in quote_page_views for follow-up system (if it's a page_view event)
+    if (event_type === 'page_view') {
+      // Get contact_id from quote_id (they might be the same)
+      const contactId = quote_id;
+      
+      await supabase
+        .from('quote_page_views')
+        .insert({
+          contact_id: contactId,
+          quote_id: quote_id,
+          event_type: 'page_view',
+          metadata: metadata || {},
+          created_at: new Date().toISOString()
+        })
+        .catch(err => {
+          // Table might not exist yet, that's okay
+          console.log('Could not log to quote_page_views:', err.message);
+        });
+    }
 
     if (error) {
       // If table doesn't exist, log the error but don't fail

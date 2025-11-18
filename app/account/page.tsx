@@ -12,7 +12,7 @@ import {
 } from '@/utils/supabase/queries';
 
 export default async function Account() {
-  const supabase = createClient();
+  const supabase = createClient() as any;
   const [user, userDetails, subscription, adminPhoneNumber] = await Promise.all([
     getUser(supabase),
     getUserDetails(supabase),

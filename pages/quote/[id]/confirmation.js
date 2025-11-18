@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
-import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard } from 'lucide-react';
+import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard, Music } from 'lucide-react';
 
 export default function ConfirmationPage() {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function ConfirmationPage() {
   const fetchData = useCallback(async () => {
     try {
       const [leadResponse, quoteResponse] = await Promise.all([
-        fetch(`/api/leads/${id}`),
+        fetch(`/api/leads/get-lead?id=${id}`),
         fetch(`/api/quote/${id}`)
       ]);
 
@@ -269,34 +269,93 @@ export default function ConfirmationPage() {
               </div>
             )}
 
-            {/* Next Steps */}
+            {/* Action Buttons - Prominent */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12">
+              <h2 className="text-3xl font-bold mb-2 text-center">Next Steps</h2>
+              <p className="text-center text-gray-600 dark:text-gray-400 mb-8">
+                Complete your booking by making a payment and signing your contract
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                {!hasPayment && (
+                  <Link
+                    href={`/quote/${id}/payment`}
+                    className="bg-gradient-to-r from-brand to-yellow-600 hover:from-yellow-600 hover:to-brand text-black font-bold py-6 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all flex flex-col items-center justify-center gap-3 transform hover:scale-105"
+                  >
+                    <CreditCard className="w-10 h-10" />
+                    <span className="text-xl">Make Payment</span>
+                    <span className="text-sm opacity-90">
+                      {remainingBalance > 0 
+                        ? `Pay $${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} deposit`
+                        : `Pay $${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      }
+                    </span>
+                  </Link>
+                )}
+                {hasPayment && (
+                  <Link
+                    href={`/quote/${id}/questionnaire`}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-6 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all flex flex-col items-center justify-center gap-3 transform hover:scale-105"
+                  >
+                    <Music className="w-10 h-10" />
+                    <span className="text-xl">Music Planning</span>
+                    <span className="text-sm opacity-90">Complete your music questionnaire</span>
+                  </Link>
+                )}
+                <Link
+                  href={`/quote/${id}/contract`}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-600 text-white font-bold py-6 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all flex flex-col items-center justify-center gap-3 transform hover:scale-105"
+                >
+                  <FileText className="w-10 h-10" />
+                  <span className="text-xl">Sign Contract</span>
+                  <span className="text-sm opacity-90">Review & e-sign your agreement</span>
+                </Link>
+                <Link
+                  href={`/quote/${id}/invoice`}
+                  className="btn-outline flex flex-col items-center justify-center gap-3 py-6 px-8 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Download className="w-8 h-8 text-brand" />
+                  <span className="font-semibold">View Invoice</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Download PDF</span>
+                </Link>
+                <Link
+                  href={`/quote/${id}`}
+                  className="btn-outline flex flex-col items-center justify-center gap-3 py-6 px-8 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <FileText className="w-8 h-8 text-brand" />
+                  <span className="font-semibold">View Quote</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">See full details</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* What Happens Next */}
             <div className="bg-gradient-to-r from-brand/10 to-purple-500/10 rounded-2xl shadow-xl p-8 md:p-12">
               <h2 className="text-2xl font-bold mb-6">What Happens Next?</h2>
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-bold flex-shrink-0">1</div>
                   <div>
-                    <p className="font-semibold">Check Your Email</p>
+                    <p className="font-semibold">Complete Payment & Contract</p>
                     <p className="text-gray-600 dark:text-gray-400">
-                      We&apos;ve sent a confirmation email to {leadData?.email} with your booking details and signed contract.
+                      Make your deposit payment and sign your contract to secure your booking.
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
                   <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-bold flex-shrink-0">2</div>
                   <div>
-                    <p className="font-semibold">We&apos;ll Reach Out</p>
+                    <p className="font-semibold">Check Your Email</p>
                     <p className="text-gray-600 dark:text-gray-400">
-                      DJ Ben Murray will contact you within 24 hours to discuss your event details and music preferences.
+                      We&apos;ve sent a confirmation email to {leadData?.email} with your booking details.
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
                   <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-bold flex-shrink-0">3</div>
                   <div>
-                    <p className="font-semibold">Plan Your Perfect Playlist</p>
+                    <p className="font-semibold">We&apos;ll Reach Out</p>
                     <p className="text-gray-600 dark:text-gray-400">
-                      We&apos;ll work together to curate the perfect music selection for your celebration.
+                      DJ Ben Murray will contact you within 24 hours to discuss your event details and music preferences.
                     </p>
                   </div>
                 </div>
@@ -309,37 +368,6 @@ export default function ConfirmationPage() {
                     </p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Document Links */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12">
-              <h2 className="text-2xl font-bold mb-6 text-center">Your Documents</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link
-                  href={`/quote/${id}/invoice`}
-                  className="btn-outline flex flex-col items-center justify-center gap-2 p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <FileText className="w-8 h-8 text-brand" />
-                  <span className="font-semibold">View Invoice</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Download PDF</span>
-                </Link>
-                <Link
-                  href={`/quote/${id}/contract`}
-                  className="btn-outline flex flex-col items-center justify-center gap-2 p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <FileText className="w-8 h-8 text-brand" />
-                  <span className="font-semibold">View Contract</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Sign & Download</span>
-                </Link>
-                <Link
-                  href={`/quote/${id}/payment`}
-                  className="btn-primary flex flex-col items-center justify-center gap-2 p-6"
-                >
-                  <CreditCard className="w-8 h-8" />
-                  <span className="font-semibold">Make Payment</span>
-                  <span className="text-sm opacity-90">Secure checkout</span>
-                </Link>
               </div>
             </div>
 
