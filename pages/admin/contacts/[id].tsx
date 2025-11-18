@@ -99,6 +99,7 @@ export default function ContactDetailPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailModalTemplate, setEmailModalTemplate] = useState<string | null>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -559,6 +560,7 @@ export default function ContactDetailPage() {
     return new Date(dateString).toISOString().split('T')[0];
   };
 
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -687,6 +689,72 @@ export default function ContactDetailPage() {
               contactName={`${contact.first_name || ''} ${contact.last_name || ''}`.trim()}
               contactEmail={contact.email_address}
             />
+          </div>
+        )}
+
+        {/* Walkthrough & Questionnaire Sender */}
+        {contact.lead_status !== 'Lost' && 
+         contact.lead_status !== 'Completed' && 
+         contact.email_address && (
+          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-3 text-gray-900">Interactive Tools</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Send interactive walkthroughs and questionnaires to help guide {contact.first_name || 'this lead'} through the booking process.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Send Walkthrough Button */}
+              {quoteSelections.length === 0 && (
+                <div className="border rounded-lg p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">📋 Pricing Walkthrough</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Help them choose the right package with our interactive questionnaire.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setEmailModalTemplate('walkthrough');
+                      setShowEmailModal(true);
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Send Walkthrough
+                  </Button>
+                </div>
+              )}
+              
+              {/* Send Questionnaire Button */}
+              {payments.length > 0 && payments.some((p: any) => p.status === 'succeeded' || p.status === 'paid') && (
+                <div className="border rounded-lg p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">🎵 Music Planning Questionnaire</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Collect detailed music preferences after deposit payment.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setEmailModalTemplate('questionnaire');
+                      setShowEmailModal(true);
+                    }}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    Send Questionnaire
+                  </Button>
+                </div>
+              )}
+              
+              {quoteSelections.length > 0 && payments.length === 0 && (
+                <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">🎵 Music Planning Questionnaire</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                    Available after deposit payment is made.
+                  </p>
+                  <Button
+                    disabled
+                    className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
+                  >
+                    Send Questionnaire
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1404,10 +1472,16 @@ export default function ContactDetailPage() {
       {showEmailModal && contact && (
         <EmailComposeModal
           contact={contact}
-          onClose={() => setShowEmailModal(false)}
+          initialTemplate={emailModalTemplate}
+          onClose={() => {
+            setShowEmailModal(false);
+            setEmailModalTemplate(null);
+          }}
           onSuccess={() => {
             setShowEmailModal(false);
+            setEmailModalTemplate(null);
             fetchContact(); // Refresh contact data
+            fetchCommunications(); // Refresh communications
           }}
         />
       )}
@@ -1418,16 +1492,18 @@ export default function ContactDetailPage() {
 // Email Compose Modal Component
 function EmailComposeModal({ 
   contact, 
+  initialTemplate,
   onClose, 
   onSuccess 
 }: { 
   contact: Contact; 
+  initialTemplate?: string | null;
   onClose: () => void; 
   onSuccess: () => void;
 }) {
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('custom');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(initialTemplate || 'custom');
   const [formData, setFormData] = useState({
     subject: `Re: ${contact.event_type || 'Event'} Inquiry - ${contact.first_name || 'Contact'}`,
     body: ''
@@ -1552,16 +1628,95 @@ Ben Murray
 M10 DJ Company
 (901) 410-2020
 djbenmurray@gmail.com`
+    },
+    walkthrough: {
+      name: 'Pricing Walkthrough',
+      subject: `Let's Find Your Perfect ${contact.event_type?.toLowerCase() === 'wedding' ? 'Wedding' : ''} DJ Package - ${contact.first_name || 'there'}!`,
+      body: `Hi ${contact.first_name || 'there'},
+
+I wanted to help you find the perfect DJ package for your ${contact.event_type?.toLowerCase() === 'wedding' ? 'wedding' : 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}!
+
+I've created a personalized interactive walkthrough that will ask you a few quick questions about your ${contact.event_type?.toLowerCase() === 'wedding' ? 'wedding' : 'event'} to recommend the best package for your needs.
+
+${contact.event_type?.toLowerCase().includes('wedding') ? `This walkthrough is specifically designed for weddings and will help us understand:
+• Your guest count and venue size
+• Your coverage needs (ceremony, cocktail hour, reception)
+• Special moments you want to highlight
+• Your preferred atmosphere and music style
+• Your budget range
+
+` : `This walkthrough will help us understand:
+• Your event size and needs
+• Your priorities and preferences
+• Your budget range
+• Your timeline
+
+`}Click the link below to get started - it only takes a few minutes:
+
+Here's the link:
+
+The walkthrough will provide personalized recommendations based on your answers, and you can view the full package details directly from there.
+
+If you have any questions, feel free to reply to this email or call me at (901) 410-2020.
+
+Looking forward to helping make your ${contact.event_type?.toLowerCase() === 'wedding' ? 'wedding' : 'event'} amazing!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    questionnaire: {
+      name: 'Music Planning Questionnaire',
+      subject: `Music Planning Questionnaire - ${contact.first_name || 'there'}!`,
+      body: `Hi ${contact.first_name || 'there'},
+
+Thank you for your deposit payment! 🎉 I'm excited to be part of your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}!
+
+To help me create the perfect music experience for you and your guests, I'd love to learn more about your music preferences. I've created a quick questionnaire that will help me understand:
+
+• Songs you absolutely don't want to hear
+• Special dances and their songs (first dance, father-daughter, etc.)
+• Playlist links or favorite artists
+• Ceremony music preferences
+• Any other special requests
+
+This will only take a few minutes, and it will help me tailor the music perfectly to your vision!
+
+Click the link below to get started:
+
+Here's the link:
+
+The questionnaire is step-by-step and easy to complete. You can save your progress and come back to it anytime.
+
+If you have any questions or want to discuss your music preferences over the phone, feel free to call me at (901) 410-2020.
+
+Looking forward to creating an amazing musical experience for your special day!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
     }
   };
 
   useEffect(() => {
+    if (initialTemplate && initialTemplate !== 'custom') {
+      setSelectedTemplate(initialTemplate);
+    }
+  }, [initialTemplate]);
+
+  useEffect(() => {
     if (selectedTemplate !== 'custom') {
       const template = emailTemplates[selectedTemplate as keyof typeof emailTemplates];
-      setFormData({
-        subject: template.subject,
-        body: template.body
-      });
+      if (template) {
+        setFormData({
+          subject: template.subject,
+          body: template.body
+        });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTemplate]);
@@ -1584,8 +1739,11 @@ djbenmurray@gmail.com`
         : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com');
       const quoteLink = `${baseUrl}/quote/${contact.id}`;
       
-      // Add quote link button to email body if it's the Initial Response or Select Your Services template
+      // Add appropriate link to email body based on template
       let emailContent = formData.body;
+      const walkthroughLink = `${baseUrl}/quote/${contact.id}/walkthrough`;
+      const questionnaireLink = `${baseUrl}/quote/${contact.id}/questionnaire`;
+      
       if (selectedTemplate === 'initial_response' || selectedTemplate === 'select_services') {
         // For Select Your Services, replace "Here's the link:" placeholder with the actual link
         if (selectedTemplate === 'select_services') {
@@ -1594,6 +1752,12 @@ djbenmurray@gmail.com`
           // For Initial Response, add quote link section to the email
           emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
         }
+      } else if (selectedTemplate === 'walkthrough') {
+        // Replace "Here's the link:" placeholder with walkthrough link
+        emailContent = emailContent.replace(/Here's the link:\s*/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
+      } else if (selectedTemplate === 'questionnaire') {
+        // Replace "Here's the link:" placeholder with questionnaire link
+        emailContent = emailContent.replace(/Here's the link:\s*/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
       }
 
       // Send test email to admin
@@ -1648,11 +1812,20 @@ djbenmurray@gmail.com`
         : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com');
       const quoteLink = `${baseUrl}/quote/${contact.id}`;
       
-      // Add quote link button to email body if it's the Initial Response or Select Your Services template
+      // Add appropriate link to email body based on template
       let emailContent = formData.body;
+      const walkthroughLink = `${baseUrl}/quote/${contact.id}/walkthrough`;
+      const questionnaireLink = `${baseUrl}/quote/${contact.id}/questionnaire`;
+      
       if (selectedTemplate === 'initial_response' || selectedTemplate === 'select_services') {
         // Add quote link section to the email
         emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      } else if (selectedTemplate === 'walkthrough') {
+        // Replace "Here's the link:" placeholder with walkthrough link
+        emailContent = emailContent.replace(/Here's the link:\s*/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
+      } else if (selectedTemplate === 'questionnaire') {
+        // Replace "Here's the link:" placeholder with questionnaire link
+        emailContent = emailContent.replace(/Here's the link:\s*/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
       }
 
       const response = await fetch('/api/admin/communications/send-email', {

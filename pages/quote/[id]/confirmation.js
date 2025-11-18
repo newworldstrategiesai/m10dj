@@ -98,7 +98,10 @@ export default function ConfirmationPage() {
   const totalAmount = quoteData?.total_price || 0;
   const depositAmount = totalAmount * 0.5;
   const actualPaid = paymentData?.totalPaid || 0;
-  const remainingBalance = totalAmount - actualPaid;
+  // Calculate remaining balance: if no payment made, show total - deposit. If payment made, show total - paid.
+  const remainingBalance = actualPaid > 0 
+    ? Math.max(0, totalAmount - actualPaid)
+    : Math.max(0, totalAmount - depositAmount);
   const firstName = leadData?.name?.split(' ')[0] || 'there';
 
   if (loading) {
@@ -220,7 +223,7 @@ export default function ConfirmationPage() {
                     <div>
                       <p className="font-semibold">Date</p>
                       <p className="text-gray-600 dark:text-gray-400">
-                        {leadData.event_date ? new Date(leadData.event_date).toLocaleDateString('en-US', { 
+                        {(leadData.event_date || leadData.eventDate) ? new Date(leadData.event_date || leadData.eventDate).toLocaleDateString('en-US', { 
                           weekday: 'long',
                           year: 'numeric', 
                           month: 'long', 

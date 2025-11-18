@@ -86,8 +86,20 @@ export default async function handler(req, res) {
 
     res.status(200).json({ success: true, data });
   } catch (error) {
+    // Always return 200 for tracking errors - we don't want to break the user experience
     console.error('Server error tracking quote page view:', error);
-    res.status(500).json({ error: 'Failed to track event', details: error.message });
+    console.log('Quote Analytics Event (fallback):', {
+      quote_id,
+      event_type,
+      time_spent,
+      metadata,
+      timestamp: new Date().toISOString()
+    });
+    res.status(200).json({ 
+      success: true, 
+      message: 'Event logged (error handled gracefully)',
+      logged: true
+    });
   }
 }
 
