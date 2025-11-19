@@ -1,17 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, Mail, Menu, X, ChevronDown, MapPin } from 'lucide-react';
+import { useRouter } from 'next/router';
+import { Phone, Mail, Menu, X, ChevronDown, MapPin, FileText, Calendar, CreditCard } from 'lucide-react';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackContactAction, trackLead, trackServiceInterest } from '../EnhancedTracking';
 import { scrollToContact } from '../../utils/scroll-helpers';
 import ContactFormModal from './ContactFormModal';
 
 export default function Header() {
+  const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isValidQuote, setIsValidQuote] = useState(false);
+  const [isValidatingQuote, setIsValidatingQuote] = useState(false);
+  
+  // Check if we're on a quote page and extract quote ID
+  const isQuotePage = router.pathname?.includes('/quote/') && router.query?.id;
+  const quoteId = router.query?.id;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,6 +29,44 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Validate quote ID exists before showing customer nav links
+  useEffect(() => {
+    const validateQuote = async () => {
+      // Reset validation state when quote ID changes
+      setIsValidQuote(false);
+      
+      if (!quoteId || !isQuotePage) {
+        return;
+      }
+
+      // Validate ID format
+      if (quoteId === 'null' || quoteId === 'undefined' || String(quoteId).trim() === '') {
+        setIsValidQuote(false);
+        return;
+      }
+
+      try {
+        setIsValidatingQuote(true);
+        const response = await fetch(`/api/leads/get-lead?id=${quoteId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Only set as valid if we got actual lead data with an ID
+          setIsValidQuote(data && data.id && data.id !== 'fallback');
+        } else {
+          setIsValidQuote(false);
+        }
+      } catch (error) {
+        console.error('Error validating quote:', error);
+        setIsValidQuote(false);
+      } finally {
+        setIsValidatingQuote(false);
+      }
+    };
+
+    validateQuote();
+  }, [quoteId, isQuotePage]);
 
   const toggleDropdown = (dropdown) => {
     setOpenDropdown(openDropdown === dropdown ? null : dropdown);
@@ -74,7 +120,7 @@ export default function Header() {
           : 'bg-white/90 backdrop-blur-sm'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20 gap-4">
+          <div className="flex items-center justify-between h-16 sm:h-20 gap-4">
             {/* Logo */}
             <Link href="/" className="flex-shrink-0 group">
               <div className="flex items-center space-x-2.5">
@@ -84,15 +130,16 @@ export default function Header() {
                     alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
                     width={45}
                     height={45}
-                    className="rounded-lg transition-transform group-hover:scale-105"
+                    className="w-9 h-9 sm:w-[45px] sm:h-[45px] rounded-lg transition-transform group-hover:scale-105"
                     priority
+                    unoptimized={false}
                   />
                 </div>
                 <div className="flex-shrink-0">
-                  <h1 className="text-xl font-bold text-gray-900 font-sans group-hover:text-brand transition-colors leading-tight">
+                  <h1 className="text-base sm:text-xl font-bold text-gray-900 font-sans group-hover:text-brand transition-colors leading-tight">
                     M10 DJ Company
                   </h1>
-                  <p className="text-xs text-brand font-semibold font-inter tracking-wide leading-tight">
+                  <p className="text-[10px] sm:text-xs text-brand font-semibold font-inter tracking-wide leading-tight">
                     Premium Event Entertainment
                   </p>
                 </div>
@@ -165,6 +212,29 @@ export default function Header() {
               <Link href="/contact" className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2">
                 Contact
               </Link>
+              
+              {/* Customer Navigation Links - Only show on valid quote pages */}
+              {isQuotePage && quoteId && isValidQuote && (
+                <>
+                  <div className="h-6 w-px bg-gray-300"></div>
+                  <Link href={`/quote/${quoteId}/events`} className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    My Events
+                  </Link>
+                  <Link href={`/quote/${quoteId}/invoice`} className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                    <FileText className="w-4 h-4" />
+                    Invoice
+                  </Link>
+                  <Link href={`/quote/${quoteId}/contract`} className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                    <FileText className="w-4 h-4" />
+                    Contract
+                  </Link>
+                  <Link href={`/quote/${quoteId}/payment`} className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                    <CreditCard className="w-4 h-4" />
+                    Payment
+                  </Link>
+                </>
+              )}
             </nav>
 
             {/* Contact Info & CTA */}
@@ -304,6 +374,48 @@ export default function Header() {
                 >
                   Contact
                 </button>
+                
+                {/* Customer Navigation Links - Mobile - Only show on valid quote pages */}
+                {isQuotePage && quoteId && isValidQuote && (
+                  <>
+                    <div className="my-2 h-px bg-gray-200"></div>
+                    <div className="space-y-1">
+                      <Link 
+                        href={`/quote/${quoteId}/events`}
+                        className="flex items-center gap-3 px-4 py-3 text-gray-900 hover:bg-brand/5 rounded-lg transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <Calendar className="w-5 h-5 text-brand" />
+                        <span className="font-medium">My Events</span>
+                      </Link>
+                      <Link 
+                        href={`/quote/${quoteId}/invoice`}
+                        className="flex items-center gap-3 px-4 py-3 text-gray-900 hover:bg-brand/5 rounded-lg transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <FileText className="w-5 h-5 text-brand" />
+                        <span className="font-medium">My Invoice</span>
+                      </Link>
+                      <Link 
+                        href={`/quote/${quoteId}/contract`}
+                        className="flex items-center gap-3 px-4 py-3 text-gray-900 hover:bg-brand/5 rounded-lg transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <FileText className="w-5 h-5 text-brand" />
+                        <span className="font-medium">My Contract</span>
+                      </Link>
+                      <Link 
+                        href={`/quote/${quoteId}/payment`}
+                        className="flex items-center gap-3 px-4 py-3 text-gray-900 hover:bg-brand/5 rounded-lg transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <CreditCard className="w-5 h-5 text-brand" />
+                        <span className="font-medium">Make Payment</span>
+                      </Link>
+                    </div>
+                    <div className="my-2 h-px bg-gray-200"></div>
+                  </>
+                )}
                 
                 <Link 
                   href="/signin" 

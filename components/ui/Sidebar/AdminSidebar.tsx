@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Menu,
   X,
-  ClipboardList
+  ClipboardList,
+  QrCode
 } from 'lucide-react';
 
 interface NavItem {
@@ -50,6 +51,7 @@ export default function AdminSidebar({ onSignOut }: AdminSidebarProps) {
     { label: 'Financial', href: '/admin/financial', icon: <BarChart3 className="w-5 h-5" /> },
     { label: 'Email', href: '/admin/email', icon: <Mail className="w-5 h-5" /> },
     { label: 'Messages', href: '/admin/messages', icon: <MessageSquare className="w-5 h-5" /> },
+    { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
     { label: 'Social Media', href: '/admin/instagram', icon: <Instagram className="w-5 h-5" /> },
   ];
 
