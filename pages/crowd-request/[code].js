@@ -24,7 +24,9 @@ export default function CrowdRequestPage() {
   const [presetAmount, setPresetAmount] = useState(500); // $5.00 in cents
   const [customAmount, setCustomAmount] = useState('');
   const [isFastTrack, setIsFastTrack] = useState(false);
+  const [isNext, setIsNext] = useState(false);
   const [fastTrackFee, setFastTrackFee] = useState(1000); // $10.00 fast-track fee in cents
+  const [nextFee, setNextFee] = useState(2000); // $20.00 next fee in cents
   const [minimumAmount, setMinimumAmount] = useState(100); // $1.00 minimum in cents
   const [presetAmounts, setPresetAmounts] = useState([
     { label: '$5', value: 500 },
@@ -178,7 +180,8 @@ export default function CrowdRequestPage() {
   const getPaymentAmount = () => {
     const baseAmount = getBaseAmount();
     const fastTrack = (requestType === 'song_request' && isFastTrack) ? fastTrackFee : 0;
-    return baseAmount + fastTrack;
+    const next = (requestType === 'song_request' && isNext) ? nextFee : 0;
+    return baseAmount + fastTrack + next;
   };
 
   const validateForm = () => {
@@ -250,7 +253,9 @@ export default function CrowdRequestPage() {
           message: formData.message || null,
           amount,
           isFastTrack: requestType === 'song_request' ? isFastTrack : false,
-          fastTrackFee: requestType === 'song_request' && isFastTrack ? fastTrackFee : 0
+          isNext: requestType === 'song_request' ? isNext : false,
+          fastTrackFee: requestType === 'song_request' && isFastTrack ? fastTrackFee : 0,
+          nextFee: requestType === 'song_request' && isNext ? nextFee : 0
         })
       });
 
@@ -356,7 +361,17 @@ export default function CrowdRequestPage() {
     };
 
     const handleCashAppClick = () => {
-      const cashAppUrl = `https://cash.app/${paymentSettings.cashAppTag}/${(amount / 100).toFixed(2)}`;
+      // Strip $ from cashtag if present
+      const cleanTag = paymentSettings.cashAppTag.replace(/^\$/, '');
+      const amountStr = (amount / 100).toFixed(2);
+      
+      // Deep link to CashApp app
+      const cashAppUrl = `https://cash.app/${cleanTag}/${amountStr}`;
+      
+      // Redirect immediately to app
+      window.location.href = cashAppUrl;
+      
+      // Also show QR code as fallback
       const qr = generateQRCode(cashAppUrl);
       setCashAppQr(qr);
       setLocalSelectedMethod('cashapp');
@@ -364,8 +379,27 @@ export default function CrowdRequestPage() {
     };
 
     const handleVenmoClick = () => {
-      const venmoUrl = `https://venmo.com/${paymentSettings.venmoUsername}?txn=pay&amount=${(amount / 100).toFixed(2)}&note=Crowd%20Request`;
-      const qr = generateQRCode(venmoUrl);
+      // Strip @ from username if present
+      const cleanUsername = paymentSettings.venmoUsername.replace(/^@/, '');
+      const amountStr = (amount / 100).toFixed(2);
+      
+      // Deep link to Venmo app
+      const venmoUrl = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&amount=${amountStr}&note=Crowd%20Request`;
+      
+      // Try app deep link first, fallback to web
+      const tryApp = () => {
+        window.location.href = venmoUrl;
+        // Fallback to web after 2 seconds if app doesn't open
+        setTimeout(() => {
+          const webUrl = `https://venmo.com/${cleanUsername}?txn=pay&amount=${amountStr}&note=Crowd%20Request`;
+          window.location.href = webUrl;
+        }, 2000);
+      };
+      
+      tryApp();
+      
+      // Also show QR code
+      const qr = generateQRCode(`https://venmo.com/${cleanUsername}?txn=pay&amount=${amountStr}&note=Crowd%20Request`);
       setVenmoQr(qr);
       setLocalSelectedMethod('venmo');
       onPaymentMethodSelected('venmo');
@@ -921,9 +955,10 @@ export default function CrowdRequestPage() {
                       </div>
                     )}
 
-                    {/* Fast-Track Option (only for song requests) */}
+                    {/* Fast-Track and Next Options (only for song requests) */}
                     {requestType === 'song_request' && (
-                      <div className="border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-6 mt-6">
+                      <div className="border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-6 mt-6 space-y-4">
+                        {/* Fast-Track Option */}
                         <label className={`group relative flex items-start gap-4 p-5 sm:p-6 rounded-2xl border-2 transition-all duration-300 cursor-pointer touch-manipulation overflow-hidden ${
                           isFastTrack
                             ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 shadow-xl shadow-orange-500/30'
@@ -932,7 +967,10 @@ export default function CrowdRequestPage() {
                           <input
                             type="checkbox"
                             checked={isFastTrack}
-                            onChange={(e) => setIsFastTrack(e.target.checked)}
+                            onChange={(e) => {
+                              setIsFastTrack(e.target.checked);
+                              if (e.target.checked) setIsNext(false); // Only one can be selected
+                            }}
                             className="sr-only"
                             aria-label="Fast-Track to Front of Queue"
                           />
@@ -962,14 +1000,68 @@ export default function CrowdRequestPage() {
                                 }`} />
                               </div>
                               <span className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">
-                                Fast-Track to Front of Queue
+                                Fast-Track (Priority Placement)
                               </span>
                               <span className="ml-auto text-base sm:text-lg font-extrabold bg-gradient-to-r from-orange-600 to-amber-600 dark:from-orange-400 dark:to-amber-400 bg-clip-text text-transparent whitespace-nowrap">
                                 +${(fastTrackFee / 100).toFixed(2)}
                               </span>
                             </div>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Your song will be played next! Skip the wait and get priority treatment.
+                              Get priority placement in the queue - your song will be played sooner!
+                            </p>
+                          </div>
+                        </label>
+                        
+                        {/* Next Option */}
+                        <label className={`group relative flex items-start gap-4 p-5 sm:p-6 rounded-2xl border-2 transition-all duration-300 cursor-pointer touch-manipulation overflow-hidden ${
+                          isNext
+                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/20 shadow-xl shadow-blue-500/30'
+                            : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-blue-300 hover:shadow-lg'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={isNext}
+                            onChange={(e) => {
+                              setIsNext(e.target.checked);
+                              if (e.target.checked) setIsFastTrack(false); // Only one can be selected
+                            }}
+                            className="sr-only"
+                            aria-label="Next - Bump to Next"
+                          />
+                          {isNext && (
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-transparent"></div>
+                          )}
+                          <div className={`relative mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+                            isNext
+                              ? 'border-blue-500 bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/50'
+                              : 'border-gray-300 dark:border-gray-600 group-hover:border-blue-400'
+                          }`}>
+                            {isNext && (
+                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 relative">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
+                              <div className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
+                                isNext
+                                  ? 'bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md'
+                                  : 'bg-gray-100 dark:bg-gray-700'
+                              }`}>
+                                <Gift className={`w-4 h-4 transition-colors ${
+                                  isNext ? 'text-white' : 'text-gray-400'
+                                }`} />
+                              </div>
+                              <span className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">
+                                Next (Bump to Next)
+                              </span>
+                              <span className="ml-auto text-base sm:text-lg font-extrabold bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent whitespace-nowrap">
+                                +${(nextFee / 100).toFixed(2)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Your song will be played next! Jump to the front of the line.
                             </p>
                           </div>
                         </label>
@@ -992,6 +1084,17 @@ export default function CrowdRequestPage() {
                             </span>
                             <span className="text-orange-600 dark:text-orange-400 font-medium">
                               +${(fastTrackFee / 100).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {isNext && requestType === 'song_request' && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                              <Gift className="w-4 h-4 text-blue-500" />
+                              Next Fee:
+                            </span>
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                              +${(nextFee / 100).toFixed(2)}
                             </span>
                           </div>
                         )}

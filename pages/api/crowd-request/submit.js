@@ -22,7 +22,9 @@ export default async function handler(req, res) {
     message,
     amount,
     isFastTrack,
-    fastTrackFee
+    isNext,
+    fastTrackFee,
+    nextFee
   } = req.body;
 
   // Validate required fields
@@ -47,8 +49,15 @@ export default async function handler(req, res) {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Set priority: fast-track = 0 (highest), regular = 1000
-    const priorityOrder = (requestType === 'song_request' && isFastTrack) ? 0 : 1000;
+    // Set priority: next = 0 (highest), fast-track = 1, regular = 1000
+    let priorityOrder = 1000;
+    if (requestType === 'song_request') {
+      if (isNext) {
+        priorityOrder = 0; // Highest priority - plays next
+      } else if (isFastTrack) {
+        priorityOrder = 1; // High priority - priority placement
+      }
+    }
     
     // For 'general' event code, append timestamp to make it unique
     const uniqueEventCode = eventCode === 'general' 
@@ -71,7 +80,9 @@ export default async function handler(req, res) {
         request_message: message || null,
         amount_requested: amount,
         is_fast_track: requestType === 'song_request' ? (isFastTrack || false) : false,
+        is_next: requestType === 'song_request' ? (isNext || false) : false,
         fast_track_fee: (requestType === 'song_request' && isFastTrack) ? (fastTrackFee || 0) : 0,
+        next_fee: (requestType === 'song_request' && isNext) ? (nextFee || 0) : 0,
         priority_order: priorityOrder,
         payment_status: 'pending',
         status: 'new'
