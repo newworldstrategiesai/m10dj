@@ -207,20 +207,31 @@ export function validateEventDate(dateString, options = {}) {
   }
 
   try {
-    const date = new Date(dateString);
+    // Parse date string in local timezone to avoid timezone issues
+    // If dateString is in YYYY-MM-DD format, parse it directly
+    let date;
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      // Parse as local date to avoid UTC conversion issues
+      const [year, month, day] = dateString.split('-').map(Number);
+      date = new Date(year, month - 1, day);
+    } else {
+      date = new Date(dateString);
+    }
     
     // Check if date is valid
     if (isNaN(date.getTime())) {
       return { valid: false, error: 'Please enter a valid date' };
     }
 
+    // Get today's date in local timezone (midnight)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Ensure event date is also at midnight in local timezone
     const eventDate = new Date(date);
     eventDate.setHours(0, 0, 0, 0);
 
-    // Check if date is in the past
+    // Check if date is in the past (compare dates, not times)
     if (!allowPastDates && eventDate < today) {
       return { valid: false, error: 'Event date cannot be in the past' };
     }

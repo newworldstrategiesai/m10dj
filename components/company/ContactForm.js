@@ -6,6 +6,7 @@ import { FormStateManager } from '../../utils/form-state-manager';
 import { ClientIdempotencyTracker } from '../../utils/idempotency';
 import { validateContactForm } from '../../utils/form-validator';
 import ContactFormChat from './ContactFormChat';
+import VenueInput from './VenueInput';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackLead, trackContactAction } from '../EnhancedTracking';
 
@@ -16,8 +17,10 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
     phone: '',
     eventType: '',
     eventDate: '',
+    eventTime: '',
     guests: '',
-    venue: '',
+    venueName: '',
+    venueAddress: '',
     message: '',
     honeypot: '' // Hidden field for bot detection
   });
@@ -49,6 +52,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
   });
   const [error, setError] = useState('');
   const [fieldWarnings, setFieldWarnings] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
   const [showRestoredNotice, setShowRestoredNotice] = useState(false);
   
   // Initialize utilities
@@ -56,6 +60,8 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
   const stateManager = useRef(null);
   const idempotencyTracker = useRef(null);
   const idempotencyKey = useRef(null);
+  const draftSaveTimeout = useRef(null);
+  const lastDraftSaveRef = useRef(null);
   
   useEffect(() => {
     errorLogger.current = new FormErrorLogger('MainContactForm');
@@ -78,6 +84,100 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
       setTimeout(() => setShowRestoredNotice(false), 5000);
     }
   }, []);
+
+  // Auto-save draft to backend when user fills out form
+  const saveDraftToBackend = async (formDataToSave) => {
+    // Only save if we have name and email (minimum requirements)
+    if (!formDataToSave.name?.trim() || !formDataToSave.email?.trim() || !formDataToSave.email.includes('@')) {
+      return;
+    }
+
+    // Don't save if this is the same as the last saved draft (avoid duplicate saves)
+    const currentState = JSON.stringify({
+      name: formDataToSave.name,
+      email: formDataToSave.email,
+      phone: formDataToSave.phone,
+      eventType: formDataToSave.eventType,
+      eventDate: formDataToSave.eventDate,
+      venueName: formDataToSave.venueName,
+      venueAddress: formDataToSave.venueAddress
+    });
+
+    if (lastDraftSaveRef.current === currentState) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/contact/draft', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formDataToSave.name.trim(),
+          email: formDataToSave.email.trim().toLowerCase(),
+          phone: formDataToSave.phone?.trim() || null,
+          eventType: formDataToSave.eventType || null,
+          eventDate: formDataToSave.eventDate || null,
+          eventTime: formDataToSave.eventTime || null,
+          venueName: formDataToSave.venueName?.trim() || null,
+          venueAddress: formDataToSave.venueAddress?.trim() || null,
+          location: (formDataToSave.venueName && formDataToSave.venueAddress)
+            ? `${formDataToSave.venueName}, ${formDataToSave.venueAddress}`
+            : (formDataToSave.venueName || formDataToSave.venueAddress || null),
+          message: formDataToSave.message?.trim() || null,
+          guests: formDataToSave.guests || null,
+          honeypot: formDataToSave.honeypot || ''
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          lastDraftSaveRef.current = currentState;
+          console.log('✅ Draft saved to backend', result.isNewDraft ? '(new)' : '(updated)');
+        }
+      }
+    } catch (error) {
+      // Silently fail - draft saving shouldn't interrupt user experience
+      console.debug('Could not save draft to backend:', error);
+    }
+  };
+
+  // Debounced auto-save to backend
+  useEffect(() => {
+    // Clear any existing timeout
+    if (draftSaveTimeout.current) {
+      clearTimeout(draftSaveTimeout.current);
+    }
+
+    // Only save if we have name and email
+    if (!formData.name?.trim() || !formData.email?.trim()) {
+      return;
+    }
+
+    // Debounce draft saves - wait 10 seconds after user stops typing
+    draftSaveTimeout.current = setTimeout(() => {
+      saveDraftToBackend(formData);
+    }, 10000); // 10 second delay
+
+    // Cleanup on unmount
+    return () => {
+      if (draftSaveTimeout.current) {
+        clearTimeout(draftSaveTimeout.current);
+      }
+    };
+  }, [formData.name, formData.email, formData.phone, formData.eventType, formData.eventDate, formData.venueName, formData.venueAddress, formData.message, formData.guests]);
+
+  // Stop saving drafts when form is submitted
+  useEffect(() => {
+    if (submitted) {
+      if (draftSaveTimeout.current) {
+        clearTimeout(draftSaveTimeout.current);
+      }
+      lastDraftSaveRef.current = null;
+    }
+  }, [submitted]);
 
   // No scroll handling needed - chat opens full-screen
 
@@ -106,23 +206,43 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
         return updated;
       });
     }
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
   };
 
   // Validate form data before submission using enhanced validator
   const validateForm = () => {
+    // Combine venueName and venueAddress for backward compatibility with validator
+    const location = formData.venueName || formData.venueAddress || '';
     const validation = validateContactForm({
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
       eventType: formData.eventType,
       eventDate: formData.eventDate,
-      location: formData.venue,
+      location: location,
       message: formData.message
     });
+    
+    // Set field-specific errors for display
+    // Map location error to venue for display
+    const mappedErrors = { ...validation.errors };
+    if (mappedErrors.location) {
+      mappedErrors.venue = mappedErrors.location;
+      delete mappedErrors.location;
+    }
+    setFieldErrors(mappedErrors);
     
     // Set warnings for display
     if (validation.hasWarnings) {
       setFieldWarnings(validation.warnings);
+    } else {
+      setFieldWarnings({});
     }
     
     // Log validation errors
@@ -216,6 +336,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
     setIsSubmitting(true);
     setError('');
     setFieldWarnings({});
+    setFieldErrors({});
     
     // Log submission attempt
     if (errorLogger.current) {
@@ -248,13 +369,26 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
     }
     
     try {
+      // Build location string from venueName and venueAddress (for backward compatibility)
+      let location = null;
+      if (formData.venueName && formData.venueAddress) {
+        location = `${formData.venueName.trim()}, ${formData.venueAddress.trim()}`;
+      } else if (formData.venueName) {
+        location = formData.venueName.trim();
+      } else if (formData.venueAddress) {
+        location = formData.venueAddress.trim();
+      }
+      
       const submissionData = {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim(),
         eventType: formData.eventType,
         eventDate: formData.eventDate || null,
-        location: formData.venue.trim() || null,
+        eventTime: formData.eventTime || null,
+        venueName: formData.venueName.trim() || null,
+        venueAddress: formData.venueAddress.trim() || null,
+        location: location, // Keep for backward compatibility
         message: `${formData.message}${formData.guests ? `\n\nNumber of guests: ${formData.guests}` : ''}`.trim(),
         honeypot: formData.honeypot, // Include honeypot field
         idempotencyKey: idempotencyKey.current // Include idempotency key
@@ -273,6 +407,12 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
         if (stateManager.current) {
           stateManager.current.clearState();
         }
+
+        // Clear draft save timeout
+        if (draftSaveTimeout.current) {
+          clearTimeout(draftSaveTimeout.current);
+        }
+        lastDraftSaveRef.current = null;
         
         // Track successful lead generation
         // trackLead('contact_form', {
@@ -520,11 +660,17 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                     required
                     value={formData.name}
                     onChange={handleInputChange}
-                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.name ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     placeholder="Your full name"
                   />
-                  {fieldWarnings.name && (
-                    <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+                  {fieldErrors.name && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                      <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                      {fieldErrors.name}
+                    </p>
+                  )}
+                  {!fieldErrors.name && fieldWarnings.name && (
+                    <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                       <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                       {fieldWarnings.name}
                     </p>
@@ -542,11 +688,17 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                     required
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.email ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     placeholder="your.email@example.com"
                   />
-                  {fieldWarnings.email && (
-                    <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+                  {fieldErrors.email && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                      <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                      {fieldErrors.email}
+                    </p>
+                  )}
+                  {!fieldErrors.email && fieldWarnings.email && (
+                    <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                       <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                       {fieldWarnings.email}
                     </p>
@@ -566,11 +718,17 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                     required
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.phone ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     placeholder="(901) 410-2020"
                   />
-                  {fieldWarnings.phone && (
-                    <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+                  {fieldErrors.phone && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                      <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                      {fieldErrors.phone}
+                    </p>
+                  )}
+                  {!fieldErrors.phone && fieldWarnings.phone && (
+                    <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                       <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                       {fieldWarnings.phone}
                     </p>
@@ -587,7 +745,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                     required
                     value={formData.eventType}
                     onChange={handleInputChange}
-                    className={`modern-select ${isModal ? 'py-2 text-sm' : ''}`}
+                    className={`modern-select ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.eventType ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                   >
                     <option value="">Select event type</option>
                     <option value="Wedding">Wedding</option>
@@ -599,6 +757,12 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                     <option value="School Dance">School Dance/Event</option>
                     <option value="Other">Other</option>
                   </select>
+                  {fieldErrors.eventType && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                      <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                      {fieldErrors.eventType}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -613,10 +777,16 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                     name="eventDate"
                     value={formData.eventDate}
                     onChange={handleInputChange}
-                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+                    className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.eventDate ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                   />
-                  {fieldWarnings.eventDate && (
-                    <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+                  {fieldErrors.eventDate && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                      <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                      {fieldErrors.eventDate}
+                    </p>
+                  )}
+                  {!fieldErrors.eventDate && fieldWarnings.eventDate && (
+                    <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                       <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                       {fieldWarnings.eventDate}
                     </p>
@@ -645,20 +815,24 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="venue" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
-                  Venue/Location
-                </label>
-                <input
-                  type="text"
-                  id="venue"
-                  name="venue"
-                  value={formData.venue}
-                  onChange={handleInputChange}
-                  className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
-                  placeholder="Event venue or location"
-                />
-              </div>
+              <VenueInput
+                venueName={formData.venueName}
+                venueAddress={formData.venueAddress}
+                onVenueNameChange={(name) => {
+                  setFormData(prev => ({ ...prev, venueName: name }));
+                  if (stateManager.current) {
+                    stateManager.current.saveState({ ...formData, venueName: name });
+                  }
+                }}
+                onVenueAddressChange={(address) => {
+                  setFormData(prev => ({ ...prev, venueAddress: address }));
+                  if (stateManager.current) {
+                    stateManager.current.saveState({ ...formData, venueAddress: address });
+                  }
+                }}
+                isModal={isModal}
+                error={fieldErrors.venue}
+              />
 
               <div>
                 <label htmlFor="message" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
@@ -772,11 +946,17 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               required
               value={formData.name}
               onChange={handleInputChange}
-              className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+              className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.name ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
               placeholder="Your full name"
             />
-            {fieldWarnings.name && (
-              <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+            {fieldErrors.name && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                {fieldErrors.name}
+              </p>
+            )}
+            {!fieldErrors.name && fieldWarnings.name && (
+              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                 <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 {fieldWarnings.name}
               </p>
@@ -794,11 +974,17 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               required
               value={formData.email}
               onChange={handleInputChange}
-              className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+              className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.email ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
               placeholder="your.email@example.com"
             />
-            {fieldWarnings.email && (
-              <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+            {fieldErrors.email && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                {fieldErrors.email}
+              </p>
+            )}
+            {!fieldErrors.email && fieldWarnings.email && (
+              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                 <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 {fieldWarnings.email}
               </p>
@@ -818,11 +1004,17 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               required
               value={formData.phone}
               onChange={handleInputChange}
-              className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+              className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.phone ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
               placeholder="(901) 410-2020"
             />
-            {fieldWarnings.phone && (
-              <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+            {fieldErrors.phone && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                {fieldErrors.phone}
+              </p>
+            )}
+            {!fieldErrors.phone && fieldWarnings.phone && (
+              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                 <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 {fieldWarnings.phone}
               </p>
@@ -839,7 +1031,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               required
               value={formData.eventType}
               onChange={handleInputChange}
-              className={`modern-select ${isModal ? 'py-2 text-sm' : ''}`}
+              className={`modern-select ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.eventType ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
             >
               <option value="">Select event type</option>
               <option value="Wedding">Wedding</option>
@@ -851,6 +1043,12 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               <option value="School Dance">School Dance/Event</option>
               <option value="Other">Other</option>
             </select>
+            {fieldErrors.eventType && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                {fieldErrors.eventType}
+              </p>
+            )}
           </div>
         </div>
 
@@ -865,10 +1063,16 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               name="eventDate"
               value={formData.eventDate}
               onChange={handleInputChange}
-              className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
+              className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.eventDate ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
             />
-            {fieldWarnings.eventDate && (
-              <p className="mt-0.5 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
+            {fieldErrors.eventDate && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
+                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                {fieldErrors.eventDate}
+              </p>
+            )}
+            {!fieldErrors.eventDate && fieldWarnings.eventDate && (
+              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500 flex items-start">
                 <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 {fieldWarnings.eventDate}
               </p>
@@ -897,20 +1101,24 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
           </div>
         </div>
 
-        <div>
-          <label htmlFor="venue" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
-            Venue/Location
-          </label>
-          <input
-            type="text"
-            id="venue"
-            name="venue"
-            value={formData.venue}
-            onChange={handleInputChange}
-            className={`modern-input ${isModal ? 'py-2 text-sm' : ''}`}
-            placeholder="Event venue or location"
-          />
-        </div>
+        <VenueInput
+          venueName={formData.venueName}
+          venueAddress={formData.venueAddress}
+          onVenueNameChange={(name) => {
+            setFormData(prev => ({ ...prev, venueName: name }));
+            if (stateManager.current) {
+              stateManager.current.saveState({ ...formData, venueName: name });
+            }
+          }}
+          onVenueAddressChange={(address) => {
+            setFormData(prev => ({ ...prev, venueAddress: address }));
+            if (stateManager.current) {
+              stateManager.current.saveState({ ...formData, venueAddress: address });
+            }
+          }}
+          isModal={isModal}
+          error={fieldErrors.venue}
+        />
 
         <div>
           <label htmlFor="message" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>

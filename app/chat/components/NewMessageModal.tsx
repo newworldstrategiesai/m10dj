@@ -187,9 +187,9 @@ export default function NewMessageModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] p-0 gap-0 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+      <DialogContent className="sm:max-w-[500px] p-0 gap-0 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh] h-[90vh] sm:h-auto sm:max-h-[85vh]">
         {/* Header */}
-        <DialogHeader className="px-6 py-4 border-b bg-slate-50 dark:bg-slate-900/40">
+        <DialogHeader className="px-6 py-4 border-b bg-slate-50 dark:bg-slate-900/40 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
@@ -213,7 +213,7 @@ export default function NewMessageModal({
         </DialogHeader>
 
         {/* Content */}
-        <div className="flex-1 bg-white dark:bg-slate-900">
+        <div className="flex-1 bg-white dark:bg-slate-900 overflow-y-auto min-h-0">
           {step === 'contact' ? (
             <div className="p-6 space-y-6">
               {/* Search Bar */}
@@ -439,7 +439,7 @@ export default function NewMessageModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t bg-gray-50 flex justify-between">
+        <div className="px-6 py-4 border-t bg-gray-50 dark:bg-slate-800 flex justify-between flex-shrink-0">
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
@@ -456,8 +456,8 @@ export default function NewMessageModal({
           ) : (
             <Button
               onClick={handleSubmit}
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+              disabled={isLoading || !message.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Sending...' : 'Send Message'}
               <IconMessage className="ml-2 h-4 w-4" />

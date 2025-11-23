@@ -45,6 +45,7 @@ interface CrowdRequest {
   amount_requested: number;
   amount_paid: number;
   payment_status: string;
+  payment_method: string | null;
   status: string;
   event_name: string | null;
   event_date: string | null;
@@ -78,8 +79,8 @@ export default function CrowdRequestsPage() {
   
   // Settings State
   const [paymentSettings, setPaymentSettings] = useState({
-    cashAppTag: '$M10DJ',
-    venmoUsername: '@M10DJ'
+    cashAppTag: '$DJbenmurray',
+    venmoUsername: '@djbenmurray'
   });
   const [requestSettings, setRequestSettings] = useState({
     fastTrackFee: 1000, // in cents ($10.00)
@@ -309,6 +310,40 @@ export default function CrowdRequestsPage() {
       toast({
         title: 'Error',
         description: 'Failed to update status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const updatePaymentStatus = async (requestId: string, paymentStatus: string, paymentMethod?: string) => {
+    try {
+      const response = await fetch('/api/crowd-request/update-payment-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          paymentStatus,
+          paymentMethod
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update payment status');
+      }
+      
+      toast({
+        title: 'Success',
+        description: `Payment status updated to ${paymentStatus}`,
+      });
+      
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error updating payment status:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update payment status',
         variant: 'destructive',
       });
     }
@@ -655,11 +690,11 @@ export default function CrowdRequestsPage() {
                     <Input
                       value={paymentSettings.cashAppTag}
                       onChange={(e) => setPaymentSettings(prev => ({ ...prev, cashAppTag: e.target.value }))}
-                      placeholder="$M10DJ"
+                      placeholder="$DJbenmurray"
                       className="max-w-md"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Your CashApp cashtag (e.g., $M10DJ)
+                      Your CashApp cashtag (e.g., $DJbenmurray)
                     </p>
                   </div>
                   
@@ -670,11 +705,11 @@ export default function CrowdRequestsPage() {
                     <Input
                       value={paymentSettings.venmoUsername}
                       onChange={(e) => setPaymentSettings(prev => ({ ...prev, venmoUsername: e.target.value }))}
-                      placeholder="@M10DJ"
+                      placeholder="@djbenmurray"
                       className="max-w-md"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Your Venmo username (e.g., @M10DJ)
+                      Your Venmo username (e.g., @djbenmurray)
                     </p>
                   </div>
                 </div>
@@ -927,7 +962,7 @@ export default function CrowdRequestsPage() {
                         {new Date(request.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-2">
                           <select
                             value={request.status}
                             onChange={(e) => updateRequestStatus(request.id, e.target.value)}
@@ -939,6 +974,30 @@ export default function CrowdRequestsPage() {
                             <option value="played">Played</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
+                          
+                          {/* Payment Status Update - Show for pending payments */}
+                          {request.payment_status === 'pending' && (
+                            <Button
+                              onClick={() => {
+                                const paymentMethod = request.payment_method || 'manual';
+                                updatePaymentStatus(request.id, 'paid', paymentMethod);
+                              }}
+                              size="sm"
+                              className="text-xs h-6 bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              Mark Paid
+                            </Button>
+                          )}
+                          
+                          {/* Show payment method if paid */}
+                          {request.payment_status === 'paid' && request.payment_method && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {request.payment_method === 'card' ? '💳 Card' : 
+                               request.payment_method === 'cashapp' ? '💰 CashApp' :
+                               request.payment_method === 'venmo' ? '💸 Venmo' :
+                               '✅ Paid'}
+                            </span>
+                          )}
                         </div>
                       </td>
                     </tr>

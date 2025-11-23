@@ -16,7 +16,7 @@ export default function GeneralRequestsPage() {
     message: ''
   });
   
-  const [amountType, setAmountType] = useState('custom'); // 'preset' or 'custom'
+  const [amountType, setAmountType] = useState('preset'); // 'preset' or 'custom'
   const [presetAmount, setPresetAmount] = useState(500); // $5.00 in cents
   const [customAmount, setCustomAmount] = useState('');
   const [isFastTrack, setIsFastTrack] = useState(false);
@@ -38,11 +38,13 @@ export default function GeneralRequestsPage() {
   const [extractingSong, setExtractingSong] = useState(false);
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
   const [requestId, setRequestId] = useState(null);
+  const [paymentCode, setPaymentCode] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [paymentSettings, setPaymentSettings] = useState({
-    cashAppTag: '$M10DJ',
-    venmoUsername: '@M10DJ'
+    cashAppTag: '$DJbenmurray',
+    venmoUsername: '@djbenmurray'
   });
+  const [currentStep, setCurrentStep] = useState(1); // 1: Song/Shoutout, 2: Payment (Step 2 removed - contact info collected after payment)
 
   useEffect(() => {
     // Fetch payment settings
@@ -105,25 +107,35 @@ export default function GeneralRequestsPage() {
         body: JSON.stringify({ url })
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (parseError) {
+        console.error('Failed to parse extraction response:', parseError);
+        setExtractingSong(false);
+        setError('Could not extract song information. Please enter the details manually.');
+        return;
+      }
 
       if (!response.ok) {
-        if (response.status !== 400 && response.status !== 404) {
-          setError(data.error || 'Could not extract song information');
+        // Show timeout errors and other non-client errors
+        if (response.status === 504 || (response.status !== 400 && response.status !== 404)) {
+          setError(data?.error || data?.message || 'Could not extract song information. Please try again or enter the details manually.');
         }
         setExtractingSong(false);
         return;
       }
 
       // Auto-fill the form fields
-      if (data.title) {
+      if (data?.title) {
         setFormData(prev => ({
           ...prev,
           songTitle: data.title
         }));
       }
 
-      if (data.artist) {
+      if (data?.artist) {
         setFormData(prev => ({
           ...prev,
           songArtist: data.artist
@@ -160,47 +172,98 @@ export default function GeneralRequestsPage() {
     return baseAmount + fastTrack + next;
   };
 
-  const validateForm = () => {
-    if (!formData.requesterName.trim()) {
-      setError('Please enter your name');
+  // Check if song selection is complete (for showing payment section)
+  const isSongSelectionComplete = () => {
+    try {
+      if (requestType === 'song_request') {
+        return formData?.songTitle?.trim()?.length > 0 && formData?.songArtist?.trim()?.length > 0;
+      } else if (requestType === 'shoutout') {
+        return formData?.recipientName?.trim()?.length > 0 && formData?.recipientMessage?.trim()?.length > 0;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error checking song selection:', err);
       return false;
     }
-
-    if (requestType === 'song_request') {
-      if (!formData.songTitle.trim()) {
-        setError('Please enter a song title');
-        return false;
-      }
-    } else if (requestType === 'shoutout') {
-      if (!formData.recipientName.trim()) {
-        setError('Please enter the recipient name');
-        return false;
-      }
-      if (!formData.recipientMessage.trim()) {
-        setError('Please enter a message for the shoutout');
-        return false;
-      }
-    }
-
-    const amount = getPaymentAmount();
-    if (amount < minimumAmount) {
-      setError(`Minimum payment is $${(minimumAmount / 100).toFixed(2)}`);
-      return false;
-    }
-
-    return true;
   };
 
+  // Auto-advance to payment step when song selection is complete
+  useEffect(() => {
+    if (requestType === 'song_request' && currentStep === 1) {
+      const songTitleFilled = formData?.songTitle?.trim()?.length > 0;
+      const songArtistFilled = formData?.songArtist?.trim()?.length > 0;
+      
+      if (songTitleFilled && songArtistFilled) {
+        // Small delay to ensure smooth transition and allow user to see the fields are filled
+        const timer = setTimeout(() => {
+          setCurrentStep(2);
+        }, 400);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [formData.songTitle, formData.songArtist, requestType, currentStep]);
+
+  const validateForm = () => {
+    try {
+      // Name and email are optional - we'll use fallbacks if not provided
+      // Only require the core request details and payment amount
+      
+      if (requestType === 'song_request') {
+        if (!formData?.songTitle?.trim()) {
+          setError('Please enter a song title');
+          return false;
+        }
+        if (!formData?.songArtist?.trim()) {
+          setError('Please enter an artist name');
+          return false;
+        }
+      } else if (requestType === 'shoutout') {
+        if (!formData?.recipientName?.trim()) {
+          setError('Please enter the recipient name');
+          return false;
+        }
+        if (!formData?.recipientMessage?.trim()) {
+          setError('Please enter a message for the shoutout');
+          return false;
+        }
+      }
+
+      const amount = getPaymentAmount();
+      if (!amount || amount < minimumAmount) {
+        setError(`Minimum payment is $${(minimumAmount / 100).toFixed(2)}`);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Validation error:', err);
+      setError('Validation error. Please check your inputs and try again.');
+      return false;
+    }
+  };
+
+  // Don't auto-advance - let user control with Continue button
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    try {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+    } catch (err) {
+      console.warn('Error preventing default:', err);
+    }
+    
     setError('');
 
     if (!validateForm()) {
-      if (window.innerWidth < 640 && error) {
+      if (typeof window !== 'undefined' && window.innerWidth < 640 && error) {
         setTimeout(() => {
-          const errorEl = document.querySelector('.bg-red-50, .bg-red-900');
-          if (errorEl) {
-            errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          try {
+            const errorEl = document.querySelector('.bg-red-50, .bg-red-900');
+            if (errorEl) {
+              errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          } catch (scrollErr) {
+            console.warn('Scroll error:', scrollErr);
           }
         }, 100);
       }
@@ -212,42 +275,71 @@ export default function GeneralRequestsPage() {
     try {
       const amount = getPaymentAmount();
       
+      // Validate amount before submission
+      if (!amount || amount < minimumAmount) {
+        throw new Error(`Minimum payment is $${(minimumAmount / 100).toFixed(2)}`);
+      }
+      
+      // Build request body with safe defaults
+      const requestBody = {
+        eventCode: 'general', // Use 'general' for the public page
+        requestType: requestType || 'song_request',
+        songArtist: formData?.songArtist?.trim() || null,
+        songTitle: formData?.songTitle?.trim() || null,
+        recipientName: formData?.recipientName?.trim() || null,
+        recipientMessage: formData?.recipientMessage?.trim() || null,
+        requesterName: formData?.requesterName?.trim() || 'Guest',
+        requesterEmail: formData?.requesterEmail?.trim() || null,
+        requesterPhone: formData?.requesterPhone?.trim() || null,
+        message: formData?.message?.trim() || null,
+        amount: amount || minimumAmount,
+        isFastTrack: (requestType === 'song_request' && isFastTrack) || false,
+        isNext: (requestType === 'song_request' && isNext) || false,
+        fastTrackFee: (requestType === 'song_request' && isFastTrack) ? (fastTrackFee || 0) : 0,
+        nextFee: (requestType === 'song_request' && isNext) ? (nextFee || 0) : 0
+      };
+      
       const response = await fetch('/api/crowd-request/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventCode: 'general', // Use 'general' for the public page
-          requestType,
-          songArtist: formData.songArtist || null,
-          songTitle: formData.songTitle || null,
-          recipientName: formData.recipientName || null,
-          recipientMessage: formData.recipientMessage || null,
-          requesterName: formData.requesterName,
-          requesterEmail: formData.requesterEmail || null,
-          requesterPhone: formData.requesterPhone || null,
-          message: formData.message || null,
-          amount,
-          isFastTrack: requestType === 'song_request' ? isFastTrack : false,
-          isNext: requestType === 'song_request' ? isNext : false,
-          fastTrackFee: requestType === 'song_request' && isFastTrack ? fastTrackFee : 0,
-          nextFee: requestType === 'song_request' && isNext ? nextFee : 0
-        })
+        body: JSON.stringify(requestBody)
+      }).catch((fetchError) => {
+        console.error('Network error:', fetchError);
+        throw new Error('Network error. Please check your connection and try again.');
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit request');
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
+        throw new Error('Invalid response from server. Please try again.');
       }
 
-      // Save request ID and show payment method selection
-      if (data.requestId) {
+      if (!response.ok) {
+        const errorMessage = data?.error || data?.message || `Server error: ${response.status}`;
+        const errorDetails = data?.details ? ` (${data.details})` : '';
+        const errorHint = data?.hint ? ` Hint: ${data.hint}` : '';
+        throw new Error(errorMessage + errorDetails + errorHint);
+      }
+
+      // Save request ID, payment code, and show payment method selection
+      if (data?.requestId) {
         setRequestId(data.requestId);
+        if (data.paymentCode) {
+          setPaymentCode(data.paymentCode);
+        } else {
+          console.warn('⚠️ No payment code received from server');
+        }
         setShowPaymentMethods(true);
         setSubmitting(false);
-      } else if (data.checkoutUrl) {
+      } else if (data?.checkoutUrl) {
+        // Redirect to Stripe checkout
         window.location.href = data.checkoutUrl;
       } else {
+        // Fallback: mark as success even without explicit requestId
+        console.warn('⚠️ No requestId or checkoutUrl received, marking as success');
         setSuccess(true);
         setSubmitting(false);
       }
@@ -267,39 +359,75 @@ export default function GeneralRequestsPage() {
     }
   };
 
-  const handlePaymentMethodSelected = async (paymentMethod) => {
+    const handlePaymentMethodSelected = async (paymentMethod) => {
     if (paymentMethod === null) {
       setSelectedPaymentMethod(null);
+      setError(''); // Clear any errors when deselecting
       return;
     }
     
+    // Clear any previous errors
+    setError('');
     setSelectedPaymentMethod(paymentMethod);
     
     if (paymentMethod === 'card') {
+      if (!requestId) {
+        setError('Request ID is missing. Please try submitting again.');
+        setSelectedPaymentMethod(null);
+        return;
+      }
+      
+      const amount = getPaymentAmount();
+      if (!amount || amount < minimumAmount) {
+        setError(`Invalid payment amount. Minimum is $${(minimumAmount / 100).toFixed(2)}`);
+        setSelectedPaymentMethod(null);
+        return;
+      }
+      
       setSubmitting(true);
       try {
+        console.log('Creating checkout with:', { requestId, amount });
         const response = await fetch('/api/crowd-request/create-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             requestId,
-            amount: getPaymentAmount()
+            amount: amount
           })
         });
 
-        const data = await response.json();
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (parseError) {
+        console.error('Failed to parse checkout response:', parseError);
+        throw new Error('Invalid response from server. Please try again.');
+      }
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to create checkout session');
-        }
+      if (!response.ok) {
+        const errorMsg = data?.error || data?.message || `HTTP ${response.status}: Failed to create checkout session`;
+        console.error('Checkout API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: data?.error,
+          message: data?.message,
+          fullData: data
+        });
+        throw new Error(errorMsg);
+      }
 
-        if (data.checkoutUrl) {
-          window.location.href = data.checkoutUrl;
-        }
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        console.error('No checkoutUrl in response:', data);
+        throw new Error('No checkout URL received from server');
+      }
       } catch (err) {
         console.error('Checkout error:', err);
-        setError(err.message || 'Failed to create checkout session');
+        setError(err.message || 'Failed to create checkout session. Please try again.');
         setSubmitting(false);
+        setSelectedPaymentMethod(null); // Reset selection on error
       }
     } else if (paymentMethod === 'cashapp' || paymentMethod === 'venmo') {
       try {
@@ -318,8 +446,174 @@ export default function GeneralRequestsPage() {
   };
 
 
+  // Receipt Request Component - Now collects name and email for contact info
+  const ReceiptRequestButton = ({ requestId, amount }) => {
+    const [showEmailModal, setShowEmailModal] = useState(false);
+    const [receiptName, setReceiptName] = useState('');
+    const [receiptEmail, setReceiptEmail] = useState('');
+    const [sendingReceipt, setSendingReceipt] = useState(false);
+    const [receiptSent, setReceiptSent] = useState(false);
+    const [receiptError, setReceiptError] = useState('');
+
+    const handleRequestReceipt = async (e) => {
+      e.preventDefault();
+      if (!receiptEmail.trim()) {
+        setReceiptError('Please enter your email address');
+        return;
+      }
+
+      setSendingReceipt(true);
+      setReceiptError('');
+
+      try {
+        const response = await fetch('/api/crowd-request/send-receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestId,
+            email: receiptEmail.trim(),
+            name: receiptName.trim() || null // Optional name
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to send receipt');
+        }
+
+        setReceiptSent(true);
+        setTimeout(() => {
+          setShowEmailModal(false);
+          setReceiptEmail('');
+          setReceiptName('');
+          setReceiptSent(false);
+        }, 2000);
+      } catch (err) {
+        console.error('Error sending receipt:', err);
+        setReceiptError(err.message || 'Failed to send receipt. Please try again.');
+      } finally {
+        setSendingReceipt(false);
+      }
+    };
+
+    if (receiptSent) {
+      return (
+        <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-700 rounded-xl p-4">
+          <p className="text-sm text-green-700 dark:text-green-300 font-semibold text-center">
+            ✅ Receipt sent! Check your email.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setShowEmailModal(true)}
+            className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+          >
+            <Gift className="w-5 h-5" />
+            Get My Receipt (for tax write-offs)
+          </button>
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Optional: Get a receipt for your records
+          </p>
+        </div>
+
+        {showEmailModal && (
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Get Your Receipt
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
+                Enter your information to receive a receipt for tax purposes. This receipt can be used for expense write-offs.
+              </p>
+
+              <form onSubmit={handleRequestReceipt}>
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                    Your Name <span className="text-gray-500 dark:text-gray-400 text-xs font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={receiptName}
+                    onChange={(e) => setReceiptName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Your name (optional)"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    value={receiptEmail}
+                    onChange={(e) => setReceiptEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="your@email.com"
+                    required
+                  />
+                  {receiptError && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-2">{receiptError}</p>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEmailModal(false);
+                      setReceiptEmail('');
+                      setReceiptName('');
+                      setReceiptError('');
+                    }}
+                    className="flex-1 py-3 px-4 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Skip
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sendingReceipt}
+                    className="flex-1 py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingReceipt ? 'Sending...' : 'Send Receipt'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  // Payment Success Screen Component
+  const PaymentSuccessScreen = ({ requestId }) => {
+    return (
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-8 text-center animate-fade-in-up">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 mb-6 shadow-lg shadow-green-500/30">
+          <CheckCircle className="w-10 h-10 text-white" />
+        </div>
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+          Request Submitted!
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400 text-lg mb-6">
+          Payment processed successfully!
+        </p>
+        <ReceiptRequestButton requestId={requestId} amount={getPaymentAmount()} />
+      </div>
+    );
+  };
+
   // Payment Method Selection Component
-  const PaymentMethodSelection = ({ requestId, amount, selectedPaymentMethod, submitting, onPaymentMethodSelected, onBack, paymentSettings }) => {
+  const PaymentMethodSelection = ({ requestId, amount, selectedPaymentMethod, submitting, onPaymentMethodSelected, onBack, paymentSettings, paymentCode, requestType, songTitle, songArtist, recipientName }) => {
     const [cashAppQr, setCashAppQr] = useState(null);
     const [venmoQr, setVenmoQr] = useState(null);
     const [localSelectedMethod, setLocalSelectedMethod] = useState(null);
@@ -328,44 +622,133 @@ export default function GeneralRequestsPage() {
       return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`;
     };
 
+    // Build payment note with song/shoutout details
+    const buildPaymentNote = () => {
+      let note = '';
+      
+      if (requestType === 'song_request') {
+        if (songTitle) {
+          note = songTitle;
+          if (songArtist) {
+            note += ` by ${songArtist}`;
+          }
+          if (paymentCode) {
+            note += ` - ${paymentCode}`;
+          }
+        } else {
+          note = paymentCode ? `Song Request - ${paymentCode}` : 'Song Request';
+        }
+      } else if (requestType === 'shoutout') {
+        if (recipientName) {
+          note = `Shoutout for ${recipientName}`;
+          if (paymentCode) {
+            note += ` - ${paymentCode}`;
+          }
+        } else {
+          note = paymentCode ? `Shoutout - ${paymentCode}` : 'Shoutout';
+        }
+      } else {
+        note = paymentCode ? `Crowd Request - ${paymentCode}` : 'Crowd Request';
+      }
+      
+      // Keep note under character limits:
+      // CashApp: ~100 characters
+      // Venmo: ~280 characters
+      // Trim to be safe
+      if (note.length > 200) {
+        note = note.substring(0, 197) + '...';
+      }
+      
+      return note;
+    };
+
     const handleCashAppClick = () => {
-      // Strip $ from cashtag if present
-      const cleanTag = paymentSettings.cashAppTag.replace(/^\$/, '');
-      const amountStr = (amount / 100).toFixed(2);
-      
-      // Deep link to CashApp app
-      const cashAppUrl = `https://cash.app/${cleanTag}/${amountStr}`;
-      
-      // Redirect immediately to app
-      window.location.href = cashAppUrl;
-      
-      // Also show QR code as fallback
-      const qr = generateQRCode(cashAppUrl);
-      setCashAppQr(qr);
-      setLocalSelectedMethod('cashapp');
-      onPaymentMethodSelected('cashapp');
+      try {
+        if (!paymentSettings?.cashAppTag) {
+          throw new Error('CashApp tag is not configured. Please contact support.');
+        }
+        
+        if (!amount || amount <= 0) {
+          throw new Error('Invalid payment amount');
+        }
+        
+        // Strip $ from cashtag if present
+        const cleanTag = paymentSettings.cashAppTag.replace(/^\$/, '');
+        const amountStr = (amount / 100).toFixed(2);
+        
+        // Build payment note with song/shoutout details
+        const paymentNote = buildPaymentNote();
+        const encodedNote = encodeURIComponent(paymentNote);
+        
+        // Deep link to CashApp app with note
+        // CashApp note parameter: ?note=...
+        const cashAppUrl = `https://cash.app/${cleanTag}/${amountStr}?note=${encodedNote}`;
+        
+        // Also show QR code as fallback
+        const qr = generateQRCode(cashAppUrl);
+        setCashAppQr(qr);
+        setLocalSelectedMethod('cashapp');
+        onPaymentMethodSelected('cashapp');
+        
+        // Redirect immediately to app (after state is set)
+        setTimeout(() => {
+          window.location.href = cashAppUrl;
+        }, 100);
+      } catch (err) {
+        console.error('CashApp payment error:', err);
+        // Error will be handled by parent component's error state
+        if (err.message) {
+          // Pass error to parent - but we don't have access to setError here
+          // So we'll log it and show QR code anyway as fallback
+        }
+      }
     };
 
     const handleVenmoClick = () => {
-      // Strip @ from username if present
-      const cleanUsername = paymentSettings.venmoUsername.replace(/^@/, '');
-      const amountStr = (amount / 100).toFixed(2);
-      
-      // Deep link to Venmo app
-      const venmoUrl = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&amount=${amountStr}&note=Crowd%20Request`;
-      
-      // Try app deep link first, fallback to web after 2 seconds
-      window.location.href = venmoUrl;
-      setTimeout(() => {
-        const webUrl = `https://venmo.com/${cleanUsername}?txn=pay&amount=${amountStr}&note=Crowd%20Request`;
-        window.location.href = webUrl;
-      }, 2000);
-      
-      // Also show QR code
-      const qr = generateQRCode(`https://venmo.com/${cleanUsername}?txn=pay&amount=${amountStr}&note=Crowd%20Request`);
-      setVenmoQr(qr);
-      setLocalSelectedMethod('venmo');
-      onPaymentMethodSelected('venmo');
+      try {
+        if (!paymentSettings?.venmoUsername) {
+          throw new Error('Venmo username is not configured. Please contact support.');
+        }
+        
+        if (!amount || amount <= 0) {
+          throw new Error('Invalid payment amount');
+        }
+        
+        // Strip @ from username if present
+        const cleanUsername = paymentSettings.venmoUsername.replace(/^@/, '');
+        const amountStr = (amount / 100).toFixed(2);
+        
+        // Build payment note with song/shoutout details
+        const paymentNote = buildPaymentNote();
+        const encodedNote = encodeURIComponent(paymentNote);
+        
+        // Also show QR code first
+        const webUrl = `https://venmo.com/${cleanUsername}?txn=pay&amount=${amountStr}&note=${encodedNote}`;
+        const qr = generateQRCode(webUrl);
+        setVenmoQr(qr);
+        setLocalSelectedMethod('venmo');
+        onPaymentMethodSelected('venmo');
+        
+        // Deep link to Venmo app
+        const venmoUrl = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&amount=${amountStr}&note=${encodedNote}`;
+        
+        // Try app deep link first, fallback to web after 2 seconds
+        setTimeout(() => {
+          window.location.href = venmoUrl;
+          
+          // Fallback to web after 2 seconds if app doesn't open
+          setTimeout(() => {
+            window.location.href = webUrl;
+          }, 2000);
+        }, 100);
+      } catch (err) {
+        console.error('Venmo payment error:', err);
+        // Error will be handled by parent component's error state
+        if (err.message) {
+          // Pass error to parent - but we don't have access to setError here
+          // So we'll log it and show QR code anyway as fallback
+        }
+      }
     };
 
     // Use local state if available, otherwise fall back to prop
@@ -388,6 +771,8 @@ export default function GeneralRequestsPage() {
             cashtag={paymentSettings.cashAppTag}
             amount={amount}
             requestId={requestId}
+            paymentCode={paymentCode}
+            paymentNote={buildPaymentNote()}
             onBack={() => {
               setLocalSelectedMethod(null);
               setCashAppQr(null);
@@ -400,6 +785,8 @@ export default function GeneralRequestsPage() {
             username={paymentSettings.venmoUsername}
             amount={amount}
             requestId={requestId}
+            paymentCode={paymentCode}
+            paymentNote={buildPaymentNote()}
             onBack={() => {
               setLocalSelectedMethod(null);
               setVenmoQr(null);
@@ -464,6 +851,26 @@ export default function GeneralRequestsPage() {
 
             <button
               type="button"
+              onClick={() => onPaymentMethodSelected('card')}
+              disabled={submitting}
+              className="group relative w-full p-6 rounded-2xl border-2 border-black dark:border-gray-700 bg-gradient-to-br from-gray-900 to-black dark:from-gray-800 dark:to-gray-900 hover:from-gray-800 hover:to-gray-900 dark:hover:from-gray-700 dark:hover:to-gray-800 transition-all duration-300 touch-manipulation overflow-hidden shadow-lg shadow-black/20 hover:shadow-black/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-white/5 group-hover:to-white/10 transition-all duration-300"></div>
+              <div className="relative flex items-center justify-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shadow-lg">
+                  {/* Apple Pay logo style */}
+                  <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-13.5a5.5 5.5 0 0 0-5.5-5.5c-1.33 0-2.67.5-4 1.5a5.5 5.5 0 0 0-1 1.5c-1.33-1-2.67-1.5-4-1.5A5.5 5.5 0 0 0 2 8.5c0 5.5 3 13.5 6 13.5 1.25 0 2.5-1.06 4-1.06z"/>
+                  </svg>
+                </div>
+                <span className="text-xl font-bold text-white font-sans tracking-wide">
+                  Pay with Apple Pay
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
               onClick={onBack}
               className="w-full mt-4 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
             >
@@ -475,7 +882,7 @@ export default function GeneralRequestsPage() {
     );
   };
 
-  const CashAppPaymentScreen = ({ qrCode, cashtag, amount, requestId, onBack }) => {
+  const CashAppPaymentScreen = ({ qrCode, cashtag, amount, requestId, paymentCode, paymentNote, onBack }) => {
     return (
       <div className="text-center space-y-6">
         <div>
@@ -487,19 +894,43 @@ export default function GeneralRequestsPage() {
           </p>
         </div>
 
+        {paymentCode && (
+          <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-300 dark:border-purple-700 rounded-xl p-4">
+            <p className="text-sm text-purple-700 dark:text-purple-300 mb-2 font-semibold">
+              🔑 IMPORTANT: Include this code in your payment note:
+            </p>
+            <p className="text-2xl font-bold text-purple-900 dark:text-purple-100 text-center font-mono">
+              {paymentCode}
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2 text-center">
+              This helps us verify your payment quickly!
+            </p>
+          </div>
+        )}
+
         <div className="flex justify-center">
           <div className="bg-white p-4 rounded-lg shadow-lg">
             <img src={qrCode} alt="CashApp QR Code" className="w-64 h-64" />
           </div>
         </div>
 
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 space-y-2">
           <p className="text-sm text-gray-700 dark:text-gray-300">
             <strong>CashApp Tag:</strong> {cashtag}
           </p>
           <p className="text-sm text-gray-700 dark:text-gray-300">
             <strong>Amount:</strong> ${(amount / 100).toFixed(2)}
           </p>
+          {paymentNote && (
+            <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                <strong>Payment Note (will be included):</strong>
+              </p>
+              <p className="text-sm text-gray-800 dark:text-gray-200 font-semibold">
+                {paymentNote}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
@@ -507,6 +938,8 @@ export default function GeneralRequestsPage() {
             After sending payment, your request will be processed. You&apos;ll receive a confirmation once payment is verified.
           </p>
         </div>
+
+        <ReceiptRequestButton requestId={requestId} amount={amount} />
 
         <button
           type="button"
@@ -519,7 +952,7 @@ export default function GeneralRequestsPage() {
     );
   };
 
-  const VenmoPaymentScreen = ({ qrCode, username, amount, requestId, onBack }) => {
+  const VenmoPaymentScreen = ({ qrCode, username, amount, requestId, paymentCode, paymentNote, onBack }) => {
     return (
       <div className="text-center space-y-6">
         <div>
@@ -531,22 +964,43 @@ export default function GeneralRequestsPage() {
           </p>
         </div>
 
+        {paymentCode && (
+          <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-300 dark:border-purple-700 rounded-xl p-4">
+            <p className="text-sm text-purple-700 dark:text-purple-300 mb-2 font-semibold">
+              🔑 IMPORTANT: Include this code in your payment note:
+            </p>
+            <p className="text-2xl font-bold text-purple-900 dark:text-purple-100 text-center font-mono">
+              {paymentCode}
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2 text-center">
+              This helps us verify your payment quickly!
+            </p>
+          </div>
+        )}
+
         <div className="flex justify-center">
           <div className="bg-white p-4 rounded-lg shadow-lg">
             <img src={qrCode} alt="Venmo QR Code" className="w-64 h-64" />
           </div>
         </div>
 
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 space-y-2">
           <p className="text-sm text-gray-700 dark:text-gray-300">
             <strong>Venmo Username:</strong> {username}
           </p>
           <p className="text-sm text-gray-700 dark:text-gray-300">
             <strong>Amount:</strong> ${(amount / 100).toFixed(2)}
           </p>
-          <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
-            <strong>Note:</strong> Crowd Request
-          </p>
+          {paymentNote && (
+            <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                <strong>Payment Note (will be included):</strong>
+              </p>
+              <p className="text-sm text-gray-800 dark:text-gray-200 font-semibold">
+                {paymentNote}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
@@ -554,6 +1008,8 @@ export default function GeneralRequestsPage() {
             After sending payment, your request will be processed. You&apos;ll receive a confirmation once payment is verified.
           </p>
         </div>
+
+        <ReceiptRequestButton requestId={requestId} amount={amount} />
 
         <button
           type="button"
@@ -573,9 +1029,91 @@ export default function GeneralRequestsPage() {
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <style jsx global>{`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+        <style dangerouslySetInnerHTML={{__html: `
+          /* Prevent scrollbar from appearing and causing layout shift */
+          /* Force scrollbar to always be present but invisible to prevent layout shift */
+          html {
+            overflow-y: scroll !important; /* Always show scrollbar space */
+            scrollbar-gutter: stable !important; /* Reserve space even when hidden */
+          }
+          body {
+            overflow-y: scroll !important; /* Always show scrollbar space */
+            scrollbar-gutter: stable !important; /* Reserve space even when hidden */
+            -ms-overflow-style: none !important;
+            scrollbar-width: thin !important; /* Use thin scrollbar to minimize space */
+            scrollbar-color: transparent transparent !important; /* Make it transparent */
+          }
+          /* Make scrollbar completely transparent but keep it present */
+          html::-webkit-scrollbar,
+          body::-webkit-scrollbar {
+            width: 15px !important; /* Standard macOS scrollbar width */
+            background: transparent !important;
+          }
+          html::-webkit-scrollbar-thumb,
+          body::-webkit-scrollbar-thumb {
+            background: transparent !important;
+            border: none !important;
+          }
+          html::-webkit-scrollbar-thumb:hover,
+          body::-webkit-scrollbar-thumb:hover {
+            background: transparent !important;
+          }
+          html::-webkit-scrollbar-track,
+          body::-webkit-scrollbar-track {
+            background: transparent !important;
+          }
+          /* Hide scrollbars on all other elements */
+          *::-webkit-scrollbar {
+            width: 0px !important;
+            background: transparent !important;
+          }
+          *::-webkit-scrollbar-thumb {
+            background: transparent !important;
+            width: 0px !important;
+          }
+          *::-webkit-scrollbar-track {
+            background: transparent !important;
+          }
+          #__next {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+            scrollbar-color: transparent transparent !important;
+          }
+          #__next::-webkit-scrollbar {
+            width: 0px !important;
+            background: transparent !important;
+          }
+          #__next::-webkit-scrollbar-thumb {
+            background: transparent !important;
+            width: 0px !important;
+          }
+          /* Override yellow focus rings */
+          #__next button:focus,
+          #__next a:focus,
+          #__next div:focus,
+          #__next *:focus {
+            outline: none !important;
+            box-shadow: none !important;
+          }
+        `}} />
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-slate-900 relative overflow-hidden">
+      <div 
+        className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-slate-900 relative overflow-hidden"
+        style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          WebkitScrollbar: { display: 'none' }
+        }}
+      >
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
@@ -584,33 +1122,50 @@ export default function GeneralRequestsPage() {
         
         <Header />
         
-        <main className="section-container py-6 sm:py-8 md:py-12 px-4 sm:px-6 pb-32 sm:pb-12 relative z-10" style={{ paddingBottom: 'max(8rem, env(safe-area-inset-bottom, 0px) + 8rem)' }}>
-          <div className="max-w-2xl mx-auto">
-            {/* Header */}
-            <div className="text-center mb-8 sm:mb-12 animate-fade-in-up">
-              <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 mb-4 sm:mb-6 shadow-lg shadow-purple-500/50 dark:shadow-purple-500/30 transform hover:scale-105 transition-transform duration-300">
-                <Music className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
+        <main className="section-container py-2 sm:py-3 px-4 sm:px-6 relative z-10" style={{ minHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
+          <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col">
+            {/* Header - Compact for no-scroll design */}
+            <div className="text-center mb-2 sm:mb-3">
+              <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 mb-2 shadow-md shadow-purple-500/40 dark:shadow-purple-500/20">
+                <Music className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
               </div>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 dark:from-white dark:via-purple-200 dark:to-pink-200 bg-clip-text text-transparent mb-4 sm:mb-6 px-2 leading-tight">
+              <h1 className="text-xl sm:text-2xl md:text-2xl font-extrabold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 dark:from-white dark:via-purple-200 dark:to-pink-200 bg-clip-text text-transparent mb-1 sm:mb-2 px-2">
                 Request a Song or Shoutout
               </h1>
-              <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 px-2 font-medium">
-                Make a request and support the DJ!
+              
+              {/* Step Indicator */}
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <div className={`h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
+                <div className={`h-1.5 rounded-full transition-all ${currentStep >= 2 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {currentStep === 1 && 'Step 1 of 2: Choose your request'}
+                {currentStep === 2 && 'Step 2 of 2: Payment'}
               </p>
             </div>
 
-            {success ? (
-              <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-8 text-center animate-fade-in-up">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 mb-6 shadow-lg shadow-green-500/30">
-                  <CheckCircle className="w-10 h-10 text-white" />
+            {/* Error Message - Show at top level so it's always visible */}
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-red-700 dark:text-red-300 font-semibold mb-1">Error</p>
+                    <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                  </div>
+                  <button
+                    onClick={() => setError('')}
+                    className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400"
+                    aria-label="Dismiss error"
+                  >
+                    ×
+                  </button>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-                  Request Submitted!
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 text-lg">
-                  Payment processed successfully!
-                </p>
               </div>
+            )}
+
+            {success ? (
+              <PaymentSuccessScreen requestId={requestId} />
             ) : showPaymentMethods ? (
               <PaymentMethodSelection
                 requestId={requestId}
@@ -618,16 +1173,22 @@ export default function GeneralRequestsPage() {
                 selectedPaymentMethod={selectedPaymentMethod}
                 submitting={submitting}
                 paymentSettings={paymentSettings}
+                paymentCode={paymentCode}
+                requestType={requestType}
+                songTitle={formData.songTitle}
+                songArtist={formData.songArtist}
+                recipientName={formData.recipientName}
                 onPaymentMethodSelected={handlePaymentMethodSelected}
                 onBack={() => {
                   setShowPaymentMethods(false);
                   setSelectedPaymentMethod(null);
+                  setError(''); // Clear error when going back
                 }}
               />
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+              ) : (
+              <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
                 {/* Request Type Selection */}
-                <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 sm:p-8 md:p-10 animate-fade-in-up">
+                <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-4 sm:p-5 flex-shrink-0">
                   <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
                     <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
                     What would you like to request?
@@ -657,9 +1218,6 @@ export default function GeneralRequestsPage() {
                           }`} />
                         </div>
                         <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white mb-2">Song Request</h3>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                          Request your favorite song
-                        </p>
                       </div>
                     </button>
                     
@@ -686,9 +1244,6 @@ export default function GeneralRequestsPage() {
                           }`} />
                         </div>
                         <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white mb-2">Shoutout</h3>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                          Give someone a special message
-                        </p>
                       </div>
                     </button>
                   </div>
@@ -712,8 +1267,9 @@ export default function GeneralRequestsPage() {
                             autoComplete="off"
                           />
                           {extractingSong && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                               <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                              <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline">Extracting...</span>
                             </div>
                           )}
                         </div>
@@ -759,7 +1315,9 @@ export default function GeneralRequestsPage() {
                           value={formData.songArtist}
                           onChange={handleInputChange}
                           className="w-full px-5 py-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200"
-                          placeholder="Enter artist name (optional)"
+                          placeholder="Enter artist name"
+                          required
+                          autoComplete="off"
                         />
                       </div>
                     </div>
@@ -801,6 +1359,7 @@ export default function GeneralRequestsPage() {
                   )}
 
                   {/* Additional Message */}
+                  {currentStep === 1 && (
                   <div className="mt-4">
                     <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
                       Additional Notes (optional)
@@ -814,69 +1373,15 @@ export default function GeneralRequestsPage() {
                       placeholder="Any additional information..."
                     />
                   </div>
+                  )}
+
                 </div>
 
-                {/* Your Information */}
-                <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 sm:p-8 md:p-10 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-                    <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full"></div>
-                    Your Information
-                  </h2>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                        Your Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="requesterName"
-                        value={formData.requesterName}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3.5 sm:py-3 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent touch-manipulation"
-                        placeholder="Enter your name"
-                        required
-                        autoComplete="name"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                          Email (optional)
-                        </label>
-                        <input
-                          type="email"
-                          name="requesterEmail"
-                          value={formData.requesterEmail}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="your@email.com"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                          Phone (optional)
-                        </label>
-                        <input
-                          type="tel"
-                          name="requesterPhone"
-                          value={formData.requesterPhone}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="(901) 555-1234"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment Amount */}
-                <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 sm:p-8 md:p-10 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-                    <div className="w-1 h-8 bg-gradient-to-b from-amber-500 to-orange-500 rounded-full"></div>
-                    <Gift className="w-6 h-6 sm:w-7 sm:h-7 text-transparent bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text" />
+                {/* Payment Amount - Only show after song selection is complete and step 2 */}
+                {isSongSelectionComplete() && currentStep >= 2 && (
+                <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-4 sm:p-5 flex-shrink-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Gift className="w-5 h-5 text-purple-500" />
                     Payment Amount
                   </h2>
                   
@@ -959,113 +1464,89 @@ export default function GeneralRequestsPage() {
                       </div>
                     )}
 
-                    {/* Fast-Track and Next Options (only for song requests) */}
+                    {/* Fast-Track and Next Options (only for song requests) - Compact Radio Style */}
                     {requestType === 'song_request' && (
-                      <div className="border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-6 mt-6 space-y-4">
-                        {/* Fast-Track Option */}
-                        <label className={`group relative flex items-start gap-4 p-5 sm:p-6 rounded-2xl border-2 transition-all duration-300 cursor-pointer touch-manipulation overflow-hidden ${
+                      <div className="border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-4 mt-4 space-y-3">
+                        {/* Fast-Track Option - More Compact */}
+                        <label className={`group relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer touch-manipulation ${
                           isFastTrack
-                            ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 shadow-xl shadow-orange-500/30'
-                            : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-orange-300 hover:shadow-lg'
+                            ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 shadow-lg shadow-orange-500/20'
+                            : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-orange-300'
                         }`}>
                           <input
-                            type="checkbox"
+                            type="radio"
+                            name="priorityOption"
                             checked={isFastTrack}
                             onChange={(e) => {
                               setIsFastTrack(e.target.checked);
-                              if (e.target.checked) setIsNext(false); // Only one can be selected
+                              if (e.target.checked) setIsNext(false);
                             }}
                             className="sr-only"
-                            aria-label="Fast-Track to Front of Queue"
+                            aria-label="Fast-Track Priority Placement"
                           />
-                          {isFastTrack && (
-                            <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-transparent"></div>
-                          )}
-                          <div className={`relative mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                             isFastTrack
-                              ? 'border-orange-500 bg-gradient-to-br from-orange-500 to-amber-500 shadow-lg shadow-orange-500/50'
-                              : 'border-gray-300 dark:border-gray-600 group-hover:border-orange-400'
+                              ? 'border-orange-500 bg-orange-500'
+                              : 'border-gray-300 dark:border-gray-600'
                           }`}>
-                            {isFastTrack && (
-                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
+                            {isFastTrack && <div className="w-2 h-2 rounded-full bg-white"></div>}
                           </div>
-                          <div className="flex-1 min-w-0 relative">
-                            <div className="flex items-center gap-3 mb-2 flex-wrap">
-                              <div className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-                                isFastTrack
-                                  ? 'bg-gradient-to-br from-orange-500 to-amber-500 shadow-md'
-                                  : 'bg-gray-100 dark:bg-gray-700'
-                              }`}>
-                                <Zap className={`w-4 h-4 transition-colors ${
-                                  isFastTrack ? 'text-white' : 'text-gray-400'
-                                }`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <Zap className={`w-4 h-4 ${isFastTrack ? 'text-orange-500' : 'text-gray-400'}`} />
+                                <span className="font-semibold text-sm text-gray-900 dark:text-white">
+                                  Fast-Track
+                                </span>
                               </div>
-                              <span className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">
-                                Fast-Track (Priority Placement)
-                              </span>
-                              <span className="ml-auto text-base sm:text-lg font-extrabold bg-gradient-to-r from-orange-600 to-amber-600 dark:from-orange-400 dark:to-amber-400 bg-clip-text text-transparent whitespace-nowrap">
+                              <span className="text-sm font-bold text-orange-600 dark:text-orange-400 whitespace-nowrap">
                                 +${(fastTrackFee / 100).toFixed(2)}
                               </span>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Get priority placement in the queue - your song will be played sooner!
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              Priority placement in queue
                             </p>
                           </div>
                         </label>
                         
-                        {/* Next Option */}
-                        <label className={`group relative flex items-start gap-4 p-5 sm:p-6 rounded-2xl border-2 transition-all duration-300 cursor-pointer touch-manipulation overflow-hidden ${
+                        {/* Next Option - More Compact */}
+                        <label className={`group relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer touch-manipulation ${
                           isNext
-                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/20 shadow-xl shadow-blue-500/30'
-                            : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-blue-300 hover:shadow-lg'
+                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/20 shadow-lg shadow-blue-500/20'
+                            : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-blue-300'
                         }`}>
                           <input
-                            type="checkbox"
+                            type="radio"
+                            name="priorityOption"
                             checked={isNext}
                             onChange={(e) => {
                               setIsNext(e.target.checked);
-                              if (e.target.checked) setIsFastTrack(false); // Only one can be selected
+                              if (e.target.checked) setIsFastTrack(false);
                             }}
                             className="sr-only"
                             aria-label="Next - Bump to Next"
                           />
-                          {isNext && (
-                            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-transparent"></div>
-                          )}
-                          <div className={`relative mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                             isNext
-                              ? 'border-blue-500 bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/50'
-                              : 'border-gray-300 dark:border-gray-600 group-hover:border-blue-400'
+                              ? 'border-blue-500 bg-blue-500'
+                              : 'border-gray-300 dark:border-gray-600'
                           }`}>
-                            {isNext && (
-                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
+                            {isNext && <div className="w-2 h-2 rounded-full bg-white"></div>}
                           </div>
-                          <div className="flex-1 min-w-0 relative">
-                            <div className="flex items-center gap-3 mb-2 flex-wrap">
-                              <div className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-                                isNext
-                                  ? 'bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md'
-                                  : 'bg-gray-100 dark:bg-gray-700'
-                              }`}>
-                                <Gift className={`w-4 h-4 transition-colors ${
-                                  isNext ? 'text-white' : 'text-gray-400'
-                                }`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <Gift className={`w-4 h-4 ${isNext ? 'text-blue-500' : 'text-gray-400'}`} />
+                                <span className="font-semibold text-sm text-gray-900 dark:text-white">
+                                  Next
+                                </span>
                               </div>
-                              <span className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">
-                                Next (Bump to Next)
-                              </span>
-                              <span className="ml-auto text-base sm:text-lg font-extrabold bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent whitespace-nowrap">
+                              <span className="text-sm font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                                 +${(nextFee / 100).toFixed(2)}
                               </span>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Your song will be played next! Jump to the front of the line.
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              Play next - jump to front
                             </p>
                           </div>
                         </label>
@@ -1113,31 +1594,33 @@ export default function GeneralRequestsPage() {
                       </div>
                     </div>
                   </div>
+                  
                 </div>
-
-                {/* Error Message */}
-                {error && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-                    </div>
-                  </div>
                 )}
 
-                {/* Submit Button - Sticky on mobile for better UX */}
+
+                {/* Submit Button - Sticky at bottom, appears when song selection is complete */}
+                {isSongSelectionComplete() && (
                 <div 
-                  className="sticky bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 pt-4 pb-12 sm:pb-4 sm:relative sm:bg-transparent sm:pt-0 sm:z-auto -mx-4 sm:mx-0 px-4 sm:px-0 border-t border-gray-200 dark:border-gray-700 sm:border-0 shadow-lg sm:shadow-none"
+                  className="sticky bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 pt-3 pb-4 border-t border-gray-200 dark:border-gray-700 shadow-lg flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
                   style={{ 
-                    paddingBottom: 'max(3rem, calc(env(safe-area-inset-bottom, 0px) + 3rem))',
-                    bottom: 'max(0px, env(safe-area-inset-bottom, 0px))'
+                    paddingBottom: 'max(1rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))',
+                    position: 'sticky',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
                   }}
                 >
                   <button
-                    type="submit"
-                    disabled={submitting || getPaymentAmount() < minimumAmount}
-                    className="group relative w-full py-5 sm:py-6 text-base sm:text-lg font-bold inline-flex items-center justify-center gap-3 min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-500 hover:via-pink-500 hover:to-purple-500 text-white shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden"
+                    type={currentStep === 1 ? "button" : "submit"}
+                    disabled={submitting || (currentStep >= 2 && getPaymentAmount() < minimumAmount)}
+                    className="group relative w-full py-5 sm:py-6 text-base sm:text-lg font-bold inline-flex items-center justify-center gap-3 min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-500 hover:via-pink-500 hover:to-purple-500 text-white shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
                     onClick={(e) => {
+                      if (currentStep === 1) {
+                        e.preventDefault();
+                        setCurrentStep(2);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        return;
+                      }
                       if (window.innerWidth < 640) {
                         e.preventDefault();
                         const button = e.currentTarget;
@@ -1157,6 +1640,11 @@ export default function GeneralRequestsPage() {
                         <Loader2 className="w-6 h-6 animate-spin relative z-10" />
                         <span className="relative z-10">Processing...</span>
                       </>
+                    ) : currentStep === 1 ? (
+                      <>
+                        <Music className="w-6 h-6 relative z-10" />
+                        <span className="whitespace-nowrap relative z-10">Continue to Payment</span>
+                      </>
                     ) : (
                       <>
                         <Music className="w-6 h-6 relative z-10" />
@@ -1165,10 +1653,13 @@ export default function GeneralRequestsPage() {
                     )}
                   </button>
 
-                  <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3 sm:mt-2">
-                    You&apos;ll choose your payment method after submitting.
-                  </p>
+                  {currentStep >= 2 && (
+                    <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                      You&apos;ll choose your payment method after submitting.
+                    </p>
+                  )}
                 </div>
+                )}
               </form>
             )}
           </div>

@@ -15,7 +15,11 @@ import {
   Loader2,
   ExternalLink,
   Mail,
-  Phone
+  Phone,
+  Music,
+  MessageSquare,
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
 
 interface Contract {
@@ -74,7 +78,7 @@ interface DashboardData {
 export default function ClientDashboardContent() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'contracts' | 'invoices' | 'payments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'contracts' | 'invoices' | 'payments' | 'timeline'>('overview');
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -209,6 +213,7 @@ export default function ClientDashboardContent() {
           <nav className="flex -mb-px">
             {[
               { id: 'overview', label: 'Overview', icon: TrendingUp },
+              { id: 'timeline', label: 'Event Timeline', icon: Calendar },
               { id: 'contracts', label: 'Contracts', icon: FileText },
               { id: 'invoices', label: 'Invoices', icon: Receipt },
               { id: 'payments', label: 'Payments', icon: CreditCard }
@@ -313,6 +318,217 @@ export default function ClientDashboardContent() {
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Timeline Tab */}
+          {activeTab === 'timeline' && (
+            <div className="space-y-6">
+              {data.contacts.length > 0 ? (
+                data.contacts.map((contact) => {
+                  const quoteUrl = `/quote/${contact.id}`;
+                  const contractUrl = `/quote/${contact.id}/contract`;
+                  const paymentUrl = `/quote/${contact.id}/payment`;
+                  const musicUrl = `/quote/${contact.id}/music-questionnaire`;
+                  
+                  // Determine timeline status
+                  const hasQuote = contact.quoted_price || contact.lead_status === 'Proposal Sent';
+                  const hasPayment = contact.payment_status === 'paid' || contact.deposit_paid;
+                  const hasContract = data.contracts.some(c => c.contact_id === contact.id && c.status === 'signed');
+                  const hasMusicQuestionnaire = false; // TODO: Check if music questionnaire is completed
+                  
+                  const timelineSteps = [
+                    {
+                      id: 'quote',
+                      label: 'Quote Generated',
+                      description: 'Your personalized quote is ready',
+                      status: hasQuote ? 'completed' : 'pending',
+                      action: hasQuote ? 'View Quote' : null,
+                      url: quoteUrl,
+                      icon: FileText
+                    },
+                    {
+                      id: 'package',
+                      label: 'Package Selected',
+                      description: 'Choose your perfect package',
+                      status: hasQuote ? 'completed' : 'pending',
+                      action: hasQuote ? 'View Quote' : 'Select Package',
+                      url: quoteUrl,
+                      icon: CheckCircle
+                    },
+                    {
+                      id: 'payment',
+                      label: 'Payment Made',
+                      description: hasPayment ? 'Deposit or full payment received' : 'Secure your date with a deposit',
+                      status: hasPayment ? 'completed' : 'pending',
+                      action: hasPayment ? 'View Payment' : 'Make Payment',
+                      url: paymentUrl,
+                      icon: CreditCard
+                    },
+                    {
+                      id: 'contract',
+                      label: 'Contract Signed',
+                      description: 'Review and sign your service agreement',
+                      status: hasContract ? 'completed' : 'pending',
+                      action: hasContract ? 'View Contract' : 'Sign Contract',
+                      url: contractUrl,
+                      icon: FileText
+                    },
+                    {
+                      id: 'music',
+                      label: 'Music Questionnaire',
+                      description: 'Share your music preferences and special requests',
+                      status: hasMusicQuestionnaire ? 'completed' : 'pending',
+                      action: hasMusicQuestionnaire ? 'View Responses' : 'Complete Questionnaire',
+                      url: musicUrl,
+                      icon: Music
+                    },
+                    {
+                      id: 'confirmed',
+                      label: 'Event Confirmed',
+                      description: 'All set! We\'ll see you on your special day',
+                      status: hasPayment && hasContract ? 'completed' : 'pending',
+                      action: null,
+                      url: null,
+                      icon: CheckCircle2
+                    }
+                  ];
+
+                  return (
+                    <div key={contact.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                      <div className="mb-6">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                          {contact.event_type || 'Event'} Timeline
+                        </h3>
+                        {contact.event_date && (
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Event Date: <strong>{formatDate(contact.event_date)}</strong>
+                            {contact.venue_name && ` • ${contact.venue_name}`}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        {/* Timeline line */}
+                        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
+
+                        {/* Timeline steps */}
+                        <div className="space-y-6">
+                          {timelineSteps.map((step, index) => {
+                            const StepIcon = step.icon;
+                            const isCompleted = step.status === 'completed';
+                            
+                            return (
+                              <div key={step.id} className="relative flex items-start gap-4">
+                                {/* Icon */}
+                                <div className={`
+                                  relative z-10 flex items-center justify-center w-12 h-12 rounded-full
+                                  ${isCompleted 
+                                    ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400' 
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                                  }
+                                `}>
+                                  {isCompleted ? (
+                                    <CheckCircle2 className="w-6 h-6" />
+                                  ) : (
+                                    <Circle className="w-6 h-6" />
+                                  )}
+                                </div>
+
+                                {/* Content */}
+                                <div className="flex-1 pt-1">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <h4 className={`
+                                        font-semibold mb-1
+                                        ${isCompleted 
+                                          ? 'text-gray-900 dark:text-white' 
+                                          : 'text-gray-600 dark:text-gray-400'
+                                        }
+                                      `}>
+                                        {step.label}
+                                      </h4>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                        {step.description}
+                                      </p>
+                                      {step.action && step.url && (
+                                        <Link
+                                          href={step.url}
+                                          className={`
+                                            inline-flex items-center gap-2 text-sm font-medium
+                                            ${isCompleted
+                                              ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700'
+                                              : 'text-brand hover:text-yellow-600'
+                                            }
+                                          `}
+                                        >
+                                          {step.action}
+                                          <ExternalLink className="w-3 h-3" />
+                                        </Link>
+                                      )}
+                                    </div>
+                                    {isCompleted && (
+                                      <span className="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 rounded text-xs font-medium">
+                                        Complete
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Quick Actions */}
+                      <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Quick Actions</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {!hasPayment && (
+                            <Link
+                              href={paymentUrl}
+                              className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              <CreditCard className="w-5 h-5 text-brand" />
+                              <span className="text-sm font-medium">Make Payment</span>
+                            </Link>
+                          )}
+                          {!hasContract && (
+                            <Link
+                              href={contractUrl}
+                              className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              <FileText className="w-5 h-5 text-brand" />
+                              <span className="text-sm font-medium">Sign Contract</span>
+                            </Link>
+                          )}
+                          {!hasMusicQuestionnaire && (
+                            <Link
+                              href={musicUrl}
+                              className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              <Music className="w-5 h-5 text-brand" />
+                              <span className="text-sm font-medium">Complete Music Questionnaire</span>
+                            </Link>
+                          )}
+                          <Link
+                            href={quoteUrl}
+                            className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                          >
+                            <FileText className="w-5 h-5 text-brand" />
+                            <span className="text-sm font-medium">View Quote</span>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-12">
+                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">No events found</p>
+                </div>
+              )}
             </div>
           )}
 

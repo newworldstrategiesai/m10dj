@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { IconSearch, IconPlus, IconPhone, IconMail, IconCalendar, IconMapPin, IconFilter, IconArrowUp, IconUser, IconMusic, IconCurrencyDollar, IconTarget, IconClock, IconEdit, IconTrash, IconEye, IconMessage } from '@tabler/icons-react';
+import { IconSearch, IconPlus, IconPhone, IconMail, IconCalendar, IconMapPin, IconFilter, IconArrowUp, IconUser, IconMusic, IconCurrencyDollar, IconTarget, IconClock, IconEdit, IconTrash, IconEye, IconMessage, IconCheck, IconX, IconDownload, IconRefresh, IconFlame } from '@tabler/icons-react';
+import { calculateScoresForContacts, getScoreColor, getPriorityColor } from '@/utils/lead-scoring';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast, useToast } from '@/components/ui/Toasts/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import PipelineView from '@/components/admin/PipelineView';
 
@@ -32,6 +34,12 @@ interface Contact {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  quoted_price?: number | null;
+  final_price?: number | null;
+  payment_status?: string | null;
+  deposit_paid?: boolean | null;
+  lead_score?: number;
+  lead_priority?: 'High' | 'Medium' | 'Low';
 }
 
 interface Project {
@@ -114,10 +122,15 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   const [searchQuery, setSearchQuery] = useState('');
   const [eventTypeFilter, setEventTypeFilter] = useState('all');
   const [leadStatusFilter, setLeadStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('created_at');
+  const [temperatureFilter, setTemperatureFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('lead_score'); // Default to sorting by lead score
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>('all');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
   const [summary, setSummary] = useState<any>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [showContactModal, setShowContactModal] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -130,6 +143,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailContact, setEmailContact] = useState<Contact | null>(null);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   // Fetch contacts from API
   const fetchContacts = async () => {
@@ -145,7 +159,13 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
       const response = await fetch(`/api/get-contacts?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setContacts(data.contacts || []);
+        const contactsData = data.contacts || [];
+        
+        // Calculate lead scores for all contacts
+        // TODO: Fetch additional data (quote views, response times) from API
+        const scoredContacts = calculateScoresForContacts(contactsData, {});
+        
+        setContacts(scoredContacts);
         setSummary(data.summary || null);
       } else {
         console.error('Failed to fetch contacts');
@@ -269,8 +289,57 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
       filtered = filtered.filter(contact => contact.lead_status === leadStatusFilter);
     }
 
+    // Apply temperature filter
+    if (temperatureFilter !== 'all') {
+      filtered = filtered.filter(contact => contact.lead_temperature === temperatureFilter);
+    }
+
+    // Apply date range filter
+    if (dateRangeFilter !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date = now;
+
+      switch (dateRangeFilter) {
+        case 'today':
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+          break;
+        case 'week':
+          startDate = new Date(now.setDate(now.getDate() - 7));
+          break;
+        case 'month':
+          startDate = new Date(now.setMonth(now.getMonth() - 1));
+          break;
+        case 'year':
+          startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+          break;
+        case 'custom':
+          if (customStartDate && customEndDate) {
+            startDate = new Date(customStartDate);
+            endDate = new Date(customEndDate);
+          } else {
+            startDate = new Date(0); // All time
+          }
+          break;
+        default:
+          startDate = new Date(0);
+      }
+
+      filtered = filtered.filter(contact => {
+        const contactDate = new Date(contact.created_at);
+        return contactDate >= startDate && contactDate <= endDate;
+      });
+    }
+
     // Apply sorting
     filtered.sort((a, b) => {
+      // Special handling for lead_score
+      if (sortBy === 'lead_score') {
+        const aScore = a.lead_score || 0;
+        const bScore = b.lead_score || 0;
+        return sortOrder === 'asc' ? aScore - bScore : bScore - aScore;
+      }
+      
       let aValue: any = a[sortBy as keyof Contact];
       let bValue: any = b[sortBy as keyof Contact];
 
@@ -287,7 +356,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
     });
 
     setFilteredContacts(filtered);
-  }, [contacts, searchQuery, eventTypeFilter, leadStatusFilter, sortBy, sortOrder]);
+  }, [contacts, searchQuery, eventTypeFilter, leadStatusFilter, temperatureFilter, sortBy, sortOrder, dateRangeFilter, customStartDate, customEndDate]);
 
   useEffect(() => {
     fetchContacts();
@@ -317,6 +386,232 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   const handleSendEmail = (contact: Contact) => {
     setEmailContact(contact);
     setShowEmailModal(true);
+  };
+
+  // Bulk operations
+  const handleSelectContact = (contactId: string, checked: boolean) => {
+    const newSelected = new Set(selectedContacts);
+    if (checked) {
+      newSelected.add(contactId);
+    } else {
+      newSelected.delete(contactId);
+    }
+    setSelectedContacts(newSelected);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedContacts(new Set(filteredContacts.map(c => c.id)));
+    } else {
+      setSelectedContacts(new Set());
+    }
+  };
+
+  const handleBulkStatusUpdate = async (newStatus: string) => {
+    if (selectedContacts.size === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one contact",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setBulkUpdating(true);
+    try {
+      const response = await fetch('/api/contacts/bulk-update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactIds: Array.from(selectedContacts),
+          status: newStatus
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update contacts');
+      }
+
+      toast({
+        title: "Success",
+        description: `Updated ${selectedContacts.size} contact(s) to ${newStatus}`
+      });
+
+      setSelectedContacts(new Set());
+      await fetchContacts();
+    } catch (error: any) {
+      console.error('Error updating contacts:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update contacts",
+        variant: "destructive"
+      });
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const handleBulkTemperatureUpdate = async (temperature: string) => {
+    if (selectedContacts.size === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one contact",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setBulkUpdating(true);
+    try {
+      const response = await fetch('/api/contacts/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactIds: Array.from(selectedContacts),
+          updates: { lead_temperature: temperature }
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update contacts');
+      }
+
+      toast({
+        title: "Success",
+        description: `Updated ${selectedContacts.size} contact(s) temperature to ${temperature}`
+      });
+
+      setSelectedContacts(new Set());
+      await fetchContacts();
+    } catch (error: any) {
+      console.error('Error updating contacts:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update contacts",
+        variant: "destructive"
+      });
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedContacts.size === 0) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedContacts.size} contact(s)? This action cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setBulkUpdating(true);
+    try {
+      const response = await fetch('/api/contacts/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactIds: Array.from(selectedContacts)
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete contacts');
+      }
+
+      toast({
+        title: "Success",
+        description: `Deleted ${selectedContacts.size} contact(s)`
+      });
+
+      setSelectedContacts(new Set());
+      await fetchContacts();
+    } catch (error: any) {
+      console.error('Error deleting contacts:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete contacts",
+        variant: "destructive"
+      });
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    const contactsToExport = filteredContacts.length > 0 
+      ? filteredContacts.filter(c => selectedContacts.size === 0 || selectedContacts.has(c.id))
+      : contacts.filter(c => selectedContacts.size === 0 || selectedContacts.has(c.id));
+
+    if (contactsToExport.length === 0) {
+      toast({
+        title: "Error",
+        description: "No contacts to export",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Create CSV headers
+    const headers = [
+      'Name',
+      'Email',
+      'Phone',
+      'Event Type',
+      'Event Date',
+      'Venue',
+      'Lead Status',
+      'Lead Temperature',
+      'Budget Range',
+      'Created Date',
+      'Updated Date'
+    ];
+
+    // Create CSV rows
+    const rows = contactsToExport.map(contact => [
+      `"${(contact.first_name || '') + ' ' + (contact.last_name || '')}"`,
+      `"${contact.email_address || ''}"`,
+      `"${contact.phone || ''}"`,
+      `"${contact.event_type || ''}"`,
+      `"${contact.event_date ? new Date(contact.event_date).toLocaleDateString() : ''}"`,
+      `"${contact.venue_name || ''}"`,
+      `"${contact.lead_status || ''}"`,
+      `"${contact.lead_temperature || ''}"`,
+      `"${contact.budget_range || ''}"`,
+      `"${new Date(contact.created_at).toLocaleDateString()}"`,
+      `"${new Date(contact.updated_at).toLocaleDateString()}"`
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `contacts-export-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Success",
+      description: `Exported ${contactsToExport.length} contact(s) to CSV`
+    });
   };
 
   return (
@@ -389,6 +684,19 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
         
         {/* Filters - 2 cols on mobile, row on desktop */}
         <div className="grid grid-cols-2 lg:flex gap-2 lg:gap-3">
+          <Button
+            variant={sortBy === 'lead_score' && sortOrder === 'desc' ? 'default' : 'outline'}
+            onClick={() => {
+              setSortBy('lead_score');
+              setSortOrder('desc');
+            }}
+            className="h-12 lg:h-10"
+            title="Show Hot Leads First (Highest Score)"
+          >
+            <IconFlame className="h-4 w-4 mr-1" />
+            Hot Leads
+          </Button>
+          
           <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
             <SelectTrigger className="w-full lg:w-48 h-12 lg:h-10">
               <SelectValue placeholder="Event Type" />
@@ -414,18 +722,81 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
               ))}
             </SelectContent>
           </Select>
+
+          <Select value={temperatureFilter} onValueChange={setTemperatureFilter}>
+            <SelectTrigger className="w-full lg:w-40 h-12 lg:h-10">
+              <SelectValue placeholder="Temperature" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Temperatures</SelectItem>
+              <SelectItem value="Hot">Hot</SelectItem>
+              <SelectItem value="Warm">Warm</SelectItem>
+              <SelectItem value="Cold">Cold</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={dateRangeFilter} onValueChange={(value: any) => setDateRangeFilter(value)}>
+            <SelectTrigger className="w-full lg:w-48 h-12 lg:h-10">
+              <SelectValue placeholder="Date Range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Dates</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">Last 7 Days</SelectItem>
+              <SelectItem value="month">Last 30 Days</SelectItem>
+              <SelectItem value="year">Last Year</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {dateRangeFilter === 'custom' && (
+            <>
+              <Input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                placeholder="Start Date"
+                className="h-12 lg:h-10"
+              />
+              <Input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                placeholder="End Date"
+                className="h-12 lg:h-10"
+              />
+            </>
+          )}
           
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full lg:w-40 h-12 lg:h-10">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="lead_score">Lead Score (Priority)</SelectItem>
               <SelectItem value="created_at">Created Date</SelectItem>
               <SelectItem value="updated_at">Updated Date</SelectItem>
               <SelectItem value="event_date">Event Date</SelectItem>
               <SelectItem value="first_name">Name</SelectItem>
             </SelectContent>
           </Select>
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearchQuery('');
+              setEventTypeFilter('all');
+              setLeadStatusFilter('all');
+              setTemperatureFilter('all');
+              setDateRangeFilter('all');
+              setCustomStartDate('');
+              setCustomEndDate('');
+            }}
+            className="h-12 lg:h-10"
+          >
+            <IconX className="h-4 w-4 mr-1" />
+            Clear Filters
+          </Button>
           
           <Button
             variant="outline"
@@ -436,8 +807,113 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
             <IconArrowUp className={`h-4 w-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
             <span className="ml-2 lg:hidden">{sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</span>
           </Button>
+
+          <Button
+            variant="outline"
+            onClick={handleExportCSV}
+            className="h-12 lg:h-10 lg:w-auto lg:px-3"
+            title="Export to CSV"
+          >
+            <IconDownload className="h-4 w-4" />
+            <span className="ml-2 lg:hidden">Export</span>
+          </Button>
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedContacts.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="font-medium text-blue-900">
+              {selectedContacts.size} contact(s) selected
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedContacts(new Set())}
+              className="h-8"
+            >
+              <IconX className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <Select
+              onValueChange={handleBulkStatusUpdate}
+              disabled={bulkUpdating}
+            >
+              <SelectTrigger className="w-full lg:w-40 h-9">
+                <SelectValue placeholder="Update Status" />
+              </SelectTrigger>
+              <SelectContent>
+                {LEAD_STATUSES.filter(s => s.value !== 'all').map(status => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              onValueChange={handleBulkTemperatureUpdate}
+              disabled={bulkUpdating}
+            >
+              <SelectTrigger className="w-full lg:w-36 h-9">
+                <SelectValue placeholder="Update Temperature" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Hot">Hot</SelectItem>
+                <SelectItem value="Warm">Warm</SelectItem>
+                <SelectItem value="Cold">Cold</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              onClick={handleExportCSV}
+              className="h-9 flex-1 lg:flex-initial"
+              disabled={bulkUpdating}
+            >
+              <IconDownload className="h-4 w-4 mr-1" />
+              Export
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              className="h-9 flex-1 lg:flex-initial"
+              disabled={bulkUpdating}
+            >
+              <IconTrash className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Results Count */}
+      {!loading && (
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <span>
+            Showing <strong>{filteredContacts.length}</strong> of <strong>{contacts.length}</strong> contact(s)
+            {(searchQuery || eventTypeFilter !== 'all' || leadStatusFilter !== 'all' || temperatureFilter !== 'all' || dateRangeFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setEventTypeFilter('all');
+                  setLeadStatusFilter('all');
+                  setTemperatureFilter('all');
+                  setDateRangeFilter('all');
+                  setCustomStartDate('');
+                  setCustomEndDate('');
+                }}
+                className="ml-2 h-6 text-xs"
+              >
+                Clear all
+              </Button>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* Contacts Grid */}
       {loading ? (
@@ -451,42 +927,79 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
           <p className="text-gray-600">Try adjusting your search or filters.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
-          {filteredContacts.map((contact) => (
-            <div
-              key={contact.id}
-              className="bg-white rounded-lg border border-gray-200 p-4 lg:p-6 hover:shadow-lg transition-shadow cursor-pointer active:scale-[0.98]"
-              onClick={() => handleContactClick(contact)}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-[#fcba00] text-black font-semibold">
-                      {getContactInitials(contact)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="ml-3">
-                    <h3 className="font-semibold text-gray-900">
-                      {`${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown'}
-                    </h3>
-                    <p className="text-sm text-gray-600">{contact.email_address}</p>
+        <>
+          {/* Select All Checkbox */}
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <Checkbox
+              checked={selectedContacts.size > 0 && selectedContacts.size === filteredContacts.length}
+              onCheckedChange={handleSelectAll}
+              className="ml-2"
+            />
+            <span className="text-sm text-gray-600">
+              {selectedContacts.size > 0 
+                ? `${selectedContacts.size} of ${filteredContacts.length} selected`
+                : `Select all ${filteredContacts.length} contacts`
+              }
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+            {filteredContacts.map((contact) => (
+              <div
+                key={contact.id}
+                className={`bg-white rounded-lg border p-4 lg:p-6 hover:shadow-lg transition-shadow cursor-pointer active:scale-[0.98] ${
+                  selectedContacts.has(contact.id) ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200'
+                }`}
+                onClick={() => handleContactClick(contact)}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedContacts.has(contact.id)}
+                      onCheckedChange={(checked) => {
+                        handleSelectContact(contact.id, checked as boolean);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1"
+                    />
+                    <Avatar className="h-12 w-12">
+                      <AvatarFallback className="bg-[#fcba00] text-black font-semibold">
+                        {getContactInitials(contact)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="ml-2">
+                      <h3 className="font-semibold text-gray-900">
+                        {`${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown'}
+                      </h3>
+                      <p className="text-sm text-gray-600">{contact.email_address}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 items-end">
+                    {contact.lead_score !== undefined && (
+                      <Badge className={`text-xs font-semibold ${getScoreColor(contact.lead_score)}`}>
+                        <IconFlame className="h-3 w-3 mr-1" />
+                        Score: {contact.lead_score}
+                      </Badge>
+                    )}
+                    {contact.lead_priority && (
+                      <Badge className={`text-xs ${getPriorityColor(contact.lead_priority)}`}>
+                        {contact.lead_priority} Priority
+                      </Badge>
+                    )}
+                    {contact.lead_status && (
+                      <Badge className={`text-xs ${getLeadStatusColor(contact.lead_status)}`}>
+                        {contact.lead_status}
+                      </Badge>
+                    )}
+                    {contact.lead_temperature && (
+                      <Badge className={`text-xs ${getTemperatureColor(contact.lead_temperature)}`}>
+                        {contact.lead_temperature}
+                      </Badge>
+                    )}
                   </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  {contact.lead_status && (
-                    <Badge className={`text-xs ${getLeadStatusColor(contact.lead_status)}`}>
-                      {contact.lead_status}
-                    </Badge>
-                  )}
-                  {contact.lead_temperature && (
-                    <Badge className={`text-xs ${getTemperatureColor(contact.lead_temperature)}`}>
-                      {contact.lead_temperature}
-                    </Badge>
-                  )}
-                </div>
-              </div>
 
-              <div className="space-y-2 text-sm text-gray-600">
+                <div className="space-y-2 text-sm text-gray-600">
                 {contact.phone && (
                   <div className="flex items-center">
                     <IconPhone className="h-4 w-4 mr-2" />
@@ -561,6 +1074,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
             </div>
           ))}
         </div>
+        </>
       )}
 
       {/* Contact Details Modal - Mobile Optimized */}

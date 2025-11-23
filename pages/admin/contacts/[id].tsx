@@ -17,6 +17,7 @@ import ServiceSelectionButton from '@/components/admin/ServiceSelectionButton';
 import PaymentHistory from '@/components/admin/PaymentHistory';
 import InvoiceList from '@/components/admin/InvoiceList';
 import PipelineView from '@/components/admin/PipelineView';
+import UnifiedCommunicationHub from '@/components/admin/UnifiedCommunicationHub';
 
 interface Contact {
   id: string;
@@ -134,7 +135,7 @@ export default function ContactDetailPage() {
       fetchSocialMessages();
       fetchContracts();
       fetchQuoteSelections();
-      fetchCommunications();
+      // Communications are now handled by UnifiedCommunicationHub component
     }
   }, [user, id]);
 
@@ -1242,130 +1243,14 @@ export default function ContactDetailPage() {
               </div>
           </TabsContent>
 
-          {/* Communications Tab */}
+          {/* Communications Tab - Unified Hub */}
           <TabsContent value="communications">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">All Communications</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Complete history of emails, SMS, and other correspondences
-                  </p>
-                </div>
-              </div>
-
-              {communicationsLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-gray-600 mt-4">Loading communications...</p>
-                </div>
-              ) : communications.length === 0 ? (
-                <div className="text-center py-12">
-                  <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-600">No communications found</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    All emails, SMS messages, and other correspondences will appear here
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {communications.map((comm) => {
-                    const isOutbound = comm.direction === 'outbound';
-                    const getIcon = () => {
-                      switch (comm.type) {
-                        case 'email':
-                          return <Mail className="h-5 w-5" />;
-                        case 'sms':
-                          return <MessageSquare className="h-5 w-5" />;
-                        case 'call':
-                          return <Phone className="h-5 w-5" />;
-                        case 'note':
-                          return <Edit3 className="h-5 w-5" />;
-                        default:
-                          return <MessageSquare className="h-5 w-5" />;
-                      }
-                    };
-
-                    const getTypeColor = () => {
-                      switch (comm.type) {
-                        case 'email':
-                          return 'bg-blue-100 text-blue-800 border-blue-200';
-                        case 'sms':
-                          return 'bg-green-100 text-green-800 border-green-200';
-                        case 'call':
-                          return 'bg-purple-100 text-purple-800 border-purple-200';
-                        case 'note':
-                          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                        default:
-                          return 'bg-gray-100 text-gray-800 border-gray-200';
-                      }
-                    };
-
-                    return (
-                      <div
-                        key={comm.id}
-                        className={`p-4 rounded-lg border ${
-                          isOutbound ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${getTypeColor()}`}>
-                              {getIcon()}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-gray-900">
-                                  {comm.type.toUpperCase()}
-                                </span>
-                                <Badge variant="outline" className="text-xs">
-                                  {isOutbound ? 'Outbound' : 'Inbound'}
-                                </Badge>
-                                {comm.status && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs ${
-                                      comm.status === 'read' || comm.status === 'delivered'
-                                        ? 'bg-green-50 text-green-700 border-green-300'
-                                        : comm.status === 'sent'
-                                        ? 'bg-blue-50 text-blue-700 border-blue-300'
-                                        : 'bg-gray-50 text-gray-700 border-gray-300'
-                                    }`}
-                                  >
-                                    {comm.status}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {isOutbound ? `To: ${comm.sent_to}` : `From: ${comm.sent_by}`}
-                                {comm.subject && ` • ${comm.subject}`}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-xs text-gray-500">
-                            {new Date(comm.created_at).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </div>
-                        <div className="mt-3 pl-12">
-                          <p className="text-gray-900 whitespace-pre-wrap">{comm.content}</p>
-                          {comm.metadata?.opened_at && (
-                            <p className="text-xs text-gray-500 mt-2">
-                              Opened: {new Date(comm.metadata.opened_at).toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <UnifiedCommunicationHub
+              contactId={id || ''}
+              contactEmail={contact?.email_address || null}
+              contactPhone={contact?.phone || null}
+              contactName={`${contact?.first_name || ''} ${contact?.last_name || ''}`.trim() || undefined}
+            />
           </TabsContent>
 
           {/* Social Media Tab */}
@@ -1712,14 +1597,33 @@ djbenmurray@gmail.com`
     if (selectedTemplate !== 'custom') {
       const template = emailTemplates[selectedTemplate as keyof typeof emailTemplates];
       if (template) {
+        let body = template.body;
+        
+        // Insert links for templates that need them
+        if (contact && (selectedTemplate === 'walkthrough' || selectedTemplate === 'questionnaire')) {
+          const baseUrl = typeof window !== 'undefined' 
+            ? window.location.origin 
+            : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com');
+          
+          if (selectedTemplate === 'walkthrough') {
+            const walkthroughLink = `${baseUrl}/quote/${contact.id}/walkthrough`;
+            // Replace "Here's the link:" with actual link (handle newlines properly)
+            body = body.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
+          } else if (selectedTemplate === 'questionnaire') {
+            const questionnaireLink = `${baseUrl}/quote/${contact.id}/questionnaire`;
+            // Replace "Here's the link:" with actual link (handle newlines properly)
+            body = body.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
+          }
+        }
+        
         setFormData({
           subject: template.subject,
-          body: template.body
+          body: body
         });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTemplate]);
+  }, [selectedTemplate, contact]);
 
   const handleSendTestEmail = async () => {
     if (!formData.body.trim()) {
@@ -1753,11 +1657,11 @@ djbenmurray@gmail.com`
           emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
         }
       } else if (selectedTemplate === 'walkthrough') {
-        // Replace "Here's the link:" placeholder with walkthrough link
-        emailContent = emailContent.replace(/Here's the link:\s*/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
+        // Replace "Here's the link:" placeholder with walkthrough link (handle newlines properly)
+        emailContent = emailContent.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
       } else if (selectedTemplate === 'questionnaire') {
-        // Replace "Here's the link:" placeholder with questionnaire link
-        emailContent = emailContent.replace(/Here's the link:\s*/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
+        // Replace "Here's the link:" placeholder with questionnaire link (handle newlines properly)
+        emailContent = emailContent.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
       }
 
       // Send test email to admin
@@ -1821,11 +1725,17 @@ djbenmurray@gmail.com`
         // Add quote link section to the email
         emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
       } else if (selectedTemplate === 'walkthrough') {
-        // Replace "Here's the link:" placeholder with walkthrough link
-        emailContent = emailContent.replace(/Here's the link:\s*/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
+        // Replace "Here's the link:" placeholder with walkthrough link (handle newlines properly)
+        // If link already inserted (from useEffect), don't duplicate it
+        if (!emailContent.includes(walkthroughLink)) {
+          emailContent = emailContent.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
+        }
       } else if (selectedTemplate === 'questionnaire') {
-        // Replace "Here's the link:" placeholder with questionnaire link
-        emailContent = emailContent.replace(/Here's the link:\s*/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
+        // Replace "Here's the link:" placeholder with questionnaire link (handle newlines properly)
+        // If link already inserted (from useEffect), don't duplicate it
+        if (!emailContent.includes(questionnaireLink)) {
+          emailContent = emailContent.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
+        }
       }
 
       const response = await fetch('/api/admin/communications/send-email', {

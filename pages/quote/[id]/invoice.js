@@ -18,7 +18,7 @@ export default function InvoicePage() {
   const fetchData = useCallback(async () => {
     try {
       const [leadResponse, quoteResponse] = await Promise.all([
-        fetch(`/api/leads/${id}`),
+        fetch(`/api/leads/get-lead?id=${id}`),
         fetch(`/api/quote/${id}`)
       ]);
 
@@ -126,19 +126,20 @@ export default function InvoicePage() {
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Header className="no-print" />
 
-        <main className="section-container py-12 md:py-20">
+        <main className="section-container py-4 md:py-12 lg:py-20 px-4 sm:px-6">
           {/* Header Actions */}
-          <div className="no-print max-w-4xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="no-print max-w-4xl mx-auto mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
             <Link
               href={`/quote/${id}/confirmation`}
-              className="inline-flex items-center gap-2 text-brand hover:text-brand-dark transition-colors"
+              className="inline-flex items-center gap-2 text-brand hover:text-brand-dark transition-colors text-sm sm:text-base"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Confirmation
+              <span className="hidden sm:inline">Back to Confirmation</span>
+              <span className="sm:hidden">Back</span>
             </Link>
             <button
               onClick={handleDownload}
-              className="btn-outline inline-flex items-center gap-2"
+              className="btn-outline inline-flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
             >
               <Download className="w-4 h-4" />
               Download PDF
@@ -146,50 +147,56 @@ export default function InvoicePage() {
           </div>
 
           {/* Invoice Document */}
-          <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12 print:shadow-none print:rounded-none">
+          <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 lg:p-12 print:shadow-none print:rounded-none">
             {/* Company Header */}
-            <div className="border-b border-gray-200 dark:border-gray-700 pb-8 mb-8">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div>
-                  <h1 className="text-3xl font-bold text-brand mb-2">M10 DJ Company</h1>
-                  <p className="text-gray-600 dark:text-gray-400">
+            <div className="border-b border-gray-200 dark:border-gray-700 pb-4 sm:pb-6 md:pb-8 mb-4 sm:mb-6 md:mb-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
+                <div className="w-full md:w-auto">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-brand mb-2">M10 DJ Company</h1>
+                  <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
                     65 Stewart Rd<br />
                     Eads, Tennessee 38028<br />
                     Phone: (901) 410-2020<br />
                     Email: info@m10djcompany.com
                   </p>
                 </div>
-                <div className="text-right">
-                  <h2 className="text-4xl font-bold mb-2">INVOICE</h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Invoice #: <span className="font-semibold text-gray-900 dark:text-white">{invoiceNumber}</span><br />
-                    Date: <span className="font-semibold text-gray-900 dark:text-white">{new Date(invoiceDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span><br />
-                    Due Date: <span className="font-semibold text-gray-900 dark:text-white">{new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                  </p>
+                <div className="w-full md:w-auto text-left md:text-right mt-4 md:mt-0">
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 md:mb-3">INVOICE</h2>
+                  <div className="space-y-1 text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">
+                    <p>
+                      Invoice #: <span className="font-semibold text-gray-900 dark:text-white break-all">{invoiceNumber}</span>
+                    </p>
+                    <p>
+                      Date: <span className="font-semibold text-gray-900 dark:text-white">{new Date(invoiceDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    </p>
+                    <p>
+                      Due Date: <span className="font-semibold text-gray-900 dark:text-white">{new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Bill To */}
             {leadData && (
-              <div className="mb-8">
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Bill To:</h3>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{leadData.name}</p>
+              <div className="mb-4 sm:mb-6 md:mb-8">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2 sm:mb-3">Bill To:</h3>
+                <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white break-words">{leadData.name}</p>
                 {leadData.email && (
-                  <p className="text-gray-600 dark:text-gray-400">{leadData.email}</p>
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 break-words mt-1">{leadData.email}</p>
                 )}
                 {leadData.phone && (
-                  <p className="text-gray-600 dark:text-gray-400">{leadData.phone}</p>
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">{leadData.phone}</p>
                 )}
                 {leadData.location && (
-                  <div className="mt-2 flex items-start gap-2 text-gray-600 dark:text-gray-400">
-                    <MapPin className="w-4 h-4 mt-1" />
-                    <span>{leadData.location}</span>
+                  <div className="mt-2 flex items-start gap-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                    <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span className="break-words">{leadData.location}</span>
                   </div>
                 )}
                 {leadData.eventDate && (
-                  <div className="mt-2 flex items-start gap-2 text-gray-600 dark:text-gray-400">
-                    <Calendar className="w-4 h-4 mt-1" />
+                  <div className="mt-2 flex items-start gap-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                    <Calendar className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span>{new Date(leadData.eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                   </div>
                 )}
@@ -197,25 +204,26 @@ export default function InvoicePage() {
             )}
 
             {/* Line Items */}
-            <div className="mb-8">
-              <table className="w-full border-collapse">
+            <div className="mb-4 sm:mb-6 md:mb-8 overflow-x-auto -mx-4 sm:mx-0">
+              {/* Desktop Table View */}
+              <table className="w-full border-collapse hidden sm:table">
                 <thead>
                   <tr className="border-b-2 border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-4 px-4 font-semibold text-gray-900 dark:text-white">Description</th>
-                    <th className="text-right py-4 px-4 font-semibold text-gray-900 dark:text-white">Amount</th>
+                    <th className="text-left py-3 sm:py-4 px-3 sm:px-4 font-semibold text-sm sm:text-base text-gray-900 dark:text-white">Description</th>
+                    <th className="text-right py-3 sm:py-4 px-3 sm:px-4 font-semibold text-sm sm:text-base text-gray-900 dark:text-white">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {quoteData && (
                     <>
                       <tr className="border-b border-gray-100 dark:border-gray-700">
-                        <td className="py-4 px-4">
+                        <td className="py-3 sm:py-4 px-3 sm:px-4">
                           <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">{quoteData.package_name}</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Wedding DJ Package</p>
+                            <p className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white">{quoteData.package_name}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Wedding DJ Package</p>
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-right font-semibold text-gray-900 dark:text-white">
+                        <td className="py-3 sm:py-4 px-3 sm:px-4 text-right font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
                           ${quoteData.package_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
@@ -223,15 +231,15 @@ export default function InvoicePage() {
                         <>
                           {quoteData.addons.map((addon, idx) => (
                             <tr key={idx} className="border-b border-gray-100 dark:border-gray-700">
-                              <td className="py-4 px-4">
+                              <td className="py-3 sm:py-4 px-3 sm:px-4">
                                 <div>
-                                  <p className="font-semibold text-gray-900 dark:text-white">{addon.name}</p>
+                                  <p className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white">{addon.name}</p>
                                   {addon.description && (
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">{addon.description}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{addon.description}</p>
                                   )}
                                 </div>
                               </td>
-                              <td className="py-4 px-4 text-right font-semibold text-gray-900 dark:text-white">
+                              <td className="py-3 sm:py-4 px-3 sm:px-4 text-right font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
                                 ${addon.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                             </tr>
@@ -242,22 +250,60 @@ export default function InvoicePage() {
                   )}
                 </tbody>
               </table>
+
+              {/* Mobile Card View */}
+              <div className="sm:hidden space-y-3 px-4">
+                {quoteData && (
+                  <>
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1 pr-2">
+                          <p className="font-semibold text-gray-900 dark:text-white text-sm">{quoteData.package_name}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Wedding DJ Package</p>
+                        </div>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm whitespace-nowrap">
+                          ${quoteData.package_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+                    {quoteData.addons && quoteData.addons.length > 0 && (
+                      <>
+                        {quoteData.addons.map((addon, idx) => (
+                          <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1 pr-2">
+                                <p className="font-semibold text-gray-900 dark:text-white text-sm">{addon.name}</p>
+                                {addon.description && (
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{addon.description}</p>
+                                )}
+                              </div>
+                              <p className="font-semibold text-gray-900 dark:text-white text-sm whitespace-nowrap">
+                                ${addon.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Totals */}
-            <div className="flex justify-end mb-8">
-              <div className="w-full md:w-1/2">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
+            <div className="flex justify-end mb-4 sm:mb-6 md:mb-8">
+              <div className="w-full sm:w-auto sm:min-w-[280px] md:w-1/2">
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex justify-between text-sm sm:text-base text-gray-600 dark:text-gray-400">
                     <span>Subtotal:</span>
-                    <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="font-medium">${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <div className="flex justify-between text-sm sm:text-base text-gray-600 dark:text-gray-400">
                     <span>Tax:</span>
-                    <span>$0.00</span>
+                    <span className="font-medium">$0.00</span>
                   </div>
-                  <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-2 mt-2">
-                    <div className="flex justify-between text-2xl font-bold text-gray-900 dark:text-white">
+                  <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-2 sm:pt-3 mt-2 sm:mt-3">
+                    <div className="flex justify-between text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                       <span>Total:</span>
                       <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
@@ -266,15 +312,15 @@ export default function InvoicePage() {
                   {/* Payment Status */}
                   {hasPayment && (
                     <>
-                      <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-2 mt-2">
-                        <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                      <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-2 sm:pt-3 mt-2 sm:mt-3">
+                        <div className="flex justify-between text-sm sm:text-base text-gray-600 dark:text-gray-400">
                           <span>Amount Paid:</span>
                           <span className="text-green-600 dark:text-green-400 font-semibold">
                             ${actualPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         {!isFullyPaid && (
-                          <div className="flex justify-between text-gray-600 dark:text-gray-400 mt-1">
+                          <div className="flex justify-between text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
                             <span>Remaining Balance:</span>
                             <span className="font-semibold text-gray-900 dark:text-white">
                               ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -283,19 +329,19 @@ export default function InvoicePage() {
                         )}
                       </div>
                       {isFullyPaid && (
-                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                           <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="font-semibold">Invoice Paid in Full</span>
+                            <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                            <span className="font-semibold text-sm sm:text-base">Invoice Paid in Full</span>
                           </div>
                         </div>
                       )}
                       {isPartiallyPaid && (
-                        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                          <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-                            <span className="font-semibold">Partially Paid</span>
+                        <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                          <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200 mb-1">
+                            <span className="font-semibold text-sm sm:text-base">Partially Paid</span>
                           </div>
-                          <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                          <p className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-300">
                             ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining
                           </p>
                         </div>
@@ -307,9 +353,9 @@ export default function InvoicePage() {
             </div>
 
             {/* Payment Terms */}
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 mb-8">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Payment Terms</h3>
-              <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 sm:p-5 md:p-6 mb-4 sm:mb-6 md:mb-8">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white mb-2 sm:mb-3">Payment Terms</h3>
+              <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 <p><strong>Deposit Required:</strong> ${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (50% of total)</p>
                 <p><strong>Remaining Balance:</strong> ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} due 7 days before event</p>
                 <p>Payments can be made online via credit card, or by cash or check.</p>
@@ -317,26 +363,26 @@ export default function InvoicePage() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 sm:pt-6 md:pt-8 text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               <p>Thank you for choosing M10 DJ Company!</p>
-              <p className="mt-2">Questions? Contact us at (901) 410-2020 or info@m10djcompany.com</p>
+              <p className="mt-1 sm:mt-2 break-words">Questions? Contact us at (901) 410-2020 or info@m10djcompany.com</p>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="no-print max-w-4xl mx-auto mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="no-print max-w-4xl mx-auto mt-4 sm:mt-6 md:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
             <Link
               href={`/quote/${id}/payment`}
-              className="btn-primary inline-flex items-center justify-center gap-2"
+              className="btn-primary inline-flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-3"
             >
-              <CheckCircle className="w-5 h-5" />
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
               Make Payment
             </Link>
             <Link
               href={`/quote/${id}/contract`}
-              className="btn-outline inline-flex items-center justify-center gap-2"
+              className="btn-outline inline-flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-3"
             >
-              <FileText className="w-5 h-5" />
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
               View Contract
             </Link>
           </div>

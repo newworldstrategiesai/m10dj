@@ -20,25 +20,42 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields: to, body' });
     }
 
-    // Get Twilio credentials from environment or database
-    let twilioSid = process.env.TWILIO_ACCOUNT_SID;
-    let twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-    let twilioPhone = from || process.env.TWILIO_PHONE_NUMBER;
+    // Get Twilio credentials from environment or database - trim whitespace
+    let twilioSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+    let twilioAuthToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+    let twilioPhone = from?.trim() || process.env.TWILIO_PHONE_NUMBER?.trim();
 
     // Try to get user-specific credentials if available
-    const { data: apiKeys } = await supabase
-      .from('api_keys')
-      .select('twilio_sid, twilio_auth_token')
-      .eq('user_id', session.user.id)
-      .single();
+    try {
+      const { data: apiKeys, error: apiKeysError } = await supabase
+        .from('api_keys')
+        .select('twilio_sid, twilio_auth_token')
+        .eq('user_id', session.user.id)
+        .single();
 
-    if (apiKeys?.twilio_sid && apiKeys?.twilio_auth_token) {
-      twilioSid = apiKeys.twilio_sid;
-      twilioAuthToken = apiKeys.twilio_auth_token;
+      if (apiKeysError) {
+        console.log('API keys query error:', apiKeysError.message);
+      }
+
+      if (apiKeys?.twilio_sid && apiKeys?.twilio_auth_token) {
+        // Trim whitespace from database values
+        twilioSid = apiKeys.twilio_sid.trim();
+        twilioAuthToken = apiKeys.twilio_auth_token.trim();
+        console.log('Using database-stored Twilio credentials for SMS send');
+      }
+    } catch (err) {
+      console.log('Error fetching user-specific credentials:', err.message);
     }
 
     if (!twilioSid || !twilioAuthToken || !twilioPhone) {
-      return res.status(400).json({ error: 'Twilio credentials not configured' });
+      return res.status(400).json({ 
+        error: 'Twilio credentials not configured',
+        details: {
+          missingSid: !twilioSid,
+          missingToken: !twilioAuthToken,
+          missingPhone: !twilioPhone
+        }
+      });
     }
 
     // Initialize Twilio client

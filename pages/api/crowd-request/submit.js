@@ -28,7 +28,8 @@ export default async function handler(req, res) {
   } = req.body;
 
   // Validate required fields
-  if (!eventCode || !requestType || !requesterName || !amount) {
+  // Note: requesterName is optional - use 'Guest' as fallback
+  if (!eventCode || !requestType || !amount) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -64,6 +65,19 @@ export default async function handler(req, res) {
       ? `general-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       : eventCode;
     
+    // Generate unique payment code for CashApp/Venmo verification
+    // Format: M10-XXXXXX (6 alphanumeric characters)
+    const generatePaymentCode = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing chars (0, O, I, 1)
+      let code = 'M10-';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    };
+    
+    const paymentCode = generatePaymentCode();
+    
     // Create crowd request record
     const { data: crowdRequest, error: insertError } = await supabase
       .from('crowd_requests')
@@ -74,8 +88,8 @@ export default async function handler(req, res) {
         song_title: songTitle || null,
         recipient_name: recipientName || null,
         recipient_message: recipientMessage || null,
-        requester_name: requesterName,
-        requester_email: requesterEmail || null,
+        requester_name: requesterName?.trim() || 'Guest',
+        requester_email: requesterEmail?.trim() || null,
         requester_phone: requesterPhone || null,
         request_message: message || null,
         amount_requested: amount,
@@ -85,26 +99,42 @@ export default async function handler(req, res) {
         next_fee: (requestType === 'song_request' && isNext) ? (nextFee || 0) : 0,
         priority_order: priorityOrder,
         payment_status: 'pending',
+        payment_code: paymentCode,
         status: 'new'
       })
       .select()
       .single();
 
     if (insertError) {
-      console.error('Error creating crowd request:', insertError);
+      console.error('❌ Error creating crowd request:', insertError);
+      console.error('Insert error details:', JSON.stringify(insertError, null, 2));
+      
+      // Provide helpful error message for missing columns
+      let helpfulMessage = insertError.message || 'Unknown database error';
+      if (insertError.code === 'PGRST204' && insertError.message?.includes('payment_code')) {
+        helpfulMessage = 'Database migration required: payment_code column missing. Please run the migration in Supabase SQL Editor.';
+      } else if (insertError.code === 'PGRST204' && insertError.message?.includes('is_next')) {
+        helpfulMessage = 'Database migration required: is_next column missing. Please run the migration in Supabase SQL Editor.';
+      } else if (insertError.code === 'PGRST204' && insertError.message?.includes('next_fee')) {
+        helpfulMessage = 'Database migration required: next_fee column missing. Please run the migration in Supabase SQL Editor.';
+      }
+      
       return res.status(500).json({ 
         error: 'Failed to create request',
-        details: insertError.message,
-        code: insertError.code
+        details: helpfulMessage,
+        code: insertError.code,
+        hint: insertError.hint || 'Check APPLY_MIGRATIONS.md for instructions',
+        migrationNeeded: insertError.code === 'PGRST204'
       });
     }
 
     console.log(`✅ Created crowd request (ID: ${crowdRequest.id})`);
 
-    // Return request ID - payment method selection will happen on frontend
+    // Return request ID and payment code - payment method selection will happen on frontend
     return res.status(200).json({
       success: true,
       requestId: crowdRequest.id,
+      paymentCode: paymentCode,
     });
   } catch (error) {
     console.error('❌ Error processing crowd request:', error);

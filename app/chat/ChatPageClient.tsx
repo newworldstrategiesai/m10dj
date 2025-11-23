@@ -430,18 +430,56 @@ export default function ChatPageClient() {
     setError('');
 
     try {
-      const response = await fetch(`/api/get-sms-logs?pageSize=100&_t=${Date.now()}`);
+      console.log('Fetching SMS history for user:', user.id);
+      const url = `/api/get-sms-logs?pageSize=200&page=1&_t=${Date.now()}`;
+      console.log('API URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('API Response status:', response.status, response.statusText);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch SMS history: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('API error response:', response.status, errorText);
+        
+        // Try to parse as JSON for better error details
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText };
+        }
+        
+        console.error('API error details:', errorData);
+        throw new Error(errorData.error || `Failed to fetch SMS history: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
+      console.log('SMS history response:', { 
+        hasMessages: !!data.messages, 
+        messageCount: data.messages?.length || 0,
+        total: data.total,
+        dataKeys: Object.keys(data),
+        firstMessage: data.messages?.[0],
+        twilioPhone: data.twilioPhone
+      });
       
       if (!data.messages || !Array.isArray(data.messages)) {
-        console.warn('No messages found or invalid data format');
-        setThreads([]);
-        setSelectedUser(null);
+        console.warn('No messages found or invalid data format', data);
+        // Try to also fetch from Supabase sms_conversations table as fallback
+        await fetchFromSupabaseConversations();
+        return;
+      }
+      
+      if (data.messages.length === 0) {
+        console.log('No messages from Twilio, trying Supabase conversations table');
+        await fetchFromSupabaseConversations();
         return;
       }
 
@@ -513,17 +551,129 @@ export default function ChatPageClient() {
       console.log('Setting threads:', newThreads.length);
       setThreads(newThreads);
       
+      // If no threads created, try Supabase fallback
+      if (newThreads.length === 0) {
+        console.log('No threads created from Twilio, trying Supabase conversations table');
+        await fetchFromSupabaseConversations();
+      }
+      
     } catch (error) {
       console.error('Error fetching SMS history:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch messages');
       
+      // Try Supabase fallback on error
+      console.log('Error occurred, trying Supabase fallback');
+      await fetchFromSupabaseConversations();
+      
       toast({
         title: "Error",
-        description: "Failed to fetch messages. Please try again.",
+        description: "Failed to fetch messages from Twilio. Trying database...",
         variant: "destructive",
       });
     } finally {
       setIsLoadingSMSHistory(false);
+    }
+  };
+
+  // Fallback: Fetch conversations from Supabase sms_conversations table
+  const fetchFromSupabaseConversations = async () => {
+    if (!user?.id) {
+      console.log('No user available for Supabase fetch');
+      return;
+    }
+
+    try {
+      console.log('Fetching from Supabase sms_conversations table');
+      const supabase = createClientComponentClient();
+      const { data: messages, error } = await supabase
+        .from('sms_conversations')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        console.error('Supabase error:', error);
+        return;
+      }
+
+      if (!messages || messages.length === 0) {
+        console.log('No messages in Supabase sms_conversations table');
+        setThreads([]);
+        return;
+      }
+
+      console.log('Found', messages.length, 'messages in Supabase');
+
+      // Group messages by phone number
+      const messagesByPhone: { [key: string]: Message[] } = {};
+      messages.forEach((msg: any) => {
+        const phone = msg.phone_number;
+        if (!messagesByPhone[phone]) {
+          messagesByPhone[phone] = [];
+        }
+        messagesByPhone[phone].push({
+          id: msg.id || crypto.randomUUID(),
+          user_id: user.id,
+          contact_id: phone,
+          content: msg.message_content,
+          direction: msg.direction,
+          status: msg.message_status || 'sent',
+          created_at: msg.created_at,
+          updated_at: msg.updated_at || msg.created_at,
+          timestamp: msg.created_at,
+          timestampMs: new Date(msg.created_at).getTime(),
+          message: msg.message_content,
+          sender: msg.direction === 'inbound' ? phone : 'You',
+          to: msg.direction === 'inbound' ? msg.phone_number : msg.phone_number,
+          from: msg.direction === 'inbound' ? msg.phone_number : 'You',
+          source: 'supabase',
+          isAI: msg.message_type === 'ai_assistant'
+        });
+      });
+
+      // Create threads from grouped messages
+      const newThreads = Object.entries(messagesByPhone).map(([phone, msgs]) => {
+        const normalizedPhone = phone.replace(/\D/g, '');
+        const contact = smsContacts.find((c: SMSContact) => {
+          const normalizedContactPhone = c.phone.replace(/\D/g, '');
+          return normalizedContactPhone === normalizedPhone;
+        });
+
+        const sortedMessages = msgs.sort((a, b) => a.timestampMs - b.timestampMs);
+        const unreadMessages = sortedMessages.filter(
+          (msg) => msg.direction === 'inbound' && 
+            (selectedUser?.updated_at ? new Date(msg.timestamp) > new Date(selectedUser.updated_at) : true)
+        );
+
+        return {
+          id: phone,
+          user_id: user.id,
+          phone,
+          first_name: contact?.first_name || '',
+          last_name: contact?.last_name || '',
+          messages: sortedMessages,
+          unreadCount: unreadMessages.length,
+          created_at: sortedMessages[0]?.created_at || new Date().toISOString(),
+          updated_at: sortedMessages[sortedMessages.length - 1]?.created_at || new Date().toISOString(),
+          lead_status: contact?.lead_status,
+          lead_source: contact?.lead_source,
+          email_address: contact?.email_address,
+          company: contact?.company,
+          username: contact?.first_name || phone,
+          fullName: `${contact?.first_name || ''} ${contact?.last_name || ''}`.trim() || phone,
+          vertical: contact?.vertical,
+          sub_category: contact?.sub_category,
+          preferred_language: contact?.preferred_language,
+          notes: contact?.notes,
+          opt_in_status: contact?.opt_in_status,
+          isSMS: true
+        };
+      });
+
+      console.log('Setting threads from Supabase:', newThreads.length);
+      setThreads(newThreads);
+    } catch (error) {
+      console.error('Error fetching from Supabase:', error);
     }
   };
 

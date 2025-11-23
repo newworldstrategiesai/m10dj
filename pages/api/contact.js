@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { name, email, phone, eventType, eventDate, location, message, honeypot, idempotencyKey } = req.body;
+  const { name, email, phone, eventType, eventDate, eventTime, venueName, venueAddress, location, message, honeypot, idempotencyKey } = req.body;
 
   // SECURITY: Honeypot check - if filled, it's likely a bot
   if (honeypot && honeypot.trim().length > 0) {
@@ -68,6 +68,11 @@ export default async function handler(req, res) {
     serverIdempotency.markProcessed(idempotencyKey, { pending: true });
   }
 
+  // Build location from venueName/venueAddress if provided, otherwise use location field (backward compatibility)
+  const finalLocation = (venueName && venueAddress) 
+    ? `${venueName}, ${venueAddress}` 
+    : (venueName || venueAddress || location);
+  
   // SECURITY: Input sanitization
   const sanitizedData = sanitizeContactFormData({
     name,
@@ -75,7 +80,7 @@ export default async function handler(req, res) {
     phone,
     eventType,
     eventDate,
-    location,
+    location: finalLocation,
     message
   });
 
@@ -143,6 +148,36 @@ export default async function handler(req, res) {
       location: sanitizedData.location,
       message: sanitizedData.message
     };
+    
+    // Add venue fields if provided (for future use)
+    if (venueName || venueAddress) {
+      submissionData.venueName = venueName?.trim() || null;
+      submissionData.venueAddress = venueAddress?.trim() || null;
+    }
+
+    // Create service role client for checking/updating drafts
+    const { createClient } = require('@supabase/supabase-js');
+    
+    // Validate Supabase credentials before proceeding
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('❌ CRITICAL: Missing Supabase credentials');
+      throw new Error('Server configuration error. Please contact support.');
+    }
+    
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Check if there's an existing draft for this email
+    const { data: existingDraft } = await supabase
+      .from('contact_submissions')
+      .select('id')
+      .eq('email', sanitizedData.email)
+      .eq('is_draft', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
     // CRITICAL: Save submission to database with retry logic
     // This is the most important operation - we MUST have a submission ID
@@ -152,10 +187,43 @@ export default async function handler(req, res) {
     
     while (submissionRetries < maxSubmissionRetries) {
       try {
-        dbSubmission = await db.createContactSubmission(submissionData);
+        if (existingDraft) {
+          // Update existing draft to mark it as complete
+          const { data: updatedSubmission, error: updateError } = await supabase
+            .from('contact_submissions')
+            .update({
+              name: sanitizedData.name,
+              phone: sanitizedData.phone,
+              event_type: sanitizedData.eventType,
+              event_date: sanitizedData.eventDate,
+              event_time: eventTime || null,
+              location: sanitizedData.location,
+              message: sanitizedData.message,
+              venue_name: venueName?.trim() || null,
+              venue_address: venueAddress?.trim() || null,
+              guests: req.body.guests || null,
+              is_draft: false, // Mark as complete
+              status: 'new',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingDraft.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            throw updateError;
+          }
+
+          dbSubmission = updatedSubmission;
+          console.log('✅ Updated existing draft to complete submission:', dbSubmission.id);
+        } else {
+          // Create new submission
+          dbSubmission = await db.createContactSubmission(submissionData);
+          console.log('✅ Contact submission saved to database:', dbSubmission.id);
+        }
+
         criticalOperations.dbSubmission.success = true;
         criticalOperations.dbSubmission.id = dbSubmission.id;
-        console.log('✅ Contact submission saved to database:', dbSubmission.id);
         break; // Success - exit retry loop
       } catch (dbError) {
         submissionRetries++;
@@ -176,20 +244,6 @@ export default async function handler(req, res) {
 
     // Create a contact record in the new contacts system - THIS IS CRITICAL
     console.log('📝 Creating contact record in CRM...');
-    
-    // Create service role client for inserting contacts
-    const { createClient } = require('@supabase/supabase-js');
-    
-    // Validate Supabase credentials before proceeding
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('❌ CRITICAL: Missing Supabase credentials');
-      throw new Error('Server configuration error. Please contact support.');
-    }
-    
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
     
     // Extract first and last name from the full name
     const nameParts = name.trim().split(' ');
@@ -258,6 +312,20 @@ export default async function handler(req, res) {
       console.log('✅ Using admin user ID:', adminUserId);
     }
 
+    // Parse event time if provided
+    let parsedEventTime = null;
+    if (eventTime) {
+      try {
+        // Validate time format (HH:MM)
+        const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        if (timePattern.test(eventTime)) {
+          parsedEventTime = eventTime;
+        }
+      } catch (timeError) {
+        console.warn('Could not parse event time:', eventTime);
+      }
+    }
+
     // Create contact record
     const contactData = {
       user_id: adminUserId, // May be null if no admin user found
@@ -267,7 +335,9 @@ export default async function handler(req, res) {
       phone: phone || null,
       event_type: standardizedEventType,
       event_date: parsedEventDate,
-      venue_name: location || null,
+      event_time: parsedEventTime,
+      venue_name: venueName?.trim() || location || null,
+      venue_address: venueAddress?.trim() || null,
       special_requests: message || null,
       lead_status: 'New',
       lead_source: 'Website',

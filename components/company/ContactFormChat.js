@@ -352,9 +352,9 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
                         if (onMinimize) onMinimize();
                         window.location.href = message.link;
                       }}
-                      className="inline-block mt-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded text-xs font-semibold transition-colors"
+                      className="inline-block mt-2 px-3 py-1.5 bg-brand hover:bg-brand-600 text-white rounded text-xs font-semibold transition-colors shadow-sm"
                     >
-                      {message.linkText || 'View Services'} →
+                      {message.linkText || 'View Services →'}
                     </a>
                   )}
                 </div>
@@ -542,7 +542,7 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
                     }}
                     className="inline-block mt-3 px-4 py-2 bg-brand hover:bg-brand-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg"
                   >
-                    {message.linkText || 'View Services'} →
+                    {message.linkText || 'View Services →'}
                   </a>
                 )}
                 <p className={`text-xs mt-1 ${

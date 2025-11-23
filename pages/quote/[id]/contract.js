@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
 import SignatureCapture from '../../../components/SignatureCapture';
-import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, PenTool, X, Edit } from 'lucide-react';
+import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, PenTool, X, Edit, Clock } from 'lucide-react';
 
 export default function ContractPage() {
   const router = useRouter();
@@ -20,10 +20,16 @@ export default function ContractPage() {
   const [signatureMethod, setSignatureMethod] = useState('draw');
   const [showFieldsModal, setShowFieldsModal] = useState(false);
   const [updatingFields, setUpdatingFields] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState(null);
+  const [hasPayment, setHasPayment] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    eventDate: ''
+    eventDate: '',
+    venueAddress: '',
+    eventTime: '',
+    endTime: ''
   });
 
   useEffect(() => {
@@ -35,7 +41,7 @@ export default function ContractPage() {
   const fetchData = async () => {
     try {
       const [leadResponse, quoteResponse] = await Promise.all([
-        fetch(`/api/leads/${id}`),
+        fetch(`/api/leads/get-lead?id=${id}`),
         fetch(`/api/quote/${id}`)
       ]);
 
@@ -73,6 +79,33 @@ export default function ContractPage() {
             console.log('Could not fetch invoice details:', e);
           }
         }
+
+        // Check payment status
+        try {
+          const paymentsResponse = await fetch(`/api/payments?contact_id=${id}`);
+          if (paymentsResponse.ok) {
+            const paymentsData = await paymentsResponse.json();
+            if (paymentsData.payments && paymentsData.payments.length > 0) {
+              // Filter for paid payments
+              const paidPayments = paymentsData.payments.filter(p => p.payment_status === 'Paid');
+              if (paidPayments.length > 0) {
+                setHasPayment(true);
+                const totalPaid = paidPayments.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
+                setPaymentData({ totalPaid, payments: paidPayments });
+              } else {
+                setHasPayment(false);
+                setPaymentData({ totalPaid: 0, payments: [] });
+              }
+            } else {
+              setHasPayment(false);
+              setPaymentData({ totalPaid: 0, payments: [] });
+            }
+          }
+        } catch (error) {
+          console.log('Could not fetch payment details:', error);
+          setHasPayment(false);
+          setPaymentData({ totalPaid: 0, payments: [] });
+        }
       } else {
         // Quote not found, but we can still show contract based on lead data
         console.log('Quote not found, will display contract from lead data');
@@ -106,20 +139,73 @@ export default function ContractPage() {
       errors.push('Deposit amount must be calculated');
     }
     
-    if (!leadData?.eventDate) {
+    // Check eventDate - allow both eventDate and event_date formats
+    const eventDate = leadData?.eventDate || leadData?.event_date;
+    if (!eventDate || (typeof eventDate === 'string' && eventDate.trim() === '')) {
       errors.push('Event date is required');
     }
     
-    if (!leadData?.name) {
+    // Check name - allow both name format and constructed from first_name/last_name
+    const clientName = leadData?.name || (leadData?.first_name && leadData?.last_name 
+      ? `${leadData.first_name} ${leadData.last_name}`.trim() 
+      : leadData?.first_name || leadData?.last_name);
+    if (!clientName || (typeof clientName === 'string' && clientName.trim() === '')) {
       errors.push('Client name is required');
     }
     
-    if (!leadData?.email) {
+    // Check email - allow both email and email_address formats
+    const clientEmail = leadData?.email || leadData?.email_address;
+    if (!clientEmail || (typeof clientEmail === 'string' && clientEmail.trim() === '')) {
       errors.push('Client email is required');
     }
     
     if (!quoteData?.package_name) {
       errors.push('Service package must be selected');
+    }
+    
+    // Check venue address - require actual address, not just venue name
+    // Prefer venue_address or venueAddress (these are actual addresses)
+    // location might be just a name, so we need to be careful
+    const venueAddress = leadData?.venue_address || leadData?.venueAddress;
+    const location = leadData?.location;
+    const venueName = leadData?.venue_name;
+    
+    // Require venue_address or venueAddress (actual address fields)
+    // If location exists but is different from venue name and looks like an address, accept it
+    // But prioritize venue_address/venueAddress fields
+    let validVenueAddress = venueAddress;
+    
+    // If no venue_address/venueAddress, check if location is valid (different from venue name and contains address-like content)
+    if (!validVenueAddress && location) {
+      const locationTrimmed = location.trim();
+      const venueNameTrimmed = venueName?.trim() || '';
+      
+      // Check if location is different from venue name and contains address indicators (numbers, street, st, rd, ave, etc.)
+      const hasAddressIndicators = /\d/.test(locationTrimmed) || 
+                                   /(street|st|road|rd|avenue|ave|drive|dr|lane|ln|way|boulevard|blvd|circle|cir|court|ct)/i.test(locationTrimmed);
+      
+      if (locationTrimmed !== venueNameTrimmed && (hasAddressIndicators || locationTrimmed.length > 30)) {
+        validVenueAddress = locationTrimmed;
+      }
+    }
+    
+    if (!validVenueAddress || (typeof validVenueAddress === 'string' && validVenueAddress.trim() === '')) {
+      errors.push('Venue address (full street address) is required');
+    } else if (venueName && validVenueAddress === venueName) {
+      // If address is same as venue name, require actual address
+      errors.push('Venue address must include the full street address, not just the venue name');
+    }
+    
+    // Check event time/start time - allow both eventTime and event_time formats
+    const eventTime = leadData?.eventTime || leadData?.event_time || leadData?.start_time;
+    if (!eventTime || (typeof eventTime === 'string' && eventTime.trim() === '')) {
+      errors.push('Event start time is required');
+    }
+    
+    // Check event end time - allow both endTime and end_time formats
+    const endTime = leadData?.endTime || leadData?.end_time;
+    if (!endTime || (typeof endTime === 'string' && endTime.trim() === '')) {
+      errors.push('Event end time is required');
     }
     
     return errors;
@@ -140,6 +226,12 @@ export default function ContractPage() {
       return;
     }
     
+    // Get client name and email using flexible format checking
+    const clientName = leadData?.name || (leadData?.first_name && leadData?.last_name 
+      ? `${leadData.first_name} ${leadData.last_name}`.trim() 
+      : leadData?.first_name || leadData?.last_name || 'Client');
+    const clientEmail = leadData?.email || leadData?.email_address || '';
+    
     setSigning(true);
     try {
       const response = await fetch(`/api/quote/sign`, {
@@ -147,8 +239,8 @@ export default function ContractPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           leadId: id,
-          clientName: leadData.name,
-          clientEmail: leadData.email,
+          clientName: clientName,
+          clientEmail: clientEmail,
           signatureData: signatureData,
           signatureMethod: signatureMethod
         })
@@ -159,7 +251,41 @@ export default function ContractPage() {
         setContractData(result.contract);
         setShowSignatureModal(false);
         setSignatureData('');
-        alert('Contract signed successfully!');
+        
+        // Check payment status after signing
+        const totalAmount = quoteData?.total_price || 0;
+        const depositAmount = totalAmount * 0.5;
+        
+        try {
+          const paymentsResponse = await fetch(`/api/payments?contact_id=${id}`);
+          if (paymentsResponse.ok) {
+            const paymentsData = await paymentsResponse.json();
+            let totalPaid = 0;
+            
+            if (paymentsData.payments && paymentsData.payments.length > 0) {
+              const paidPayments = paymentsData.payments.filter(p => p.payment_status === 'Paid');
+              totalPaid = paidPayments.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
+              setHasPayment(totalPaid > 0);
+              setPaymentData({ totalPaid, payments: paidPayments });
+            }
+            
+            // Check if deposit or full payment has been made
+            if (totalPaid < depositAmount && totalPaid < totalAmount) {
+              // No deposit or full payment made - show payment modal
+              setShowPaymentModal(true);
+            } else {
+              // Payment has been made
+              alert('Contract signed successfully!');
+            }
+          } else {
+            // If payment check fails, still show payment modal to be safe
+            setShowPaymentModal(true);
+          }
+        } catch (paymentError) {
+          console.error('Error checking payments:', paymentError);
+          // If payment check fails, show payment modal to be safe
+          setShowPaymentModal(true);
+        }
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to sign contract');
@@ -174,6 +300,82 @@ export default function ContractPage() {
 
   const handleDownload = () => {
     window.print();
+  };
+
+  const handleUpdateFields = async () => {
+    setUpdatingFields(true);
+    try {
+      // Prepare the data to update - use formData values if provided, otherwise use existing leadData
+      const updateData = {
+        name: formData.name || leadData?.name,
+        email: formData.email || leadData?.email,
+        eventDate: formData.eventDate || leadData?.eventDate || leadData?.event_date,
+        venueAddress: formData.venueAddress || leadData?.venue_address || leadData?.venueAddress || leadData?.location,
+        eventTime: formData.eventTime || leadData?.event_time || leadData?.eventTime || leadData?.start_time,
+        endTime: formData.endTime || leadData?.end_time || leadData?.endTime
+      };
+
+      // Update the lead data via API
+      const response = await fetch(`/api/leads/${id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Update local state with new data from API response
+        if (result.data) {
+          setLeadData(prev => ({
+            ...prev,
+            name: result.data.name || prev?.name,
+            email: result.data.email || prev?.email,
+            eventDate: result.data.eventDate || prev?.eventDate || prev?.event_date,
+            event_date: result.data.eventDate || prev?.event_date || prev?.eventDate,
+            eventTime: result.data.eventTime || prev?.eventTime,
+            event_time: result.data.eventTime || prev?.event_time || prev?.eventTime,
+            venueAddress: result.data.venueAddress || prev?.venueAddress,
+            venue_address: result.data.venueAddress || prev?.venue_address || prev?.venueAddress,
+            location: result.data.venueAddress || prev?.location
+          }));
+        } else {
+          // Fallback: use formData if API doesn't return formatted data
+          setLeadData(prev => ({
+            ...prev,
+            ...updateData,
+            event_date: updateData.eventDate || prev?.event_date,
+            event_time: updateData.eventTime || prev?.event_time,
+            venue_address: updateData.venueAddress || prev?.venue_address,
+            location: updateData.venueAddress || prev?.location
+          }));
+        }
+        
+        // Close the modal
+        setShowFieldsModal(false);
+        
+        // Reset form data
+        setFormData({
+          name: '',
+          email: '',
+          eventDate: '',
+          venueAddress: '',
+          eventTime: '',
+          endTime: ''
+        });
+
+        // Show success message
+        alert('Information updated successfully! You can now sign the contract.');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update information');
+      }
+    } catch (error) {
+      console.error('Error updating fields:', error);
+      alert(error.message || 'Failed to update information. Please try again.');
+    } finally {
+      setUpdatingFields(false);
+    }
   };
 
   if (loading) {
@@ -259,7 +461,7 @@ export default function ContractPage() {
             {/* Contract Content */}
             <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
               <p className="text-gray-700 dark:text-gray-300 mb-6">
-                This Contract for Services (the &quot;Contract&quot;) is made effective as of <strong>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong> (the &quot;Effective Date&quot;), by and between <strong>{leadData?.name || 'Client'}</strong> (&quot;Client&quot;) and M10 DJ Company, (&quot;M10&quot;) of 65 Stewart Rd, Eads, Tennessee 38028 (collectively the &quot;Parties&quot;).
+                This Contract for Services (the &quot;Contract&quot;) is made effective as of <strong>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong> (the &quot;Effective Date&quot;), by and between <strong>{leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</strong> (&quot;Client&quot;) and M10 DJ Company, (&quot;M10&quot;) of 65 Stewart Rd, Eads, Tennessee 38028 (collectively the &quot;Parties&quot;).
               </p>
 
               <p className="text-gray-700 dark:text-gray-300 mb-6">
@@ -272,17 +474,34 @@ export default function ContractPage() {
               </p>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-gray-900 dark:text-white mb-2">Event Details:</p>
-                {leadData?.eventDate && (
+                {(leadData?.eventDate || leadData?.event_date) && (
                   <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2">
                     <Calendar className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <span><strong>Date:</strong> {new Date(leadData.eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    <span><strong>Date:</strong> {new Date(leadData.eventDate || leadData.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                   </p>
                 )}
-                {leadData?.location && (
+                {(leadData?.eventTime || leadData?.event_time || leadData?.start_time) && (
                   <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
-                    <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <span><strong>Location:</strong> {leadData.location}</span>
+                    <Clock className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <span><strong>Start Time:</strong> {new Date(`2000-01-01T${leadData.eventTime || leadData.event_time || leadData.start_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                    {(leadData?.endTime || leadData?.end_time) && (
+                      <span> - <strong>End Time:</strong> {new Date(`2000-01-01T${leadData.endTime || leadData.end_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                    )}
                   </p>
+                )}
+                {(leadData?.venue_address || leadData?.venueAddress || leadData?.location) && (
+                  <>
+                    {leadData?.venue_name && (
+                      <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
+                        <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                        <span><strong>Venue:</strong> {leadData.venue_name}</span>
+                      </p>
+                    )}
+                    <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
+                      <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      <span><strong>Venue Address:</strong> {leadData.venue_address || leadData.venueAddress || leadData.location}</span>
+                    </p>
+                  </>
                 )}
               </div>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
@@ -299,7 +518,7 @@ export default function ContractPage() {
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">3. TERM</h2>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Client and M10 agree that this Contract between the Parties is for Services that shall commence on the above date and complete on <strong>{leadData?.eventDate ? new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'the event date'}</strong>. The Contract may be extended and/or renewed by agreement of all Parties in writing thereafter.
+                Client and M10 agree that this Contract between the Parties is for Services that shall commence on the above date and complete on <strong>{(leadData?.eventDate || leadData?.event_date) ? new Date(leadData.eventDate || leadData.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'the event date'}</strong>. The Contract may be extended and/or renewed by agreement of all Parties in writing thereafter.
               </p>
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">4. PAYMENT</h2>
@@ -329,7 +548,7 @@ export default function ContractPage() {
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">7. SIGNATORIES</h2>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                This Agreement shall be signed on behalf of Client by <strong>{leadData?.name || 'Client'}</strong> and on behalf of M10 by Ben Murray, Manager and effective as of the date first above written.
+                This Agreement shall be signed on behalf of Client by <strong>{leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</strong> and on behalf of M10 by Ben Murray, Manager and effective as of the date first above written.
               </p>
             </div>
 
@@ -401,10 +620,10 @@ export default function ContractPage() {
                       {contractData?.client_signature_data ? (
                         <img src={contractData.client_signature_data} alt="Client Signature" className="max-h-full" />
                       ) : (
-                        <p className="text-gray-500 dark:text-gray-400">{contractData?.signed_by_client || leadData?.name}</p>
+                        <p className="text-gray-500 dark:text-gray-400">{contractData?.signed_by_client || leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</p>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{contractData?.signed_by_client || leadData?.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{contractData?.signed_by_client || leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</p>
                     {contractData?.signed_at && (
                       <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                         {new Date(contractData.signed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -503,7 +722,7 @@ export default function ContractPage() {
                   </label>
                   <input
                     type="text"
-                    value={leadData?.name || ''}
+                    value={leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || '')}
                     readOnly
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
@@ -614,7 +833,7 @@ export default function ContractPage() {
                   </div>
                 )}
 
-                {!leadData?.eventDate && (
+                {!leadData?.eventDate && !leadData?.event_date && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Event Date <span className="text-red-500">*</span>
@@ -630,13 +849,133 @@ export default function ContractPage() {
                   </div>
                 )}
 
-                {leadData?.name && leadData?.email && leadData?.eventDate && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                      All required fields are filled. You can now sign the contract.
+                {(() => {
+                  // Check if we need to show venue address field
+                  const venueAddress = leadData?.venue_address || leadData?.venueAddress;
+                  const location = leadData?.location;
+                  const venueName = leadData?.venue_name;
+                  
+                  let needsVenueAddress = false;
+                  if (!venueAddress) {
+                    // No venue_address/venueAddress field exists
+                    if (!location || location === venueName) {
+                      // No location or location is same as venue name
+                      needsVenueAddress = true;
+                    } else {
+                      // Check if location is actually an address or just a name
+                      const locationTrimmed = location.trim();
+                      const venueNameTrimmed = venueName?.trim() || '';
+                      const hasAddressIndicators = /\d/.test(locationTrimmed) || 
+                                                     /(street|st|road|rd|avenue|ave|drive|dr|lane|ln|way|boulevard|blvd|circle|cir|court|ct)/i.test(locationTrimmed);
+                      
+                      // If location is same as venue name or doesn't look like an address, require venue address
+                      if (locationTrimmed === venueNameTrimmed || (!hasAddressIndicators && locationTrimmed.length <= 30)) {
+                        needsVenueAddress = true;
+                      }
+                    }
+                  } else if (venueAddress === venueName) {
+                    // Venue address exists but is same as venue name (not a real address)
+                    needsVenueAddress = true;
+                  }
+                  
+                  return needsVenueAddress ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Venue Address <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.venueAddress}
+                        onChange={(e) => setFormData({ ...formData, venueAddress: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                        placeholder="Enter full venue address (street, city, state, zip)"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Please provide the complete street address where the event will take place.
+                        {leadData?.venue_name && (
+                          <> Venue name: {leadData.venue_name}</>
+                        )}
+                      </p>
+                    </div>
+                  ) : null;
+                })()}
+
+                {!leadData?.event_time && !leadData?.eventTime && !leadData?.start_time && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Event Start Time <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.eventTime}
+                      onChange={(e) => setFormData({ ...formData, eventTime: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Please enter the time your event starts
                     </p>
                   </div>
                 )}
+
+                {!leadData?.end_time && !leadData?.endTime && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Event End Time <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.endTime}
+                      onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Please enter the time your event ends
+                    </p>
+                  </div>
+                )}
+
+                {(() => {
+                  const hasName = leadData?.name || leadData?.first_name || leadData?.last_name;
+                  const hasEmail = leadData?.email || leadData?.email_address;
+                  const hasDate = leadData?.eventDate || leadData?.event_date;
+                  
+                  // Check for actual venue address (venue_address or venueAddress preferred)
+                  // location is acceptable only if it's different from venue name and looks like an address
+                  const venueAddress = leadData?.venue_address || leadData?.venueAddress;
+                  const location = leadData?.location;
+                  const venueName = leadData?.venue_name;
+                  
+                  let hasValidVenueAddress = false;
+                  if (venueAddress) {
+                    hasValidVenueAddress = true;
+                  } else if (location) {
+                    const locationTrimmed = location.trim();
+                    const venueNameTrimmed = venueName?.trim() || '';
+                    const hasAddressIndicators = /\d/.test(locationTrimmed) || 
+                                                 /(street|st|road|rd|avenue|ave|drive|dr|lane|ln|way|boulevard|blvd|circle|cir|court|ct)/i.test(locationTrimmed);
+                    
+                    if (locationTrimmed !== venueNameTrimmed && (hasAddressIndicators || locationTrimmed.length > 30)) {
+                      hasValidVenueAddress = true;
+                    }
+                  }
+                  
+                  const hasStartTime = leadData?.event_time || leadData?.eventTime || leadData?.start_time;
+                  const hasEndTime = leadData?.end_time || leadData?.endTime;
+                  
+                  if (hasName && hasEmail && hasDate && hasValidVenueAddress && hasStartTime && hasEndTime) {
+                    return (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          All required fields are filled. You can now sign the contract.
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -649,7 +988,35 @@ export default function ContractPage() {
                 </button>
                 <button
                   onClick={handleUpdateFields}
-                  disabled={updatingFields || (!formData.name && !leadData?.name) || (!formData.email && !leadData?.email) || (!formData.eventDate && !leadData?.eventDate)}
+                  disabled={updatingFields || (() => {
+                    const hasName = formData.name || leadData?.name || leadData?.first_name || leadData?.last_name;
+                    const hasEmail = formData.email || leadData?.email || leadData?.email_address;
+                    const hasDate = formData.eventDate || leadData?.eventDate || leadData?.event_date;
+                    
+                    // Check for valid venue address
+                    const venueAddress = formData.venueAddress || leadData?.venue_address || leadData?.venueAddress;
+                    const location = formData.venueAddress || leadData?.venue_address || leadData?.venueAddress || leadData?.location;
+                    const venueName = leadData?.venue_name;
+                    
+                    let hasValidVenueAddress = false;
+                    if (venueAddress && venueAddress.trim() !== '') {
+                      hasValidVenueAddress = venueAddress.trim() !== venueName;
+                    } else if (location) {
+                      const locationTrimmed = location.trim();
+                      const venueNameTrimmed = venueName?.trim() || '';
+                      const hasAddressIndicators = /\d/.test(locationTrimmed) || 
+                                                   /(street|st|road|rd|avenue|ave|drive|dr|lane|ln|way|boulevard|blvd|circle|cir|court|ct)/i.test(locationTrimmed);
+                      
+                      if (locationTrimmed !== venueNameTrimmed && locationTrimmed !== '' && (hasAddressIndicators || locationTrimmed.length > 30)) {
+                        hasValidVenueAddress = true;
+                      }
+                    }
+                    
+                    const hasStartTime = formData.eventTime || leadData?.event_time || leadData?.eventTime || leadData?.start_time;
+                    const hasEndTime = formData.endTime || leadData?.end_time || leadData?.endTime;
+                    
+                    return !hasName || !hasEmail || !hasDate || !hasValidVenueAddress || !hasStartTime || !hasEndTime;
+                  })()}
                   className="flex-1 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
                   {updatingFields ? (
@@ -661,6 +1028,87 @@ export default function ContractPage() {
                     'Save & Continue'
                   )}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Required Modal */}
+        {showPaymentModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <CheckCircle className="w-6 h-6 text-green-500" />
+                  Contract Signed Successfully
+                </h3>
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+                    ⚠️ Payment Required
+                  </p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    Your contract has been signed, but a deposit or full payment is required before we can countersign your contract and secure your booking.
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-2">
+                  {quoteData && (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-400">Total Amount:</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          ${(quoteData.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-400">Required Deposit (50%):</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          ${((quoteData.total_price || 0) * 0.5).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      {paymentData && paymentData.totalPaid > 0 && (
+                        <div className="flex justify-between text-sm pt-2 border-t border-gray-300 dark:border-gray-600">
+                          <span className="text-gray-600 dark:text-gray-400">Amount Paid:</span>
+                          <span className="font-semibold text-green-600 dark:text-green-400">
+                            ${paymentData.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Important:</strong> Your contract will not be countersigned by M10 DJ Company until payment is received. Please make a deposit or full payment to secure your event date.
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-4 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  className="px-6 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  Remind Me Later
+                </button>
+                <Link
+                  href={`/quote/${id}/payment`}
+                  className="btn-primary inline-flex items-center justify-center gap-2"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  Make Payment Now
+                </Link>
               </div>
             </div>
           </div>

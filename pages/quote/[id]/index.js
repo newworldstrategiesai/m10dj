@@ -1251,10 +1251,10 @@ export default function PersonalizedQuote() {
           <title>Loading Your Quote | M10 DJ Company</title>
         </Head>
         {/* Simplified Header with Logo Only */}
-        <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-center h-10 md:h-12">
-              <Link href="/" className="flex-shrink-0">
+        <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
+          <div className="container mx-auto px-4 h-full">
+            <div className="flex items-center justify-center h-full py-0">
+              <Link href="/" className="flex-shrink-0 h-full flex items-center">
                 <Image
                   src="/logo-static.jpg"
                   alt="M10 DJ Company"
@@ -1284,10 +1284,10 @@ export default function PersonalizedQuote() {
           <title>Quote Not Found | M10 DJ Company</title>
         </Head>
         {/* Simplified Header with Logo Only */}
-        <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-center h-10 md:h-12">
-              <Link href="/" className="flex-shrink-0">
+        <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
+          <div className="container mx-auto px-4 h-full">
+            <div className="flex items-center justify-center h-full py-0">
+              <Link href="/" className="flex-shrink-0 h-full flex items-center">
                 <Image
                   src="/logo-static.jpg"
                   alt="M10 DJ Company"
@@ -1330,11 +1330,11 @@ export default function PersonalizedQuote() {
           <meta name="description" content={`Personalized ${isCorporate ? 'corporate event' : 'wedding'} DJ quote for ${leadData.name}`} />
       </Head>
       {/* Simplified Header with Logo Only */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-10 md:h-12">
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
+        <div className="container mx-auto px-4 h-full">
+          <div className="flex items-center justify-between h-full py-0">
             <div className="flex-1"></div>
-            <Link href="/" className="flex-shrink-0">
+            <Link href="/" className="flex-shrink-0 h-full flex items-center">
               <Image
                 src="/logo-static.jpg"
                 alt="M10 DJ Company"
@@ -1344,7 +1344,7 @@ export default function PersonalizedQuote() {
                 priority
               />
             </Link>
-            <div className="flex-1 flex justify-end">
+            <div className="flex-1 flex justify-end items-center h-full">
               {existingSelection && (
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

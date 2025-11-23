@@ -14,39 +14,75 @@ export default function ReceiptPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
+    if (!id || id === 'null' || id === 'undefined') {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const [leadResponse, quoteResponse, paymentsResponse] = await Promise.all([
-        fetch(`/api/leads/${id}`),
+      // Fetch all data in parallel, but handle errors gracefully
+      const [leadResponse, quoteResponse, paymentsResponse] = await Promise.allSettled([
+        fetch(`/api/leads/get-lead?id=${id}`),
         fetch(`/api/quote/${id}`),
         fetch(`/api/payments?contact_id=${id}`)
       ]);
 
-      if (leadResponse.ok) {
-        const lead = await leadResponse.json();
-        setLeadData(lead);
-      }
-
-      if (quoteResponse.ok) {
-        const quote = await quoteResponse.json();
-        setQuoteData(quote);
-      }
-
-      if (paymentsResponse.ok) {
-        const paymentsData = await paymentsResponse.json();
-        if (paymentsData.payments && paymentsData.payments.length > 0) {
-          // Get the most recent paid payment
-          const paidPayments = paymentsData.payments
-            .filter(p => p.payment_status === 'Paid')
-            .sort((a, b) => new Date(b.transaction_date || b.created_at) - new Date(a.transaction_date || a.created_at));
-          
-          if (paidPayments.length > 0) {
-            setPaymentData(paidPayments[0]); // Show most recent payment
-          }
+      // Handle lead data
+      if (leadResponse.status === 'fulfilled' && leadResponse.value.ok) {
+        try {
+          const lead = await leadResponse.value.json();
+          setLeadData(lead);
+        } catch (e) {
+          console.error('Error parsing lead data:', e);
         }
+      } else {
+        console.warn('Failed to fetch lead data:', leadResponse.status === 'rejected' ? leadResponse.reason : 'Response not OK');
+      }
+
+      // Handle quote data
+      if (quoteResponse.status === 'fulfilled' && quoteResponse.value.ok) {
+        try {
+          const quote = await quoteResponse.value.json();
+          setQuoteData(quote);
+        } catch (e) {
+          console.error('Error parsing quote data:', e);
+        }
+      } else {
+        console.warn('Failed to fetch quote data:', quoteResponse.status === 'rejected' ? quoteResponse.reason : 'Response not OK');
+      }
+
+      // Handle payments data - this is critical for the receipt
+      if (paymentsResponse.status === 'fulfilled' && paymentsResponse.value.ok) {
+        try {
+          const paymentsData = await paymentsResponse.value.json();
+          if (paymentsData.payments && paymentsData.payments.length > 0) {
+            // Get the most recent paid payment
+            const paidPayments = paymentsData.payments
+              .filter(p => p.payment_status === 'Paid' || p.payment_status === 'paid' || p.status === 'succeeded')
+              .sort((a, b) => {
+                const dateA = new Date(a.transaction_date || a.created_at || 0);
+                const dateB = new Date(b.transaction_date || b.created_at || 0);
+                return dateB - dateA;
+              });
+            
+            if (paidPayments.length > 0) {
+              setPaymentData(paidPayments[0]); // Show most recent payment
+            } else {
+              console.warn('No paid payments found');
+            }
+          } else {
+            console.warn('No payments found in response');
+          }
+        } catch (e) {
+          console.error('Error parsing payments data:', e);
+        }
+      } else {
+        console.error('Failed to fetch payments data:', paymentsResponse.status === 'rejected' ? paymentsResponse.reason : 'Response not OK');
       }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
+      // Always set loading to false, even if some requests failed
       setLoading(false);
     }
   }, [id]);
@@ -78,7 +114,7 @@ export default function ReceiptPage() {
     );
   }
 
-  if (!paymentData) {
+  if (!paymentData && !loading) {
     return (
       <>
         <Head>
@@ -91,15 +127,30 @@ export default function ReceiptPage() {
               <Receipt className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No Payment Receipt Found</h1>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                We couldn&apos;t find a payment receipt for this booking.
+                We couldn&apos;t find a payment receipt for this booking. This may be because:
               </p>
-              <Link
-                href={`/quote/${id}`}
-                className="btn-primary inline-flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Booking
-              </Link>
+              <ul className="text-left text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto space-y-2">
+                <li>• No payment has been recorded yet</li>
+                <li>• Payment is still pending</li>
+                <li>• Payment was recorded with a different status</li>
+              </ul>
+              <div className="flex gap-4 justify-center">
+                <Link
+                  href={`/quote/${id}`}
+                  className="btn-primary inline-flex items-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Booking
+                </Link>
+                {id && (
+                  <Link
+                    href={`/admin/contacts/${id}`}
+                    className="btn-outline inline-flex items-center gap-2"
+                  >
+                    View Contact Details
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>

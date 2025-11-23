@@ -21,6 +21,7 @@ export default function MyEvents() {
     phone: '',
     eventDate: '',
     eventTime: '',
+    endTime: '',
     location: '',
     venueName: '',
     guestCount: '',
@@ -36,19 +37,26 @@ export default function MyEvents() {
   const fetchLeadData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/leads/${id}`);
-      if (!response.ok) {
+      
+      // Fetch both lead data and quote data
+      const [leadResponse, quoteResponse] = await Promise.all([
+        fetch(`/api/leads/get-lead?id=${id}`),
+        fetch(`/api/quote/${id}`).catch(() => null) // Quote might not exist yet
+      ]);
+      
+      if (!leadResponse.ok) {
         throw new Error('Failed to fetch lead data');
       }
-      const data = await response.json();
-      setLeadData(data);
-
-      // Check if contract is signed
-      if (data.quote_selections && data.quote_selections.length > 0) {
-        const selection = data.quote_selections[0];
-        if (selection.contract_id) {
+      
+      const leadData = await leadResponse.json();
+      setLeadData(leadData);
+      
+      // Check if contract is signed from quote data
+      if (quoteResponse && quoteResponse.ok) {
+        const quoteData = await quoteResponse.json();
+        if (quoteData.contract_id) {
           try {
-            const contractResponse = await fetch(`/api/contracts/${selection.contract_id}`);
+            const contractResponse = await fetch(`/api/contracts/${quoteData.contract_id}`);
             if (contractResponse.ok) {
               const contractData = await contractResponse.json();
               if (contractData.status === 'signed' || contractData.signed_at) {
@@ -63,15 +71,16 @@ export default function MyEvents() {
 
       // Populate form data
       setFormData({
-        name: data.name || '',
-        email: data.email || '',
-        phone: data.phone || '',
-        eventDate: data.eventDate ? data.eventDate.split('T')[0] : '',
-        eventTime: data.eventTime || '',
-        location: data.location || '',
-        venueName: data.venueName || '',
-        guestCount: data.guestCount || '',
-        specialRequests: data.specialRequests || ''
+        name: leadData.name || '',
+        email: leadData.email || '',
+        phone: leadData.phone || '',
+        eventDate: leadData.eventDate ? leadData.eventDate.split('T')[0] : '',
+        eventTime: leadData.eventTime || '',
+        endTime: leadData.endTime || '',
+        location: leadData.location || '',
+        venueName: leadData.venueName || '',
+        guestCount: leadData.guestCount || '',
+        specialRequests: leadData.specialRequests || ''
       });
     } catch (error) {
       console.error('Error fetching lead data:', error);
@@ -115,6 +124,7 @@ export default function MyEvents() {
           email: formData.email,
           eventDate: formData.eventDate,
           eventTime: formData.eventTime,
+          endTime: formData.endTime,
           location: formData.location,
           venueName: formData.venueName,
           guestCount: formData.guestCount,
@@ -259,11 +269,11 @@ export default function MyEvents() {
                 )}
               </div>
 
-              {/* Event Time */}
+              {/* Event Start Time */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <Clock className="inline w-4 h-4 mr-1" />
-                  Event Time
+                  Event Start Time
                 </label>
                 {isEditing ? (
                   <input
@@ -276,6 +286,27 @@ export default function MyEvents() {
                 ) : (
                   <p className="text-gray-900 dark:text-white">
                     {formData.eventTime || 'Not specified'}
+                  </p>
+                )}
+              </div>
+
+              {/* Event End Time */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Clock className="inline w-4 h-4 mr-1" />
+                  Event End Time
+                </label>
+                {isEditing ? (
+                  <input
+                    type="time"
+                    name="endTime"
+                    value={formData.endTime}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                ) : (
+                  <p className="text-gray-900 dark:text-white">
+                    {formData.endTime || 'Not specified'}
                   </p>
                 )}
               </div>

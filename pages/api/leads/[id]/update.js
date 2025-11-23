@@ -52,8 +52,20 @@ export default async function handler(req, res) {
         contactUpdate.venue_address = updateData.location;
       }
       
+      if (updateData.venueAddress) {
+        contactUpdate.venue_address = updateData.venueAddress;
+      }
+      
       if (updateData.venueName) {
         contactUpdate.venue_name = updateData.venueName;
+      }
+      
+      if (updateData.eventTime) {
+        contactUpdate.event_time = updateData.eventTime;
+      }
+      
+      if (updateData.endTime) {
+        contactUpdate.end_time = updateData.endTime;
       }
       
       if (updateData.guestCount) {
@@ -86,7 +98,9 @@ export default async function handler(req, res) {
           id: updatedContact.id,
           name: `${updatedContact.first_name || ''} ${updatedContact.last_name || ''}`.trim(),
           email: updatedContact.email_address,
-          eventDate: updatedContact.event_date
+          eventDate: updatedContact.event_date,
+          eventTime: updatedContact.event_time,
+          venueAddress: updatedContact.venue_address
         }
       });
     }
@@ -130,8 +144,16 @@ export default async function handler(req, res) {
       submissionUpdate.location = updateData.location;
     }
     
+    if (updateData.venueAddress) {
+      submissionUpdate.location = updateData.venueAddress; // For submissions, location is the address field
+    }
+    
     if (updateData.venueName) {
       submissionUpdate.venue_name = updateData.venueName;
+    }
+    
+    if (updateData.eventTime) {
+      submissionUpdate.event_time = updateData.eventTime;
     }
     
     if (updateData.guestCount) {
@@ -164,7 +186,9 @@ export default async function handler(req, res) {
         id: updatedSubmission.id,
         name: updatedSubmission.name,
         email: updatedSubmission.email,
-        eventDate: updatedSubmission.event_date
+        eventDate: updatedSubmission.event_date,
+        eventTime: updatedSubmission.event_time,
+        venueAddress: updatedSubmission.location // For submissions, location is the address
       }
     });
   } catch (error) {

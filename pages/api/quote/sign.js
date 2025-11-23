@@ -190,16 +190,18 @@ export default async function handler(req, res) {
       })
       .eq('lead_id', leadId);
 
-    // Notify admin that contract was signed (non-blocking)
+    // Notify admin and client that contract was signed (non-blocking)
     (async () => {
       try {
         const { sendAdminNotification } = await import('../../../utils/admin-notifications');
+        const { notifyContractSigned } = await import('../../../utils/client-notifications');
         const { data: contactData } = await supabase
           .from('contacts')
           .select('first_name, last_name, email_address, event_type, event_date')
           .eq('id', contactId)
           .single();
         
+        // Notify admin
         sendAdminNotification('contract_signed', {
           leadId: leadId,
           contactId: contactId,
@@ -208,6 +210,12 @@ export default async function handler(req, res) {
           eventDate: contactData?.event_date,
           totalPrice: quote.total_price
         }).catch(err => console.error('Failed to notify admin:', err));
+
+        // Notify client
+        notifyContractSigned(contactId, {
+          contract_id: quote.contract_id,
+          signed_at: updatedContract.signed_at
+        }).catch(err => console.error('Failed to notify client:', err));
       } catch (err) {
         console.error('Error sending contract signed notification:', err);
       }

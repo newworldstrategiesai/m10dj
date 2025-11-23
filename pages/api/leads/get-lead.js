@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     // First, try to fetch from contacts table (UUID format)
     let { data, error } = await supabase
       .from('contacts')
-      .select('id, first_name, last_name, email_address, phone, event_type, event_date, venue_name, created_at')
+      .select('id, first_name, last_name, email_address, phone, event_type, event_date, event_time, end_time, venue_name, venue_address, guest_count, special_requests, created_at')
       .eq('id', id)
       .is('deleted_at', null)
       .single();
@@ -92,7 +92,12 @@ export default async function handler(req, res) {
       phone: data.phone,
       eventType: data.event_type,
       eventDate: data.event_date,
-      location: data.venue_name,
+      eventTime: data.event_time || '',
+      endTime: data.end_time || '',
+      location: data.venue_address || data.venue_name || '',
+      venueName: data.venue_name || '',
+      guestCount: data.guest_count ? String(data.guest_count) : '',
+      specialRequests: data.special_requests || '',
       createdAt: data.created_at
     });
   } catch (error) {

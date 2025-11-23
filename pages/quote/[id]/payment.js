@@ -141,9 +141,15 @@ export default function PaymentPage() {
         throw new Error(errorData.error || 'Failed to create payment session');
       }
 
-      const { sessionId, url } = await response.json();
+      const { sessionId, url, isFreeOrder } = await response.json();
 
-      // Redirect to Stripe Checkout
+      // Handle free orders ($0 payments) - redirect directly to thank you page
+      if (isFreeOrder && url) {
+        window.location.href = url;
+        return;
+      }
+
+      // Redirect to Stripe Checkout for non-zero payments
       if (url) {
         window.location.href = url;
       } else if (sessionId) {

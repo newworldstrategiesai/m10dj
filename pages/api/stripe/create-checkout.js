@@ -25,8 +25,8 @@ export default async function handler(req, res) {
 
     // Handle quote payment (leadId provided)
     if (leadId) {
-      if (!amount || !description) {
-        return res.status(400).json({ error: 'Amount and description required for quote payment' });
+      if (!description) {
+        return res.status(400).json({ error: 'Description required for quote payment' });
       }
 
       // Get lead/quote data
@@ -35,6 +35,68 @@ export default async function handler(req, res) {
         .select('*')
         .eq('lead_id', leadId)
         .single();
+
+      // Handle $0 payments (free orders, 100% discount codes, etc.)
+      // Stripe doesn't support $0 checkout sessions, so we mark payment as complete directly
+      // Note: amount is already in cents from the frontend
+      const amountInCents = Math.round(amount || 0);
+      if (amountInCents === 0) {
+        console.log(`💰 Handling $0 payment for lead ${leadId} - marking as paid directly`);
+
+        // Mark quote as paid in database
+        if (quote) {
+          await supabase
+            .from('quote_selections')
+            .update({
+              payment_status: 'paid',
+              payment_intent_id: 'free_order',
+              paid_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('lead_id', leadId);
+        }
+
+        // Update contact status if needed
+        try {
+          await supabase
+            .from('contacts')
+            .update({
+              payment_status: 'paid',
+              deposit_paid: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', leadId);
+        } catch (e) {
+          console.log('Could not update contact payment status:', e);
+        }
+
+        // Send client payment confirmation for $0 payment (non-blocking)
+        (async () => {
+          try {
+            const { notifyPaymentReceived } = await import('../../../utils/client-notifications');
+            await notifyPaymentReceived(leadId, {
+              amount: 0,
+              payment_type: 'full',
+              payment_intent_id: 'free_order'
+            });
+          } catch (err) {
+            console.error('Error sending $0 payment confirmation to client:', err);
+          }
+        })();
+
+        // Return success without Stripe session
+        return res.status(200).json({
+          success: true,
+          sessionId: 'free_order',
+          url: successUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/quote/${leadId}/thank-you?session_id=free_order&amount=0`,
+          isFreeOrder: true
+        });
+      }
+
+      // Validate amount for non-zero payments
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: 'Amount must be greater than 0 for Stripe payment' });
+      }
 
       // Get lead contact info
       let customerEmail = null;

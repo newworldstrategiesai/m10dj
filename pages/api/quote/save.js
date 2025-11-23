@@ -174,6 +174,22 @@ export default async function handler(req, res) {
       eventDate: leadData?.eventDate
     }).catch(err => console.error('Failed to send admin notification:', err));
 
+    // Send client notification that quote has been generated/updated
+    if (leadData?.id) {
+      (async () => {
+        try {
+          const { notifyQuoteGenerated } = await import('../../../utils/client-notifications');
+          await notifyQuoteGenerated(leadData.id, {
+            package_name: packageName,
+            total_price: totalPrice,
+            addons: addons || []
+          });
+        } catch (err) {
+          console.error('Failed to send client quote notification:', err);
+        }
+      })();
+    }
+
     res.status(200).json({
       success: true,
       message: 'Quote saved successfully',

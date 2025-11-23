@@ -10,6 +10,7 @@ export default function App({ Component, pageProps }) {
   const router = useRouter();
   const isAdminRoute = router.pathname.startsWith('/admin') || router.pathname.startsWith('/chat');
   const isSignInPage = router.pathname.startsWith('/signin');
+  const isRequestsPage = router.pathname === '/requests' || router.pathname.startsWith('/crowd-request');
   
   return (
     <>
@@ -50,7 +51,7 @@ export default function App({ Component, pageProps }) {
       </Head>
       <Component {...pageProps} />
       {isAdminRoute && <FloatingLeadImportWidget />}
-      {!isSignInPage && <GlobalChatWidget />}
+      {!isSignInPage && !isRequestsPage && <GlobalChatWidget />}
       {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}
     </>

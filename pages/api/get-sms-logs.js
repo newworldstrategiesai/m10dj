@@ -16,29 +16,57 @@ export default async function handler(req, res) {
 
     const { phoneNumber, page = 1, pageSize = 50 } = req.query;
 
-    // Get Twilio credentials
-    let twilioSid = process.env.TWILIO_ACCOUNT_SID;
-    let twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-    let twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+    // Get Twilio credentials - trim whitespace which is a common issue
+    let twilioSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+    let twilioAuthToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+    let twilioPhone = process.env.TWILIO_PHONE_NUMBER?.trim();
+    let apiKeys = null; // Track if we're using database credentials
 
     // Try to get user-specific credentials if available
     try {
-      const { data: apiKeys } = await supabase
+      const { data: dbApiKeys, error: apiKeysError } = await supabase
         .from('api_keys')
         .select('twilio_sid, twilio_auth_token')
         .eq('user_id', session.user.id)
         .single();
 
-      if (apiKeys?.twilio_sid && apiKeys?.twilio_auth_token) {
-        twilioSid = apiKeys.twilio_sid;
-        twilioAuthToken = apiKeys.twilio_auth_token;
+      if (apiKeysError) {
+        console.log('API keys query error:', apiKeysError.message);
+      }
+
+      if (dbApiKeys?.twilio_sid && dbApiKeys?.twilio_auth_token) {
+        // Trim whitespace from database values too
+        twilioSid = dbApiKeys.twilio_sid.trim();
+        twilioAuthToken = dbApiKeys.twilio_auth_token.trim();
+        apiKeys = dbApiKeys; // Store for error logging
+        console.log('Using database-stored Twilio credentials');
+      } else {
+        console.log('No database credentials, using environment variables');
       }
     } catch (err) {
-      console.log('No user-specific Twilio credentials found, using environment variables');
+      console.log('Error fetching user-specific Twilio credentials:', err.message);
+      console.log('Falling back to environment variables');
     }
 
+    // Log credential status (without exposing actual values)
+    console.log('Twilio credential check:', {
+      hasSid: !!twilioSid,
+      sidLength: twilioSid?.length || 0,
+      hasToken: !!twilioAuthToken,
+      tokenLength: twilioAuthToken?.length || 0,
+      hasPhone: !!twilioPhone,
+      phone: twilioPhone
+    });
+
     if (!twilioSid || !twilioAuthToken || !twilioPhone) {
-      return res.status(400).json({ error: 'Twilio credentials not configured' });
+      return res.status(400).json({ 
+        error: 'Twilio credentials not configured',
+        details: {
+          missingSid: !twilioSid,
+          missingToken: !twilioAuthToken,
+          missingPhone: !twilioPhone
+        }
+      });
     }
 
     // Initialize Twilio client
@@ -157,9 +185,28 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Twilio API error:', error);
     
-    // Provide more specific error messages
+    // Log credential info when authentication fails (without exposing actual values)
     if (error.code === 20003) {
-      return res.status(401).json({ error: 'Invalid Twilio credentials' });
+      console.error('Twilio Authentication Failed - Debug Info:', {
+        hasSid: !!twilioSid,
+        sidLength: twilioSid?.length || 0,
+        sidStartsWith: twilioSid?.substring(0, 3) || 'N/A',
+        hasToken: !!twilioAuthToken,
+        tokenLength: twilioAuthToken?.length || 0,
+        usingDatabaseCredentials: apiKeys?.twilio_sid ? true : false,
+        errorCode: error.code,
+        errorMessage: error.message
+      });
+      
+      // Check if we're using database credentials - suggest checking them
+      const credentialSource = apiKeys?.twilio_sid ? 'database (api_keys table)' : 'environment variables';
+      
+      return res.status(401).json({ 
+        error: 'Invalid Twilio credentials',
+        details: `Authentication failed with credentials from ${credentialSource}. Please verify your Account SID and Auth Token are correct.`,
+        hint: 'Check if credentials in database/api_keys table are overriding correct environment variables',
+        code: error.code
+      });
     } else if (error.code === 20404) {
       return res.status(404).json({ error: 'Twilio phone number not found' });
     } else if (error.status === 429) {
@@ -168,7 +215,8 @@ export default async function handler(req, res) {
     
     res.status(500).json({ 
       error: 'Failed to fetch SMS messages from Twilio',
-      details: error.message 
+      details: error.message,
+      code: error.code
     });
   }
 }

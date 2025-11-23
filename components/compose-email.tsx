@@ -35,7 +35,14 @@ export default function ComposeEmail({ open, onClose, onSend, replyTo }: Compose
   const [sending, setSending] = useState(false)
   const [showCcBcc, setShowCcBcc] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [selectedAccount, setSelectedAccount] = useState(mockAccounts[0])
+  const [selectedAccount, setSelectedAccount] = useState(
+    mockAccounts[0] || {
+      id: 'default',
+      name: 'M10 DJ Company',
+      email: 'hello@m10djcompany.com',
+      color: '#fcba00'
+    }
+  )
 
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +79,7 @@ export default function ComposeEmail({ open, onClose, onSend, replyTo }: Compose
         size: `${Math.round(file.size / 1024)} KB`,
         type: file.type,
       })),
-      from: selectedAccount.email,
+      from: selectedAccount?.email || 'hello@m10djcompany.com',
       date: new Date().toISOString(),
     }
 
@@ -185,29 +192,43 @@ export default function ComposeEmail({ open, onClose, onSend, replyTo }: Compose
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start">
                       <div className="flex items-center gap-2">
-                        <div className="h-5 w-5 rounded-full" style={{ backgroundColor: selectedAccount.color }} />
-                        <span>
-                          {selectedAccount.name} &lt;{selectedAccount.email}&gt;
-                        </span>
+                        {selectedAccount && (
+                          <>
+                            <div className="h-5 w-5 rounded-full" style={{ backgroundColor: selectedAccount.color || '#fcba00' }} />
+                            <span>
+                              {selectedAccount.name || 'M10 DJ Company'} &lt;{selectedAccount.email || 'hello@m10djcompany.com'}&gt;
+                            </span>
+                          </>
+                        )}
                       </div>
                       <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-0">
                     <div className="p-2">
-                      {mockAccounts.map((account) => (
-                        <div
-                          key={account.id}
-                          className="flex items-center gap-2 p-2 hover:bg-zinc-100 rounded-md cursor-pointer dark:hover:bg-zinc-800"
-                          onClick={() => setSelectedAccount(account)}
-                        >
-                          <div className="h-5 w-5 rounded-full" style={{ backgroundColor: account.color }} />
+                      {mockAccounts.length > 0 ? (
+                        mockAccounts.map((account) => (
+                          <div
+                            key={account.id}
+                            className="flex items-center gap-2 p-2 hover:bg-zinc-100 rounded-md cursor-pointer dark:hover:bg-zinc-800"
+                            onClick={() => setSelectedAccount(account)}
+                          >
+                            <div className="h-5 w-5 rounded-full" style={{ backgroundColor: account.color || '#fcba00' }} />
+                            <div>
+                              <div className="font-medium">{account.name}</div>
+                              <div className="text-sm text-zinc-500 dark:text-zinc-400">{account.email}</div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-center gap-2 p-2">
+                          <div className="h-5 w-5 rounded-full" style={{ backgroundColor: '#fcba00' }} />
                           <div>
-                            <div className="font-medium">{account.name}</div>
-                            <div className="text-sm text-zinc-500 dark:text-zinc-400">{account.email}</div>
+                            <div className="font-medium">M10 DJ Company</div>
+                            <div className="text-sm text-zinc-500 dark:text-zinc-400">hello@m10djcompany.com</div>
                           </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>

@@ -53,7 +53,98 @@ export default async function handler(req, res) {
   // Handle the event
   try {
   switch (event.type) {
+      case 'checkout.session.completed':
+        // This event has complete customer information from Stripe Checkout
+        const session = event.data.object;
+        console.log('💰 Checkout completed:', {
+          id: session.id,
+          amount: session.amount_total / 100,
+          customer_email: session.customer_email,
+          customer_details: session.customer_details,
+          metadata: session.metadata,
+          timestamp: new Date().toISOString()
+        });
+
+        // Update database
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const leadId = session.metadata?.leadId;
+        const requestId = session.metadata?.request_id;
+
+        // Handle crowd request payment
+        if (requestId) {
+          const paymentAmount = session.amount_total / 100;
+          
+          // Extract customer information from checkout session
+          const customerEmail = session.customer_email || session.customer_details?.email;
+          const customerName = session.customer_details?.name;
+          const customerPhone = session.customer_details?.phone;
+          
+          const updateData = {
+            payment_status: 'paid',
+            payment_intent_id: session.payment_intent || session.id,
+            amount_paid: session.amount_total, // Store in cents
+            paid_at: new Date().toISOString(),
+            status: 'acknowledged',
+            updated_at: new Date().toISOString(),
+            payment_method: 'card'
+          };
+
+          // Update customer information if available and not already set
+          if (customerEmail) {
+            updateData.requester_email = customerEmail;
+          }
+          if (customerName && !session.metadata?.requester_name) {
+            updateData.requester_name = customerName;
+          }
+          if (customerPhone) {
+            updateData.requester_phone = customerPhone;
+          }
+          
+          const { error: updateError } = await supabase
+            .from('crowd_requests')
+            .update(updateData)
+            .eq('id', requestId);
+
+          if (updateError) {
+            console.error('⚠️ Error updating crowd request:', updateError);
+          } else {
+            console.log('✅ Crowd request payment processed:', requestId);
+            
+            // Notify admin about crowd request payment (non-blocking)
+            (async () => {
+              try {
+                const { sendAdminNotification } = await import('../../../utils/admin-notifications');
+                const { data: requestData } = await supabase
+                  .from('crowd_requests')
+                  .select('*')
+                  .eq('id', requestId)
+                  .single();
+                
+                if (requestData) {
+                  const requestTypeLabel = requestData.request_type === 'song_request' ? 'Song Request' : 'Shoutout';
+                  const requestDetail = requestData.request_type === 'song_request'
+                    ? `${requestData.song_title}${requestData.song_artist ? ` by ${requestData.song_artist}` : ''}`
+                    : `For ${requestData.recipient_name}`;
+                  
+                  sendAdminNotification('crowd_request_payment', {
+                    requestId: requestId,
+                    requestType: requestTypeLabel,
+                    requestDetail: requestDetail,
+                    requesterName: requestData.requester_name,
+                    amount: paymentAmount,
+                    eventCode: requestData.event_qr_code
+                  }).catch(err => console.error('Failed to notify admin:', err));
+                }
+              } catch (err) {
+                console.error('Error sending crowd request notification:', err);
+              }
+            })();
+          }
+        }
+        break;
+
       case 'payment_intent.succeeded':
+        // Fallback for direct payment intents (not from Checkout)
         const paymentIntent = event.data.object;
         console.log('💰 Payment succeeded:', {
           id: paymentIntent.id,
@@ -63,10 +154,65 @@ export default async function handler(req, res) {
         });
 
         // Update database
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        const leadId = paymentIntent.metadata.leadId;
+        const supabaseForPaymentIntent = createClient(supabaseUrl, supabaseKey);
+        const leadIdFromIntent = paymentIntent.metadata.leadId;
+        const requestIdFromIntent = paymentIntent.metadata.request_id;
 
-        if (leadId) {
+        // Handle crowd request payment
+        if (requestIdFromIntent) {
+          const paymentAmount = paymentIntent.amount / 100;
+          
+          const { error: updateError } = await supabaseForPaymentIntent
+            .from('crowd_requests')
+            .update({
+              payment_status: 'paid',
+              payment_intent_id: paymentIntent.id,
+              amount_paid: paymentIntent.amount, // Store in cents
+              paid_at: new Date().toISOString(),
+              status: 'acknowledged',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', requestIdFromIntent);
+
+          if (updateError) {
+            console.error('⚠️ Error updating crowd request:', updateError);
+          } else {
+            console.log('✅ Crowd request payment processed:', requestIdFromIntent);
+            
+            // Notify admin about crowd request payment (non-blocking)
+            (async () => {
+              try {
+                const { sendAdminNotification } = await import('../../../utils/admin-notifications');
+                const { data: requestData } = await supabaseForPaymentIntent
+                  .from('crowd_requests')
+                  .select('*')
+                  .eq('id', requestIdFromIntent)
+                  .single();
+                
+                if (requestData) {
+                  const requestTypeLabel = requestData.request_type === 'song_request' ? 'Song Request' : 'Shoutout';
+                  const requestDetail = requestData.request_type === 'song_request'
+                    ? `${requestData.song_title}${requestData.song_artist ? ` by ${requestData.song_artist}` : ''}`
+                    : `For ${requestData.recipient_name}`;
+                  
+                  sendAdminNotification('crowd_request_payment', {
+                    requestId: requestIdFromIntent,
+                    requestType: requestTypeLabel,
+                    requestDetail: requestDetail,
+                    requesterName: requestData.requester_name,
+                    amount: paymentAmount,
+                    eventCode: requestData.event_qr_code
+                  }).catch(err => console.error('Failed to notify admin:', err));
+                }
+              } catch (err) {
+                console.error('Error sending crowd request notification:', err);
+              }
+            })();
+          }
+        }
+
+        // Handle quote/lead payment
+        if (leadIdFromIntent) {
           const { error } = await supabase
             .from('quote_selections')
       .update({
@@ -81,7 +227,7 @@ export default async function handler(req, res) {
           if (error) {
             console.error('⚠️ Error updating database:', error);
           } else {
-            console.log('✅ Database updated for lead:', leadId);
+            console.log('✅ Database updated for lead:', leadIdFromIntent);
             
             // Notify admin about payment (non-blocking)
             (async () => {
@@ -116,7 +262,19 @@ export default async function handler(req, res) {
             })();
           }
 
-          // TODO: Send confirmation email here
+          // Send client payment confirmation notification
+          (async () => {
+            try {
+              const { notifyPaymentReceived } = await import('../../../utils/client-notifications');
+              await notifyPaymentReceived(leadId, {
+                amount: paymentAmount,
+                payment_type: paymentIntent.metadata.payment_type || 'deposit',
+                payment_intent_id: paymentIntent.id
+              });
+            } catch (err) {
+              console.error('Error sending payment confirmation to client:', err);
+            }
+          })();
         }
         break;
 
