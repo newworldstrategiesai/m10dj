@@ -322,6 +322,47 @@ export const db = {
     return data;
   },
 
+  async getRelatedBlogPosts(postId, limit = 3) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return [];
+    }
+
+    // First, get the current post to find its category and tags
+    const { data: currentPost, error: postError } = await supabase
+      .from('blog_posts')
+      .select('category, tags')
+      .eq('id', postId)
+      .single();
+
+    if (postError || !currentPost) {
+      console.error('Error fetching current post for related posts:', postError);
+      return [];
+    }
+
+    // Get related posts from the same category, excluding the current post
+    let query = supabase
+      .from('blog_posts')
+      .select('*')
+      .eq('is_published', true)
+      .neq('id', postId)
+      .order('published_at', { ascending: false })
+      .limit(limit);
+
+    // Filter by category if available
+    if (currentPost.category) {
+      query = query.eq('category', currentPost.category);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching related blog posts:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
   async getFeaturedBlogPosts(limit = 3) {
     if (!supabaseUrl || !supabaseAnonKey) {
       return [];
