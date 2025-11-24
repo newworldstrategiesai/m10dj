@@ -22,7 +22,8 @@ import {
   Eye,
   Edit3,
   Printer,
-  Zap
+  Zap,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -765,24 +766,61 @@ export default function CrowdRequestsPage() {
                   
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                      Quick Amount Presets (in dollars, comma-separated)
+                      Quick Amount Presets (in dollars)
                     </label>
-                    <Input
-                      value={requestSettings.presetAmounts.map(a => (a / 100).toFixed(2)).join(', ')}
-                      onChange={(e) => {
-                        const values = e.target.value.split(',').map(v => {
-                          const dollars = parseFloat(v.trim()) || 0;
-                          return Math.round(dollars * 100);
-                        }).filter(v => v > 0);
-                        if (values.length > 0) {
-                          setRequestSettings(prev => ({ ...prev, presetAmounts: values }));
-                        }
-                      }}
-                      placeholder="5.00, 10.00, 20.00, 50.00"
-                      className="max-w-md"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Preset payment amounts shown as quick options (e.g., "5.00, 10.00, 20.00, 50.00")
+                    <div className="space-y-2 max-w-md">
+                      {requestSettings.presetAmounts.map((amount, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              value={(amount / 100).toFixed(2)}
+                              onChange={(e) => {
+                                const dollars = parseFloat(e.target.value) || 0;
+                                if (dollars > 0) {
+                                  const newAmounts = [...requestSettings.presetAmounts];
+                                  newAmounts[index] = Math.round(dollars * 100);
+                                  setRequestSettings(prev => ({ ...prev, presetAmounts: newAmounts }));
+                                }
+                              }}
+                              className="pl-8"
+                              placeholder="0.00"
+                            />
+                          </div>
+                          {requestSettings.presetAmounts.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newAmounts = requestSettings.presetAmounts.filter((_, i) => i !== index);
+                                setRequestSettings(prev => ({ ...prev, presetAmounts: newAmounts }));
+                              }}
+                              className="px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              title="Remove this amount"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRequestSettings(prev => ({ 
+                            ...prev, 
+                            presetAmounts: [...prev.presetAmounts, 500] // Add $5.00 by default
+                          }));
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Amount
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Preset payment amounts shown as quick options. Click the X to remove an amount.
                     </p>
                   </div>
                 </div>
