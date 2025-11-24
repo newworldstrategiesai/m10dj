@@ -1186,24 +1186,28 @@ export default function CrowdRequestPage() {
                     {requestType === 'song_request' && (
                       <div className="border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-6 mt-6 space-y-4">
                         {/* Fast-Track Option - More Compact */}
-                        <label className={`group relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer touch-manipulation ${
-                          isFastTrack
-                            ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 shadow-lg shadow-orange-500/20'
-                            : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-orange-300'
-                        }`}>
+                        <label 
+                          className={`group relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer touch-manipulation ${
+                            isFastTrack
+                              ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 shadow-lg shadow-orange-500/20'
+                              : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-orange-300'
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // Allow deselection: if already checked, uncheck it
+                            if (isFastTrack) {
+                              setIsFastTrack(false);
+                            } else {
+                              setIsFastTrack(true);
+                              setIsNext(false);
+                            }
+                          }}
+                        >
                           <input
                             type="radio"
                             name="priorityOption"
                             checked={isFastTrack}
-                            onChange={(e) => {
-                              // Allow deselection: if already checked, uncheck it
-                              if (isFastTrack) {
-                                setIsFastTrack(false);
-                              } else {
-                                setIsFastTrack(true);
-                                setIsNext(false);
-                              }
-                            }}
+                            onChange={() => {}} // Handled by label onClick
                             className="sr-only"
                             aria-label="Fast-Track Priority Placement"
                           />
@@ -1233,24 +1237,28 @@ export default function CrowdRequestPage() {
                         </label>
                         
                         {/* Next Option - More Compact */}
-                        <label className={`group relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer touch-manipulation ${
-                          isNext
-                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/20 shadow-lg shadow-blue-500/20'
-                            : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-blue-300'
-                        }`}>
+                        <label 
+                          className={`group relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer touch-manipulation ${
+                            isNext
+                              ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/20 shadow-lg shadow-blue-500/20'
+                              : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-blue-300'
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // Allow deselection: if already checked, uncheck it
+                            if (isNext) {
+                              setIsNext(false);
+                            } else {
+                              setIsNext(true);
+                              setIsFastTrack(false);
+                            }
+                          }}
+                        >
                           <input
                             type="radio"
                             name="priorityOption"
                             checked={isNext}
-                            onChange={(e) => {
-                              // Allow deselection: if already checked, uncheck it
-                              if (isNext) {
-                                setIsNext(false);
-                              } else {
-                                setIsNext(true);
-                                setIsFastTrack(false);
-                              }
-                            }}
+                            onChange={() => {}} // Handled by label onClick
                             className="sr-only"
                             aria-label="Next - Bump to Next"
                           />
