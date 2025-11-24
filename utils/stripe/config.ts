@@ -1,18 +1,23 @@
 import Stripe from 'stripe';
 
-export const stripe = new Stripe(
-  process.env.STRIPE_SECRET_KEY_LIVE ?? process.env.STRIPE_SECRET_KEY ?? '',
-  {
-    // https://github.com/stripe/stripe-node#configuration
-    // https://stripe.com/docs/api/versioning
-    // @ts-ignore
-    apiVersion: null,
-    // Register this as an official Stripe plugin.
-    // https://stripe.com/docs/building-plugins#setappinfo
-    appInfo: {
-      name: 'Next.js Subscription Starter',
-      version: '0.0.0',
-      url: 'https://github.com/vercel/nextjs-subscription-payments'
-    }
+// Validate Stripe key exists
+const stripeKey = process.env.STRIPE_SECRET_KEY_LIVE ?? process.env.STRIPE_SECRET_KEY ?? '';
+
+if (!stripeKey) {
+  console.warn('⚠️  WARNING: Stripe secret key not found in environment variables');
+  console.warn('   Set STRIPE_SECRET_KEY or STRIPE_SECRET_KEY_LIVE in your .env.local file');
+}
+
+export const stripe = stripeKey ? new Stripe(stripeKey, {
+  // https://github.com/stripe/stripe-node#configuration
+  // https://stripe.com/docs/api/versioning
+  // Using preview API version to support Accounts v2 API
+  apiVersion: '2025-07-30.preview', // Supports Accounts v2 API
+  // Register this as an official Stripe plugin.
+  // https://stripe.com/docs/building-plugins#setappinfo
+  appInfo: {
+    name: 'M10 DJ Platform',
+    version: '1.0.0',
+    url: 'https://m10djcompany.com'
   }
-);
+}) : null;
