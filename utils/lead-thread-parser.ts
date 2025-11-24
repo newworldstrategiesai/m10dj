@@ -337,20 +337,27 @@ function capitalize(value: string): string {
 }
 
 function extractVenue(thread: string): string | null {
-  // Multiple venue patterns
+  // Multiple venue patterns - prioritize more specific patterns first
   const venuePatterns = [
-    /\bat ([^.\n]+)/gi, // "at [venue]"
+    /\b(?:at|for|venue|location)[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3}(?:\s+(?:which is now called|formerly|now called)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})?)/gi, // "at Pin Oak which is now called The Elliot"
+    /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})\s+(?:which is now called|formerly|now called)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})/gi, // "Pin Oak which is now called The Elliot"
+    /\b(?:at|in|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/g, // "at [Capitalized Name]"
     /\bvenue[:\s]+([^.\n]+)/gi, // "venue: [venue]" or "venue [venue]"
     /\blocation[:\s]+([^.\n]+)/gi, // "location: [venue]"
     /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:venue|hall|center|club|hotel|resort|garden|park)/gi, // Capitalized venue names
-    /\b(?:at|in|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/g, // "at [Capitalized Name]"
   ];
 
   const allMatches: string[] = [];
   for (const pattern of venuePatterns) {
     const matches = Array.from(thread.matchAll(pattern));
     for (const match of matches) {
-      const candidate = sanitizeVenueCandidate(match[1] || match[0]);
+      // Handle patterns with multiple capture groups (e.g., "Pin Oak which is now called The Elliot")
+      let candidateText = match[1] || match[0];
+      if (match[2]) {
+        // If we have a "formerly/now called" pattern, combine them
+        candidateText = `${match[2]} (formerly ${match[1]})`;
+      }
+      const candidate = sanitizeVenueCandidate(candidateText);
       if (candidate) {
         allMatches.push(candidate);
       }
@@ -376,10 +383,16 @@ function sanitizeVenueCandidate(raw: string): string | null {
   if (!value) return null;
 
   const lower = value.toLowerCase();
-  if (VENUE_BLOCKLIST.some(phrase => lower.includes(phrase))) {
+  
+  // Enhanced blocklist - exclude common conversational phrases
+  const enhancedBlocklist = [...VENUE_BLOCKLIST, 'i know', 'how it goes', 'by the way', 'got your', 'reaching out'];
+  if (enhancedBlocklist.some(phrase => lower.includes(phrase))) {
     return null;
   }
 
+  // Remove conversational phrases that might be captured
+  value = value.replace(/\b(?:i know|how it goes|by the way|got your|reaching out|was reaching|to see if)\b/gi, '').trim();
+  
   const punctuationBreak = value.search(/[.!?🙂😊\n]/);
   if (punctuationBreak >= 0) {
     value = value.slice(0, punctuationBreak);
@@ -401,11 +414,18 @@ function sanitizeVenueCandidate(raw: string): string | null {
 
   if (!value) return null;
 
+  // Handle "which is now called" pattern
   if (/which is now called/i.test(value)) {
     const parts = value.split(/which is now called/i).map(part => part.trim()).filter(Boolean);
     if (parts.length === 2) {
       value = `${capitalize(parts[1])} (formerly ${capitalize(parts[0])})`;
     }
+  }
+
+  // Final validation - venue should have at least one capitalized word
+  const hasCapitalized = /[A-Z][a-z]+/.test(value);
+  if (!hasCapitalized) {
+    return null;
   }
 
   return capitalize(value);

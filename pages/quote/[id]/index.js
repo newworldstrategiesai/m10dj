@@ -1,9 +1,10 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X, Tag, XCircle } from 'lucide-react';
+import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X, Tag, XCircle, Settings, Trash2 } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
 export default function PersonalizedQuote() {
   const router = useRouter();
@@ -26,7 +27,10 @@ export default function PersonalizedQuote() {
   const [discountData, setDiscountData] = useState(null);
   const [discountError, setDiscountError] = useState('');
   const [validatingDiscount, setValidatingDiscount] = useState(false);
-  
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
+  const [customizedPackage, setCustomizedPackage] = useState(null); // Admin-customized package with removed features
+  const [customizedFeatures, setCustomizedFeatures] = useState([]); // Features that remain after customization
 
   const fetchLeadData = useCallback(async () => {
     // Validate ID before making request
@@ -273,6 +277,32 @@ export default function PersonalizedQuote() {
     }
   }, [id, fetchLeadData]);
 
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        );
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user?.email) {
+          const adminEmails = [
+            'admin@m10djcompany.com',
+            'manager@m10djcompany.com',
+            'djbenmurray@gmail.com'
+          ];
+          setIsAdmin(adminEmails.includes(user.email));
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+    
+    checkAdmin();
+  }, []);
+
   // Track page view and time on page
   useEffect(() => {
     if (!id || !leadData || loading) return;
@@ -452,7 +482,7 @@ export default function PersonalizedQuote() {
     }
   }, [selectedPackage]);
 
-  // Determine event type from lead data
+  // Determine event type from lead data (before early returns to ensure hooks can use it)
   const eventType = leadData?.eventType || leadData?.event_type || 'wedding';
   const isCorporate = eventType?.toLowerCase().includes('corporate') || eventType?.toLowerCase().includes('business');
   const isSchool = eventType?.toLowerCase().includes('school') || eventType?.toLowerCase().includes('dance') || eventType?.toLowerCase().includes('prom') || eventType?.toLowerCase().includes('homecoming');
@@ -622,7 +652,10 @@ export default function PersonalizedQuote() {
     }
   ];
 
-  const packages = isSchool ? schoolPackages : (isCorporate ? corporatePackages : weddingPackages);
+  // Memoize packages to prevent unnecessary re-renders
+  const packages = useMemo(() => {
+    return isSchool ? schoolPackages : (isCorporate ? corporatePackages : weddingPackages);
+  }, [isCorporate, isSchool]);
 
   // Wedding Addons
   const weddingAddons = [
@@ -855,11 +888,14 @@ export default function PersonalizedQuote() {
     }
   ];
 
-  const addons = isSchool ? schoolAddons : (isCorporate ? corporateAddons : weddingAddons);
+  // Memoize addons to prevent unnecessary re-renders
+  const addons = useMemo(() => {
+    return isSchool ? schoolAddons : (isCorporate ? corporateAddons : weddingAddons);
+  }, [isCorporate, isSchool]);
 
   // Auto-select recommended package from URL parameter
   useEffect(() => {
-    if (router.isReady && router.query.recommended && packages.length > 0 && !selectedPackage && !existingSelection && leadData) {
+    if (router.isReady && router.query.recommended && packages && packages.length > 0 && !selectedPackage && !existingSelection && leadData) {
       const recommendedPackageId = router.query.recommended;
       const recommendedPackage = packages.find(pkg => pkg.id === recommendedPackageId);
       
@@ -948,10 +984,87 @@ export default function PersonalizedQuote() {
     return breakdowns[packageId] || [];
   };
 
+  // Admin: Handle package customization
+  const handleAdminSelectPackage = (pkg) => {
+    if (!pkg || !pkg.id) {
+      console.error('Invalid package provided to handleAdminSelectPackage');
+      return;
+    }
+    
+    if (!adminMode) {
+      setSelectedPackage(pkg);
+      return;
+    }
+    
+    // In admin mode, initialize customization
+    const breakdown = getPackageBreakdown(pkg.id);
+    if (!breakdown || breakdown.length === 0) {
+      console.warn('No breakdown found for package:', pkg.id);
+      setSelectedPackage(pkg);
+      return;
+    }
+    
+    setSelectedPackage(pkg);
+    setCustomizedPackage({
+      ...pkg,
+      originalPrice: pkg.price || 0,
+      originalALaCartePrice: pkg.aLaCartePrice || 0
+    });
+    setCustomizedFeatures(breakdown.map(item => ({ ...item, removed: false })));
+  };
+
+  // Admin: Toggle feature removal
+  const handleToggleFeature = (featureIndex) => {
+    if (!adminMode || !customizedFeatures.length || featureIndex < 0 || featureIndex >= customizedFeatures.length) {
+      return;
+    }
+    
+    const updated = [...customizedFeatures];
+    updated[featureIndex].removed = !updated[featureIndex].removed;
+    setCustomizedFeatures(updated);
+    
+    // Recalculate package price
+    const removedTotal = updated
+      .filter(f => f && f.removed)
+      .reduce((sum, f) => sum + (Number(f.price) || 0), 0);
+    
+    const basePrice = customizedPackage?.originalPrice || selectedPackage?.price || 0;
+    const baseALaCartePrice = customizedPackage?.originalALaCartePrice || selectedPackage?.aLaCartePrice || 0;
+    
+    const newPrice = Math.max(0, Number(basePrice) - removedTotal);
+    const newALaCartePrice = Math.max(0, Number(baseALaCartePrice) - removedTotal);
+    
+    if (customizedPackage) {
+      setCustomizedPackage({
+        ...customizedPackage,
+        price: newPrice,
+        aLaCartePrice: newALaCartePrice
+      });
+    }
+    
+    // Update selected package with new price
+    if (selectedPackage) {
+      setSelectedPackage({
+        ...selectedPackage,
+        price: newPrice,
+        aLaCartePrice: newALaCartePrice
+      });
+    }
+  };
+
+  // Get the effective package (customized or original)
+  const getEffectivePackage = () => {
+    if (adminMode && customizedPackage) {
+      return customizedPackage;
+    }
+    return selectedPackage;
+  };
+
   const calculateTotal = () => {
     let total = 0;
-    if (selectedPackage && selectedPackage.price != null) {
-      total += Number(selectedPackage.price) || 0;
+    const effectivePackage = getEffectivePackage();
+    if (effectivePackage && effectivePackage.price != null) {
+      total += Number(effectivePackage.price) || 0;
     }
     selectedAddons.forEach(addon => {
       if (addon && addon.price != null) {
@@ -1175,20 +1288,36 @@ export default function PersonalizedQuote() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
+      // Prepare package data - include customization info if admin mode
+      const effectivePackage = getEffectivePackage();
+      const packageData = {
+        leadId: id,
+        packageId: effectivePackage.id,
+        packageName: effectivePackage.name,
+        packagePrice: effectivePackage.price,
+        addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
+        totalPrice: totalPrice
+      };
+
+      // Include customization details if admin customized the package
+      if (adminMode && customizedPackage && customizedPackage.price !== customizedPackage.originalPrice) {
+        const removedFeatures = customizedFeatures
+          .filter(f => f.removed)
+          .map(f => ({ item: f.item, price: f.price }));
+        
+        packageData.customized = true;
+        packageData.originalPrice = customizedPackage.originalPrice;
+        packageData.removedFeatures = removedFeatures;
+        packageData.customizationNote = `Admin customized: Removed ${removedFeatures.length} feature(s) worth $${removedFeatures.reduce((sum, f) => sum + f.price, 0).toLocaleString()}`;
+      }
+
       try {
         const response = await fetch('/api/quote/save', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            leadId: id,
-            packageId: selectedPackage.id,
-            packageName: selectedPackage.name,
-            packagePrice: packagePrice,
-            addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
-            totalPrice: totalPrice
-          }),
+          body: JSON.stringify(packageData),
           signal: controller.signal
         });
 
@@ -1263,7 +1392,7 @@ export default function PersonalizedQuote() {
             </div>
           </div>
         </header>
-        <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <main className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-12 h-12 animate-spin text-brand mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400">Loading your personalized quote...</p>
@@ -1296,7 +1425,7 @@ export default function PersonalizedQuote() {
             </div>
           </div>
         </header>
-        <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
+        <main className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4">
           <div className="text-center max-w-md">
             <div className="text-6xl mb-4">⚠️</div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Quote Not Found</h1>
@@ -1340,7 +1469,21 @@ export default function PersonalizedQuote() {
                 priority
               />
             </Link>
-            <div className="flex-1 flex justify-end items-center h-full">
+            <div className="flex-1 flex justify-end items-center h-full gap-2">
+              {isAdmin && (
+                <button
+                  onClick={() => setAdminMode(!adminMode)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    adminMode
+                      ? 'bg-brand text-black'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                  title="Admin Mode: Customize packages for this client"
+                >
+                  <Settings className="w-4 h-4 inline mr-1" />
+                  Admin {adminMode ? 'ON' : 'OFF'}
+                </button>
+              )}
               {existingSelection && (
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -1405,7 +1548,7 @@ export default function PersonalizedQuote() {
           </div>
         )}
       </header>
-      <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+      <main className="min-h-screen bg-white dark:bg-gray-900">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
           {/* Header Section */}
           <div className="text-center mb-12">
@@ -1663,13 +1806,28 @@ export default function PersonalizedQuote() {
                       {/* Price & Savings - Always Visible */}
                       <div className="mb-4">
                         <div className="flex items-baseline gap-3 mb-2">
-                          <span className="text-4xl font-bold text-brand">${pkg.price.toLocaleString()}</span>
-                          <span className="text-lg text-gray-400 dark:text-gray-500 line-through">${pkg.aLaCartePrice.toLocaleString()}</span>
+                          <span className="text-4xl font-bold text-brand">
+                            ${(adminMode && isSelected && customizedPackage && customizedPackage.id === pkg.id && customizedPackage.price !== customizedPackage.originalPrice)
+                              ? customizedPackage.price.toLocaleString()
+                              : pkg.price.toLocaleString()}
+                          </span>
+                          <span className="text-lg text-gray-400 dark:text-gray-500 line-through">
+                            ${(adminMode && isSelected && customizedPackage && customizedPackage.id === pkg.id && customizedPackage.price !== customizedPackage.originalPrice)
+                              ? customizedPackage.aLaCartePrice.toLocaleString()
+                              : pkg.aLaCartePrice.toLocaleString()}
+                          </span>
                         </div>
-                        <div className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
-                          <CheckCircle className="w-4 h-4" />
-                          Save ${(pkg.aLaCartePrice - pkg.price).toLocaleString()}
-                        </div>
+                        {(adminMode && isSelected && customizedPackage && customizedPackage.id === pkg.id && customizedPackage.price !== customizedPackage.originalPrice) ? (
+                          <div className="inline-flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 px-3 py-1 rounded-full text-sm font-semibold">
+                            <Settings className="w-4 h-4" />
+                            Customized (${(customizedPackage.originalPrice - customizedPackage.price).toLocaleString()} off)
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
+                            <CheckCircle className="w-4 h-4" />
+                            Save ${(pkg.aLaCartePrice - pkg.price).toLocaleString()}
+                          </div>
+                        )}
                       </div>
 
                       {/* Expand/Collapse Button */}
@@ -1734,10 +1892,94 @@ export default function PersonalizedQuote() {
                         </div>
                       )}
 
+                      {/* Admin Customization UI */}
+                      {adminMode && isSelected && customizedPackage && customizedPackage.id === pkg.id && (
+                        <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Settings className="w-5 h-5 text-yellow-700 dark:text-yellow-400" />
+                            <h4 className="font-bold text-yellow-900 dark:text-yellow-200">Admin: Customize Package</h4>
+                          </div>
+                          <p className="text-sm text-yellow-800 dark:text-yellow-300 mb-3">
+                            Remove features to adjust the price. The package price will be reduced by the value of removed items.
+                          </p>
+                          <div className="space-y-2 max-h-60 overflow-y-auto">
+                            {customizedFeatures.map((feature, idx) => (
+                              <div
+                                key={idx}
+                                className={`flex items-start gap-2 p-2 rounded ${
+                                  feature.removed
+                                    ? 'bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700'
+                                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
+                                }`}
+                              >
+                                <button
+                                  onClick={() => handleToggleFeature(idx)}
+                                  className={`mt-0.5 p-1 rounded ${
+                                    feature.removed
+                                      ? 'bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300'
+                                      : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                  }`}
+                                  title={feature.removed ? 'Click to include' : 'Click to remove'}
+                                >
+                                  {feature.removed ? (
+                                    <X className="w-4 h-4" />
+                                  ) : (
+                                    <CheckCircle className="w-4 h-4" />
+                                  )}
+                                </button>
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-sm font-medium ${
+                                      feature.removed
+                                        ? 'line-through text-gray-500 dark:text-gray-500'
+                                        : 'text-gray-900 dark:text-gray-100'
+                                    }`}>
+                                      {feature.item}
+                                    </span>
+                                    <span className={`text-sm font-semibold ${
+                                      feature.removed
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-gray-700 dark:text-gray-300'
+                                    }`}>
+                                      ${feature.price.toLocaleString()}
+                                    </span>
+                                  </div>
+                                  {feature.description && (
+                                    <p className={`text-xs mt-0.5 ${
+                                      feature.removed
+                                        ? 'text-gray-400 dark:text-gray-600'
+                                        : 'text-gray-600 dark:text-gray-400'
+                                    }`}>
+                                      {feature.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {customizedPackage && customizedPackage.price !== customizedPackage.originalPrice && (
+                            <div className="mt-3 pt-3 border-t border-yellow-300 dark:border-yellow-700">
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-yellow-900 dark:text-yellow-200 font-medium">Original Price:</span>
+                                <span className="text-yellow-700 dark:text-yellow-400 line-through">${customizedPackage.originalPrice.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-sm mt-1">
+                                <span className="text-yellow-900 dark:text-yellow-200 font-bold">Adjusted Price:</span>
+                                <span className="text-yellow-900 dark:text-yellow-200 font-bold text-lg">${customizedPackage.price.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs mt-1 text-yellow-700 dark:text-yellow-400">
+                                <span>Savings:</span>
+                                <span>${(customizedPackage.originalPrice - customizedPackage.price).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Select Package Button */}
                       <button
                         onClick={() => {
-                          setSelectedPackage(pkg);
+                          handleAdminSelectPackage(pkg);
                           // Track package selection
                           if (id && leadData) {
                             fetch('/api/analytics/quote-page-view', {
@@ -1750,7 +1992,8 @@ export default function PersonalizedQuote() {
                                   package_id: pkg.id,
                                   package_name: pkg.name,
                                   package_price: pkg.price,
-                                  event_type: leadData.eventType || leadData.event_type
+                                  event_type: leadData.eventType || leadData.event_type,
+                                  admin_customized: adminMode
                                 }
                               })
                             }).catch(err => console.error('Error tracking package selection:', err));
@@ -1765,7 +2008,7 @@ export default function PersonalizedQuote() {
                         {isSelected ? (
                           <span className="flex items-center justify-center gap-2">
                             <CheckCircle className="w-5 h-5" />
-                            Selected
+                            {adminMode ? 'Customize Package' : 'Selected'}
                           </span>
                         ) : (
                           'Select This Package'

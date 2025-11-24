@@ -179,7 +179,18 @@ export async function createConnectAccount(
     console.error('Stripe error type:', stripeError.type);
     console.error('Stripe error code:', stripeError.code);
     console.error('Stripe error message:', stripeError.message);
-    throw new Error(`Stripe error: ${stripeError.message || stripeError.type || 'Unknown Stripe error'}`);
+    
+    // Preserve the original error message and type for better error handling
+    const errorMessage = stripeError.message || stripeError.type || 'Unknown Stripe error';
+    const error = new Error(`Stripe error: ${errorMessage}`);
+    
+    // Preserve error details for API endpoint to detect verification errors
+    (error as any).stripeError = stripeError;
+    (error as any).stripeType = stripeError.type;
+    (error as any).stripeCode = stripeError.code;
+    (error as any).originalMessage = stripeError.message || errorMessage;
+    
+    throw error;
   }
 }
 
@@ -506,6 +517,91 @@ export async function getAccountBalance(accountId: string): Promise<{
     available: balance.available[0]?.amount || 0,
     pending: balance.pending[0]?.amount || 0,
     currency: balance.available[0]?.currency || 'usd',
+  };
+}
+
+/**
+ * Calculate instant payout fee
+ * Stripe charges 1% with a minimum of $0.50 for instant payouts
+ */
+export function calculateInstantPayoutFee(
+  amount: number,
+  feePercentage: number = 1.00
+): {
+  feeAmount: number;
+  payoutAmount: number;
+  feePercentage: number;
+} {
+  const percentageFee = (amount * feePercentage) / 100;
+  const feeAmount = Math.max(percentageFee, 0.50); // Minimum $0.50
+  const payoutAmount = amount - feeAmount;
+
+  return {
+    feeAmount: Math.round(feeAmount * 100) / 100, // Round to 2 decimals
+    payoutAmount: Math.round(payoutAmount * 100) / 100,
+    feePercentage,
+  };
+}
+
+/**
+ * Create an instant payout to a connected account
+ * 
+ * @param accountId The Stripe Connect account ID
+ * @param amount Amount in dollars (will be converted to cents)
+ * @param feePercentage Instant payout fee percentage (default: 1.00 for 1%)
+ * @returns The payout object
+ */
+export async function createInstantPayout(
+  accountId: string,
+  amount: number,
+  feePercentage: number = 1.00
+): Promise<Stripe.Payout> {
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
+  }
+
+  // Calculate instant payout fee
+  const feeCalculation = calculateInstantPayoutFee(amount, feePercentage);
+  const payoutAmountCents = Math.round(feeCalculation.payoutAmount * 100);
+
+  // Create instant payout
+  // Note: Instant payouts require the account to have a debit card on file
+  // and sufficient balance available
+  const payout = await stripe.payouts.create(
+    {
+      amount: payoutAmountCents,
+      currency: 'usd',
+      method: 'instant', // Use 'instant' for instant payouts, 'standard' for 2-7 day payouts
+    },
+    {
+      stripeAccount: accountId,
+    }
+  );
+
+  return payout;
+}
+
+/**
+ * Get payout schedule information for a connected account
+ */
+export async function getPayoutSchedule(accountId: string): Promise<{
+  interval: string;
+  delayDays: number;
+  monthlyAnchor?: number;
+  weeklyAnchor?: string;
+}> {
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
+  }
+
+  const account = await stripe.accounts.retrieve(accountId);
+  const settings = account.settings?.payouts;
+
+  return {
+    interval: settings?.schedule?.interval || 'manual',
+    delayDays: settings?.schedule?.delay_days || 0,
+    monthlyAnchor: settings?.schedule?.monthly_anchor,
+    weeklyAnchor: settings?.schedule?.weekly_anchor,
   };
 }
 

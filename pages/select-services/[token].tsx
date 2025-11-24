@@ -67,6 +67,12 @@ export default function SelectServicesPage() {
       const data = await response.json();
 
       if (data.valid) {
+        // If they already have a service selection, redirect to invoice/contract
+        if (data.already_has_selection && data.should_redirect) {
+          router.push(data.redirect_to || `/quote/${data.existing_quote_id}/invoice`);
+          return;
+        }
+
         setValid(true);
         setContact(data.contact);
         setAlreadyUsed(data.already_used || false);

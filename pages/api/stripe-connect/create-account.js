@@ -136,11 +136,30 @@ export default async function handler(req, res) {
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
     
-    // Check if this is the platform profile error
-    const isPlatformProfileError = error.message && (
-      error.message.includes('complete your platform profile') ||
-      error.message.includes('platform profile') ||
-      error.message.includes('questionnaire')
+    // Get the original error message (may be nested)
+    const originalMessage = error.originalMessage || error.message || '';
+    const errorMsg = error.message || '';
+    
+    // Check if this is the platform profile/verification error
+    // Check both the error message and any nested stripe error
+    const isPlatformProfileError = (
+      originalMessage.includes('complete your platform profile') ||
+      originalMessage.includes('platform profile') ||
+      originalMessage.includes('questionnaire') ||
+      originalMessage.includes('verify your identity') ||
+      originalMessage.includes('verify identity') ||
+      originalMessage.includes('complete verification') ||
+      errorMsg.includes('complete your platform profile') ||
+      errorMsg.includes('platform profile') ||
+      errorMsg.includes('questionnaire') ||
+      errorMsg.includes('verify your identity') ||
+      errorMsg.includes('verify identity') ||
+      errorMsg.includes('complete verification') ||
+      (error.stripeError && (
+        error.stripeError.message?.includes('verify your identity') ||
+        error.stripeError.message?.includes('platform profile') ||
+        error.stripeError.message?.includes('complete verification')
+      ))
     );
     
     // Check if we're using test or live mode
@@ -148,29 +167,30 @@ export default async function handler(req, res) {
     const isTestMode = stripeKey.startsWith('sk_test_');
     
     // Provide more specific error messages
-    let errorMessage = 'Internal server error';
-    let errorDetails = error.message || 'Unknown error';
+    let finalErrorMessage = 'Internal server error';
+    let errorDetails = originalMessage || errorMsg || 'Unknown error';
     let helpUrl = null;
     
     if (isPlatformProfileError) {
       if (isTestMode) {
-        errorMessage = 'Stripe Test Mode Setup Required';
-        errorDetails = 'You need to complete the Stripe Connect platform profile questionnaire in your test mode dashboard.';
+        finalErrorMessage = 'Stripe Test Mode Setup Required';
+        errorDetails = originalMessage || 'You need to complete the Stripe Connect platform profile questionnaire in your test mode dashboard.';
         helpUrl = 'https://dashboard.stripe.com/test/connect/accounts/overview';
       } else {
-        errorMessage = 'Stripe Live Mode Setup Required';
-        errorDetails = 'You must complete your platform profile to use Connect and create live connected accounts. This is a one-time setup required by Stripe.';
+        finalErrorMessage = 'Stripe Live Mode Setup Required';
+        errorDetails = originalMessage || 'You must complete your platform profile to use Connect and create live connected accounts. This is a one-time setup required by Stripe.';
         helpUrl = 'https://dashboard.stripe.com/connect/accounts/overview';
       }
-    } else if (error.type) {
-      errorMessage = `Stripe error: ${error.type}`;
-      errorDetails = error.message || error.raw?.message || errorDetails;
-    } else if (error.message) {
-      errorMessage = error.message;
+    } else if (error.stripeType || error.type) {
+      finalErrorMessage = `Stripe error: ${error.stripeType || error.type}`;
+      errorDetails = originalMessage || errorMsg || errorDetails;
+    } else if (errorMsg) {
+      finalErrorMessage = errorMsg;
+      errorDetails = originalMessage || errorDetails;
     }
     
     return res.status(500).json({ 
-      error: errorMessage,
+      error: finalErrorMessage,
       details: errorDetails,
       helpUrl: helpUrl,
       isPlatformProfileError: isPlatformProfileError,
@@ -178,8 +198,8 @@ export default async function handler(req, res) {
       // Only include stack in development
       ...(process.env.NODE_ENV === 'development' && { 
         stack: error.stack,
-        errorType: error.type,
-        errorCode: error.code,
+        errorType: error.stripeType || error.type,
+        errorCode: error.stripeCode || error.code,
         fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
       })
     });

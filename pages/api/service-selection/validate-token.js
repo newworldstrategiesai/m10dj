@@ -176,6 +176,26 @@ export default async function handler(req, res) {
     }
 
     // ------------------------------------------------------------------
+    // Check if contact already has a service selection (quote_selections)
+    // If they do, they should go directly to invoice/contract
+    // ------------------------------------------------------------------
+    const contactId = contact?.id || tokenData.contact_id;
+    let existingQuoteSelection = null;
+    
+    if (contactId) {
+      const { data: quoteSelection, error: quoteError } = await supabase
+        .from('quote_selections')
+        .select('*')
+        .eq('lead_id', contactId)
+        .maybeSingle();
+      
+      if (!quoteError && quoteSelection) {
+        existingQuoteSelection = quoteSelection;
+        console.log(`✅ Found existing quote selection for contact ${contactId}`);
+      }
+    }
+
+    // ------------------------------------------------------------------
     // If already submitted, provide helpful messaging
     // Guide them to request a new link if they need to re-submit
     // ------------------------------------------------------------------
@@ -184,6 +204,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         valid: true,
         already_used: true,
+        has_existing_selection: !!existingQuoteSelection,
+        existing_quote_id: existingQuoteSelection?.lead_id || null,
         refreshed,
         created,
         used_at: tokenData.used_at,
@@ -195,6 +217,30 @@ export default async function handler(req, res) {
           : null,
         message: 'You have already submitted your selections. We\'ll be in touch soon!',
         help: 'If you need to submit again or make changes, please contact us at (901) 410-2020 or email djbenmurray@gmail.com'
+      });
+    }
+
+    // ------------------------------------------------------------------
+    // If they have an existing quote selection, redirect them to invoice/contract
+    // ------------------------------------------------------------------
+    if (existingQuoteSelection) {
+      console.log(`✅ Contact already has service selection, should redirect to invoice/contract`);
+      return res.status(200).json({
+        valid: true,
+        already_has_selection: true,
+        existing_quote_id: existingQuoteSelection.lead_id,
+        should_redirect: true,
+        redirect_to: `/quote/${existingQuoteSelection.lead_id}/invoice`,
+        refreshed,
+        created,
+        contact: contact
+          ? {
+              id: contact.id,
+              first_name: contact.first_name,
+              last_name: contact.last_name,
+              event_type: contact.event_type
+            }
+          : null
       });
     }
 

@@ -195,7 +195,7 @@ export default function EmbedCodeGenerator({
         <textarea
           readOnly
           value={embedCode}
-          className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg font-mono text-sm text-gray-900 dark:text-white resize-none"
+          className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg font-mono text-xs sm:text-sm text-gray-900 dark:text-white resize-none overflow-x-auto break-all"
           rows={8}
           onClick={(e) => (e.target as HTMLTextAreaElement).select()}
         />
@@ -227,7 +227,7 @@ export default function EmbedCodeGenerator({
         <textarea
           readOnly
           value={responsiveCode}
-          className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg font-mono text-sm text-gray-900 dark:text-white resize-none"
+          className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg font-mono text-xs sm:text-sm text-gray-900 dark:text-white resize-none overflow-x-auto break-all"
           rows={6}
           onClick={(e) => (e.target as HTMLTextAreaElement).select()}
         />
@@ -258,30 +258,30 @@ export default function EmbedCodeGenerator({
       <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Your Request Page URLs</h3>
         <div className="space-y-2">
-          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg gap-2">
+            <div className="flex-1 min-w-0">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Direct Link</p>
-              <p className="text-sm font-mono text-gray-900 dark:text-white">
+              <p className="text-xs sm:text-sm font-mono text-gray-900 dark:text-white break-all">
                 {baseUrl}/{slug}/requests
               </p>
             </div>
             <button
               onClick={() => handleCopy(`${baseUrl}/${slug}/requests`)}
-              className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors flex-shrink-0"
             >
               <Copy className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg gap-2">
+            <div className="flex-1 min-w-0">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Embed URL</p>
-              <p className="text-sm font-mono text-gray-900 dark:text-white">
+              <p className="text-xs sm:text-sm font-mono text-gray-900 dark:text-white break-all">
                 {embedUrl}
               </p>
             </div>
             <button
               onClick={() => handleCopy(embedUrl)}
-              className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors flex-shrink-0"
             >
               <Copy className="w-4 h-4" />
             </button>

@@ -77,6 +77,22 @@ section:first-child {
   background: #e6a800;
 }
 
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Smooth horizontal scrolling */
+.scroll-smooth-x {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Typography */
 .font-inter { font-family: 'Inter', sans-serif !important; }
 .font-playfair { font-family: 'Inter', sans-serif !important; }

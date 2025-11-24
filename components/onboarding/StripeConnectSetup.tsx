@@ -91,17 +91,25 @@ export default function StripeConnectSetup({ organizationId, onComplete }: Strip
         }
         console.error('Create account error response:', errorData);
         
-        // Handle platform profile error with helpful message
-        if (errorData.isPlatformProfileError) {
-          const errorMessage = errorData.details || errorData.error || 'Stripe setup required';
+        // Handle platform profile/verification errors with helpful message
+        const errorMessage = errorData.details || errorData.error || 'Stripe setup required';
+        
+        // Check if it's a platform verification error (multiple variations)
+        const isVerificationError = errorMessage.includes('verify your identity') || 
+            errorMessage.includes('verify identity') ||
+            errorMessage.includes('complete verification') ||
+            errorMessage.includes('complete your platform profile') ||
+            errorMessage.includes('platform profile') ||
+            errorData.isPlatformProfileError;
+        
+        if (isVerificationError) {
           const error = new Error(errorMessage);
-          (error as any).helpUrl = errorData.helpUrl;
+          (error as any).helpUrl = errorData.helpUrl || 'https://dashboard.stripe.com/connect/accounts/overview';
           (error as any).isPlatformProfileError = true;
           (error as any).isTestMode = errorData.isTestMode;
           throw error;
         }
         
-        const errorMessage = errorData.details || errorData.error || 'Failed to create account';
         throw new Error(errorMessage);
       }
 
@@ -233,11 +241,11 @@ export default function StripeConnectSetup({ organizationId, onComplete }: Strip
         {isPlatformProfileError && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
             <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
-              <strong>Action Required:</strong> Before creating Connect accounts, you need to complete Stripe's platform profile questionnaire. This is a one-time setup.
+              <strong>Action Required:</strong> Before creating Connect accounts, you need to complete Stripe's platform verification. This is a one-time setup that takes 2-3 minutes.
             </p>
             <ol className="text-sm text-yellow-800 dark:text-yellow-200 space-y-2 list-decimal list-inside mb-3">
               <li>Click the button below to open your Stripe Dashboard</li>
-              <li>Complete the platform profile questionnaire (takes 2-3 minutes)</li>
+              <li>Complete the platform profile questionnaire and identity verification</li>
               <li>Return here and click "Try Again"</li>
             </ol>
             {helpUrl && (
@@ -245,12 +253,15 @@ export default function StripeConnectSetup({ organizationId, onComplete }: Strip
                 href={helpUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-colors mb-3"
               >
                 <ArrowRight className="w-4 h-4" />
                 Open Stripe Dashboard {isTestMode ? '(Test Mode)' : '(Live Mode)'}
               </a>
             )}
+            <p className="text-xs text-yellow-700 dark:text-yellow-300">
+              💡 <strong>Note:</strong> You can skip this step for now and set up payments later. Your request page will still work without payment processing.
+            </p>
           </div>
         )}
         

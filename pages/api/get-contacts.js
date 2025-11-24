@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
 import { getOrganizationContext } from '@/utils/organization-helpers';
+import { getViewAsOrgIdFromRequest } from '@/utils/auth-helpers/view-as';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -20,11 +21,15 @@ export default async function handler(req, res) {
     // Check if user is platform admin
     const isAdmin = isPlatformAdmin(session.user.email);
 
-    // Get organization context (null for admins, org_id for SaaS users)
+    // Get view-as organization ID from cookie (if admin is viewing as another org)
+    const viewAsOrgId = getViewAsOrgIdFromRequest(req);
+
+    // Get organization context (null for admins, org_id for SaaS users, or viewAsOrgId if in view-as mode)
     const orgId = await getOrganizationContext(
       supabase,
       session.user.id,
-      session.user.email
+      session.user.email,
+      viewAsOrgId
     );
 
     let query = supabase

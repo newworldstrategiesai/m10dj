@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { leadId, packageId, packageName, packagePrice, addons, totalPrice, discountCode, discountAmount } = req.body;
+  const { leadId, packageId, packageName, packagePrice, addons, totalPrice, discountCode, discountAmount, customized, originalPrice, removedFeatures, customizationNote } = req.body;
 
   if (!leadId || !packageId) {
     return res.status(400).json({ error: 'Lead ID and package are required' });
@@ -78,6 +78,17 @@ export default async function handler(req, res) {
       discount_amount: discountAmount || 0,
       updated_at: new Date().toISOString()
     };
+
+    // Store customization details if admin customized the package
+    if (customized && originalPrice !== undefined) {
+      quoteData.customized = true;
+      quoteData.original_price = Number(originalPrice) || packagePrice;
+      quoteData.removed_features = Array.isArray(removedFeatures) ? removedFeatures : [];
+      quoteData.customization_note = customizationNote || null;
+    } else {
+      // Ensure these fields are not set if not customized
+      quoteData.customized = false;
+    }
 
     // Log the selection for tracking (always)
     console.log('📦 Quote Selection Saved:', {

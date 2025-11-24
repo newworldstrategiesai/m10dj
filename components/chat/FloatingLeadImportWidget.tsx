@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   MessageCirclePlus,
@@ -43,15 +43,73 @@ export default function FloatingLeadImportWidget() {
   const [threadText, setThreadText] = useState('');
   const [status, setStatus] = useState<ImportStatus>({ state: 'idle' });
 
+  const [existingContact, setExistingContact] = useState<any>(null);
+  const [checkingExisting, setCheckingExisting] = useState(false);
+  const [editableFields, setEditableFields] = useState<Record<string, string | null>>({});
+  const [showFieldComparison, setShowFieldComparison] = useState(false);
+
   const parsedPreview: ParsedLeadThread | null = useMemo(() => {
     if (!threadText.trim()) return null;
     try {
-      return parseLeadThread(threadText);
+      const parsed = parseLeadThread(threadText);
+      // Initialize editable fields with parsed values
+      if (parsed) {
+        setEditableFields({
+          firstName: parsed.contact.firstName || null,
+          lastName: parsed.contact.lastName || null,
+          email: parsed.contact.email || null,
+          phone: parsed.contact.phoneE164 || parsed.contact.phoneDigits || null,
+          eventType: parsed.contact.eventType || null,
+          eventDate: parsed.contact.eventDate || null,
+          venueName: parsed.contact.venueName || null,
+          venueAddress: parsed.contact.venueAddress || null,
+          eventTime: parsed.contact.eventTime || null,
+          guestCount: parsed.contact.guestCount?.toString() || null,
+          budgetRange: parsed.contact.budgetRange || null,
+        });
+      }
+      return parsed;
     } catch (error) {
       console.error('Failed to parse lead thread', error);
       return null;
     }
   }, [threadText]);
+
+  // Check for existing contact when thread is parsed
+  useEffect(() => {
+    if (!parsedPreview || !user) return;
+    
+    const checkExisting = async () => {
+      setCheckingExisting(true);
+      try {
+        const phone = parsedPreview.contact.phoneDigits || parsedPreview.contact.phoneE164;
+        const email = parsedPreview.contact.email;
+        
+        if (!phone && !email) {
+          setExistingContact(null);
+          return;
+        }
+
+        const response = await fetch('/api/leads/check-existing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, email }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setExistingContact(data.contact || null);
+        }
+      } catch (error) {
+        console.error('Error checking existing contact:', error);
+      } finally {
+        setCheckingExisting(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkExisting, 500); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [parsedPreview, user]);
 
   if (loading) return null;
 
@@ -72,12 +130,20 @@ export default function FloatingLeadImportWidget() {
     setStatus({ state: 'processing' });
 
     try {
+      // Use editable fields if user has made changes
+      const fieldsToUse = Object.keys(editableFields).length > 0 
+        ? editableFields 
+        : parsedPreview?.contact || {};
+      
       const response = await fetch('/api/leads/import-thread', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ thread: threadText }),
+        body: JSON.stringify({ 
+          thread: threadText,
+          overrides: existingContact ? fieldsToUse : undefined, // Only send overrides for existing contacts
+        }),
       });
 
       const payload = await response.json();
@@ -184,6 +250,70 @@ export default function FloatingLeadImportWidget() {
             fallback
           />
         </div>
+
+        {existingContact && (
+          <div className="space-y-3">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-900/40 dark:text-blue-100">
+              <div className="flex items-start gap-2">
+                <ClipboardCheck className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold">Existing Contact Found</p>
+                  <p className="text-xs">
+                    {existingContact.first_name} {existingContact.last_name} • {existingContact.phone || existingContact.email_address}
+                  </p>
+                  <p className="mt-1 text-xs">
+                    This will update the existing contact. Duplicate messages will be ignored, and new developments will be added.
+                  </p>
+                  <button
+                    onClick={() => setShowFieldComparison(!showFieldComparison)}
+                    className="mt-2 text-xs underline hover:no-underline"
+                  >
+                    {showFieldComparison ? 'Hide' : 'Show'} field comparison
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {showFieldComparison && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-900/40">
+                <p className="mb-2 font-semibold text-amber-900 dark:text-amber-100">Field Comparison</p>
+                <div className="space-y-2 text-xs">
+                  <ComparisonField 
+                    label="Venue" 
+                    existing={existingContact.venue_name} 
+                    detected={contact.venueName}
+                    editable={editableFields.venueName || contact.venueName}
+                    onChange={(value) => setEditableFields({...editableFields, venueName: value})}
+                  />
+                  <ComparisonField 
+                    label="Event Date" 
+                    existing={existingContact.event_date} 
+                    detected={contact.eventDate}
+                    editable={editableFields.eventDate || contact.eventDate}
+                    onChange={(value) => setEditableFields({...editableFields, eventDate: value})}
+                  />
+                  <ComparisonField 
+                    label="Event Type" 
+                    existing={existingContact.event_type} 
+                    detected={contact.eventType}
+                    editable={editableFields.eventType || contact.eventType}
+                    onChange={(value) => setEditableFields({...editableFields, eventType: value})}
+                  />
+                  <ComparisonField 
+                    label="Venue Address" 
+                    existing={existingContact.venue_address} 
+                    detected={contact.venueAddress}
+                    editable={editableFields.venueAddress || contact.venueAddress}
+                    onChange={(value) => setEditableFields({...editableFields, venueAddress: value})}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                  💡 Fields will only update if the detected value is more complete or if you edit them above.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {parsedPreview.messages.length > 0 && (
           <div>
@@ -357,6 +487,58 @@ function PreviewField({
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+function ComparisonField({
+  label,
+  existing,
+  detected,
+  editable,
+  onChange,
+}: {
+  label: string;
+  existing: string | null;
+  detected: string | null;
+  editable: string | null;
+  onChange: (value: string) => void;
+}) {
+  const existingValue = existing || '(not set)';
+  const detectedValue = detected || '(not detected)';
+  const isDifferent = existing && detected && existing.toLowerCase() !== detected.toLowerCase();
+  
+  return (
+    <div className="space-y-1">
+      <p className="font-medium text-amber-900 dark:text-amber-100">{label}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Currently Saved:</p>
+          <p className="text-xs bg-white dark:bg-zinc-900 rounded px-2 py-1 border border-amber-200 dark:border-amber-800">
+            {existingValue}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Detected from Thread:</p>
+          <input
+            type="text"
+            value={editable || ''}
+            onChange={(e) => onChange(e.target.value)}
+            className={cn(
+              "text-xs w-full rounded px-2 py-1 border",
+              isDifferent
+                ? "border-amber-300 bg-amber-100 dark:border-amber-700 dark:bg-amber-900/60"
+                : "border-amber-200 bg-white dark:border-amber-800 dark:bg-zinc-900"
+            )}
+            placeholder={detectedValue}
+          />
+        </div>
+      </div>
+      {isDifferent && (
+        <p className="text-xs text-amber-700 dark:text-amber-300 italic">
+          ⚠️ Different from saved value - will keep existing unless you edit above
+        </p>
+      )}
     </div>
   );
 }

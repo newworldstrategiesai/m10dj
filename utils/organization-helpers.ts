@@ -18,9 +18,11 @@ export interface Organization {
 
 /**
  * Get the current user's organization
+ * Supports view-as mode for super admins (checks cookie on client-side)
  */
 export async function getCurrentOrganization(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  viewAsOrgId?: string | null
 ): Promise<Organization | null> {
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -29,6 +31,20 @@ export async function getCurrentOrganization(
       return null;
     }
 
+    // If in view-as mode and user is admin, return the viewed organization
+    if (viewAsOrgId && isPlatformAdmin(user.email || '')) {
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', viewAsOrgId)
+        .single();
+
+      if (!orgError && org) {
+        return org as Organization;
+      }
+    }
+
+    // Otherwise, get user's own organization
     const { data: org, error: orgError } = await supabase
       .from('organizations')
       .select('*')
@@ -94,12 +110,28 @@ export async function requireOrganization(
 /**
  * Get organization context for API routes
  * Returns organization_id for SaaS users, null for platform admins
+ * Supports view-as mode for super admins (checks cookie)
  */
 export async function getOrganizationContext(
   supabase: SupabaseClient,
   userId: string,
-  userEmail: string | null | undefined
+  userEmail: string | null | undefined,
+  viewAsOrgId?: string | null
 ): Promise<string | null> {
+  // Check if admin is in view-as mode
+  if (isPlatformAdmin(userEmail) && viewAsOrgId) {
+    // Verify the organization exists
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('id', viewAsOrgId)
+      .single();
+    
+    if (org) {
+      return viewAsOrgId;
+    }
+  }
+
   // Platform admins don't have organization context (they see all data)
   if (isPlatformAdmin(userEmail)) {
     return null;

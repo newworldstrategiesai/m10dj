@@ -106,6 +106,82 @@ export default function InvoicePage() {
     );
   }
 
+  // Get package breakdown for line items
+  const getPackageBreakdown = (packageId) => {
+    const breakdowns = {
+      // Wedding Package Breakdowns
+      'package1': [
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
+        { item: 'Additional Speaker', description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs.', price: 250 }
+      ],
+      'package2': [
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
+        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
+        { item: 'Additional Hour DJ/MC Services', description: 'Additional hour of DJ/MC services beyond the 4-hour package. Perfect if your event runs longer than expected.', price: 300 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
+        { item: 'Additional Speaker', description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for cocktail hours that are separate from the reception.', price: 250 }
+      ],
+      'package3': [
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
+        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
+        { item: 'Additional Hour DJ/MC Services', description: 'Additional hour of DJ/MC services beyond the 4-hour package. Perfect if your event runs longer than expected.', price: 300 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
+        { item: 'Dancing on the Clouds', description: 'Sophisticated dry ice effect for first dance and special moments. Creates a magical, floor-hugging cloud effect.', price: 500 }
+      ],
+      // Corporate Package Breakdowns
+      'corporate-basics': [
+        { item: '3 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and music library.', price: 850 }
+      ],
+      'corporate-package1': [
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer.', price: 250 }
+      ],
+      'corporate-package2': [
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer.', price: 250 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 300 }
+      ],
+      // School Package Breakdowns
+      'school-basics': [
+        { item: '3 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and age-appropriate music library.', price: 850 }
+      ],
+      'school-package1': [
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and age-appropriate music library.', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer.', price: 250 }
+      ],
+      'school-package2': [
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and age-appropriate music library.', price: 945 },
+        { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer.', price: 250 },
+        { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 300 }
+      ]
+    };
+    return breakdowns[packageId] || [];
+  };
+
+  // Get line items for the package
+  const getPackageLineItems = () => {
+    if (!quoteData?.package_id) return [];
+    
+    const breakdown = getPackageBreakdown(quoteData.package_id);
+    if (!breakdown || breakdown.length === 0) return [];
+    
+    // If package was customized, filter out removed features
+    if (quoteData.customized && quoteData.removed_features && Array.isArray(quoteData.removed_features)) {
+      const removedItemNames = quoteData.removed_features.map(f => f.item?.toLowerCase() || '');
+      return breakdown.filter(item => {
+        const itemName = item.item?.toLowerCase() || '';
+        return !removedItemNames.some(removed => itemName.includes(removed) || removed.includes(itemName));
+      });
+    }
+    
+    return breakdown;
+  };
+
+  const packageLineItems = getPackageLineItems();
   const totalAmount = quoteData?.total_price || 0;
   const depositAmount = totalAmount * 0.5;
   const actualPaid = paymentData?.totalPaid || 0;
@@ -150,17 +226,8 @@ export default function InvoicePage() {
           <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 lg:p-12 print:shadow-none print:rounded-none">
             {/* Company Header */}
             <div className="border-b border-gray-200 dark:border-gray-700 pb-4 sm:pb-6 md:pb-8 mb-4 sm:mb-6 md:mb-8">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
-                <div className="w-full md:w-auto">
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-brand mb-2">M10 DJ Company</h1>
-                  <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-                    65 Stewart Rd<br />
-                    Eads, Tennessee 38028<br />
-                    Phone: (901) 410-2020<br />
-                    Email: info@m10djcompany.com
-                  </p>
-                </div>
-                <div className="w-full md:w-auto text-left md:text-right mt-4 md:mt-0">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 sm:gap-6">
+                <div className="w-full md:w-auto md:flex-1">
                   <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 md:mb-3">INVOICE</h2>
                   <div className="space-y-1 text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">
                     <p>
@@ -173,6 +240,15 @@ export default function InvoicePage() {
                       Due Date: <span className="font-semibold text-gray-900 dark:text-white">{new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                     </p>
                   </div>
+                </div>
+                <div className="w-full md:w-auto text-left md:text-right mt-4 md:mt-0">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-brand mb-2">M10 DJ Company</h1>
+                  <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+                    65 Stewart Rd<br />
+                    Eads, Tennessee 38028<br />
+                    Phone: (901) 410-2020<br />
+                    Email: info@m10djcompany.com
+                  </p>
                 </div>
               </div>
             </div>
@@ -216,30 +292,70 @@ export default function InvoicePage() {
                 <tbody>
                   {quoteData && (
                     <>
-                      <tr className="border-b border-gray-100 dark:border-gray-700">
-                        <td className="py-3 sm:py-4 px-3 sm:px-4">
-                          <div>
-                            <p className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white">{quoteData.package_name}</p>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Wedding DJ Package</p>
-                          </div>
+                      {/* Package Header Row */}
+                      <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+                        <td colSpan="2" className="py-3 sm:py-4 px-3 sm:px-4">
+                          <p className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">{quoteData.package_name}</p>
+                          {quoteData.customized && quoteData.customization_note && (
+                            <p className="text-xs sm:text-sm text-yellow-600 dark:text-yellow-400 mt-1 italic">{quoteData.customization_note}</p>
+                          )}
                         </td>
-                        <td className="py-3 sm:py-4 px-3 sm:px-4 text-right font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
+                      </tr>
+                      {/* Package Line Items */}
+                      {packageLineItems.length > 0 ? (
+                        packageLineItems.map((lineItem, idx) => (
+                          <tr key={idx} className="border-b border-gray-100 dark:border-gray-700">
+                            <td className="py-2 sm:py-3 px-3 sm:px-4">
+                              <div className="pl-2 sm:pl-4">
+                                <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">{lineItem.item}</p>
+                                {lineItem.description && (
+                                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">{lineItem.description}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm sm:text-base text-gray-700 dark:text-gray-300">
+                              ${lineItem.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr className="border-b border-gray-100 dark:border-gray-700">
+                          <td className="py-3 sm:py-4 px-3 sm:px-4">
+                            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Package includes all listed services</p>
+                          </td>
+                          <td className="py-3 sm:py-4 px-3 sm:px-4 text-right font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
+                            ${quoteData.package_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      )}
+                      {/* Package Total Row */}
+                      <tr className="border-b-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
+                        <td className="py-2 sm:py-3 px-3 sm:px-4">
+                          <p className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white pl-2 sm:pl-4">Package Total</p>
+                        </td>
+                        <td className="py-2 sm:py-3 px-3 sm:px-4 text-right font-bold text-sm sm:text-base text-gray-900 dark:text-white">
                           ${quoteData.package_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
+                      {/* Add-ons */}
                       {quoteData.addons && quoteData.addons.length > 0 && (
                         <>
+                          <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+                            <td colSpan="2" className="py-3 sm:py-4 px-3 sm:px-4">
+                              <p className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">Additional Services</p>
+                            </td>
+                          </tr>
                           {quoteData.addons.map((addon, idx) => (
                             <tr key={idx} className="border-b border-gray-100 dark:border-gray-700">
-                              <td className="py-3 sm:py-4 px-3 sm:px-4">
-                                <div>
-                                  <p className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white">{addon.name}</p>
+                              <td className="py-2 sm:py-3 px-3 sm:px-4">
+                                <div className="pl-2 sm:pl-4">
+                                  <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">{addon.name}</p>
                                   {addon.description && (
-                                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{addon.description}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">{addon.description}</p>
                                   )}
                                 </div>
                               </td>
-                              <td className="py-3 sm:py-4 px-3 sm:px-4 text-right font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
+                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
                                 ${addon.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                             </tr>
@@ -255,26 +371,64 @@ export default function InvoicePage() {
               <div className="sm:hidden space-y-3 px-4">
                 {quoteData && (
                   <>
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1 pr-2">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm">{quoteData.package_name}</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Wedding DJ Package</p>
-                        </div>
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm whitespace-nowrap">
-                          ${quoteData.package_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
-                      </div>
+                    {/* Package Header */}
+                    <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
+                      <p className="font-bold text-gray-900 dark:text-white text-base">{quoteData.package_name}</p>
+                      {quoteData.customized && quoteData.customization_note && (
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1 italic">{quoteData.customization_note}</p>
+                      )}
                     </div>
+                    {/* Package Line Items */}
+                    {packageLineItems.length > 0 ? (
+                      <>
+                        {packageLineItems.map((lineItem, idx) => (
+                          <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 pl-4">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1 pr-2">
+                                <p className="font-medium text-gray-900 dark:text-white text-sm">{lineItem.item}</p>
+                                {lineItem.description && (
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{lineItem.description}</p>
+                                )}
+                              </div>
+                              <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-nowrap">
+                                ${lineItem.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {/* Package Total */}
+                        <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
+                          <div className="flex justify-between items-center">
+                            <p className="font-bold text-gray-900 dark:text-white text-sm">Package Total</p>
+                            <p className="font-bold text-gray-900 dark:text-white text-sm">
+                              ${quoteData.package_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                        <div className="flex justify-between items-center">
+                          <p className="text-gray-600 dark:text-gray-400 text-sm">Package includes all listed services</p>
+                          <p className="font-semibold text-gray-900 dark:text-white text-sm whitespace-nowrap">
+                            ${quoteData.package_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Add-ons Header */}
                     {quoteData.addons && quoteData.addons.length > 0 && (
                       <>
+                        <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
+                          <p className="font-bold text-gray-900 dark:text-white text-base">Additional Services</p>
+                        </div>
                         {quoteData.addons.map((addon, idx) => (
-                          <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                            <div className="flex justify-between items-start mb-2">
+                          <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 pl-4">
+                            <div className="flex justify-between items-start">
                               <div className="flex-1 pr-2">
-                                <p className="font-semibold text-gray-900 dark:text-white text-sm">{addon.name}</p>
+                                <p className="font-medium text-gray-900 dark:text-white text-sm">{addon.name}</p>
                                 {addon.description && (
-                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{addon.description}</p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{addon.description}</p>
                                 )}
                               </div>
                               <p className="font-semibold text-gray-900 dark:text-white text-sm whitespace-nowrap">

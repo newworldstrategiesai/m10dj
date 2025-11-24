@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2 } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -117,6 +117,8 @@ export default function ContactDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [lookingUpVenue, setLookingUpVenue] = useState(false);
+  const venueLookupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
   const supabase = createClientComponentClient();
   const { toast } = useToast();
@@ -138,6 +140,15 @@ export default function ContactDetailPage() {
       // Communications are now handled by UnifiedCommunicationHub component
     }
   }, [user, id]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (venueLookupTimeoutRef.current) {
+        clearTimeout(venueLookupTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const checkUser = async () => {
     try {
@@ -532,9 +543,65 @@ export default function ContactDetailPage() {
     }
   };
 
+  const lookupVenueAddress = async (venueName: string) => {
+    if (!venueName || venueName.trim().length < 2) return;
+    
+    setLookingUpVenue(true);
+    try {
+      const venueSearchTerm = venueName
+        .toLowerCase()
+        .replace(/\s*\([^)]*\)\s*/g, '') // Remove parenthetical content like "(formerly Pin Oak)"
+        .trim();
+      
+      const { data: venueMatches, error: venueError } = await supabase
+        .from('preferred_venues')
+        .select('venue_name, address, city, state, zip_code')
+        .ilike('venue_name', `%${venueSearchTerm}%`)
+        .eq('is_active', true)
+        .limit(1);
+
+      if (!venueError && venueMatches && venueMatches.length > 0) {
+        const matchedVenue = venueMatches[0];
+        if (matchedVenue.address) {
+          // Format address: "123 Main St, Memphis, TN 38103" or just "123 Main St" if city/state not available
+          const formattedAddress = matchedVenue.address.includes(',')
+            ? matchedVenue.address
+            : `${matchedVenue.address}${matchedVenue.city ? `, ${matchedVenue.city}` : ''}${matchedVenue.state ? `, ${matchedVenue.state}` : ''}${matchedVenue.zip_code ? ` ${matchedVenue.zip_code}` : ''}`.trim();
+          
+          // Only update if address is currently empty
+          if (!contact?.venue_address || contact.venue_address.trim() === '') {
+            setContact({ ...contact, venue_address: formattedAddress });
+            toast({
+              title: "Venue Address Found",
+              description: `Auto-filled address for ${venueName}`,
+            });
+          }
+        }
+      }
+    } catch (lookupError) {
+      console.error('Error looking up venue address:', lookupError);
+      // Don't show error toast - just silently fail
+    } finally {
+      setLookingUpVenue(false);
+    }
+  };
+
   const handleInputChange = (field: keyof Contact, value: any) => {
     if (!contact) return;
     setContact({ ...contact, [field]: value });
+    
+    // Auto-lookup venue address when venue name changes and address is empty
+    if (field === 'venue_name' && value && (!contact.venue_address || contact.venue_address.trim() === '')) {
+      // Clear any existing timeout
+      if (venueLookupTimeoutRef.current) {
+        clearTimeout(venueLookupTimeoutRef.current);
+      }
+      
+      // Debounce the lookup - wait 500ms after user stops typing
+      venueLookupTimeoutRef.current = setTimeout(() => {
+        lookupVenueAddress(value);
+      }, 500);
+    }
   };
 
   const getContactInitials = () => {
@@ -945,20 +1012,36 @@ export default function ContactDetailPage() {
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
                     {isEditing ? (
-                      <Input
-                        value={contact.venue_name || ''}
-                        onChange={(e) => handleInputChange('venue_name', e.target.value)}
-                      />
+                      <div className="relative">
+                        <Input
+                          value={contact.venue_name || ''}
+                          onChange={(e) => handleInputChange('venue_name', e.target.value)}
+                          placeholder="Enter venue name"
+                        />
+                        {lookingUpVenue && (
+                          <div className="absolute right-2 top-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-brand" />
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <p className="text-gray-900">{contact.venue_name || 'Not specified'}</p>
                     )}
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Address</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Venue Address
+                      {isEditing && (!contact.venue_address || contact.venue_address.trim() === '') && contact.venue_name && (
+                        <span className="ml-2 text-xs text-gray-500 font-normal">
+                          (Auto-lookup when venue name is entered)
+                        </span>
+                      )}
+                    </label>
                     {isEditing ? (
                       <Input
                         value={contact.venue_address || ''}
                         onChange={(e) => handleInputChange('venue_address', e.target.value)}
+                        placeholder="Address will auto-fill if venue is in database"
                       />
                     ) : (
                       <p className="text-gray-900">{contact.venue_address || 'Not specified'}</p>
