@@ -175,7 +175,10 @@ export default function CrowdRequestPage() {
       return presetAmount;
     } else {
       const custom = parseFloat(customAmount) || 0;
-      return Math.round(custom * 100); // Convert to cents
+      const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+      // Ensure custom amount is at least the minimum preset amount
+      const validatedCustom = Math.max(custom * 100, minPresetAmount);
+      return Math.round(validatedCustom); // Convert to cents
     }
   };
 
@@ -219,8 +222,9 @@ export default function CrowdRequestPage() {
     }
 
     const amount = getPaymentAmount();
-    if (amount < minimumAmount) {
-      setError(`Minimum payment is $${(minimumAmount / 100).toFixed(2)}`);
+    const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+    if (amount < minPresetAmount) {
+      setError(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
       return false;
     }
 
@@ -1168,17 +1172,44 @@ export default function CrowdRequestPage() {
                           <input
                             type="number"
                             value={customAmount}
-                            onChange={(e) => setCustomAmount(e.target.value)}
-                            min="1"
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Allow empty string for clearing
+                              if (value === '') {
+                                setCustomAmount('');
+                                return;
+                              }
+                              // Get minimum preset amount (first option)
+                              const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100;
+                              const numValue = parseFloat(value);
+                              // Only update if value is valid and >= minimum preset
+                              if (!isNaN(numValue) && numValue >= minPresetAmount) {
+                                setCustomAmount(value);
+                              } else if (numValue < minPresetAmount && numValue >= 0) {
+                                // Show the value but it will be invalid
+                                setCustomAmount(value);
+                              }
+                            }}
+                            min={presetAmounts.length > 0 ? (presetAmounts[0].value / 100).toFixed(2) : (minimumAmount / 100).toFixed(2)}
                             step="0.01"
                             inputMode="decimal"
-                            className="w-full pl-12 pr-4 py-3.5 sm:py-3 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent touch-manipulation"
-                            placeholder="5.00"
+                            className={`w-full pl-12 pr-4 py-3.5 sm:py-3 text-base rounded-lg border ${
+                              customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100)
+                                ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
+                                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
+                            } text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent touch-manipulation`}
+                            placeholder={(presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100).toFixed(2)}
                           />
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Minimum: ${(minimumAmount / 100).toFixed(2)}
-                        </p>
+                        {customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100) ? (
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                            Minimum amount is ${(presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100).toFixed(2)}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Minimum: ${(presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100).toFixed(2)}
+                          </p>
+                        )}
                       </div>
                     )}
 
@@ -1355,7 +1386,7 @@ export default function CrowdRequestPage() {
                 >
                   <button
                     type="submit"
-                    disabled={submitting || getPaymentAmount() < minimumAmount}
+                    disabled={submitting || getPaymentAmount() < (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount)}
                     className="w-full btn-primary py-4 sm:py-4 text-base sm:text-lg font-semibold inline-flex items-center justify-center gap-2 min-h-[56px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={(e) => {
                       // Ensure button is in viewport before submitting

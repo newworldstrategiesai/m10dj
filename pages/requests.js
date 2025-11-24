@@ -161,7 +161,10 @@ export default function GeneralRequestsPage() {
       return presetAmount;
     } else {
       const custom = parseFloat(customAmount) || 0;
-      return Math.round(custom * 100); // Convert to cents
+      const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+      // Ensure custom amount is at least the minimum preset amount
+      const validatedCustom = Math.max(custom * 100, minPresetAmount);
+      return Math.round(validatedCustom); // Convert to cents
     }
   };
 
@@ -229,8 +232,9 @@ export default function GeneralRequestsPage() {
       }
 
       const amount = getPaymentAmount();
-      if (!amount || amount < minimumAmount) {
-        setError(`Minimum payment is $${(minimumAmount / 100).toFixed(2)}`);
+      const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+      if (!amount || amount < minPresetAmount) {
+        setError(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
         return false;
       }
 
@@ -275,9 +279,10 @@ export default function GeneralRequestsPage() {
     try {
       const amount = getPaymentAmount();
       
-      // Validate amount before submission
-      if (!amount || amount < minimumAmount) {
-        throw new Error(`Minimum payment is $${(minimumAmount / 100).toFixed(2)}`);
+      // Validate amount before submission - must be at least minimum preset amount
+      const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+      if (!amount || amount < minPresetAmount) {
+        throw new Error(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
       }
       
       // Build request body with safe defaults
@@ -378,8 +383,9 @@ export default function GeneralRequestsPage() {
       }
       
       const amount = getPaymentAmount();
-      if (!amount || amount < minimumAmount) {
-        setError(`Invalid payment amount. Minimum is $${(minimumAmount / 100).toFixed(2)}`);
+      const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+      if (!amount || amount < minPresetAmount) {
+        setError(`Invalid payment amount. Minimum is $${(minPresetAmount / 100).toFixed(2)}`);
         setSelectedPaymentMethod(null);
         return;
       }
@@ -1533,17 +1539,44 @@ export default function GeneralRequestsPage() {
                           <input
                             type="number"
                             value={customAmount}
-                            onChange={(e) => setCustomAmount(e.target.value)}
-                            min="1"
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Allow empty string for clearing
+                              if (value === '') {
+                                setCustomAmount('');
+                                return;
+                              }
+                              // Get minimum preset amount (first option)
+                              const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100;
+                              const numValue = parseFloat(value);
+                              // Only update if value is valid and >= minimum preset
+                              if (!isNaN(numValue) && numValue >= minPresetAmount) {
+                                setCustomAmount(value);
+                              } else if (numValue < minPresetAmount && numValue >= 0) {
+                                // Show the value but it will be invalid
+                                setCustomAmount(value);
+                              }
+                            }}
+                            min={presetAmounts.length > 0 ? (presetAmounts[0].value / 100).toFixed(2) : (minimumAmount / 100).toFixed(2)}
                             step="0.01"
                             inputMode="decimal"
-                            className="w-full pl-12 pr-4 py-3.5 sm:py-3 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent touch-manipulation"
-                            placeholder="5.00"
+                            className={`w-full pl-12 pr-4 py-3.5 sm:py-3 text-base rounded-lg border ${
+                              customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100)
+                                ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
+                                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
+                            } text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent touch-manipulation`}
+                            placeholder={(presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100).toFixed(2)}
                           />
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Minimum: ${(minimumAmount / 100).toFixed(2)}
-                        </p>
+                        {customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100) ? (
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                            Minimum amount is ${(presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100).toFixed(2)}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Minimum: ${(presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100).toFixed(2)}
+                          </p>
+                        )}
                       </div>
                     )}
 
@@ -1713,7 +1746,7 @@ export default function GeneralRequestsPage() {
                 >
                   <button
                     type={currentStep === 1 ? "button" : "submit"}
-                    disabled={submitting || (currentStep >= 2 && getPaymentAmount() < minimumAmount)}
+                    disabled={submitting || (currentStep >= 2 && getPaymentAmount() < (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount))}
                     className="group relative w-full py-5 sm:py-6 text-base sm:text-lg font-bold inline-flex items-center justify-center gap-3 min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-500 hover:via-pink-500 hover:to-purple-500 text-white shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
                     onClick={(e) => {
                       if (currentStep === 1) {
