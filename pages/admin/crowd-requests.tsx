@@ -93,6 +93,8 @@ export default function CrowdRequestsPage() {
     presetAmounts: [500, 1000, 2000, 5000] // in cents: $5, $10, $20, $50
   });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundRequest, setRefundRequest] = useState<CrowdRequest | null>(null);
 
   useEffect(() => {
     fetchRequests();
@@ -230,6 +232,59 @@ export default function CrowdRequestsPage() {
     }
   };
 
+  const openVenmoRefund = (request: CrowdRequest) => {
+    const amount = request.amount_paid / 100; // Convert cents to dollars
+    const amountStr = amount.toFixed(2);
+    
+    // Build note for the refund
+    const note = request.request_type === 'song_request' 
+      ? `Refund: ${request.song_title || 'Song'}${request.song_artist ? ` by ${request.song_artist}` : ''}`
+      : `Refund: Shoutout for ${request.recipient_name || 'Recipient'}`;
+    const encodedNote = encodeURIComponent(note.substring(0, 200));
+    
+    // Try to use customer's phone number if available
+    // Venmo deep links can accept phone numbers (digits only)
+    let recipient = '';
+    if (request.requester_phone) {
+      // Remove any non-digit characters from phone number
+      const phoneDigits = request.requester_phone.replace(/\D/g, '');
+      if (phoneDigits.length >= 10) {
+        recipient = phoneDigits;
+      }
+    }
+    
+    // Venmo URL format for sending payment (refund):
+    // venmo://paycharge?txn=pay&recipients=phone_or_username&amount=5.00&note=Refund
+    // If no recipient, just open Venmo with amount (admin will search for customer)
+    let venmoUrl: string;
+    let webUrl: string;
+    
+    if (recipient) {
+      venmoUrl = `venmo://paycharge?txn=pay&recipients=${recipient}&amount=${amountStr}&note=${encodedNote}`;
+      webUrl = `https://venmo.com/${recipient}?txn=pay&amount=${amountStr}&note=${encodedNote}`;
+    } else {
+      // No recipient - just open Venmo with amount pre-filled
+      venmoUrl = `venmo://paycharge?txn=pay&amount=${amountStr}&note=${encodedNote}`;
+      webUrl = `https://venmo.com/?txn=pay&amount=${amountStr}&note=${encodedNote}`;
+    }
+    
+    // Try to open Venmo app, fallback to web
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const isMobile = /android|iphone|ipad|ipod/i.test(userAgent.toLowerCase());
+    
+    if (isMobile) {
+      // Try to open Venmo app
+      window.location.href = venmoUrl;
+      // Fallback to web after a delay if app doesn't open
+      setTimeout(() => {
+        window.open(webUrl, '_blank');
+      }, 500);
+    } else {
+      // Desktop - open web version
+      window.open(webUrl, '_blank');
+    }
+  };
+
   const handleRefund = async (requestId: string, fullRefund: boolean = true, partialAmount?: number) => {
     if (!confirm(`Are you sure you want to ${fullRefund ? 'fully' : 'partially'} refund this payment?`)) {
       return;
@@ -259,6 +314,8 @@ export default function CrowdRequestsPage() {
 
       // Refresh requests to show updated status
       fetchRequests();
+      setShowRefundModal(false);
+      setRefundRequest(null);
     } catch (error: any) {
       console.error('Error processing refund:', error);
       toast({
@@ -267,6 +324,11 @@ export default function CrowdRequestsPage() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleVenmoRefundClick = (request: CrowdRequest) => {
+    setRefundRequest(request);
+    setShowRefundModal(true);
   };
 
   const generateQRCode = () => {
@@ -1087,15 +1149,18 @@ export default function CrowdRequestsPage() {
                               {(request.payment_intent_id || request.payment_method === 'venmo' || request.payment_method === 'cashapp') && (
                                 <Button
                                   onClick={() => {
-                                    const isStripe = !!request.payment_intent_id;
-                                    const paymentMethodName = request.payment_method === 'venmo' ? 'Venmo' : 
-                                                              request.payment_method === 'cashapp' ? 'CashApp' : 'Stripe';
-                                    const confirmMessage = isStripe
-                                      ? 'Are you sure you want to refund this payment? The refund will be processed automatically via Stripe.'
-                                      : `Are you sure you want to mark this ${paymentMethodName} payment as refunded? You must process the refund manually in ${paymentMethodName} first.`;
-                                    
-                                    if (confirm(confirmMessage)) {
-                                      handleRefund(request.id, true);
+                                    if (request.payment_method === 'venmo') {
+                                      handleVenmoRefundClick(request);
+                                    } else {
+                                      const isStripe = !!request.payment_intent_id;
+                                      const paymentMethodName = request.payment_method === 'cashapp' ? 'CashApp' : 'Stripe';
+                                      const confirmMessage = isStripe
+                                        ? 'Are you sure you want to refund this payment? The refund will be processed automatically via Stripe.'
+                                        : `Are you sure you want to mark this ${paymentMethodName} payment as refunded? You must process the refund manually in ${paymentMethodName} first.`;
+                                      
+                                      if (confirm(confirmMessage)) {
+                                        handleRefund(request.id, true);
+                                      }
                                     }
                                   }}
                                   size="sm"
@@ -1106,10 +1171,12 @@ export default function CrowdRequestsPage() {
                                   } text-white`}
                                   title={request.payment_intent_id 
                                     ? "Refund payment via Stripe" 
-                                    : `Mark as refunded (process refund manually in ${request.payment_method === 'venmo' ? 'Venmo' : 'CashApp'} first)`}
+                                    : request.payment_method === 'venmo'
+                                    ? "Open Venmo to send refund"
+                                    : `Mark as refunded (process refund manually in CashApp first)`}
                                 >
                                   <RotateCcw className="w-3 h-3 mr-1" />
-                                  {request.payment_intent_id ? 'Refund' : 'Mark Refunded'}
+                                  {request.payment_intent_id ? 'Refund' : request.payment_method === 'venmo' ? 'Refund' : 'Mark Refunded'}
                                 </Button>
                               )}
                             </div>
@@ -1133,6 +1200,99 @@ export default function CrowdRequestsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Venmo Refund Modal */}
+        {showRefundModal && refundRequest && (
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Process Venmo Refund
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowRefundModal(false);
+                    setRefundRequest(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    <strong>Refund Amount:</strong>
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    ${((refundRequest.amount_paid || 0) / 100).toFixed(2)}
+                  </p>
+                </div>
+                
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                    <strong>Steps to process refund:</strong>
+                  </p>
+                  <ol className="list-decimal list-inside space-y-2 text-sm text-blue-700 dark:text-blue-300">
+                    <li>Click "Open Venmo" below to open Venmo with the refund amount pre-filled</li>
+                    {refundRequest.requester_phone && (
+                      <li className="ml-4">Venmo will try to find the customer using their phone: {refundRequest.requester_phone}</li>
+                    )}
+                    {!refundRequest.requester_phone && (
+                      <li className="ml-4">Search for the customer by name, phone, or Venmo username</li>
+                    )}
+                    <li>Complete the payment in Venmo</li>
+                    <li>Return here and click "Mark as Refunded" to update the record</li>
+                  </ol>
+                  {refundRequest.requester_name && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                      Customer: <strong>{refundRequest.requester_name}</strong>
+                    </p>
+                  )}
+                </div>
+                
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => {
+                      openVenmoRefund(refundRequest);
+                      toast({
+                        title: 'Venmo Opened',
+                        description: 'Complete the payment in Venmo, then return here to mark as refunded.',
+                      });
+                    }}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Open Venmo
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (confirm('Have you completed the refund payment in Venmo? Click OK to mark this as refunded.')) {
+                        handleRefund(refundRequest.id, true);
+                      }
+                    }}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Mark as Refunded
+                  </Button>
+                </div>
+                
+                <Button
+                  onClick={() => {
+                    setShowRefundModal(false);
+                    setRefundRequest(null);
+                  }}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           </div>
         )}
