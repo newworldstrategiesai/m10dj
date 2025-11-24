@@ -121,33 +121,65 @@ async function extractYouTubeInfo(url) {
 
     const data = await response.json();
     const title = data.title || '';
+    const authorName = data.author_name || ''; // Channel/uploader name
 
     // Try to parse "Artist - Song" or "Song by Artist" format
     let artist = '';
     let songTitle = title;
 
-    // Common patterns:
-    // "Artist - Song Title"
-    // "Song Title - Artist"
-    // "Artist: Song Title"
-    // "Song Title by Artist"
+    // Common patterns (in order of likelihood):
+    // "Song Title - Artist Name" (most common on YouTube)
+    // "Artist Name - Song Title"
+    // "Song Title by Artist Name"
+    // "Artist Name: Song Title"
     
-    const dashMatch = title.match(/^(.+?)\s*[-–—]\s*(.+)$/);
-    if (dashMatch) {
-      // Usually "Artist - Song"
-      artist = dashMatch[1].trim();
-      songTitle = dashMatch[2].trim();
+    // First try "Song Title by Artist Name" (most explicit)
+    const byMatch = title.match(/^(.+?)\s+by\s+(.+)$/i);
+    if (byMatch) {
+      songTitle = byMatch[1].trim();
+      artist = byMatch[2].trim();
     } else {
-      const colonMatch = title.match(/^(.+?):\s*(.+)$/);
-      if (colonMatch) {
-        artist = colonMatch[1].trim();
-        songTitle = colonMatch[2].trim();
-      } else {
-        const byMatch = title.match(/^(.+?)\s+by\s+(.+)$/i);
-        if (byMatch) {
-          songTitle = byMatch[1].trim();
-          artist = byMatch[2].trim();
+      // Try dash-separated format - could be either direction
+      const dashMatch = title.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+      if (dashMatch) {
+        const part1 = dashMatch[1].trim();
+        const part2 = dashMatch[2].trim();
+        
+        // Heuristic: if part2 is shorter or contains common artist indicators, it's likely the artist
+        // Also check if part1 looks like a song title (longer, might have parentheses)
+        if (part2.length < part1.length || part2.match(/\b(ft\.|feat\.|featuring|official|video|audio|lyrics)\b/i)) {
+          // Likely "Song Title - Artist Name"
+          songTitle = part1;
+          artist = part2.replace(/\s*\(.*?\)\s*$/, '').trim(); // Remove trailing parenthetical info
+        } else {
+          // Likely "Artist Name - Song Title"
+          artist = part1;
+          songTitle = part2;
         }
+      } else {
+        // Try colon format "Artist: Song Title"
+        const colonMatch = title.match(/^(.+?):\s*(.+)$/);
+        if (colonMatch) {
+          artist = colonMatch[1].trim();
+          songTitle = colonMatch[2].trim();
+        }
+      }
+    }
+    
+    // If we still don't have an artist, try using the channel/author name as fallback
+    // This works well for music channels that upload specific artists' songs
+    if (!artist && authorName) {
+      // Only use author name if it doesn't look like a generic channel name
+      const genericChannelPatterns = /(official|music|videos?|channel|hq|hd|lyrics?|remix|mix)/i;
+      if (!genericChannelPatterns.test(authorName) && authorName.length < 50) {
+        // Clean up common YouTube channel suffixes
+        let cleanedAuthor = authorName
+          .replace(/\s*-\s*Topic\s*$/i, '') // Remove "- Topic" suffix (auto-generated channels)
+          .replace(/\s*-\s*VEVO\s*$/i, '') // Remove "- VEVO" suffix
+          .replace(/\s*\(.*?\)\s*$/, '') // Remove trailing parenthetical info
+          .trim();
+        
+        artist = cleanedAuthor;
       }
     }
 
@@ -195,18 +227,50 @@ async function extractSpotifyInfo(url) {
       
       if (response.ok) {
         const data = await response.json();
-        title = data.title || '';
         
-        // Try to extract from iframe title in HTML
-        if (data.html) {
+        // oEmbed title format can be:
+        // - "Song Title by Artist Name"
+        // - "Artist Name - Song Title"
+        // - "Song Title · Artist Name"
+        const oEmbedTitle = data.title || '';
+        
+        if (oEmbedTitle) {
+          // Try "Song Title by Artist Name" format first (most common)
+          const byMatch = oEmbedTitle.match(/^(.+?)\s+by\s+(.+)$/i);
+          if (byMatch) {
+            title = byMatch[1].trim();
+            artist = byMatch[2].trim();
+          } else {
+            // Try "Artist Name - Song Title" format
+            const dashMatch = oEmbedTitle.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+            if (dashMatch) {
+              // Usually "Artist - Song" but could be "Song - Artist", check both
+              artist = dashMatch[1].trim();
+              title = dashMatch[2].trim();
+            } else {
+              // Try "Song Title · Artist Name" format
+              const dotMatch = oEmbedTitle.match(/^(.+?)\s*·\s*(.+)$/);
+              if (dotMatch) {
+                title = dotMatch[1].trim();
+                artist = dotMatch[2].trim();
+              } else {
+                // If no separator found, use the whole title as song title
+                title = oEmbedTitle;
+              }
+            }
+          }
+        }
+        
+        // Try to extract from iframe title in HTML as fallback
+        if ((!title || !artist) && data.html) {
           const artistMatch = data.html.match(/title="([^"]+)"/);
           if (artistMatch) {
             const fullTitle = artistMatch[1];
             // Format is often "Song Title by Artist Name"
-            const byMatch = fullTitle.match(/(.+?)\s+by\s+(.+)/i);
-            if (byMatch) {
-              title = byMatch[1].trim();
-              artist = byMatch[2].trim();
+            const htmlByMatch = fullTitle.match(/(.+?)\s+by\s+(.+)/i);
+            if (htmlByMatch) {
+              if (!title) title = htmlByMatch[1].trim();
+              if (!artist) artist = htmlByMatch[2].trim();
             }
           }
         }

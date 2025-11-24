@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { requestId, amount } = req.body;
+  const { requestId, amount, preferredPaymentMethod } = req.body;
 
   if (!requestId || !amount) {
     return res.status(400).json({ error: 'Request ID and amount are required' });
@@ -100,9 +100,16 @@ export default async function handler(req, res) {
       ? `${baseUrl}/requests`
       : `${baseUrl}/crowd-request/${crowdRequest.event_qr_code}`;
 
+    // Determine payment method types based on preferred payment method
+    let paymentMethodTypes = ['card', 'cashapp']; // Default: show both
+    if (preferredPaymentMethod === 'cashapp') {
+      // If Cash App Pay is preferred, show only Cash App Pay
+      paymentMethodTypes = ['cashapp'];
+    }
+    
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'], // Card includes Apple Pay automatically on supported devices
-      // Cash App Pay can be added if enabled in Stripe dashboard: 'cashapp'
+      payment_method_types: paymentMethodTypes, // Card includes Apple Pay automatically on supported devices
+      // Cash App Pay requires enabling in Stripe dashboard: Settings > Payment methods > Cash App Pay
       line_items: lineItems.length > 0 ? lineItems : [
         {
           price_data: {

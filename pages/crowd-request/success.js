@@ -3,21 +3,24 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../components/company/Header';
-import { CheckCircle, Music, Mic, Loader2, Zap } from 'lucide-react';
+import { CheckCircle, Music, Mic, Loader2, Zap, Mail, Check } from 'lucide-react';
 
 export default function CrowdRequestSuccessPage() {
   const router = useRouter();
   const { session_id, request_id } = router.query;
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(false);
+  const [receiptError, setReceiptError] = useState(null);
 
   useEffect(() => {
-    if (session_id && request_id) {
+    if (request_id) {
       fetchRequestDetails(request_id);
     } else {
       setLoading(false);
     }
-  }, [session_id, request_id]);
+  }, [request_id]);
 
   const fetchRequestDetails = async (requestId) => {
     try {
@@ -30,6 +33,40 @@ export default function CrowdRequestSuccessPage() {
       console.error('Error fetching request details:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendReceipt = async () => {
+    if (!request || !request.requester_email) return;
+
+    setSendingReceipt(true);
+    setReceiptError(null);
+
+    try {
+      const response = await fetch('/api/crowd-request/send-receipt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requestId: request.id,
+          email: request.requester_email,
+          name: request.requester_name || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setReceiptSent(true);
+      } else {
+        setReceiptError(data.error || 'Failed to send receipt. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error sending receipt:', err);
+      setReceiptError('Failed to send receipt. Please try again.');
+    } finally {
+      setSendingReceipt(false);
     }
   };
 
@@ -71,11 +108,11 @@ export default function CrowdRequestSuccessPage() {
               </div>
               
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Request Confirmed!
+                Thank You!
               </h1>
               
               <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-                Your payment was successful and your request has been submitted.
+                Your payment was successful and your request has been submitted. We appreciate your support!
               </p>
 
               {request && (
@@ -153,6 +190,56 @@ export default function CrowdRequestSuccessPage() {
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>What's next?</strong> The DJ will receive your request and will do their best to fulfill it during the event. Keep an eye out!
                   </p>
+                </div>
+              )}
+
+              {/* Receipt Section */}
+              {request?.requester_email && (
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6 mb-8">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0">
+                      <Mail className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                        Need a receipt for your records?
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        We can send a payment receipt to <strong>{request.requester_email}</strong> for tax purposes or your records.
+                      </p>
+                      
+                      {receiptSent ? (
+                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                          <Check className="w-5 h-5" />
+                          <span className="font-medium">Receipt sent successfully! Check your email.</span>
+                        </div>
+                      ) : receiptError ? (
+                        <div className="text-red-600 dark:text-red-400 text-sm mb-3">
+                          {receiptError}
+                        </div>
+                      ) : null}
+                      
+                      {!receiptSent && (
+                        <button
+                          onClick={handleSendReceipt}
+                          disabled={sendingReceipt}
+                          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {sendingReceipt ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="w-4 h-4" />
+                              Send Receipt
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
