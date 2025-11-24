@@ -548,6 +548,7 @@ export default function ContactDetailPage() {
     
     setLookingUpVenue(true);
     try {
+      // First, try to find in our database
       const venueSearchTerm = venueName
         .toLowerCase()
         .replace(/\s*\([^)]*\)\s*/g, '') // Remove parenthetical content like "(formerly Pin Oak)"
@@ -569,13 +570,37 @@ export default function ContactDetailPage() {
             : `${matchedVenue.address}${matchedVenue.city ? `, ${matchedVenue.city}` : ''}${matchedVenue.state ? `, ${matchedVenue.state}` : ''}${matchedVenue.zip_code ? ` ${matchedVenue.zip_code}` : ''}`.trim();
           
           // Only update if address is currently empty
-          if (!contact?.venue_address || contact.venue_address.trim() === '') {
+          if (contact && (!contact.venue_address || contact.venue_address.trim() === '')) {
             setContact({ ...contact, venue_address: formattedAddress });
             toast({
               title: "Venue Address Found",
-              description: `Auto-filled address for ${venueName}`,
+              description: `Auto-filled address for ${venueName} from database`,
             });
+            return;
           }
+        }
+      }
+
+      // If not found in database, try Google Places API
+      if (contact && (!contact.venue_address || contact.venue_address.trim() === '')) {
+        try {
+          const response = await fetch(`/api/google/venue-lookup?query=${encodeURIComponent(venueName)}`);
+          const data = await response.json();
+
+          if (data.success && data.results && data.results.length > 0) {
+            // Use the first result (most relevant)
+            const googleVenue = data.results[0];
+            if (googleVenue.address && contact) {
+              setContact({ ...contact, venue_address: googleVenue.address });
+              toast({
+                title: "Venue Address Found",
+                description: `Auto-filled address for ${venueName} from Google`,
+              });
+            }
+          }
+        } catch (googleError) {
+          console.error('Error looking up venue in Google:', googleError);
+          // Silently fail - user can enter address manually
         }
       }
     } catch (lookupError) {

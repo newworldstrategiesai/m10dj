@@ -179,7 +179,6 @@ export default async function handler(req, res) {
     // Check if contact already has a service selection (quote_selections)
     // If they do, they should go directly to invoice/contract
     // ------------------------------------------------------------------
-    const contactId = contact?.id || tokenData.contact_id;
     let existingQuoteSelection = null;
     
     if (contactId) {
