@@ -147,6 +147,25 @@ export default async function handler(req, res) {
           is_fast_track: isFastTrackRequest ? 'true' : 'false',
           is_next: isNextRequest ? 'true' : 'false',
         },
+        // Statement descriptor for Cash App Pay (max 22 characters, appears in Cash App)
+        // This will show in the Cash App transaction as a memo/description
+        statement_descriptor: (() => {
+          if (crowdRequest.request_type === 'song_request') {
+            const song = crowdRequest.song_title || 'Song';
+            const artist = crowdRequest.song_artist || '';
+            // Format: "Song - Artist" (truncate to 22 chars)
+            if (artist) {
+              const combined = `${song} - ${artist}`;
+              return combined.length > 22 ? combined.substring(0, 22) : combined;
+            }
+            return song.length > 22 ? song.substring(0, 22) : song;
+          } else {
+            // Shoutout format
+            const recipient = crowdRequest.recipient_name || '';
+            const shoutout = recipient ? `Shoutout - ${recipient}` : 'Shoutout';
+            return shoutout.length > 22 ? shoutout.substring(0, 22) : shoutout;
+          }
+        })(),
       },
     });
 
