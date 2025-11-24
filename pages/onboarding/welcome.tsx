@@ -5,7 +5,7 @@
  * Displays their URLs and embed codes
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -23,7 +23,7 @@ export default function OnboardingWelcomePage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [emailConfirmed, setEmailConfirmed] = useState<boolean>(true);
 
-  const loadOrganization = async () => {
+  const loadOrganization = useCallback(async () => {
     try {
       // Check if user exists (even if email not confirmed)
       // We'll use a more permissive check to allow onboarding for unconfirmed users
@@ -86,12 +86,11 @@ export default function OnboardingWelcomePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase, router]);
 
   useEffect(() => {
     loadOrganization();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, router]);
+  }, [loadOrganization]);
 
   const handleCopy = async (text: string, id: string) => {
     try {

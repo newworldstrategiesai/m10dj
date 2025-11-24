@@ -24,7 +24,8 @@ export default async function handler(req, res) {
     isFastTrack,
     isNext,
     fastTrackFee,
-    nextFee
+    nextFee,
+    organizationId // Optional: can be passed explicitly or determined from eventCode
   } = req.body;
 
   // Validate required fields
@@ -49,6 +50,129 @@ export default async function handler(req, res) {
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Determine organization_id
+    // Priority: 1. Explicit organizationId, 2. From referrer/origin URL slug, 3. From eventCode lookup, 4. Platform admin's org
+    let organizationIdToUse = organizationId;
+
+    // Helper function to extract slug from URL
+    const extractSlugFromUrl = (url) => {
+      if (!url) return null;
+      try {
+        const urlObj = new URL(url);
+        const pathParts = urlObj.pathname.split('/').filter(p => p);
+        // Check if URL pattern is /{slug}/requests or /{slug}/*
+        if (pathParts.length > 0) {
+          const potentialSlug = pathParts[0];
+          // Validate slug format (alphanumeric and hyphens)
+          if (/^[a-z0-9-]+$/.test(potentialSlug) && potentialSlug !== 'api' && potentialSlug !== 'admin') {
+            return potentialSlug;
+          }
+        }
+      } catch (err) {
+        // Invalid URL, ignore
+      }
+      return null;
+    };
+
+    // Check referrer URL for organization slug
+    if (!organizationIdToUse) {
+      const referer = req.headers.referer || req.headers.referrer;
+      const refererSlug = extractSlugFromUrl(referer);
+      
+      if (refererSlug) {
+        try {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('slug', refererSlug)
+            .single();
+          
+          if (org) {
+            organizationIdToUse = org.id;
+            console.log('✅ Found organization from referrer URL:', refererSlug, organizationIdToUse);
+          }
+        } catch (err) {
+          console.warn('Could not find organization from referrer slug:', refererSlug);
+        }
+      }
+    }
+
+    // Check origin URL for organization slug
+    if (!organizationIdToUse) {
+      const origin = req.headers.origin;
+      const originSlug = extractSlugFromUrl(origin);
+      
+      if (originSlug) {
+        try {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('slug', originSlug)
+            .single();
+          
+          if (org) {
+            organizationIdToUse = org.id;
+            console.log('✅ Found organization from origin URL:', originSlug, organizationIdToUse);
+          }
+        } catch (err) {
+          console.warn('Could not find organization from origin slug:', originSlug);
+        }
+      }
+    }
+
+    // Try to get organization from eventCode (future: events table mapping)
+    // For now, if eventCode matches an organization slug pattern, try to look it up
+    if (!organizationIdToUse && eventCode && eventCode !== 'general') {
+      // Check if eventCode could be an organization slug
+      if (/^[a-z0-9-]+$/.test(eventCode)) {
+        try {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('slug', eventCode)
+            .single();
+          
+          if (org) {
+            organizationIdToUse = org.id;
+            console.log('✅ Found organization from eventCode:', eventCode, organizationIdToUse);
+          }
+        } catch (err) {
+          // Event code is not an organization slug, continue to fallback
+        }
+      }
+    }
+
+    // Fallback: Use platform admin's organization
+    if (!organizationIdToUse) {
+      try {
+        // Get admin user ID
+        const adminUserId = process.env.DEFAULT_ADMIN_USER_ID;
+        if (adminUserId) {
+          const { data: adminOrg } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('owner_id', adminUserId)
+            .single();
+          
+          if (adminOrg) {
+            organizationIdToUse = adminOrg.id;
+            console.log('✅ Using platform admin organization as fallback:', organizationIdToUse);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not determine organization from admin user');
+      }
+    }
+
+    // If still no organization, log warning but allow null for backward compatibility
+    if (!organizationIdToUse) {
+      console.warn('⚠️ No organization_id found for crowd request. Using null (will need manual assignment).');
+      console.warn('   Event code:', eventCode);
+      console.warn('   Referrer:', req.headers.referer);
+      // For backward compatibility during migration, we'll allow null
+      // But this should be fixed once all data is migrated
+    }
 
     // Set priority: next = 0 (highest), fast-track = 1, regular = 1000
     let priorityOrder = 1000;
@@ -79,29 +203,36 @@ export default async function handler(req, res) {
     const paymentCode = generatePaymentCode();
     
     // Create crowd request record
+    const insertData = {
+      event_qr_code: uniqueEventCode,
+      request_type: requestType,
+      song_artist: songArtist || null,
+      song_title: songTitle || null,
+      recipient_name: recipientName || null,
+      recipient_message: recipientMessage || null,
+      requester_name: requesterName?.trim() || 'Guest',
+      requester_email: requesterEmail?.trim() || null,
+      requester_phone: requesterPhone || null,
+      request_message: message || null,
+      amount_requested: amount,
+      is_fast_track: requestType === 'song_request' ? (isFastTrack || false) : false,
+      is_next: requestType === 'song_request' ? (isNext || false) : false,
+      fast_track_fee: (requestType === 'song_request' && isFastTrack) ? (fastTrackFee || 0) : 0,
+      next_fee: (requestType === 'song_request' && isNext) ? (nextFee || 0) : 0,
+      priority_order: priorityOrder,
+      payment_status: 'pending',
+      payment_code: paymentCode,
+      status: 'new'
+    };
+
+    // Add organization_id if we have it
+    if (organizationIdToUse) {
+      insertData.organization_id = organizationIdToUse;
+    }
+    
     const { data: crowdRequest, error: insertError } = await supabase
       .from('crowd_requests')
-      .insert({
-        event_qr_code: uniqueEventCode,
-        request_type: requestType,
-        song_artist: songArtist || null,
-        song_title: songTitle || null,
-        recipient_name: recipientName || null,
-        recipient_message: recipientMessage || null,
-        requester_name: requesterName?.trim() || 'Guest',
-        requester_email: requesterEmail?.trim() || null,
-        requester_phone: requesterPhone || null,
-        request_message: message || null,
-        amount_requested: amount,
-        is_fast_track: requestType === 'song_request' ? (isFastTrack || false) : false,
-        is_next: requestType === 'song_request' ? (isNext || false) : false,
-        fast_track_fee: (requestType === 'song_request' && isFastTrack) ? (fastTrackFee || 0) : 0,
-        next_fee: (requestType === 'song_request' && isNext) ? (nextFee || 0) : 0,
-        priority_order: priorityOrder,
-        payment_status: 'pending',
-        payment_code: paymentCode,
-        status: 'new'
-      })
+      .insert(insertData)
       .select()
       .single();
 

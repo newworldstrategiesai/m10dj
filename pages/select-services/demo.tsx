@@ -93,8 +93,7 @@ export default function ServiceSelectionDemo() {
         'Speakers & microphones',
         'Dance floor lighting',
         'Uplighting (16 LED fixtures)',
-        'Ceremony audio & music',
-        'Monogram projection'
+        'Ceremony audio & music'
       ]
     },
     {
@@ -107,8 +106,7 @@ export default function ServiceSelectionDemo() {
         'Ceremony audio & music',
         'Dance floor lighting',
         'Uplighting (16 LED fixtures)',
-        'Dancing on the Clouds effect',
-        'Monogram projection'
+        'Dancing on the Clouds effect'
       ]
     }
   ];

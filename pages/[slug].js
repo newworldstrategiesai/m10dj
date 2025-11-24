@@ -172,7 +172,12 @@ const locationData = {
 
 export default function LocationPage() {
   const router = useRouter();
-  const { location } = router.query;
+  const { slug } = router.query;
+  
+  // Check if this is a known location, otherwise it might be an organization
+  // If slug exists in locationData, it's a location page
+  // Otherwise, it will fall through to show default or could be handled by [slug]/requests
+  const location = slug;
   
   // Get location data or default
   const loc = locationData[location] || {
@@ -761,12 +766,12 @@ export default function LocationPage() {
 // Generate static paths for all locations
 export async function getStaticPaths() {
   const paths = Object.keys(locationData).map((location) => ({
-    params: { location },
+    params: { slug: location },
   }));
 
   return {
     paths,
-    fallback: false, // Return 404 for paths not in locationData
+    fallback: 'blocking', // Check if it's a location or organization
   };
 }
 
@@ -774,7 +779,7 @@ export async function getStaticPaths() {
 export async function getStaticProps({ params }) {
   return {
     props: {
-      location: params.location,
+      location: params.slug,
     },
   };
 } 

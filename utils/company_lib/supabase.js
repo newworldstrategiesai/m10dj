@@ -30,20 +30,24 @@ export const db = {
       throw new Error('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
     }
 
+    const insertData = {
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      event_type: data.eventType,
+      event_date: data.eventDate,
+      location: data.location,
+      message: data.message
+    };
+    
+    // Include organization_id if provided (for multi-tenant isolation)
+    if (data.organization_id) {
+      insertData.organization_id = data.organization_id;
+    }
+
     const { data: result, error } = await supabase
       .from('contact_submissions')
-      .insert([
-        {
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          event_type: data.eventType,
-          event_date: data.eventDate,
-          location: data.location,
-          message: data.message
-          // Remove status and created_at - let database defaults handle these
-        }
-      ])
+      .insert([insertData])
       .select();
 
     if (error) {

@@ -137,24 +137,6 @@ export default async function handler(req, res) {
     
     const standardizedEventType = eventTypeMapping[sanitizedData.eventType] || 'other';
     
-    // Save to database first - THIS IS CRITICAL
-    // Use sanitized data
-    const submissionData = {
-      name: sanitizedData.name,
-      email: sanitizedData.email,
-      phone: sanitizedData.phone,
-      eventType: sanitizedData.eventType,
-      eventDate: sanitizedData.eventDate,
-      location: sanitizedData.location,
-      message: sanitizedData.message
-    };
-    
-    // Add venue fields if provided (for future use)
-    if (venueName || venueAddress) {
-      submissionData.venueName = venueName?.trim() || null;
-      submissionData.venueAddress = venueAddress?.trim() || null;
-    }
-
     // Create service role client for checking/updating drafts
     const { createClient } = require('@supabase/supabase-js');
     
@@ -168,6 +150,119 @@ export default async function handler(req, res) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+
+    // Determine organization_id EARLY (before creating submissions/contacts)
+    // Priority: 1. Explicit organizationId/slug param, 2. Referrer URL slug, 3. Origin URL slug, 4. Platform admin's org
+    let organizationId = null;
+    
+    // Helper function to extract slug from URL
+    const extractSlugFromUrl = (url) => {
+      if (!url) return null;
+      try {
+        const urlObj = new URL(url);
+        const pathParts = urlObj.pathname.split('/').filter(p => p);
+        // Check if URL pattern is /{slug}/requests or /{slug}/*
+        if (pathParts.length > 0) {
+          const potentialSlug = pathParts[0];
+          // Validate slug format (alphanumeric and hyphens)
+          if (/^[a-z0-9-]+$/.test(potentialSlug) && potentialSlug !== 'api' && potentialSlug !== 'admin') {
+            return potentialSlug;
+          }
+        }
+      } catch (err) {
+        // Invalid URL, ignore
+      }
+      return null;
+    };
+    
+    // Check for explicit organization parameter
+    const { organizationId: reqOrgId, organizationSlug } = req.body;
+    
+    if (reqOrgId) {
+      organizationId = reqOrgId;
+      console.log('✅ Using organization_id from request body:', organizationId);
+    } else if (organizationSlug) {
+      // Look up organization by slug from request body
+      try {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('slug', organizationSlug)
+          .single();
+        
+        if (org) {
+          organizationId = org.id;
+          console.log('✅ Found organization by slug from request:', organizationSlug, organizationId);
+        }
+      } catch (err) {
+        console.warn('Could not find organization by slug from request:', organizationSlug);
+      }
+    }
+    
+    // Check referrer URL for organization slug
+    if (!organizationId) {
+      const referer = req.headers.referer || req.headers.referrer;
+      const refererSlug = extractSlugFromUrl(referer);
+      
+      if (refererSlug) {
+        try {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('slug', refererSlug)
+            .single();
+          
+          if (org) {
+            organizationId = org.id;
+            console.log('✅ Found organization from referrer URL:', refererSlug, organizationId);
+          }
+        } catch (err) {
+          console.warn('Could not find organization from referrer slug:', refererSlug);
+        }
+      }
+    }
+    
+    // Check origin URL for organization slug
+    if (!organizationId) {
+      const origin = req.headers.origin;
+      const originSlug = extractSlugFromUrl(origin);
+      
+      if (originSlug) {
+        try {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('slug', originSlug)
+            .single();
+          
+          if (org) {
+            organizationId = org.id;
+            console.log('✅ Found organization from origin URL:', originSlug, organizationId);
+          }
+        } catch (err) {
+          console.warn('Could not find organization from origin slug:', originSlug);
+        }
+      }
+    }
+    
+    // Save to database first - THIS IS CRITICAL
+    // Use sanitized data
+    const submissionData = {
+      name: sanitizedData.name,
+      email: sanitizedData.email,
+      phone: sanitizedData.phone,
+      eventType: sanitizedData.eventType,
+      eventDate: sanitizedData.eventDate,
+      location: sanitizedData.location,
+      message: sanitizedData.message,
+      organization_id: organizationId // Include organization_id in submission
+    };
+    
+    // Add venue fields if provided (for future use)
+    if (venueName || venueAddress) {
+      submissionData.venueName = venueName?.trim() || null;
+      submissionData.venueAddress = venueAddress?.trim() || null;
+    }
 
     // Check if there's an existing draft for this email
     const { data: existingDraft } = await supabase
@@ -189,23 +284,30 @@ export default async function handler(req, res) {
       try {
         if (existingDraft) {
           // Update existing draft to mark it as complete
+          const updateData = {
+            name: sanitizedData.name,
+            phone: sanitizedData.phone,
+            event_type: sanitizedData.eventType,
+            event_date: sanitizedData.eventDate,
+            event_time: eventTime || null,
+            location: sanitizedData.location,
+            message: sanitizedData.message,
+            venue_name: venueName?.trim() || null,
+            venue_address: venueAddress?.trim() || null,
+            guests: req.body.guests || null,
+            is_draft: false, // Mark as complete
+            status: 'new',
+            updated_at: new Date().toISOString()
+          };
+          
+          // Update organization_id if we determined it (may not have been set on draft)
+          if (organizationId) {
+            updateData.organization_id = organizationId;
+          }
+          
           const { data: updatedSubmission, error: updateError } = await supabase
             .from('contact_submissions')
-            .update({
-              name: sanitizedData.name,
-              phone: sanitizedData.phone,
-              event_type: sanitizedData.eventType,
-              event_date: sanitizedData.eventDate,
-              event_time: eventTime || null,
-              location: sanitizedData.location,
-              message: sanitizedData.message,
-              venue_name: venueName?.trim() || null,
-              venue_address: venueAddress?.trim() || null,
-              guests: req.body.guests || null,
-              is_draft: false, // Mark as complete
-              status: 'new',
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', existingDraft.id)
             .select()
             .single();
@@ -326,9 +428,62 @@ export default async function handler(req, res) {
       }
     }
 
+    // Get the admin/owner user ID (needed for organization fallback)
+    // If no organization found, use platform admin's organization as default
+    if (!organizationId) {
+      // Get admin user ID first
+      let adminUserId = process.env.DEFAULT_ADMIN_USER_ID;
+      
+      if (!adminUserId) {
+        try {
+          const { data: authUsers } = await supabase.auth.admin.listUsers();
+          if (authUsers?.users) {
+            const adminEmails = [
+              'djbenmurray@gmail.com',
+              'admin@m10djcompany.com',
+              'manager@m10djcompany.com'
+            ];
+            const adminUser = authUsers.users.find(user => 
+              adminEmails.includes(user.email || '')
+            );
+            if (adminUser) {
+              adminUserId = adminUser.id;
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch admin user:', err);
+        }
+      }
+      
+      if (adminUserId) {
+        try {
+          const { data: adminOrg } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('owner_id', adminUserId)
+            .single();
+          
+          if (adminOrg) {
+            organizationId = adminOrg.id;
+            console.log('✅ Using platform admin organization as default:', organizationId);
+          } else {
+            console.warn('⚠️ Platform admin has no organization, contact will be created without organization_id');
+          }
+        } catch (err) {
+          console.warn('Could not determine organization, contact will be created without organization_id');
+        }
+      }
+    }
+    
+    if (!organizationId) {
+      console.warn('⚠️ WARNING: No organization_id determined for contact submission');
+      console.warn('   This contact will need to be manually assigned to an organization');
+    }
+
     // Create contact record
     const contactData = {
       user_id: adminUserId, // May be null if no admin user found
+      organization_id: organizationId, // Set organization for multi-tenant isolation
       first_name: firstName,
       last_name: lastName,
       email_address: email,
@@ -415,6 +570,7 @@ export default async function handler(req, res) {
           console.log(`📝 Attempt ${contactRetries}/${maxContactRetries}: Updating existing contact:`, existingContact.id);
           const updateData = {
             ...contactData,
+            organization_id: organizationId || existingContact.organization_id, // Preserve existing or set new
             messages_received_count: (existingContact.messages_received_count || 0) + 1,
             last_contacted_date: new Date().toISOString(),
             notes: `${existingContact.notes || ''}\n\nNew inquiry ${new Date().toLocaleDateString()}: ${message || 'No message provided'}`

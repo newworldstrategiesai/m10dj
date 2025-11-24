@@ -1,4 +1,6 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -15,22 +17,36 @@ export default async function handler(req, res) {
 
     const { search, eventType, leadStatus, limit = 100 } = req.query;
 
-    // Check if user is admin using email-based authentication
-    const adminEmails = [
-      'admin@m10djcompany.com',
-      'manager@m10djcompany.com',
-      'djbenmurray@gmail.com'  // Ben Murray - Owner
-    ];
-    const isAdmin = adminEmails.includes(session.user.email || '');
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context (null for admins, org_id for SaaS users)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    );
 
     let query = supabase
       .from('contacts')
       .select('*')
       .is('deleted_at', null); // Only get non-deleted contacts
 
-    // For non-admin users, filter by user_id. Admin users see all contacts.
-    if (!isAdmin) {
-      query = query.eq('user_id', session.user.id);
+    // For SaaS users, filter by organization_id. Platform admins see all contacts.
+    if (!isAdmin && orgId) {
+      query = query.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      // SaaS user without organization - return empty
+      return res.status(200).json({
+        contacts: [],
+        summary: {
+          total_contacts: 0,
+          new_leads: 0,
+          booked_events: 0,
+          upcoming_events: 0,
+          follow_ups_due: 0
+        }
+      });
     }
 
     query = query
@@ -71,8 +87,10 @@ export default async function handler(req, res) {
       .from('contacts_summary')
       .select('*');
 
-    // For non-admin users, filter summary by user_id. Admin users see all summaries.
-    if (!isAdmin) {
+    // For SaaS users, filter summary by organization_id. Platform admins see all summaries.
+    if (!isAdmin && orgId) {
+      // Note: contacts_summary may need organization_id column added
+      // For now, filter by user_id as fallback
       summaryQuery = summaryQuery.eq('user_id', session.user.id);
     }
 

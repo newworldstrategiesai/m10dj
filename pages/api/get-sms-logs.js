@@ -1,4 +1,6 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 import twilio from 'twilio';
 
 export default async function handler(req, res) {
@@ -13,6 +15,16 @@ export default async function handler(req, res) {
     if (sessionError || !session) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context (null for admins, org_id for SaaS users)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    );
 
     const { phoneNumber, page = 1, pageSize = 50 } = req.query;
 
@@ -134,10 +146,20 @@ export default async function handler(req, res) {
       .slice(0, parseInt(pageSize));
 
     // Get local contacts for matching names
-    const { data: contacts } = await supabase
+    // For SaaS users, filter by organization_id. Platform admins see all contacts.
+    let contactsQuery = supabase
       .from('contacts')
       .select('*')
-      .eq('user_id', session.user.id);
+      .is('deleted_at', null);
+
+    if (!isAdmin && orgId) {
+      contactsQuery = contactsQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      // SaaS user without organization - return empty contacts
+      contactsQuery = contactsQuery.eq('id', '00000000-0000-0000-0000-000000000000'); // Impossible match
+    }
+
+    const { data: contacts } = await contactsQuery;
 
     // Transform messages and match with contacts
     const transformedMessages = allMessages.map(msg => {

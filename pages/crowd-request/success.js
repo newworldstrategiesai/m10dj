@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../components/company/Header';
-import { CheckCircle, Music, Mic, Loader2, Zap, Mail, Check } from 'lucide-react';
+import { CheckCircle, Music, Mic, Loader2, Zap, Mail, Check, Clock, Gift } from 'lucide-react';
 
 export default function CrowdRequestSuccessPage() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function CrowdRequestSuccessPage() {
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [receiptSent, setReceiptSent] = useState(false);
   const [receiptError, setReceiptError] = useState(null);
+  const [userRequestCount, setUserRequestCount] = useState(0);
 
   useEffect(() => {
     if (request_id) {
@@ -21,6 +22,29 @@ export default function CrowdRequestSuccessPage() {
       setLoading(false);
     }
   }, [request_id]);
+
+  useEffect(() => {
+    if (request) {
+      fetchUserStats();
+    }
+  }, [request]);
+
+  const fetchUserStats = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (request?.event_qr_code) params.append('event_qr_code', request.event_qr_code);
+      if (request?.requester_email) params.append('requester_email', request.requester_email);
+      if (request?.requester_phone) params.append('requester_phone', request.requester_phone);
+
+      const response = await fetch(`/api/crowd-request/user-stats?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUserRequestCount(data.userRequestCount || 0);
+      }
+    } catch (err) {
+      console.error('Error fetching user stats:', err);
+    }
+  };
 
   const fetchRequestDetails = async (requestId) => {
     try {
@@ -193,6 +217,49 @@ export default function CrowdRequestSuccessPage() {
                 </div>
               )}
 
+              {/* Bundle Messaging */}
+              {userRequestCount > 1 && request?.request_type === 'song_request' && (
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6 mb-6">
+                  <div className="flex items-start gap-3">
+                    <Gift className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                        You've requested {userRequestCount} songs!
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Keep the requests coming! The more songs you request, the better the party gets.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Time-Sensitive Messaging */}
+              {request?.event_date && (
+                (() => {
+                  const eventDate = new Date(request.event_date);
+                  const now = new Date();
+                  const hoursUntilEvent = (eventDate - now) / (1000 * 60 * 60);
+                  
+                  if (hoursUntilEvent > 0 && hoursUntilEvent < 24) {
+                    return (
+                      <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-6">
+                        <div className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+                          <Clock className="w-4 h-4" />
+                          <p className="text-sm font-medium">
+                            {hoursUntilEvent < 1 
+                              ? `Less than an hour until the event! Request your favorites now.`
+                              : `Only ${Math.floor(hoursUntilEvent)} ${Math.floor(hoursUntilEvent) === 1 ? 'hour' : 'hours'} left to request songs!`
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              )}
+
               {/* Receipt Section */}
               {request?.requester_email && (
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6 mb-8">
@@ -243,21 +310,27 @@ export default function CrowdRequestSuccessPage() {
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link
-                  href="/"
-                  className="btn-outline inline-flex items-center justify-center gap-2"
-                >
-                  Return to Home
-                </Link>
-                {request?.event_qr_code && (
+              {/* Primary Action: Request Another */}
+              {request?.event_qr_code && (
+                <div className="mb-6">
                   <Link
                     href={`/crowd-request/${request.event_qr_code}`}
-                    className="btn-primary inline-flex items-center justify-center gap-2"
+                    className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 dark:from-purple-500 dark:to-pink-500 dark:hover:from-purple-600 dark:hover:to-pink-600 text-white font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
                   >
-                    Make Another Request
+                    <Music className="w-6 h-6" />
+                    Request Another Song
                   </Link>
-                )}
+                </div>
+              )}
+
+              {/* Secondary Action: Return Home */}
+              <div className="flex justify-center">
+                <Link
+                  href={request?.event_qr_code ? `/crowd-request/${request.event_qr_code}` : "/"}
+                  className="btn-outline inline-flex items-center justify-center gap-2"
+                >
+                  {request?.event_qr_code ? 'Back to Requests' : 'Return to Home'}
+                </Link>
               </div>
             </div>
           </div>

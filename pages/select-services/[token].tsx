@@ -165,8 +165,7 @@ export default function SelectServicesPage() {
         'Speakers & microphones',
         'Dance floor lighting',
         'Uplighting (16 LED fixtures)',
-        'Ceremony audio & music',
-        'Monogram projection'
+        'Ceremony audio & music'
       ]
     },
     {
@@ -179,8 +178,7 @@ export default function SelectServicesPage() {
         'Ceremony audio & music',
         'Dance floor lighting',
         'Uplighting (16 LED fixtures)',
-        'Dancing on the Clouds effect',
-        'Monogram projection'
+        'Dancing on the Clouds effect'
       ]
     }
   ];
@@ -367,8 +365,8 @@ export default function SelectServicesPage() {
     // Package details
     const packageDetails = {
       'package_1': { name: 'Package 1 - Reception Only', price: '$2,000', features: ['DJ/MC Services (4 hours)', 'Speakers & microphones', 'Dance floor lighting', 'Uplighting (16 LED fixtures)', 'Additional speaker'] },
-      'package_2': { name: 'Package 2 - Reception Only', price: '$2,500', features: ['DJ/MC Services (4 hours)', 'Speakers & microphones', 'Dance floor lighting', 'Uplighting (16 LED fixtures)', 'Ceremony audio & music', 'Monogram projection'] },
-      'package_3': { name: 'Package 3 - Ceremony & Reception', price: '$3,000', features: ['DJ/MC Services (4 hours)', 'Speakers & microphones', 'Ceremony audio & music', 'Dance floor lighting', 'Uplighting (16 LED fixtures)', 'Dancing on the Clouds effect', 'Monogram projection'] }
+      'package_2': { name: 'Package 2 - Reception Only', price: '$2,500', features: ['DJ/MC Services (4 hours)', 'Speakers & microphones', 'Dance floor lighting', 'Uplighting (16 LED fixtures)', 'Ceremony audio & music'] },
+      'package_3': { name: 'Package 3 - Ceremony & Reception', price: '$3,000', features: ['DJ/MC Services (4 hours)', 'Speakers & microphones', 'Ceremony audio & music', 'Dance floor lighting', 'Uplighting (16 LED fixtures)', 'Dancing on the Clouds effect'] }
     };
 
     const addOnDetails = {

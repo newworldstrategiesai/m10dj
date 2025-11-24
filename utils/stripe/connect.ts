@@ -114,12 +114,16 @@ export async function createConnectAccount(
     }
   }
 
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
+  }
+
   try {
     // Try using Stripe SDK's request method for v2 API
     // If that doesn't work, fall back to v1 API with compatible structure
     try {
-      // Attempt v2 API via SDK request method
-      const account = await stripe.request({
+      // Attempt v2 API via SDK request method (using type assertion since request method may not be in types)
+      const account = await (stripe as any).request({
         method: 'POST',
         path: '/v2/core/accounts',
         body: accountData,
@@ -193,6 +197,10 @@ export async function createAccountLink(
     onboardingType?: 'upfront' | 'incremental'; // Default: upfront
   }
 ): Promise<Stripe.AccountLink> {
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
+  }
+  
   const onboardingType = options?.onboardingType || 'upfront';
   
   // Accounts v2 API structure for Account Links
@@ -214,7 +222,7 @@ export async function createAccountLink(
   try {
     // Try v2 API first, fall back to v1 if not available
     try {
-      const accountLink = await stripe.request({
+      const accountLink = await (stripe as any).request({
         method: 'POST',
         path: '/v2/core/account_links',
         body: accountLinkData,
@@ -255,6 +263,10 @@ export async function getAccountStatus(
     pastDue: string[];
   };
 }> {
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
+  }
+  
   try {
     // Try v2 API structure for retrieving account
     // Use the standard SDK method with expand parameter
@@ -293,8 +305,8 @@ export async function getAccountStatus(
         payoutsEnabled: account.payouts_enabled || false,
         detailsSubmitted: account.details_submitted || false,
       };
-    } catch (fallbackError) {
-      throw new Error(`Failed to retrieve account status: ${fallbackError.message || fallbackError}`);
+    } catch (fallbackError: any) {
+      throw new Error(`Failed to retrieve account status: ${fallbackError?.message || String(fallbackError)}`);
     }
   }
 }
@@ -313,6 +325,10 @@ export async function createPaymentWithPlatformFee(
   platformFeePercentage: number = PLATFORM_FEE_PERCENTAGE,
   platformFeeFixed: number = PLATFORM_FEE_FIXED
 ): Promise<Stripe.PaymentIntent> {
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
+  }
+  
   // Calculate platform fee
   // Fee = (amount * percentage / 100) + fixed_fee
   const percentageFee = Math.round((amount * platformFeePercentage) / 100);
@@ -391,6 +407,10 @@ export async function createCheckoutSessionWithPlatformFee(
     }),
   };
 
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
+  }
+  
   try {
     const session = await stripe.checkout.sessions.create(sessionParams);
     return session;
@@ -409,7 +429,7 @@ export function getStripeElementsConfig(branding?: {
   backgroundColor?: string;
   textColor?: string;
   fontFamily?: string;
-}): Stripe.StripeElementsOptions {
+}): any {
   return {
     appearance: {
       theme: 'stripe',
@@ -474,6 +494,10 @@ export async function getAccountBalance(accountId: string): Promise<{
   pending: number;
   currency: string;
 }> {
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
+  }
+  
   const balance = await stripe.balance.retrieve({
     stripeAccount: accountId,
   });

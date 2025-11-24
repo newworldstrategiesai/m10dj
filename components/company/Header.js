@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Phone, Mail, Menu, X, ChevronDown, MapPin, FileText, Calendar, CreditCard } from 'lucide-react';
+import { Phone, Mail, Menu, X, ChevronDown, MapPin, FileText, Calendar, CreditCard, Music } from 'lucide-react';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackContactAction, trackLead, trackServiceInterest } from '../EnhancedTracking';
 import { scrollToContact } from '../../utils/scroll-helpers';
 import ContactFormModal from './ContactFormModal';
 
-export default function Header() {
+export default function Header({ customLogoUrl = null }) {
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -126,23 +126,25 @@ export default function Header() {
               <div className="flex items-center space-x-2.5">
                 <div className="relative flex-shrink-0">
                   <Image
-                    src="/logo-static.jpg"
-                    alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
+                    src={customLogoUrl || "/logo-static.jpg"}
+                    alt={customLogoUrl ? "Organization Logo" : "M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"}
                     width={45}
                     height={45}
                     className="w-9 h-9 sm:w-[45px] sm:h-[45px] rounded-lg transition-transform group-hover:scale-105"
                     priority
-                    unoptimized={false}
+                    unoptimized={customLogoUrl ? true : false}
                   />
                 </div>
-                <div className="flex-shrink-0">
-                  <h1 className="text-base sm:text-xl font-bold text-gray-900 font-sans group-hover:text-brand transition-colors leading-tight">
-                    M10 DJ Company
-                  </h1>
-                  <p className="text-[10px] sm:text-xs text-brand font-semibold font-inter tracking-wide leading-tight">
-                    Premium Event Entertainment
-                  </p>
-                </div>
+                {!customLogoUrl && (
+                  <div className="flex-shrink-0">
+                    <h1 className="text-base sm:text-xl font-bold text-gray-900 font-sans group-hover:text-brand transition-colors leading-tight">
+                      M10 DJ Company
+                    </h1>
+                    <p className="text-[10px] sm:text-xs text-brand font-semibold font-inter tracking-wide leading-tight">
+                      Premium Event Entertainment
+                    </p>
+                  </div>
+                )}
               </div>
             </Link>
 
@@ -455,6 +457,15 @@ export default function Header() {
                     </div>
                   </div>
                 </div>
+
+                <Link
+                  href="/requests"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl min-h-[48px] text-base"
+                >
+                  <Music className="w-5 h-5" />
+                  Requests
+                </Link>
 
                 <button 
                   onClick={() => {

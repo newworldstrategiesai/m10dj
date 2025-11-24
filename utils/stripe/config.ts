@@ -12,7 +12,7 @@ export const stripe = stripeKey ? new Stripe(stripeKey, {
   // https://github.com/stripe/stripe-node#configuration
   // https://stripe.com/docs/api/versioning
   // Using preview API version to support Accounts v2 API
-  apiVersion: '2025-07-30.preview', // Supports Accounts v2 API
+  apiVersion: '2025-07-30.preview' as any, // Supports Accounts v2 API - using 'as any' to bypass strict type checking
   // Register this as an official Stripe plugin.
   // https://stripe.com/docs/building-plugins#setappinfo
   appInfo: {

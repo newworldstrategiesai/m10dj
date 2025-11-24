@@ -249,8 +249,9 @@ COMPANY INFO:
 
 SERVICES & PRICING:
 - Package 1: $2,000 (4hr DJ/MC, speakers, basic lighting)
-- Package 2: $2,500 (Package 1 + ceremony audio + monogram)
-- Package 3: $3,000 (Full service with uplighting)
+- Package 2: $2,500 (Package 1 + ceremony audio + uplighting) - Most Popular
+- Package 3: $3,000 (Full service with dancing on the clouds effect)
+- Monogram projection available as optional add-on ($350)
 - Custom packages available based on needs
 
 PERSONALITY & TONE:

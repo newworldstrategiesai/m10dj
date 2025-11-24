@@ -1,0 +1,16 @@
+-- Setup Supabase Storage for Organization Assets
+-- 
+-- IMPORTANT: This migration is intentionally empty.
+-- Storage policies cannot be created via migrations due to permission requirements.
+-- 
+-- See WHITE_LABEL_SETUP.md for complete setup instructions.
+-- Storage policies must be created manually via Supabase Dashboard.
+--
+-- Quick Setup:
+-- 1. Create bucket "organization-assets" (Public: Yes, 5MB limit, image/* MIME types)
+-- 2. Go to Storage → organization-assets → Policies → Create policies manually
+-- 3. Or use the Supabase Dashboard UI to create policies (recommended)
+--
+-- For SQL-based setup, see: supabase/migrations/20250125000003_storage_policies_manual.sql
+-- (Run that file in Supabase SQL Editor, not as a migration)
+

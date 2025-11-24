@@ -184,11 +184,17 @@ export async function signUp(formData: FormData) {
   }
 
   const supabase = createClient();
+  const businessName = String(formData.get('businessName') || '').trim();
+  
+  // Pass business name in metadata for organization creation
   const { error, data } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: callbackURL
+      emailRedirectTo: callbackURL,
+      data: {
+        organization_name: businessName || undefined, // Only include if provided
+      }
     }
   });
 
@@ -199,7 +205,10 @@ export async function signUp(formData: FormData) {
       error.message
     );
   } else if (data.session) {
-    redirectPath = getStatusRedirect('/', 'Success!', 'You are now signed in.');
+    // User is signed in immediately - redirect to onboarding for SaaS customers
+    // The role-based redirect will handle sending them to the right place
+    const redirectUrl = await getRoleBasedRedirectUrl();
+    redirectPath = getStatusRedirect(redirectUrl, 'Success!', 'You are now signed in.');
   } else if (
     data.user &&
     data.user.identities &&
@@ -211,10 +220,14 @@ export async function signUp(formData: FormData) {
       'There is already an account associated with this email address. Try resetting your password.'
     );
   } else if (data.user) {
+    // User created but no session (email confirmation required)
+    // For SaaS onboarding, redirect to onboarding even without confirmed email
+    // The onboarding page will handle unconfirmed users
+    const redirectUrl = await getRoleBasedRedirectUrl();
     redirectPath = getStatusRedirect(
-      '/',
-      'Success!',
-      'Please check your email for a confirmation link. You may now close this tab.'
+      redirectUrl,
+      'Account created!',
+      'Please check your email to confirm your account. You can still access onboarding.'
     );
   } else {
     redirectPath = getErrorRedirect(

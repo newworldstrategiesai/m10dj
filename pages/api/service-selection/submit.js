@@ -51,11 +51,18 @@ export default async function handler(req, res) {
 
     const contact = tokenData.contacts;
 
+    // Get organization_id from contact (required for multi-tenant isolation)
+    const contactOrgId = contact.organization_id;
+    if (!contactOrgId) {
+      console.warn('⚠️ Contact missing organization_id, service selection may not be properly isolated');
+    }
+
     // Create service selection record
     const { data: selection, error: selectionError } = await supabase
       .from('service_selections')
       .insert({
         contact_id: contact.id,
+        organization_id: contactOrgId, // Set organization_id for multi-tenant isolation
         token_id: tokenData.id,
         event_type: selections.eventType || contact.event_type,
         event_date: selections.eventDate || contact.event_date,
@@ -168,6 +175,7 @@ export default async function handler(req, res) {
         .from('invoices')
         .insert({
           contact_id: contact.id,
+          organization_id: contactOrgId, // Set organization_id for multi-tenant isolation
           invoice_number: `INV-${Date.now()}`,
           invoice_date: new Date().toISOString(),
           due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days
@@ -257,6 +265,7 @@ export default async function handler(req, res) {
           .from('contracts')
           .insert({
             contact_id: contact.id,
+            organization_id: contactOrgId, // Set organization_id for multi-tenant isolation
             invoice_id: invoiceData?.id || null,
             service_selection_id: selection.id,
             event_name: variables.event_name,

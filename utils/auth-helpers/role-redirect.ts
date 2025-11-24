@@ -56,10 +56,34 @@ export async function getRoleBasedRedirectUrl(baseUrl: string = ''): Promise<str
     return `${baseUrl}/admin/dashboard`;
   }
 
-  if (userRole.isClient) {
-    // Client users go to client dashboard (placeholder for now)
-    return `${baseUrl}/client/dashboard`;
+  // For non-admin users, check if they have an organization (SaaS customers)
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (user) {
+    // Check if user has an organization (SaaS customer)
+    const { data: organization } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single();
+
+    if (organization) {
+      // User has an organization - they're a SaaS customer
+      // Send them to onboarding (which will show their dashboard if org exists)
+      return `${baseUrl}/onboarding/welcome`;
+    }
+    
+    // No organization - could be:
+    // 1. New signup (organization being created) - send to onboarding
+    // 2. Event client (not a SaaS customer) - send to client portal
+    // For now, send to onboarding to let the trigger create the org
+    return `${baseUrl}/onboarding/welcome`;
   }
+
+  // Fallback: if somehow we get here without a user, this shouldn't happen
+  // but send to signin just in case
+  return `${baseUrl}/signin`;
 
   // Fallback to home page
   return `${baseUrl}/`;

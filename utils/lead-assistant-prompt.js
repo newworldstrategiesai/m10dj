@@ -16,8 +16,8 @@ COMPANY INFORMATION:
 
 PACKAGES OFFERED:
 - Package 1: Reception Only - $2,000 (DJ/MC, speakers, dance floor lighting, uplighting)
-- Package 2: Reception Only - $2,500 (Includes ceremony audio & monogram projection)
-- Package 3: Ceremony & Reception - $3,000 (Full service with all features)
+- Package 2: Reception Only - $2,500 (Includes ceremony audio & uplighting) - Most Popular
+- Package 3: Ceremony & Reception - $3,000 (Full service with dancing on the clouds effect)
 
 ADD-ONS:
 - Additional Hour(s): $300

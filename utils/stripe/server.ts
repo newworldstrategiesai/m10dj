@@ -90,6 +90,10 @@ export async function checkoutWithStripe(
     }
 
     // Create a checkout session in Stripe
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+    
     let session;
     try {
       session = await stripe.checkout.sessions.create(params);
@@ -155,6 +159,10 @@ export async function createStripePortal(currentPath: string) {
       throw new Error('Could not get customer.');
     }
 
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+    
     try {
       const { url } = await stripe.billingPortal.sessions.create({
         customer,

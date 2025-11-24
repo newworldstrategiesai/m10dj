@@ -1,5 +1,11 @@
 // API endpoint for fetching notification logs
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -7,13 +13,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+    // Get authenticated user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context (null for admins, org_id for SaaS users)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
     );
 
-    // Fetch recent notification logs (last 24 hours)
-    const { data: logs, error } = await supabase
+    // Use service role for queries
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Build query for notification logs
+    let logsQuery = supabaseAdmin
       .from('notification_log')
       .select(`
         id,
@@ -29,7 +51,28 @@ export default async function handler(req, res) {
         successful_methods,
         created_at
       `)
-      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+    // For SaaS users, filter by organization_id via contact_submissions
+    // Note: notification_log may not have organization_id directly, so we filter via contact_submissions
+    if (!isAdmin && orgId) {
+      // Get contact_submission_ids for this organization
+      const { data: orgSubmissions } = await supabaseAdmin
+        .from('contact_submissions')
+        .select('id')
+        .eq('organization_id', orgId);
+      
+      const submissionIds = orgSubmissions?.map(s => s.id) || [];
+      
+      if (submissionIds.length > 0) {
+        logsQuery = logsQuery.in('contact_submission_id', submissionIds);
+      } else {
+        // No submissions for this org, return empty
+        logsQuery = logsQuery.eq('id', '00000000-0000-0000-0000-000000000000'); // Impossible match
+      }
+    }
+
+    const { data: logs, error } = await logsQuery
       .order('created_at', { ascending: false })
       .limit(50);
 

@@ -123,12 +123,52 @@ export default async function handler(req, res) {
       const firstName = nameParts[0] || '';
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
+      // Determine organization_id for new contact
+      // Priority: 1. From authenticated user's organization, 2. Platform admin's org
+      let organizationId = null;
+      
+      // Try to get organization from authenticated user (if available)
+      try {
+        const { createServerSupabaseClient } = require('@supabase/auth-helpers-nextjs');
+        const authSupabase = createServerSupabaseClient({ req, res });
+        const { data: { session } } = await authSupabase.auth.getSession();
+        
+        if (session?.user) {
+          const { getOrganizationContext } = require('@/utils/organization-helpers');
+          organizationId = await getOrganizationContext(
+            authSupabase,
+            session.user.id,
+            session.user.email
+          );
+        }
+      } catch (err) {
+        // Not authenticated or error - continue to fallback
+        console.log('Could not get organization from authenticated user:', err.message);
+      }
+      
+      // Fallback: Use platform admin's organization
+      if (!organizationId) {
+        const adminUserId = process.env.DEFAULT_ADMIN_USER_ID;
+        if (adminUserId) {
+          const { data: adminOrg } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('owner_id', adminUserId)
+            .single();
+          
+          if (adminOrg) {
+            organizationId = adminOrg.id;
+          }
+        }
+      }
+
       const { data: newContact, error: createError } = await supabase
         .from('contacts')
         .insert({
           first_name: firstName,
           last_name: lastName,
           email_address: email,
+          organization_id: organizationId, // Set organization_id for multi-tenant isolation
           event_type: eventType || null,
           event_date: eventDate || null,
           lead_status: 'Service Selection Sent',

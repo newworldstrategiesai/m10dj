@@ -90,7 +90,9 @@ export default function CrowdRequestsPage() {
   const [requestSettings, setRequestSettings] = useState({
     fastTrackFee: 1000, // in cents ($10.00)
     minimumAmount: 100, // in cents ($1.00)
-    presetAmounts: [500, 1000, 2000, 5000] // in cents: $5, $10, $20, $50
+    presetAmounts: [500, 1000, 2000, 5000], // in cents: $5, $10, $20, $50
+    bundleDiscountEnabled: true, // Enable/disable bundle discount feature
+    bundleDiscountPercent: 10 // Percentage discount (e.g., 10 = 10%)
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
@@ -111,6 +113,8 @@ export default function CrowdRequestsPage() {
         const fastTrackFeeSetting = data.find((s: any) => s.setting_key === 'crowd_request_fast_track_fee');
         const minimumAmountSetting = data.find((s: any) => s.setting_key === 'crowd_request_minimum_amount');
         const presetAmountsSetting = data.find((s: any) => s.setting_key === 'crowd_request_preset_amounts');
+        const bundleDiscountEnabledSetting = data.find((s: any) => s.setting_key === 'crowd_request_bundle_discount_enabled');
+        const bundleDiscountPercentSetting = data.find((s: any) => s.setting_key === 'crowd_request_bundle_discount_percent');
         
         if (cashAppSetting) {
           setPaymentSettings(prev => ({ ...prev, cashAppTag: cashAppSetting.setting_value }));
@@ -133,6 +137,12 @@ export default function CrowdRequestsPage() {
           } catch (e) {
             console.error('Error parsing preset amounts:', e);
           }
+        }
+        if (bundleDiscountEnabledSetting) {
+          setRequestSettings(prev => ({ ...prev, bundleDiscountEnabled: bundleDiscountEnabledSetting.setting_value === 'true' }));
+        }
+        if (bundleDiscountPercentSetting) {
+          setRequestSettings(prev => ({ ...prev, bundleDiscountPercent: parseInt(bundleDiscountPercentSetting.setting_value) || 10 }));
         }
       }
     } catch (err) {
@@ -193,6 +203,26 @@ export default function CrowdRequestsPage() {
         })
       });
 
+      // Save bundle discount enabled
+      await fetch('/api/admin-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settingKey: 'crowd_request_bundle_discount_enabled',
+          settingValue: requestSettings.bundleDiscountEnabled.toString()
+        })
+      });
+
+      // Save bundle discount percentage
+      await fetch('/api/admin-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settingKey: 'crowd_request_bundle_discount_percent',
+          settingValue: requestSettings.bundleDiscountPercent.toString()
+        })
+      });
+
       toast({
         title: 'Success',
         description: 'Settings saved successfully',
@@ -212,9 +242,28 @@ export default function CrowdRequestsPage() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
+      
+      // Get current user's organization
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single();
+
+      if (!org) {
+        throw new Error('No organization found');
+      }
+
+      // Filter by organization_id
       const { data, error } = await supabase
         .from('crowd_requests')
         .select('*')
+        .eq('organization_id', org.id) // CRITICAL: Filter by organization
         .order('priority_order', { ascending: true }) // Fast-track (0) comes first
         .order('created_at', { ascending: false }); // Then by date within each priority group
 
@@ -932,6 +981,59 @@ export default function CrowdRequestsPage() {
                       Preset payment amounts shown as quick options. Click the X to remove an amount.
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Bundle Discount Settings */}
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Bundle Discount Settings
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="bundleDiscountEnabled"
+                      checked={requestSettings.bundleDiscountEnabled}
+                      onChange={(e) => setRequestSettings(prev => ({ ...prev, bundleDiscountEnabled: e.target.checked }))}
+                      className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                    />
+                    <label htmlFor="bundleDiscountEnabled" className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer">
+                      Enable Bundle Discount Feature
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 ml-8">
+                    When enabled, users can request multiple songs and receive a discount on additional songs.
+                  </p>
+                  
+                  {requestSettings.bundleDiscountEnabled && (
+                    <div className="ml-8">
+                      <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        Bundle Discount Percentage
+                      </label>
+                      <div className="flex items-center gap-2 max-w-md">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={requestSettings.bundleDiscountPercent}
+                          onChange={(e) => {
+                            const percent = parseInt(e.target.value) || 0;
+                            if (percent >= 0 && percent <= 100) {
+                              setRequestSettings(prev => ({ ...prev, bundleDiscountPercent: percent }));
+                            }
+                          }}
+                          placeholder="10"
+                          className="max-w-32"
+                        />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">%</span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Discount percentage applied to each additional song when users request multiple songs (e.g., 10 = 10% off)
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
               

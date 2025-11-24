@@ -480,17 +480,17 @@ export default function PersonalizedQuote() {
       id: 'package2',
       name: 'Package 2',
       price: 2500,
-      aLaCartePrice: 3200,
-      description: 'Reception Only - Most Popular',
+      aLaCartePrice: 3400,
+      description: 'Complete Wedding - Most Popular',
       features: [
-        'Up to 4 hours of DJ/MC services at reception',
+        'Up to 6 hours of DJ/MC services (ceremony + cocktail hour + reception)',
         'Speakers & microphones included',
+        'Ceremony Audio (ceremony music + microphones)',
+        'Cocktail Hour music & DJ services',
         'Dance Floor Lighting',
         'Multi-color LED fixtures for dance floor',
         'Uplighting (16 multicolor LED fixtures)',
-        'Ceremony Audio (additional hour + ceremony music)',
-        'Monogram Projection',
-        'Custom graphic with your names or initials'
+        'Additional Speaker (perfect for cocktail hour or ceremony/reception separation)'
       ],
       popular: true
     },
@@ -498,19 +498,14 @@ export default function PersonalizedQuote() {
       id: 'package3',
       name: 'Package 3',
       price: 3000,
-      aLaCartePrice: 3700,
-      description: 'Ceremony & Reception - Premium Experience',
+      aLaCartePrice: 3650,
+      description: 'Complete Wedding + Special Effects - Premium Experience',
       features: [
-        'Up to 4 hours of DJ/MC services at reception',
-        'Speakers & microphones included',
-        'Ceremony Audio (additional hour + ceremony music)',
-        'Dance Floor Lighting',
-        'Multi-color LED fixtures for dance floor',
-        'Uplighting (16 multicolor LED fixtures)',
+        'Everything in Package 2, plus:',
         'Dancing on the Clouds',
         'Sophisticated dry ice effect for first dance',
-        'Monogram Projection',
-        'Custom graphic with your names or initials'
+        'Up to 6 hours of DJ/MC services (ceremony + cocktail hour + reception)',
+        'All lighting, speakers, and equipment from Package 2'
       ],
       popular: false
     }
@@ -909,17 +904,18 @@ export default function PersonalizedQuote() {
       ],
       'package2': [
         { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
+        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
+        { item: 'Additional Hour DJ/MC Services', description: 'Additional hour of DJ/MC services beyond the 4-hour package. Perfect if your event runs longer than expected.', price: 300 },
         { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
         { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
-        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
-        { item: 'Monogram Projection', description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.', price: 350 }
+        { item: 'Additional Speaker', description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for cocktail hours that are separate from the reception.', price: 250 }
       ],
       'package3': [
         { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
+        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
+        { item: 'Additional Hour DJ/MC Services', description: 'Additional hour of DJ/MC services beyond the 4-hour package. Perfect if your event runs longer than expected.', price: 300 },
         { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
         { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
-        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
-        { item: 'Monogram Projection', description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.', price: 350 },
         { item: 'Dancing on the Clouds', description: 'Sophisticated dry ice effect for first dance and special moments. Creates a magical, floor-hugging cloud effect.', price: 500 }
       ],
       // Corporate Package Breakdowns

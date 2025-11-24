@@ -72,8 +72,14 @@ export default async function SignIn({
             <div className="inline-block mb-4">
               <Logo width="80px" height="80px" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">M10 DJ Company</h1>
-            <p className="text-gray-400 text-sm">Admin Portal</p>
+            <h1 className="text-2xl font-bold text-white mb-2">
+              {viewProp === 'signup' ? 'DJ Request Pro' : 'M10 DJ Company'}
+            </h1>
+            <p className="text-gray-400 text-sm">
+              {viewProp === 'signup' 
+                ? 'Start accepting song requests at your events' 
+                : 'Admin Portal'}
+            </p>
           </div>
         </div>
         
