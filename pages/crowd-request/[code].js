@@ -1196,8 +1196,13 @@ export default function CrowdRequestPage() {
                             name="priorityOption"
                             checked={isFastTrack}
                             onChange={(e) => {
-                              setIsFastTrack(e.target.checked);
-                              if (e.target.checked) setIsNext(false);
+                              // Allow deselection: if already checked, uncheck it
+                              if (isFastTrack) {
+                                setIsFastTrack(false);
+                              } else {
+                                setIsFastTrack(true);
+                                setIsNext(false);
+                              }
                             }}
                             className="sr-only"
                             aria-label="Fast-Track Priority Placement"
@@ -1238,8 +1243,13 @@ export default function CrowdRequestPage() {
                             name="priorityOption"
                             checked={isNext}
                             onChange={(e) => {
-                              setIsNext(e.target.checked);
-                              if (e.target.checked) setIsFastTrack(false);
+                              // Allow deselection: if already checked, uncheck it
+                              if (isNext) {
+                                setIsNext(false);
+                              } else {
+                                setIsNext(true);
+                                setIsFastTrack(false);
+                              }
                             }}
                             className="sr-only"
                             aria-label="Next - Bump to Next"
