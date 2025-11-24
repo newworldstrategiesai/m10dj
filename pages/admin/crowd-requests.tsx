@@ -1083,16 +1083,33 @@ export default function CrowdRequestsPage() {
                                  request.payment_method === 'venmo' ? '💸 Venmo' :
                                  '✅ Paid'}
                               </span>
-                              {/* Refund button - only for Stripe payments */}
-                              {request.payment_intent_id && (
+                              {/* Refund button - for Stripe, Venmo, and CashApp payments */}
+                              {(request.payment_intent_id || request.payment_method === 'venmo' || request.payment_method === 'cashapp') && (
                                 <Button
-                                  onClick={() => handleRefund(request.id, true)}
+                                  onClick={() => {
+                                    const isStripe = !!request.payment_intent_id;
+                                    const paymentMethodName = request.payment_method === 'venmo' ? 'Venmo' : 
+                                                              request.payment_method === 'cashapp' ? 'CashApp' : 'Stripe';
+                                    const confirmMessage = isStripe
+                                      ? 'Are you sure you want to refund this payment? The refund will be processed automatically via Stripe.'
+                                      : `Are you sure you want to mark this ${paymentMethodName} payment as refunded? You must process the refund manually in ${paymentMethodName} first.`;
+                                    
+                                    if (confirm(confirmMessage)) {
+                                      handleRefund(request.id, true);
+                                    }
+                                  }}
                                   size="sm"
-                                  className="text-xs h-6 bg-red-600 hover:bg-red-700 text-white"
-                                  title="Refund payment"
+                                  className={`text-xs h-6 ${
+                                    request.payment_intent_id 
+                                      ? 'bg-red-600 hover:bg-red-700' 
+                                      : 'bg-orange-600 hover:bg-orange-700'
+                                  } text-white`}
+                                  title={request.payment_intent_id 
+                                    ? "Refund payment via Stripe" 
+                                    : `Mark as refunded (process refund manually in ${request.payment_method === 'venmo' ? 'Venmo' : 'CashApp'} first)`}
                                 >
                                   <RotateCcw className="w-3 h-3 mr-1" />
-                                  Refund
+                                  {request.payment_intent_id ? 'Refund' : 'Mark Refunded'}
                                 </Button>
                               )}
                             </div>

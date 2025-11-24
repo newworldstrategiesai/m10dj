@@ -34,12 +34,9 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Request not found' });
     }
 
-    // Check if payment was made via Stripe
-    if (!crowdRequest.payment_intent_id) {
-      return res.status(400).json({ 
-        error: 'This payment cannot be refunded through Stripe. Payment was made via CashApp or Venmo.' 
-      });
-    }
+    // Determine if this is a Stripe payment or manual payment (Venmo/CashApp)
+    const isStripePayment = !!crowdRequest.payment_intent_id;
+    const isManualPayment = !isStripePayment && (crowdRequest.payment_method === 'venmo' || crowdRequest.payment_method === 'cashapp');
 
     // Check if already refunded
     if (crowdRequest.payment_status === 'refunded') {
@@ -63,24 +60,37 @@ export default async function handler(req, res) {
       });
     }
 
-    // Create refund in Stripe
-    let refund;
-    try {
-      refund = await stripe.refunds.create({
-        payment_intent: crowdRequest.payment_intent_id,
-        amount: refundAmount,
-        reason: reason || 'requested_by_customer',
-        metadata: {
-          request_id: crowdRequest.id,
-          request_type: crowdRequest.request_type,
-          refund_reason: reason || 'requested_by_customer',
-        },
-      });
-    } catch (stripeError) {
-      console.error('Stripe refund error:', stripeError);
-      return res.status(500).json({ 
-        error: 'Failed to process refund in Stripe',
-        details: stripeError.message 
+    // Process refund based on payment method
+    let refund = null;
+    
+    if (isStripePayment) {
+      // Process refund through Stripe API
+      try {
+        refund = await stripe.refunds.create({
+          payment_intent: crowdRequest.payment_intent_id,
+          amount: refundAmount,
+          reason: reason || 'requested_by_customer',
+          metadata: {
+            request_id: crowdRequest.id,
+            request_type: crowdRequest.request_type,
+            refund_reason: reason || 'requested_by_customer',
+          },
+        });
+      } catch (stripeError) {
+        console.error('Stripe refund error:', stripeError);
+        return res.status(500).json({ 
+          error: 'Failed to process refund in Stripe',
+          details: stripeError.message 
+        });
+      }
+    } else if (isManualPayment) {
+      // Manual refund tracking (Venmo/CashApp)
+      // Note: Actual refund must be processed manually in Venmo/CashApp app
+      // This just tracks the refund in our database
+      console.log(`📝 Manual refund tracking for ${crowdRequest.payment_method} payment: ${requestId}`);
+    } else {
+      return res.status(400).json({ 
+        error: 'Refund not supported for this payment method. Only Stripe, Venmo, and CashApp payments can be refunded.' 
       });
     }
 
@@ -114,16 +124,22 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(`✅ Refund processed for request ${requestId}: $${(refundAmount / 100).toFixed(2)}`);
+    const refundType = isStripePayment ? 'Stripe' : 'Manual';
+    console.log(`✅ ${refundType} refund ${isStripePayment ? 'processed' : 'tracked'} for request ${requestId}: $${(refundAmount / 100).toFixed(2)}`);
 
     return res.status(200).json({
       success: true,
-      refund_id: refund.id,
+      refund_id: refund?.id || null,
       refund_amount: refundAmount,
-      refund_status: refund.status,
-      message: isFullRefund 
-        ? 'Full refund processed successfully' 
-        : `Partial refund of $${(refundAmount / 100).toFixed(2)} processed successfully`,
+      refund_status: refund?.status || 'manual',
+      refund_type: isStripePayment ? 'stripe' : 'manual',
+      message: isStripePayment
+        ? (isFullRefund 
+            ? 'Full refund processed successfully via Stripe' 
+            : `Partial refund of $${(refundAmount / 100).toFixed(2)} processed successfully via Stripe`)
+        : (isFullRefund
+            ? `Full refund tracked. Please process the refund manually in ${crowdRequest.payment_method === 'venmo' ? 'Venmo' : 'CashApp'}.`
+            : `Partial refund of $${(refundAmount / 100).toFixed(2)} tracked. Please process the refund manually in ${crowdRequest.payment_method === 'venmo' ? 'Venmo' : 'CashApp'}.`),
     });
   } catch (error) {
     console.error('❌ Error processing refund:', error);
