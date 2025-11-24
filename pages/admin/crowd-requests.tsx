@@ -23,7 +23,8 @@ import {
   Edit3,
   Printer,
   Zap,
-  X
+  X,
+  RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +48,9 @@ interface CrowdRequest {
   amount_paid: number;
   payment_status: string;
   payment_method: string | null;
+  payment_intent_id: string | null;
+  refund_amount: number | null;
+  refunded_at: string | null;
   status: string;
   event_name: string | null;
   event_date: string | null;
@@ -226,6 +230,45 @@ export default function CrowdRequestsPage() {
     }
   };
 
+  const handleRefund = async (requestId: string, fullRefund: boolean = true, partialAmount?: number) => {
+    if (!confirm(`Are you sure you want to ${fullRefund ? 'fully' : 'partially'} refund this payment?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/crowd-request/refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          amount: fullRefund ? undefined : partialAmount,
+          reason: 'requested_by_admin',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process refund');
+      }
+
+      toast({
+        title: 'Success',
+        description: data.message || 'Refund processed successfully',
+      });
+
+      // Refresh requests to show updated status
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error processing refund:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to process refund',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const generateQRCode = () => {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     let requestUrl: string;
@@ -365,7 +408,11 @@ export default function CrowdRequestsPage() {
   });
 
   const getStatusBadge = (status: string, paymentStatus: string) => {
-    if (paymentStatus === 'paid') {
+    if (paymentStatus === 'refunded') {
+      return <Badge className="bg-red-600 text-white">Refunded</Badge>;
+    } else if (paymentStatus === 'partially_refunded') {
+      return <Badge className="bg-orange-600 text-white">Partially Refunded</Badge>;
+    } else if (paymentStatus === 'paid') {
       return <Badge className="bg-green-500 text-white">Paid</Badge>;
     } else if (paymentStatus === 'pending') {
       return <Badge className="bg-yellow-500 text-white">Pending</Badge>;
@@ -1029,12 +1076,39 @@ export default function CrowdRequestsPage() {
                           
                           {/* Show payment method if paid */}
                           {request.payment_status === 'paid' && request.payment_method && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {request.payment_method === 'card' ? '💳 Card' : 
-                               request.payment_method === 'cashapp' ? '💰 CashApp' :
-                               request.payment_method === 'venmo' ? '💸 Venmo' :
-                               '✅ Paid'}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {request.payment_method === 'card' ? '💳 Card' : 
+                                 request.payment_method === 'cashapp' ? '💰 CashApp' :
+                                 request.payment_method === 'venmo' ? '💸 Venmo' :
+                                 '✅ Paid'}
+                              </span>
+                              {/* Refund button - only for Stripe payments */}
+                              {request.payment_intent_id && (
+                                <Button
+                                  onClick={() => handleRefund(request.id, true)}
+                                  size="sm"
+                                  className="text-xs h-6 bg-red-600 hover:bg-red-700 text-white"
+                                  title="Refund payment"
+                                >
+                                  <RotateCcw className="w-3 h-3 mr-1" />
+                                  Refund
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          {/* Show refund status if refunded */}
+                          {(request.payment_status === 'refunded' || request.payment_status === 'partially_refunded') && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+                                {request.payment_status === 'refunded' ? '🔄 Refunded' : '🔄 Partially Refunded'}
+                              </span>
+                              {request.refund_amount && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  ${(request.refund_amount / 100).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -1066,8 +1140,12 @@ export default function CrowdRequestsPage() {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Revenue</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
               ${(requests
-                .filter(r => r.payment_status === 'paid')
-                .reduce((sum, r) => sum + (r.amount_paid || 0), 0) / 100).toFixed(2)}
+                .filter(r => r.payment_status === 'paid' || r.payment_status === 'partially_refunded')
+                .reduce((sum, r) => {
+                  const paid = r.amount_paid || 0;
+                  const refunded = r.refund_amount || 0;
+                  return sum + (paid - refunded);
+                }, 0) / 100).toFixed(2)}
             </p>
           </div>
           
