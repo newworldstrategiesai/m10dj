@@ -420,11 +420,21 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
           {onMinimize && (
             <button
               onClick={onMinimize}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors touch-target"
               aria-label="Minimize chat"
               title="Minimize chat"
             >
-              <X className="w-5 h-5" />
+              <Minimize2 className="w-5 h-5 sm:w-4 sm:h-4" />
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors touch-target"
+              aria-label="Close chat"
+              title="Close chat"
+            >
+              <X className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
           )}
         </div>
