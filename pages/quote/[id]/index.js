@@ -64,9 +64,11 @@ export default function PersonalizedQuote() {
     }
 
     try {
+      // Add cache-busting timestamp to ensure fresh data
+      const timestamp = new Date().getTime();
       const [leadResponse, quoteResponse] = await Promise.all([
-        fetch(`/api/leads/get-lead?id=${id}`),
-        fetch(`/api/quote/${id}`).catch(() => null) // Quote might not exist yet
+        fetch(`/api/leads/get-lead?id=${id}&_t=${timestamp}`, { cache: 'no-store' }),
+        fetch(`/api/quote/${id}?_t=${timestamp}`, { cache: 'no-store' }).catch(() => null) // Quote might not exist yet
       ]);
 
       if (leadResponse.ok) {
@@ -275,6 +277,21 @@ export default function PersonalizedQuote() {
     if (id) {
       fetchLeadData();
     }
+  }, [id, fetchLeadData]);
+
+  // Refetch data when the page becomes visible (e.g., navigating from invoice/contract pages)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && id) {
+        fetchLeadData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [id, fetchLeadData]);
 
   // Check if user is admin
@@ -487,13 +504,52 @@ export default function PersonalizedQuote() {
   const isCorporate = eventType?.toLowerCase().includes('corporate') || eventType?.toLowerCase().includes('business');
   const isSchool = eventType?.toLowerCase().includes('school') || eventType?.toLowerCase().includes('dance') || eventType?.toLowerCase().includes('prom') || eventType?.toLowerCase().includes('homecoming');
 
+  // Pricing configuration state
+  const [pricingConfig, setPricingConfig] = useState(null);
+  const [pricingLoading, setPricingLoading] = useState(true);
+
+  // Fetch pricing configuration from database
+  useEffect(() => {
+    const fetchPricing = async () => {
+      try {
+        const response = await fetch('/api/admin/pricing');
+        if (response.ok) {
+          const data = await response.json();
+          setPricingConfig(data);
+        }
+      } catch (error) {
+        console.error('Error fetching pricing config:', error);
+        // Fall back to default pricing if API fails
+      } finally {
+        setPricingLoading(false);
+      }
+    };
+    fetchPricing();
+  }, []);
+
+  // Default pricing (fallback if API fails or while loading)
+  const defaultPricing = {
+    package1_price: 2000,
+    package1_a_la_carte_price: 2600,
+    package2_price: 2500,
+    package2_a_la_carte_price: 3400,
+    package3_price: 3000,
+    package3_a_la_carte_price: 3900,
+    package1_breakdown: [],
+    package2_breakdown: [],
+    package3_breakdown: [],
+    addons: []
+  };
+
+  const activePricing = pricingConfig || defaultPricing;
+
   // Wedding Packages
   const weddingPackages = [
     {
       id: 'package1',
       name: 'Package 1',
-      price: 2000,
-      aLaCartePrice: 2600,
+      price: activePricing.package1_price,
+      aLaCartePrice: activePricing.package1_a_la_carte_price,
       description: 'Reception Only',
       features: [
         'Up to 4 hours of DJ/MC services at reception',
@@ -509,8 +565,8 @@ export default function PersonalizedQuote() {
     {
       id: 'package2',
       name: 'Package 2',
-      price: 2500,
-      aLaCartePrice: 3400,
+      price: activePricing.package2_price,
+      aLaCartePrice: activePricing.package2_a_la_carte_price,
       description: 'Complete Wedding - Most Popular',
       features: [
         'Up to 6 hours of DJ/MC services (ceremony + cocktail hour + reception)',
@@ -527,8 +583,8 @@ export default function PersonalizedQuote() {
     {
       id: 'package3',
       name: 'Package 3',
-      price: 3000,
-      aLaCartePrice: 3650,
+      price: activePricing.package3_price,
+      aLaCartePrice: activePricing.package3_a_la_carte_price,
       description: 'Complete Wedding + Special Effects - Premium Experience',
       features: [
         'Everything in Package 2, plus:',
@@ -667,7 +723,7 @@ export default function PersonalizedQuote() {
     },
     {
       id: 'dj_mc_3hours',
-      name: '3 Hours DJ/MC Services (A La Carte)',
+      name: 'Up to 3 Hours DJ/MC Services (A La Carte)',
       description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and music library.',
       price: 1300
     },
@@ -703,7 +759,7 @@ export default function PersonalizedQuote() {
     },
     {
       id: 'additional_speaker',
-      name: 'Additional Speaker',
+      name: 'Cocktail Hour Audio',
       description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for cocktail hours that are separate from the reception.',
       price: 250
     },
@@ -744,7 +800,7 @@ export default function PersonalizedQuote() {
     },
     {
       id: 'dj_mc_3hours',
-      name: '3 Hours DJ/MC Services (A La Carte)',
+      name: 'Up to 3 Hours DJ/MC Services (A La Carte)',
       description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and music library.',
       price: 850
     },
@@ -774,7 +830,7 @@ export default function PersonalizedQuote() {
     },
     {
       id: 'additional_speaker',
-      name: 'Additional Speaker',
+      name: 'Cocktail Hour Audio',
       description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for separate areas or presentations.',
       price: 150
     },
@@ -821,7 +877,7 @@ export default function PersonalizedQuote() {
     },
     {
       id: 'dj_mc_3hours',
-      name: '3 Hours DJ/MC Services (A La Carte)',
+      name: 'Up to 3 Hours DJ/MC Services (A La Carte)',
       description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and age-appropriate music library. Perfect for shorter school events.',
       price: 850
     },
@@ -851,7 +907,7 @@ export default function PersonalizedQuote() {
     },
     {
       id: 'additional_speaker',
-      name: 'Additional Speaker',
+      name: 'Cocktail Hour Audio',
       description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for separate areas or outdoor school events.',
       price: 150
     },
@@ -890,8 +946,38 @@ export default function PersonalizedQuote() {
 
   // Memoize addons to prevent unnecessary re-renders
   const addons = useMemo(() => {
-    return isSchool ? schoolAddons : (isCorporate ? corporateAddons : weddingAddons);
-  }, [isCorporate, isSchool]);
+    const defaultAddons = isSchool ? schoolAddons : (isCorporate ? corporateAddons : weddingAddons);
+    
+    // If we have addons from pricing config, merge them with defaults
+    if (activePricing && activePricing.addons && activePricing.addons.length > 0) {
+      // Override with pricing config addons, or add new ones
+      const mergedAddons = [...defaultAddons];
+      activePricing.addons.forEach(configAddon => {
+        const existingIndex = mergedAddons.findIndex(a => a.id === configAddon.id);
+        if (existingIndex >= 0) {
+          // Update existing addon with new price
+          mergedAddons[existingIndex] = {
+            ...mergedAddons[existingIndex],
+            price: configAddon.price,
+            name: configAddon.name || mergedAddons[existingIndex].name,
+            description: configAddon.description || mergedAddons[existingIndex].description
+          };
+        } else {
+          // Add new addon from config
+          mergedAddons.push({
+            id: configAddon.id,
+            name: configAddon.name,
+            price: configAddon.price,
+            description: configAddon.description || ''
+          });
+        }
+      });
+      
+      return mergedAddons;
+    }
+    
+    return defaultAddons;
+  }, [isCorporate, isSchool, activePricing, weddingAddons, corporateAddons, schoolAddons]);
 
   // Auto-select recommended package from URL parameter
   useEffect(() => {
@@ -933,30 +1019,27 @@ export default function PersonalizedQuote() {
     const breakdowns = {
       // Wedding Package Breakdowns
       'package1': [
-        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
+        { item: 'Up to 4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
         { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
         { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
         { item: 'Additional Speaker', description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs.', price: 250 }
       ],
       'package2': [
-        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
-        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
-        { item: 'Additional Hour DJ/MC Services', description: 'Additional hour of DJ/MC services beyond the 4-hour package. Perfect if your event runs longer than expected.', price: 300 },
+        { item: 'Complete Wedding Day Coverage (Up to 6 hours)', description: 'Full-day DJ/MC services covering ceremony, cocktail hour, and reception. Includes seamless transitions, setup time, and coordination between all events. Ensures smooth flow and protects against rushing or overtime fees.', price: 2400 },
         { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
         { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
         { item: 'Additional Speaker', description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for cocktail hours that are separate from the reception.', price: 250 }
       ],
       'package3': [
-        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 1600 },
-        { item: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
-        { item: 'Additional Hour DJ/MC Services', description: 'Additional hour of DJ/MC services beyond the 4-hour package. Perfect if your event runs longer than expected.', price: 300 },
+        { item: 'Complete Wedding Day Coverage (Up to 6 hours)', description: 'Full-day DJ/MC services covering ceremony, cocktail hour, and reception. Includes seamless transitions, setup time, and coordination between all events. Ensures smooth flow and protects against rushing or overtime fees.', price: 2400 },
         { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer.', price: 400 },
         { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 350 },
+        { item: 'Additional Speaker', description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for cocktail hours that are separate from the reception.', price: 250 },
         { item: 'Dancing on the Clouds', description: 'Sophisticated dry ice effect for first dance and special moments. Creates a magical, floor-hugging cloud effect.', price: 500 }
       ],
       // Corporate Package Breakdowns
       'corporate-basics': [
-        { item: '3 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and music library.', price: 850 }
+        { item: 'Up to 3 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and music library.', price: 850 }
       ],
       'corporate-package1': [
         { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library.', price: 945 },

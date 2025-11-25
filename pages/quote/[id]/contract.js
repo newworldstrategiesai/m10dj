@@ -1,10 +1,14 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
 import SignatureCapture from '../../../components/SignatureCapture';
-import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, PenTool, X, Edit, Clock } from 'lucide-react';
+import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, PenTool, X, Edit, Clock, Save } from 'lucide-react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/Toasts/use-toast';
+import VenueAutocomplete from '@/components/VenueAutocomplete';
 
 export default function ContractPage() {
   const router = useRouter();
@@ -23,31 +27,54 @@ export default function ContractPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [hasPayment, setHasPayment] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     eventDate: '',
+    venueName: '',
     venueAddress: '',
     eventTime: '',
     endTime: ''
   });
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isEditingEventDate, setIsEditingEventDate] = useState(false);
+  const [editingEventDate, setEditingEventDate] = useState('');
+  const [savingEventDate, setSavingEventDate] = useState(false);
+  const [isEditingVenue, setIsEditingVenue] = useState(false);
+  const [editingVenueName, setEditingVenueName] = useState('');
+  const [editingVenueAddress, setEditingVenueAddress] = useState('');
+  const [savingVenue, setSavingVenue] = useState(false);
+  const [isEditingClientName, setIsEditingClientName] = useState(false);
+  const [editingClientName, setEditingClientName] = useState('');
+  const [savingClientName, setSavingClientName] = useState(false);
+  const [isEditingClientEmail, setIsEditingClientEmail] = useState(false);
+  const [editingClientEmail, setEditingClientEmail] = useState('');
+  const [savingClientEmail, setSavingClientEmail] = useState(false);
+  const [isEditingEventTime, setIsEditingEventTime] = useState(false);
+  const [editingEventTime, setEditingEventTime] = useState('');
+  const [editingEndTime, setEditingEndTime] = useState('');
+  const [savingEventTime, setSavingEventTime] = useState(false);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    if (id) {
-      fetchData();
-    }
-  }, [id]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
+      // Add cache-busting timestamp to ensure fresh data
+      const timestamp = new Date().getTime();
+      
       const [leadResponse, quoteResponse] = await Promise.all([
-        fetch(`/api/leads/get-lead?id=${id}`),
-        fetch(`/api/quote/${id}`)
+        fetch(`/api/leads/get-lead?id=${id}&_t=${timestamp}`, { cache: 'no-store' }),
+        fetch(`/api/quote/${id}?_t=${timestamp}`, { cache: 'no-store' })
       ]);
 
       if (leadResponse.ok) {
         const lead = await leadResponse.json();
-        setLeadData(lead);
+        // Ensure venue_name is set from venueName if present
+        setLeadData({
+          ...lead,
+          venue_name: lead.venue_name || lead.venueName || '',
+          venueName: lead.venueName || lead.venue_name || ''
+        });
       }
 
       if (quoteResponse.ok) {
@@ -115,7 +142,49 @@ export default function ContractPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchData();
+    }
+  }, [id, fetchData]);
+
+  // Refetch data when the page becomes visible (e.g., navigating from invoice page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && id) {
+        fetchData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [id, fetchData]);
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const supabase = createClientComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          const adminEmails = [
+            'admin@m10djcompany.com',
+            'manager@m10djcompany.com',
+            'djbenmurray@gmail.com'
+          ];
+          setIsAdmin(adminEmails.includes(user.email));
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const handleOpenSignatureModal = () => {
     setShowSignatureModal(true);
@@ -127,14 +196,38 @@ export default function ContractPage() {
   };
 
   // Validate required fields before signing
-  const validateContractFields = () => {
+  const validateContractFields = useCallback(() => {
     const errors = [];
     
-    if (!quoteData?.total_price || quoteData.total_price <= 0) {
+    // Calculate total amount - use same logic as contract display
+    // Get package price
+    const packagePrice = Number(quoteData?.package_price) || 0;
+    
+    // Get addons
+    const addons = quoteData?.addons || [];
+    const addonsTotal = addons.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
+    const subtotal = packagePrice + addonsTotal;
+    
+    // Apply discount if present
+    let discountAmount = 0;
+    if (quoteData?.discount_type && quoteData?.discount_value && quoteData.discount_value > 0) {
+      if (quoteData.discount_type === 'percentage') {
+        discountAmount = subtotal * (Number(quoteData.discount_value) / 100);
+      } else {
+        discountAmount = Number(quoteData.discount_value);
+      }
+    }
+    
+    const calculatedTotal = Math.max(0, subtotal - discountAmount);
+    
+    // If calculatedTotal is 0 or invalid, fall back to stored total_price
+    const totalAmount = calculatedTotal > 0 ? calculatedTotal : (quoteData?.total_price || 0);
+    
+    if (!totalAmount || totalAmount <= 0) {
       errors.push('Total amount must be calculated and greater than zero');
     }
     
-    const deposit = (quoteData?.total_price || 0) * 0.5;
+    const deposit = totalAmount * 0.5;
     if (!deposit || deposit <= 0) {
       errors.push('Deposit amount must be calculated');
     }
@@ -209,7 +302,7 @@ export default function ContractPage() {
     }
     
     return errors;
-  };
+  }, [leadData, quoteData]);
 
   const handleSign = async () => {
     if (!leadData || !quoteData) return;
@@ -253,8 +346,11 @@ export default function ContractPage() {
         setSignatureData('');
         
         // Check payment status after signing
-        const totalAmount = quoteData?.total_price || 0;
-        const depositAmount = totalAmount * 0.5;
+        // Use custom invoice total if available
+        const calculatedTotal = quoteData?.is_custom_price && quoteData?.total_price 
+          ? quoteData.total_price 
+          : quoteData?.total_price || 0;
+        const depositAmount = calculatedTotal * 0.5;
         
         try {
           const paymentsResponse = await fetch(`/api/payments?contact_id=${id}`);
@@ -270,7 +366,7 @@ export default function ContractPage() {
             }
             
             // Check if deposit or full payment has been made
-            if (totalPaid < depositAmount && totalPaid < totalAmount) {
+            if (totalPaid < depositAmount && totalPaid < calculatedTotal) {
               // No deposit or full payment made - show payment modal
               setShowPaymentModal(true);
             } else {
@@ -310,6 +406,7 @@ export default function ContractPage() {
         name: formData.name || leadData?.name,
         email: formData.email || leadData?.email,
         eventDate: formData.eventDate || leadData?.eventDate || leadData?.event_date,
+        venueName: formData.venueName || leadData?.venue_name,
         venueAddress: formData.venueAddress || leadData?.venue_address || leadData?.venueAddress || leadData?.location,
         eventTime: formData.eventTime || leadData?.event_time || leadData?.eventTime || leadData?.start_time,
         endTime: formData.endTime || leadData?.end_time || leadData?.endTime
@@ -325,29 +422,45 @@ export default function ContractPage() {
       if (response.ok) {
         const result = await response.json();
         
-        // Update local state with new data from API response
+        // Update local state immediately with new data from API response
         if (result.data) {
           setLeadData(prev => ({
             ...prev,
             name: result.data.name || prev?.name,
             email: result.data.email || prev?.email,
+            email_address: result.data.email || prev?.email_address,
             eventDate: result.data.eventDate || prev?.eventDate || prev?.event_date,
             event_date: result.data.eventDate || prev?.event_date || prev?.eventDate,
             eventTime: result.data.eventTime || prev?.eventTime,
             event_time: result.data.eventTime || prev?.event_time || prev?.eventTime,
-            venueAddress: result.data.venueAddress || prev?.venueAddress,
-            venue_address: result.data.venueAddress || prev?.venue_address || prev?.venueAddress,
-            location: result.data.venueAddress || prev?.location
+            start_time: result.data.eventTime || prev?.start_time,
+            venueName: result.data.venue_name || updateData.venueName || prev?.venue_name || prev?.venueName || '',
+            venue_name: result.data.venue_name || updateData.venueName || prev?.venue_name || prev?.venueName || '',
+            venueAddress: result.data.venueAddress || updateData.venueAddress || prev?.venueAddress,
+            venue_address: result.data.venueAddress || updateData.venueAddress || prev?.venue_address || prev?.venueAddress,
+            location: result.data.venueAddress || updateData.venueAddress || prev?.location,
+            endTime: result.data.endTime || updateData.endTime || prev?.endTime,
+            end_time: result.data.endTime || updateData.endTime || prev?.end_time
           }));
         } else {
-          // Fallback: use formData if API doesn't return formatted data
+          // Fallback: use formData/updateData if API doesn't return formatted data
           setLeadData(prev => ({
             ...prev,
-            ...updateData,
-            event_date: updateData.eventDate || prev?.event_date,
-            event_time: updateData.eventTime || prev?.event_time,
-            venue_address: updateData.venueAddress || prev?.venue_address,
-            location: updateData.venueAddress || prev?.location
+            name: updateData.name || prev?.name,
+            email: updateData.email || prev?.email,
+            email_address: updateData.email || prev?.email_address,
+            eventDate: updateData.eventDate || prev?.eventDate || prev?.event_date,
+            event_date: updateData.eventDate || prev?.event_date || prev?.eventDate,
+            eventTime: updateData.eventTime || prev?.eventTime || prev?.event_time,
+            event_time: updateData.eventTime || prev?.event_time || prev?.eventTime,
+            start_time: updateData.eventTime || prev?.start_time,
+            venueName: updateData.venueName || prev?.venue_name || prev?.venueName || '',
+            venue_name: updateData.venueName || prev?.venue_name || prev?.venueName || '',
+            venueAddress: updateData.venueAddress || prev?.venue_address || prev?.venueAddress,
+            venue_address: updateData.venueAddress || prev?.venue_address || prev?.venueAddress,
+            location: updateData.venueAddress || prev?.location,
+            endTime: updateData.endTime || prev?.endTime || prev?.end_time,
+            end_time: updateData.endTime || prev?.end_time || prev?.endTime
           }));
         }
         
@@ -359,25 +472,340 @@ export default function ContractPage() {
           name: '',
           email: '',
           eventDate: '',
+          venueName: '',
           venueAddress: '',
           eventTime: '',
           endTime: ''
         });
 
         // Show success message
-        alert('Information updated successfully! You can now sign the contract.');
+        toast({
+          title: 'Information updated',
+          description: 'Contract information has been updated successfully.',
+        });
+        
+        // Small delay to ensure database commit completes before refetching
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Refresh data with cache-busting to ensure we have the latest from database
+        await fetchData();
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to update information');
       }
     } catch (error) {
       console.error('Error updating fields:', error);
-      alert(error.message || 'Failed to update information. Please try again.');
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update information. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setUpdatingFields(false);
     }
   };
 
+  // Admin inline editing handlers
+  const handleSaveEventDate = async () => {
+    if (!editingEventDate) return;
+    setSavingEventDate(true);
+    try {
+      const response = await fetch(`/api/leads/${id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventDate: editingEventDate })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setLeadData(prev => ({
+          ...prev,
+          eventDate: result.data?.eventDate || editingEventDate,
+          event_date: result.data?.eventDate || editingEventDate
+        }));
+        setIsEditingEventDate(false);
+        setEditingEventDate('');
+        toast({
+          title: 'Event date updated',
+          description: 'The event date has been updated successfully.',
+        });
+        await fetchData();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update event date');
+      }
+    } catch (error) {
+      console.error('Error updating event date:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update event date. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingEventDate(false);
+    }
+  };
+
+  const handleSaveClientName = async () => {
+    if (!editingClientName) return;
+    setSavingClientName(true);
+    try {
+      const response = await fetch(`/api/leads/${id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editingClientName })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setLeadData(prev => ({
+          ...prev,
+          name: result.data?.name || editingClientName
+        }));
+        setIsEditingClientName(false);
+        setEditingClientName('');
+        toast({
+          title: 'Client name updated',
+          description: 'The client name has been updated successfully.',
+        });
+        await fetchData();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update client name');
+      }
+    } catch (error) {
+      console.error('Error updating client name:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update client name. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingClientName(false);
+    }
+  };
+
+  const handleSaveVenue = async () => {
+    if (!editingVenueName && !editingVenueAddress) return;
+    setSavingVenue(true);
+    try {
+      const response = await fetch(`/api/leads/${id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venueName: editingVenueName || leadData?.venue_name,
+          venueAddress: editingVenueAddress || leadData?.venue_address || leadData?.venueAddress || leadData?.location
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setLeadData(prev => ({
+          ...prev,
+          venue_name: result.data?.venue_name || editingVenueName || prev?.venue_name,
+          venue_address: result.data?.venueAddress || editingVenueAddress || prev?.venue_address || prev?.venueAddress,
+          venueAddress: result.data?.venueAddress || editingVenueAddress || prev?.venueAddress,
+          location: result.data?.venueAddress || editingVenueAddress || prev?.location
+        }));
+        setIsEditingVenue(false);
+        setEditingVenueName('');
+        setEditingVenueAddress('');
+        toast({
+          title: 'Venue updated',
+          description: 'The venue information has been updated successfully.',
+        });
+        await fetchData();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update venue');
+      }
+    } catch (error) {
+      console.error('Error updating venue:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update venue. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingVenue(false);
+    }
+  };
+
+  const handleSaveEventTime = async () => {
+    if (!editingEventTime && !editingEndTime) return;
+    setSavingEventTime(true);
+    try {
+      const response = await fetch(`/api/leads/${id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventTime: editingEventTime || leadData?.eventTime || leadData?.event_time || leadData?.start_time,
+          endTime: editingEndTime || leadData?.endTime || leadData?.end_time
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setLeadData(prev => ({
+          ...prev,
+          eventTime: result.data?.eventTime || editingEventTime || prev?.eventTime || prev?.event_time,
+          event_time: result.data?.eventTime || editingEventTime || prev?.event_time || prev?.eventTime,
+          start_time: result.data?.eventTime || editingEventTime || prev?.start_time,
+          endTime: result.data?.endTime || editingEndTime || prev?.endTime,
+          end_time: result.data?.endTime || editingEndTime || prev?.end_time
+        }));
+        setIsEditingEventTime(false);
+        setEditingEventTime('');
+        setEditingEndTime('');
+        toast({
+          title: 'Event time updated',
+          description: 'The event time has been updated successfully.',
+        });
+        await fetchData();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update event time');
+      }
+    } catch (error) {
+      console.error('Error updating event time:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update event time. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingEventTime(false);
+    }
+  };
+
+  // Calculate total amount - match invoice calculation logic exactly
+  // This includes applying discounts if present
+  const calculateContractTotals = () => {
+    // Get package price
+    const packagePrice = Number(quoteData?.package_price) || 0;
+    
+    // Get addons - match invoice logic: use addons field (which contains current addons)
+    const addons = quoteData?.addons || [];
+    const addonsTotal = addons.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
+    const subtotal = packagePrice + addonsTotal;
+    
+    // Apply discount if present (same logic as invoice)
+    let discountAmount = 0;
+    if (quoteData?.discount_type && quoteData?.discount_value && quoteData.discount_value > 0) {
+      if (quoteData.discount_type === 'percentage') {
+        discountAmount = subtotal * (Number(quoteData.discount_value) / 100);
+      } else {
+        discountAmount = Number(quoteData.discount_value);
+      }
+    }
+    
+    const total = Math.max(0, subtotal - discountAmount);
+    return { packagePrice, addonsTotal, subtotal, discountAmount, total };
+  };
+
+  const { total: calculatedTotal } = calculateContractTotals();
+  
+  // Use calculated total (with discount) - this matches the invoice calculation
+  // The invoice uses calculatedTotal when not editing, which includes discount
+  // If calculatedTotal is 0 or invalid, fall back to stored total_price
+  const totalAmount = calculatedTotal > 0 ? calculatedTotal : (quoteData?.total_price || 0);
+  
+  const depositAmount = totalAmount * 0.5;
+  const remainingBalance = totalAmount - depositAmount;
+  const contractNumber = contractData?.contract_number || (id && typeof id === 'string' ? `CONT-${id.substring(0, 8).toUpperCase()}` : 'CONT-UNKNOWN');
+  const isSigned = contractData?.status === 'signed' || contractData?.signed_at;
+
+  // Helper function to parse a date string as a local date (not UTC)
+  // This prevents timezone offset issues when displaying dates
+  const parseLocalDate = (dateString) => {
+    if (!dateString) return null;
+    // If it's already a Date object, return it
+    if (dateString instanceof Date) return dateString;
+    // If it's a date string in YYYY-MM-DD format, parse it as local date
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+      const [year, month, day] = dateString.split('T')[0].split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    // Otherwise, try to parse it normally
+    return new Date(dateString);
+  };
+
+  // Helper function to format a date as YYYY-MM-DD for date inputs
+  // This prevents timezone issues by using local date components
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    const date = parseLocalDate(dateString);
+    if (!date || isNaN(date.getTime())) return '';
+    // Format as YYYY-MM-DD using local date components
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to format payment due dates
+  const formatPaymentDueDate = (dueDate, eventDate, fallbackText) => {
+    if (dueDate) {
+      try {
+        const date = parseLocalDate(dueDate);
+        if (date && !isNaN(date.getTime())) {
+          return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+      } catch (e) {
+        console.error('Error formatting due date:', e);
+      }
+    }
+    // Fallback to default text if no date is set
+    return fallbackText || 'as specified in invoice';
+  };
+
+  // Get payment due dates from quote data
+  const depositDueDate = quoteData?.deposit_due_date || null;
+  const remainingBalanceDueDate = quoteData?.remaining_balance_due_date || null;
+  
+  // Format the due dates for display
+  const depositDueDateText = formatPaymentDueDate(
+    depositDueDate, 
+    leadData?.eventDate || leadData?.event_date,
+    'upon signing'
+  );
+  const remainingBalanceDueDateText = formatPaymentDueDate(
+    remainingBalanceDueDate,
+    leadData?.eventDate || leadData?.event_date,
+    '7 days before event'
+  );
+
+  // Recalculate validation errors whenever leadData or quoteData changes
+  // IMPORTANT: All hooks must be before any early returns
+  const validationErrors = useMemo(() => {
+    if (!leadData || !quoteData) {
+      return ['Loading contract data...'];
+    }
+    const errors = validateContractFields();
+    // Debug: log validation errors for troubleshooting
+    if (errors.length > 0) {
+      console.log('Contract validation errors:', errors);
+      console.log('leadData:', {
+        name: leadData?.name || `${leadData?.first_name || ''} ${leadData?.last_name || ''}`.trim(),
+        email: leadData?.email || leadData?.email_address,
+        eventDate: leadData?.eventDate || leadData?.event_date,
+        venueAddress: leadData?.venue_address || leadData?.venueAddress || leadData?.location,
+        venueName: leadData?.venue_name,
+        eventTime: leadData?.eventTime || leadData?.event_time || leadData?.start_time,
+        endTime: leadData?.endTime || leadData?.end_time
+      });
+      console.log('quoteData:', {
+        package_name: quoteData?.package_name,
+        total_price: quoteData?.total_price,
+        is_custom_price: quoteData?.is_custom_price
+      });
+    }
+    return errors;
+  }, [validateContractFields, leadData, quoteData]);
+  
+  const canSign = validationErrors.length === 0 && !isSigned;
+
+  // Early return for loading - must be AFTER all hooks
   if (loading) {
     return (
       <>
@@ -394,15 +822,6 @@ export default function ContractPage() {
       </>
     );
   }
-
-  const totalAmount = quoteData?.total_price || 0;
-  const depositAmount = totalAmount * 0.5;
-  const remainingBalance = totalAmount - depositAmount;
-  const contractNumber = contractData?.contract_number || `CONT-${id.substring(0, 8).toUpperCase()}`;
-  const isSigned = contractData?.status === 'signed' || contractData?.signed_at;
-
-  const validationErrors = validateContractFields();
-  const canSign = validationErrors.length === 0 && !isSigned;
 
   return (
     <>
@@ -461,7 +880,51 @@ export default function ContractPage() {
             {/* Contract Content */}
             <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
               <p className="text-gray-700 dark:text-gray-300 mb-6">
-                This Contract for Services (the &quot;Contract&quot;) is made effective as of <strong>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong> (the &quot;Effective Date&quot;), by and between <strong>{leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</strong> (&quot;Client&quot;) and M10 DJ Company, (&quot;M10&quot;) of 65 Stewart Rd, Eads, Tennessee 38028 (collectively the &quot;Parties&quot;).
+                This Contract for Services (the &quot;Contract&quot;) is made effective as of <strong>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong> (the &quot;Effective Date&quot;), by and between{' '}
+                {isAdmin && !isEditingClientName ? (
+                  <span className="inline-flex items-center gap-2">
+                    <strong>{leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</strong>
+                    <button
+                      onClick={() => {
+                        setEditingClientName(leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || ''));
+                        setIsEditingClientName(true);
+                      }}
+                      className="no-print text-brand hover:text-brand-dark"
+                      title="Edit client name"
+                    >
+                      <Edit className="w-3 h-3" />
+                    </button>
+                  </span>
+                ) : isAdmin && isEditingClientName ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Input
+                      value={editingClientName}
+                      onChange={(e) => setEditingClientName(e.target.value)}
+                      className="w-auto min-w-[200px]"
+                    />
+                    <button
+                      onClick={handleSaveClientName}
+                      disabled={savingClientName}
+                      className="no-print text-green-600 hover:text-green-700"
+                      title="Save"
+                    >
+                      <Save className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditingClientName(false);
+                        setEditingClientName('');
+                      }}
+                      className="no-print text-gray-500 hover:text-gray-700"
+                      title="Cancel"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </span>
+                ) : (
+                  <strong>{leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</strong>
+                )}
+                {' '}(&quot;Client&quot;) and M10 DJ Company, (&quot;M10&quot;) of 65 Stewart Rd, Eads, Tennessee 38028 (collectively the &quot;Parties&quot;).
               </p>
 
               <p className="text-gray-700 dark:text-gray-300 mb-6">
@@ -474,34 +937,210 @@ export default function ContractPage() {
               </p>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-gray-900 dark:text-white mb-2">Event Details:</p>
-                {(leadData?.eventDate || leadData?.event_date) && (
+                {(leadData?.eventDate || leadData?.event_date || isAdmin) && (
                   <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2">
                     <Calendar className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <span><strong>Date:</strong> {new Date(leadData.eventDate || leadData.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    <span className="flex items-center gap-2">
+                      <strong>Date:</strong>{' '}
+                      {/* Always show the date text for printing */}
+                      <span>
+                        {leadData?.eventDate || leadData?.event_date
+                          ? parseLocalDate(leadData.eventDate || leadData.event_date)?.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) || 'Event date not set'
+                          : 'Event date not set'}
+                      </span>
+                      {/* Admin editing controls - hidden when printing */}
+                      {isAdmin && !isEditingEventDate && (
+                        <span
+                          onClick={() => {
+                            const date = leadData?.eventDate || leadData?.event_date;
+                            setEditingEventDate(date ? formatDateForInput(date) : '');
+                            setIsEditingEventDate(true);
+                          }}
+                          className="no-print cursor-pointer hover:text-brand transition-colors underline ml-2"
+                          title="Click to edit event date"
+                        >
+                          (Edit)
+                        </span>
+                      )}
+                      {isAdmin && isEditingEventDate && (
+                        <span className="no-print flex items-center gap-2 ml-2">
+                          <Input
+                            type="date"
+                            value={editingEventDate}
+                            onChange={(e) => setEditingEventDate(e.target.value)}
+                            className="w-auto"
+                            autoFocus
+                          />
+                          <button
+                            onClick={handleSaveEventDate}
+                            disabled={savingEventDate}
+                            className="text-green-600 hover:text-green-700"
+                            title="Save"
+                          >
+                            <Save className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingEventDate(false);
+                              setEditingEventDate('');
+                            }}
+                            className="text-gray-500 hover:text-gray-700"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </span>
+                      )}
+                    </span>
                   </p>
                 )}
-                {(leadData?.eventTime || leadData?.event_time || leadData?.start_time) && (
+                {(leadData?.eventTime || leadData?.event_time || leadData?.start_time || leadData?.endTime || leadData?.end_time || isAdmin) && (
                   <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
                     <Clock className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <span><strong>Start Time:</strong> {new Date(`2000-01-01T${leadData.eventTime || leadData.event_time || leadData.start_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
-                    {(leadData?.endTime || leadData?.end_time) && (
-                      <span> - <strong>End Time:</strong> {new Date(`2000-01-01T${leadData.endTime || leadData.end_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
-                    )}
+                    <span className="flex items-center gap-2 flex-wrap">
+                      <strong>Start Time:</strong>{' '}
+                      {isAdmin && !isEditingEventTime ? (
+                        <>
+                          <span>
+                            {leadData?.eventTime || leadData?.event_time || leadData?.start_time 
+                              ? new Date(`2000-01-01T${leadData.eventTime || leadData.event_time || leadData.start_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                              : 'Not set'}
+                          </span>
+                          <span> - <strong>End Time:</strong> </span>
+                          <span>
+                            {leadData?.endTime || leadData?.end_time
+                              ? new Date(`2000-01-01T${leadData.endTime || leadData.end_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                              : 'Not set'}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEditingEventTime(leadData?.eventTime || leadData?.event_time || leadData?.start_time || '');
+                              setEditingEndTime(leadData?.endTime || leadData?.end_time || '');
+                              setIsEditingEventTime(true);
+                            }}
+                            className="no-print text-brand hover:text-brand-dark"
+                            title="Edit event time"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : isAdmin && isEditingEventTime ? (
+                        <>
+                          <Input
+                            type="time"
+                            value={editingEventTime}
+                            onChange={(e) => setEditingEventTime(e.target.value)}
+                            className="w-auto"
+                          />
+                          <span> - <strong>End Time:</strong></span>
+                          <Input
+                            type="time"
+                            value={editingEndTime}
+                            onChange={(e) => setEditingEndTime(e.target.value)}
+                            className="w-auto"
+                          />
+                          <button
+                            onClick={handleSaveEventTime}
+                            disabled={savingEventTime}
+                            className="no-print text-green-600 hover:text-green-700"
+                            title="Save"
+                          >
+                            <Save className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingEventTime(false);
+                              setEditingEventTime('');
+                              setEditingEndTime('');
+                            }}
+                            className="no-print text-gray-500 hover:text-gray-700"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span>
+                            {leadData?.eventTime || leadData?.event_time || leadData?.start_time
+                              ? new Date(`2000-01-01T${leadData.eventTime || leadData.event_time || leadData.start_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                              : 'Not set'}
+                          </span>
+                          <span> - <strong>End Time:</strong> </span>
+                          <span>
+                            {leadData?.endTime || leadData?.end_time
+                              ? new Date(`2000-01-01T${leadData.endTime || leadData.end_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                              : 'Not set'}
+                          </span>
+                        </>
+                      )}
+                    </span>
                   </p>
                 )}
-                {(leadData?.venue_address || leadData?.venueAddress || leadData?.location) && (
-                  <>
-                    {leadData?.venue_name && (
-                      <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
-                        <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                        <span><strong>Venue:</strong> {leadData.venue_name}</span>
-                      </p>
-                    )}
-                    <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
-                      <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                      <span><strong>Venue Address:</strong> {leadData.venue_address || leadData.venueAddress || leadData.location}</span>
-                    </p>
-                  </>
+                {(leadData?.venue_address || leadData?.venueAddress || leadData?.location || leadData?.venue_name || isAdmin) && (
+                  <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
+                    <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <span className="flex items-center gap-2 flex-wrap">
+                      <strong>Venue:</strong>{' '}
+                      {isAdmin && !isEditingVenue ? (
+                        <>
+                          {leadData?.venue_name && (leadData?.venue_address || leadData?.venueAddress || (leadData?.location && leadData.location !== leadData.venue_name))
+                            ? `${leadData.venue_name}, ${leadData.venue_address || leadData.venueAddress || leadData.location}`
+                            : leadData?.venue_name || leadData?.venue_address || leadData?.venueAddress || leadData?.location || 'Not set'}
+                          <button
+                            onClick={() => {
+                              const venueName = leadData?.venue_name || '';
+                              const location = leadData?.venue_address || leadData?.venueAddress || leadData?.location || '';
+                              const venueAddress = location && location !== venueName ? location : '';
+                              setEditingVenueName(venueName);
+                              setEditingVenueAddress(venueAddress);
+                              setIsEditingVenue(true);
+                            }}
+                            className="no-print text-brand hover:text-brand-dark"
+                            title="Edit venue"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : isAdmin && isEditingVenue ? (
+                        <div className="no-print flex flex-col gap-2">
+                          <VenueAutocomplete
+                            venueName={editingVenueName}
+                            venueAddress={editingVenueAddress}
+                            onVenueNameChange={setEditingVenueName}
+                            onVenueAddressChange={setEditingVenueAddress}
+                            placeholder="Venue name"
+                            addressPlaceholder="Venue address"
+                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleSaveVenue}
+                              disabled={savingVenue}
+                              className="text-green-600 hover:text-green-700"
+                              title="Save"
+                            >
+                              <Save className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setIsEditingVenue(false);
+                                setEditingVenueName('');
+                                setEditingVenueAddress('');
+                              }}
+                              className="text-gray-500 hover:text-gray-700"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        leadData?.venue_name && (leadData?.venue_address || leadData?.venueAddress || (leadData?.location && leadData.location !== leadData.venue_name))
+                          ? `${leadData.venue_name}, ${leadData.venue_address || leadData.venueAddress || leadData.location}`
+                          : leadData?.venue_name || leadData?.venue_address || leadData?.venueAddress || leadData?.location
+                      )}
+                    </span>
+                  </p>
                 )}
               </div>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
@@ -518,7 +1157,7 @@ export default function ContractPage() {
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">3. TERM</h2>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Client and M10 agree that this Contract between the Parties is for Services that shall commence on the above date and complete on <strong>{(leadData?.eventDate || leadData?.event_date) ? new Date(leadData.eventDate || leadData.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'the event date'}</strong>. The Contract may be extended and/or renewed by agreement of all Parties in writing thereafter.
+                Client and M10 agree that this Contract between the Parties is for Services that shall commence on the above date and complete on <strong>{(leadData?.eventDate || leadData?.event_date) ? parseLocalDate(leadData.eventDate || leadData.event_date)?.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) || 'the event date' : 'the event date'}</strong>. The Contract may be extended and/or renewed by agreement of all Parties in writing thereafter.
               </p>
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">4. PAYMENT</h2>
@@ -531,8 +1170,8 @@ export default function ContractPage() {
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-gray-900 dark:text-white mb-2">Payment Schedule:</p>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
-                  <li>Deposit: ${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Due upon signing)</li>
-                  <li>Remaining Balance: ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Due 7 days before event)</li>
+                  <li>Deposit: ${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Due {depositDueDateText})</li>
+                  <li>Remaining Balance: ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Due {remainingBalanceDueDateText})</li>
                 </ul>
               </div>
 
@@ -548,7 +1187,51 @@ export default function ContractPage() {
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">7. SIGNATORIES</h2>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                This Agreement shall be signed on behalf of Client by <strong>{leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</strong> and on behalf of M10 by Ben Murray, Manager and effective as of the date first above written.
+                This Agreement shall be signed on behalf of Client by{' '}
+                {isAdmin && !isEditingClientName ? (
+                  <span className="inline-flex items-center gap-2">
+                    <strong>{leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</strong>
+                    <button
+                      onClick={() => {
+                        setEditingClientName(leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || ''));
+                        setIsEditingClientName(true);
+                      }}
+                      className="no-print text-brand hover:text-brand-dark"
+                      title="Edit client name"
+                    >
+                      <Edit className="w-3 h-3" />
+                    </button>
+                  </span>
+                ) : isAdmin && isEditingClientName ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Input
+                      value={editingClientName}
+                      onChange={(e) => setEditingClientName(e.target.value)}
+                      className="w-auto min-w-[200px]"
+                    />
+                    <button
+                      onClick={handleSaveClientName}
+                      disabled={savingClientName}
+                      className="no-print text-green-600 hover:text-green-700"
+                      title="Save"
+                    >
+                      <Save className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditingClientName(false);
+                        setEditingClientName('');
+                      }}
+                      className="no-print text-gray-500 hover:text-gray-700"
+                      title="Cancel"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </span>
+                ) : (
+                  <strong>{leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Client')}</strong>
+                )}
+                {' '}and on behalf of M10 by Ben Murray, Manager and effective as of the date first above written.
               </p>
             </div>
 
@@ -582,16 +1265,37 @@ export default function ContractPage() {
                 <button
                   onClick={() => {
                     if (validationErrors.length > 0) {
+                      // Missing fields - show edit modal
+                      setFormData({
+                        name: leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || ''),
+                        email: leadData?.email || leadData?.email_address || '',
+                        eventDate: formatDateForInput(leadData?.eventDate || leadData?.event_date || ''),
+                        venueName: leadData?.venue_name || '',
+                        venueAddress: leadData?.venue_address || leadData?.venueAddress || (leadData?.location && leadData.location !== leadData?.venue_name ? leadData.location : '') || '',
+                        eventTime: leadData?.eventTime || leadData?.event_time || leadData?.start_time || '',
+                        endTime: leadData?.endTime || leadData?.end_time || ''
+                      });
+                      setShowFieldsModal(true);
+                    } else if (isAdmin) {
+                      // Admin - show edit modal with pre-populated data
+                      setFormData({
+                        name: leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || ''),
+                        email: leadData?.email || leadData?.email_address || '',
+                        eventDate: formatDateForInput(leadData?.eventDate || leadData?.event_date || ''),
+                        venueName: leadData?.venue_name || '',
+                        venueAddress: leadData?.venue_address || leadData?.venueAddress || (leadData?.location && leadData.location !== leadData?.venue_name ? leadData.location : '') || '',
+                        eventTime: leadData?.eventTime || leadData?.event_time || leadData?.start_time || '',
+                        endTime: leadData?.endTime || leadData?.end_time || ''
+                      });
                       setShowFieldsModal(true);
                     } else {
-                      handleOpenSignatureModal();
+                      // All fields complete - show review modal first (skip the "Fill in Missing Information" modal)
+                      setShowReviewModal(true);
                     }
                   }}
                   disabled={signing || updatingFields}
                   className={`w-full inline-flex items-center justify-center gap-2 ${
-                    canSign
-                      ? 'btn-primary'
-                      : validationErrors.length > 0
+                    canSign || validationErrors.length > 0
                       ? 'btn-primary'
                       : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                   }`}
@@ -600,6 +1304,11 @@ export default function ContractPage() {
                         <>
                           <Edit className="w-5 h-5" />
                           Fill In Missing Information
+                        </>
+                      ) : isAdmin ? (
+                        <>
+                          <Edit className="w-5 h-5" />
+                          Edit Contract Information
                         </>
                       ) : (
                         <>
@@ -782,14 +1491,26 @@ export default function ContractPage() {
 
         {/* Fields Update Modal */}
         {showFieldsModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Complete Required Information
+                  {isAdmin ? 'Edit Contract Information' : 'Complete Required Information'}
                 </h3>
                 <button
-                  onClick={() => setShowFieldsModal(false)}
+                  onClick={() => {
+                    setShowFieldsModal(false);
+                    // Reset form data when closing
+                    setFormData({
+                      name: '',
+                      email: '',
+                      eventDate: '',
+                      venueName: '',
+                      venueAddress: '',
+                      eventTime: '',
+                      endTime: ''
+                    });
+                  }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-5 h-5" />
@@ -797,121 +1518,136 @@ export default function ContractPage() {
               </div>
               
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Please fill in the following required fields to proceed with signing the contract:
+                {isAdmin 
+                  ? 'Edit any contract information below. All fields are editable for quick updates.'
+                  : 'Please fill in the following required fields to proceed with signing the contract:'}
               </p>
 
               <div className="space-y-4">
-                {!leadData?.name && (
+                {/* Client Name - Always show for admin, or if missing */}
+                {(isAdmin || !leadData?.name) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Full Name <span className="text-red-500">*</span>
+                      Client Name {!isAdmin && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="text"
-                      value={formData.name}
+                      value={formData.name || leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || '')}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
-                      placeholder="Enter your full name"
-                      required
+                      placeholder="Enter client full name"
+                      required={!isAdmin}
                     />
                   </div>
                 )}
 
-                {!leadData?.email && (
+                {/* Client Email - Always show for admin, or if missing */}
+                {(isAdmin || !leadData?.email) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Email Address <span className="text-red-500">*</span>
+                      Email Address {!isAdmin && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="email"
-                      value={formData.email}
+                      value={formData.email || leadData?.email || leadData?.email_address || ''}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
-                      placeholder="Enter your email address"
-                      required
+                      placeholder="Enter email address"
+                      required={!isAdmin}
                     />
                   </div>
                 )}
 
-                {!leadData?.eventDate && !leadData?.event_date && (
+                {/* Event Date - Always show for admin, or if missing */}
+                {(isAdmin || (!leadData?.eventDate && !leadData?.event_date)) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Event Date <span className="text-red-500">*</span>
+                      Event Date {!isAdmin && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="date"
-                      value={formData.eventDate}
+                      value={formData.eventDate || formatDateForInput(leadData?.eventDate || leadData?.event_date || '')}
                       onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
-                      required
+                      required={!isAdmin}
                       min={new Date().toISOString().split('T')[0]}
                     />
                   </div>
                 )}
 
+                {/* Venue Name - Always show for admin, or if missing */}
+                {(isAdmin || !leadData?.venue_name) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Venue Name {!isAdmin && <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.venueName || leadData?.venue_name || ''}
+                      onChange={(e) => setFormData({ ...formData, venueName: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                      placeholder="Enter venue name"
+                      required={!isAdmin}
+                    />
+                  </div>
+                )}
+
+                {/* Venue Address - Always show for admin, or if missing/invalid */}
                 {(() => {
-                  // Check if we need to show venue address field
                   const venueAddress = leadData?.venue_address || leadData?.venueAddress;
                   const location = leadData?.location;
                   const venueName = leadData?.venue_name;
                   
                   let needsVenueAddress = false;
                   if (!venueAddress) {
-                    // No venue_address/venueAddress field exists
                     if (!location || location === venueName) {
-                      // No location or location is same as venue name
                       needsVenueAddress = true;
                     } else {
-                      // Check if location is actually an address or just a name
                       const locationTrimmed = location.trim();
                       const venueNameTrimmed = venueName?.trim() || '';
                       const hasAddressIndicators = /\d/.test(locationTrimmed) || 
                                                      /(street|st|road|rd|avenue|ave|drive|dr|lane|ln|way|boulevard|blvd|circle|cir|court|ct)/i.test(locationTrimmed);
                       
-                      // If location is same as venue name or doesn't look like an address, require venue address
                       if (locationTrimmed === venueNameTrimmed || (!hasAddressIndicators && locationTrimmed.length <= 30)) {
                         needsVenueAddress = true;
                       }
                     }
                   } else if (venueAddress === venueName) {
-                    // Venue address exists but is same as venue name (not a real address)
                     needsVenueAddress = true;
                   }
                   
-                  return needsVenueAddress ? (
+                  return (isAdmin || needsVenueAddress) ? (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Venue Address <span className="text-red-500">*</span>
+                        Venue Address {!isAdmin && <span className="text-red-500">*</span>}
                       </label>
                       <input
                         type="text"
-                        value={formData.venueAddress}
+                        value={formData.venueAddress || venueAddress || location || ''}
                         onChange={(e) => setFormData({ ...formData, venueAddress: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
                         placeholder="Enter full venue address (street, city, state, zip)"
-                        required
+                        required={!isAdmin}
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Please provide the complete street address where the event will take place.
-                        {leadData?.venue_name && (
-                          <> Venue name: {leadData.venue_name}</>
-                        )}
                       </p>
                     </div>
                   ) : null;
                 })()}
 
-                {!leadData?.event_time && !leadData?.eventTime && !leadData?.start_time && (
+                {/* Event Start Time - Always show for admin, or if missing */}
+                {(isAdmin || (!leadData?.event_time && !leadData?.eventTime && !leadData?.start_time)) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Event Start Time <span className="text-red-500">*</span>
+                      Event Start Time {!isAdmin && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="time"
-                      value={formData.eventTime}
+                      value={formData.eventTime || leadData?.eventTime || leadData?.event_time || leadData?.start_time || ''}
                       onChange={(e) => setFormData({ ...formData, eventTime: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
-                      required
+                      required={!isAdmin}
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       Please enter the time your event starts
@@ -919,17 +1655,18 @@ export default function ContractPage() {
                   </div>
                 )}
 
-                {!leadData?.end_time && !leadData?.endTime && (
+                {/* Event End Time - Always show for admin, or if missing */}
+                {(isAdmin || (!leadData?.end_time && !leadData?.endTime)) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Event End Time <span className="text-red-500">*</span>
+                      Event End Time {!isAdmin && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="time"
-                      value={formData.endTime}
+                      value={formData.endTime || leadData?.endTime || leadData?.end_time || ''}
                       onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
-                      required
+                      required={!isAdmin}
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       Please enter the time your event ends
@@ -937,7 +1674,7 @@ export default function ContractPage() {
                   </div>
                 )}
 
-                {(() => {
+                {!isAdmin && (() => {
                   const hasName = leadData?.name || leadData?.first_name || leadData?.last_name;
                   const hasEmail = leadData?.email || leadData?.email_address;
                   const hasDate = leadData?.eventDate || leadData?.event_date;
@@ -965,15 +1702,8 @@ export default function ContractPage() {
                   const hasStartTime = leadData?.event_time || leadData?.eventTime || leadData?.start_time;
                   const hasEndTime = leadData?.end_time || leadData?.endTime;
                   
-                  if (hasName && hasEmail && hasDate && hasValidVenueAddress && hasStartTime && hasEndTime) {
-                    return (
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          All required fields are filled. You can now sign the contract.
-                        </p>
-                      </div>
-                    );
-                  }
+                  // If all fields are filled, don't show this message - the modal shouldn't be open in the first place
+                  // Instead, just show the form fields for editing
                   return null;
                 })()}
               </div>
@@ -988,7 +1718,7 @@ export default function ContractPage() {
                 </button>
                 <button
                   onClick={handleUpdateFields}
-                  disabled={updatingFields || (() => {
+                  disabled={updatingFields || (!isAdmin && (() => {
                     const hasName = formData.name || leadData?.name || leadData?.first_name || leadData?.last_name;
                     const hasEmail = formData.email || leadData?.email || leadData?.email_address;
                     const hasDate = formData.eventDate || leadData?.eventDate || leadData?.event_date;
@@ -1016,17 +1746,158 @@ export default function ContractPage() {
                     const hasEndTime = formData.endTime || leadData?.end_time || leadData?.endTime;
                     
                     return !hasName || !hasEmail || !hasDate || !hasValidVenueAddress || !hasStartTime || !hasEndTime;
-                  })()}
+                  })())}
                   className="flex-1 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
                   {updatingFields ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Updating...
+                      {isAdmin ? 'Saving...' : 'Updating...'}
                     </>
                   ) : (
-                    'Save & Continue'
+                    isAdmin ? 'Save Changes' : 'Save & Continue'
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Review Before Signing Modal */}
+        {showReviewModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Review Contract Information
+                </h3>
+                <button
+                  onClick={() => setShowReviewModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Please review the following information before signing. If anything needs to be corrected, please contact us.
+              </p>
+
+              <div className="space-y-4 mb-6">
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Client Name
+                  </label>
+                  <p className="text-gray-900 dark:text-white">
+                    {leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Not set')}
+                  </p>
+                </div>
+
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email Address
+                  </label>
+                  <p className="text-gray-900 dark:text-white">
+                    {leadData?.email || leadData?.email_address || 'Not set'}
+                  </p>
+                </div>
+
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Event Date
+                  </label>
+                  <p className="text-gray-900 dark:text-white">
+                    {leadData?.eventDate || leadData?.event_date
+                      ? parseLocalDate(leadData.eventDate || leadData.event_date)?.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) || 'Not set'
+                      : 'Not set'}
+                  </p>
+                </div>
+
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Event Time
+                  </label>
+                  <p className="text-gray-900 dark:text-white">
+                    <span>
+                      <strong>Start:</strong> {leadData?.eventTime || leadData?.event_time || leadData?.start_time
+                        ? new Date(`2000-01-01T${leadData.eventTime || leadData.event_time || leadData.start_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                        : 'Not set'}
+                    </span>
+                    {' - '}
+                    <span>
+                      <strong>End:</strong> {leadData?.endTime || leadData?.end_time
+                        ? new Date(`2000-01-01T${leadData.endTime || leadData.end_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                        : 'Not set'}
+                    </span>
+                  </p>
+                </div>
+
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Venue Name
+                  </label>
+                  <p className="text-gray-900 dark:text-white">
+                    {leadData?.venue_name || 'Not set'}
+                  </p>
+                </div>
+
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Venue Address
+                  </label>
+                  <p className="text-gray-900 dark:text-white">
+                    {leadData?.venue_address || leadData?.venueAddress || leadData?.location || 'Not set'}
+                  </p>
+                </div>
+
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Package Selected
+                  </label>
+                  <p className="text-gray-900 dark:text-white">
+                    {quoteData?.package_name || 'Not set'}
+                  </p>
+                </div>
+
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Total Amount
+                  </label>
+                  <p className="text-gray-900 dark:text-white font-semibold">
+                    ${(quoteData?.is_custom_price && quoteData?.total_price 
+                      ? quoteData.total_price 
+                      : quoteData?.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Deposit Required (50%)
+                  </label>
+                  <p className="text-gray-900 dark:text-white font-semibold">
+                    ${((quoteData?.is_custom_price && quoteData?.total_price 
+                      ? quoteData.total_price 
+                      : quoteData?.total_price || 0) * 0.5).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowReviewModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowReviewModal(false);
+                    handleOpenSignatureModal();
+                  }}
+                  className="flex-1 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors inline-flex items-center justify-center gap-2"
+                >
+                  <PenTool className="w-4 h-4" />
+                  Continue to Sign
                 </button>
               </div>
             </div>
@@ -1066,13 +1937,13 @@ export default function ContractPage() {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600 dark:text-gray-400">Total Amount:</span>
                         <span className="font-semibold text-gray-900 dark:text-white">
-                          ${(quoteData.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600 dark:text-gray-400">Required Deposit (50%):</span>
                         <span className="font-semibold text-gray-900 dark:text-white">
-                          ${((quoteData.total_price || 0) * 0.5).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                       {paymentData && paymentData.totalPaid > 0 && (
@@ -1123,15 +1994,48 @@ export default function ContractPage() {
           header,
           nav,
           footer,
-          .no-print * {
+          .no-print *,
+          /* Hide chat widgets and floating elements */
+          [class*="chat"],
+          [class*="widget"],
+          [class*="Chat"],
+          [class*="Widget"],
+          [id*="chat"],
+          [id*="widget"],
+          /* Hide fixed/floating positioned elements */
+          [class*="fixed"],
+          [style*="position: fixed"],
+          [style*="position:fixed"],
+          /* Hide elements with high z-index (typically overlays/widgets) */
+          [style*="z-index: 50"],
+          [style*="z-index:50"],
+          [style*="z-index: 40"],
+          [style*="z-index:40"],
+          [style*="z-index: 999"],
+          [style*="z-index:999"],
+          /* Hide any floating action buttons */
+          [class*="floating"],
+          [class*="Floating"] {
             display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
           }
           
-          /* Reset page styling */
+          /* Legal document page setup */
+          @page {
+            margin: 1in;
+            size: letter;
+          }
+          
+          /* Reset page styling - Legal document format */
           body {
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+            font-family: 'Times New Roman', Times, serif !important;
+            color: #000000 !important;
           }
           
           /* Contract container styling */
@@ -1140,19 +2044,104 @@ export default function ContractPage() {
             margin: 0 !important;
           }
           
-          /* Contract document styling */
+          /* Contract document styling - Legal document format */
           .max-w-4xl {
             max-width: 100% !important;
             margin: 0 !important;
-            padding: 0.75in !important;
+            padding: 0 !important;
             background: white !important;
             box-shadow: none !important;
             border-radius: 0 !important;
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+            font-family: 'Times New Roman', Times, serif !important;
+            color: #000000 !important;
+          }
+          
+          /* Typography adjustments for legal document */
+          h1, h2, h3, h4, h5, h6 {
+            font-family: 'Times New Roman', Times, serif !important;
+            font-weight: bold !important;
+            color: #000000 !important;
+            page-break-after: avoid !important;
+          }
+          
+          h2 {
+            font-size: 14pt !important;
+            margin-top: 12pt !important;
+            margin-bottom: 6pt !important;
+          }
+          
+          p {
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+            margin-bottom: 6pt !important;
+            color: #000000 !important;
+          }
+          
+          strong {
+            font-weight: bold !important;
+            color: #000000 !important;
           }
           
           /* Ensure text is black for printing */
-          body, p, span, div, h1, h2, h3, h4, h5, h6, td, th, label {
+          body, p, span, div, h1, h2, h3, h4, h5, h6, td, th, label, li {
             color: #000 !important;
+            font-size: 11pt !important;
+          }
+          
+          /* Remove dark mode colors for print */
+          .dark\\:text-white,
+          .dark\\:text-gray-300,
+          .dark\\:text-gray-700 {
+            color: #000000 !important;
+          }
+          
+          /* Background colors should be white */
+          .bg-gray-50,
+          .bg-gray-900,
+          .bg-white,
+          .bg-gray-800 {
+            background: white !important;
+          }
+          
+          /* Remove rounded corners and shadows for print */
+          .rounded-lg,
+          .rounded-xl,
+          .rounded-2xl {
+            border-radius: 0 !important;
+          }
+          
+          .shadow-xl,
+          .shadow-2xl {
+            box-shadow: none !important;
+          }
+          
+          /* Padding adjustments for legal format */
+          .p-4,
+          .p-6 {
+            padding: 6pt !important;
+          }
+          
+          .mb-4,
+          .mb-6 {
+            margin-bottom: 6pt !important;
+          }
+          
+          .mt-8 {
+            margin-top: 12pt !important;
+          }
+          
+          /* List styling */
+          ul, ol {
+            margin-left: 24pt !important;
+            margin-bottom: 6pt !important;
+          }
+          
+          li {
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+            margin-bottom: 3pt !important;
           }
           
           /* Keep white backgrounds */
@@ -1213,10 +2202,55 @@ export default function ContractPage() {
             page-break-after: avoid;
           }
           
-          /* Print-friendly spacing */
-          @page {
-            margin: 0.75in;
-            size: letter;
+          /* Additional legal document formatting */
+          .section-container {
+            padding: 0 !important;
+          }
+          
+          /* Remove extra spacing */
+          .py-12,
+          .py-20 {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+          }
+          
+          /* Hide fixed positioned elements (chat widgets, floating buttons, etc.) */
+          [class*="fixed"],
+          [style*="position: fixed"],
+          [style*="position:fixed"],
+          [class*="z-["],
+          [class*="z-[999"],
+          [class*="z-[99"],
+          [style*="z-index"] {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          
+          /* Hide any remaining UI elements that might appear */
+          button:not(.no-print),
+          a:not(.no-print),
+          [role="button"]:not(.no-print),
+          [class*="btn"]:not(.no-print),
+          [class*="button"]:not(.no-print) {
+            display: none !important;
+          }
+          
+          /* Hide fixed/floating positioned elements (but preserve contract layout) */
+          [class*="fixed"]:not(.max-w-4xl):not(.max-w-4xl *),
+          [style*="position: fixed"]:not(.max-w-4xl):not(.max-w-4xl *),
+          [style*="position:fixed"]:not(.max-w-4xl):not(.max-w-4xl *) {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          
+          /* Hide any overlay or modal backgrounds */
+          [class*="overlay"],
+          [class*="modal"],
+          [class*="backdrop"],
+          [class*="dialog"],
+          [class*="portal"] {
+            display: none !important;
+            visibility: hidden !important;
           }
         }
       `}</style>

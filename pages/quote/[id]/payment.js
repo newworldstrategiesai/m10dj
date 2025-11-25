@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
@@ -21,11 +21,28 @@ export default function PaymentPage() {
     }
   }, [id]);
 
+  // Refetch data when the page becomes visible (e.g., navigating from other quote pages)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && id) {
+        fetchData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [id]);
+
   const fetchData = async () => {
     try {
+      // Add cache-busting timestamp to ensure fresh data
+      const timestamp = new Date().getTime();
       const [leadResponse, quoteResponse] = await Promise.all([
-        fetch(`/api/leads/${id}`),
-        fetch(`/api/quote/${id}`)
+        fetch(`/api/leads/get-lead?id=${id}&_t=${timestamp}`, { cache: 'no-store' }),
+        fetch(`/api/quote/${id}?_t=${timestamp}`, { cache: 'no-store' })
       ]);
 
       if (leadResponse.ok) {
@@ -35,6 +52,17 @@ export default function PaymentPage() {
 
       if (quoteResponse.ok) {
         const quote = await quoteResponse.json();
+        console.log('Payment page - Quote data:', {
+          is_custom_price: quote.is_custom_price,
+          total_price: quote.total_price,
+          package_price: quote.package_price,
+          discount_type: quote.discount_type,
+          discount_value: quote.discount_value,
+          custom_addons: quote.custom_addons,
+          addons: quote.addons,
+          raw_total_price: quote.total_price,
+          typeof_total_price: typeof quote.total_price
+        });
         setQuoteData(quote);
       } else {
         // Quote not found - this is okay, we can still show payment page
@@ -105,6 +133,84 @@ export default function PaymentPage() {
     }
   };
 
+  // Calculate totals using useMemo to prevent unnecessary recalculations
+  const {
+    totalAmount,
+    packagePrice,
+    addons,
+    subtotal,
+    discountAmount,
+    isCustomPrice
+  } = useMemo(() => {
+    // Determine if this is a custom invoice (admin-edited)
+    const isCustom = quoteData?.is_custom_price || false;
+    
+    // Initialize default values
+    let total = 0;
+    let pkgPrice = 0;
+    let addonsList = [];
+    let sub = 0;
+    let discount = 0;
+    
+    if (isCustom && quoteData) {
+      // Use custom invoice data - match invoice page calculation logic
+      pkgPrice = Number(quoteData?.package_price) || 0;
+      addonsList = quoteData?.custom_addons || quoteData?.addons || [];
+      
+      // Calculate subtotal: package price + addons (same as invoice page)
+      const addonsTotal = addonsList.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
+      sub = pkgPrice + addonsTotal;
+      
+      // Calculate discount if present (same logic as invoice page)
+      if (quoteData?.discount_type && quoteData?.discount_value > 0) {
+        if (quoteData.discount_type === 'percentage') {
+          discount = sub * (Number(quoteData.discount_value) / 100);
+        } else {
+          discount = Number(quoteData.discount_value);
+        }
+      }
+      
+      // Calculate the final total by applying the discount to the subtotal
+      // This matches the invoice page calculation logic
+      // Always calculate: subtotal - discount (this ensures discount is always applied correctly)
+      // Don't use database total_price when discount exists, as it may not reflect the current discount
+      total = Math.max(0, sub - discount);
+      
+      console.log('Payment page - Custom invoice calculation:', {
+        packagePrice: pkgPrice,
+        addonsTotal: addonsList.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0),
+        subtotal: sub,
+        discountAmount: discount,
+        total_price_from_db: quoteData?.total_price,
+        calculated_total: total
+      });
+    } else if (quoteData) {
+      // Use standard service selection data
+      pkgPrice = Number(quoteData?.package_price) || 0;
+      addonsList = quoteData?.addons || [];
+      const addonsTotal = addonsList.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
+      sub = pkgPrice + addonsTotal;
+      
+      // For non-custom invoices, use total_price if available, otherwise calculate
+      const dbTotalPrice = quoteData?.total_price;
+      if (dbTotalPrice !== undefined && dbTotalPrice !== null && dbTotalPrice !== '') {
+        const parsedTotal = Number(dbTotalPrice);
+        total = !isNaN(parsedTotal) && parsedTotal >= 0 ? parsedTotal : sub;
+      } else {
+        total = sub;
+      }
+    }
+    
+    return {
+      totalAmount: total,
+      packagePrice: pkgPrice,
+      addons: addonsList,
+      subtotal: sub,
+      discountAmount: discount,
+      isCustomPrice: isCustom
+    };
+  }, [quoteData]);
+
   const handlePayment = async () => {
     if (!quoteData) return;
 
@@ -112,8 +218,7 @@ export default function PaymentPage() {
     setError(null);
 
     try {
-      // For small amounts (< $10), always charge full amount
-      const totalAmount = quoteData.total_price || 0;
+      // Use the calculated totalAmount (already includes discount for custom invoices)
       const isSmallAmount = totalAmount < 10;
       const amount = isSmallAmount
         ? Math.round(totalAmount * 100) // Full amount in cents
@@ -181,8 +286,8 @@ export default function PaymentPage() {
     );
   }
 
-  const totalAmount = quoteData?.total_price || 0;
   // For very small amounts (like $1), don't split into deposit - just charge full amount
+  // totalAmount, packagePrice, addons, subtotal, and discountAmount are already calculated above
   const depositAmount = totalAmount < 10 ? totalAmount : totalAmount * 0.5;
   const remainingBalance = totalAmount - depositAmount;
   // For small amounts, always use full payment
@@ -267,28 +372,32 @@ export default function PaymentPage() {
               
               {quoteData && (
                 <div className="space-y-4 mb-6">
+                  {/* Package */}
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-white">{quoteData.package_name}</p>
-                    <p className="text-gray-600 dark:text-gray-400">${quoteData.package_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{quoteData.package_name || 'Package'}</p>
+                    <p className="text-gray-600 dark:text-gray-400">${packagePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   
-                  {quoteData.addons && quoteData.addons.length > 0 && (
+                  {/* Add-ons */}
+                  {addons && addons.length > 0 && (
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                       <p className="font-semibold text-gray-900 dark:text-white mb-2">Add-ons:</p>
                       <ul className="space-y-2">
-                        {quoteData.addons.map((addon, idx) => (
+                        {addons.map((addon, idx) => (
                           <li key={idx} className="group flex items-center justify-between gap-2 text-sm text-gray-600 dark:text-gray-400">
                             <span className="flex-1">{addon.name}</span>
                             <div className="flex items-center gap-2">
                               <span>${addon.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                              <button
-                                onClick={() => handleRemoveAddon(idx)}
-                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all"
-                                title="Remove addon"
-                                aria-label={`Remove ${addon.name}`}
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
+                              {!isCustomPrice && (
+                                <button
+                                  onClick={() => handleRemoveAddon(idx)}
+                                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all"
+                                  title="Remove addon"
+                                  aria-label={`Remove ${addon.name}`}
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </li>
                         ))}
@@ -301,8 +410,18 @@ export default function PaymentPage() {
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span>Subtotal:</span>
-                  <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span>
+                      Discount {quoteData.discount_type === 'percentage' ? `(${quoteData.discount_value}%)` : `($${quoteData.discount_value.toLocaleString()})`}:
+                    </span>
+                    <span className="text-red-600 dark:text-red-400 font-medium">
+                      -${discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span>Tax:</span>
                   <span>$0.00</span>

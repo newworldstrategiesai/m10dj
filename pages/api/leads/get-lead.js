@@ -67,6 +67,10 @@ export default async function handler(req, res) {
       const firstName = nameParts[0] || '';
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
+      // Set cache-control headers to prevent caching
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       return res.status(200).json({
         id: submissionData.id,
         name: submissionData.name || 'Valued Customer',
@@ -84,6 +88,10 @@ export default async function handler(req, res) {
     // Combine first and last name
     const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Valued Customer';
 
+    // Set cache-control headers to prevent caching
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     // Return sanitized lead data
     res.status(200).json({
       id: data.id,
