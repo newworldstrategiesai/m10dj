@@ -45,6 +45,7 @@ export default function InvoicePage() {
   const [customRemainingBalanceDueDate, setCustomRemainingBalanceDueDate] = useState('');
   const [isEditingDepositDueDate, setIsEditingDepositDueDate] = useState(false);
   const [isEditingRemainingDueDate, setIsEditingRemainingDueDate] = useState(false);
+  const [isExpired, setIsExpired] = useState(false); // Track if event date has passed
   const [paymentTermsType, setPaymentTermsType] = useState(null); // 'set_number' | 'client_selects' | null
   const [numberOfPayments, setNumberOfPayments] = useState(2); // Default to 2 (deposit + final)
   const [paymentSchedule, setPaymentSchedule] = useState([]); // Array of { amount, dueDate }
@@ -86,6 +87,18 @@ export default function InvoicePage() {
         console.log('Fetched lead data:', lead);
         console.log('Lead eventDate:', lead.eventDate, 'Type:', typeof lead.eventDate);
         setLeadData(lead);
+        
+        // Check if event date has passed (expiration check)
+        if (lead.eventDate || lead.event_date) {
+          const eventDate = new Date(lead.eventDate || lead.event_date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+          eventDate.setHours(0, 0, 0, 0);
+          
+          if (eventDate < today) {
+            setIsExpired(true);
+          }
+        }
         
         // Notify admin that invoice page was opened
         fetch('/api/admin/notify', {
@@ -563,6 +576,7 @@ export default function InvoicePage() {
       <>
         <Head>
           <title>Loading Invoice | M10 DJ Company</title>
+          <meta name="robots" content="noindex, nofollow" />
         </Head>
         <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
@@ -575,17 +589,36 @@ export default function InvoicePage() {
     );
   }
 
-  // Show loading state while data is being fetched
-  if (loading) {
+
+  // Check if quote has expired (event date has passed)
+  if (isExpired && leadData) {
     return (
       <>
         <Head>
-          <title>Loading Invoice | M10 DJ Company</title>
+          <title>Invoice Expired | M10 DJ Company</title>
+          <meta name="robots" content="noindex, nofollow" />
         </Head>
         <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
           <div className="flex flex-col items-center justify-center min-h-[60vh] py-20">
-            <p className="text-xl text-gray-600 dark:text-gray-300">Loading invoice...</p>
+            <div className="text-6xl mb-4">⏰</div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Invoice Expired</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              This invoice has expired because the event date has passed.
+            </p>
+            {leadData.eventDate && (
+              <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
+                Event Date: {new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+            )}
+            <div className="flex gap-4 justify-center">
+              <Link href="/#contact" className="btn-primary inline-flex items-center gap-2">
+                Get a New Quote
+              </Link>
+              <Link href="/" className="btn-secondary">
+                Go to Homepage
+              </Link>
+            </div>
           </div>
         </div>
       </>
@@ -598,6 +631,10 @@ export default function InvoicePage() {
       <>
         <Head>
           <title>Invoice Not Found | M10 DJ Company</title>
+          <meta name="robots" content="noindex, nofollow" />
+          <meta property="og:title" content="Invoice Not Found - M10 DJ Company" />
+          <meta property="og:description" content="The requested invoice could not be found" />
+          <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
         </Head>
         <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
@@ -848,6 +885,23 @@ export default function InvoicePage() {
       <Head>
         <title>Invoice {invoiceNumber} | M10 DJ Company</title>
         <meta name="robots" content="noindex, nofollow" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}/invoice`} />
+        <meta property="og:title" content={`Invoice ${invoiceNumber} - ${leadData?.name || 'Your Invoice'}`} />
+        <meta property="og:description" content={`View your invoice for ${leadData?.eventType || 'your event'}${leadData?.eventDate ? ` on ${new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}. Total: $${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+        <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="M10 DJ Company" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}/invoice`} />
+        <meta name="twitter:title" content={`Invoice ${invoiceNumber} - ${leadData?.name || 'Your Invoice'}`} />
+        <meta name="twitter:description" content={`View your invoice for ${leadData?.eventType || 'your event'}. Total: $${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+        <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
       </Head>
 
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">

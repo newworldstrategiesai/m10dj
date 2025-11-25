@@ -17,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
           '/account/',
           '/client/',
           '/auth/',
+          '/quote/', // Block all quote pages from search engines
           '/_next/',
           '/favicon.ico',
           '/*.json$', // Block JSON files
@@ -34,6 +35,7 @@ export default function robots(): MetadataRoute.Robots {
           '/account/',
           '/client/',
           '/auth/',
+          '/quote/', // Block all quote pages from search engines
           '/chat/',
         ],
         // No crawl delay for Googlebot - we want fast indexing
@@ -48,6 +50,7 @@ export default function robots(): MetadataRoute.Robots {
           '/account/',
           '/client/',
           '/auth/',
+          '/quote/', // Block all quote pages from search engines
           '/chat/',
         ],
         crawlDelay: 2, // Bing can be more aggressive, slow it down

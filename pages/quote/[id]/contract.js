@@ -28,6 +28,7 @@ export default function ContractPage() {
   const [paymentData, setPaymentData] = useState(null);
   const [hasPayment, setHasPayment] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [isExpired, setIsExpired] = useState(false); // Track if event date has passed
   const [reviewFormData, setReviewFormData] = useState({
     name: '',
     email: '',
@@ -80,6 +81,19 @@ export default function ContractPage() {
 
       if (leadResponse.ok) {
         const lead = await leadResponse.json();
+        
+        // Check if event date has passed (expiration check)
+        if (lead.eventDate || lead.event_date) {
+          const eventDate = new Date(lead.eventDate || lead.event_date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+          eventDate.setHours(0, 0, 0, 0);
+          
+          if (eventDate < today) {
+            setIsExpired(true);
+          }
+        }
+        
         // Ensure venue_name is set from venueName if present
         setLeadData({
           ...lead,
@@ -935,7 +949,15 @@ export default function ContractPage() {
     return (
       <>
         <Head>
-          <title>Loading Contract | M10 DJ Company</title>
+          <title>Contract | M10 DJ Company</title>
+          <meta name="robots" content="noindex, nofollow" />
+          <meta property="og:title" content="Service Contract - M10 DJ Company" />
+          <meta property="og:description" content="View your service contract" />
+          <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="Service Contract - M10 DJ Company" />
+          <meta name="twitter:description" content="View your service contract" />
+          <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
         </Head>
         <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
@@ -953,6 +975,24 @@ export default function ContractPage() {
       <Head>
         <title>Service Contract {contractNumber} | M10 DJ Company</title>
         <meta name="robots" content="noindex, nofollow" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}/contract`} />
+        <meta property="og:title" content={`Service Contract ${contractNumber} - ${leadData?.name || 'Your Contract'}`} />
+        <meta property="og:description" content={`Service contract for ${leadData?.eventType || 'your event'}${leadData?.eventDate ? ` on ${new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}`} />
+        <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="M10 DJ Company" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}/contract`} />
+        <meta name="twitter:title" content={`Service Contract ${contractNumber} - ${leadData?.name || 'Your Contract'}`} />
+        <meta name="twitter:description" content={`Service contract for ${leadData?.eventType || 'your event'}`} />
+        <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
+        
         <link
           href="https://fonts.googleapis.com/css2?family=Allura&family=Dancing+Script&family=Great+Vibes&family=Pacifico&family=Sacramento&display=swap"
           rel="stylesheet"

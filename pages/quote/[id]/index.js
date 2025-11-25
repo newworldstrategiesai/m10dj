@@ -31,6 +31,7 @@ export default function PersonalizedQuote() {
   const [adminMode, setAdminMode] = useState(false);
   const [customizedPackage, setCustomizedPackage] = useState(null); // Admin-customized package with removed features
   const [customizedFeatures, setCustomizedFeatures] = useState([]); // Features that remain after customization
+  const [isExpired, setIsExpired] = useState(false); // Track if event date has passed
 
   const fetchLeadData = useCallback(async () => {
     // Validate ID before making request
@@ -76,6 +77,18 @@ export default function PersonalizedQuote() {
         if (data && data.id) {
           setLeadData(data);
           setError(null);
+          
+          // Check if event date has passed (expiration check)
+          if (data.eventDate || data.event_date) {
+            const eventDate = new Date(data.eventDate || data.event_date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+            eventDate.setHours(0, 0, 0, 0);
+            
+            if (eventDate < today) {
+              setIsExpired(true);
+            }
+          }
           
           // Notify admin that quote page was opened
           fetch('/api/admin/notify', {
@@ -1861,7 +1874,25 @@ export default function PersonalizedQuote() {
     <>
       <Head>
         <title>Your Personalized Quote | M10 DJ Company</title>
-          <meta name="description" content={`Personalized ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'} DJ quote for ${leadData.name}`} />
+        <meta name="description" content={`Personalized ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'} DJ quote for ${leadData.name}`} />
+        <meta name="robots" content="noindex, nofollow" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
+        <meta property="og:title" content={`Your Personalized ${isHoliday ? 'Holiday Party' : isSchool ? 'School Event' : isCorporate ? 'Corporate Event' : 'Wedding'} Quote`} />
+        <meta property="og:description" content={`Custom DJ services quote for ${leadData.name}'s ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'}${leadData.eventDate ? ` on ${new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}`} />
+        <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="M10 DJ Company" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
+        <meta name="twitter:title" content={`Your Personalized ${isHoliday ? 'Holiday Party' : isSchool ? 'School Event' : isCorporate ? 'Corporate Event' : 'Wedding'} Quote`} />
+        <meta name="twitter:description" content={`Custom DJ services quote for ${leadData.name}'s ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'}`} />
+        <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
       </Head>
       {/* Simplified Header with Logo Only */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
