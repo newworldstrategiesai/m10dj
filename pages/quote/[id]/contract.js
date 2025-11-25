@@ -820,6 +820,30 @@ export default function ContractPage() {
     }
   };
 
+  // Check if this is an equipment rental contract (speaker rental only, no DJ package)
+  const isEquipmentRental = useMemo(() => {
+    if (!quoteData) return false;
+    
+    // Check if speaker rental exists in quoteData
+    if (quoteData.speaker_rental) {
+      return true;
+    }
+    
+    // Check if speaker rental is in addons array
+    const addons = quoteData.addons || [];
+    const hasSpeakerRental = addons.some(addon => 
+      addon.id === 'speaker_rental' || 
+      addon.id === 'holiday_speaker_rental' ||
+      (addon.name && addon.name.toLowerCase().includes('speaker rental'))
+    );
+    
+    // If speaker rental exists but no package, it's equipment rental
+    const hasPackage = quoteData.package_name && 
+                       quoteData.package_name.toLowerCase().includes('speaker') === false;
+    
+    return hasSpeakerRental && !hasPackage;
+  }, [quoteData]);
+
   // Calculate total amount - match invoice calculation logic exactly
   // This includes applying discounts if present
   const calculateContractTotals = () => {
@@ -837,11 +861,30 @@ export default function ContractPage() {
       } catch (e) {
         console.error('Error parsing speaker rental:', e);
       }
+    } else {
+      // Check addons for speaker rental
+      const addons = quoteData?.addons || [];
+      const speakerRentalAddon = addons.find(addon => 
+        addon.id === 'speaker_rental' || 
+        addon.id === 'holiday_speaker_rental' ||
+        (addon.name && addon.name.toLowerCase().includes('speaker rental'))
+      );
+      if (speakerRentalAddon) {
+        speakerRentalPrice = Number(speakerRentalAddon.price) || 0;
+      }
     }
     
     // Get addons - match invoice logic: use addons field (which contains current addons)
+    // EXCLUDE speaker rental from addons total to avoid double-counting
     const addons = quoteData?.addons || [];
-    const addonsTotal = addons.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
+    const addonsTotal = addons
+      .filter(addon => {
+        // Exclude speaker rental from addons total since it's counted separately
+        return addon.id !== 'speaker_rental' && 
+               addon.id !== 'holiday_speaker_rental' &&
+               !(addon.name && addon.name.toLowerCase().includes('speaker rental'));
+      })
+      .reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
     const subtotal = packagePrice + speakerRentalPrice + addonsTotal;
     
     // Apply discount if present (same logic as invoice)
@@ -1109,12 +1152,12 @@ export default function ContractPage() {
               </p>
 
               <p className="text-gray-700 dark:text-gray-300 mb-6">
-                NOW, THEREFORE, FOR AND IN CONSIDERATION of the mutual promises and agreements contained herein, Client hires M10, and M10 agrees to provide Disc Jockey services (&quot;DJ&quot; services) to Client under the terms and conditions hereby agreed upon by the parties:
+                NOW, THEREFORE, FOR AND IN CONSIDERATION of the mutual promises and agreements contained herein, Client hires M10, and M10 agrees to provide {isEquipmentRental ? 'audio equipment rental services' : 'Disc Jockey services (&quot;DJ&quot; services)'} to Client under the terms and conditions hereby agreed upon by the parties:
               </p>
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">1. DESCRIPTION OF SERVICES</h2>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Client hereby agrees to engage M10 to provide Client with DJ services (collectively, the &quot;Services&quot;) to be performed at the following event(s):
+                Client hereby agrees to engage M10 to provide Client with {isEquipmentRental ? 'audio equipment rental services' : 'DJ services'} (collectively, the &quot;Services&quot;) to be performed at the following event(s):
               </p>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-gray-900 dark:text-white mb-2">Event Details:</p>
@@ -1324,17 +1367,62 @@ export default function ContractPage() {
                   </p>
                 )}
               </div>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Services shall consist primarily of providing musical entertainment by means of a recorded music format.
-              </p>
+              {isEquipmentRental ? (
+                <>
+                  <p className="text-gray-700 dark:text-gray-300 mb-4">
+                    Services shall consist of the rental and delivery of professional audio equipment, including but not limited to speakers, microphones, mixing equipment, and all necessary cables and accessories. Equipment will be set up at the event location and removed after the event concludes.
+                  </p>
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4">
+                    <p className="font-semibold text-gray-900 dark:text-white mb-2">Equipment Included:</p>
+                    <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                      {(() => {
+                        const addons = quoteData?.addons || [];
+                        const speakerRental = quoteData?.speaker_rental 
+                          ? (typeof quoteData.speaker_rental === 'string' ? JSON.parse(quoteData.speaker_rental) : quoteData.speaker_rental)
+                          : addons.find(a => a.id === 'speaker_rental' || a.id === 'holiday_speaker_rental');
+                        const hours = speakerRental?.totalHours || speakerRental?.description?.match(/(\d+\.?\d*)\s*hours?/i)?.[1] || '4';
+                        return (
+                          <>
+                            <li>Professional speaker system with built-in mixer</li>
+                            <li>Microphone input capability</li>
+                            <li>All necessary cables and connectors</li>
+                            <li>Equipment setup and breakdown</li>
+                            <li>Rental period: Up to {hours} hours (additional hours available at $100/hour)</li>
+                          </>
+                        );
+                      })()}
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <p className="text-gray-700 dark:text-gray-300 mb-4">
+                  Services shall consist primarily of providing musical entertainment by means of a recorded music format.
+                </p>
+              )}
 
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">2. PERFORMANCE OF SERVICES</h2>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                <strong>a.</strong> M10 shall arrive at the event location one hour before the starting time to set-up and conduct sound check. M10&apos;s playlist shall have an unlimited playlist of songs from both latest and old classics. M10 shall incorporate guest&apos;s requests into the playlist unless otherwise directed by Client. Music shall be played without any breaks unless requested by Client. Time is of the essence. Requests for extended playing time beyond the agreed-upon hours of service shall be accommodated if feasible.
-              </p>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                <strong>b.</strong> M10 shall be familiar with indoor and outdoor set-up and sound mixing. M10 shall provide multi-color lighting for a ball room effect. M10 shall have high quality microphone and sound system.
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">2. {isEquipmentRental ? 'EQUIPMENT DELIVERY AND SETUP' : 'PERFORMANCE OF SERVICES'}</h2>
+              {isEquipmentRental ? (
+                <>
+                  <p className="text-gray-700 dark:text-gray-300 mb-4">
+                    <strong>a.</strong> M10 shall deliver the equipment to the event location at a time agreed upon by both parties, typically one hour before the event start time. M10 will set up all equipment, conduct a sound check, and ensure all systems are functioning properly before the event begins.
+                  </p>
+                  <p className="text-gray-700 dark:text-gray-300 mb-4">
+                    <strong>b.</strong> Client is responsible for providing a suitable location for equipment setup with access to electrical power. Client agrees to use the equipment in a safe and responsible manner and to notify M10 immediately of any equipment malfunctions or issues.
+                  </p>
+                  <p className="text-gray-700 dark:text-gray-300 mb-4">
+                    <strong>c.</strong> M10 will return to the event location after the event concludes to remove all equipment. Equipment must be returned in the same condition as delivered, normal wear and tear excepted. Client is responsible for any damage, loss, or theft of equipment during the rental period.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-700 dark:text-gray-300 mb-4">
+                    <strong>a.</strong> M10 shall arrive at the event location one hour before the starting time to set-up and conduct sound check. M10&apos;s playlist shall have an unlimited playlist of songs from both latest and old classics. M10 shall incorporate guest&apos;s requests into the playlist unless otherwise directed by Client. Music shall be played without any breaks unless requested by Client. Time is of the essence. Requests for extended playing time beyond the agreed-upon hours of service shall be accommodated if feasible.
+                  </p>
+                  <p className="text-gray-700 dark:text-gray-300 mb-4">
+                    <strong>b.</strong> M10 shall be familiar with indoor and outdoor set-up and sound mixing. M10 shall provide multi-color lighting for a ball room effect. M10 shall have high quality microphone and sound system.
+                  </p>
+                </>
+              )}
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">3. TERM</h2>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
@@ -1439,7 +1527,7 @@ export default function ContractPage() {
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-6">
                     <p className="text-blue-800 dark:text-blue-200 font-semibold mb-2">Ready to Sign?</p>
                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                      By clicking &quot;Sign Contract&quot; below, you agree to the terms and conditions outlined in this contract.
+                      By clicking &quot;Review & Sign&quot; below, you can review and edit your information one final time before signing the contract.
                     </p>
                   </div>
                 )}
@@ -1504,7 +1592,7 @@ export default function ContractPage() {
                       ) : (
                         <>
                           <PenTool className="w-5 h-5" />
-                          Sign Contract
+                          Review & Sign
                         </>
                       )}
                 </button>
@@ -2269,9 +2357,7 @@ export default function ContractPage() {
                     Total Amount
                   </label>
                   <p className="text-gray-900 dark:text-white font-semibold">
-                    ${(quoteData?.is_custom_price && quoteData?.total_price 
-                      ? quoteData.total_price 
-                      : quoteData?.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
 
@@ -2280,9 +2366,16 @@ export default function ContractPage() {
                     Deposit Required (50%)
                   </label>
                   <p className="text-gray-900 dark:text-white font-semibold">
-                    ${((quoteData?.is_custom_price && quoteData?.total_price 
-                      ? quoteData.total_price 
-                      : quoteData?.total_price || 0) * 0.5).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Remaining Balance
+                  </label>
+                  <p className="text-gray-900 dark:text-white font-semibold">
+                    ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>

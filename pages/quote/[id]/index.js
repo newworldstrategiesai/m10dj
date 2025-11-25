@@ -175,7 +175,8 @@ export default function PersonalizedQuote() {
           setExistingSelection(quoteData);
           
           // Pre-populate selections if they exist
-          if (quoteData.package_id) {
+          // Skip if package_id is 'speaker_rental' (that's handled separately)
+          if (quoteData.package_id && quoteData.package_id !== 'speaker_rental') {
             // Find the actual package object from the packages array
             // We need to determine which package array to search based on event type
             const eventTypeLower = (leadData?.eventType || leadData?.event_type || '').toLowerCase();
@@ -209,13 +210,49 @@ export default function PersonalizedQuote() {
           }
           
           // Handle speaker rental if present
-          if (quoteData.speaker_rental) {
+          // Check if package_id is 'speaker_rental' or if speaker_rental field exists
+          if (quoteData.package_id === 'speaker_rental' || quoteData.speaker_rental) {
             try {
-              const speakerRental = typeof quoteData.speaker_rental === 'string' 
-                ? JSON.parse(quoteData.speaker_rental) 
-                : quoteData.speaker_rental;
-              setSelectedSpeakerRental(speakerRental);
-              console.log('✅ Loaded existing speaker rental:', speakerRental);
+              let speakerRental = null;
+              
+              // First try to get from speaker_rental field
+              if (quoteData.speaker_rental) {
+                speakerRental = typeof quoteData.speaker_rental === 'string' 
+                  ? JSON.parse(quoteData.speaker_rental) 
+                  : quoteData.speaker_rental;
+              } else {
+                // If package_id is 'speaker_rental', check addons for speaker rental details
+                const addons = quoteData.addons || [];
+                const speakerRentalAddon = addons.find(a => 
+                  a.id === 'speaker_rental' || 
+                  a.id === 'holiday_speaker_rental' ||
+                  (a.name && a.name.toLowerCase().includes('speaker rental'))
+                );
+                
+                if (speakerRentalAddon) {
+                  speakerRental = {
+                    id: speakerRentalAddon.id,
+                    name: speakerRentalAddon.name || quoteData.package_name,
+                    price: speakerRentalAddon.price || quoteData.package_price,
+                    startTime: speakerRentalAddon.startTime,
+                    endTime: speakerRentalAddon.endTime,
+                    totalHours: speakerRentalAddon.totalHours
+                  };
+                } else {
+                  // Fallback: create from package_name and package_price
+                  speakerRental = {
+                    id: 'speaker_rental',
+                    name: quoteData.package_name || 'Speaker Setup Rental',
+                    price: quoteData.package_price || 0,
+                    totalHours: 4
+                  };
+                }
+              }
+              
+              if (speakerRental) {
+                setSelectedSpeakerRental(speakerRental);
+                console.log('✅ Loaded existing speaker rental:', speakerRental);
+              }
             } catch (e) {
               console.error('Error parsing speaker rental:', e);
             }
@@ -2057,7 +2094,7 @@ export default function PersonalizedQuote() {
       if (id === 'fallback' || !id || id === 'null' || id === 'undefined') {
         // Store selections in localStorage as backup
         const quoteData = {
-          packageId: selectedPackage?.id || null,
+          packageId: selectedPackage?.id || (selectedSpeakerRental ? 'speaker_rental' : null),
           packageName: selectedPackage?.name || null,
           speakerRental: selectedSpeakerRental ? {
             id: selectedSpeakerRental.id,
@@ -2088,7 +2125,7 @@ export default function PersonalizedQuote() {
 
       // Ensure we have valid price values
       const packagePrice = selectedPackage?.price ?? 0;
-      const totalPrice = calculateTotal();
+      const calculatedTotal = calculateTotal();
       
       console.log('💾 Saving quote:', {
         leadId: id,
@@ -2100,13 +2137,16 @@ export default function PersonalizedQuote() {
           price: selectedSpeakerRental.price
         } : null,
         selectedAddons: selectedAddons.length,
-        totalPrice: totalPrice,
+        calculatedTotal: calculatedTotal,
         calculateTotalBreakdown: {
           package: selectedPackage?.price || 0,
           speakerRental: selectedSpeakerRental?.price || 0,
           addons: selectedAddons.reduce((sum, a) => sum + (a.price || 0), 0)
         }
       });
+      
+      // Use calculatedTotal as the final total price
+      const finalTotalPrice = calculatedTotal;
 
       // Add timeout to prevent hanging
       const controller = new AbortController();
@@ -2116,7 +2156,8 @@ export default function PersonalizedQuote() {
       const effectivePackage = getEffectivePackage();
       const packageData = {
         leadId: id,
-        packageId: effectivePackage?.id || null,
+        // Use 'speaker_rental' as package_id when speaker rental is selected (database requires NOT NULL)
+        packageId: effectivePackage?.id || (selectedSpeakerRental ? 'speaker_rental' : null),
         packageName: effectivePackage?.name || (selectedSpeakerRental ? selectedSpeakerRental.name : null),
         packagePrice: effectivePackage?.price || (selectedSpeakerRental ? selectedSpeakerRental.price : 0),
         speakerRental: selectedSpeakerRental ? {
@@ -2128,8 +2169,13 @@ export default function PersonalizedQuote() {
           totalHours: selectedSpeakerRental.totalHours
         } : null,
         addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
-        totalPrice: totalPrice
+        totalPrice: finalTotalPrice
       };
+      
+      console.log('💾 Final package data with corrected total:', {
+        ...packageData,
+        totalPrice: finalTotalPrice
+      });
       
       console.log('💾 Package data being saved:', {
         ...packageData,
@@ -2182,14 +2228,42 @@ export default function PersonalizedQuote() {
           // If the response has data, the save was successful
           // If it only has logged: true, the database save might have failed
           if (result.data) {
-            console.log('✅ Quote data saved to database:', result.data);
+            console.log('✅ Quote data saved to database:', {
+              id: result.data.id,
+              lead_id: result.data.lead_id,
+              total_price: result.data.total_price,
+              package_name: result.data.package_name
+            });
           } else if (result.logged) {
             console.warn('⚠️ Quote was logged but may not have been saved to database');
+            console.warn('⚠️ Error:', result.error);
+            // If there was an error, wait longer and try to verify the quote was saved
+            console.log('⏳ Waiting 2 seconds and verifying quote was saved...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Try to fetch the quote to verify it was saved
+            try {
+              const verifyResponse = await fetch(`/api/quote/${id}?_t=${Date.now()}`);
+              if (verifyResponse.ok) {
+                const verifyQuote = await verifyResponse.json();
+                console.log('✅ Quote verified in database:', {
+                  total_price: verifyQuote.total_price,
+                  package_name: verifyQuote.package_name
+                });
+              } else {
+                console.error('❌ Quote not found after save - database save may have failed');
+                alert('There was an issue saving your quote. Please try again or contact support.');
+                setSaving(false);
+                return;
+              }
+            } catch (verifyError) {
+              console.error('❌ Error verifying quote:', verifyError);
+            }
+          } else {
+            // Add a small delay to ensure database commit before redirecting
+            console.log('⏳ Waiting 500ms before redirecting to ensure database commit...');
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
-          
-          // Add a small delay to ensure database commit before redirecting
-          console.log('⏳ Waiting 500ms before redirecting to ensure database commit...');
-          await new Promise(resolve => setTimeout(resolve, 500));
           
           console.log('🔄 Redirecting to confirmation...');
         } else {
@@ -3003,15 +3077,15 @@ export default function PersonalizedQuote() {
           </section>
           )}
 
-          {/* Speaker Rental Section for Holiday Parties Only (Not for Weddings) */}
-          {isHoliday && !isWedding && (!existingSelection || showEditMode || contractSigned) && (
+          {/* Speaker Rental Section for Non-Wedding Events Only */}
+          {!isWedding && (!existingSelection || showEditMode || contractSigned) && (
             <section className="mb-12">
               <h2 className="text-3xl font-bold text-center mb-4">
                 <Music className={`inline w-8 h-8 ${getThemeText()} mr-2`} />
                 Speaker Rental
               </h2>
               <p className="text-center text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
-                Need sound equipment for your holiday celebration? Our speaker rental is perfect for outdoor events, separate areas, or when you need audio coverage.
+                Need sound equipment for your event? Our speaker rental is perfect for outdoor events, separate areas, or when you need audio coverage. Available for all event types except weddings.
               </p>
               <div className="max-w-md mx-auto">
                 <div
@@ -3092,7 +3166,17 @@ export default function PersonalizedQuote() {
             </p>
             <div className="grid md:grid-cols-2 gap-4">
               {addons
-                .filter(addon => !isHoliday || (!addon.id.includes('speaker') && addon.id !== 'holiday_speaker_rental'))
+                .filter(addon => {
+                  // Exclude speaker rental from regular addons (it's a standalone selection)
+                  if (addon.id === 'speaker_rental' || addon.id === 'holiday_speaker_rental') {
+                    return false;
+                  }
+                  // For holiday parties, also filter out other speaker-related addons
+                  if (isHoliday && addon.id.includes('speaker')) {
+                    return false;
+                  }
+                  return true;
+                })
                 .map((addon) => {
                 const isSelected = selectedAddons.find(a => a.id === addon.id);
                 return (

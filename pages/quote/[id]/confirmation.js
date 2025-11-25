@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
-import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard, Music } from 'lucide-react';
+import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard, Music, AlertCircle } from 'lucide-react';
 
 export default function ConfirmationPage() {
   const router = useRouter();
@@ -49,11 +49,16 @@ export default function ConfirmationPage() {
       } else if (quoteResponse.status === 404 && retryCount < 3) {
         // Quote not found - might be a timing issue, retry after a short delay
         console.log(`⚠️ Quote not found, retrying... (attempt ${retryCount + 1}/3)`);
-        setTimeout(() => {
-          fetchData(retryCount + 1);
+        // Don't set loading to false yet - we're retrying
+        // Schedule retry but don't return - let the finally block handle loading state
+        setTimeout(async () => {
+          await fetchData(retryCount + 1);
         }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
+        // Continue to finally block to set loading to false for this attempt
       } else if (quoteResponse.status === 404) {
         console.error('❌ Quote not found after retries');
+        // Set quoteData to null so the page can render the "no quote" message
+        setQuoteData(null);
       }
 
       // Check for actual payment records
@@ -188,6 +193,36 @@ export default function ConfirmationPage() {
           <div className="flex flex-col items-center justify-center min-h-[60vh] py-20">
             <Loader2 className="w-12 h-12 text-brand animate-spin mb-4" />
             <p className="text-xl text-gray-600 dark:text-gray-300">Confirming your booking...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // If no quote data after loading, show message
+  if (!quoteData && !loading) {
+    return (
+      <>
+        <Head>
+          <title>Quote Not Found | M10 DJ Company</title>
+          <meta name="robots" content="noindex, nofollow" />
+        </Head>
+        <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+          <Header />
+          <div className="flex flex-col items-center justify-center min-h-[60vh] py-20">
+            <AlertCircle className="w-16 h-16 text-yellow-500 mb-4" />
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Quote Not Found</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-4 text-center max-w-md">
+              We couldn't find your quote. Please make sure you've selected your services first.
+            </p>
+            {id && (
+              <Link 
+                href={`/quote/${id}`}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                Go to Quote Page
+              </Link>
+            )}
           </div>
         </div>
       </>

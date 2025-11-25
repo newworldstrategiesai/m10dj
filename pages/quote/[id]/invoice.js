@@ -713,13 +713,13 @@ export default function InvoicePage() {
       const itemPrice = item.bundledPrice !== undefined ? item.bundledPrice : (Number(item.price) || 0);
       return sum + itemPrice;
     }, 0);
-    const addonsTotal = addons.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
+    
     // Package price is the bundled price from the database
     const packagePrice = isEditing && editingQuote?.editedPackagePrice 
       ? Number(editingQuote.editedPackagePrice) 
       : (quoteData?.package_price || 0);
     
-    // Include speaker rental if present
+    // Include speaker rental if present (check both speaker_rental field and addons)
     let speakerRentalPrice = 0;
     if (quoteData?.speaker_rental) {
       try {
@@ -730,9 +730,29 @@ export default function InvoicePage() {
       } catch (e) {
         console.error('Error parsing speaker rental:', e);
       }
+    } else {
+      // Check addons for speaker rental (it might be stored there)
+      const speakerRentalAddon = addons.find(addon => 
+        addon.id === 'speaker_rental' || 
+        addon.id === 'holiday_speaker_rental' ||
+        (addon.name && addon.name.toLowerCase().includes('speaker rental'))
+      );
+      if (speakerRentalAddon) {
+        speakerRentalPrice = Number(speakerRentalAddon.price) || 0;
+      }
     }
     
-    // Use package price + speaker rental for subtotal (bundled prices should already sum to this)
+    // Calculate addons total, EXCLUDING speaker rental (to avoid double-counting)
+    const addonsTotal = addons
+      .filter(addon => {
+        // Exclude speaker rental from addons total since it's counted separately
+        return addon.id !== 'speaker_rental' && 
+               addon.id !== 'holiday_speaker_rental' &&
+               !(addon.name && addon.name.toLowerCase().includes('speaker rental'));
+      })
+      .reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
+    
+    // Use package price + speaker rental + other addons for subtotal
     const subtotal = packagePrice + speakerRentalPrice + addonsTotal;
     
     // Calculate discount
@@ -1433,15 +1453,25 @@ export default function InvoicePage() {
                         </td>
                       </tr>
                       )}
-                      {/* Add-ons */}
-                      {addons && addons.length > 0 && (
+                      {/* Add-ons (excluding speaker rental, which is shown separately) */}
+                      {addons && addons.filter(addon => {
+                        // Exclude speaker rental from addons display since it's shown separately
+                        return addon.id !== 'speaker_rental' && 
+                               addon.id !== 'holiday_speaker_rental' &&
+                               !(addon.name && addon.name.toLowerCase().includes('speaker rental'));
+                      }).length > 0 && (
                         <>
                           <tr className="border-b-2 border-gray-300 dark:border-gray-600">
                             <td colSpan="2" className="py-3 sm:py-4 px-3 sm:px-4">
                               <p className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">Additional Services</p>
                             </td>
                           </tr>
-                          {addons.map((addon, idx) => (
+                          {addons.filter(addon => {
+                            // Exclude speaker rental from addons display
+                            return addon.id !== 'speaker_rental' && 
+                                   addon.id !== 'holiday_speaker_rental' &&
+                                   !(addon.name && addon.name.toLowerCase().includes('speaker rental'));
+                          }).map((addon, idx) => (
                             <tr key={idx} className="border-b border-gray-100 dark:border-gray-700">
                               <td className="py-2 sm:py-3 px-3 sm:px-4">
                                 <div className="pl-2 sm:pl-4">
@@ -1592,13 +1622,23 @@ export default function InvoicePage() {
                         </div>
                       </div>
                     ) : null}
-                    {/* Add-ons Header */}
-                    {quoteData.addons && quoteData.addons.length > 0 && (
+                    {/* Add-ons Header (excluding speaker rental, which is shown separately) */}
+                    {quoteData.addons && quoteData.addons.filter(addon => {
+                      // Exclude speaker rental from addons display since it's shown separately
+                      return addon.id !== 'speaker_rental' && 
+                             addon.id !== 'holiday_speaker_rental' &&
+                             !(addon.name && addon.name.toLowerCase().includes('speaker rental'));
+                    }).length > 0 && (
                       <>
                         <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
                           <p className="font-bold text-gray-900 dark:text-white text-base">Additional Services</p>
                         </div>
-                        {quoteData.addons.map((addon, idx) => (
+                        {quoteData.addons.filter(addon => {
+                          // Exclude speaker rental from addons display
+                          return addon.id !== 'speaker_rental' && 
+                                 addon.id !== 'holiday_speaker_rental' &&
+                                 !(addon.name && addon.name.toLowerCase().includes('speaker rental'));
+                        }).map((addon, idx) => (
                           <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 pl-4">
                             <div className="flex justify-between items-start">
                               <div className="flex-1 pr-2">

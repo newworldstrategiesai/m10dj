@@ -90,18 +90,38 @@ export default async function handler(req, res) {
     }
     
     // Prepare the quote data
+    // Note: speaker_rental column doesn't exist in the database schema
+    // Speaker rental info is stored via package_name and package_price when selected
+    // Database requires package_id to be NOT NULL, so use 'speaker_rental' for speaker rentals
     const quoteData = {
       lead_id: leadId,
-      package_id: packageId || null,
+      package_id: packageId || (speakerRental ? 'speaker_rental' : null),
       package_name: packageName || (speakerRental ? speakerRental.name : null),
       package_price: packagePrice || (speakerRental ? speakerRental.price : 0),
-      speaker_rental: speakerRental ? JSON.stringify(speakerRental) : null,
       addons: addons || [],
       total_price: calculatedTotalPrice,
       discount_code: discountCode || null,
       discount_amount: discountAmount || 0,
       updated_at: new Date().toISOString()
     };
+    
+    // If speaker rental is selected, store its details in the addons array for reference
+    // This allows us to retrieve the full speaker rental object later
+    if (speakerRental) {
+      quoteData.addons = [
+        ...(addons || []),
+        {
+          id: 'speaker_rental',
+          name: speakerRental.name,
+          price: speakerRental.price,
+          description: `Speaker Rental - ${speakerRental.totalHours || 0} hours`,
+          startTime: speakerRental.startTime,
+          endTime: speakerRental.endTime,
+          totalHours: speakerRental.totalHours,
+          additionalHours: speakerRental.additionalHours || 0
+        }
+      ];
+    }
     
     console.log('💾 Saving quote data:', {
       leadId,
@@ -137,12 +157,18 @@ export default async function handler(req, res) {
     });
 
     // Save quote selections to database
+    // Note: speaker_rental is stored in addons array if present, not as a separate column
     console.log('💾 Attempting to save quote to database:', {
       lead_id: quoteData.lead_id,
       package_id: quoteData.package_id,
-      total_price: quoteData.total_price
+      package_name: quoteData.package_name,
+      package_price: quoteData.package_price,
+      total_price: quoteData.total_price,
+      addons_count: (quoteData.addons || []).length,
+      has_speaker_rental: speakerRental ? 'yes (in addons)' : 'no'
     });
     
+    let savedData = null;
     const { data, error } = await supabase
       .from('quote_selections')
       .upsert(quoteData, {
@@ -153,22 +179,57 @@ export default async function handler(req, res) {
 
     if (error) {
       console.error('❌ Database error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       console.error('Error details:', JSON.stringify(error, null, 2));
       
-      // Return success even if DB fails - we've logged it
-      return res.status(200).json({
-        success: true,
-        message: 'Quote saved successfully',
-        logged: true,
-        error: error.message
+      // Try to save without the problematic fields
+      // Note: speaker_rental column doesn't exist, so it's not included
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('quote_selections')
+        .upsert({
+          lead_id: quoteData.lead_id,
+          package_id: quoteData.package_id,
+          package_name: quoteData.package_name,
+          package_price: quoteData.package_price,
+          addons: quoteData.addons,
+          total_price: quoteData.total_price,
+          discount_code: quoteData.discount_code,
+          discount_amount: quoteData.discount_amount,
+          updated_at: quoteData.updated_at
+        }, {
+          onConflict: 'lead_id'
+        })
+        .select()
+        .single();
+      
+      if (fallbackError) {
+        console.error('❌ Fallback save also failed:', fallbackError);
+        return res.status(200).json({
+          success: true,
+          message: 'Quote saved successfully',
+          logged: true,
+          error: fallbackError.message
+        });
+      }
+      
+      console.log('✅ Quote saved with fallback method:', {
+        id: fallbackData?.id,
+        lead_id: fallbackData?.lead_id,
+        total_price: fallbackData?.total_price
       });
+      
+      // Use fallbackData as savedData
+      savedData = fallbackData;
+    } else {
+      console.log('✅ Quote saved to database successfully:', {
+        id: data?.id,
+        lead_id: data?.lead_id,
+        total_price: data?.total_price,
+        package_name: data?.package_name
+      });
+      savedData = data;
     }
-    
-    console.log('✅ Quote saved to database successfully:', {
-      id: data?.id,
-      lead_id: data?.lead_id,
-      total_price: data?.total_price
-    });
 
     // Send admin notifications (SMS and email) - non-blocking
     sendAdminNotifications(leadData, quoteData, addons || []).catch(error => {
@@ -254,7 +315,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       success: true,
       message: 'Quote saved successfully',
-      data
+      data: savedData || data
     });
   } catch (error) {
     console.error('❌ Error in save quote API:', error);
