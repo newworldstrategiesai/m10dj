@@ -49,6 +49,75 @@ export default function VenueAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  /**
+   * Extract searchable terms from a venue name
+   * Handles "The Elliot (formerly At Pin Oak)" -> ["the elliot", "pin oak"]
+   */
+  const extractSearchableTerms = (venueName: string): string[] => {
+    if (!venueName) return [];
+    
+    const terms: string[] = [];
+    const normalized = venueName.toLowerCase().trim();
+    
+    // Extract main name (remove parenthetical content)
+    const mainName = normalized.replace(/\s*\([^)]*\)\s*/g, '').trim();
+    if (mainName) {
+      terms.push(mainName);
+    }
+    
+    // Extract "formerly" names from parentheses
+    const formerlyMatch = normalized.match(/\(formerly\s+(?:at\s+)?([^)]+)\)/i);
+    if (formerlyMatch && formerlyMatch[1]) {
+      const formerlyName = formerlyMatch[1].trim().replace(/^at\s+/i, '').trim();
+      if (formerlyName) {
+        terms.push(formerlyName);
+      }
+    }
+    
+    // Also try to extract any parenthetical content that might be an old name
+    const parentheticalMatch = normalized.match(/\(([^)]+)\)/);
+    if (parentheticalMatch && parentheticalMatch[1]) {
+      const parentheticalContent = parentheticalMatch[1].trim();
+      // If it contains "formerly" or "at", extract the name part
+      if (/formerly|at/i.test(parentheticalContent)) {
+        const namePart = parentheticalContent.replace(/^(?:formerly\s+)?(?:at\s+)?/i, '').trim();
+        if (namePart && namePart.length > 2) {
+          terms.push(namePart);
+        }
+      } else if (parentheticalContent.length > 2) {
+        // If it's not a "formerly" pattern, it might still be searchable
+        terms.push(parentheticalContent);
+      }
+    }
+    
+    return terms.filter(term => term.length >= 2);
+  };
+
+  // Auto-search when component receives a venue name but no address
+  useEffect(() => {
+    if (venueName && !venueAddress && venueName.length >= 3) {
+      // Extract searchable terms and use the most relevant one for search
+      const searchableTerms = extractSearchableTerms(venueName);
+      let searchTerm = venueName;
+      
+      // If we have multiple terms (e.g., "The Elliot (formerly At Pin Oak)"),
+      // prioritize the "formerly" name as it's more likely what Google knows
+      if (searchableTerms.length > 1) {
+        // Use the last term (usually the "formerly" name)
+        searchTerm = searchableTerms[searchableTerms.length - 1];
+      } else if (searchableTerms.length === 1) {
+        searchTerm = searchableTerms[0];
+      }
+      
+      // Only search if we haven't already searched for this venue name
+      const timeoutId = setTimeout(() => {
+        searchVenues(searchTerm);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venueName, venueAddress]);
+
   const searchVenues = async (query: string) => {
     if (!query || query.length < 3) {
       setResults([]);
@@ -59,12 +128,39 @@ export default function VenueAutocomplete({
     setSearching(true);
 
     try {
-      const response = await fetch(`/api/google/venue-lookup?query=${encodeURIComponent(query)}`);
+      // Extract searchable terms from the query (handles "The Elliot (formerly At Pin Oak)")
+      const searchableTerms = extractSearchableTerms(query);
+      
+      // Use the most relevant search term:
+      // 1. If query has parenthetical content, try the "formerly" name first (more likely to find results)
+      // 2. Otherwise, use the main name
+      let searchQuery = query;
+      if (searchableTerms.length > 1) {
+        // If we have multiple terms (main name + formerly name), try the formerly name first
+        // as it's more likely to be the name Google knows
+        searchQuery = searchableTerms[searchableTerms.length - 1]; // Last term is usually the "formerly" name
+      } else if (searchableTerms.length === 1) {
+        searchQuery = searchableTerms[0];
+      }
+      
+      const response = await fetch(`/api/google/venue-lookup?query=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
 
       if (data.success && data.results) {
         setResults(data.results);
         setShowResults(data.results.length > 0);
+        
+        // If we searched with a "formerly" name but got no results, try the main name
+        if (data.results.length === 0 && searchableTerms.length > 1 && searchQuery !== searchableTerms[0]) {
+          // Try searching with the main name
+          const mainNameResponse = await fetch(`/api/google/venue-lookup?query=${encodeURIComponent(searchableTerms[0])}`);
+          const mainNameData = await mainNameResponse.json();
+          
+          if (mainNameData.success && mainNameData.results && mainNameData.results.length > 0) {
+            setResults(mainNameData.results);
+            setShowResults(true);
+          }
+        }
       } else {
         setResults([]);
         setShowResults(false);
@@ -94,8 +190,17 @@ export default function VenueAutocomplete({
   };
 
   const handleSelectVenue = (venue: VenueResult) => {
-    onVenueNameChange(venue.name);
-    onVenueAddressChange(venue.address);
+    // Preserve the original venue name if it exists and has parenthetical content
+    // This handles cases like "The Elliot (formerly At Pin Oak)" where we searched
+    // for "Pin Oak" but want to keep "The Elliot (formerly At Pin Oak)" as the name
+    if (venueName && venueName.includes('(') && venueName.includes(')')) {
+      // Keep the original venue name, only update the address
+      onVenueAddressChange(venue.address);
+    } else {
+      // If no original name with parenthetical content, use the selected venue's name
+      onVenueNameChange(venue.name);
+      onVenueAddressChange(venue.address);
+    }
     setSelectedFromList(true);
     setShowResults(false);
     setResults([]);

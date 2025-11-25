@@ -71,6 +71,41 @@ function areVenuesDuplicates(venue1, venue2) {
 }
 
 /**
+ * Extract all searchable terms from a venue name
+ * Handles "The Elliot (formerly Pin Oak)" -> ["the elliot", "pin oak"]
+ */
+function extractSearchableTerms(venueName) {
+  if (!venueName) return [];
+  
+  const terms = [];
+  const normalized = venueName.toLowerCase().trim();
+  
+  // Extract main name (remove parenthetical content)
+  const mainName = normalized.replace(/\s*\([^)]*\)\s*/g, '').trim();
+  if (mainName) {
+    terms.push(mainName);
+  }
+  
+  // Extract "formerly" names from parentheses
+  const formerlyMatch = normalized.match(/\(formerly\s+([^)]+)\)/i);
+  if (formerlyMatch && formerlyMatch[1]) {
+    terms.push(formerlyMatch[1].trim());
+  }
+  
+  // Also extract any parenthetical content that might be an old name
+  const parentheticalMatch = normalized.match(/\(([^)]+)\)/);
+  if (parentheticalMatch && parentheticalMatch[1] && !parentheticalMatch[1].toLowerCase().includes('formerly')) {
+    // If it's not a "formerly" pattern, it might still be searchable
+    const parentheticalContent = parentheticalMatch[1].trim();
+    if (parentheticalContent.length > 2) {
+      terms.push(parentheticalContent);
+    }
+  }
+  
+  return terms.filter(term => term.length >= 2);
+}
+
+/**
  * Search local preferred_venues database first
  */
 async function searchLocalVenues(query, limit = 5) {
@@ -82,6 +117,7 @@ async function searchLocalVenues(query, limit = 5) {
     const searchTerm = query.toLowerCase().trim();
     
     // Search by venue name (case-insensitive, partial match)
+    // This will match venues where the search term appears in the main name
     const { data: nameMatches, error: nameError } = await supabase
       .from('preferred_venues')
       .select('venue_name, address, city, state, zip_code, venue_type, website, description')
@@ -91,6 +127,28 @@ async function searchLocalVenues(query, limit = 5) {
 
     if (nameError) {
       console.error('Error searching venues by name:', nameError);
+    }
+    
+    // Also search for venues where the search term matches a "formerly" name
+    // We need to fetch all venues and filter them client-side since Supabase
+    // doesn't support searching within parenthetical content easily
+    const { data: allVenues, error: allVenuesError } = await supabase
+      .from('preferred_venues')
+      .select('venue_name, address, city, state, zip_code, venue_type, website, description')
+      .eq('is_active', true)
+      .limit(100); // Get a reasonable number to search through
+    
+    let formerlyMatches = [];
+    if (!allVenuesError && allVenues) {
+      // Filter venues where the search term matches any searchable term
+      formerlyMatches = allVenues.filter(venue => {
+        const searchableTerms = extractSearchableTerms(venue.venue_name);
+        return searchableTerms.some(term => term.includes(searchTerm) || searchTerm.includes(term));
+      });
+      
+      // Remove duplicates that are already in nameMatches
+      const nameMatchIds = new Set((nameMatches || []).map(v => v.venue_name));
+      formerlyMatches = formerlyMatches.filter(v => !nameMatchIds.has(v.venue_name));
     }
 
     // Search by address (case-insensitive, partial match)
@@ -106,7 +164,7 @@ async function searchLocalVenues(query, limit = 5) {
     }
 
     // Combine results and remove duplicates using improved deduplication
-    const allMatches = [...(nameMatches || []), ...(addressMatches || [])];
+    const allMatches = [...(nameMatches || []), ...(formerlyMatches || []), ...(addressMatches || [])];
     const uniqueMatches = [];
 
     allMatches.forEach(venue => {
@@ -181,7 +239,17 @@ export default async function handler(req, res) {
         
         // Use Places API Text Search
         // If it looks like an address, search directly; otherwise search for venue name in Memphis
-        const searchQuery = looksLikeAddress ? query : `${query} Memphis TN`;
+        // Also try searching with "formerly" variations if the query might be an old name
+        // For example, if searching "Pin Oak", also try "Pin Oak Farms" and "Pin Oak Memphis"
+        let searchQuery = looksLikeAddress ? query : `${query} Memphis TN`;
+        
+        // If the query is short and doesn't contain "Memphis" or "TN", try variations
+        if (!looksLikeAddress && query.length < 20 && !/memphis|tn|tennessee/i.test(query)) {
+          // Try with "Farms" suffix (common for venues like "Pin Oak Farms")
+          if (!query.toLowerCase().includes('farms') && !query.toLowerCase().includes('farm')) {
+            searchQuery = `${query} Farms Memphis TN`;
+          }
+        }
         const url = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
         url.searchParams.append('query', searchQuery);
         url.searchParams.append('key', apiKey);

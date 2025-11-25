@@ -30,6 +30,37 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields: to, subject, and content/body are required' });
   }
 
+  // Validate email address before sending
+  const { validateEmail } = require('../../../../utils/form-validator');
+  const emailValidation = validateEmail(emailTo);
+  if (!emailValidation.valid) {
+    console.error('❌ Invalid email address:', emailTo, emailValidation.error);
+    return res.status(400).json({ 
+      error: 'Invalid email address', 
+      details: emailValidation.error 
+    });
+  }
+
+  // Check for test/invalid email patterns that shouldn't be sent
+  const invalidEmailPatterns = [
+    /^test@/i,
+    /@test\./i,
+    /@example\./i,
+    /fake@/i,
+    /temp@/i,
+    /@temp\./i,
+    /@invalid\./i
+  ];
+  
+  const isInvalidEmail = invalidEmailPatterns.some(pattern => pattern.test(emailTo));
+  if (isInvalidEmail) {
+    console.error('❌ Attempted to send to test/invalid email:', emailTo);
+    return res.status(400).json({ 
+      error: 'Cannot send to test or invalid email addresses',
+      details: 'Please use a valid email address'
+    });
+  }
+
   if (!resend) {
     console.error('❌ RESEND_API_KEY is not configured');
     return res.status(500).json({ error: 'Email service not configured. Please set RESEND_API_KEY environment variable.' });

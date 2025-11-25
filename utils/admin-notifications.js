@@ -231,16 +231,18 @@ async function logNotificationToDatabase(eventType, data) {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Try to insert into communication_log table
-    await supabase.from('communication_log').insert({
+    const { error: insertError } = await supabase.from('communication_log').insert({
       contact_id: data.contactId || data.leadId,
       communication_type: 'admin_notification',
       subject: `${eventType}: ${data.leadName || 'Lead'}`,
       notes: JSON.stringify(data),
       created_at: new Date().toISOString()
-    }).catch(err => {
-      // Table might not exist, that's okay
-      console.log('Could not log to communication_log:', err.message);
     });
+    
+    if (insertError) {
+      // Table might not exist, that's okay
+      console.log('Could not log to communication_log:', insertError.message);
+    }
   } catch (error) {
     console.error('Error logging notification to database:', error);
   }

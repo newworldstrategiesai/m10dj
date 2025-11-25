@@ -130,7 +130,7 @@ export default async function handler(req, res) {
       // Add-on pricing map
       const addOnPrices = {
         'additional_hour': { name: 'Additional Hour(s)', price: 300 },
-        'additional_speaker': { name: 'Additional Speaker', price: 250 },
+        'additional_speaker': { name: 'Cocktail Hour Audio', price: 250 },
         'dancing_clouds': { name: 'Dancing on the Clouds', price: 500 },
         'cold_spark': { name: 'Cold Spark Fountain Effect', price: 600 },
         'monogram': { name: 'Monogram Projection', price: 350 },

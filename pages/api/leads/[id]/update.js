@@ -80,6 +80,8 @@ export default async function handler(req, res) {
         contactUpdate.phone = updateData.phone;
       }
 
+      console.log('Updating contact with:', contactUpdate);
+      
       const { data: updatedContact, error: updateError } = await supabase
         .from('contacts')
         .update(contactUpdate)
@@ -92,6 +94,13 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to update contact', details: updateError.message });
       }
 
+      if (!updatedContact) {
+        console.error('No contact returned from update');
+        return res.status(404).json({ error: 'Contact not found after update' });
+      }
+
+      console.log('Contact updated successfully:', updatedContact.id, 'event_date:', updatedContact.event_date);
+
       return res.status(200).json({
         success: true,
         data: {
@@ -100,7 +109,9 @@ export default async function handler(req, res) {
           email: updatedContact.email_address,
           eventDate: updatedContact.event_date,
           eventTime: updatedContact.event_time,
-          venueAddress: updatedContact.venue_address
+          venue_name: updatedContact.venue_name,
+          venue_address: updatedContact.venue_address,
+          venueAddress: updatedContact.venue_address // Keep for backward compatibility
         }
       });
     }
@@ -188,7 +199,9 @@ export default async function handler(req, res) {
         email: updatedSubmission.email,
         eventDate: updatedSubmission.event_date,
         eventTime: updatedSubmission.event_time,
-        venueAddress: updatedSubmission.location // For submissions, location is the address
+        venue_name: updatedSubmission.venue_name,
+        venue_address: updatedSubmission.location, // For submissions, location is the address
+        venueAddress: updatedSubmission.location // Keep for backward compatibility
       }
     });
   } catch (error) {

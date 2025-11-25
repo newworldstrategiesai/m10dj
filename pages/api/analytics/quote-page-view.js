@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       // Get contact_id from quote_id (they might be the same)
       const contactId = quote_id;
       
-      await supabase
+      const { error: pageViewError } = await supabase
         .from('quote_page_views')
         .insert({
           contact_id: contactId,
@@ -56,11 +56,12 @@ export default async function handler(req, res) {
           event_type: 'page_view',
           metadata: metadata || {},
           created_at: new Date().toISOString()
-        })
-        .catch(err => {
-          // Table might not exist yet, that's okay
-          console.log('Could not log to quote_page_views:', err.message);
         });
+      
+      if (pageViewError) {
+        // Table might not exist yet, that's okay
+        console.log('Could not log to quote_page_views:', pageViewError.message);
+      }
     }
 
     if (error) {

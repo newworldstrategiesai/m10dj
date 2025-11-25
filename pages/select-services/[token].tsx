@@ -191,7 +191,7 @@ export default function SelectServicesPage() {
 
   const addOns = [
     { id: 'additional_hour', name: 'Additional Hour(s)', price: '$300' },
-    { id: 'additional_speaker', name: 'Additional Speaker', price: '$250' },
+    { id: 'additional_speaker', name: 'Cocktail Hour Audio', price: '$250' },
     { id: 'dancing_clouds', name: 'Dancing on the Clouds', price: '$500' },
     { id: 'cold_spark', name: 'Cold Spark Fountain Effect', price: '$600' },
     { id: 'monogram', name: 'Monogram Projection', price: '$350' },
@@ -377,7 +377,7 @@ export default function SelectServicesPage() {
 
     const addOnDetails = {
       'additional_hour': { name: 'Additional Hour(s)', price: '$300' },
-      'additional_speaker': { name: 'Additional Speaker', price: '$250' },
+      'additional_speaker': { name: 'Cocktail Hour Audio', price: '$250' },
       'dancing_clouds': { name: 'Dancing on the Clouds', price: '$500' },
       'cold_spark': { name: 'Cold Spark Fountain Effect', price: '$600' },
       'monogram': { name: 'Monogram Projection', price: '$350' },
