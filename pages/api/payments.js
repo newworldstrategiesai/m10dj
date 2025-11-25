@@ -54,13 +54,53 @@ export default async function handler(req, res) {
     }
 
     if (contact_id) {
-      query = query.eq('contact_id', contact_id);
+      // First, check if this is actually a contact_id or if it's a quote/lead ID
+      // Try to find the actual contact_id from contact_submissions or quote_selections
+      const { data: submission } = await supabaseAdmin
+        .from('contact_submissions')
+        .select('id, contact_id')
+        .eq('id', contact_id)
+        .single();
+      
+      if (submission && submission.contact_id) {
+        // Found a contact_id from the submission
+        query = query.eq('contact_id', submission.contact_id);
+      } else {
+        // Check if it's already a contact_id
+        const { data: contact } = await supabaseAdmin
+          .from('contacts')
+          .select('id')
+          .eq('id', contact_id)
+          .single();
+        
+        if (contact) {
+          query = query.eq('contact_id', contact_id);
+        } else {
+          // If neither works, try using the ID directly (for backward compatibility)
+          query = query.eq('contact_id', contact_id);
+        }
+      }
     }
 
-    if (quote_id) {
-      // If quote_id is provided, we might need to find payments via quote_selections
-      // For now, we'll use contact_id primarily
-      query = query.eq('contact_id', quote_id);
+    if (quote_id && !contact_id) {
+      // If quote_id is provided without contact_id, try to find contact via quote_selections
+      const { data: quoteSelection } = await supabaseAdmin
+        .from('quote_selections')
+        .select('contact_submission_id')
+        .eq('id', quote_id)
+        .single();
+      
+      if (quoteSelection && quoteSelection.contact_submission_id) {
+        const { data: submission } = await supabaseAdmin
+          .from('contact_submissions')
+          .select('contact_id')
+          .eq('id', quoteSelection.contact_submission_id)
+          .single();
+        
+        if (submission && submission.contact_id) {
+          query = query.eq('contact_id', submission.contact_id);
+        }
+      }
     }
 
     const { data: payments, error } = await query;

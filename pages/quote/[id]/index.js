@@ -519,8 +519,166 @@ export default function PersonalizedQuote() {
 
   // Determine event type from lead data (before early returns to ensure hooks can use it)
   const eventType = leadData?.eventType || leadData?.event_type || 'wedding';
-  const isCorporate = eventType?.toLowerCase().includes('corporate') || eventType?.toLowerCase().includes('business');
-  const isSchool = eventType?.toLowerCase().includes('school') || eventType?.toLowerCase().includes('dance') || eventType?.toLowerCase().includes('prom') || eventType?.toLowerCase().includes('homecoming');
+  const eventTypeLower = eventType?.toLowerCase() || '';
+  const isCorporate = eventTypeLower.includes('corporate') || eventTypeLower.includes('business');
+  const isSchool = eventTypeLower.includes('school') || eventTypeLower.includes('dance') || eventTypeLower.includes('prom') || eventTypeLower.includes('homecoming');
+  const isHoliday = eventTypeLower.includes('holiday') || eventTypeLower.includes('christmas') || eventTypeLower.includes('new year') || eventTypeLower.includes('thanksgiving') || eventTypeLower.includes('halloween');
+  const isPrivateParty = (eventTypeLower.includes('private') || eventTypeLower.includes('party')) && !isHoliday && !isSchool;
+
+  // Determine holiday theme based on event date
+  const getHolidayTheme = useCallback(() => {
+    if (!isHoliday || !leadData?.eventDate && !leadData?.event_date) {
+      return null; // Default theme
+    }
+
+    const eventDateStr = leadData.eventDate || leadData.event_date;
+    if (!eventDateStr) return null;
+
+    try {
+      const eventDate = new Date(eventDateStr);
+      const month = eventDate.getMonth() + 1; // 1-12
+      const day = eventDate.getDate(); // 1-31
+
+      // Halloween: October 1 - November 1
+      if (month === 10 || (month === 11 && day <= 1)) {
+        return {
+          name: 'halloween',
+          primary: '#f97316', // Orange
+          secondary: '#1f2937', // Dark gray/black
+          accent: '#fbbf24', // Amber
+          gradient: 'from-orange-500 to-amber-600',
+          bgGradient: 'from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20',
+          textColor: 'text-orange-600 dark:text-orange-400',
+          bgColor: 'bg-orange-500',
+          hoverColor: 'hover:bg-orange-600',
+          borderColor: 'border-orange-300 dark:border-orange-700'
+        };
+      }
+
+      // Thanksgiving: November (especially around Thanksgiving Day - 4th Thursday)
+      if (month === 11) {
+        return {
+          name: 'thanksgiving',
+          primary: '#d97706', // Amber
+          secondary: '#92400e', // Brown
+          accent: '#f59e0b', // Golden
+          gradient: 'from-amber-600 to-orange-700',
+          bgGradient: 'from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20',
+          textColor: 'text-amber-700 dark:text-amber-400',
+          bgColor: 'bg-amber-600',
+          hoverColor: 'hover:bg-amber-700',
+          borderColor: 'border-amber-300 dark:border-amber-700'
+        };
+      }
+
+      // Christmas: December 1 - January 6 (Epiphany)
+      if (month === 12 || (month === 1 && day <= 6)) {
+        return {
+          name: 'christmas',
+          primary: '#dc2626', // Red
+          secondary: '#16a34a', // Green
+          accent: '#fbbf24', // Gold
+          gradient: 'from-red-600 to-green-600',
+          bgGradient: 'from-red-50 to-green-50 dark:from-red-900/20 dark:to-green-900/20',
+          textColor: 'text-red-600 dark:text-red-400',
+          bgColor: 'bg-red-600',
+          hoverColor: 'hover:bg-red-700',
+          borderColor: 'border-red-300 dark:border-red-700'
+        };
+      }
+
+      // New Year: Late December - Early January
+      if ((month === 12 && day >= 20) || (month === 1 && day <= 10)) {
+        return {
+          name: 'newyear',
+          primary: '#1e40af', // Blue
+          secondary: '#fbbf24', // Gold
+          accent: '#60a5fa', // Light blue
+          gradient: 'from-blue-600 to-indigo-700',
+          bgGradient: 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20',
+          textColor: 'text-blue-600 dark:text-blue-400',
+          bgColor: 'bg-blue-600',
+          hoverColor: 'hover:bg-blue-700',
+          borderColor: 'border-blue-300 dark:border-blue-700'
+        };
+      }
+
+      // Valentine's Day: February
+      if (month === 2) {
+        return {
+          name: 'valentines',
+          primary: '#e11d48', // Pink/Red
+          secondary: '#f43f5e', // Rose
+          accent: '#fda4af', // Light pink
+          gradient: 'from-pink-500 to-rose-600',
+          bgGradient: 'from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20',
+          textColor: 'text-pink-600 dark:text-pink-400',
+          bgColor: 'bg-pink-500',
+          hoverColor: 'hover:bg-pink-600',
+          borderColor: 'border-pink-300 dark:border-pink-700'
+        };
+      }
+
+      // St. Patrick's Day: March
+      if (month === 3) {
+        return {
+          name: 'stpatricks',
+          primary: '#16a34a', // Green
+          secondary: '#15803d', // Dark green
+          accent: '#86efac', // Light green
+          gradient: 'from-green-500 to-emerald-600',
+          bgGradient: 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20',
+          textColor: 'text-green-600 dark:text-green-400',
+          bgColor: 'bg-green-500',
+          hoverColor: 'hover:bg-green-600',
+          borderColor: 'border-green-300 dark:border-green-700'
+        };
+      }
+
+      // Fourth of July: July
+      if (month === 7) {
+        return {
+          name: 'july4th',
+          primary: '#dc2626', // Red
+          secondary: '#1e40af', // Blue
+          accent: '#fbbf24', // Gold
+          gradient: 'from-red-600 to-blue-600',
+          bgGradient: 'from-red-50 to-blue-50 dark:from-red-900/20 dark:to-blue-900/20',
+          textColor: 'text-red-600 dark:text-red-400',
+          bgColor: 'bg-red-600',
+          hoverColor: 'hover:bg-red-700',
+          borderColor: 'border-red-300 dark:border-red-700'
+        };
+      }
+
+      // Default holiday theme (fallback)
+      return {
+        name: 'holiday',
+        primary: '#f59e0b', // Amber
+        secondary: '#d97706', // Orange
+        accent: '#fbbf24', // Gold
+        gradient: 'from-amber-500 to-orange-600',
+        bgGradient: 'from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20',
+        textColor: 'text-amber-600 dark:text-amber-400',
+        bgColor: 'bg-amber-500',
+        hoverColor: 'hover:bg-amber-600',
+        borderColor: 'border-amber-300 dark:border-amber-700'
+      };
+    } catch (error) {
+      console.error('Error parsing event date for holiday theme:', error);
+      return null;
+    }
+  }, [isHoliday, leadData?.eventDate, leadData?.event_date]);
+
+  const holidayTheme = getHolidayTheme();
+
+  // Helper functions to get themed colors (fallback to brand colors if no theme)
+  const getThemeBg = () => holidayTheme ? holidayTheme.bgColor : 'bg-brand';
+  const getThemeText = () => holidayTheme ? holidayTheme.textColor : 'text-brand';
+  const getThemeHover = () => holidayTheme ? holidayTheme.hoverColor : 'hover:bg-brand-dark';
+  const getThemeBorder = () => holidayTheme ? holidayTheme.borderColor : 'border-brand';
+  const getThemeGradient = () => holidayTheme ? `bg-gradient-to-br ${holidayTheme.gradient}` : 'bg-gradient-to-br from-brand to-brand-dark';
+  const getThemeBgGradient = () => holidayTheme ? `bg-gradient-to-br ${holidayTheme.bgGradient}` : 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900';
 
   // Pricing configuration state
   const [pricingConfig, setPricingConfig] = useState(null);
@@ -726,10 +884,75 @@ export default function PersonalizedQuote() {
     }
   ];
 
+  // Holiday Party Packages
+  const holidayPackages = [
+    {
+      id: 'holiday-basics',
+      name: 'Holiday Essentials',
+      price: 500,
+      aLaCartePrice: 500,
+      description: 'Perfect for Small Holiday Gatherings',
+      features: [
+        'Up to 2 hours of DJ/MC services',
+        'DJ equipment & turntables included',
+        'Holiday music library',
+        'Professional DJ services',
+        'Background music & announcements',
+        'Note: Speakers and lighting must be provided separately or added as add-ons',
+        'Perfect for office parties, family gatherings, and intimate celebrations'
+      ],
+      popular: false
+    },
+    {
+      id: 'holiday-package1',
+      name: 'Holiday Celebration',
+      price: 900,
+      aLaCartePrice: 1000,
+      description: 'Complete Holiday Party Entertainment - Most Popular',
+      features: [
+        'Up to 4 hours of DJ/MC services',
+        'Speakers & microphones included',
+        'Holiday Dance Floor Lighting',
+        'Multi-color LED fixtures with festive colors',
+        'Holiday music library (all genres)',
+        'Professional setup & coordination',
+        'Perfect for medium-sized holiday parties'
+      ],
+      popular: true
+    },
+    {
+      id: 'holiday-package2',
+      name: 'Holiday Premium',
+      price: 1400,
+      aLaCartePrice: 1600,
+      description: 'Premium Holiday Experience with Special Effects',
+      features: [
+        'Up to 4 hours of DJ/MC services',
+        'Speakers & microphones included',
+        'Holiday Dance Floor Lighting',
+        'Festive Uplighting (up to 16 multicolor LED fixtures)',
+        'Holiday-themed venue ambiance',
+        'Holiday music library (all genres)',
+        'Professional setup & coordination',
+        'Photo-ready atmosphere for holiday memories'
+      ],
+      popular: false
+    }
+  ];
+
   // Memoize packages to prevent unnecessary re-renders
+  // Holiday parties have their own specialized packages
   const packages = useMemo(() => {
-    return isSchool ? schoolPackages : (isCorporate ? corporatePackages : weddingPackages);
-  }, [isCorporate, isSchool]);
+    if (isSchool) {
+      return schoolPackages;
+    } else if (isHoliday) {
+      return holidayPackages;
+    } else if (isCorporate || isPrivateParty) {
+      return corporatePackages;
+    } else {
+      return weddingPackages;
+    }
+  }, [isCorporate, isSchool, isHoliday, isPrivateParty]);
 
   // Wedding Addons
   const weddingAddons = [
@@ -805,6 +1028,77 @@ export default function PersonalizedQuote() {
       name: 'Cold Spark Fountain Effect',
       description: 'Dramatic indoor-safe spark effects for grand entrances or special moments. Safe for indoor use, creates stunning visual effects.',
       price: 600
+    }
+  ];
+
+  // Holiday Party Addons (adapted from wedding offerings, themed for holidays)
+  const holidayAddons = [
+    {
+      id: 'holiday_additional_2hours',
+      name: '2 Additional Hours',
+      description: 'Extend your event by 2 hours. Professional DJ and MC services with sound system, microphones, and comprehensive holiday music library. Perfect for longer celebrations.',
+      price: 400
+    },
+    {
+      id: 'holiday_additional_hour',
+      name: '1 Additional Hour',
+      description: 'Extend your event by 1 hour. Professional DJ and MC services with sound system, microphones, and holiday music library.',
+      price: 200,
+      per: 'hour'
+    },
+    {
+      id: 'holiday_dance_floor_lighting',
+      name: 'Holiday Dance Floor Lighting',
+      description: 'Multi-color LED fixtures with festive holiday colors for lighting the dance floor, audience, and/or performer. Creates an energetic holiday atmosphere.',
+      price: 350
+    },
+    {
+      id: 'holiday_uplighting',
+      name: 'Holiday Uplighting (16 fixtures)',
+      description: 'Up to 16 multicolor LED fixtures with festive holiday colors to enhance your venue ambiance. Perfect for creating a warm, celebratory holiday atmosphere.',
+      price: 300
+    },
+    {
+      id: 'holiday_logo_projection',
+      name: 'Holiday Logo/Name Projection',
+      description: 'A custom graphic showing your company name, event theme, or holiday message. Fully customizable fonts and designs. Perfect for projecting on floors or walls at holiday parties.',
+      price: 300
+    },
+    {
+      id: 'holiday_speaker_rental',
+      name: 'Additional Speaker Setup',
+      description: 'Professional speaker system rental with built-in mixer. Perfect for separate areas, outdoor spaces, or multiple rooms at your holiday event. Includes microphone input.',
+      price: 200
+    },
+    {
+      id: 'holiday_uplighting_addon',
+      name: 'Additional Holiday Uplighting',
+      description: 'Additional uplighting fixtures beyond package inclusion (up to 16 fixtures included in base uplighting). Perfect for larger venues.',
+      price: 250
+    },
+    {
+      id: 'holiday_winter_wonderland',
+      name: 'Winter Wonderland Effect',
+      description: 'Sophisticated dry ice effect for special holiday moments. Creates a magical, floor-hugging cloud effect perfect for holiday entrances or special announcements.',
+      price: 400
+    },
+    {
+      id: 'holiday_cold_spark',
+      name: 'Holiday Spark Fountain Effect',
+      description: 'Dramatic indoor-safe spark effects for grand holiday entrances or special moments. Safe for indoor use, creates stunning visual effects that add excitement to your celebration.',
+      price: 450
+    },
+    {
+      id: 'holiday_photo_booth_lighting',
+      name: 'Photo Booth Lighting Package',
+      description: 'Professional lighting setup specifically designed for photo areas. Ensures perfect lighting for holiday party photos and memories.',
+      price: 250
+    },
+    {
+      id: 'holiday_flat_screen',
+      name: 'Flat Screen TV w/ Stand',
+      description: 'Includes a 65" TV mounted on a free-standing column. Great for displaying holiday slideshows, announcements, or visualizers at your event.',
+      price: 300
     }
   ];
 
@@ -964,7 +1258,8 @@ export default function PersonalizedQuote() {
 
   // Memoize addons to prevent unnecessary re-renders
   const addons = useMemo(() => {
-    const defaultAddons = isSchool ? schoolAddons : (isCorporate ? corporateAddons : weddingAddons);
+    // Holiday parties have their own specialized addons
+    const defaultAddons = isSchool ? schoolAddons : (isHoliday ? holidayAddons : (isCorporate || isPrivateParty ? corporateAddons : weddingAddons));
     
     // If we have addons from pricing config, merge them with defaults
     if (activePricing && activePricing.addons && activePricing.addons.length > 0) {
@@ -995,7 +1290,7 @@ export default function PersonalizedQuote() {
     }
     
     return defaultAddons;
-  }, [isCorporate, isSchool, activePricing, weddingAddons, corporateAddons, schoolAddons]);
+  }, [isCorporate, isSchool, isHoliday, isPrivateParty, activePricing, weddingAddons, corporateAddons, schoolAddons, holidayAddons]);
 
   // Auto-select recommended package from URL parameter
   useEffect(() => {
@@ -1080,6 +1375,19 @@ export default function PersonalizedQuote() {
         { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and age-appropriate music library.', price: 945 },
         { item: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the audience, dance floor, and/or performer.', price: 250 },
         { item: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance.', price: 300 }
+      ],
+      // Holiday Package Breakdowns
+      'holiday-basics': [
+        { item: 'Up to 2 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 2 hours. Includes DJ equipment and turntables. Note: Speakers and lighting must be provided separately or added as add-ons.', price: 500 }
+      ],
+      'holiday-package1': [
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and comprehensive holiday music library.', price: 700 },
+        { item: 'Holiday Dance Floor Lighting', description: 'Multi-color LED fixtures with festive holiday colors for lighting the dance floor, audience, and/or performer.', price: 200 }
+      ],
+      'holiday-package2': [
+        { item: '4 Hours DJ/MC Services', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and comprehensive holiday music library.', price: 700 },
+        { item: 'Holiday Dance Floor Lighting', description: 'Multi-color LED fixtures with festive holiday colors for lighting the dance floor, audience, and/or performer.', price: 200 },
+        { item: 'Holiday Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures with festive holiday colors to enhance your venue ambiance.', price: 500 }
       ]
     };
     return breakdowns[packageId] || [];
@@ -1553,7 +1861,7 @@ export default function PersonalizedQuote() {
     <>
       <Head>
         <title>Your Personalized Quote | M10 DJ Company</title>
-          <meta name="description" content={`Personalized ${isCorporate ? 'corporate event' : 'wedding'} DJ quote for ${leadData.name}`} />
+          <meta name="description" content={`Personalized ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'} DJ quote for ${leadData.name}`} />
       </Head>
       {/* Simplified Header with Logo Only */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
@@ -1612,7 +1920,7 @@ export default function PersonalizedQuote() {
                   className="flex items-center gap-3 px-4 py-3 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <FileText className="w-5 h-5 text-brand" />
+                  <FileText className={`w-5 h-5 ${getThemeText()}`} />
                   <span className="font-medium">My Contracts</span>
                 </Link>
                 <Link
@@ -1620,7 +1928,7 @@ export default function PersonalizedQuote() {
                   className="flex items-center gap-3 px-4 py-3 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <FileText className="w-5 h-5 text-brand" />
+                  <FileText className={`w-5 h-5 ${getThemeText()}`} />
                   <span className="font-medium">My Invoices</span>
                 </Link>
                 <Link
@@ -1628,13 +1936,13 @@ export default function PersonalizedQuote() {
                   className="flex items-center gap-3 px-4 py-3 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <Calendar className="w-5 h-5 text-brand" />
+                  <Calendar className={`w-5 h-5 ${getThemeText()}`} />
                   <span className="font-medium">My Events</span>
                 </Link>
                 {outstandingBalance > 0 && (
                   <Link
                     href={`/quote/${id}/payment`}
-                    className="flex items-center gap-3 px-4 py-3 bg-brand hover:bg-brand-dark text-white rounded-lg transition-colors font-semibold shadow-lg"
+                    className={`flex items-center gap-3 px-4 py-3 ${getThemeBg()} ${getThemeHover()} text-white rounded-lg transition-colors font-semibold shadow-lg`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <CheckCircle className="w-5 h-5" />
@@ -1653,12 +1961,12 @@ export default function PersonalizedQuote() {
         <div className="container mx-auto px-4 py-12 max-w-6xl">
           {/* Header Section */}
           <div className="text-center mb-12">
-            <Link href="/" className="inline-flex items-center gap-2 text-brand hover:text-brand-dark mb-6 transition-colors">
+            <Link href="/" className={`inline-flex items-center gap-2 ${getThemeText()} ${holidayTheme ? holidayTheme.hoverColor.replace('bg-', 'hover:text-') : 'hover:text-brand-dark'} mb-6 transition-colors`}>
               <ArrowLeft className="w-4 h-4" />
               Back to Home
             </Link>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Your Personalized {isSchool ? 'School Event' : isCorporate ? 'Corporate Event' : 'Wedding'} Quote
+              Your Personalized {isHoliday ? 'Holiday Party' : isSchool ? 'School Event' : isCorporate ? 'Corporate Event' : 'Wedding'} Quote
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-4 text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-2">
@@ -1705,10 +2013,10 @@ export default function PersonalizedQuote() {
             const displayTotal = calculatedTotal > 0 ? calculatedTotal : (existingSelection.total_price || 0);
             
             return (
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 mb-8 shadow-sm">
+              <div className={`${getThemeBgGradient()} border ${getThemeBorder()} rounded-2xl p-8 mb-8 shadow-sm`}>
                 <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-brand/10 dark:bg-brand/20 rounded-xl flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-brand" />
+                  <div className={`flex-shrink-0 w-12 h-12 ${holidayTheme ? `${holidayTheme.bgColor}/10 dark:${holidayTheme.bgColor}/20` : 'bg-brand/10 dark:bg-brand/20'} rounded-xl flex items-center justify-center`}>
+                    <CheckCircle className={`w-6 h-6 ${getThemeText()}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
@@ -1744,7 +2052,7 @@ export default function PersonalizedQuote() {
                       {outstandingBalance > 0 && (
                         <div className="flex items-center justify-between pt-3 mt-3 border-t-2 border-gray-300 dark:border-gray-600">
                           <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Outstanding Balance</span>
-                          <span className="text-xl font-bold text-brand">
+                          <span className={`text-xl font-bold ${getThemeText()}`}>
                             ${outstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
@@ -1753,7 +2061,7 @@ export default function PersonalizedQuote() {
                     <div className="flex flex-wrap gap-3">
                       <Link
                         href={`/quote/${id}/payment`}
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-dark text-white rounded-xl transition-all text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                        className={`inline-flex items-center justify-center gap-2 px-6 py-3 ${getThemeBg()} ${getThemeHover()} text-white rounded-xl transition-all text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5`}
                       >
                         <CheckCircle className="w-5 h-5" />
                         Make Payment
@@ -1902,7 +2210,7 @@ export default function PersonalizedQuote() {
           {(!existingSelection || showEditMode || contractSigned) && (
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-center mb-4">
-              <Music className="inline w-8 h-8 text-brand mr-2" />
+              <Music className={`inline w-8 h-8 ${getThemeText()} mr-2`} />
               {showEditMode ? 'Edit Your Package Selection' : 'Choose Your Package'}
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
@@ -1961,7 +2269,7 @@ export default function PersonalizedQuote() {
                       {/* Price & Savings - Always Visible */}
                       <div className="mb-4">
                         <div className="flex items-baseline gap-3 mb-2">
-                          <span className="text-4xl font-bold text-brand">
+                          <span className={`text-4xl font-bold ${getThemeText()}`}>
                             ${(adminMode && isSelected && customizedPackage && customizedPackage.id === pkg.id && customizedPackage.price !== customizedPackage.originalPrice)
                               ? customizedPackage.price.toLocaleString()
                               : pkg.price.toLocaleString()}
@@ -2039,7 +2347,7 @@ export default function PersonalizedQuote() {
                               <span>A La Carte Total:</span>
                               <span className="text-gray-500 dark:text-gray-400 line-through">${pkg.aLaCartePrice.toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between text-sm font-bold text-brand mt-1">
+                            <div className={`flex justify-between text-sm font-bold ${getThemeText()} mt-1`}>
                               <span>Package Price:</span>
                               <span>${pkg.price.toLocaleString()}</span>
                             </div>
@@ -2181,7 +2489,7 @@ export default function PersonalizedQuote() {
           {(!existingSelection || showEditMode || contractSigned) && (
           <section id="addons-section" className="mb-12">
             <h2 className="text-3xl font-bold text-center mb-4">
-              <Sparkles className="inline w-8 h-8 text-brand mr-2" />
+              <Sparkles className={`inline w-8 h-8 ${getThemeText()} mr-2`} />
               A La Carte
             </h2>
             <p className="text-center text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">

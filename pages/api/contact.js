@@ -264,6 +264,29 @@ export default async function handler(req, res) {
       submissionData.venueAddress = venueAddress?.trim() || null;
     }
 
+    // Enrich venue information if only address is provided
+    let enrichedVenueInfo = null;
+    if (sanitizedData.location && !venueName && !venueAddress) {
+      // Only address provided - try to enrich with web search
+      console.log('🔍 Detected address-only lead, attempting to enrich venue information...');
+      try {
+        // Import the enrichment utility
+        const { enrichVenueFromAddress } = require('../../utils/venue-enrichment');
+        enrichedVenueInfo = await enrichVenueFromAddress(sanitizedData.location);
+        
+        if (enrichedVenueInfo && enrichedVenueInfo.venue_name) {
+          console.log('✅ Enriched venue name:', enrichedVenueInfo.venue_name);
+          submissionData.venueName = enrichedVenueInfo.venue_name;
+          submissionData.venueAddress = enrichedVenueInfo.venue_address || sanitizedData.location;
+        } else {
+          console.log('ℹ️ No venue name could be extracted from address');
+        }
+      } catch (error) {
+        console.error('❌ Error enriching venue information:', error);
+        // Continue without enrichment - don't fail the submission
+      }
+    }
+
     // Check if there's an existing draft for this email
     const { data: existingDraft } = await supabase
       .from('contact_submissions')
@@ -292,8 +315,8 @@ export default async function handler(req, res) {
             event_time: eventTime || null,
             location: sanitizedData.location,
             message: sanitizedData.message,
-            venue_name: venueName?.trim() || null,
-            venue_address: venueAddress?.trim() || null,
+            venue_name: (enrichedVenueInfo?.venue_name || venueName?.trim() || null),
+            venue_address: (enrichedVenueInfo?.venue_address || venueAddress?.trim() || null),
             guests: req.body.guests || null,
             is_draft: false, // Mark as complete
             status: 'new',
@@ -491,8 +514,8 @@ export default async function handler(req, res) {
       event_type: standardizedEventType,
       event_date: parsedEventDate,
       event_time: parsedEventTime,
-      venue_name: venueName?.trim() || location || null,
-      venue_address: venueAddress?.trim() || null,
+      venue_name: (enrichedVenueInfo?.venue_name || venueName?.trim() || location || null),
+      venue_address: (enrichedVenueInfo?.venue_address || venueAddress?.trim() || null),
       special_requests: message || null,
       lead_status: 'New',
       lead_source: 'Website',
@@ -707,7 +730,8 @@ export default async function handler(req, res) {
             phone: phone || null,
             event_type: standardizedEventType || 'other',
             event_date: parsedEventDate,
-            venue_name: location || null,
+            venue_name: (enrichedVenueInfo?.venue_name || location || null),
+            venue_address: (enrichedVenueInfo?.venue_address || null),
             special_requests: message || null,
             lead_status: 'New',
             lead_source: 'Website',
