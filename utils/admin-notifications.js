@@ -55,6 +55,10 @@ async function sendAdminSMSNotification(eventType, data) {
       message = `🔗 QUOTE PAGE OPENED\n\n${data.leadName || 'Lead'} opened their quote page\nEvent: ${data.eventType || 'N/A'}\nDate: ${data.eventDate || 'N/A'}\nView: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${data.leadId}`;
       break;
     
+    case 'invoice_page_open':
+      message = `📄 INVOICE PAGE OPENED\n\n${data.leadName || 'Client'} opened their invoice\nEvent: ${data.eventType || 'N/A'}\nDate: ${data.eventDate || 'N/A'}\nEmail: ${data.email || 'N/A'}\nView: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${data.leadId}/invoice`;
+      break;
+    
     case 'service_selection':
       message = `📦 SERVICE SELECTION\n\n${data.leadName || 'Lead'} made a selection\nPackage: ${data.packageName || 'N/A'}\nTotal: $${data.totalPrice || '0'}\nView: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${data.leadId}`;
       break;
@@ -124,6 +128,30 @@ async function sendAdminEmailNotification(eventType, data) {
               <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${data.leadId}" 
                  style="background: #fcba00; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                 View Quote Page
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+      break;
+    
+    case 'invoice_page_open':
+      subject = `📄 Invoice Viewed: ${data.leadName || 'Client'}`;
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: #fff; margin: 0;">📄 Invoice Page Opened</h1>
+          </div>
+          <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px;">
+            <p><strong>Client:</strong> ${data.leadName || 'N/A'}</p>
+            <p><strong>Email:</strong> ${data.email || 'N/A'}</p>
+            <p><strong>Event Type:</strong> ${data.eventType || 'N/A'}</p>
+            <p><strong>Event Date:</strong> ${data.eventDate || 'N/A'}</p>
+            <p><strong>Viewed At:</strong> ${new Date().toLocaleString()}</p>
+            <div style="margin-top: 20px; text-align: center;">
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${data.leadId}/invoice" 
+                 style="background: #3b82f6; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                View Invoice
               </a>
             </div>
           </div>

@@ -87,6 +87,22 @@ export default function InvoicePage() {
         console.log('Lead eventDate:', lead.eventDate, 'Type:', typeof lead.eventDate);
         setLeadData(lead);
         
+        // Notify admin that invoice page was opened
+        fetch('/api/admin/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventType: 'invoice_page_open',
+            data: {
+              leadId: id,
+              leadName: lead.name || (lead.first_name && lead.last_name ? `${lead.first_name} ${lead.last_name}`.trim() : lead.first_name || lead.last_name || 'Client'),
+              eventType: lead.eventType || lead.event_type,
+              eventDate: lead.eventDate || lead.event_date,
+              email: lead.email || lead.email_address
+            }
+          })
+        }).catch(err => console.error('Failed to notify admin:', err));
+        
         // Initialize event date editing state
         if (lead.eventDate) {
           // Handle both date string formats (YYYY-MM-DD or ISO string)
@@ -2005,15 +2021,36 @@ export default function InvoicePage() {
           header,
           nav,
           footer,
-          .no-print * {
+          .no-print *,
+          /* Hide chat widgets and fixed position elements */
+          [class*="chat"],
+          [id*="chat"],
+          [class*="widget"],
+          [id*="widget"],
+          [style*="position: fixed"],
+          [style*="position:fixed"],
+          [style*="z-index: 999"],
+          [style*="z-index:999"],
+          [style*="z-index: 1000"],
+          [style*="z-index:1000"] {
             display: none !important;
+            visibility: hidden !important;
           }
           
-          /* Reset page styling */
+          /* Reset page styling - Word-like formatting */
+          @page {
+            margin: 1in !important;
+            size: letter;
+          }
+          
           body {
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
+            font-family: 'Times New Roman', Times, serif !important;
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+            color: #000 !important;
           }
           
           /* Invoice container styling */
@@ -2022,24 +2059,93 @@ export default function InvoicePage() {
             margin: 0 !important;
           }
           
-          /* Invoice document styling */
+          /* Invoice document styling - Word-like margins */
           .max-w-4xl {
             max-width: 100% !important;
             margin: 0 !important;
-            padding: 0.75in !important;
+            padding: 0 !important;
             background: white !important;
             box-shadow: none !important;
             border-radius: 0 !important;
+            font-family: 'Times New Roman', Times, serif !important;
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
           }
           
-          /* Ensure text is black for printing */
+          /* Headings - Word-like sizing */
+          h1 {
+            font-size: 18pt !important;
+            font-weight: bold !important;
+            margin-top: 12pt !important;
+            margin-bottom: 6pt !important;
+            line-height: 1.2 !important;
+          }
+          
+          h2 {
+            font-size: 14pt !important;
+            font-weight: bold !important;
+            margin-top: 10pt !important;
+            margin-bottom: 4pt !important;
+            line-height: 1.2 !important;
+          }
+          
+          h3 {
+            font-size: 12pt !important;
+            font-weight: bold !important;
+            margin-top: 8pt !important;
+            margin-bottom: 4pt !important;
+            line-height: 1.2 !important;
+          }
+          
+          /* Paragraphs - Word-like spacing */
+          p {
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+            margin-top: 0 !important;
+            margin-bottom: 6pt !important;
+          }
+          
+          /* Tables - Word-like formatting */
+          table {
+            font-size: 11pt !important;
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin-top: 6pt !important;
+            margin-bottom: 6pt !important;
+          }
+          
+          th, td {
+            font-size: 11pt !important;
+            padding: 4pt 6pt !important;
+            border: 1pt solid #000 !important;
+            text-align: left !important;
+          }
+          
+          th {
+            font-weight: bold !important;
+            background: white !important;
+          }
+          
+          /* Ensure text is black for printing and remove decorative elements */
           * {
             color: #000 !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            text-shadow: none !important;
           }
           
           /* Keep white backgrounds */
           .bg-white,
-          .bg-gray-50 {
+          .bg-gray-50,
+          .bg-blue-50,
+          .bg-green-50 {
+            background: white !important;
+          }
+          
+          /* Remove all colored backgrounds and borders in print */
+          .bg-brand,
+          .bg-blue-100,
+          .bg-gray-100 {
             background: white !important;
           }
           
@@ -2055,20 +2161,56 @@ export default function InvoicePage() {
             color: #000 !important;
           }
           
+          /* Lists - Word-like formatting */
+          ul, ol {
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+            margin-top: 0 !important;
+            margin-bottom: 6pt !important;
+            padding-left: 24pt !important;
+          }
+          
+          li {
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+            margin-bottom: 3pt !important;
+          }
+          
+          /* Strong and emphasis */
+          strong, b {
+            font-weight: bold !important;
+            font-size: 11pt !important;
+          }
+          
+          /* Links should be black in print */
+          a {
+            color: #000 !important;
+            text-decoration: none !important;
+          }
+          
           /* Page breaks */
           .page-break {
             page-break-before: always;
           }
           
           /* No page breaks inside important sections */
-          h1, h2, h3 {
+          h1, h2, h3, table {
             page-break-after: avoid;
           }
           
-          /* Print-friendly spacing */
-          @page {
-            margin: 0.75in;
-            size: letter;
+          tr {
+            page-break-inside: avoid;
+          }
+          
+          /* Div spacing - Word-like */
+          div {
+            margin-top: 0 !important;
+            margin-bottom: 6pt !important;
+          }
+          
+          /* Remove extra spacing from flex containers */
+          .flex, .grid {
+            gap: 0 !important;
           }
         }
       `}</style>
