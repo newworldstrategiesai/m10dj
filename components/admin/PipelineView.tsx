@@ -69,6 +69,7 @@ const PIPELINE_STAGES = [
   { id: 'Proposal Sent', label: 'Proposal Sent', icon: Send, color: 'bg-yellow-500' },
   { id: 'Negotiating', label: 'Negotiating', icon: TrendingUp, color: 'bg-orange-500' },
   { id: 'Booked', label: 'Booked', icon: CheckCircle, color: 'bg-green-500' },
+  { id: 'Retainer Paid', label: 'Retainer Paid', icon: Receipt, color: 'bg-teal-500' },
   { id: 'Completed', label: 'Completed', icon: CheckSquare, color: 'bg-emerald-600' },
   { id: 'Lost', label: 'Lost', icon: XCircle, color: 'bg-red-500' }
 ];
@@ -77,6 +78,183 @@ const getStageIndex = (status: string | null): number => {
   if (!status) return 0;
   const index = PIPELINE_STAGES.findIndex(s => s.id === status);
   return index >= 0 ? index : 0;
+};
+
+/**
+ * Determines the appropriate pipeline stage based on available data
+ * This allows the pipeline to auto-advance based on actual milestones
+ */
+const determineStageFromData = (
+  contact: Contact,
+  contracts: any[] = [],
+  invoices: any[] = [],
+  payments: any[] = [],
+  quoteSelections: any[] = []
+): string => {
+  // If explicitly marked as Lost or Completed, respect that
+  if (contact.lead_status === 'Lost') return 'Lost';
+  if (contact.lead_status === 'Completed') {
+    // Verify completion is still valid (event date passed, payment received)
+    const eventDate = contact.event_date ? new Date(contact.event_date) : null;
+    const today = new Date();
+    const hasPaidPayment = payments?.some(p => {
+      const status = (p.payment_status || p.status || '').toLowerCase();
+      return status === 'paid' || status === 'succeeded';
+    });
+    
+    // If event date passed and payment received, keep as Completed
+    if (eventDate && eventDate < today && hasPaidPayment) {
+      return 'Completed';
+    }
+  }
+
+  // Check for paid deposit or full payment
+  const hasPaidPayment = payments?.some(p => {
+    const status = (p.payment_status || p.status || '').toLowerCase();
+    return status === 'paid' || status === 'succeeded';
+  });
+  const depositPaid = contact.deposit_paid === true || hasPaidPayment;
+  
+  // Check for signed contract
+  const signedContract = contracts?.some(c => c.status === 'signed' || c.signed_at || c.counter_signed_at);
+  
+  // Check for quote/proposal
+  const hasQuote = quoteSelections && quoteSelections.length > 0;
+  
+  // Check for contract (even if not signed)
+  const hasContract = contracts && contracts.length > 0;
+  
+  // Check for invoice
+  const hasInvoice = invoices && invoices.length > 0;
+  
+  // Check if there's been any contact (email sent, phone call, etc.)
+  const hasBeenContacted = contact.last_contacted_date || 
+                           contact.proposal_sent_date || 
+                           contact.email_address || 
+                           contact.phone;
+
+  // Logic: Work backwards from highest stage
+  // 1. Completed: Event date passed AND payment received
+  if (contact.event_date) {
+    const eventDate = new Date(contact.event_date);
+    const today = new Date();
+    if (eventDate < today && hasPaidPayment) {
+      return 'Completed';
+    }
+  }
+
+  // 2. Retainer Paid: Deposit has been paid
+  if (depositPaid || hasPaidPayment) {
+    return 'Retainer Paid';
+  }
+
+  // 3. Booked: Signed contract OR (contract exists AND invoice exists)
+  if (signedContract || (hasContract && hasInvoice)) {
+    return 'Booked';
+  }
+
+  // 4. Negotiating: Contract exists but not signed, or quote exists with no contract
+  if (hasContract && !signedContract) {
+    return 'Negotiating';
+  }
+
+  // 5. Proposal Sent: Quote exists
+  if (hasQuote) {
+    return 'Proposal Sent';
+  }
+
+  // 6. Qualified: Has quoted price or budget range
+  if (contact.quoted_price || contact.budget_range) {
+    return 'Qualified';
+  }
+
+  // 7. Contacted: Has been contacted in some way
+  if (hasBeenContacted) {
+    return 'Contacted';
+  }
+
+  // 8. Default: New
+  return 'New';
+};
+
+/**
+ * Determines which stages should be marked as completed based on data
+ * Returns an array of stage indices that are completed
+ */
+const getCompletedStages = (
+  contact: Contact,
+  contracts: any[] = [],
+  invoices: any[] = [],
+  payments: any[] = [],
+  quoteSelections: any[] = []
+): number[] => {
+  const completed: number[] = [];
+  const determinedStage = determineStageFromData(contact, contracts, invoices, payments, quoteSelections);
+  const determinedStageIndex = getStageIndex(determinedStage);
+  
+  // All stages before the determined stage are completed
+  for (let i = 0; i < determinedStageIndex; i++) {
+    if (PIPELINE_STAGES[i].id !== 'Lost') {
+      completed.push(i);
+    }
+  }
+  
+  // Also mark specific stages as completed based on data
+  const hasQuote = quoteSelections && quoteSelections.length > 0;
+  const hasContract = contracts && contracts.length > 0;
+  const signedContract = contracts?.some(c => c.status === 'signed' || c.signed_at);
+  const hasPaidPayment = payments?.some(p => {
+    const status = (p.payment_status || p.status || '').toLowerCase();
+    return status === 'paid' || status === 'succeeded';
+  });
+  const depositPaid = contact.deposit_paid === true || hasPaidPayment;
+  const hasBeenContacted = contact.last_contacted_date || contact.proposal_sent_date;
+  
+  // Mark "Proposal Sent" as completed if quote exists OR deposit has been paid
+  // (if they paid, they must have seen a proposal)
+  const proposalSentIndex = PIPELINE_STAGES.findIndex(s => s.id === 'Proposal Sent');
+  if ((hasQuote || hasPaidPayment || depositPaid) && proposalSentIndex >= 0 && !completed.includes(proposalSentIndex)) {
+    completed.push(proposalSentIndex);
+  }
+  
+  // Mark "Retainer Paid" as completed if deposit paid
+  const retainerPaidIndex = PIPELINE_STAGES.findIndex(s => s.id === 'Retainer Paid');
+  if ((hasPaidPayment || depositPaid) && retainerPaidIndex >= 0 && !completed.includes(retainerPaidIndex)) {
+    completed.push(retainerPaidIndex);
+  }
+  
+  // Mark "Booked" as completed if contract signed (retainer paid is separate stage now)
+  const bookedIndex = PIPELINE_STAGES.findIndex(s => s.id === 'Booked');
+  if (signedContract && bookedIndex >= 0 && !completed.includes(bookedIndex)) {
+    completed.push(bookedIndex);
+  }
+  
+  // If deposit is paid, also mark prerequisite stages as completed
+  // (they must have been contacted, qualified, and received a proposal to pay)
+  if (hasPaidPayment || depositPaid) {
+    const contactedIndex = PIPELINE_STAGES.findIndex(s => s.id === 'Contacted');
+    const qualifiedIndex = PIPELINE_STAGES.findIndex(s => s.id === 'Qualified');
+    const negotiatingIndex = PIPELINE_STAGES.findIndex(s => s.id === 'Negotiating');
+    
+    if (contactedIndex >= 0 && !completed.includes(contactedIndex)) {
+      completed.push(contactedIndex);
+    }
+    if (qualifiedIndex >= 0 && !completed.includes(qualifiedIndex)) {
+      completed.push(qualifiedIndex);
+    }
+    // Negotiating is optional, but if they paid, they likely negotiated
+    if (negotiatingIndex >= 0 && !completed.includes(negotiatingIndex)) {
+      completed.push(negotiatingIndex);
+    }
+  }
+  
+  // Mark "Contacted" as completed if there's evidence of contact
+  const contactedIndex = PIPELINE_STAGES.findIndex(s => s.id === 'Contacted');
+  if (hasBeenContacted && contactedIndex >= 0 && !completed.includes(contactedIndex)) {
+    completed.push(contactedIndex);
+  }
+  
+  return completed.sort((a, b) => a - b);
 };
 
 const getNextActions = (contact: Contact, contracts: any[] = [], invoices: any[] = [], payments: any[] = [], quoteSelections: any[] = []): string[] => {
@@ -136,6 +314,12 @@ const getNextActions = (contact: Contact, contracts: any[] = [], invoices: any[]
         actions.push('Send event preparation checklist');
       }
       break;
+    case 'Retainer Paid':
+      actions.push('Confirm event details');
+      actions.push('Send event preparation checklist');
+      actions.push('Schedule planning meeting');
+      actions.push('Collect music preferences');
+      break;
     case 'Completed':
       actions.push('Request feedback/review');
       actions.push('Send thank you message');
@@ -165,22 +349,34 @@ const getNextActions = (contact: Contact, contracts: any[] = [], invoices: any[]
   return actions;
 };
 
-const getProgressPercentage = (contact: Contact, contracts: any[] = [], invoices: any[] = [], payments: any[] = []): number => {
-  const currentStage = contact.lead_status || 'New';
-  const stageIndex = getStageIndex(currentStage);
+const getProgressPercentage = (
+  contact: Contact, 
+  contracts: any[] = [], 
+  invoices: any[] = [], 
+  payments: any[] = [],
+  quoteSelections: any[] = []
+): number => {
+  // Use the determined stage from data, not just the current status
+  const determinedStage = determineStageFromData(contact, contracts, invoices, payments, quoteSelections);
+  const stageIndex = getStageIndex(determinedStage);
   
   // If lost, return 0
-  if (currentStage === 'Lost') return 0;
+  if (determinedStage === 'Lost') return 0;
   
-  // Base progress on stage
+  // Base progress on determined stage (more accurate)
   let progress = (stageIndex / (PIPELINE_STAGES.length - 2)) * 100; // Exclude Lost from calculation
   
-  // Add bonus for key milestones
-  if (contracts && contracts.length > 0) progress += 5;
-  if (contracts?.some(c => c.status === 'signed')) progress += 10;
-  if (invoices && invoices.length > 0) progress += 5;
-  if (payments && payments.length > 0) progress += 10;
-  if (payments?.some(p => p.payment_status === 'Paid')) progress += 10;
+  // Add bonus for key milestones beyond stage
+  const signedContract = contracts?.some(c => c.status === 'signed' || c.signed_at);
+  const hasPaidPayment = payments?.some(p => {
+    const status = (p.payment_status || p.status || '').toLowerCase();
+    return status === 'paid' || status === 'succeeded';
+  });
+  
+  // Additional progress for milestones
+  if (signedContract && determinedStage === 'Booked') progress += 5;
+  if (hasPaidPayment && determinedStage === 'Booked') progress += 5;
+  if (determinedStage === 'Completed') progress = 100;
   
   return Math.min(100, Math.round(progress));
 };
@@ -198,17 +394,65 @@ export default function PipelineView({
   const [deletingQuote, setDeletingQuote] = useState(false);
   const [counterSigning, setCounterSigning] = useState<string | null>(null);
   
+  // Determine the appropriate stage based on data
+  const determinedStage = determineStageFromData(contact, contracts, invoices, payments, quoteSelections);
   const currentStage = contact.lead_status || 'New';
   const currentStageIndex = getStageIndex(currentStage);
-  const progress = getProgressPercentage(contact, contracts, invoices, payments);
+  const determinedStageIndex = getStageIndex(determinedStage);
+  const completedStages = getCompletedStages(contact, contracts, invoices, payments, quoteSelections);
+  const progress = getProgressPercentage(contact, contracts, invoices, payments, quoteSelections);
   const nextActions = getNextActions(contact, contracts, invoices, payments, quoteSelections);
+  
   const hasContract = contracts && contracts.length > 0;
   const signedContract = contracts?.some(c => c.status === 'signed' || c.signed_at);
   const hasInvoice = invoices && invoices.length > 0;
   const hasPayment = payments && payments.length > 0;
-  const paidPayment = payments?.some(p => p.payment_status === 'Paid');
+  const paidPayment = payments?.some(p => {
+    const status = (p.payment_status || p.status || '').toLowerCase();
+    return status === 'paid' || status === 'succeeded';
+  });
+  const depositPaid = contact.deposit_paid === true || paidPayment;
   const hasQuote = quoteSelections && quoteSelections.length > 0;
   const quoteId = quoteSelections?.[0]?.id || contact.id;
+  
+  // Filter out "Lost" stage if retainer has been paid (unless manually set to Lost)
+  // If deposit is paid, hide "Lost" unless it's explicitly set as the current stage
+  const shouldShowLostStage = currentStage === 'Lost' || (determinedStage === 'Lost' && !depositPaid);
+  const visibleStages = shouldShowLostStage 
+    ? PIPELINE_STAGES 
+    : PIPELINE_STAGES.filter(stage => stage.id !== 'Lost');
+  
+  // The quote pages expect the contact ID (UUID from contacts table)
+  // Always use contact.id - this is what the quote/contract/invoice pages need
+  const leadId = contact?.id;
+  
+  // Debug logging to help troubleshoot link issues
+  useEffect(() => {
+    console.log('🔍 PipelineView Debug:', {
+      hasContact: !!contact,
+      contactId: contact?.id,
+      leadId,
+      hasQuote,
+      hasContract,
+      hasInvoice,
+      contactKeys: contact ? Object.keys(contact) : []
+    });
+    
+    if (!leadId) {
+      console.warn('⚠️ PipelineView: contact.id is missing or undefined', { 
+        contactId: contact?.id, 
+        contactType: typeof contact?.id,
+        contact 
+      });
+    } else {
+      console.log('✅ PipelineView: leadId is set and buttons should be enabled', { 
+        leadId, 
+        contactId: contact?.id,
+        contractUrl: `/quote/${leadId}/contract`,
+        invoiceUrl: `/quote/${leadId}/invoice`
+      });
+    }
+  }, [leadId, contact?.id, hasQuote, hasContract, hasInvoice]);
 
   const handleStatusChange = async (newStatus: string) => {
     if (updating) return;
@@ -242,6 +486,15 @@ export default function PipelineView({
       setUpdating(false);
     }
   };
+
+  // Automatically advance status when retainer is paid (no prompt)
+  useEffect(() => {
+    // Only auto-advance if retainer is paid and we're not already at that stage or beyond
+    if (depositPaid && determinedStage === 'Retainer Paid' && currentStage !== 'Retainer Paid' && currentStage !== 'Completed' && currentStage !== 'Lost' && !updating) {
+      handleStatusChange('Retainer Paid');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [depositPaid, determinedStage, currentStage, updating]);
 
   const handleCounterSign = async (contractId: string) => {
     setCounterSigning(contractId);
@@ -344,29 +597,37 @@ export default function PipelineView({
         {/* Pipeline Stages */}
         <div className="relative">
           <div className="flex items-center justify-between overflow-x-auto pb-4">
-            {PIPELINE_STAGES.map((stage, index) => {
+            {visibleStages.map((stage, index) => {
               const StageIcon = stage.icon;
-              const isActive = index === currentStageIndex;
-              const isCompleted = index < currentStageIndex;
-              const isLost = currentStage === 'Lost' && stage.id === 'Lost';
+              // Get the actual index in the full PIPELINE_STAGES array for comparison
+              const fullIndex = PIPELINE_STAGES.findIndex(s => s.id === stage.id);
+              // Use determined stage for active, completed stages from data
+              const isActive = fullIndex === determinedStageIndex;
+              const isCompleted = completedStages.includes(fullIndex) || fullIndex < determinedStageIndex;
+              const isLost = determinedStage === 'Lost' && stage.id === 'Lost';
+              const isBehind = fullIndex < determinedStageIndex && !isCompleted && currentStageIndex < determinedStageIndex;
+              
+              // Check if there's a next visible stage for connector line
+              const hasNextVisibleStage = index < visibleStages.length - 1;
               
               return (
                 <div key={stage.id} className="flex flex-col items-center min-w-[100px] relative">
                   {/* Connector Line */}
-                  {index < PIPELINE_STAGES.length - 1 && (
+                  {hasNextVisibleStage && (
                     <div 
-                      className={`absolute top-5 left-[60px] right-[-60px] h-0.5 ${
-                        isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                      className={`absolute top-5 left-[60px] right-[-60px] h-0.5 transition-colors ${
+                        isCompleted ? 'bg-green-500' : isBehind ? 'bg-yellow-400' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
                     />
                   )}
                   
                   {/* Stage Icon */}
                   <div className={`
-                    relative z-10 w-10 h-10 rounded-full flex items-center justify-center
-                    ${isActive ? `${stage.color} text-white` : ''}
+                    relative z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all
+                    ${isActive ? `${stage.color} text-white shadow-lg` : ''}
                     ${isCompleted ? 'bg-green-500 text-white' : ''}
-                    ${!isActive && !isCompleted ? 'bg-gray-200 text-gray-400' : ''}
+                    ${isBehind ? 'bg-yellow-400 text-white animate-pulse' : ''}
+                    ${!isActive && !isCompleted && !isBehind ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500' : ''}
                     ${isLost ? 'bg-red-500 text-white' : ''}
                   `}>
                     <StageIcon className="w-5 h-5" />
@@ -375,13 +636,21 @@ export default function PipelineView({
                   {/* Stage Label */}
                   <div className="mt-2 text-center">
                     <p className={`text-xs font-medium ${
-                      isActive ? 'text-gray-900' : isCompleted ? 'text-green-600' : 'text-gray-500'
+                      isActive ? 'text-gray-900 dark:text-gray-100' : 
+                      isCompleted ? 'text-green-600 dark:text-green-400' : 
+                      isBehind ? 'text-yellow-700 dark:text-yellow-300' :
+                      'text-gray-500 dark:text-gray-400'
                     }`}>
                       {stage.label}
                     </p>
                     {isActive && (
                       <Badge className="mt-1 text-xs" variant="outline">
                         Current
+                      </Badge>
+                    )}
+                    {isBehind && (
+                      <Badge className="mt-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300">
+                        Auto-complete
                       </Badge>
                     )}
                   </div>
@@ -490,11 +759,13 @@ export default function PipelineView({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Link href={`/quote/${quoteId}`} target="_blank">
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
-                </Link>
+                {leadId && (
+                  <Link href={`/quote/${leadId}`} target="_blank">
+                    <Button variant="outline" size="sm">
+                      View
+                    </Button>
+                  </Link>
+                )}
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -544,11 +815,13 @@ export default function PipelineView({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Link href={`/quote/${quoteId}/contract`} target="_blank">
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </Link>
+                    {leadId && (
+                      <Link href={`/quote/${leadId}/contract`} target="_blank">
+                        <Button variant="outline" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                    )}
                     {needsCounterSign && (
                       <Button 
                         variant="default" 
@@ -565,14 +838,28 @@ export default function PipelineView({
               );
             })
           ) : (
-            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed">
+            // Always show contract link if leadId exists (quote pages can generate contracts)
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
               <div className="flex items-center gap-3">
-                <FileCheck className="w-5 h-5 text-gray-400" />
+                <FileCheck className="w-5 h-5 text-blue-500" />
                 <div>
-                  <p className="font-medium text-gray-500">No Contract</p>
-                  <p className="text-sm text-gray-400">Contract not yet created</p>
+                  <p className="font-medium">Contract</p>
+                  <p className="text-sm text-gray-600">
+                    {hasQuote ? 'Available via quote page' : 'Create via quote page'}
+                  </p>
                 </div>
               </div>
+              {leadId ? (
+                <Link href={`/quote/${leadId}/contract`} target="_blank">
+                  <Button variant="outline" size="sm">
+                    View
+                  </Button>
+                </Link>
+              ) : (
+                <Button variant="outline" size="sm" disabled>
+                  View
+                </Button>
+              )}
             </div>
           )}
 
@@ -614,23 +901,39 @@ export default function PipelineView({
                       </p>
                     </div>
                   </div>
-                  <Link href={`/quote/${quoteId}/invoice`} target="_blank">
-                    <Button variant="outline" size="sm">
-                      View
-                    </Button>
-                  </Link>
+                  {leadId && (
+                    <Link href={`/quote/${leadId}/invoice`} target="_blank">
+                      <Button variant="outline" size="sm">
+                        View
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               );
             })
           ) : (
-            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed">
+            // Always show invoice link if leadId exists (quote pages can generate invoices)
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
               <div className="flex items-center gap-3">
-                <CreditCard className="w-5 h-5 text-gray-400" />
+                <CreditCard className="w-5 h-5 text-blue-500" />
                 <div>
-                  <p className="font-medium text-gray-500">No Invoice</p>
-                  <p className="text-sm text-gray-400">Invoice not yet generated</p>
+                  <p className="font-medium">Invoice</p>
+                  <p className="text-sm text-gray-600">
+                    {hasQuote ? 'Available via quote page' : 'Create via quote page'}
+                  </p>
                 </div>
               </div>
+              {leadId ? (
+                <Link href={`/quote/${leadId}/invoice`} target="_blank">
+                  <Button variant="outline" size="sm">
+                    View
+                  </Button>
+                </Link>
+              ) : (
+                <Button variant="outline" size="sm" disabled>
+                  View
+                </Button>
+              )}
             </div>
           )}
 
@@ -654,11 +957,13 @@ export default function PipelineView({
                       </p>
                     </div>
                   </div>
-                  <Link href={`/quote/${quoteId}/receipt`} target="_blank">
-                    <Button variant="outline" size="sm">
-                      View
-                    </Button>
-                  </Link>
+                  {leadId && (
+                    <Link href={`/quote/${leadId}/receipt`} target="_blank">
+                      <Button variant="outline" size="sm">
+                        View
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               ))
           ) : (
@@ -710,31 +1015,31 @@ export default function PipelineView({
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {!hasQuote && (
-            <Link href={`/quote/${quoteId}`} target="_blank">
-              <Button variant="outline" className="w-full">
-                <FileText className="w-4 h-4 mr-2" />
-                View Quote
-              </Button>
-            </Link>
-          )}
-          
-          {hasContract && (
-            <Link href={`/quote/${quoteId}/contract`} target="_blank">
-              <Button variant="outline" className="w-full">
-                <FileCheck className="w-4 h-4 mr-2" />
-                View Contract
-              </Button>
-            </Link>
-          )}
-          
-          {hasInvoice && (
-            <Link href={`/quote/${quoteId}/invoice`} target="_blank">
-              <Button variant="outline" className="w-full">
-                <CreditCard className="w-4 h-4 mr-2" />
-                View Invoice
-              </Button>
-            </Link>
+          {leadId && (
+            <>
+              {hasQuote && (
+                <Link href={`/quote/${leadId}`} target="_blank">
+                  <Button variant="outline" className="w-full">
+                    <FileText className="w-4 h-4 mr-2" />
+                    View Quote
+                  </Button>
+                </Link>
+              )}
+              
+              <Link href={`/quote/${leadId}/contract`} target="_blank">
+                <Button variant="outline" className="w-full">
+                  <FileCheck className="w-4 h-4 mr-2" />
+                  View Contract
+                </Button>
+              </Link>
+              
+              <Link href={`/quote/${leadId}/invoice`} target="_blank">
+                <Button variant="outline" className="w-full">
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  View Invoice
+                </Button>
+              </Link>
+            </>
           )}
           
           {contact.email_address && (
@@ -766,8 +1071,9 @@ export default function PipelineView({
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Move to Next Stage</h3>
           <div className="flex flex-wrap gap-2">
-            {PIPELINE_STAGES.map((stage, index) => {
-              if (index <= currentStageIndex || stage.id === 'Lost') return null;
+            {visibleStages.map((stage) => {
+              const stageIndex = PIPELINE_STAGES.findIndex(s => s.id === stage.id);
+              if (stageIndex <= currentStageIndex || stage.id === 'Lost') return null;
               
               return (
                 <Button

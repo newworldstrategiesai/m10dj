@@ -67,8 +67,88 @@ export default async function handler(req, res) {
 
         // Update database
         const supabase = createClient(supabaseUrl, supabaseKey);
-        const leadId = session.metadata?.leadId;
+        const leadId = session.metadata?.lead_id || session.metadata?.leadId;
         const requestId = session.metadata?.request_id;
+
+        // Handle quote/lead payment from checkout session
+        if (leadId) {
+          const paymentAmount = session.amount_total / 100;
+          const paymentType = session.metadata?.payment_type || 'deposit';
+          
+          // Find the contact_id from the lead_id
+          let contactId = leadId;
+          
+          // Try to find contact_id via quote_selections -> contact_submissions
+          const { data: quoteSelection } = await supabase
+            .from('quote_selections')
+            .select('contact_submission_id')
+            .eq('lead_id', leadId)
+            .single();
+          
+          if (quoteSelection?.contact_submission_id) {
+            const { data: submission } = await supabase
+              .from('contact_submissions')
+              .select('contact_id')
+              .eq('id', quoteSelection.contact_submission_id)
+              .single();
+            
+            if (submission?.contact_id) {
+              contactId = submission.contact_id;
+            }
+          }
+          
+          // Update quote_selections
+          await supabase
+            .from('quote_selections')
+            .update({
+              payment_status: paymentType === 'full' ? 'paid' : 'partial',
+              payment_intent_id: session.payment_intent || session.id,
+              deposit_amount: paymentType === 'deposit' ? paymentAmount : null,
+              paid_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('lead_id', leadId);
+
+          // Create payment record in payments table
+          const paymentRecord = {
+            contact_id: contactId,
+            payment_name: paymentType === 'deposit' ? 'Deposit' : 'Full Payment',
+            total_amount: paymentAmount,
+            payment_status: 'Paid',
+            payment_method: 'Credit Card',
+            transaction_date: new Date().toISOString().split('T')[0], // Date only
+            payment_notes: `Stripe Payment Intent: ${session.payment_intent || session.id}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          const { error: paymentError } = await supabase
+            .from('payments')
+            .insert(paymentRecord);
+
+          if (paymentError) {
+            console.error('⚠️ Error creating payment record from checkout session:', paymentError);
+            if (paymentError.code !== '23505') { // Ignore duplicate key errors
+              console.error('Payment record error details:', paymentError);
+            }
+          } else {
+            console.log('✅ Payment record created from checkout session for lead:', leadId);
+          }
+
+          // Send client payment confirmation notification
+          (async () => {
+            try {
+              const { notifyPaymentReceived } = await import('../../../utils/client-notifications');
+              await notifyPaymentReceived(leadId, {
+                amount: paymentAmount,
+                payment_type: paymentType,
+                payment_intent_id: session.payment_intent || session.id
+              });
+            } catch (err) {
+              console.error('Error sending payment confirmation to client:', err);
+            }
+          })();
+        }
 
         // Handle crowd request payment
         if (requestId) {
@@ -155,7 +235,7 @@ export default async function handler(req, res) {
 
         // Update database
         const supabaseForPaymentIntent = createClient(supabaseUrl, supabaseKey);
-        const leadIdFromIntent = paymentIntent.metadata.leadId;
+        const leadIdFromIntent = paymentIntent.metadata.lead_id || paymentIntent.metadata.leadId;
         const requestIdFromIntent = paymentIntent.metadata.request_id;
 
         // Handle crowd request payment
@@ -213,62 +293,117 @@ export default async function handler(req, res) {
 
         // Handle quote/lead payment
         if (leadIdFromIntent) {
-          const { error } = await supabase
+          const paymentAmount = paymentIntent.amount / 100;
+          const paymentType = paymentIntent.metadata.payment_type || 'deposit';
+          
+          // First, find the contact_id from the lead_id
+          // The lead_id could be a contact_id directly, or we need to find it via quote_selections
+          let contactId = leadIdFromIntent;
+          
+          // Try to find contact_id via quote_selections -> contact_submissions
+          const { data: quoteSelection } = await supabaseForPaymentIntent
             .from('quote_selections')
-      .update({
-              payment_status: 'deposit_paid',
-              payment_intent_id: paymentIntent.id,
-              deposit_amount: paymentIntent.amount / 100,
-              paid_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-            .eq('lead_id', leadId);
-
-          if (error) {
-            console.error('⚠️ Error updating database:', error);
-          } else {
-            console.log('✅ Database updated for lead:', leadIdFromIntent);
+            .select('contact_submission_id')
+            .eq('lead_id', leadIdFromIntent)
+            .single();
+          
+          if (quoteSelection?.contact_submission_id) {
+            const { data: submission } = await supabaseForPaymentIntent
+              .from('contact_submissions')
+              .select('contact_id')
+              .eq('id', quoteSelection.contact_submission_id)
+              .single();
             
-            // Notify admin about payment (non-blocking)
-            (async () => {
-              try {
-                const { sendAdminNotification } = await import('../../../utils/admin-notifications');
-                const { data: contactData } = await supabase
-                  .from('contacts')
-                  .select('id, first_name, last_name')
-                  .eq('id', leadId)
-                  .single();
-                
-                const { data: payments } = await supabase
-                  .from('payments')
-                  .select('total_amount')
-                  .eq('contact_id', leadId)
-                  .eq('payment_status', 'Paid');
-                
-                const totalPaid = payments?.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0) || 0;
-                const paymentAmount = paymentIntent.amount / 100;
-                
-                sendAdminNotification('payment_made', {
-                  leadId: leadId,
-                  contactId: leadId,
-                  leadName: contactData ? `${contactData.first_name || ''} ${contactData.last_name || ''}`.trim() : 'Client',
-                  amount: paymentAmount,
-                  totalPaid: totalPaid,
-                  remaining: (paymentIntent.metadata.totalPrice ? parseFloat(paymentIntent.metadata.totalPrice) - totalPaid : 0)
-                }).catch(err => console.error('Failed to notify admin:', err));
-              } catch (err) {
-                console.error('Error sending payment notification:', err);
-              }
-            })();
+            if (submission?.contact_id) {
+              contactId = submission.contact_id;
+            }
           }
+          
+          // Update quote_selections
+          const { error: quoteError } = await supabaseForPaymentIntent
+            .from('quote_selections')
+            .update({
+              payment_status: paymentType === 'full' ? 'paid' : 'partial',
+              payment_intent_id: paymentIntent.id,
+              deposit_amount: paymentType === 'deposit' ? paymentAmount : null,
+              paid_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('lead_id', leadIdFromIntent);
+
+          if (quoteError) {
+            console.error('⚠️ Error updating quote_selections:', quoteError);
+          }
+
+          // Create payment record in payments table
+          const paymentRecord = {
+            contact_id: contactId,
+            payment_name: paymentType === 'deposit' ? 'Deposit' : 'Full Payment',
+            total_amount: paymentAmount,
+            payment_status: 'Paid',
+            payment_method: 'Credit Card',
+            transaction_date: new Date().toISOString().split('T')[0], // Date only
+            payment_notes: `Stripe Payment Intent: ${paymentIntent.id}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          const { error: paymentError, data: insertedPayment } = await supabaseForPaymentIntent
+            .from('payments')
+            .insert(paymentRecord)
+            .select()
+            .single();
+
+          if (paymentError) {
+            console.error('⚠️ Error creating payment record:', paymentError);
+            // Check if payment already exists (duplicate webhook)
+            if (paymentError.code === '23505') { // Unique constraint violation
+              console.log('ℹ️ Payment record already exists, skipping insert');
+            }
+          } else {
+            console.log('✅ Payment record created:', insertedPayment?.id);
+          }
+
+          console.log('✅ Database updated for lead:', leadIdFromIntent);
+          
+          // Notify admin about payment (non-blocking)
+          (async () => {
+            try {
+              const { sendAdminNotification } = await import('../../../utils/admin-notifications');
+              const { data: contactData } = await supabaseForPaymentIntent
+                .from('contacts')
+                .select('id, first_name, last_name')
+                .eq('id', contactId)
+                .single();
+              
+              const { data: payments } = await supabaseForPaymentIntent
+                .from('payments')
+                .select('total_amount')
+                .eq('contact_id', contactId)
+                .eq('payment_status', 'Paid');
+              
+              const totalPaid = payments?.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0) || 0;
+              
+              sendAdminNotification('payment_made', {
+                leadId: leadIdFromIntent,
+                contactId: contactId,
+                leadName: contactData ? `${contactData.first_name || ''} ${contactData.last_name || ''}`.trim() : 'Client',
+                amount: paymentAmount,
+                totalPaid: totalPaid,
+                remaining: (paymentIntent.metadata.totalPrice ? parseFloat(paymentIntent.metadata.totalPrice) - totalPaid : 0)
+              }).catch(err => console.error('Failed to notify admin:', err));
+            } catch (err) {
+              console.error('Error sending payment notification:', err);
+            }
+          })();
 
           // Send client payment confirmation notification
           (async () => {
             try {
               const { notifyPaymentReceived } = await import('../../../utils/client-notifications');
-              await notifyPaymentReceived(leadId, {
+              await notifyPaymentReceived(leadIdFromIntent, {
                 amount: paymentAmount,
-                payment_type: paymentIntent.metadata.payment_type || 'deposit',
+                payment_type: paymentType,
                 payment_intent_id: paymentIntent.id
               });
             } catch (err) {

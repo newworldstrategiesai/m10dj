@@ -5,6 +5,7 @@
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
+const { createOrRetrieveStripeCustomer } = require('../../../utils/stripe-customer');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -98,29 +99,51 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Amount must be greater than 0 for Stripe payment' });
       }
 
-      // Get lead contact info
+      // Get lead contact info and create/retrieve Stripe customer
       let customerEmail = null;
+      let customerName = null;
+      let stripeCustomerId = null;
+      
       try {
         const { data: lead } = await supabase
           .from('contacts')
-          .select('email_address')
+          .select('email_address, first_name, last_name, stripe_customer_id')
           .eq('id', leadId)
           .single();
         if (lead) {
           customerEmail = lead.email_address;
+          customerName = lead.first_name && lead.last_name 
+            ? `${lead.first_name} ${lead.last_name}`.trim()
+            : lead.first_name || lead.last_name || null;
+          stripeCustomerId = lead.stripe_customer_id;
         } else {
           // Try contact_submissions
           const { data: submission } = await supabase
             .from('contact_submissions')
-            .select('email')
+            .select('email, name')
             .eq('id', leadId)
             .single();
           if (submission) {
             customerEmail = submission.email;
+            customerName = submission.name || null;
           }
         }
       } catch (e) {
-        console.log('Could not fetch customer email:', e);
+        console.log('Could not fetch customer info:', e);
+      }
+
+      // Create or retrieve Stripe customer for saving payment methods
+      if (customerEmail && leadId) {
+        try {
+          stripeCustomerId = await createOrRetrieveStripeCustomer(
+            leadId,
+            customerEmail,
+            customerName
+          );
+        } catch (error) {
+          console.error('Error creating/retrieving Stripe customer:', error);
+          // Continue without customer (payment will still work, just won't save payment method)
+        }
       }
 
       // Create line item for quote payment
@@ -136,14 +159,13 @@ export default async function handler(req, res) {
         quantity: 1
       }];
 
-      // Create Stripe checkout session
-      const session = await stripe.checkout.sessions.create({
+      // Create Stripe checkout session with customer for saving payment methods
+      const sessionParams = {
         payment_method_types: ['card'],
         line_items: lineItems,
         mode: 'payment',
         success_url: successUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/quote/${leadId}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/quote/${leadId}/payment`,
-        customer_email: customerEmail,
         metadata: {
           lead_id: leadId,
           payment_type: amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'
@@ -154,7 +176,30 @@ export default async function handler(req, res) {
             payment_type: amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'
           }
         }
-      });
+      };
+
+      // Enable saving payment methods for future use if customer exists
+      // This allows Stripe to save the payment method for future charges
+      if (stripeCustomerId) {
+        sessionParams.payment_method_options = {
+          card: {
+            setup_future_usage: 'off_session' // Save card for future payments
+          }
+        };
+      }
+
+      // Use customer if we have one (enables saving payment methods), otherwise use customer_email
+      if (stripeCustomerId) {
+        sessionParams.customer = stripeCustomerId;
+        sessionParams.customer_update = {
+          address: 'auto',
+          name: 'auto'
+        };
+      } else if (customerEmail) {
+        sessionParams.customer_email = customerEmail;
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionParams);
 
       // Update quote_selections with payment intent
       if (quote) {

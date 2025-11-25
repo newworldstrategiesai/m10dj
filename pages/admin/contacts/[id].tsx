@@ -267,19 +267,56 @@ export default function ContactDetailPage() {
     
     setInvoicesLoading(true);
     try {
-      const { data, error } = await supabase
+      // First, try to fetch from invoice_summary view
+      const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoice_summary')
         .select('*')
         .eq('contact_id', id)
         .order('invoice_date', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching invoices:', error);
+      // Also check if there's a quote_selection (which means an invoice exists)
+      // The invoice page uses quote data, so if a quote exists, an invoice exists
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('quote_selections')
+        .select('id, lead_id, total_price, created_at, package_name')
+        .eq('lead_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      // If we have invoice_summary data, use it (this is the preferred source)
+      if (invoiceData && invoiceData.length > 0) {
+        setInvoices(invoiceData);
+      } else if (quoteData && quoteData.length > 0) {
+        // If no invoice_summary but we have a quote, create a synthetic invoice entry
+        // This allows the UI to show that an invoice exists (since invoice page uses quote data)
+        const quote = quoteData[0];
+        const syntheticInvoice = {
+          id: quote.id,
+          contact_id: id,
+          invoice_number: `INV-${id.substring(0, 8).toUpperCase()}`,
+          total_amount: quote.total_price || 0,
+          invoice_date: quote.created_at || new Date().toISOString(),
+          invoice_status: 'pending',
+          invoice_title: quote.package_name || 'Service Invoice',
+          // Add lead_id so PipelineView can use it for links
+          lead_id: quote.lead_id || id
+        };
+        setInvoices([syntheticInvoice]);
       } else {
-        setInvoices(data || []);
+        // No invoices found
+        setInvoices([]);
+      }
+      
+      // Log errors but don't block invoice creation if quote exists
+      if (invoiceError && !quoteData) {
+        console.warn('Error fetching from invoice_summary (but quote may exist):', invoiceError);
+      }
+      if (quoteError) {
+        console.warn('Error fetching quote_selections:', quoteError);
       }
     } catch (error) {
       console.error('Error fetching invoices:', error);
+      setInvoices([]);
     } finally {
       setInvoicesLoading(false);
     }
@@ -323,19 +360,54 @@ export default function ContactDetailPage() {
     
     setContractsLoading(true);
     try {
-      const { data, error } = await supabase
+      // First, try to fetch from contracts table
+      const { data: contractData, error: contractError } = await supabase
         .from('contracts')
         .select('*')
         .eq('contact_id', id)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching contracts:', error);
+      // Also check if there's a quote_selection (which means contract page exists)
+      // The contract page uses quote data, so if a quote exists, a contract page exists
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('quote_selections')
+        .select('id, lead_id, created_at, package_name')
+        .eq('lead_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      // If we have contract data, use it (this is the preferred source)
+      if (contractData && contractData.length > 0) {
+        setContracts(contractData);
+      } else if (quoteData && quoteData.length > 0) {
+        // If no contract table entry but we have a quote, create a synthetic contract entry
+        // This allows the UI to show that a contract page exists (since contract page uses quote data)
+        const quote = quoteData[0];
+        const syntheticContract = {
+          id: quote.id,
+          contact_id: id,
+          lead_id: quote.lead_id || id, // Include lead_id for PipelineView links
+          status: 'pending', // Default status
+          created_at: quote.created_at || new Date().toISOString(),
+          contract_type: 'service_agreement',
+          title: quote.package_name || 'Service Contract'
+        };
+        setContracts([syntheticContract]);
       } else {
-        setContracts(data || []);
+        // No contracts found
+        setContracts([]);
+      }
+      
+      // Log errors but don't block contract creation if quote exists
+      if (contractError && !quoteData) {
+        console.warn('Error fetching from contracts table (but quote may exist):', contractError);
+      }
+      if (quoteError) {
+        console.warn('Error fetching quote_selections for contract:', quoteError);
       }
     } catch (error) {
       console.error('Error fetching contracts:', error);
+      setContracts([]);
     } finally {
       setContractsLoading(false);
     }

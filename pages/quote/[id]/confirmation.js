@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
+import QuoteBottomNav from '../../../components/quote/QuoteBottomNav';
 import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard, Music, AlertCircle } from 'lucide-react';
 
 export default function ConfirmationPage() {
@@ -125,49 +126,77 @@ export default function ConfirmationPage() {
   }, [id, fetchData]);
 
   // Calculate total amount - use total_price if available, otherwise calculate from package/speaker rental + addons
+  // IMPORTANT: Must apply discounts the same way the invoice page does
   const calculateTotalAmount = useMemo(() => {
     if (!quoteData) {
       console.log('⚠️ No quoteData available');
       return 0;
     }
     
-    let total = Number(quoteData.total_price) || 0;
+    // Start with package price or speaker rental
+    let basePrice = Number(quoteData.package_price) || 0;
     
-    console.log('💰 Initial total from total_price:', total);
+    console.log('📦 Base price from package_price:', basePrice);
     
-    // If total_price is 0 or missing, calculate from components
-    if (!total || total === 0) {
-      let basePrice = Number(quoteData.package_price) || 0;
-      
-      console.log('📦 Base price from package_price:', basePrice);
-      
-      // Check for speaker rental
-      if (quoteData.speaker_rental) {
-        try {
-          const speakerRental = typeof quoteData.speaker_rental === 'string' 
-            ? JSON.parse(quoteData.speaker_rental) 
-            : quoteData.speaker_rental;
-          console.log('🔊 Speaker rental parsed:', speakerRental);
-          if (speakerRental?.price) {
-            basePrice = Number(speakerRental.price) || 0;
-            console.log('🔊 Updated base price from speaker rental:', basePrice);
-          }
-        } catch (e) {
-          console.error('❌ Error parsing speaker rental:', e);
+    // Check for speaker rental
+    let speakerRentalPrice = 0;
+    if (quoteData.speaker_rental) {
+      try {
+        const speakerRental = typeof quoteData.speaker_rental === 'string' 
+          ? JSON.parse(quoteData.speaker_rental) 
+          : quoteData.speaker_rental;
+        console.log('🔊 Speaker rental parsed:', speakerRental);
+        if (speakerRental?.price) {
+          speakerRentalPrice = Number(speakerRental.price) || 0;
+          console.log('🔊 Speaker rental price:', speakerRentalPrice);
         }
+      } catch (e) {
+        console.error('❌ Error parsing speaker rental:', e);
       }
-      
-      // Add addons
-      const addonsTotal = (quoteData.addons || []).reduce((sum, addon) => {
+    }
+    
+    // Calculate addons total, EXCLUDING speaker rental (to avoid double-counting)
+    const addonsTotal = (quoteData.addons || [])
+      .filter(addon => {
+        // Exclude speaker rental from addons total since it's counted separately
+        return addon.id !== 'speaker_rental' && 
+               addon.id !== 'holiday_speaker_rental' &&
+               !(addon.name && addon.name.toLowerCase().includes('speaker rental'));
+      })
+      .reduce((sum, addon) => {
         const addonPrice = Number(addon.price) || 0;
         console.log('➕ Addon:', addon.name, 'Price:', addonPrice);
         return sum + addonPrice;
       }, 0);
-      
-      console.log('➕ Addons total:', addonsTotal);
-      
-      total = basePrice + addonsTotal;
-      console.log('💰 Calculated total:', total);
+    
+    console.log('➕ Addons total (excluding speaker rental):', addonsTotal);
+    
+    // Calculate subtotal: package price + speaker rental + other addons
+    const subtotal = basePrice + speakerRentalPrice + addonsTotal;
+    console.log('💰 Subtotal (before discount):', subtotal);
+    
+    // Apply discount if present (same logic as invoice page)
+    let discountAmount = 0;
+    if (quoteData.discount_type && quoteData.discount_value && quoteData.discount_value > 0) {
+      if (quoteData.discount_type === 'percentage') {
+        discountAmount = subtotal * (Number(quoteData.discount_value) / 100);
+        console.log('💸 Percentage discount:', quoteData.discount_value + '%', 'Amount:', discountAmount);
+      } else {
+        discountAmount = Number(quoteData.discount_value);
+        console.log('💸 Flat discount:', discountAmount);
+      }
+    }
+    
+    // Calculate final total after discount
+    const total = Math.max(0, subtotal - discountAmount);
+    console.log('💰 Final total (after discount):', total);
+    
+    // Use total_price from database if it exists and matches our calculation (within 1 cent tolerance)
+    // Otherwise use our calculated total
+    const dbTotal = Number(quoteData.total_price) || 0;
+    if (dbTotal > 0 && Math.abs(dbTotal - total) < 0.01) {
+      console.log('✅ Using database total_price:', dbTotal);
+      return dbTotal;
     }
     
     return total;
@@ -213,7 +242,7 @@ export default function ConfirmationPage() {
             <AlertCircle className="w-16 h-16 text-yellow-500 mb-4" />
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Quote Not Found</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-4 text-center max-w-md">
-              We couldn't find your quote. Please make sure you've selected your services first.
+              We couldn&apos;t find your quote. Please make sure you&apos;ve selected your services first.
             </p>
             {id && (
               <Link 
@@ -239,7 +268,7 @@ export default function ConfirmationPage() {
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Header />
 
-        <main className="section-container py-12 md:py-20">
+        <main className="section-container py-12 md:py-20 pb-24 md:pb-24">
           {/* Success Header */}
           <div className="text-center mb-12 animate-fade-in">
             <div className="w-24 h-24 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -542,6 +571,7 @@ export default function ConfirmationPage() {
             </div>
           </div>
         </main>
+        <QuoteBottomNav quoteId={id} />
       </div>
     </>
   );

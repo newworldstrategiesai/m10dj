@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
+import QuoteBottomNav from '../../../components/quote/QuoteBottomNav';
 import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X, Tag, XCircle, Settings, Trash2 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -85,6 +86,11 @@ export default function PersonalizedQuote() {
         if (data && data.id) {
           setLeadData(data);
           setError(null);
+          
+          // Check if contract is signed or deposit is paid
+          if (data.contractSignedDate || data.depositPaid) {
+            setContractSigned(true);
+          }
           
           // Check if event date has passed (expiration check)
           if (data.eventDate || data.event_date) {
@@ -328,7 +334,7 @@ export default function PersonalizedQuote() {
                   const paymentsData = await paymentsResponse.json();
                   const payments = paymentsData.payments || paymentsData || [];
                   
-                  // Calculate total paid
+                  // Calculate total paid (including retainer/deposit)
                   const totalPaid = payments
                     .filter(p => 
                       p.payment_status === 'Paid' || 
@@ -341,6 +347,7 @@ export default function PersonalizedQuote() {
                   // Calculate outstanding balance
                   const balance = totalOwed - totalPaid;
                   
+                  // Set hasPayment to true if any payment was made (including retainer/deposit)
                   setHasPayment(totalPaid > 0);
                   setOutstandingBalance(Math.max(0, balance)); // Ensure non-negative
                 } else {
@@ -2492,7 +2499,7 @@ export default function PersonalizedQuote() {
           </div>
         )}
       </header>
-      <main className="min-h-screen bg-white dark:bg-gray-900">
+      <main className="min-h-screen bg-white dark:bg-gray-900 pb-24 md:pb-24">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
           {/* Header Section */}
           <div className="text-center mb-12">
@@ -2601,13 +2608,17 @@ export default function PersonalizedQuote() {
                         <CheckCircle className="w-5 h-5" />
                         Make Payment
                       </Link>
-                      <button
-                        onClick={() => setShowEditMode(!showEditMode)}
-                        className="px-5 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 rounded-xl transition-all text-sm font-medium whitespace-nowrap"
-                      >
-                        {showEditMode ? 'Cancel' : 'Edit Selection'}
-                      </button>
-                      {!existingSelection.contract_id && !existingSelection.invoice_id && (
+                      {/* Hide Edit Selection button if contract is signed or payment has been made */}
+                      {!contractSigned && !hasPayment && (
+                        <button
+                          onClick={() => setShowEditMode(!showEditMode)}
+                          className="px-5 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 rounded-xl transition-all text-sm font-medium whitespace-nowrap"
+                        >
+                          {showEditMode ? 'Cancel' : 'Edit Selection'}
+                        </button>
+                      )}
+                      {/* Hide Remove button if contract is signed, payment made, or contract/invoice exists */}
+                      {!contractSigned && !hasPayment && !existingSelection.contract_id && !existingSelection.invoice_id && (
                         <button
                           onClick={async () => {
                             if (confirm('Are you sure you want to remove your selection? You can always make a new selection later.')) {
@@ -2799,7 +2810,7 @@ export default function PersonalizedQuote() {
           )}
 
           {/* Packages Section */}
-          {(!existingSelection || showEditMode || contractSigned) && (
+          {(!existingSelection || showEditMode) && !contractSigned && !hasPayment && (
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-center mb-4">
               <Music className={`inline w-8 h-8 ${getThemeText()} mr-2`} />
@@ -3078,7 +3089,7 @@ export default function PersonalizedQuote() {
           )}
 
           {/* Speaker Rental Section for Non-Wedding Events Only */}
-          {!isWedding && (!existingSelection || showEditMode || contractSigned) && (
+          {!isWedding && (!existingSelection || showEditMode) && !contractSigned && !hasPayment && (
             <section className="mb-12">
               <h2 className="text-3xl font-bold text-center mb-4">
                 <Music className={`inline w-8 h-8 ${getThemeText()} mr-2`} />
@@ -3155,7 +3166,7 @@ export default function PersonalizedQuote() {
           )}
 
           {/* Add-ons Section */}
-          {(!existingSelection || showEditMode || contractSigned) && (
+          {(!existingSelection || showEditMode) && !contractSigned && !hasPayment && (
           <section id="addons-section" className="mb-12">
             <h2 className="text-3xl font-bold text-center mb-4">
               <Sparkles className={`inline w-8 h-8 ${getThemeText()} mr-2`} />
@@ -3214,7 +3225,7 @@ export default function PersonalizedQuote() {
           )}
 
           {/* Total and CTA */}
-          {(!existingSelection || showEditMode || contractSigned) && (
+          {(!existingSelection || showEditMode) && !contractSigned && !hasPayment && (
           <section className="bg-gradient-to-r from-brand/10 to-brand/5 dark:from-brand/20 dark:to-brand/10 rounded-xl p-8 border border-brand/20">
             <div className="max-w-2xl mx-auto">
               {/* Savings Alert - Show when addons selected without package */}
@@ -3563,6 +3574,7 @@ export default function PersonalizedQuote() {
           </div>
         </div>
       )}
+      <QuoteBottomNav quoteId={id} />
     </>
   );
 }

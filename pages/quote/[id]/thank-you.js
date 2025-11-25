@@ -4,10 +4,11 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
 import { CheckCircle, Download, Calendar, Mail, Phone, Loader2, FileText, CreditCard, Receipt, ExternalLink, Sparkles, Link as LinkIcon, Copy, Bookmark } from 'lucide-react';
+import ManualPaymentForm from '../../../components/quote/ManualPaymentForm';
 
 export default function ThankYouPage() {
   const router = useRouter();
-  const { id, payment_intent, session_id } = router.query;
+  const { id, payment_intent, session_id, payment_method, amount } = router.query;
   const [leadData, setLeadData] = useState(null);
   const [quoteData, setQuoteData] = useState(null);
   const [invoiceData, setInvoiceData] = useState(null);
@@ -17,12 +18,55 @@ export default function ThankYouPage() {
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [accountMessage, setAccountMessage] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [showManualPaymentForm, setShowManualPaymentForm] = useState(false);
+  const [manualPaymentInfo, setManualPaymentInfo] = useState(null);
 
   useEffect(() => {
     if (id) {
       fetchData();
     }
-  }, [id, payment_intent, session_id]);
+    
+    // Check if they came from Venmo/Cash App payment
+    const checkManualPayment = () => {
+      // Check URL parameter first
+      if (payment_method && (payment_method === 'venmo' || payment_method === 'cashapp')) {
+        setShowManualPaymentForm(true);
+        setManualPaymentInfo({
+          paymentMethod: payment_method === 'venmo' ? 'Venmo' : 'Cash App',
+          amount: amount ? parseFloat(amount) : null,
+          paymentType: null // Will be determined from quote data
+        });
+        return;
+      }
+      
+      // Check sessionStorage for pending payment
+      if (typeof window !== 'undefined') {
+        const pendingPayment = sessionStorage.getItem('venmo_payment_pending');
+        if (pendingPayment) {
+          try {
+            const payment = JSON.parse(pendingPayment);
+            // Check if payment was made in last 10 minutes
+            const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+            if (payment.timestamp > tenMinutesAgo) {
+              setShowManualPaymentForm(true);
+              setManualPaymentInfo({
+                paymentMethod: payment.paymentMethod || 'Venmo',
+                amount: parseFloat(payment.amount),
+                paymentType: payment.paymentType || null
+              });
+            } else {
+              // Clear old payment data
+              sessionStorage.removeItem('venmo_payment_pending');
+            }
+          } catch (e) {
+            console.error('Error parsing pending payment:', e);
+          }
+        }
+      }
+    };
+    
+    checkManualPayment();
+  }, [id, payment_intent, session_id, payment_method, amount]);
 
   const handleCreateAccount = async () => {
     if (!leadData?.email) {
@@ -188,7 +232,37 @@ export default function ThankYouPage() {
             </p>
           </div>
 
-          {/* Payment Recap */}
+            {/* Manual Payment Recording Form - Show if came from Venmo/Cash App */}
+            {showManualPaymentForm && manualPaymentInfo && (
+              <div className="max-w-2xl mx-auto mb-8">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-2xl shadow-xl p-8">
+                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <CheckCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    Record Your {manualPaymentInfo.paymentMethod} Payment
+                  </h2>
+                  <p className="text-gray-700 dark:text-gray-300 mb-6">
+                    We see you completed payment via {manualPaymentInfo.paymentMethod}. Please confirm the details below so we can update your account.
+                  </p>
+                  <ManualPaymentForm
+                    leadId={id}
+                    amount={manualPaymentInfo.amount || (quoteData?.total_price || 0)}
+                    paymentType={manualPaymentInfo.paymentType || (paymentData ? null : 'deposit')}
+                    onPaymentRecorded={() => {
+                      // Clear sessionStorage
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.removeItem('venmo_payment_pending');
+                        sessionStorage.removeItem('venmo_thank_you_url');
+                      }
+                      // Hide form and refresh data
+                      setShowManualPaymentForm(false);
+                      fetchData();
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Payment Recap */}
           <div className="max-w-4xl mx-auto space-y-8">
             {/* Payment Summary Card */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12 border-2 border-green-200 dark:border-green-800">

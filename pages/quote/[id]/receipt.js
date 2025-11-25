@@ -285,24 +285,30 @@ export default function ReceiptPage() {
                     Payment For:
                   </h3>
                   <div className="space-y-3">
-                    {/* Package */}
-                    {quoteData.package_name && (
-                      <div className="flex justify-between items-start py-2 border-b border-gray-100 dark:border-gray-700">
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900 dark:text-white">{quoteData.package_name}</p>
-                          {quoteData.package_price && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              Package Price: ${quoteData.package_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                          )}
-                        </div>
+                    {/* Show actual payment amount, not package price */}
+                    <div className="flex justify-between items-start py-2 border-b border-gray-100 dark:border-gray-700">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {paymentData.payment_name || 'Payment'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          Amount: ${paymentAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        {quoteData.package_name && (
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                            For: {quoteData.package_name}
+                            {quoteData.total_price && quoteData.total_price > paymentAmount && (
+                              <span className="ml-2">(Total: ${quoteData.total_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                            )}
+                          </p>
+                        )}
                       </div>
-                    )}
+                    </div>
                     
                     {/* Add-ons */}
                     {quoteData.addons && Array.isArray(quoteData.addons) && quoteData.addons.length > 0 && (
                       <div className="space-y-2 pt-2">
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Add-ons:</p>
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Service includes:</p>
                         {quoteData.addons.map((addon, index) => (
                           <div key={index} className="flex justify-between items-start py-2 border-b border-gray-100 dark:border-gray-700">
                             <div className="flex-1">

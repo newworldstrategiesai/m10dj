@@ -15,7 +15,10 @@ import {
   AlertCircle,
   ArrowUpRight,
   ArrowDownRight,
-  RefreshCw
+  RefreshCw,
+  Download,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -68,6 +71,8 @@ export default function FinancialDashboard() {
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{success: boolean, message: string} | null>(null);
   const [user, setUser] = useState<any>(null);
   
   // Financial data
@@ -197,6 +202,47 @@ export default function FinancialDashboard() {
     setRefreshing(false);
   };
 
+  const handleSyncPayments = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    
+    try {
+      const response = await fetch('/api/admin/sync-stripe-payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          days_back: 30, // Sync last 30 days
+          limit: 100
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setSyncResult({
+          success: true,
+          message: data.message || `Synced ${data.summary?.created || 0} new payment(s)`
+        });
+        // Refresh data after sync
+        await fetchFinancialData();
+      } else {
+        setSyncResult({
+          success: false,
+          message: data.error || 'Failed to sync payments'
+        });
+      }
+    } catch (error: any) {
+      setSyncResult({
+        success: false,
+        message: error.message || 'Error syncing payments'
+      });
+    } finally {
+      setSyncing(false);
+      // Clear sync result after 5 seconds
+      setTimeout(() => setSyncResult(null), 5000);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -258,15 +304,42 @@ export default function FinancialDashboard() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Financial Dashboard</h1>
             <p className="text-gray-600">Complete overview of your business finances and revenue</p>
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleSyncPayments}
+              disabled={syncing}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Download className={`h-4 w-4 ${syncing ? 'animate-pulse' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync Stripe Payments'}
+            </Button>
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
         </div>
+
+        {/* Sync Result Message */}
+        {syncResult && (
+          <div className={`mb-6 p-4 rounded-lg border-2 flex items-center gap-3 ${
+            syncResult.success 
+              ? 'bg-green-50 border-green-200 text-green-800' 
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            {syncResult.success ? (
+              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+            ) : (
+              <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+            )}
+            <p className="font-medium">{syncResult.message}</p>
+          </div>
+        )}
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

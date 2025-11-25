@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
+import QuoteBottomNav from '../../../components/quote/QuoteBottomNav';
 import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, Users, Edit, Save, X, Settings, Percent, DollarSign } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Input } from '@/components/ui/input';
@@ -251,7 +252,8 @@ export default function InvoicePage() {
 
         // Fetch payment data to show payment status
         try {
-          const paymentsResponse = await fetch(`/api/payments?contact_id=${id}`);
+          const timestamp = new Date().getTime();
+          const paymentsResponse = await fetch(`/api/quote/${id}/payments?_t=${timestamp}`, { cache: 'no-store' });
           if (paymentsResponse.ok) {
             const paymentsData = await paymentsResponse.json();
             if (paymentsData.payments && paymentsData.payments.length > 0) {
@@ -263,14 +265,17 @@ export default function InvoicePage() {
                 setPaymentData({ totalPaid, payments: paidPayments });
               } else {
                 setHasPayment(false);
+                setPaymentData(null);
               }
             } else {
               setHasPayment(false);
+              setPaymentData(null);
             }
           }
         } catch (error) {
           console.error('Error checking payments:', error);
           setHasPayment(false);
+          setPaymentData(null);
         }
       } else {
         // Quote not found, but we can still show invoice based on lead data
@@ -304,9 +309,40 @@ export default function InvoicePage() {
     };
   }, [id, fetchData]);
 
-  const handleDownload = () => {
-    // Generate PDF or print
-    window.print();
+  const handleDownload = async () => {
+    try {
+      // Generate PDF with payment link and QR code
+      const response = await fetch(`/api/quote/${id}/generate-invoice-pdf`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${leadData?.first_name || 'Invoice'}-${leadData?.last_name || ''}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: 'PDF Downloaded',
+        description: 'Invoice PDF with payment link has been downloaded.',
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to download PDF. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleSaveInvoice = async () => {
@@ -950,7 +986,7 @@ export default function InvoicePage() {
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Header className="no-print" />
 
-        <main className="section-container py-4 md:py-12 lg:py-20 px-4 sm:px-6">
+        <main className="section-container py-4 md:py-12 lg:py-20 px-4 sm:px-6 pb-24 md:pb-24">
           {/* Header Actions */}
           <div className="no-print max-w-4xl mx-auto mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
             <Link
@@ -1002,13 +1038,13 @@ export default function InvoicePage() {
                   )}
                 </>
               )}
-              <button
-                onClick={handleDownload}
-                className="btn-outline inline-flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
-              >
-                <Download className="w-4 h-4" />
-                Download PDF
-              </button>
+            <button
+              onClick={handleDownload}
+              className="btn-outline inline-flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+            >
+              <Download className="w-4 h-4" />
+              Download PDF
+            </button>
             </div>
           </div>
 
@@ -1331,7 +1367,7 @@ export default function InvoicePage() {
                                 )}
                               </td>
                             </tr>
-                            <tr className="border-b border-gray-100 dark:border-gray-700">
+                      <tr className="border-b border-gray-100 dark:border-gray-700">
                               <td className="py-2 sm:py-3 px-3 sm:px-4">
                                 <div className="pl-2 sm:pl-4">
                                   <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">
@@ -1340,7 +1376,7 @@ export default function InvoicePage() {
                                   <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
                                     Professional speaker system rental with built-in mixer. Includes microphone input and all necessary cables.
                                   </p>
-                                </div>
+                          </div>
                               </td>
                               <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm sm:text-base">
                                 <span className="text-gray-700 dark:text-gray-300 font-medium">
@@ -1405,11 +1441,11 @@ export default function InvoicePage() {
                         <tr className="border-b border-gray-100 dark:border-gray-700">
                           <td className="py-3 sm:py-4 px-3 sm:px-4">
                             <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Package includes all listed services</p>
-                          </td>
-                          <td className="py-3 sm:py-4 px-3 sm:px-4 text-right font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
+                        </td>
+                        <td className="py-3 sm:py-4 px-3 sm:px-4 text-right font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
                             ${packagePrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                        </tr>
+                        </td>
+                      </tr>
                       )}
                       {/* Package Total Row (only if package exists) */}
                       {quoteData.package_name && (
@@ -1526,14 +1562,14 @@ export default function InvoicePage() {
                           </div>
                           <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 pl-4">
                             <div className="flex justify-between items-start">
-                              <div className="flex-1 pr-2">
+                        <div className="flex-1 pr-2">
                                 <p className="font-medium text-gray-900 dark:text-white text-sm">
                                   {speakerRental.name || 'Speaker Setup Rental (Up to 4 Hours)'}
                                 </p>
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                                   Professional speaker system rental with built-in mixer. Includes microphone input and all necessary cables.
                                 </p>
-                              </div>
+                        </div>
                               <div className="text-right whitespace-nowrap">
                                 <p className="font-semibold text-gray-900 dark:text-white text-sm">
                                   ${(speakerRental.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1616,11 +1652,11 @@ export default function InvoicePage() {
                       <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                         <div className="flex justify-between items-center">
                           <p className="text-gray-600 dark:text-gray-400 text-sm">Package includes all listed services</p>
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm whitespace-nowrap">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm whitespace-nowrap">
                             ${packagePrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </p>
-                        </div>
+                        </p>
                       </div>
+                    </div>
                     ) : null}
                     {/* Add-ons Header (excluding speaker rental, which is shown separately) */}
                     {quoteData.addons && quoteData.addons.filter(addon => {
@@ -1815,7 +1851,7 @@ export default function InvoicePage() {
                           step="0.01"
                         />
                       ) : (
-                        <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       )}
                     </div>
                   </div>
@@ -1839,6 +1875,52 @@ export default function InvoicePage() {
                           </div>
                         )}
                       </div>
+                      
+                      {/* Payment History - Show individual payments */}
+                      {paymentData?.payments && paymentData.payments.length > 0 && (
+                        <div className="mt-4 sm:mt-5 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <h4 className="font-semibold text-sm sm:text-base text-blue-900 dark:text-blue-200 mb-2 sm:mb-3">
+                            Payment History
+                          </h4>
+                          <div className="space-y-2">
+                            {paymentData.payments.map((payment, idx) => {
+                              const paymentDate = payment.transaction_date 
+                                ? new Date(payment.transaction_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                                : payment.created_at 
+                                  ? new Date(payment.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                                  : 'Date not available';
+                              
+                              // Determine if this is a retainer/deposit payment
+                              const isRetainer = payment.payment_type === 'Deposit' || 
+                                                payment.payment_type === 'Retainer' ||
+                                                payment.description?.toLowerCase().includes('deposit') ||
+                                                payment.description?.toLowerCase().includes('retainer') ||
+                                                (idx === 0 && paymentData.payments.length > 1); // First payment is usually retainer
+                              
+                              return (
+                                <div key={payment.id || idx} className="flex items-center justify-between py-2 border-b border-blue-200 dark:border-blue-700 last:border-b-0">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                                      <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                                        {isRetainer ? '✓ Retainer Paid' : '✓ Payment Received'}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                                      {paymentDate}
+                                      {payment.description && ` • ${payment.description}`}
+                                    </p>
+                                  </div>
+                                  <span className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+                                    ${(parseFloat(payment.total_amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      
                       {isFullyPaid && (
                         <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                           <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
@@ -1868,7 +1950,7 @@ export default function InvoicePage() {
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white mb-2 sm:mb-3">Payment Terms</h3>
               <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p><strong>Deposit Required:</strong> ${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (50% of total)</p>
+                <p><strong>Deposit Required:</strong> ${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (50% of total)</p>
                   {isAdmin && (
                     <>
                       {isEditingDepositDueDate ? (
@@ -2413,6 +2495,7 @@ export default function InvoicePage() {
           }
         }
       `}</style>
+      <QuoteBottomNav quoteId={id} />
     </>
   );
 }

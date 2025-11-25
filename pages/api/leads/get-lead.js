@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     // First, try to fetch from contacts table (UUID format)
     let { data, error } = await supabase
       .from('contacts')
-      .select('id, first_name, last_name, email_address, phone, event_type, event_date, event_time, end_time, venue_name, venue_address, guest_count, special_requests, created_at')
+      .select('id, first_name, last_name, email_address, phone, event_type, event_date, event_time, end_time, venue_name, venue_address, guest_count, special_requests, created_at, contract_signed_date, deposit_paid, payment_status')
       .eq('id', id)
       .is('deleted_at', null)
       .single();
@@ -106,7 +106,10 @@ export default async function handler(req, res) {
       venueName: data.venue_name || '',
       guestCount: data.guest_count ? String(data.guest_count) : '',
       specialRequests: data.special_requests || '',
-      createdAt: data.created_at
+      createdAt: data.created_at,
+      contractSignedDate: data.contract_signed_date || null,
+      depositPaid: data.deposit_paid || false,
+      paymentStatus: data.payment_status || 'pending'
     });
   } catch (error) {
     console.error('❌ Error in lead API:', error);

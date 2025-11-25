@@ -16,6 +16,7 @@ export default function Header({ customLogoUrl = null }) {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isValidQuote, setIsValidQuote] = useState(false);
   const [isValidatingQuote, setIsValidatingQuote] = useState(false);
+  const [hasPayments, setHasPayments] = useState(false);
   
   // Check if we're on a quote page and extract quote ID
   const isQuotePage = router.pathname?.includes('/quote/') && router.query?.id;
@@ -67,6 +68,36 @@ export default function Header({ customLogoUrl = null }) {
 
     validateQuote();
   }, [quoteId, isQuotePage]);
+
+  // Check if payments exist for this quote (to show "Payments" vs "Payment")
+  useEffect(() => {
+    const checkPayments = async () => {
+      if (!quoteId || !isQuotePage || !isValidQuote) {
+        setHasPayments(false);
+        return;
+      }
+
+      try {
+        const timestamp = new Date().getTime();
+        const paymentsResponse = await fetch(`/api/quote/${quoteId}/payments?_t=${timestamp}`, { cache: 'no-store' });
+        if (paymentsResponse.ok) {
+          const paymentsData = await paymentsResponse.json();
+          if (paymentsData.payments && paymentsData.payments.length > 0) {
+            // Check if there are any paid payments
+            const paidPayments = paymentsData.payments.filter(p => p.payment_status === 'Paid');
+            setHasPayments(paidPayments.length > 0);
+          } else {
+            setHasPayments(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking payments in header:', error);
+        setHasPayments(false);
+      }
+    };
+
+    checkPayments();
+  }, [quoteId, isQuotePage, isValidQuote]);
 
   const toggleDropdown = (dropdown) => {
     setOpenDropdown(openDropdown === dropdown ? null : dropdown);
@@ -237,7 +268,7 @@ export default function Header({ customLogoUrl = null }) {
                   </Link>
                   <Link href={`/quote/${quoteId}/payment`} className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
                     <CreditCard className="w-4 h-4" />
-                    Payment
+                    {hasPayments ? 'Payments' : 'Payment'}
                   </Link>
                 </>
               )}
@@ -429,7 +460,7 @@ export default function Header({ customLogoUrl = null }) {
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       <CreditCard className="w-5 h-5 text-brand" />
-                      <span className="font-medium">Payment</span>
+                      <span className="font-medium">{hasPayments ? 'Payments' : 'Payment'}</span>
                     </Link>
                   </div>
                 )}
