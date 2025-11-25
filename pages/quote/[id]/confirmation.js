@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
@@ -15,11 +15,11 @@ export default function ConfirmationPage() {
   const [paymentData, setPaymentData] = useState(null);
   const [hasPayment, setHasPayment] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (retryCount = 0) => {
     try {
       const [leadResponse, quoteResponse] = await Promise.all([
-        fetch(`/api/leads/get-lead?id=${id}`),
-        fetch(`/api/quote/${id}`)
+        fetch(`/api/leads/get-lead?id=${id}?_t=${Date.now()}`),
+        fetch(`/api/quote/${id}?_t=${Date.now()}`)
       ]);
 
       if (leadResponse.ok) {
@@ -29,7 +29,31 @@ export default function ConfirmationPage() {
 
       if (quoteResponse.ok) {
         const quote = await quoteResponse.json();
+        // Parse speaker_rental if it's a JSON string
+        if (quote.speaker_rental && typeof quote.speaker_rental === 'string') {
+          try {
+            quote.speaker_rental = JSON.parse(quote.speaker_rental);
+          } catch (e) {
+            console.error('Error parsing speaker_rental:', e);
+          }
+        }
         setQuoteData(quote);
+        console.log('📦 Quote data loaded:', {
+          total_price: quote.total_price,
+          package_price: quote.package_price,
+          package_name: quote.package_name,
+          speaker_rental: quote.speaker_rental ? (typeof quote.speaker_rental === 'string' ? 'string' : 'object') : 'null',
+          addons: quote.addons?.length || 0,
+          addonsTotal: (quote.addons || []).reduce((sum, a) => sum + (Number(a.price) || 0), 0)
+        });
+      } else if (quoteResponse.status === 404 && retryCount < 3) {
+        // Quote not found - might be a timing issue, retry after a short delay
+        console.log(`⚠️ Quote not found, retrying... (attempt ${retryCount + 1}/3)`);
+        setTimeout(() => {
+          fetchData(retryCount + 1);
+        }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
+      } else if (quoteResponse.status === 404) {
+        console.error('❌ Quote not found after retries');
       }
 
       // Check for actual payment records
@@ -95,7 +119,56 @@ export default function ConfirmationPage() {
     }
   }, [id, fetchData]);
 
-  const totalAmount = quoteData?.total_price || 0;
+  // Calculate total amount - use total_price if available, otherwise calculate from package/speaker rental + addons
+  const calculateTotalAmount = useMemo(() => {
+    if (!quoteData) {
+      console.log('⚠️ No quoteData available');
+      return 0;
+    }
+    
+    let total = Number(quoteData.total_price) || 0;
+    
+    console.log('💰 Initial total from total_price:', total);
+    
+    // If total_price is 0 or missing, calculate from components
+    if (!total || total === 0) {
+      let basePrice = Number(quoteData.package_price) || 0;
+      
+      console.log('📦 Base price from package_price:', basePrice);
+      
+      // Check for speaker rental
+      if (quoteData.speaker_rental) {
+        try {
+          const speakerRental = typeof quoteData.speaker_rental === 'string' 
+            ? JSON.parse(quoteData.speaker_rental) 
+            : quoteData.speaker_rental;
+          console.log('🔊 Speaker rental parsed:', speakerRental);
+          if (speakerRental?.price) {
+            basePrice = Number(speakerRental.price) || 0;
+            console.log('🔊 Updated base price from speaker rental:', basePrice);
+          }
+        } catch (e) {
+          console.error('❌ Error parsing speaker rental:', e);
+        }
+      }
+      
+      // Add addons
+      const addonsTotal = (quoteData.addons || []).reduce((sum, addon) => {
+        const addonPrice = Number(addon.price) || 0;
+        console.log('➕ Addon:', addon.name, 'Price:', addonPrice);
+        return sum + addonPrice;
+      }, 0);
+      
+      console.log('➕ Addons total:', addonsTotal);
+      
+      total = basePrice + addonsTotal;
+      console.log('💰 Calculated total:', total);
+    }
+    
+    return total;
+  }, [quoteData]);
+  
+  const totalAmount = calculateTotalAmount;
   const depositAmount = totalAmount * 0.5;
   const actualPaid = paymentData?.totalPaid || 0;
   // Calculate remaining balance: if no payment made, show total - deposit. If payment made, show total - paid.
@@ -245,15 +318,40 @@ export default function ConfirmationPage() {
               </div>
             )}
 
-            {/* Package Details */}
+            {/* Package or Speaker Rental Details */}
             {quoteData && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12">
-                <h2 className="text-2xl font-bold mb-6">Your Package</h2>
+                <h2 className="text-2xl font-bold mb-6">
+                  {quoteData.speaker_rental ? 'Your Speaker Rental' : 'Your Package'}
+                </h2>
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-xl font-bold text-brand">{quoteData.package_name}</p>
-                    <p className="text-gray-600 dark:text-gray-400">${quoteData.package_price?.toLocaleString()}</p>
-                  </div>
+                  {quoteData.speaker_rental ? (
+                    <div>
+                      <p className="text-xl font-bold text-brand">
+                        {typeof quoteData.speaker_rental === 'string' 
+                          ? JSON.parse(quoteData.speaker_rental).name 
+                          : quoteData.speaker_rental.name}
+                      </p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        ${(typeof quoteData.speaker_rental === 'string' 
+                          ? JSON.parse(quoteData.speaker_rental).price 
+                          : quoteData.speaker_rental.price)?.toLocaleString()}
+                      </p>
+                      {typeof quoteData.speaker_rental === 'object' && quoteData.speaker_rental.startTime && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                          Event Time: {quoteData.speaker_rental.startTime} - {quoteData.speaker_rental.endTime}
+                          {quoteData.speaker_rental.totalHours && (
+                            <> ({quoteData.speaker_rental.totalHours.toFixed(1)} hours)</>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-xl font-bold text-brand">{quoteData.package_name}</p>
+                      <p className="text-gray-600 dark:text-gray-400">${quoteData.package_price?.toLocaleString()}</p>
+                    </div>
+                  )}
                   
                   {quoteData.addons && quoteData.addons.length > 0 && (
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-4">

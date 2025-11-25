@@ -137,6 +137,15 @@ export default function InvoicePage() {
       if (quoteResponse.ok) {
         const quote = await quoteResponse.json();
         
+        // Parse speaker_rental if it's a JSON string
+        if (quote.speaker_rental && typeof quote.speaker_rental === 'string') {
+          try {
+            quote.speaker_rental = JSON.parse(quote.speaker_rental);
+          } catch (e) {
+            console.error('Error parsing speaker_rental:', e);
+          }
+        }
+        
         // Initialize discount from quote data BEFORE setting quoteData
         // This ensures discount state is available when calculateTotals() runs
         if (quote.discount_type) {
@@ -709,8 +718,22 @@ export default function InvoicePage() {
     const packagePrice = isEditing && editingQuote?.editedPackagePrice 
       ? Number(editingQuote.editedPackagePrice) 
       : (quoteData?.package_price || 0);
-    // Use package price for subtotal (bundled prices should already sum to this)
-    const subtotal = packagePrice + addonsTotal;
+    
+    // Include speaker rental if present
+    let speakerRentalPrice = 0;
+    if (quoteData?.speaker_rental) {
+      try {
+        const speakerRental = typeof quoteData.speaker_rental === 'string' 
+          ? JSON.parse(quoteData.speaker_rental) 
+          : quoteData.speaker_rental;
+        speakerRentalPrice = Number(speakerRental?.price) || 0;
+      } catch (e) {
+        console.error('Error parsing speaker rental:', e);
+      }
+    }
+    
+    // Use package price + speaker rental for subtotal (bundled prices should already sum to this)
+    const subtotal = packagePrice + speakerRentalPrice + addonsTotal;
     
     // Calculate discount
     let discountAmount = 0;
@@ -1270,15 +1293,55 @@ export default function InvoicePage() {
                 <tbody>
                   {quoteData && (
                     <>
-                      {/* Package Header Row */}
-                      <tr className="border-b-2 border-gray-300 dark:border-gray-600">
-                        <td colSpan="2" className="py-3 sm:py-4 px-3 sm:px-4">
-                          <p className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">{quoteData.package_name}</p>
-                          {quoteData.customized && quoteData.customization_note && (
-                            <p className="text-xs sm:text-sm text-yellow-600 dark:text-yellow-400 mt-1 italic">{quoteData.customization_note}</p>
-                          )}
-                        </td>
-                      </tr>
+                      {/* Speaker Rental (if present) */}
+                      {quoteData.speaker_rental && (() => {
+                        const speakerRental = typeof quoteData.speaker_rental === 'string' 
+                          ? JSON.parse(quoteData.speaker_rental) 
+                          : quoteData.speaker_rental;
+                        return (
+                          <>
+                            <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+                              <td colSpan="2" className="py-3 sm:py-4 px-3 sm:px-4">
+                                <p className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">{speakerRental.name || 'Speaker Setup Rental'}</p>
+                                {speakerRental.startTime && speakerRental.endTime && (
+                                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    Event Time: {speakerRental.startTime} - {speakerRental.endTime}
+                                    {speakerRental.totalHours && ` (${speakerRental.totalHours.toFixed(1)} hours)`}
+                                  </p>
+                                )}
+                              </td>
+                            </tr>
+                            <tr className="border-b border-gray-100 dark:border-gray-700">
+                              <td className="py-2 sm:py-3 px-3 sm:px-4">
+                                <div className="pl-2 sm:pl-4">
+                                  <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">
+                                    {speakerRental.name || 'Speaker Setup Rental (Up to 4 Hours)'}
+                                  </p>
+                                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+                                    Professional speaker system rental with built-in mixer. Includes microphone input and all necessary cables.
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm sm:text-base">
+                                <span className="text-gray-700 dark:text-gray-300 font-medium">
+                                  ${(speakerRental.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </td>
+                            </tr>
+                          </>
+                        );
+                      })()}
+                      {/* Package Header Row (only if package exists) */}
+                      {quoteData.package_name && (
+                        <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+                          <td colSpan="2" className="py-3 sm:py-4 px-3 sm:px-4">
+                            <p className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">{quoteData.package_name}</p>
+                            {quoteData.customized && quoteData.customization_note && (
+                              <p className="text-xs sm:text-sm text-yellow-600 dark:text-yellow-400 mt-1 italic">{quoteData.customization_note}</p>
+                            )}
+                          </td>
+                        </tr>
+                      )}
                       {/* Package Line Items */}
                       {packageLineItems.length > 0 ? (
                         packageLineItems.map((lineItem, idx) => (
@@ -1328,11 +1391,12 @@ export default function InvoicePage() {
                           </td>
                         </tr>
                       )}
-                      {/* Package Total Row */}
-                      <tr className="border-b-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
-                        <td className="py-2 sm:py-3 px-3 sm:px-4">
-                          <p className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white pl-2 sm:pl-4">Package Total</p>
-                        </td>
+                      {/* Package Total Row (only if package exists) */}
+                      {quoteData.package_name && (
+                        <tr className="border-b-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
+                          <td className="py-2 sm:py-3 px-3 sm:px-4">
+                            <p className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white pl-2 sm:pl-4">Package Total</p>
+                          </td>
                         <td className="py-2 sm:py-3 px-3 sm:px-4 text-right">
                           {isEditing && isAdmin ? (
                             <Input
@@ -1368,6 +1432,7 @@ export default function InvoicePage() {
                           )}
                         </td>
                       </tr>
+                      )}
                       {/* Add-ons */}
                       {addons && addons.length > 0 && (
                         <>
@@ -1413,13 +1478,51 @@ export default function InvoicePage() {
               <div className="sm:hidden space-y-3 px-4">
                 {quoteData && (
                   <>
-                    {/* Package Header */}
-                    <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
-                      <p className="font-bold text-gray-900 dark:text-white text-base">{quoteData.package_name}</p>
-                      {quoteData.customized && quoteData.customization_note && (
-                        <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1 italic">{quoteData.customization_note}</p>
-                      )}
-                    </div>
+                    {/* Speaker Rental (if present) */}
+                    {quoteData.speaker_rental && (() => {
+                      const speakerRental = typeof quoteData.speaker_rental === 'string' 
+                        ? JSON.parse(quoteData.speaker_rental) 
+                        : quoteData.speaker_rental;
+                      return (
+                        <>
+                          <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
+                            <p className="font-bold text-gray-900 dark:text-white text-base">{speakerRental.name || 'Speaker Setup Rental'}</p>
+                            {speakerRental.startTime && speakerRental.endTime && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                Event Time: {speakerRental.startTime} - {speakerRental.endTime}
+                                {speakerRental.totalHours && ` (${speakerRental.totalHours.toFixed(1)} hours)`}
+                              </p>
+                            )}
+                          </div>
+                          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 pl-4">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1 pr-2">
+                                <p className="font-medium text-gray-900 dark:text-white text-sm">
+                                  {speakerRental.name || 'Speaker Setup Rental (Up to 4 Hours)'}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                  Professional speaker system rental with built-in mixer. Includes microphone input and all necessary cables.
+                                </p>
+                              </div>
+                              <div className="text-right whitespace-nowrap">
+                                <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                                  ${(speakerRental.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                    {/* Package Header (only if package exists) */}
+                    {quoteData.package_name && (
+                      <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
+                        <p className="font-bold text-gray-900 dark:text-white text-base">{quoteData.package_name}</p>
+                        {quoteData.customized && quoteData.customization_note && (
+                          <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1 italic">{quoteData.customization_note}</p>
+                        )}
+                      </div>
+                    )}
                     {/* Package Line Items */}
                     {packageLineItems.length > 0 ? (
                       <>
@@ -1449,10 +1552,11 @@ export default function InvoicePage() {
                             </div>
                           </div>
                         ))}
-                        {/* Package Total */}
-                        <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
-                          <div className="flex justify-between items-center">
-                            <p className="font-bold text-gray-900 dark:text-white text-sm">Package Total</p>
+                        {/* Package Total (only if package exists) */}
+                        {quoteData.package_name && (
+                          <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
+                            <div className="flex justify-between items-center">
+                              <p className="font-bold text-gray-900 dark:text-white text-sm">Package Total</p>
                             <div className="flex flex-col items-end">
                               {(() => {
                                 const totalALaCarte = packageLineItems.reduce((sum, item) => sum + (item.aLaCartePrice || item.price || 0), 0);
@@ -1476,8 +1580,9 @@ export default function InvoicePage() {
                             </div>
                           </div>
                         </div>
+                        )}
                       </>
-                    ) : (
+                    ) : quoteData.package_name ? (
                       <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                         <div className="flex justify-between items-center">
                           <p className="text-gray-600 dark:text-gray-400 text-sm">Package includes all listed services</p>
@@ -1486,7 +1591,7 @@ export default function InvoicePage() {
                           </p>
                         </div>
                       </div>
-                    )}
+                    ) : null}
                     {/* Add-ons Header */}
                     {quoteData.addons && quoteData.addons.length > 0 && (
                       <>

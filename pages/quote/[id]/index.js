@@ -13,6 +13,7 @@ export default function PersonalizedQuote() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedPackage, setSelectedPackage] = useState(null);
+  const [selectedSpeakerRental, setSelectedSpeakerRental] = useState(null);
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [saving, setSaving] = useState(false);
   const [expandedBreakdown, setExpandedBreakdown] = useState(null);
@@ -32,6 +33,13 @@ export default function PersonalizedQuote() {
   const [customizedPackage, setCustomizedPackage] = useState(null); // Admin-customized package with removed features
   const [customizedFeatures, setCustomizedFeatures] = useState([]); // Features that remain after customization
   const [isExpired, setIsExpired] = useState(false); // Track if event date has passed
+  const [showSpeakerTimeModal, setShowSpeakerTimeModal] = useState(false);
+  const [speakerStartTime, setSpeakerStartTime] = useState('');
+  const [speakerEndTime, setSpeakerEndTime] = useState('');
+  const [pendingSpeakerAddon, setPendingSpeakerAddon] = useState(null);
+  const [showSpeakerUpsell, setShowSpeakerUpsell] = useState(false);
+  const [calculatedHours, setCalculatedHours] = useState(0);
+  const [additionalHoursSelected, setAdditionalHoursSelected] = useState(0);
 
   const fetchLeadData = useCallback(async () => {
     // Validate ID before making request
@@ -165,10 +173,54 @@ export default function PersonalizedQuote() {
         const quoteData = await quoteResponse.json();
         if (quoteData) {
           setExistingSelection(quoteData);
+          
           // Pre-populate selections if they exist
           if (quoteData.package_id) {
-            setSelectedPackage(quoteData.package_id);
+            // Find the actual package object from the packages array
+            // We need to determine which package array to search based on event type
+            const eventTypeLower = (leadData?.eventType || leadData?.event_type || '').toLowerCase();
+            const isHolidayLocal = eventTypeLower.includes('holiday');
+            const isSchoolLocal = eventTypeLower.includes('school');
+            const isCorporateLocal = eventTypeLower.includes('corporate') || eventTypeLower.includes('business');
+            const isPrivatePartyLocal = eventTypeLower.includes('private') || eventTypeLower.includes('party');
+            
+            let packagesToSearch = weddingPackages; // default
+            if (isHolidayLocal) {
+              packagesToSearch = holidayPackages;
+            } else if (isSchoolLocal) {
+              packagesToSearch = schoolPackages;
+            } else if (isCorporateLocal || isPrivatePartyLocal) {
+              packagesToSearch = corporatePackages;
+            }
+            
+            const foundPackage = packagesToSearch.find(pkg => pkg.id === quoteData.package_id);
+            if (foundPackage) {
+              setSelectedPackage(foundPackage);
+              console.log('✅ Loaded existing package:', foundPackage);
+            } else {
+              console.warn('⚠️ Package not found:', quoteData.package_id, 'in packages array');
+              // Fallback: create a minimal package object from quoteData
+              setSelectedPackage({
+                id: quoteData.package_id,
+                name: quoteData.package_name || 'Selected Package',
+                price: quoteData.package_price || 0
+              });
+            }
           }
+          
+          // Handle speaker rental if present
+          if (quoteData.speaker_rental) {
+            try {
+              const speakerRental = typeof quoteData.speaker_rental === 'string' 
+                ? JSON.parse(quoteData.speaker_rental) 
+                : quoteData.speaker_rental;
+              setSelectedSpeakerRental(speakerRental);
+              console.log('✅ Loaded existing speaker rental:', speakerRental);
+            } catch (e) {
+              console.error('Error parsing speaker rental:', e);
+            }
+          }
+          
           if (quoteData.addons && Array.isArray(quoteData.addons)) {
             setSelectedAddons(quoteData.addons);
           }
@@ -530,13 +582,30 @@ export default function PersonalizedQuote() {
     }
   }, [selectedPackage]);
 
+  // Auto-scroll to save button when a selection is made (package or speaker rental)
+  useEffect(() => {
+    if ((selectedPackage || selectedSpeakerRental) && !existingSelection) {
+      // Use setTimeout to ensure the DOM has updated
+      setTimeout(() => {
+        const saveButton = document.getElementById('save-selections-button');
+        if (saveButton) {
+          saveButton.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+        }
+      }, 300);
+    }
+  }, [selectedPackage, selectedSpeakerRental, existingSelection]);
+
   // Determine event type from lead data (before early returns to ensure hooks can use it)
   const eventType = leadData?.eventType || leadData?.event_type || 'wedding';
   const eventTypeLower = eventType?.toLowerCase() || '';
   const isCorporate = eventTypeLower.includes('corporate') || eventTypeLower.includes('business');
   const isSchool = eventTypeLower.includes('school') || eventTypeLower.includes('dance') || eventTypeLower.includes('prom') || eventTypeLower.includes('homecoming');
   const isHoliday = eventTypeLower.includes('holiday') || eventTypeLower.includes('christmas') || eventTypeLower.includes('new year') || eventTypeLower.includes('thanksgiving') || eventTypeLower.includes('halloween');
-  const isPrivateParty = (eventTypeLower.includes('private') || eventTypeLower.includes('party')) && !isHoliday && !isSchool;
+  const isWedding = eventTypeLower.includes('wedding') || (!isHoliday && !isCorporate && !isSchool && !eventTypeLower.includes('private') && !eventTypeLower.includes('party'));
+  const isPrivateParty = (eventTypeLower.includes('private') || eventTypeLower.includes('party')) && !isHoliday && !isSchool && !isWedding;
 
   // Determine holiday theme based on event date
   const getHolidayTheme = useCallback(() => {
@@ -1060,6 +1129,13 @@ export default function PersonalizedQuote() {
       per: 'hour'
     },
     {
+      id: 'holiday_speaker_additional_hours',
+      name: 'Additional Speaker Rental Hours',
+      description: 'Additional hours for speaker rental beyond the included 4 hours. Perfect for longer events. $100 per hour.',
+      price: 100,
+      per: 'hour'
+    },
+    {
       id: 'holiday_dance_floor_lighting',
       name: 'Holiday Dance Floor Lighting',
       description: 'Multi-color LED fixtures with festive holiday colors for lighting the dance floor, audience, and/or performer. Creates an energetic holiday atmosphere.',
@@ -1079,9 +1155,9 @@ export default function PersonalizedQuote() {
     },
     {
       id: 'holiday_speaker_rental',
-      name: 'Additional Speaker Setup',
-      description: 'Professional speaker system rental with built-in mixer. Perfect for separate areas, outdoor spaces, or multiple rooms at your holiday event. Includes microphone input.',
-      price: 200
+      name: 'Speaker Setup Rental (Up to 4 Hours)',
+      description: 'Professional speaker system rental with built-in mixer for up to 4 hours. Perfect for separate areas, outdoor spaces, or multiple rooms at your holiday event. Includes microphone input and all necessary cables.',
+      price: 400
     },
     {
       id: 'holiday_uplighting_addon',
@@ -1272,7 +1348,12 @@ export default function PersonalizedQuote() {
   // Memoize addons to prevent unnecessary re-renders
   const addons = useMemo(() => {
     // Holiday parties have their own specialized addons
-    const defaultAddons = isSchool ? schoolAddons : (isHoliday ? holidayAddons : (isCorporate || isPrivateParty ? corporateAddons : weddingAddons));
+    let defaultAddons = isSchool ? schoolAddons : (isHoliday ? holidayAddons : (isCorporate || isPrivateParty ? corporateAddons : weddingAddons));
+    
+    // Remove speaker rental from addons list for holiday parties (it's now a standalone selection)
+    if (isHoliday) {
+      defaultAddons = defaultAddons.filter(a => a.id !== 'holiday_speaker_rental');
+    }
     
     // If we have addons from pricing config, merge them with defaults
     if (activePricing && activePricing.addons && activePricing.addons.length > 0) {
@@ -1304,6 +1385,148 @@ export default function PersonalizedQuote() {
     
     return defaultAddons;
   }, [isCorporate, isSchool, isHoliday, isPrivateParty, activePricing, weddingAddons, corporateAddons, schoolAddons, holidayAddons]);
+
+  // Smart recommendation function based on special requests and guest count
+  const getSmartRecommendations = useMemo(() => {
+    if (!leadData) return null;
+    
+    const specialRequests = (leadData.specialRequests || leadData.special_requests || '').toLowerCase();
+    const guestCount = leadData.guestCount || leadData.guest_count || '';
+    const guestCountNum = parseInt(guestCount) || 0;
+    
+    if (!specialRequests && !guestCount) return null;
+    
+    const recommendations = {
+      packages: [],
+      addons: [],
+      message: '',
+      keywords: []
+    };
+    
+    // Analyze keywords in special requests (normalize text first)
+    const normalizedRequest = specialRequests
+      .replace(/🔥|💡|🎵|🎶|🎤|🎧|🔊|📢/g, '') // Remove emojis
+      .toLowerCase()
+      .trim();
+    
+    const keywords = {
+      sound: ['sound', 'speaker', 'audio', 'sound equipment', 'sound system', 'pa system', 'microphone', 'mic', 'speakers', 'equipment'],
+      lighting: ['light', 'lighting', 'uplight', 'dance floor', 'ambiance', 'lights'],
+      outdoor: ['bonfire', 'outdoor', 'outside', 'patio', 'backyard', 'garden', 'beach', 'yard'],
+      dj: ['dj', 'music', 'mc', 'emcee', 'entertainment'],
+      large: ['large', 'big', 'many', 'crowd', 'group'],
+      small: ['small', 'intimate', 'few']
+    };
+    
+    // Detect keywords
+    const detectedKeywords = [];
+    Object.entries(keywords).forEach(([category, terms]) => {
+      if (terms.some(term => normalizedRequest.includes(term))) {
+        detectedKeywords.push(category);
+      }
+    });
+    
+    // Build recommendation message
+    let recommendationText = '';
+    if (specialRequests) {
+      // Use normalized request for cleaner display (remove emojis, truncate if needed)
+      const displayRequest = normalizedRequest.length > 80 
+        ? normalizedRequest.substring(0, 80) + '...' 
+        : normalizedRequest;
+      recommendationText = `Based on your note "${displayRequest}"`;
+      if (guestCount) {
+        recommendationText += ` and ${guestCount} guests`;
+      }
+      recommendationText += ', we thought this selection might work for you.';
+    } else if (guestCount) {
+      recommendationText = `Based on your event size (${guestCount} guests), we thought this selection might work for you.`;
+    }
+    
+    // Recommend packages and addons based on detected keywords
+    if (detectedKeywords.includes('sound')) {
+      // Sound equipment needed - recommend speaker rentals or packages with speakers
+      if (isHoliday) {
+        recommendations.addons.push('holiday_speaker_rental');
+        // For outdoor events, recommend packages that include speakers
+        if (detectedKeywords.includes('outdoor')) {
+          recommendations.packages.push('holiday-package1'); // Includes speakers
+        }
+      } else if (isCorporate || isSchool) {
+        recommendations.addons.push('speaker_rental');
+        recommendations.addons.push('additional_speaker');
+        // For outdoor events, recommend packages that include speakers
+        if (detectedKeywords.includes('outdoor')) {
+          recommendations.packages.push('corporate-package1');
+          recommendations.packages.push('school-package1');
+        }
+      } else {
+        // Wedding/private party - recommend speaker rentals
+        recommendations.addons.push('speaker_rental');
+        recommendations.addons.push('additional_speaker');
+        // For outdoor events, recommend packages that include speakers
+        if (detectedKeywords.includes('outdoor')) {
+          recommendations.packages.push('package1');
+          recommendations.packages.push('package2');
+        }
+      }
+    }
+    
+    // Outdoor events (even without explicit sound keyword) may need speakers
+    if (detectedKeywords.includes('outdoor') && !detectedKeywords.includes('sound')) {
+      if (isHoliday) {
+        recommendations.addons.push('holiday_speaker_rental');
+      } else {
+        recommendations.addons.push('speaker_rental');
+        recommendations.addons.push('additional_speaker');
+      }
+    }
+    
+    // Guest count recommendations
+    if (guestCountNum > 0) {
+      if (guestCountNum >= 100) {
+        // Large events need more equipment
+        if (isHoliday) {
+          recommendations.packages.push('holiday-package2');
+        } else if (isCorporate || isSchool) {
+          recommendations.packages.push('corporate-package2');
+          recommendations.packages.push('school-package2');
+        } else {
+          recommendations.packages.push('package2');
+          recommendations.packages.push('package3');
+        }
+      } else if (guestCountNum >= 50) {
+        // Medium events
+        if (isHoliday) {
+          recommendations.packages.push('holiday-package1');
+        } else if (isCorporate || isSchool) {
+          recommendations.packages.push('corporate-package1');
+          recommendations.packages.push('school-package1');
+        } else {
+          recommendations.packages.push('package1');
+          recommendations.packages.push('package2');
+        }
+      } else {
+        // Smaller events
+        if (isHoliday) {
+          recommendations.packages.push('holiday-basics');
+        } else if (isCorporate || isSchool) {
+          recommendations.packages.push('corporate-basics');
+          recommendations.packages.push('school-basics');
+        }
+      }
+    }
+    
+    // Only return recommendations if we have something to recommend
+    if (recommendations.packages.length > 0 || recommendations.addons.length > 0) {
+      recommendations.message = recommendationText;
+      recommendations.keywords = detectedKeywords;
+      return recommendations;
+    }
+    
+    return null;
+  }, [leadData, isHoliday, isCorporate, isSchool]);
+  
+  const smartRecommendations = getSmartRecommendations;
 
   // Auto-select recommended package from URL parameter
   useEffect(() => {
@@ -1488,6 +1711,10 @@ export default function PersonalizedQuote() {
     if (effectivePackage && effectivePackage.price != null) {
       total += Number(effectivePackage.price) || 0;
     }
+    // Add speaker rental if selected
+    if (selectedSpeakerRental && selectedSpeakerRental.price != null) {
+      total += Number(selectedSpeakerRental.price) || 0;
+    }
     selectedAddons.forEach(addon => {
       if (addon && addon.price != null) {
         total += Number(addon.price) || 0;
@@ -1659,9 +1886,167 @@ export default function PersonalizedQuote() {
     });
   };
 
+  // Handle speaker rental selection (similar to package selection)
+  const handleSelectSpeakerRental = () => {
+    if (selectedSpeakerRental) {
+      // Deselecting - also remove additional hours
+      setSelectedSpeakerRental(null);
+      setSelectedAddons(prev => prev.filter(a => a.id !== 'holiday_speaker_additional_hours'));
+    } else {
+      // Selecting - show time modal
+      setShowSpeakerTimeModal(true);
+      setShowSpeakerUpsell(false);
+      setAdditionalHoursSelected(0);
+      // Pre-fill with existing event times if available
+      if (leadData?.eventTime || leadData?.event_time) {
+        setSpeakerStartTime(leadData.eventTime || leadData.event_time);
+      }
+      if (leadData?.endTime || leadData?.end_time) {
+        setSpeakerEndTime(leadData.endTime || leadData.end_time);
+      }
+    }
+  };
+
+  // Calculate hours from start and end time
+  const calculateHours = (startTime, endTime) => {
+    if (!startTime || !endTime) return 0;
+    
+    try {
+      // Parse times - HTML time inputs return "HH:MM" format (24-hour)
+      const parseTime = (timeStr) => {
+        if (!timeStr) return 0;
+        const time = timeStr.trim();
+        
+        // Handle 24-hour format (HH:MM) - this is what HTML time inputs return
+        if (time.includes(':')) {
+          const parts = time.split(':');
+          const hours = parseInt(parts[0], 10) || 0;
+          const minutes = parseInt(parts[1], 10) || 0;
+          
+          // Return decimal hours (e.g., 14:30 = 14.5)
+          return hours + (minutes / 60);
+        }
+        
+        // Fallback: try to parse as 12-hour format if it contains AM/PM
+        const lowerTime = time.toLowerCase();
+        if (lowerTime.includes('am') || lowerTime.includes('pm')) {
+          const timeWithoutAmPm = time.replace(/[ap]m/i, '').trim();
+          if (timeWithoutAmPm.includes(':')) {
+            const [hoursStr, minutesStr] = timeWithoutAmPm.split(':');
+            let hours = parseInt(hoursStr, 10) || 0;
+            const minutes = parseInt(minutesStr, 10) || 0;
+            
+            // Convert 12-hour to 24-hour
+            if (lowerTime.includes('pm') && hours < 12) {
+              hours += 12;
+            } else if (lowerTime.includes('am') && hours === 12) {
+              hours = 0;
+            }
+            
+            return hours + (minutes / 60);
+          }
+        }
+        
+        return 0;
+      };
+      
+      const start = parseTime(startTime);
+      const end = parseTime(endTime);
+      
+      if (start === 0 && end === 0) return 0;
+      
+      // Handle overnight events (end time is next day)
+      let hours = end - start;
+      if (hours < 0) {
+        hours += 24; // Overnight event
+      }
+      
+      return Math.max(0, hours);
+    } catch (error) {
+      console.error('Error calculating hours:', error);
+      console.error('Start time:', startTime, 'End time:', endTime);
+      return 0;
+    }
+  };
+
+  // Handle speaker rental time modal submission
+  const handleSpeakerTimeSubmit = () => {
+    if (!speakerStartTime || !speakerEndTime) {
+      alert('Please enter both start and end times');
+      return;
+    }
+
+    const hours = calculateHours(speakerStartTime, speakerEndTime);
+    
+    if (hours <= 0) {
+      alert('End time must be after start time');
+      return;
+    }
+
+    setCalculatedHours(hours);
+
+    // If more than 4 hours, show upsell in modal
+    if (hours > 4) {
+      const additionalHours = Math.ceil(hours - 4);
+      setAdditionalHoursSelected(additionalHours);
+      setShowSpeakerUpsell(true);
+    } else {
+      // 4 hours or less, save directly
+      handleSaveSpeakerRental(0);
+    }
+  };
+
+  // Handle adding additional hours
+  const handleAddSpeakerHours = (hours) => {
+    setAdditionalHoursSelected(hours);
+  };
+
+  // Save speaker rental selection
+  const handleSaveSpeakerRental = (additionalHours = null) => {
+    const hoursToAdd = additionalHours !== null ? additionalHours : additionalHoursSelected;
+    
+    // Recalculate hours to ensure accuracy
+    const hours = calculateHours(speakerStartTime, speakerEndTime);
+    
+    // Set the speaker rental as selected
+    setSelectedSpeakerRental({
+      id: 'holiday_speaker_rental',
+      name: 'Speaker Setup Rental (Up to 4 Hours)',
+      price: 400,
+      startTime: speakerStartTime,
+      endTime: speakerEndTime,
+      totalHours: hours > 0 ? hours : calculatedHours
+    });
+
+    // Add additional hours addon if needed
+    if (hoursToAdd > 0) {
+      const additionalHoursAddon = addons.find(a => a.id === 'holiday_speaker_additional_hours');
+      if (additionalHoursAddon) {
+        // Remove existing additional hours if any, then add new one with quantity
+        setSelectedAddons(prev => {
+          const filtered = prev.filter(a => a.id !== 'holiday_speaker_additional_hours');
+          return [...filtered, { 
+            ...additionalHoursAddon, 
+            quantity: hoursToAdd, 
+            price: additionalHoursAddon.price * hoursToAdd,
+            displayPrice: `$${additionalHoursAddon.price} × ${hoursToAdd} hours = $${additionalHoursAddon.price * hoursToAdd}`
+          }];
+        });
+      }
+    }
+
+    // Close modal and reset
+    setShowSpeakerTimeModal(false);
+    setShowSpeakerUpsell(false);
+    setSpeakerStartTime('');
+    setSpeakerEndTime('');
+    setCalculatedHours(0);
+    setAdditionalHoursSelected(0);
+  };
+
   const handleSaveQuote = async () => {
-    if (!selectedPackage) {
-      alert('Please select a package first');
+    if (!selectedPackage && !selectedSpeakerRental) {
+      alert('Please select a package or speaker rental first');
       return;
     }
 
@@ -1672,8 +2057,16 @@ export default function PersonalizedQuote() {
       if (id === 'fallback' || !id || id === 'null' || id === 'undefined') {
         // Store selections in localStorage as backup
         const quoteData = {
-          packageId: selectedPackage.id,
-          packageName: selectedPackage.name,
+          packageId: selectedPackage?.id || null,
+          packageName: selectedPackage?.name || null,
+          speakerRental: selectedSpeakerRental ? {
+            id: selectedSpeakerRental.id,
+            name: selectedSpeakerRental.name,
+            price: selectedSpeakerRental.price,
+            startTime: selectedSpeakerRental.startTime,
+            endTime: selectedSpeakerRental.endTime,
+            totalHours: selectedSpeakerRental.totalHours
+          } : null,
           addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
           total: calculateTotal(),
           leadData: leadData,
@@ -1702,8 +2095,17 @@ export default function PersonalizedQuote() {
         packageId: selectedPackage?.id,
         packageName: selectedPackage?.name,
         packagePrice: packagePrice,
+        speakerRental: selectedSpeakerRental ? {
+          name: selectedSpeakerRental.name,
+          price: selectedSpeakerRental.price
+        } : null,
+        selectedAddons: selectedAddons.length,
         totalPrice: totalPrice,
-        selectedPackage: selectedPackage
+        calculateTotalBreakdown: {
+          package: selectedPackage?.price || 0,
+          speakerRental: selectedSpeakerRental?.price || 0,
+          addons: selectedAddons.reduce((sum, a) => sum + (a.price || 0), 0)
+        }
       });
 
       // Add timeout to prevent hanging
@@ -1714,12 +2116,26 @@ export default function PersonalizedQuote() {
       const effectivePackage = getEffectivePackage();
       const packageData = {
         leadId: id,
-        packageId: effectivePackage.id,
-        packageName: effectivePackage.name,
-        packagePrice: effectivePackage.price,
+        packageId: effectivePackage?.id || null,
+        packageName: effectivePackage?.name || (selectedSpeakerRental ? selectedSpeakerRental.name : null),
+        packagePrice: effectivePackage?.price || (selectedSpeakerRental ? selectedSpeakerRental.price : 0),
+        speakerRental: selectedSpeakerRental ? {
+          id: selectedSpeakerRental.id,
+          name: selectedSpeakerRental.name,
+          price: selectedSpeakerRental.price,
+          startTime: selectedSpeakerRental.startTime,
+          endTime: selectedSpeakerRental.endTime,
+          totalHours: selectedSpeakerRental.totalHours
+        } : null,
         addons: selectedAddons.map(a => ({ id: a.id, name: a.name, price: a.price })),
         totalPrice: totalPrice
       };
+      
+      console.log('💾 Package data being saved:', {
+        ...packageData,
+        speakerRental: packageData.speakerRental ? 'present' : 'null',
+        totalPrice: packageData.totalPrice
+      });
 
       // Include customization details if admin customized the package
       if (adminMode && customizedPackage && customizedPackage.price !== customizedPackage.originalPrice) {
@@ -1761,7 +2177,21 @@ export default function PersonalizedQuote() {
 
         // The API always returns 200, so check for success in the response
         if (response.ok && (result.success || result.message)) {
-          console.log('✅ Quote saved successfully, redirecting to confirmation...');
+          console.log('✅ Quote saved successfully');
+          
+          // If the response has data, the save was successful
+          // If it only has logged: true, the database save might have failed
+          if (result.data) {
+            console.log('✅ Quote data saved to database:', result.data);
+          } else if (result.logged) {
+            console.warn('⚠️ Quote was logged but may not have been saved to database');
+          }
+          
+          // Add a small delay to ensure database commit before redirecting
+          console.log('⏳ Waiting 500ms before redirecting to ensure database commit...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          console.log('🔄 Redirecting to confirmation...');
         } else {
           console.log('⚠️ API response indicates potential issue, but redirecting anyway');
         }
@@ -2237,6 +2667,63 @@ export default function PersonalizedQuote() {
             </div>
           )}
 
+          {/* Smart Recommendations Banner */}
+          {smartRecommendations && (!existingSelection || showEditMode) && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 mb-8 border-2 border-blue-200 dark:border-blue-700 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Personalized Recommendation
+                  </h3>
+                  <p className="text-gray-700 dark:text-gray-300 mb-4">
+                    {smartRecommendations.message}
+                  </p>
+                  {smartRecommendations.packages.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Recommended Packages:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {smartRecommendations.packages.map((pkgId) => {
+                          const pkg = packages.find(p => p.id === pkgId);
+                          if (!pkg) return null;
+                          return (
+                            <span
+                              key={pkgId}
+                              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 text-sm font-medium border border-blue-200 dark:border-blue-700"
+                            >
+                              {pkg.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {smartRecommendations.addons.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Recommended Add-ons:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {smartRecommendations.addons.map((addonId) => {
+                          const addon = addons.find(a => a.id === addonId);
+                          if (!addon) return null;
+                          return (
+                            <span
+                              key={addonId}
+                              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 text-sm font-medium border border-indigo-200 dark:border-indigo-700"
+                            >
+                              {addon.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Packages Section */}
           {(!existingSelection || showEditMode || contractSigned) && (
           <section className="mb-12">
@@ -2516,6 +3003,83 @@ export default function PersonalizedQuote() {
           </section>
           )}
 
+          {/* Speaker Rental Section for Holiday Parties Only (Not for Weddings) */}
+          {isHoliday && !isWedding && (!existingSelection || showEditMode || contractSigned) && (
+            <section className="mb-12">
+              <h2 className="text-3xl font-bold text-center mb-4">
+                <Music className={`inline w-8 h-8 ${getThemeText()} mr-2`} />
+                Speaker Rental
+              </h2>
+              <p className="text-center text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+                Need sound equipment for your holiday celebration? Our speaker rental is perfect for outdoor events, separate areas, or when you need audio coverage.
+              </p>
+              <div className="max-w-md mx-auto">
+                <div
+                  onClick={handleSelectSpeakerRental}
+                  className={`bg-white dark:bg-gray-800 rounded-xl p-6 border-2 cursor-pointer transition-all shadow-sm hover:shadow-md ${
+                    selectedSpeakerRental
+                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/30'
+                      : 'border-orange-200 dark:border-orange-700 hover:border-orange-400'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-2">
+                        Speaker Setup Rental (Up to 4 Hours)
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        Professional speaker system rental with built-in mixer for up to 4 hours. Perfect for separate areas, outdoor spaces, or multiple rooms at your holiday event. Includes microphone input and all necessary cables.
+                      </p>
+                      {selectedSpeakerRental && (
+                        <div className="mt-3 p-3 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                          <p className="text-sm text-orange-800 dark:text-orange-200">
+                            <strong>Event Time:</strong> {selectedSpeakerRental.startTime} - {selectedSpeakerRental.endTime}
+                            <br />
+                            <strong>Duration:</strong> {selectedSpeakerRental.totalHours.toFixed(1)} hours
+                            {selectedSpeakerRental.totalHours > 4 && (
+                              <>
+                                <br />
+                                <strong>Additional Hours:</strong> {Math.ceil(selectedSpeakerRental.totalHours - 4)} hour(s) at $100/hour
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between mt-4">
+                        <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                          $400
+                          <span className="text-base font-normal text-gray-500 ml-2">(up to 4 hours)</span>
+                        </div>
+                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                          selectedSpeakerRental
+                            ? 'bg-orange-500 border-orange-500'
+                            : 'border-orange-300 dark:border-orange-600'
+                        }`}>
+                          {selectedSpeakerRental && (
+                            <CheckCircle className="w-5 h-5 text-white" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectSpeakerRental();
+                    }}
+                    className={`w-full mt-4 py-3 px-4 rounded-lg font-semibold transition-all ${
+                      selectedSpeakerRental
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100'
+                    }`}
+                  >
+                    {selectedSpeakerRental ? 'Selected' : 'Select Speaker Rental'}
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Add-ons Section */}
           {(!existingSelection || showEditMode || contractSigned) && (
           <section id="addons-section" className="mb-12">
@@ -2527,7 +3091,9 @@ export default function PersonalizedQuote() {
               Add extra services to your package. These are optional upgrades that can be added to personalize your celebration even more! 
             </p>
             <div className="grid md:grid-cols-2 gap-4">
-              {addons.map((addon) => {
+              {addons
+                .filter(addon => !isHoliday || (!addon.id.includes('speaker') && addon.id !== 'holiday_speaker_rental'))
+                .map((addon) => {
                 const isSelected = selectedAddons.find(a => a.id === addon.id);
                 return (
                   <div
@@ -2760,8 +3326,9 @@ export default function PersonalizedQuote() {
               )}
 
               <button
+                id="save-selections-button"
                 onClick={handleSaveQuote}
-                disabled={!selectedPackage || saving}
+                disabled={(!selectedPackage && !selectedSpeakerRental) || saving}
                 className="w-full btn-primary text-lg py-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {saving ? (
@@ -2785,6 +3352,133 @@ export default function PersonalizedQuote() {
           )}
         </div>
       </main>
+
+      {/* Speaker Rental Time Entry Modal */}
+      {showSpeakerTimeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Event Time Details
+            </h3>
+            
+            {!showSpeakerUpsell ? (
+              <>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  Please provide the start and end times for your event so we can ensure the speaker rental covers your full event duration.
+                </p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Event Start Time
+                    </label>
+                    <input
+                      type="time"
+                      value={speakerStartTime}
+                      onChange={(e) => setSpeakerStartTime(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Event End Time
+                    </label>
+                    <input
+                      type="time"
+                      value={speakerEndTime}
+                      onChange={(e) => setSpeakerEndTime(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowSpeakerTimeModal(false);
+                      setShowSpeakerUpsell(false);
+                      setSpeakerStartTime('');
+                      setSpeakerEndTime('');
+                      setCalculatedHours(0);
+                      setAdditionalHoursSelected(0);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSpeakerTimeSubmit}
+                    className="flex-1 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-semibold"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-6">
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    Your event duration is <strong>{calculatedHours.toFixed(1)} hours</strong>. The base speaker rental covers up to 4 hours.
+                  </p>
+                  {calculatedHours > 4 && (
+                    <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-4">
+                      <p className="text-sm font-medium text-orange-900 dark:text-orange-200 mb-3">
+                        Add Additional Hours
+                      </p>
+                      <p className="text-sm text-orange-800 dark:text-orange-300 mb-4">
+                        Your event is {calculatedHours.toFixed(1)} hours. Add {Math.ceil(calculatedHours - 4)} additional hour{Math.ceil(calculatedHours - 4) > 1 ? 's' : ''} at $100/hour?
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAddSpeakerHours(Math.ceil(calculatedHours - 4))}
+                          className={`flex-1 px-4 py-2 rounded-lg transition-colors font-semibold ${
+                            additionalHoursSelected === Math.ceil(calculatedHours - 4)
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 border border-orange-300 dark:border-orange-600'
+                          }`}
+                        >
+                          Yes, Add {Math.ceil(calculatedHours - 4)} Hour{Math.ceil(calculatedHours - 4) > 1 ? 's' : ''} (+${Math.ceil(calculatedHours - 4) * 100})
+                        </button>
+                        <button
+                          onClick={() => handleAddSpeakerHours(0)}
+                          className={`flex-1 px-4 py-2 rounded-lg transition-colors font-semibold ${
+                            additionalHoursSelected === 0
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 border border-orange-300 dark:border-orange-600'
+                          }`}
+                        >
+                          No, Just 4 Hours
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowSpeakerUpsell(false);
+                      setAdditionalHoursSelected(0);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => handleSaveSpeakerRental()}
+                    className="flex-1 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-semibold"
+                  >
+                    Save Selection
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

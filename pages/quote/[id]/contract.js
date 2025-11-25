@@ -277,8 +277,11 @@ export default function ContractPage() {
       errors.push('Client email is required');
     }
     
-    if (!quoteData?.package_name) {
-      errors.push('Service package must be selected');
+    // Check for either package or speaker rental
+    const hasPackage = quoteData?.package_name;
+    const hasSpeakerRental = quoteData?.speaker_rental;
+    if (!hasPackage && !hasSpeakerRental) {
+      errors.push('Service package or speaker rental must be selected');
     }
     
     // Check venue address - require actual address, not just venue name
@@ -823,10 +826,23 @@ export default function ContractPage() {
     // Get package price
     const packagePrice = Number(quoteData?.package_price) || 0;
     
+    // Include speaker rental if present
+    let speakerRentalPrice = 0;
+    if (quoteData?.speaker_rental) {
+      try {
+        const speakerRental = typeof quoteData.speaker_rental === 'string' 
+          ? JSON.parse(quoteData.speaker_rental) 
+          : quoteData.speaker_rental;
+        speakerRentalPrice = Number(speakerRental?.price) || 0;
+      } catch (e) {
+        console.error('Error parsing speaker rental:', e);
+      }
+    }
+    
     // Get addons - match invoice logic: use addons field (which contains current addons)
     const addons = quoteData?.addons || [];
     const addonsTotal = addons.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
-    const subtotal = packagePrice + addonsTotal;
+    const subtotal = packagePrice + speakerRentalPrice + addonsTotal;
     
     // Apply discount if present (same logic as invoice)
     let discountAmount = 0;

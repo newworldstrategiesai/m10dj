@@ -12,10 +12,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { leadId, packageId, packageName, packagePrice, addons, totalPrice, discountCode, discountAmount, customized, originalPrice, removedFeatures, customizationNote } = req.body;
+  const { leadId, packageId, packageName, packagePrice, speakerRental, addons, totalPrice, discountCode, discountAmount, customized, originalPrice, removedFeatures, customizationNote } = req.body;
 
-  if (!leadId || !packageId) {
-    return res.status(400).json({ error: 'Lead ID and package are required' });
+  if (!leadId || (!packageId && !speakerRental)) {
+    return res.status(400).json({ error: 'Lead ID and either package or speaker rental are required' });
   }
 
   try {
@@ -66,29 +66,65 @@ export default async function handler(req, res) {
       // Continue even if we can't fetch lead data
     }
 
+    // Calculate total price if not provided or if it's 0 (for speaker rental cases)
+    let calculatedTotalPrice = Number(totalPrice) || 0;
+    
+    console.log('💰 Total price calculation:', {
+      providedTotalPrice: totalPrice,
+      calculatedTotalPrice: calculatedTotalPrice,
+      packagePrice: packagePrice,
+      speakerRental: speakerRental ? { name: speakerRental.name, price: speakerRental.price } : null,
+      addonsCount: (addons || []).length,
+      addonsTotal: (addons || []).reduce((sum, addon) => sum + (Number(addon.price) || 0), 0)
+    });
+    
+    if (!calculatedTotalPrice || calculatedTotalPrice === 0) {
+      let basePrice = Number(packagePrice) || 0;
+      if (speakerRental && speakerRental.price) {
+        basePrice = Number(speakerRental.price) || 0;
+        console.log('🔊 Using speaker rental price as base:', basePrice);
+      }
+      const addonsTotal = (addons || []).reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
+      calculatedTotalPrice = basePrice + addonsTotal;
+      console.log('💰 Calculated total (fallback):', calculatedTotalPrice, 'from base:', basePrice, '+ addons:', addonsTotal);
+    }
+    
     // Prepare the quote data
     const quoteData = {
       lead_id: leadId,
-      package_id: packageId,
-      package_name: packageName,
-      package_price: packagePrice,
+      package_id: packageId || null,
+      package_name: packageName || (speakerRental ? speakerRental.name : null),
+      package_price: packagePrice || (speakerRental ? speakerRental.price : 0),
+      speaker_rental: speakerRental ? JSON.stringify(speakerRental) : null,
       addons: addons || [],
-      total_price: totalPrice,
+      total_price: calculatedTotalPrice,
       discount_code: discountCode || null,
       discount_amount: discountAmount || 0,
       updated_at: new Date().toISOString()
     };
+    
+    console.log('💾 Saving quote data:', {
+      leadId,
+      packageName: quoteData.package_name,
+      packagePrice: quoteData.package_price,
+      speakerRental: speakerRental ? 'present' : 'null',
+      addonsCount: (addons || []).length,
+      totalPrice: quoteData.total_price
+    });
 
     // Store customization details if admin customized the package
+    // Only include these fields if they exist in the schema and are being used
     if (customized && originalPrice !== undefined) {
-      quoteData.customized = true;
+      // Only set these if the columns exist in the database
       quoteData.original_price = Number(originalPrice) || packagePrice;
-      quoteData.removed_features = Array.isArray(removedFeatures) ? removedFeatures : [];
-      quoteData.customization_note = customizationNote || null;
-    } else {
-      // Ensure these fields are not set if not customized
-      quoteData.customized = false;
+      if (removedFeatures && Array.isArray(removedFeatures)) {
+        quoteData.removed_features = removedFeatures;
+      }
+      if (customizationNote) {
+        quoteData.customization_note = customizationNote;
+      }
     }
+    // Don't set customized: false if the column doesn't exist
 
     // Log the selection for tracking (always)
     console.log('📦 Quote Selection Saved:', {
@@ -101,6 +137,12 @@ export default async function handler(req, res) {
     });
 
     // Save quote selections to database
+    console.log('💾 Attempting to save quote to database:', {
+      lead_id: quoteData.lead_id,
+      package_id: quoteData.package_id,
+      total_price: quoteData.total_price
+    });
+    
     const { data, error } = await supabase
       .from('quote_selections')
       .upsert(quoteData, {
@@ -110,15 +152,23 @@ export default async function handler(req, res) {
       .single();
 
     if (error) {
-      console.error('⚠️ Database error (continuing anyway):', error.message);
+      console.error('❌ Database error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       
       // Return success even if DB fails - we've logged it
       return res.status(200).json({
         success: true,
         message: 'Quote saved successfully',
-        logged: true
+        logged: true,
+        error: error.message
       });
     }
+    
+    console.log('✅ Quote saved to database successfully:', {
+      id: data?.id,
+      lead_id: data?.lead_id,
+      total_price: data?.total_price
+    });
 
     // Send admin notifications (SMS and email) - non-blocking
     sendAdminNotifications(leadData, quoteData, addons || []).catch(error => {

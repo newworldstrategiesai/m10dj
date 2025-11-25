@@ -21,6 +21,8 @@ export default async function handler(req, res) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Build query for quote selections
+    console.log('🔍 Fetching quote for lead_id:', id);
+    
     const { data, error } = await supabaseAdmin
       .from('quote_selections')
       .select('*')
@@ -28,8 +30,34 @@ export default async function handler(req, res) {
       .single();
 
     if (error) {
-      console.error('Error fetching quote:', error);
-      return res.status(404).json({ error: 'Quote not found' });
+      console.error('❌ Error fetching quote:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      
+      // Check if it's a "not found" error or something else
+      if (error.code === 'PGRST116') {
+        // No rows returned
+        console.log('⚠️ No quote found for lead_id:', id);
+      }
+      
+      return res.status(404).json({ error: 'Quote not found', details: error.message });
+    }
+    
+    console.log('✅ Quote found:', {
+      id: data?.id,
+      lead_id: data?.lead_id,
+      total_price: data?.total_price,
+      package_name: data?.package_name
+    });
+
+    // Parse speaker_rental if it's a JSON string
+    if (data.speaker_rental && typeof data.speaker_rental === 'string') {
+      try {
+        data.speaker_rental = JSON.parse(data.speaker_rental);
+      } catch (e) {
+        console.error('Error parsing speaker_rental:', e);
+      }
     }
 
     // Set cache-control headers to prevent caching

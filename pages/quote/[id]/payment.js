@@ -14,6 +14,7 @@ export default function PaymentPage() {
   const [processing, setProcessing] = useState(false);
   const [paymentType, setPaymentType] = useState('deposit'); // 'deposit' or 'full'
   const [error, setError] = useState(null);
+  const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -64,10 +65,22 @@ export default function PaymentPage() {
 
       if (quoteResponse.ok) {
         const quote = await quoteResponse.json();
+        
+        // Parse speaker_rental if it's a JSON string
+        if (quote.speaker_rental && typeof quote.speaker_rental === 'string') {
+          try {
+            quote.speaker_rental = JSON.parse(quote.speaker_rental);
+          } catch (e) {
+            console.error('Error parsing speaker_rental:', e);
+          }
+        }
+        
         console.log('Payment page - Quote data:', {
           is_custom_price: quote.is_custom_price,
           total_price: quote.total_price,
           package_price: quote.package_price,
+          package_name: quote.package_name,
+          speaker_rental: quote.speaker_rental ? 'present' : 'null',
           discount_type: quote.discount_type,
           discount_value: quote.discount_value,
           custom_addons: quote.custom_addons,
@@ -80,6 +93,7 @@ export default function PaymentPage() {
         // Quote not found - this is okay, we can still show payment page
         // but user should select services first
         console.log('Quote not found - user may need to select services first');
+        setError('Quote not found. Please select services first.');
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -154,17 +168,30 @@ export default function PaymentPage() {
     discountAmount,
     isCustomPrice
   } = useMemo(() => {
-    // Determine if this is a custom invoice (admin-edited)
-    const isCustom = quoteData?.is_custom_price || false;
-    
     // Initialize default values
     let total = 0;
     let pkgPrice = 0;
     let addonsList = [];
     let sub = 0;
     let discount = 0;
+    let isCustom = false;
     
-    if (isCustom && quoteData) {
+    // Return defaults if no quoteData
+    if (!quoteData) {
+      return {
+        totalAmount: 0,
+        packagePrice: 0,
+        addons: [],
+        subtotal: 0,
+        discountAmount: 0,
+        isCustomPrice: false
+      };
+    }
+    
+    // Determine if this is a custom invoice (admin-edited)
+    isCustom = quoteData.is_custom_price || false;
+    
+    if (isCustom) {
       // Use custom invoice data - match invoice page calculation logic
       pkgPrice = Number(quoteData?.package_price) || 0;
       addonsList = quoteData?.custom_addons || quoteData?.addons || [];
@@ -196,15 +223,30 @@ export default function PaymentPage() {
         total_price_from_db: quoteData?.total_price,
         calculated_total: total
       });
-    } else if (quoteData) {
+    } else {
       // Use standard service selection data
-      pkgPrice = Number(quoteData?.package_price) || 0;
-      addonsList = quoteData?.addons || [];
+      pkgPrice = Number(quoteData.package_price) || 0;
+      
+      // Check for speaker rental if no package
+      if (!pkgPrice && quoteData.speaker_rental) {
+        try {
+          const speakerRental = typeof quoteData.speaker_rental === 'string' 
+            ? JSON.parse(quoteData.speaker_rental) 
+            : quoteData.speaker_rental;
+          if (speakerRental?.price) {
+            pkgPrice = Number(speakerRental.price) || 0;
+          }
+        } catch (e) {
+          console.error('Error parsing speaker rental:', e);
+        }
+      }
+      
+      addonsList = quoteData.addons || [];
       const addonsTotal = addonsList.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
       sub = pkgPrice + addonsTotal;
       
       // For non-custom invoices, use total_price if available, otherwise calculate
-      const dbTotalPrice = quoteData?.total_price;
+      const dbTotalPrice = quoteData.total_price;
       if (dbTotalPrice !== undefined && dbTotalPrice !== null && dbTotalPrice !== '') {
         const parsedTotal = Number(dbTotalPrice);
         total = !isNaN(parsedTotal) && parsedTotal >= 0 ? parsedTotal : sub;
@@ -224,7 +266,15 @@ export default function PaymentPage() {
   }, [quoteData]);
 
   const handlePayment = async () => {
-    if (!quoteData) return;
+    if (!quoteData) {
+      setError('Quote data is missing. Please select services first.');
+      return;
+    }
+    
+    if (totalAmount <= 0) {
+      setError('Invalid payment amount. Please contact support.');
+      return;
+    }
 
     setProcessing(true);
     setError(null);
