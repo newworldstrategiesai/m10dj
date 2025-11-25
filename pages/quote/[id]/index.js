@@ -176,7 +176,29 @@ export default function PersonalizedQuote() {
           }
           
           // Calculate outstanding balance (works whether contract is signed or not)
-          if (quoteData.total_price) {
+          // Use same calculation logic as invoice to include discounts
+          const packagePrice = Number(quoteData.package_price) || 0;
+          const addons = quoteData.addons || [];
+          const addonsTotal = addons.reduce((sum, addon) => {
+            const price = typeof addon === 'object' ? (Number(addon.price) || 0) : 0;
+            return sum + price;
+          }, 0);
+          const subtotal = packagePrice + addonsTotal;
+          
+          // Apply discount if present
+          let discountAmount = 0;
+          if (quoteData.discount_type && quoteData.discount_value && quoteData.discount_value > 0) {
+            if (quoteData.discount_type === 'percentage') {
+              discountAmount = subtotal * (Number(quoteData.discount_value) / 100);
+            } else {
+              discountAmount = Number(quoteData.discount_value);
+            }
+          }
+          
+          const calculatedTotal = Math.max(0, subtotal - discountAmount);
+          const totalOwed = calculatedTotal > 0 ? calculatedTotal : (quoteData.total_price || 0);
+          
+          if (totalOwed > 0) {
             try {
               // Try to get contact_id from contract first
               let contactId = null;
@@ -215,27 +237,23 @@ export default function PersonalizedQuote() {
                     .reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
                   
                   // Calculate outstanding balance
-                  const totalOwed = parseFloat(quoteData.total_price) || 0;
                   const balance = totalOwed - totalPaid;
                   
                   setHasPayment(totalPaid > 0);
                   setOutstandingBalance(Math.max(0, balance)); // Ensure non-negative
                 } else {
                   // If payment fetch fails, assume full amount is outstanding
-                  const totalOwed = parseFloat(quoteData.total_price) || 0;
                   setOutstandingBalance(totalOwed);
                   setHasPayment(false);
                 }
               } else {
                 // No contact yet, so no payments - full amount is outstanding
-                const totalOwed = parseFloat(quoteData.total_price) || 0;
                 setOutstandingBalance(totalOwed);
                 setHasPayment(false);
               }
             } catch (e) {
               console.log('Could not fetch payment details:', e);
               // If we can't fetch payments, assume full amount is outstanding
-              const totalOwed = parseFloat(quoteData.total_price) || 0;
               setOutstandingBalance(totalOwed);
             }
           }
@@ -1663,82 +1681,130 @@ export default function PersonalizedQuote() {
           </div>
 
           {/* Existing Selection Banner */}
-          {existingSelection && !contractSigned && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 mb-8">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                      You&apos;ve Already Made a Selection
+          {existingSelection && !contractSigned && (() => {
+            // Calculate total using same logic as invoice (includes discounts)
+            const packagePrice = Number(existingSelection.package_price) || 0;
+            const addons = existingSelection.addons || [];
+            const addonsTotal = addons.reduce((sum, addon) => {
+              const price = typeof addon === 'object' ? (Number(addon.price) || 0) : 0;
+              return sum + price;
+            }, 0);
+            const subtotal = packagePrice + addonsTotal;
+            
+            // Apply discount if present
+            let discountAmount = 0;
+            if (existingSelection.discount_type && existingSelection.discount_value && existingSelection.discount_value > 0) {
+              if (existingSelection.discount_type === 'percentage') {
+                discountAmount = subtotal * (Number(existingSelection.discount_value) / 100);
+              } else {
+                discountAmount = Number(existingSelection.discount_value);
+              }
+            }
+            
+            const calculatedTotal = Math.max(0, subtotal - discountAmount);
+            const displayTotal = calculatedTotal > 0 ? calculatedTotal : (existingSelection.total_price || 0);
+            
+            return (
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 mb-8 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-brand/10 dark:bg-brand/20 rounded-xl flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-brand" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                      Your Selection
                     </h3>
-                  </div>
-                  <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1 mb-4">
-                    <p><strong>Package:</strong> {existingSelection.package_name}</p>
-                    {existingSelection.addons && existingSelection.addons.length > 0 && (
-                      <p><strong>Add-ons:</strong> {existingSelection.addons.map(a => typeof a === 'object' ? a.name || a.id : a).join(', ')}</p>
-                    )}
-                    <p><strong>Total:</strong> ${existingSelection.total_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</p>
-                    {outstandingBalance > 0 && (
-                      <p className="text-blue-900 dark:text-blue-100 font-semibold">
-                        <strong>Outstanding Balance:</strong> ${outstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <Link
-                      href={`/quote/${id}/payment`}
-                      className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-dark text-white rounded-lg transition-colors text-sm font-semibold shadow-lg hover:shadow-xl"
-                    >
-                      <CheckCircle className="w-5 h-5" />
-                      Make Payment Now
-                    </Link>
-                    <button
-                      onClick={() => setShowEditMode(!showEditMode)}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
-                    >
-                      {showEditMode ? 'Cancel Edit' : 'Edit Selection'}
-                    </button>
-                    {!existingSelection.contract_id && !existingSelection.invoice_id && (
+                    <div className="space-y-3 mb-6">
+                      <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span className="text-gray-600 dark:text-gray-400 text-sm">Package</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">{existingSelection.package_name}</span>
+                      </div>
+                      {existingSelection.addons && existingSelection.addons.length > 0 && (
+                        <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-600 dark:text-gray-400 text-sm">Add-ons</span>
+                          <span className="font-medium text-gray-900 dark:text-white text-sm">
+                            {existingSelection.addons.map(a => typeof a === 'object' ? a.name || a.id : a).join(', ')}
+                          </span>
+                        </div>
+                      )}
+                      {discountAmount > 0 && (
+                        <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-600 dark:text-gray-400 text-sm">Discount</span>
+                          <span className="font-medium text-green-600 dark:text-green-400 text-sm">
+                            -${discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-lg font-semibold text-gray-900 dark:text-white">Total Amount</span>
+                        <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                          ${displayTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      {outstandingBalance > 0 && (
+                        <div className="flex items-center justify-between pt-3 mt-3 border-t-2 border-gray-300 dark:border-gray-600">
+                          <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Outstanding Balance</span>
+                          <span className="text-xl font-bold text-brand">
+                            ${outstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        href={`/quote/${id}/payment`}
+                        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-dark text-white rounded-xl transition-all text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        Make Payment
+                      </Link>
                       <button
-                        onClick={async () => {
-                          if (confirm('Are you sure you want to remove your selection? You can always make a new selection later.')) {
-                            try {
-                              const response = await fetch('/api/quote/delete', {
-                                method: 'DELETE',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                  quoteSelectionId: existingSelection.id
-                                })
-                              });
-                              
-                              if (response.ok) {
-                                setExistingSelection(null);
-                                setSelectedPackage(null);
-                                setSelectedAddons([]);
-                                setShowEditMode(false);
-                                window.location.reload();
-                              } else {
+                        onClick={() => setShowEditMode(!showEditMode)}
+                        className="px-5 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 rounded-xl transition-all text-sm font-medium whitespace-nowrap"
+                      >
+                        {showEditMode ? 'Cancel' : 'Edit Selection'}
+                      </button>
+                      {!existingSelection.contract_id && !existingSelection.invoice_id && (
+                        <button
+                          onClick={async () => {
+                            if (confirm('Are you sure you want to remove your selection? You can always make a new selection later.')) {
+                              try {
+                                const response = await fetch('/api/quote/delete', {
+                                  method: 'DELETE',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: JSON.stringify({
+                                    quoteSelectionId: existingSelection.id
+                                  })
+                                });
+                                
+                                if (response.ok) {
+                                  setExistingSelection(null);
+                                  setSelectedPackage(null);
+                                  setSelectedAddons([]);
+                                  setShowEditMode(false);
+                                  window.location.reload();
+                                } else {
+                                  alert('Failed to remove selection. Please try again.');
+                                }
+                              } catch (error) {
+                                console.error('Error removing selection:', error);
                                 alert('Failed to remove selection. Please try again.');
                               }
-                            } catch (error) {
-                              console.error('Error removing selection:', error);
-                              alert('Failed to remove selection. Please try again.');
                             }
-                          }
-                        }}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
-                      >
-                        Remove Selection
-                      </button>
-                    )}
+                          }}
+                          className="px-5 py-3 bg-white dark:bg-gray-800 border-2 border-red-300 dark:border-red-700 hover:border-red-400 dark:hover:border-red-600 text-red-600 dark:text-red-400 rounded-xl transition-all text-sm font-medium whitespace-nowrap"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Contract Signed Notice */}
           {contractSigned && existingSelection && (
@@ -1784,34 +1850,40 @@ export default function PersonalizedQuote() {
 
           {/* Action Buttons for Existing Selection */}
           {existingSelection && !contractSigned && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8 border border-gray-200 dark:border-gray-700 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
-                Next Steps
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 text-center">
+                Continue Your Booking
               </h3>
               <div className="grid md:grid-cols-3 gap-4">
                 <Link
                   href={`/quote/${id}/invoice`}
-                  className="flex flex-col items-center justify-center p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-brand transition-colors text-center"
+                  className="group relative bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-gray-200 dark:border-gray-700 hover:border-brand dark:hover:border-brand transition-all text-center shadow-sm hover:shadow-md"
                 >
-                  <FileText className="w-8 h-8 text-brand mb-2" />
-                  <span className="font-medium text-gray-900 dark:text-white">View Invoice</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400 mt-1">See payment details</span>
+                  <div className="w-12 h-12 bg-brand/10 dark:bg-brand/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-brand/20 dark:group-hover:bg-brand/30 transition-colors">
+                    <FileText className="w-6 h-6 text-brand" />
+                  </div>
+                  <span className="block font-semibold text-gray-900 dark:text-white mb-1">View Invoice</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Review pricing details</span>
                 </Link>
                 <Link
                   href={`/quote/${id}/contract`}
-                  className="flex flex-col items-center justify-center p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-brand transition-colors text-center"
+                  className="group relative bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-gray-200 dark:border-gray-700 hover:border-brand dark:hover:border-brand transition-all text-center shadow-sm hover:shadow-md"
                 >
-                  <FileText className="w-8 h-8 text-brand mb-2" />
-                  <span className="font-medium text-gray-900 dark:text-white">Sign Contract</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400 mt-1">Review and sign</span>
+                  <div className="w-12 h-12 bg-brand/10 dark:bg-brand/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-brand/20 dark:group-hover:bg-brand/30 transition-colors">
+                    <FileText className="w-6 h-6 text-brand" />
+                  </div>
+                  <span className="block font-semibold text-gray-900 dark:text-white mb-1">Sign Contract</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Review and sign</span>
                 </Link>
                 <Link
                   href={`/quote/${id}/payment`}
-                  className="flex flex-col items-center justify-center p-4 border-2 border-brand rounded-lg bg-brand/10 hover:bg-brand/20 transition-colors text-center"
+                  className="group relative bg-gradient-to-br from-brand/10 to-brand/5 dark:from-brand/20 dark:to-brand/10 rounded-xl p-6 border-2 border-brand hover:border-brand-dark transition-all text-center shadow-sm hover:shadow-md"
                 >
-                  <CheckCircle className="w-8 h-8 text-brand mb-2" />
-                  <span className="font-medium text-gray-900 dark:text-white">Make Payment</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400 mt-1">Secure checkout</span>
+                  <div className="w-12 h-12 bg-brand rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-brand-dark transition-colors">
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="block font-semibold text-gray-900 dark:text-white mb-1">Make Payment</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Secure checkout</span>
                 </Link>
               </div>
             </div>

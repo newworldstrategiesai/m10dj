@@ -16,15 +16,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get authenticated user
-    const supabase = createServerSupabaseClient({ req, res });
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError || !session) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Use service role for queries
+    // Use service role for queries - allow public access since quote links are shared with clients
+    // The quote ID itself acts as the authentication token
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Build query for quote selections

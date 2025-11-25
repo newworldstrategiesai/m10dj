@@ -559,7 +559,24 @@ export default function InvoicePage() {
     );
   }
 
-  // Early return if no quote data after loading
+  // Show loading state while data is being fetched
+  if (loading) {
+    return (
+      <>
+        <Head>
+          <title>Loading Invoice | M10 DJ Company</title>
+        </Head>
+        <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+          <Header />
+          <div className="flex flex-col items-center justify-center min-h-[60vh] py-20">
+            <p className="text-xl text-gray-600 dark:text-gray-300">Loading invoice...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Early return if no quote data after loading is complete
   if (!quoteData) {
     return (
       <>
@@ -570,6 +587,9 @@ export default function InvoicePage() {
           <Header />
           <div className="flex flex-col items-center justify-center min-h-[60vh] py-20">
             <p className="text-xl text-gray-600 dark:text-gray-300">Invoice not found</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              Please make sure you have selected services first.
+            </p>
           </div>
         </div>
       </>

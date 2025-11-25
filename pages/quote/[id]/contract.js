@@ -28,6 +28,17 @@ export default function ContractPage() {
   const [paymentData, setPaymentData] = useState(null);
   const [hasPayment, setHasPayment] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewFormData, setReviewFormData] = useState({
+    name: '',
+    email: '',
+    eventDate: '',
+    venueName: '',
+    venueAddress: '',
+    eventTime: '',
+    endTime: ''
+  });
+  const [editingReviewField, setEditingReviewField] = useState(null);
+  const [savingReviewField, setSavingReviewField] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -502,6 +513,120 @@ export default function ContractPage() {
       });
     } finally {
       setUpdatingFields(false);
+    }
+  };
+
+  // Handler to save field from review modal
+  const handleSaveReviewField = async (fieldName, fieldValue) => {
+    if (!fieldValue || fieldValue.trim() === '') return;
+    
+    setSavingReviewField(true);
+    try {
+      const updateData = {};
+      
+      // Map field names to API field names
+      switch (fieldName) {
+        case 'name':
+          updateData.name = fieldValue;
+          break;
+        case 'email':
+          updateData.email = fieldValue;
+          break;
+        case 'eventDate':
+          updateData.eventDate = fieldValue;
+          break;
+        case 'venueName':
+          updateData.venueName = fieldValue;
+          break;
+        case 'venueAddress':
+          updateData.venueAddress = fieldValue;
+          break;
+        case 'eventTime':
+          updateData.eventTime = fieldValue;
+          break;
+        case 'endTime':
+          updateData.endTime = fieldValue;
+          break;
+        default:
+          return;
+      }
+      
+      const response = await fetch(`/api/leads/${id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Update leadData with the new value
+        setLeadData(prev => {
+          if (!prev) return null;
+          const updated = { ...prev };
+          
+          if (fieldName === 'name') {
+            updated.name = result.data?.name || fieldValue;
+            if (result.data?.name) {
+              const nameParts = result.data.name.split(' ');
+              updated.first_name = nameParts[0] || '';
+              updated.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+            }
+          } else if (fieldName === 'email') {
+            updated.email = result.data?.email || fieldValue;
+            updated.email_address = result.data?.email || fieldValue;
+          } else if (fieldName === 'eventDate') {
+            updated.eventDate = result.data?.eventDate || fieldValue;
+            updated.event_date = result.data?.eventDate || fieldValue;
+          } else if (fieldName === 'venueName') {
+            updated.venue_name = result.data?.venue_name || fieldValue;
+            updated.venueName = result.data?.venue_name || fieldValue;
+          } else if (fieldName === 'venueAddress') {
+            updated.venue_address = result.data?.venueAddress || result.data?.venue_address || fieldValue;
+            updated.venueAddress = result.data?.venueAddress || result.data?.venue_address || fieldValue;
+            updated.location = result.data?.venueAddress || result.data?.venue_address || fieldValue;
+          } else if (fieldName === 'eventTime') {
+            updated.eventTime = result.data?.eventTime || fieldValue;
+            updated.event_time = result.data?.eventTime || fieldValue;
+            updated.start_time = result.data?.eventTime || fieldValue;
+          } else if (fieldName === 'endTime') {
+            updated.endTime = result.data?.endTime || fieldValue;
+            updated.end_time = result.data?.endTime || fieldValue;
+          }
+          
+          return updated;
+        });
+        
+        // Update reviewFormData to reflect the saved value
+        setReviewFormData(prev => ({
+          ...prev,
+          [fieldName]: fieldValue
+        }));
+        
+        setEditingReviewField(null);
+        
+        toast({
+          title: 'Field updated',
+          description: 'The information has been updated successfully.',
+        });
+        
+        // Small delay before refetching to ensure DB commit
+        setTimeout(async () => {
+          await fetchData();
+        }, 100);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update field');
+      }
+    } catch (error) {
+      console.error('Error updating field:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update information. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingReviewField(false);
     }
   };
 
@@ -1078,8 +1203,8 @@ export default function ContractPage() {
                   </p>
                 )}
                 {(leadData?.venue_address || leadData?.venueAddress || leadData?.location || leadData?.venue_name || isAdmin) && (
-                  <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
-                    <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      <p className="text-gray-700 dark:text-gray-300 flex items-start gap-2 mt-2">
+                        <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
                     <span className="flex items-center gap-2 flex-wrap">
                       <strong>Venue:</strong>{' '}
                       {isAdmin && !isEditingVenue ? (
@@ -1290,6 +1415,16 @@ export default function ContractPage() {
                       setShowFieldsModal(true);
                     } else {
                       // All fields complete - show review modal first (skip the "Fill in Missing Information" modal)
+                      // Pre-populate review form data
+                      setReviewFormData({
+                        name: leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || ''),
+                        email: leadData?.email || leadData?.email_address || '',
+                        eventDate: formatDateForInput(leadData?.eventDate || leadData?.event_date || ''),
+                        venueName: leadData?.venue_name || '',
+                        venueAddress: leadData?.venue_address || leadData?.venueAddress || leadData?.location || '',
+                        eventTime: leadData?.eventTime || leadData?.event_time || leadData?.start_time || '',
+                        endTime: leadData?.endTime || leadData?.end_time || ''
+                      });
                       setShowReviewModal(true);
                     }
                   }}
@@ -1780,74 +1915,288 @@ export default function ContractPage() {
               </div>
               
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Please review the following information before signing. If anything needs to be corrected, please contact us.
+                Please review the following information before signing. You can edit any field by clicking on it.
               </p>
 
               <div className="space-y-4 mb-6">
                 <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Client Name
                   </label>
-                  <p className="text-gray-900 dark:text-white">
-                    {leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Not set')}
-                  </p>
+                  {editingReviewField === 'name' ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={reviewFormData.name}
+                        onChange={(e) => setReviewFormData({ ...reviewFormData, name: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleSaveReviewField('name', reviewFormData.name)}
+                        disabled={savingReviewField || !reviewFormData.name}
+                        className="px-3 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingReviewField ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingReviewField(null);
+                          setReviewFormData({ ...reviewFormData, name: leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || '') });
+                        }}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => setEditingReviewField('name')}
+                      className="text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 transition-colors flex items-center justify-between group"
+                    >
+                      <span>{reviewFormData.name || leadData?.name || (leadData?.first_name && leadData?.last_name ? `${leadData.first_name} ${leadData.last_name}`.trim() : leadData?.first_name || leadData?.last_name || 'Not set')}</span>
+                      <Edit className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Email Address
                   </label>
-                  <p className="text-gray-900 dark:text-white">
-                    {leadData?.email || leadData?.email_address || 'Not set'}
-                  </p>
+                  {editingReviewField === 'email' ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="email"
+                        value={reviewFormData.email}
+                        onChange={(e) => setReviewFormData({ ...reviewFormData, email: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleSaveReviewField('email', reviewFormData.email)}
+                        disabled={savingReviewField || !reviewFormData.email}
+                        className="px-3 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingReviewField ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingReviewField(null);
+                          setReviewFormData({ ...reviewFormData, email: leadData?.email || leadData?.email_address || '' });
+                        }}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => setEditingReviewField('email')}
+                      className="text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 transition-colors flex items-center justify-between group"
+                    >
+                      <span>{reviewFormData.email || leadData?.email || leadData?.email_address || 'Not set'}</span>
+                      <Edit className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Event Date
                   </label>
-                  <p className="text-gray-900 dark:text-white">
-                    {leadData?.eventDate || leadData?.event_date
-                      ? parseLocalDate(leadData.eventDate || leadData.event_date)?.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) || 'Not set'
-                      : 'Not set'}
-                  </p>
+                  {editingReviewField === 'eventDate' ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={reviewFormData.eventDate}
+                        onChange={(e) => setReviewFormData({ ...reviewFormData, eventDate: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleSaveReviewField('eventDate', reviewFormData.eventDate)}
+                        disabled={savingReviewField || !reviewFormData.eventDate}
+                        className="px-3 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingReviewField ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingReviewField(null);
+                          setReviewFormData({ ...reviewFormData, eventDate: formatDateForInput(leadData?.eventDate || leadData?.event_date || '') });
+                        }}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => setEditingReviewField('eventDate')}
+                      className="text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 transition-colors flex items-center justify-between group"
+                    >
+                      <span>
+                        {reviewFormData.eventDate || (leadData?.eventDate || leadData?.event_date
+                          ? parseLocalDate(leadData.eventDate || leadData.event_date)?.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) || 'Not set'
+                          : 'Not set')}
+                      </span>
+                      <Edit className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Event Time
                   </label>
-                  <p className="text-gray-900 dark:text-white">
-                    <span>
-                      <strong>Start:</strong> {leadData?.eventTime || leadData?.event_time || leadData?.start_time
-                        ? new Date(`2000-01-01T${leadData.eventTime || leadData.event_time || leadData.start_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-                        : 'Not set'}
-                    </span>
-                    {' - '}
-                    <span>
-                      <strong>End:</strong> {leadData?.endTime || leadData?.end_time
-                        ? new Date(`2000-01-01T${leadData.endTime || leadData.end_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-                        : 'Not set'}
-                    </span>
-                  </p>
+                  {editingReviewField === 'eventTime' || editingReviewField === 'endTime' ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-500 dark:text-gray-400 w-16">Start:</label>
+                        <input
+                          type="time"
+                          value={reviewFormData.eventTime}
+                          onChange={(e) => setReviewFormData({ ...reviewFormData, eventTime: e.target.value })}
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-500 dark:text-gray-400 w-16">End:</label>
+                        <input
+                          type="time"
+                          value={reviewFormData.endTime}
+                          onChange={(e) => setReviewFormData({ ...reviewFormData, endTime: e.target.value })}
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pt-2">
+                        <button
+                          onClick={() => handleSaveReviewField('eventTime', reviewFormData.eventTime).then(() => {
+                            if (reviewFormData.endTime) {
+                              handleSaveReviewField('endTime', reviewFormData.endTime);
+                            }
+                          })}
+                          disabled={savingReviewField || (!reviewFormData.eventTime && !reviewFormData.endTime)}
+                          className="flex-1 px-3 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                        >
+                          {savingReviewField ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingReviewField(null);
+                            setReviewFormData({ 
+                              ...reviewFormData, 
+                              eventTime: leadData?.eventTime || leadData?.event_time || leadData?.start_time || '',
+                              endTime: leadData?.endTime || leadData?.end_time || ''
+                            });
+                          }}
+                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => setEditingReviewField('eventTime')}
+                      className="text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 transition-colors flex items-center justify-between group"
+                    >
+                      <span>
+                        <strong>Start:</strong> {reviewFormData.eventTime || leadData?.eventTime || leadData?.event_time || leadData?.start_time
+                          ? new Date(`2000-01-01T${reviewFormData.eventTime || leadData.eventTime || leadData.event_time || leadData.start_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                          : 'Not set'}
+                        {' - '}
+                        <strong>End:</strong> {reviewFormData.endTime || leadData?.endTime || leadData?.end_time
+                          ? new Date(`2000-01-01T${reviewFormData.endTime || leadData.endTime || leadData.end_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                          : 'Not set'}
+                      </span>
+                      <Edit className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Venue Name
                   </label>
-                  <p className="text-gray-900 dark:text-white">
-                    {leadData?.venue_name || 'Not set'}
-                  </p>
+                  {editingReviewField === 'venueName' ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={reviewFormData.venueName}
+                        onChange={(e) => setReviewFormData({ ...reviewFormData, venueName: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleSaveReviewField('venueName', reviewFormData.venueName)}
+                        disabled={savingReviewField}
+                        className="px-3 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingReviewField ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingReviewField(null);
+                          setReviewFormData({ ...reviewFormData, venueName: leadData?.venue_name || '' });
+                        }}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => setEditingReviewField('venueName')}
+                      className="text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 transition-colors flex items-center justify-between group"
+                    >
+                      <span>{reviewFormData.venueName || leadData?.venue_name || 'Not set'}</span>
+                      <Edit className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Venue Address
                   </label>
-                  <p className="text-gray-900 dark:text-white">
-                    {leadData?.venue_address || leadData?.venueAddress || leadData?.location || 'Not set'}
-                  </p>
+                  {editingReviewField === 'venueAddress' ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={reviewFormData.venueAddress}
+                        onChange={(e) => setReviewFormData({ ...reviewFormData, venueAddress: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleSaveReviewField('venueAddress', reviewFormData.venueAddress)}
+                        disabled={savingReviewField}
+                        className="px-3 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingReviewField ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingReviewField(null);
+                          setReviewFormData({ ...reviewFormData, venueAddress: leadData?.venue_address || leadData?.venueAddress || leadData?.location || '' });
+                        }}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => setEditingReviewField('venueAddress')}
+                      className="text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 transition-colors flex items-center justify-between group"
+                    >
+                      <span>{reviewFormData.venueAddress || leadData?.venue_address || leadData?.venueAddress || leadData?.location || 'Not set'}</span>
+                      <Edit className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
