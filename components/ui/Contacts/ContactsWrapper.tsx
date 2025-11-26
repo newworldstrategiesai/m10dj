@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast, useToast } from '@/components/ui/Toasts/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import PipelineView from '@/components/admin/PipelineView';
 
 interface Contact {
@@ -116,6 +117,7 @@ const getTemperatureColor = (temperature: string | null) => {
 };
 
 export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProps) {
+  const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -376,6 +378,13 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
     setSelectedContact(contact);
     setShowContactModal(true);
     fetchProjects(contact.id);
+  };
+
+  const handleViewContact = (contact: Contact, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    router.push(`/admin/contacts/${contact.id}`);
   };
 
   const handleSendSMS = (contact: Contact) => {
@@ -967,8 +976,14 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                         {getContactInitials(contact)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="ml-2">
-                      <h3 className="font-semibold text-gray-900">
+                    <div className="ml-2 flex-1">
+                      <h3 
+                        className="font-semibold text-gray-900 hover:text-[#fcba00] transition-colors cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewContact(contact);
+                        }}
+                      >
                         {`${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown'}
                       </h3>
                       <p className="text-sm text-gray-600">{contact.email_address}</p>
@@ -1038,11 +1053,12 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
                   className="flex-1 text-xs lg:text-sm h-10 lg:h-9"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleContactClick(contact);
+                    handleViewContact(contact);
                   }}
                 >
                   <IconEye className="h-4 w-4 lg:h-3 lg:w-3 lg:mr-1" />
-                  <span className="hidden lg:inline">View</span>
+                  <span className="hidden lg:inline">View Details</span>
+                  <span className="lg:hidden">View</span>
                 </Button>
                 {contact.phone && (
                   <Button
@@ -1089,7 +1105,10 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
               </Avatar>
               {selectedContact && (
                 <div>
-                  <h2 className="text-xl font-semibold">
+                  <h2 
+                    className="text-xl font-semibold hover:text-[#fcba00] transition-colors cursor-pointer"
+                    onClick={() => handleViewContact(selectedContact)}
+                  >
                     {`${selectedContact.first_name || ''} ${selectedContact.last_name || ''}`.trim() || 'Unknown Contact'}
                   </h2>
                   <p className="text-sm text-gray-600">{selectedContact.email_address}</p>
@@ -1293,6 +1312,14 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
               </Tabs>
 
               <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleViewContact(selectedContact)}
+                >
+                  <IconEye className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
                 <Link href={`/admin/contacts/${selectedContact.id}`} className="flex-1">
                   <Button className="w-full">
                     <IconEdit className="h-4 w-4 mr-2" />

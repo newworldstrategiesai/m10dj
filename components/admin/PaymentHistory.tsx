@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { DollarSign, CreditCard, Calendar, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { DollarSign, CreditCard, Calendar, CheckCircle, Clock, AlertCircle, ExternalLink } from 'lucide-react';
 
 interface Payment {
   id: string;
@@ -19,6 +19,8 @@ interface Payment {
   due_date?: string;
   transaction_date?: string;
   invoice_number?: string;
+  receipt_url?: string;
+  receipt_link?: string;
 }
 
 interface PaymentHistoryProps {
@@ -222,6 +224,20 @@ export default function PaymentHistory({ contactId, payments, projectValue }: Pa
 
                     {payment.invoice_number && (
                       <p className="text-xs text-gray-400 mt-2">Invoice: {payment.invoice_number}</p>
+                    )}
+                    
+                    {(payment.receipt_url || payment.receipt_link) && (
+                      <div className="mt-2">
+                        <a
+                          href={payment.receipt_url || payment.receipt_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          View Receipt
+                        </a>
+                      </div>
                     )}
                   </div>
                 </div>

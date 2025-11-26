@@ -258,6 +258,10 @@ export default function Header({ customLogoUrl = null }) {
                     <Calendar className="w-4 h-4" />
                     My Events
                   </Link>
+                  <Link href={`/quote/${quoteId}/my-songs`} className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                    <Music className="w-4 h-4" />
+                    My Songs
+                  </Link>
                   <Link href={`/quote/${quoteId}/invoice`} className="text-gray-700 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
                     <FileText className="w-4 h-4" />
                     Invoice
@@ -437,6 +441,14 @@ export default function Header({ customLogoUrl = null }) {
                     >
                       <Calendar className="w-5 h-5 text-brand" />
                       <span className="font-medium">My Events</span>
+                    </Link>
+                    <Link 
+                      href={`/quote/${quoteId}/my-songs`}
+                      className="flex items-center gap-3 px-4 py-3 text-gray-900 hover:bg-brand/5 rounded-lg transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Music className="w-5 h-5 text-brand" />
+                      <span className="font-medium">My Songs</span>
                     </Link>
                     <Link 
                       href={`/quote/${quoteId}/invoice`}

@@ -309,7 +309,21 @@ export default function InvoicePage() {
     };
   }, [id, fetchData]);
 
-  const handleDownload = async () => {
+  const handleDownload = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    if (!id) {
+      toast({
+        title: 'Error',
+        description: 'Quote ID is missing. Please refresh the page.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       // Generate PDF with payment link and QR code
       const response = await fetch(`/api/quote/${id}/generate-invoice-pdf`, {
@@ -317,19 +331,72 @@ export default function InvoicePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+        const errorText = await response.text();
+        console.error('PDF generation failed:', response.status, errorText);
+        throw new Error(`Failed to generate PDF: ${response.status}`);
+      }
+
+      // Check if response is actually a PDF
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/pdf')) {
+        console.error('Response is not a PDF:', contentType);
+        throw new Error('Server returned invalid PDF format');
       }
 
       // Create blob and download
       const blob = await response.blob();
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('PDF file is empty');
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Invoice-${leadData?.first_name || 'Invoice'}-${leadData?.last_name || ''}.pdf`;
+      
+      // Create a more descriptive filename
+      const firstName = (leadData?.first_name || leadData?.name?.split(' ')[0])?.trim() || '';
+      const lastName = (leadData?.last_name || leadData?.name?.split(' ').slice(1).join(' '))?.trim() || '';
+      const eventDate = (leadData?.event_date || leadData?.eventDate) ? 
+        new Date(leadData.event_date || leadData.eventDate).toISOString().split('T')[0] : '';
+      const eventType = (leadData?.event_type || leadData?.eventType)?.toLowerCase()?.replace(/_/g, '-') || '';
+      const invoiceNumber = invoiceData?.invoice_number || quoteData?.invoice_number;
+      
+      let filename = 'Invoice';
+      
+      // Build filename with available data
+      if (firstName && lastName) {
+        filename = `Invoice-${firstName}-${lastName}`;
+      } else if (firstName) {
+        filename = `Invoice-${firstName}`;
+      } else if (lastName) {
+        filename = `Invoice-${lastName}`;
+      } else if (invoiceNumber) {
+        filename = `Invoice-${invoiceNumber}`;
+      } else if (id) {
+        filename = `Invoice-${id.substring(0, 8).toUpperCase()}`;
+      }
+      
+      // Add event type if available
+      if (eventType) {
+        filename += `-${eventType}`;
+      }
+      
+      // Add event date if available
+      if (eventDate) {
+        filename += `-${eventDate}`;
+      }
+      
+      a.download = `${filename}.pdf`;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      
+      // Clean up
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
 
       toast({
         title: 'PDF Downloaded',
@@ -339,13 +406,24 @@ export default function InvoicePage() {
       console.error('Error downloading PDF:', error);
       toast({
         title: 'Error',
-        description: 'Failed to download PDF. Please try again.',
+        description: error.message || 'Failed to download PDF. Please try again.',
         variant: 'destructive',
       });
     }
   };
 
   const handleSaveInvoice = async () => {
+    // Prevent non-admins from saving
+    if (!isAdmin) {
+      toast({
+        title: 'Access Denied',
+        description: 'Only administrators can edit invoices.',
+        variant: 'destructive',
+      });
+      setIsEditing(false);
+      return;
+    }
+
     if (!router.isReady || !id) {
       console.error('Cannot save: router not ready or id missing', { isReady: router.isReady, id });
       toast({
@@ -454,6 +532,11 @@ export default function InvoicePage() {
   };
 
   const handleCancelEdit = () => {
+    // Only allow canceling if admin (or if somehow in edit mode, exit it)
+    if (!isAdmin && isEditing) {
+      setIsEditing(false);
+      return;
+    }
     setIsEditing(false);
     // Reset to original quote data
     if (quoteData) {
@@ -1002,7 +1085,17 @@ export default function InvoicePage() {
                 <>
                   {!isEditing ? (
                     <button
-                      onClick={() => setIsEditing(true)}
+                      onClick={() => {
+                        if (!isAdmin) {
+                          toast({
+                            title: 'Access Denied',
+                            description: 'Only administrators can edit invoices.',
+                            variant: 'destructive',
+                          });
+                          return;
+                        }
+                        setIsEditing(true);
+                      }}
                       className="no-print btn-outline inline-flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
                     >
                       <Edit className="w-4 h-4" />
@@ -1039,11 +1132,18 @@ export default function InvoicePage() {
                 </>
               )}
             <button
-              onClick={handleDownload}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Download button clicked, id:', id);
+                handleDownload(e);
+              }}
               className="btn-outline inline-flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+              disabled={!id || loading}
             >
               <Download className="w-4 h-4" />
-              Download PDF
+              {loading ? 'Loading...' : 'Download PDF'}
             </button>
             </div>
           </div>
@@ -1111,6 +1211,15 @@ export default function InvoicePage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={async () => {
+                              if (!isAdmin) {
+                                toast({
+                                  title: 'Access Denied',
+                                  description: 'Only administrators can edit venue information.',
+                                  variant: 'destructive',
+                                });
+                                setIsEditingVenue(false);
+                                return;
+                              }
                               if (!leadData?.id) return;
                               setSavingVenue(true);
                               try {
@@ -1203,6 +1312,14 @@ export default function InvoicePage() {
                         {isAdmin && (
                           <button
                             onClick={() => {
+                              if (!isAdmin) {
+                                toast({
+                                  title: 'Access Denied',
+                                  description: 'Only administrators can edit venue information.',
+                                  variant: 'destructive',
+                                });
+                                return;
+                              }
                               setIsEditingVenue(true);
                               // If location is the same as venueName, treat it as no address (duplicate data cleanup)
                               const venueName = leadData.venueName || '';
@@ -1234,6 +1351,15 @@ export default function InvoicePage() {
                         />
                         <button
                           onClick={async () => {
+                            if (!isAdmin) {
+                              toast({
+                                title: 'Access Denied',
+                                description: 'Only administrators can edit event date.',
+                                variant: 'destructive',
+                              });
+                              setIsEditingEventDate(false);
+                              return;
+                            }
                             if (!editingEventDate || !leadData?.id) return;
                             setSavingEventDate(true);
                             try {
@@ -1320,6 +1446,14 @@ export default function InvoicePage() {
                         {isAdmin && (
                           <button
                             onClick={() => {
+                              if (!isAdmin) {
+                                toast({
+                                  title: 'Access Denied',
+                                  description: 'Only administrators can edit event date.',
+                                  variant: 'destructive',
+                                });
+                                return;
+                              }
                               setIsEditingEventDate(true);
                               setEditingEventDate(leadData.eventDate ? new Date(leadData.eventDate).toISOString().split('T')[0] : '');
                             }}
@@ -1986,6 +2120,15 @@ export default function InvoicePage() {
                           )}
                           <button
                             onClick={async () => {
+                              if (!isAdmin) {
+                                toast({
+                                  title: 'Access Denied',
+                                  description: 'Only administrators can edit payment due dates.',
+                                  variant: 'destructive',
+                                });
+                                setIsEditingDepositDueDate(false);
+                                return;
+                              }
                               setSaving(true);
                               try {
                                 const calculatedDueDate = calculateDueDate(dueDateType, leadData?.eventDate, invoiceDate);
@@ -2093,7 +2236,17 @@ export default function InvoicePage() {
                         <>
                           <span>due {getPaymentDueDateDisplay(depositDueDateType, leadData?.eventDate, invoiceDate, customDepositDueDate)}</span>
                           <button
-                            onClick={() => setIsEditingDepositDueDate(true)}
+                            onClick={() => {
+                              if (!isAdmin) {
+                                toast({
+                                  title: 'Access Denied',
+                                  description: 'Only administrators can edit payment due dates.',
+                                  variant: 'destructive',
+                                });
+                                return;
+                              }
+                              setIsEditingDepositDueDate(true);
+                            }}
                             className="no-print ml-2 text-brand hover:text-brand-dark"
                           >
                             <Edit className="w-3 h-3" />
@@ -2143,6 +2296,15 @@ export default function InvoicePage() {
                           )}
                           <button
                             onClick={async () => {
+                              if (!isAdmin) {
+                                toast({
+                                  title: 'Access Denied',
+                                  description: 'Only administrators can edit payment due dates.',
+                                  variant: 'destructive',
+                                });
+                                setIsEditingRemainingDueDate(false);
+                                return;
+                              }
                               setSaving(true);
                               try {
                                 const calculatedDueDate = calculateDueDate(dueDateType, leadData?.eventDate, invoiceDate);
@@ -2250,7 +2412,17 @@ export default function InvoicePage() {
                         <>
                           <span>due {getPaymentDueDateDisplay(remainingBalanceDueDateType, leadData?.eventDate, invoiceDate, customRemainingBalanceDueDate)}</span>
                           <button
-                            onClick={() => setIsEditingRemainingDueDate(true)}
+                            onClick={() => {
+                              if (!isAdmin) {
+                                toast({
+                                  title: 'Access Denied',
+                                  description: 'Only administrators can edit payment due dates.',
+                                  variant: 'destructive',
+                                });
+                                return;
+                              }
+                              setIsEditingRemainingDueDate(true);
+                            }}
                             className="no-print ml-2 text-brand hover:text-brand-dark"
                           >
                             <Edit className="w-3 h-3" />
