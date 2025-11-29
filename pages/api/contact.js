@@ -7,6 +7,7 @@ import { createRateLimitMiddleware, getClientIp } from '../../utils/rate-limiter
 import { sanitizeContactFormData, hasSuspiciousPatterns } from '../../utils/input-sanitizer';
 import { serverIdempotency } from '../../utils/idempotency';
 import { validateContactForm } from '../../utils/form-validator';
+import { autoCreateQuoteInvoiceContract } from '../../utils/auto-create-quote-invoice-contract';
 
 // Initialize Resend with API key from environment variable
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -832,6 +833,36 @@ export default async function handler(req, res) {
     }
     
     console.log('✅ Contact record guaranteed:', criticalOperations.contactRecord.id);
+
+    // Auto-create quote, invoice, and contract for the new contact
+    console.log('🎯 Auto-creating quote, invoice, and contract...');
+    try {
+      // Fetch the complete contact record
+      const { data: fullContact, error: fetchError } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('id', criticalOperations.contactRecord.id)
+        .is('deleted_at', null)
+        .single();
+
+      if (fetchError || !fullContact) {
+        console.warn('⚠️ Could not fetch contact for auto-creation, skipping:', fetchError?.message);
+      } else {
+        const creationResults = await autoCreateQuoteInvoiceContract(fullContact, supabase);
+        
+        if (creationResults.quote.success || creationResults.invoice.success || creationResults.contract.success) {
+          console.log('✅ Auto-creation completed with partial/full success');
+          // Store results in critical operations for logging
+          criticalOperations.autoCreation = creationResults;
+        } else {
+          console.warn('⚠️ Auto-creation completed but all records failed to create');
+          console.warn('   This is non-critical - records can be created manually later');
+        }
+      }
+    } catch (autoCreationError) {
+      console.error('❌ Error during auto-creation (non-critical):', autoCreationError);
+      // Don't fail the entire request if auto-creation fails
+    }
 
     // Auto-send service selection link for wedding leads
     if (standardizedEventType === 'wedding' || standardizedEventType === 'Wedding') {

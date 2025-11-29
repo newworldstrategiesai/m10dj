@@ -10,6 +10,7 @@ export interface ParsedLeadContact {
   venueName: string | null;
   venueAddress: string | null;
   eventTime: string | null;
+  endTime: string | null;
   guestCount: number | null;
   budgetRange: string | null;
   notes: string[];
@@ -137,19 +138,55 @@ function extractContactInfo(thread: string): ParsedLeadContact {
 
   // Extract event time from natural language if not in structured fields
   let eventTime = structured.eventTime || null;
+  let endTime = structured.endTime || null;
   if (!eventTime) {
-    const timePatterns = [
-      /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
-      /(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
-      /(?:time|event time|start time)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
-      /(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)/i,
+    // Try to match time ranges first (e.g., "3pm-5pm", "3:00 PM to 5:00 PM")
+    const timeRangePatterns = [
+      /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until|through)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+      /(?:from|between)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:to|until|-)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
     ];
     
-    for (const pattern of timePatterns) {
+    for (const pattern of timeRangePatterns) {
       const match = thread.match(pattern);
       if (match) {
         eventTime = match[1].trim();
+        endTime = match[2].trim();
         break;
+      }
+    }
+    
+    // If no range found, try single time patterns
+    if (!eventTime) {
+      const timePatterns = [
+        /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
+        /(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
+        /(?:time|event time|start time)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
+        /(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)/i,
+      ];
+      
+      for (const pattern of timePatterns) {
+        const match = thread.match(pattern);
+        if (match) {
+          eventTime = match[1].trim();
+          break;
+        }
+      }
+    }
+    
+    // Try to extract end time separately if not already found
+    if (!endTime) {
+      const endTimePatterns = [
+        /(?:ends?|finishes?|ends? at|finishes? at|until|till)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+        /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:end|finish)/i,
+        /(?:end time|finish time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+      ];
+      
+      for (const pattern of endTimePatterns) {
+        const match = thread.match(pattern);
+        if (match) {
+          endTime = match[1].trim();
+          break;
+        }
       }
     }
   }
@@ -217,6 +254,7 @@ function extractContactInfo(thread: string): ParsedLeadContact {
     venueName,
     venueAddress,
     eventTime,
+    endTime,
     guestCount,
     budgetRange,
     notes,
@@ -452,6 +490,7 @@ interface StructuredFields {
   email: string | null;
   eventDate: string | null;
   eventTime: string | null;
+  endTime: string | null;
   venueName: string | null;
   venueAddress: string | null;
   guestCount: number | null;
@@ -466,6 +505,7 @@ function extractStructuredFields(thread: string): StructuredFields {
     email: null,
     eventDate: null,
     eventTime: null,
+    endTime: null,
     venueName: null,
     venueAddress: null,
     guestCount: null,
@@ -647,17 +687,52 @@ function extractStructuredFields(thread: string): StructuredFields {
 
     // Enhanced event time extraction
     if (!fields.eventTime) {
-      const timePatterns = [
-        /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
-        /(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
-        /(?:time|event time|start time)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
-        /(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)/i,
+      // Try time ranges first
+      const rangePatterns = [
+        /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+        /(?:from|between)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:to|until|-)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
       ];
       
-      for (const pattern of timePatterns) {
-        const timeMatch = trimmed.match(pattern);
-        if (timeMatch) {
-          fields.eventTime = timeMatch[1].trim();
+      for (const pattern of rangePatterns) {
+        const rangeMatch = trimmed.match(pattern);
+        if (rangeMatch) {
+          fields.eventTime = rangeMatch[1].trim();
+          fields.endTime = rangeMatch[2].trim();
+          break;
+        }
+      }
+      
+      // If no range found, try single time patterns
+      if (!fields.eventTime) {
+        const timePatterns = [
+          /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
+          /(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
+          /(?:time|event time|start time)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
+          /(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)/i,
+        ];
+        
+        for (const pattern of timePatterns) {
+          const timeMatch = trimmed.match(pattern);
+          if (timeMatch) {
+            fields.eventTime = timeMatch[1].trim();
+            break;
+          }
+        }
+      }
+    }
+    
+    // Extract end time separately if not already found
+    if (!fields.endTime) {
+      const endTimePatterns = [
+        /(?:ends?|finishes?|ends? at|finishes? at|until|till)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+        /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:end|finish)/i,
+        /(?:end time|finish time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+      ];
+      
+      for (const pattern of endTimePatterns) {
+        const endMatch = trimmed.match(pattern);
+        if (endMatch) {
+          fields.endTime = endMatch[1].trim();
           break;
         }
       }

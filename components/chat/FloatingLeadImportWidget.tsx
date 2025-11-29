@@ -42,14 +42,33 @@ export default function FloatingLeadImportWidget() {
   const [open, setOpen] = useState(false);
   const [threadText, setThreadText] = useState('');
   const [status, setStatus] = useState<ImportStatus>({ state: 'idle' });
+  const [contactId, setContactId] = useState<string | null>(null);
 
   const [existingContact, setExistingContact] = useState<any>(null);
   const [checkingExisting, setCheckingExisting] = useState(false);
   const [editableFields, setEditableFields] = useState<Record<string, string | null>>({});
   const [showFieldComparison, setShowFieldComparison] = useState(false);
 
+  // Detect if content is email or SMS
+  const isEmail = useMemo(() => {
+    if (!threadText.trim()) return false;
+    const emailIndicators = [
+      /hey\s*[,!]?\s*(ben|dj|m10)/i,
+      /hi\s*[,!]?\s*(ben|dj|m10)/i,
+      /hello\s*[,!]?\s*(ben|dj|m10)/i,
+      /spotify/i,
+      /playlist/i,
+      /ceremony\s*(is|at)/i,
+      /grand\s*entrance/i,
+      /grand\s*exit/i,
+      /mariachi/i,
+      /thank\s*you/i
+    ];
+    return emailIndicators.some(pattern => pattern.test(threadText));
+  }, [threadText]);
+
   const parsedPreview: ParsedLeadThread | null = useMemo(() => {
-    if (!threadText.trim()) return null;
+    if (!threadText.trim() || isEmail) return null; // Skip SMS parsing for emails
     try {
       const parsed = parseLeadThread(threadText);
       // Initialize editable fields with parsed values
@@ -73,11 +92,21 @@ export default function FloatingLeadImportWidget() {
       console.error('Failed to parse lead thread', error);
       return null;
     }
-  }, [threadText]);
+  }, [threadText, isEmail]);
 
-  // Check for existing contact when thread is parsed
+  // Get contactId from URL if on contact page
   useEffect(() => {
-    if (!parsedPreview || !user) return;
+    if (typeof window !== 'undefined') {
+      const pathMatch = window.location.pathname.match(/\/admin\/contacts\/([^\/]+)/);
+      if (pathMatch) {
+        setContactId(pathMatch[1]);
+      }
+    }
+  }, []);
+
+  // Check for existing contact when thread is parsed (SMS only)
+  useEffect(() => {
+    if (!parsedPreview || !user || isEmail) return;
     
     const checkExisting = async () => {
       setCheckingExisting(true);
@@ -130,6 +159,31 @@ export default function FloatingLeadImportWidget() {
     setStatus({ state: 'processing' });
 
     try {
+      // For emails, we need a contactId - try to find it from existing contact or parsed preview
+      let targetContactId = contactId;
+      
+      if (isEmail && !targetContactId) {
+        // Try to find contact by email or phone from parsed preview
+        if (parsedPreview?.contact.email) {
+          const checkResponse = await fetch('/api/leads/check-existing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: parsedPreview.contact.email,
+              phone: parsedPreview.contact.phoneE164 || parsedPreview.contact.phoneDigits 
+            }),
+          });
+          if (checkResponse.ok) {
+            const checkData = await checkResponse.json();
+            targetContactId = checkData.contact?.id;
+          }
+        }
+        
+        if (!targetContactId && existingContact) {
+          targetContactId = existingContact.id;
+        }
+      }
+      
       // Use editable fields if user has made changes
       const fieldsToUse = Object.keys(editableFields).length > 0 
         ? editableFields 
@@ -143,6 +197,7 @@ export default function FloatingLeadImportWidget() {
         body: JSON.stringify({ 
           thread: threadText,
           overrides: existingContact ? fieldsToUse : undefined, // Only send overrides for existing contacts
+          contactId: targetContactId || undefined, // Include contactId for email imports
         }),
       });
 
@@ -182,6 +237,65 @@ export default function FloatingLeadImportWidget() {
   };
 
   const renderPreview = () => {
+    // Show email preview if detected
+    if (isEmail) {
+      const spotifyLinks = threadText.match(/(?:spotify\.com|open\.spotify\.com)[^\s\)]+/gi) || [];
+      const hasTimes = /(?:ceremony|grand entrance|grand exit)/i.test(threadText);
+      const hasSpecialRequests = /(?:mariachi|break)/i.test(threadText);
+      
+      return (
+        <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-purple-100 p-2 text-purple-600 dark:bg-purple-500/20 dark:text-purple-200">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Email Content Detected</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                We'll extract playlists, event times, and special requests from this email.
+              </p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+                Spotify Playlists
+              </p>
+              <p className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
+                {spotifyLinks.length > 0 ? `${spotifyLinks.length} playlist(s) found` : 'No playlists detected'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+                Event Times
+              </p>
+              <p className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
+                {hasTimes ? 'Times detected' : 'No times detected'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+                Special Requests
+              </p>
+              <p className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
+                {hasSpecialRequests ? 'Special requests detected' : 'No special requests'}
+              </p>
+            </div>
+          </div>
+          
+          {!contactId && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+              <p className="font-semibold">Note:</p>
+              <p className="text-xs mt-1">
+                To update an existing contact, please navigate to their contact page first, or we&apos;ll try to match by email/phone.
+              </p>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
     if (!parsedPreview) {
       return (
         <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300">
@@ -380,14 +494,14 @@ export default function FloatingLeadImportWidget() {
             <div className="rounded-full bg-white/10 p-2 transition group-hover:bg-white/20">
               <MessageCirclePlus className="h-4 w-4" />
             </div>
-            <span className="hidden sm:inline">Import SMS Lead</span>
+            <span className="hidden sm:inline">Import Conversation</span>
           </button>
         </DialogTrigger>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Paste SMS Thread</DialogTitle>
+            <DialogTitle>Import Conversation</DialogTitle>
             <DialogDescription>
-              Drop in any text conversation with a lead. We will extract key details, create or update
+              Paste SMS threads or email content. We will extract key details, create or update
               the contact, and archive the transcript automatically.
             </DialogDescription>
           </DialogHeader>
@@ -427,12 +541,11 @@ export default function FloatingLeadImportWidget() {
               <Textarea
                 value={threadText}
                 onChange={(event) => setThreadText(event.target.value)}
-                placeholder={`Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...`}
+                placeholder={`Paste SMS thread or email content here...\n\nSMS Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...\n\nEmail Example:\nHey, Ben! I have collected songs for the first dances...`}
                 className="min-h-[160px] resize-vertical"
               />
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Tip: include the lead name, phone, email, event date, and venue if available for best
-                results.
+                Tip: For SMS, include the lead name, phone, email, event date, and venue. For emails, include playlists, event times, and special requests.
               </p>
             </div>
 

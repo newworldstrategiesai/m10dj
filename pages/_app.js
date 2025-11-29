@@ -1,7 +1,7 @@
 import '../styles/company-globals.css';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import FloatingLeadImportWidget from '@/components/chat/FloatingLeadImportWidget';
+import FloatingAdminAssistant from '@/components/admin/FloatingAdminAssistant';
 import GlobalChatWidget from '@/components/company/GlobalChatWidget';
 // Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
@@ -50,7 +50,7 @@ export default function App({ Component, pageProps }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </Head>
       <Component {...pageProps} />
-      {isAdminRoute && <FloatingLeadImportWidget />}
+      {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
       {!isSignInPage && !isRequestsPage && <GlobalChatWidget />}
       {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}

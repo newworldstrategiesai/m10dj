@@ -27,7 +27,8 @@ import {
   IconCheck,
   IconChecks,
   IconMicrophone,
-  IconLoader2
+  IconLoader2,
+  IconTemplate
 } from '@tabler/icons-react';
 import { cn } from '@/utils/cn';
 import { Separator } from '@/components/ui/separator';
@@ -343,9 +344,22 @@ export default function ChatPageClient() {
   const [isMobile, setIsMobile] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ message: string; sender: string } | null>(null);
+  const [showQuickTemplates, setShowQuickTemplates] = useState(false);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
+
+  // Quick reply templates
+  const QUICK_REPLY_TEMPLATES = [
+    "Thanks! I'll get back to you shortly.",
+    "Sounds great! Let me check availability and get back to you.",
+    "Perfect! What date are you thinking?",
+    "I'd be happy to help! What's your event date and venue?",
+    "Thanks for reaching out! When is your event?",
+    "Got it! I'll prepare a quote for you.",
+    "Excellent! I'll send you a detailed quote soon.",
+    "Thanks! I'll follow up with more details."
+  ];
 
   // Mobile detection
   useEffect(() => {
@@ -1036,12 +1050,22 @@ export default function ChatPageClient() {
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <IconMessages className="h-5 w-5 text-blue-600" />
                 </div>
-                <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+                  {(() => {
+                    const totalUnread = threads.reduce((sum, thread) => sum + (thread.unreadCount || 0), 0);
+                    return totalUnread > 0 ? (
+                      <Badge className="bg-blue-500 text-white text-xs px-2 py-0.5">
+                        {totalUnread} {totalUnread === 1 ? 'unread' : 'unread'}
+                      </Badge>
+                    ) : null;
+                  })()}
+                </div>
               </div>
               <Button
                 variant="outline"
@@ -1084,10 +1108,29 @@ export default function ChatPageClient() {
                   key={thread.id}
                   onClick={() => {
                     setSelectedUser(thread);
+                    // Auto-mark as read when conversation is opened
+                    if (thread.unreadCount && thread.unreadCount > 0) {
+                      setThreads(prevThreads => 
+                        prevThreads.map(t => 
+                          t.id === thread.id ? { ...t, unreadCount: 0 } : t
+                        )
+                      );
+                    }
                     if (isMobile) {
                       setMobileOpen(false);
                     }
                     setTimeout(scrollToBottom, 50);
+                    // Load draft if exists
+                    if (thread.phone) {
+                      try {
+                        const draft = localStorage.getItem(`chat_draft_${thread.phone}`);
+                        if (draft) {
+                          setInputMessage(draft);
+                        }
+                      } catch (err) {
+                        console.warn('Failed to load draft:', err);
+                      }
+                    }
                   }}
                   className={cn(
                     "flex items-center p-3 rounded-lg mb-2 cursor-pointer transition-all duration-200",
@@ -1287,6 +1330,31 @@ export default function ChatPageClient() {
 
                 {/* Message Input */}
                 <div className="flex items-end gap-3">
+                  <DropdownMenu open={showQuickTemplates} onOpenChange={setShowQuickTemplates}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="p-3 rounded-full flex-shrink-0 hover:bg-gray-100 border-gray-300"
+                        title="Quick reply templates"
+                      >
+                        <IconTemplate className="h-5 w-5 text-gray-600" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-64 max-h-64 overflow-y-auto">
+                      {QUICK_REPLY_TEMPLATES.map((template, index) => (
+                        <DropdownMenuItem
+                          key={index}
+                          onClick={() => {
+                            setInputMessage(template);
+                            setShowQuickTemplates(false);
+                          }}
+                          className="cursor-pointer py-2"
+                        >
+                          <span className="text-sm">{template}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -1307,13 +1375,21 @@ export default function ChatPageClient() {
                       <IconRobot className="h-5 w-5 text-gray-600" />
                     )}
                   </Button>
-                  <div className="flex-1">
+                  <div className="flex-1 relative">
                     <Textarea
                       placeholder="Type a message..."
                       value={inputMessage}
                       onChange={(e) => {
                         setInputMessage(e.target.value);
                         handleTyping();
+                        // Save draft to localStorage
+                        if (selectedUser?.phone) {
+                          try {
+                            localStorage.setItem(`chat_draft_${selectedUser.phone}`, e.target.value);
+                          } catch (err) {
+                            console.warn('Failed to save draft:', err);
+                          }
+                        }
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -1321,13 +1397,34 @@ export default function ChatPageClient() {
                           handleSendMessage(inputMessage);
                         }
                       }}
-                      className="min-h-[44px] resize-none border-gray-300 rounded-2xl bg-gray-50 text-gray-900 placeholder:text-gray-500 border focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="min-h-[44px] resize-none border-gray-300 rounded-2xl bg-gray-50 text-gray-900 placeholder:text-gray-500 border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 pr-16"
                       rows={1}
                     />
+                    <div className="absolute bottom-2 right-3 text-xs text-gray-400">
+                      <span className={cn(
+                        inputMessage.length > 160 ? 'text-red-500 font-semibold' : '',
+                        inputMessage.length > 140 && inputMessage.length <= 160 ? 'text-orange-500' : ''
+                      )}>
+                        {inputMessage.length}/160
+                      </span>
+                      {inputMessage.length > 160 && (
+                        <span className="ml-1 text-red-500">(Will split into multiple messages)</span>
+                      )}
+                    </div>
                   </div>
                   <Button
                     disabled={!inputMessage.trim() || isLoading}
-                    onClick={() => handleSendMessage(inputMessage)}
+                    onClick={() => {
+                      handleSendMessage(inputMessage);
+                      // Clear draft after sending
+                      if (selectedUser?.phone) {
+                        try {
+                          localStorage.removeItem(`chat_draft_${selectedUser.phone}`);
+                        } catch (err) {
+                          console.warn('Failed to clear draft:', err);
+                        }
+                      }
+                    }}
                     className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 flex-shrink-0"
                   >
                     {isLoading ? (

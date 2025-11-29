@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/Toasts/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import Link from 'next/link';
 import ServiceSelectionButton from '@/components/admin/ServiceSelectionButton';
 import PaymentHistory from '@/components/admin/PaymentHistory';
@@ -45,6 +46,7 @@ interface Contact {
   lead_stage: string | null;
   lead_temperature: string | null;
   communication_preference: string | null;
+  payment_status: string | null;
   notes: string | null;
   custom_fields?: any; // For storing service selections and other custom data
   created_at: string;
@@ -119,6 +121,9 @@ export default function ContactDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [lookingUpVenue, setLookingUpVenue] = useState(false);
   const venueLookupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showEmailParser, setShowEmailParser] = useState(false);
+  const [emailContent, setEmailContent] = useState('');
+  const [parsingEmail, setParsingEmail] = useState(false);
   const router = useRouter();
   const supabase = createClientComponentClient();
   const { toast } = useToast();
@@ -140,6 +145,46 @@ export default function ContactDetailPage() {
       // Communications are now handled by UnifiedCommunicationHub component
     }
   }, [user, id]);
+
+  // Auto-update lead_status based on payment status
+  useEffect(() => {
+    if (!contact || !payments.length || !id) return;
+
+    // Check if contact is fully paid
+    const totalPaid = payments
+      .filter((p: any) => p.status === 'succeeded' || p.status === 'paid' || p.payment_status === 'Paid')
+      .reduce((sum: number, p: any) => sum + (Number(p.total_amount) || Number(p.amount) || 0), 0);
+    
+    const quoteValue = contact.quoted_price || contact.final_price || 0;
+    const isFullyPaid = quoteValue > 0 && totalPaid >= quoteValue;
+
+    // If fully paid and status is "Lost", update to "Booked"
+    if (isFullyPaid && contact.lead_status === 'Lost') {
+      const updateStatus = async () => {
+        try {
+          const { error } = await supabase
+            .from('contacts')
+            .update({ 
+              lead_status: 'Booked',
+              payment_status: 'paid',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+          if (!error) {
+            setContact({ ...contact, lead_status: 'Booked', payment_status: 'paid' });
+            toast({
+              title: "Status Updated",
+              description: "Contact status updated to 'Booked' based on payment status",
+            });
+          }
+        } catch (error) {
+          console.error('Error updating lead status:', error);
+        }
+      };
+      updateStatus();
+    }
+  }, [contact, payments, id, supabase, toast]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -615,6 +660,53 @@ export default function ContactDetailPage() {
     }
   };
 
+  const handleParseEmail = async () => {
+    if (!emailContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Please paste email content",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setParsingEmail(true);
+    try {
+      const response = await fetch(`/api/contacts/${id}/parse-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailContent })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: "Success",
+          description: "Email parsed and contact updated successfully"
+        });
+        
+        // Refresh contact data
+        await fetchContact();
+        
+        // Clear email content and close modal
+        setEmailContent('');
+        setShowEmailParser(false);
+      } else {
+        throw new Error(data.error || 'Failed to parse email');
+      }
+    } catch (error: any) {
+      console.error('Error parsing email:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to parse email",
+        variant: "destructive"
+      });
+    } finally {
+      setParsingEmail(false);
+    }
+  };
+
   const lookupVenueAddress = async (venueName: string) => {
     if (!venueName || venueName.trim().length < 2) return;
     
@@ -835,6 +927,12 @@ export default function ContactDetailPage() {
                   <MessageSquare className="h-4 w-4" />
                         </Button>
               )}
+              <Link href={`/quote/${contact.id}/questionnaire`} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Music className="h-4 w-4" />
+                  <span className="hidden sm:inline">Questionnaire</span>
+                </Button>
+              </Link>
                       </div>
                     </div>
                   </div>
@@ -1425,6 +1523,80 @@ export default function ContactDetailPage() {
 
           {/* Communications Tab - Unified Hub */}
           <TabsContent value="communications">
+            {/* Email Parser Section */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Import from Email</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Paste email content to automatically extract playlists, event times, and special requests
+                  </p>
+                </div>
+                <Dialog open={showEmailParser} onOpenChange={setShowEmailParser}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Parse Email
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Import Information from Email</DialogTitle>
+                      <DialogDescription>
+                        Paste the email content below. We'll automatically extract:
+                        <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                          <li>Spotify playlist links (first dance, wedding, cocktail hour)</li>
+                          <li>Event times (ceremony, grand entrance, grand exit)</li>
+                          <li>Special requests and notes</li>
+                        </ul>
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Email Content
+                        </label>
+                        <Textarea
+                          value={emailContent}
+                          onChange={(e) => setEmailContent(e.target.value)}
+                          placeholder="Paste the email content here..."
+                          rows={12}
+                          className="font-mono text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setEmailContent('');
+                            setShowEmailParser(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleParseEmail}
+                          disabled={parsingEmail || !emailContent.trim()}
+                          className="flex items-center gap-2"
+                        >
+                          {parsingEmail ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Parsing...
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4" />
+                              Parse & Update
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
             <UnifiedCommunicationHub
               contactId={id || ''}
               contactEmail={contact?.email_address || null}
