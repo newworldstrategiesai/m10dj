@@ -59,14 +59,9 @@ export default function AdminNotifications() {
           return;
         }
 
-        // Simple admin check - you can update this list with your admin emails
-        const adminEmails = [
-          'admin@m10djcompany.com', 
-          'manager@m10djcompany.com',
-          'djbenmurray@gmail.com'  // Ben Murray - Owner
-        ];
-        
-        const isUserAdmin = adminEmails.includes(user.email);
+        // Check admin status using centralized admin roles system
+        const { isAdminEmail } = await import('@/utils/auth-helpers/admin-roles');
+        const isUserAdmin = await isAdminEmail(user.email);
         
         if (!mounted) return;
         
@@ -79,7 +74,8 @@ export default function AdminNotifications() {
         }
         
       } catch (err) {
-        console.error('Auth error:', err);
+        const { logger } = await import('@/utils/logger');
+        logger.error('Auth error in notifications page', err);
         if (mounted) {
           window.location.href = '/signin?redirect=/admin/notifications';
         }

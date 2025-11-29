@@ -19,14 +19,9 @@ export async function getUserRole(): Promise<UserRole | null> {
       return null;
     }
 
-    // Admin email list - matches the one in admin.ts
-    const adminEmails = [
-      'admin@m10djcompany.com',
-      'manager@m10djcompany.com', 
-      'djbenmurray@gmail.com'  // Ben Murray - Owner
-    ];
-
-    const isAdmin = adminEmails.includes(user.email);
+    // Check admin status using centralized admin roles system
+    const { isAdminEmail } = await import('./admin-roles');
+    const isAdmin = await isAdminEmail(user.email);
     const isClient = !isAdmin; // For now, non-admins are clients
 
     return {

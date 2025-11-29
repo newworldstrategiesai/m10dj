@@ -15,6 +15,7 @@ import {
   IconCheck,
   IconFileUpload,
   IconKeyboard,
+  IconClipboard,
   IconSettings,
   IconUser,
   IconCalendar,
@@ -26,6 +27,8 @@ import {
   IconMusic,
   IconChevronDown,
   IconChevronUp,
+  IconRefresh,
+  IconArrowRight,
 } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,15 +40,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { cn } from '@/utils/cn';
 import dayjs from 'dayjs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -58,18 +52,16 @@ import { useUser } from '@/hooks/useUser';
 import { parseLeadThread, ParsedLeadThread } from '@/utils/lead-thread-parser';
 import { parseEmailContent, ParsedEmailData } from '@/utils/email-parser';
 import { MessageContentRenderer } from './MessageContentRenderer';
+import { isAdminEmail } from '@/utils/auth-helpers/admin-roles';
 
-const ADMIN_EMAILS = [
-  'admin@m10djcompany.com',
-  'manager@m10djcompany.com',
-  'djbenmurray@gmail.com',
-];
+// Admin emails removed - now using centralized admin roles system
+// See: utils/auth-helpers/admin-roles.ts
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string | any; // Can be string or structured content
-  timestamp: string;
+  timestamp?: string;
   functions_called?: Array<{ name: string; arguments: any }>;
 }
 
@@ -100,16 +92,20 @@ export default function FloatingAdminAssistant() {
   
   // Import state
   const [threadText, setThreadText] = useState('');
+  const [inputMode, setInputMode] = useState<'paste' | 'upload'>('paste');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [importStatus, setImportStatus] = useState<ImportStatus>({ state: 'idle' });
   const [contactId, setContactId] = useState<string | null>(null);
   const [existingContact, setExistingContact] = useState<any>(null);
   const [checkingExisting, setCheckingExisting] = useState(false);
   const [editableFields, setEditableFields] = useState<Record<string, string | null>>({});
   const [showFieldComparison, setShowFieldComparison] = useState(false);
+  // Field update choices: 'update' | 'keep' | 'new' (new means field doesn't exist in existing contact)
+  const [fieldUpdateChoices, setFieldUpdateChoices] = useState<Record<string, 'update' | 'keep' | 'new'>>({});
   
   // Enhanced import state
   const [editingField, setEditingField] = useState<string | null>(null);
-  const [showComparison, setShowComparison] = useState(false);
+  const [showComparison, setShowComparison] = useState(true); // Default to showing comparison
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [importOptions, setImportOptions] = useState({
     createProject: true,
@@ -196,6 +192,13 @@ export default function FloatingAdminAssistant() {
     }
   }, [isEmail, threadText]);
 
+  // Auto-expand comparison when data is detected (moved after parsedPreview is defined)
+  useEffect(() => {
+    if ((parsedPreview || emailExtractedData || Object.keys(editableFields).length > 0) && !showComparison) {
+      setShowComparison(true);
+    }
+  }, [parsedPreview, emailExtractedData, editableFields, showComparison]);
+
   // Validation
   const validateFields = useCallback(() => {
     const errors: Record<string, string> = {};
@@ -234,10 +237,50 @@ export default function FloatingAdminAssistant() {
     }
   }, [editableFields, validateFields]);
 
+  // Paste handler
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        setThreadText(text);
+        setInputMode('paste');
+        toast({
+          title: "Content pasted",
+          description: "Content from clipboard has been loaded",
+        });
+        // Focus textarea after a brief delay
+        setTimeout(() => {
+          textareaRef.current?.focus();
+          textareaRef.current?.setSelectionRange(text.length, text.length);
+        }, 100);
+      } else {
+        toast({
+          title: "Clipboard empty",
+          description: "No text found in clipboard",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      // Fallback: focus textarea and let user paste manually
+      textareaRef.current?.focus();
+      toast({
+        title: "Paste ready",
+        description: "Textarea focused - use Ctrl/Cmd+V to paste",
+      });
+    }
+  }, [toast]);
+
+  // Handle paste events in textarea
+  const handleTextareaPaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    // Auto-detect paste and switch to paste mode
+    setInputMode('paste');
+  }, []);
+
   // File upload handlers
   const handleFileUpload = useCallback(async (file: File) => {
     const text = await file.text();
     setThreadText(text);
+    setInputMode('upload');
     toast({
       title: "File loaded",
       description: `Loaded content from ${file.name}`,
@@ -397,6 +440,7 @@ export default function FloatingAdminAssistant() {
         
         if (!phone && !email) {
           setExistingContact(null);
+          setFieldUpdateChoices({});
           return;
         }
 
@@ -408,7 +452,45 @@ export default function FloatingAdminAssistant() {
 
         if (response.ok) {
           const data = await response.json();
-          setExistingContact(data.contact || null);
+          const contact = data.contact || null;
+          setExistingContact(contact);
+          
+          // Initialize field update choices
+          if (contact) {
+            const choices: Record<string, 'update' | 'keep' | 'new'> = {};
+            const detectedFields = {
+              firstName: editableFields.firstName || parsedPreview.contact.firstName,
+              lastName: editableFields.lastName || parsedPreview.contact.lastName,
+              email: editableFields.email || parsedPreview.contact.email,
+              phone: editableFields.phone || parsedPreview.contact.phoneE164 || parsedPreview.contact.phoneDigits,
+              eventType: editableFields.eventType || parsedPreview.contact.eventType,
+              eventDate: editableFields.eventDate || parsedPreview.contact.eventDate,
+              venueName: editableFields.venueName || parsedPreview.contact.venueName,
+              venueAddress: editableFields.venueAddress || parsedPreview.contact.venueAddress,
+              eventTime: editableFields.eventTime || parsedPreview.contact.eventTime,
+              endTime: editableFields.endTime || parsedPreview.contact.endTime,
+              guestCount: editableFields.guestCount || parsedPreview.contact.guestCount?.toString(),
+              budgetRange: editableFields.budgetRange || parsedPreview.contact.budgetRange,
+            };
+            
+            // For each detected field, check if it exists in existing contact
+            Object.entries(detectedFields).forEach(([key, detectedValue]) => {
+              if (detectedValue) {
+                const existingValue = contact[getContactFieldName(key)] || contact[key];
+                if (existingValue) {
+                  // Field exists - default to 'keep' (user can change to 'update')
+                  choices[key] = 'keep';
+                } else {
+                  // Field doesn't exist - it's new
+                  choices[key] = 'new';
+                }
+              }
+            });
+            
+            setFieldUpdateChoices(choices);
+          } else {
+            setFieldUpdateChoices({});
+          }
         }
       } catch (error) {
         console.error('Error checking existing contact:', error);
@@ -419,7 +501,26 @@ export default function FloatingAdminAssistant() {
 
     const timeoutId = setTimeout(checkExisting, 500);
     return () => clearTimeout(timeoutId);
-  }, [parsedPreview, user, isEmail]);
+  }, [parsedPreview, user, isEmail, editableFields]);
+
+  // Helper to map field keys to contact database field names
+  const getContactFieldName = (fieldKey: string): string => {
+    const mapping: Record<string, string> = {
+      firstName: 'first_name',
+      lastName: 'last_name',
+      email: 'email_address',
+      phone: 'phone',
+      eventType: 'event_type',
+      eventDate: 'event_date',
+      venueName: 'venue_name',
+      venueAddress: 'venue_address',
+      eventTime: 'event_time',
+      endTime: 'end_time',
+      guestCount: 'guest_count',
+      budgetRange: 'budget_range',
+    };
+    return mapping[fieldKey] || fieldKey;
+  };
 
   useEffect(() => {
     if (scrollRef.current && open) {
@@ -543,9 +644,31 @@ export default function FloatingAdminAssistant() {
         }
       }
       
-      const fieldsToUse = Object.keys(editableFields).length > 0 
-        ? editableFields 
-        : parsedPreview?.contact || {};
+      // Build fieldsToUse based on fieldUpdateChoices
+      // Only include fields marked as 'update' or 'new'
+      const fieldsToUse: Record<string, any> = {};
+      const allDetectedFields = {
+        firstName: editableFields.firstName || parsedPreview?.contact.firstName,
+        lastName: editableFields.lastName || parsedPreview?.contact.lastName,
+        email: editableFields.email || parsedPreview?.contact.email,
+        phone: editableFields.phone || parsedPreview?.contact.phoneE164 || parsedPreview?.contact.phoneDigits,
+        eventType: editableFields.eventType || parsedPreview?.contact.eventType,
+        eventDate: editableFields.eventDate || parsedPreview?.contact.eventDate,
+        venueName: editableFields.venueName || parsedPreview?.contact.venueName,
+        venueAddress: editableFields.venueAddress || parsedPreview?.contact.venueAddress,
+        eventTime: editableFields.eventTime || parsedPreview?.contact.eventTime,
+        endTime: editableFields.endTime || parsedPreview?.contact.endTime,
+        guestCount: editableFields.guestCount || parsedPreview?.contact.guestCount?.toString(),
+        budgetRange: editableFields.budgetRange || parsedPreview?.contact.budgetRange,
+      };
+      
+      // Only include fields that should be updated
+      Object.entries(allDetectedFields).forEach(([key, value]) => {
+        const choice = fieldUpdateChoices[key];
+        if (value && (choice === 'update' || choice === 'new')) {
+          fieldsToUse[key] = value;
+        }
+      });
       
       setImportStatus({ state: 'processing', step: 'Importing contact data...' });
       
@@ -556,7 +679,7 @@ export default function FloatingAdminAssistant() {
         },
         body: JSON.stringify({ 
           thread: threadText,
-          overrides: existingContact ? fieldsToUse : undefined,
+          overrides: existingContact && Object.keys(fieldsToUse).length > 0 ? fieldsToUse : undefined,
           contactId: targetContactId || undefined,
           leadSource: importOptions.leadSource,
           leadStatus: importOptions.leadStatus,
@@ -592,13 +715,14 @@ export default function FloatingAdminAssistant() {
       setThreadText('');
       setEditableFields({});
       setEmailExtractedData(null);
+      setFieldUpdateChoices({});
     } catch (error: any) {
       setImportStatus({
         state: 'error',
         message: error?.message || 'Something went wrong while importing the lead.',
       });
     }
-  }, [threadText, validateFields, toast, contactId, isEmail, parsedPreview, existingContact, editableFields, importOptions]);
+  }, [threadText, validateFields, toast, contactId, isEmail, parsedPreview, existingContact, editableFields, importOptions, fieldUpdateChoices]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -631,31 +755,64 @@ export default function FloatingAdminAssistant() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTab, threadText, editingField, importStatus.state, handleImport]);
 
-  const handleClose = (nextOpen: boolean) => {
+  const handleClose = useCallback((nextOpen: boolean) => {
     setOpen(nextOpen);
     if (!nextOpen) {
       setThreadText('');
       setImportStatus({ state: 'idle' });
       setEditableFields({});
       setEmailExtractedData(null);
+      setFieldUpdateChoices({});
       setEditingField(null);
-      setShowComparison(false);
+      setShowComparison(true);
       setShowImportOptions(false);
       setShowHelp(false);
       setValidationErrors({});
     }
-  };
+  }, []);
+
+  // Global ESC key handler to close assistant
+  useEffect(() => {
+    if (!open) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !editingField) {
+        e.preventDefault();
+        handleClose(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [open, editingField, handleClose]);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Check admin status using centralized admin roles system
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (user?.email) {
+        const adminStatus = await isAdminEmail(user.email);
+        setIsAdmin(adminStatus);
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    if (!loading) {
+      checkAdmin();
+    }
+  }, [user?.email, loading]);
 
   if (loading) return null;
-
-  const isAdmin = user?.email ? ADMIN_EMAILS.includes(user.email) : false;
   if (!isAdmin) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogTrigger asChild>
+    <>
+      {/* Floating trigger button */}
+      {!open && (
+        <div className="fixed bottom-6 right-6 z-50">
           <button
+            onClick={() => setOpen(true)}
             className="group flex items-center gap-3 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2"
             aria-label="Open Admin Assistant"
           >
@@ -664,118 +821,222 @@ export default function FloatingAdminAssistant() {
             </div>
             <span className="hidden sm:inline">Assistant</span>
           </button>
-        </DialogTrigger>
-        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
-            <div className="flex items-center justify-between">
+        </div>
+      )}
+
+      {/* Full-screen ChatGPT-style interface */}
+      {open && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-zinc-900">
+          {/* Top Header */}
+          <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 bg-white dark:bg-zinc-900">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
-                  <IconRobot className="h-5 w-5 text-white" />
+              <button
+                onClick={() => handleClose(false)}
+                className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                aria-label="Close Admin Assistant"
+                title="Close (ESC)"
+              >
+                <IconX className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
+                  <IconRobot className="h-4 w-4 text-white" />
                 </div>
+                <h1 className="text-lg font-semibold text-zinc-900 dark:text-white">Admin Assistant</h1>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab('assistant')}
+                className={cn(
+                  "flex items-center gap-2",
+                  activeTab === 'assistant' && "bg-zinc-100 dark:bg-zinc-800"
+                )}
+              >
+                <IconRobot className="h-4 w-4" />
+                Chat
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab('import')}
+                className={cn(
+                  "flex items-center gap-2",
+                  activeTab === 'import' && "bg-zinc-100 dark:bg-zinc-800"
+                )}
+              >
+                <IconMessageCirclePlus className="h-4 w-4" />
+                Import
+              </Button>
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Sidebar - Only show for assistant tab */}
+            {activeTab === 'assistant' && (
+              <div className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4 overflow-y-auto">
+                <div className="space-y-4">
                 <div>
-                  <DialogTitle>Admin Assistant</DialogTitle>
-                  <DialogDescription>Execute operations and import conversations</DialogDescription>
+                    <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
+                      Quick Actions
+                    </h3>
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => setInput("Show me all new leads from this week")}
+                        className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
+                      >
+                        📊 New Leads This Week
+                      </button>
+                      <button
+                        onClick={() => setInput("What&apos;s on my dashboard today?")}
+                        className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
+                      >
+                        📈 Today&apos;s Dashboard
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('import')}
+                        className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
+                      >
+                        📥 Import Conversation
+                      </button>
                 </div>
               </div>
             </div>
-          </DialogHeader>
-
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'assistant' | 'import')} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="mx-6 mt-4">
-              <TabsTrigger value="assistant" className="flex items-center gap-2">
-                <IconRobot className="h-4 w-4" />
-                Assistant
-              </TabsTrigger>
-              <TabsTrigger value="import" className="flex items-center gap-2">
-                <IconMessageCirclePlus className="h-4 w-4" />
-                Import Conversation
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="assistant" className="flex-1 flex flex-col overflow-hidden mt-0">
-              <ScrollArea className="flex-1 px-6 py-4" ref={scrollRef}>
-                <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        "flex gap-3",
-                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                      )}
-                    >
-                      {message.role === 'assistant' && (
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white">
-                            <IconRobot className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-
-                      <MessageContentRenderer
-                        content={message.content}
-                        timestamp={message.timestamp}
-                        functionsCalled={message.functions_called}
-                      />
-
-                      {message.role === 'user' && (
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-blue-500 text-white">
-                            You
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  ))}
-
-                  {isLoading && (
-                    <div className="flex gap-3 justify-start">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white">
-                          <IconRobot className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
-                        <div className="flex items-center gap-2">
-                          <IconLoader2 className="h-4 w-4 animate-spin text-gray-500" />
-                          <span className="text-sm text-gray-500">Thinking...</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-
-              <div className="px-6 py-4 border-t">
-                <div className="flex gap-2">
-                  <Textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    placeholder="Ask me anything... (e.g., 'Show me all new leads')"
-                    className="min-h-[60px] resize-none"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    onClick={handleSend}
-                    disabled={!input.trim() || isLoading}
-                    className="bg-gradient-to-br from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-                  >
-                    {isLoading ? (
-                      <IconLoader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <IconSend className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  Press Enter to send, Shift+Enter for new line
-                </p>
               </div>
-            </TabsContent>
+            )}
 
-            <TabsContent value="import" className="flex-1 flex flex-col overflow-hidden mt-0">
-              <ScrollArea className="flex-1 px-6 py-4">
-                <div className="space-y-4">
+            {/* Chat/Content Area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {activeTab === 'assistant' ? (
+                <>
+                  {/* Messages Area */}
+                  <div className="flex-1 overflow-y-auto px-4 py-6" ref={scrollRef}>
+                    <div className="max-w-3xl mx-auto space-y-6">
+                      {messages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={cn(
+                            "flex gap-3 items-end",
+                            message.role === 'user' ? 'justify-end' : 'justify-start'
+                          )}
+                        >
+                          {message.role === 'assistant' && (
+                            <Avatar className="h-9 w-9 flex-shrink-0 ring-2 ring-zinc-200 dark:ring-zinc-700">
+                              <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white">
+                                <IconRobot className="h-5 w-5" />
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+
+                          <div className={cn(
+                            "flex flex-col max-w-[80%]",
+                            message.role === 'user' ? 'items-end' : 'items-start'
+                          )}>
+                            <div className={cn(
+                              "rounded-2xl px-4 py-3 shadow-sm transition-shadow",
+                              message.role === 'user'
+                                ? "bg-gradient-to-br from-purple-600 via-indigo-600 to-purple-700 text-white rounded-br-md shadow-md shadow-purple-500/20"
+                                : "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 rounded-bl-md shadow-sm"
+                            )}>
+                              <div className="prose prose-sm dark:prose-invert max-w-none">
+                                <MessageContentRenderer
+                                  content={message.content}
+                                  timestamp={message.timestamp}
+                                  functionsCalled={message.functions_called}
+                                />
+                              </div>
+                            </div>
+                            {message.timestamp && (
+                              <span className={cn(
+                                "text-xs mt-1.5 px-2",
+                                message.role === 'user' 
+                                  ? "text-zinc-500 dark:text-zinc-400" 
+                                  : "text-zinc-400 dark:text-zinc-500"
+                              )}>
+                                {new Date(message.timestamp).toLocaleTimeString('en-US', { 
+                                  hour: 'numeric', 
+                                  minute: '2-digit' 
+                                })}
+                              </span>
+                            )}
+                          </div>
+
+                          {message.role === 'user' && (
+                            <Avatar className="h-9 w-9 flex-shrink-0 ring-2 ring-purple-200 dark:ring-purple-900">
+                              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold">
+                                {user?.email ? (
+                                  <span className="text-xs">
+                                    {user.email.charAt(0).toUpperCase()}
+                                  </span>
+                                ) : (
+                                  <IconUser className="h-5 w-5" />
+                                )}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                      ))}
+
+                      {isLoading && (
+                        <div className="flex gap-4 justify-start">
+                          <Avatar className="h-8 w-8 flex-shrink-0">
+                            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white">
+                              <IconRobot className="h-4 w-4" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <IconLoader2 className="h-4 w-4 animate-spin text-zinc-500" />
+                              <span className="text-sm text-zinc-500">Thinking...</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Input Area */}
+                  <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-4">
+                    <div className="max-w-3xl mx-auto">
+                      <div className="flex gap-3 items-end">
+                        <div className="flex-1 relative">
+                          <Textarea
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            placeholder="Message Admin Assistant..."
+                            className="min-h-[52px] max-h-[200px] resize-none pr-12 rounded-xl border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-purple-500"
+                            disabled={isLoading}
+                            rows={1}
+                          />
+                        </div>
+                        <Button
+                          onClick={handleSend}
+                          disabled={!input.trim() || isLoading}
+                          size="lg"
+                          className="h-[52px] w-[52px] rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 p-0"
+                        >
+                          {isLoading ? (
+                            <IconLoader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <IconSend className="h-5 w-5" />
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 text-center">
+                        Press Enter to send, Shift+Enter for new line
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Import Tab Content */}
+                  <div className="flex-1 overflow-y-auto px-6 py-4">
+                    <div className="max-w-4xl mx-auto space-y-4">
                   {/* Progress Steps */}
                   {importStatus.state === 'processing' && (
                     <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">
@@ -828,12 +1089,43 @@ export default function FloatingAdminAssistant() {
                     </div>
                   )}
 
-                  {/* File Upload Area */}
+                  {/* Input Method Toggle */}
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      type="button"
+                      variant={inputMode === 'paste' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setInputMode('paste');
+                        setTimeout(() => textareaRef.current?.focus(), 100);
+                      }}
+                      className="flex-1"
+                    >
+                      <IconClipboard className="h-4 w-4 mr-2" />
+                      Paste Text
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={inputMode === 'upload' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setInputMode('upload');
+                        fileInputRef.current?.click();
+                      }}
+                      className="flex-1"
+                    >
+                      <IconFileUpload className="h-4 w-4 mr-2" />
+                      Upload File
+                    </Button>
+                  </div>
+
+                  {/* File Upload Area - Only show when upload mode */}
+                  {inputMode === 'upload' && (
                   <div
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     className={cn(
-                      "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
+                        "border-2 border-dashed rounded-lg p-6 text-center transition-colors mb-4",
                       "hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
                     )}
                   >
@@ -858,6 +1150,7 @@ export default function FloatingAdminAssistant() {
                       Supports .txt and .eml files
                     </p>
                   </div>
+                  )}
 
                   {/* Thread Input */}
                   <div className="space-y-2">
@@ -866,6 +1159,17 @@ export default function FloatingAdminAssistant() {
                         Conversation Transcript
                       </label>
                       <div className="flex items-center gap-2">
+                        {inputMode === 'paste' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePaste}
+                            className="h-7 text-xs"
+                          >
+                            <IconClipboard className="h-3 w-3 mr-1" />
+                            Paste from Clipboard
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -878,7 +1182,12 @@ export default function FloatingAdminAssistant() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setThreadText('')}
+                          onClick={() => {
+                            setThreadText('');
+                            setEditableFields({});
+                            setFieldUpdateChoices({});
+                            setEmailExtractedData(null);
+                          }}
                           className="h-7 text-xs"
                           disabled={!threadText.trim()}
                         >
@@ -887,9 +1196,14 @@ export default function FloatingAdminAssistant() {
                       </div>
                     </div>
                     <Textarea
+                      ref={textareaRef}
                       value={threadText}
                       onChange={(event) => setThreadText(event.target.value)}
-                      placeholder={`Paste SMS thread or email content here...\n\nSMS Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...\n\nEmail Example:\nHey, Ben! I have collected songs for the first dances...`}
+                      onPaste={handleTextareaPaste}
+                      placeholder={inputMode === 'paste' 
+                        ? `Paste SMS thread or email content here (Ctrl/Cmd+V)...\n\nSMS Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...\n\nEmail Example:\nHey, Ben! I have collected songs for the first dances...`
+                        : `Paste SMS thread or email content here...\n\nSMS Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...\n\nEmail Example:\nHey, Ben! I have collected songs for the first dances...`
+                      }
                       className="min-h-[200px] resize-vertical font-mono text-sm"
                     />
                     {showHelp && (
@@ -907,6 +1221,273 @@ export default function FloatingAdminAssistant() {
                       Tip: For SMS, include the lead name, phone, email, event date, and venue. For emails, include playlists, event times, and special requests.
                     </p>
                   </div>
+
+                  {/* Structured Data Comparison - Shows all detected fields with update/keep options - MOVED TO TOP FOR VISIBILITY */}
+                  {(parsedPreview || emailExtractedData || Object.keys(editableFields).length > 0) && (
+                    <Card className="border-blue-200 dark:border-blue-900 mb-4">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <IconSparkles className="h-4 w-4 text-blue-600" />
+                            <CardTitle className="text-sm">Detected Structured Data</CardTitle>
+                            <Badge variant="outline" className="text-xs">
+                              {Object.keys(fieldUpdateChoices).filter(k => fieldUpdateChoices[k] === 'update' || fieldUpdateChoices[k] === 'new').length} fields to update
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowComparison(!showComparison)}
+                          >
+                            {showComparison ? <IconChevronUp className="h-4 w-4" /> : <IconChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                        <CardDescription className="text-xs">
+                          Review detected data and choose which fields to update or keep
+                        </CardDescription>
+                      </CardHeader>
+                      {showComparison && (
+                        <CardContent className="space-y-4">
+                          {/* Field comparison list - will be populated below */}
+                          {(() => {
+                            const allFields = [
+                              { key: 'firstName', label: 'First Name', icon: IconUser, existing: existingContact?.first_name },
+                              { key: 'lastName', label: 'Last Name', icon: IconUser, existing: existingContact?.last_name },
+                              { key: 'email', label: 'Email', icon: IconMail, existing: existingContact?.email_address },
+                              { key: 'phone', label: 'Phone', icon: IconPhone, existing: existingContact?.phone },
+                              { key: 'eventType', label: 'Event Type', icon: IconCalendar, existing: existingContact?.event_type },
+                              { key: 'eventDate', label: 'Event Date', icon: IconCalendar, existing: existingContact?.event_date ? dayjs(existingContact.event_date).format('YYYY-MM-DD') : null },
+                              { key: 'eventTime', label: 'Start Time', icon: IconClock, existing: existingContact?.event_time },
+                              { key: 'endTime', label: 'End Time', icon: IconClock, existing: existingContact?.end_time },
+                              { key: 'venueName', label: 'Venue Name', icon: IconMapPin, existing: existingContact?.venue_name },
+                              { key: 'venueAddress', label: 'Venue Address', icon: IconMapPin, existing: existingContact?.venue_address },
+                              { key: 'guestCount', label: 'Guest Count', icon: IconUsers, existing: existingContact?.guest_count?.toString() },
+                              { key: 'budgetRange', label: 'Budget Range', icon: IconSettings, existing: existingContact?.budget_range },
+                            ];
+
+                            const detectedFields = allFields.map(field => {
+                              // Priority: editableFields > parsedPreview > emailExtractedData
+                              let detectedValue = editableFields[field.key];
+                              if (!detectedValue && parsedPreview?.contact) {
+                                detectedValue = (parsedPreview.contact as any)[field.key];
+                              }
+                              if (!detectedValue && emailExtractedData) {
+                                // Map email-specific fields
+                                if (field.key === 'eventTime' && emailExtractedData.grandEntrance) {
+                                  detectedValue = emailExtractedData.grandEntrance;
+                                } else if (field.key === 'endTime' && emailExtractedData.grandExit) {
+                                  detectedValue = emailExtractedData.grandExit;
+                                } else {
+                                  detectedValue = (emailExtractedData as any)[field.key];
+                                }
+                              }
+                              return { ...field, detected: detectedValue || null };
+                            }).filter(f => {
+                              // Show ALL fields that have either detected OR existing value (or both) for complete comparison
+                              return f.detected || f.existing;
+                            });
+
+                            if (detectedFields.length === 0) {
+                              return (
+                                <div className="text-center py-8 text-sm text-zinc-500">
+                                  No structured data detected yet. Continue typing or paste more content.
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div className="space-y-3">
+                                {detectedFields.map((field) => {
+                                  const Icon = field.icon;
+                                  const detectedValue = field.detected;
+                                  const existingValue = field.existing;
+                                  const hasConflict = existingValue && detectedValue && existingValue !== detectedValue;
+                                  const choice = fieldUpdateChoices[field.key] || (existingValue ? 'keep' : 'new');
+                                  const isNew = !existingValue && detectedValue;
+
+                                  const valuesMatch = existingValue && detectedValue && existingValue === detectedValue;
+                                  
+                                  return (
+                                    <div
+                                      key={field.key}
+                                      className={cn(
+                                        "rounded-lg border p-3 transition-colors",
+                                        hasConflict && choice === 'update' && "border-orange-300 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20",
+                                        hasConflict && choice === 'keep' && "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20",
+                                        isNew && choice === 'new' && "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/20",
+                                        valuesMatch && "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20",
+                                        !hasConflict && !isNew && !valuesMatch && "border-zinc-200 dark:border-zinc-800"
+                                      )}
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-3">
+                                            <Icon className="h-3.5 w-3.5 text-zinc-500 flex-shrink-0" />
+                                            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+                                              {field.label}
+                                            </label>
+                                            {isNew && (
+                                              <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
+                                                New
+                                              </Badge>
+                                            )}
+                                            {hasConflict && (
+                                              <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800">
+                                                Different
+                                              </Badge>
+                                            )}
+                                            {valuesMatch && (
+                                              <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">
+                                                Match
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          
+                                          {/* Side-by-side comparison */}
+                                          <div className="grid grid-cols-2 gap-3">
+                                            {/* Existing/Current Value Column */}
+                                            <div className="space-y-1">
+                                              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-1">
+                                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                                Current Value
+                                              </div>
+                                              <div className={cn(
+                                                "text-sm rounded px-2 py-2 min-h-[2.5rem] flex items-center",
+                                                existingValue 
+                                                  ? (valuesMatch 
+                                                      ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200 font-medium border border-emerald-300 dark:border-emerald-700"
+                                                      : choice === 'keep' 
+                                                        ? "bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200 font-medium border border-blue-300 dark:border-blue-700"
+                                                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700")
+                                                  : "bg-zinc-50 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600 italic border border-zinc-200 dark:border-zinc-700"
+                                              )}>
+                                                {existingValue || 'Not set'}
+                                              </div>
+                                            </div>
+
+                                            {/* Detected/Imported Value Column */}
+                                            <div className="space-y-1">
+                                              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-1">
+                                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                                Imported Value
+                                              </div>
+                                              <div className={cn(
+                                                "text-sm rounded px-2 py-2 min-h-[2.5rem] flex items-center",
+                                                detectedValue
+                                                  ? (valuesMatch
+                                                      ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200 font-medium border border-emerald-300 dark:border-emerald-700"
+                                                      : (choice === 'update' || choice === 'new')
+                                                        ? "bg-green-100 text-green-900 dark:bg-green-900/40 dark:text-green-200 font-medium border border-green-300 dark:border-green-700"
+                                                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700")
+                                                  : "bg-zinc-50 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600 italic border border-zinc-200 dark:border-zinc-700"
+                                              )}>
+                                                {detectedValue || 'Not detected'}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* Update/Keep toggle */}
+                                        {existingValue && detectedValue && hasConflict && (
+                                          <div className="flex flex-col gap-1 flex-shrink-0">
+                                            <Button
+                                              size="sm"
+                                              variant={choice === 'update' ? 'default' : 'outline'}
+                                              onClick={() => setFieldUpdateChoices(prev => ({ ...prev, [field.key]: 'update' }))}
+                                              className={cn(
+                                                "h-7 px-2 text-xs",
+                                                choice === 'update' && "bg-green-600 hover:bg-green-700 text-white"
+                                              )}
+                                            >
+                                              <IconRefresh className="h-3 w-3 mr-1" />
+                                              Update
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant={choice === 'keep' ? 'default' : 'outline'}
+                                              onClick={() => setFieldUpdateChoices(prev => ({ ...prev, [field.key]: 'keep' }))}
+                                              className={cn(
+                                                "h-7 px-2 text-xs",
+                                                choice === 'keep' && "bg-blue-600 hover:bg-blue-700 text-white"
+                                              )}
+                                            >
+                                              <IconCheck className="h-3 w-3 mr-1" />
+                                              Keep
+                                            </Button>
+                                          </div>
+                                        )}
+                                        {isNew && (
+                                          <Badge className="bg-green-600 text-white text-xs">
+                                            Will Add
+                                          </Badge>
+                                        )}
+                                        {valuesMatch && (
+                                          <Badge className="bg-emerald-600 text-white text-xs">
+                                            Same
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Existing contact link */}
+                          {existingContact && (
+                            <div className="pt-3 border-t">
+                              <Link
+                                href={`/admin/contacts/${existingContact.id}`}
+                                className="text-xs text-blue-600 hover:underline dark:text-blue-400 flex items-center gap-1"
+                              >
+                                <IconUser className="h-3 w-3" />
+                                View full contact details →
+                              </Link>
+                            </div>
+                          )}
+
+                          {/* Quick actions */}
+                          {existingContact && Object.keys(fieldUpdateChoices).length > 0 && (
+                            <div className="pt-3 border-t flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const allChoices: Record<string, 'update' | 'keep' | 'new'> = {};
+                                  Object.keys(fieldUpdateChoices).forEach(key => {
+                                    allChoices[key] = 'update';
+                                  });
+                                  setFieldUpdateChoices(allChoices);
+                                }}
+                                className="text-xs"
+                              >
+                                Update All
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const allChoices: Record<string, 'update' | 'keep' | 'new'> = {};
+                                  Object.keys(fieldUpdateChoices).forEach(key => {
+                                    if (fieldUpdateChoices[key] !== 'new') {
+                                      allChoices[key] = 'keep';
+                                    } else {
+                                      allChoices[key] = 'new';
+                                    }
+                                  });
+                                  setFieldUpdateChoices(allChoices);
+                                }}
+                                className="text-xs"
+                              >
+                                Keep All
+                              </Button>
+                            </div>
+                          )}
+                        </CardContent>
+                      )}
+                    </Card>
+                  )}
 
                   {/* SMS Preview - Enhanced with all fields */}
                   {parsedPreview && !isEmail && (
@@ -1226,75 +1807,6 @@ export default function FloatingAdminAssistant() {
                     </Card>
                   )}
 
-                  {/* Existing Contact Comparison */}
-                  {existingContact && (
-                    <Card className="border-orange-200 dark:border-orange-900">
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <IconUser className="h-4 w-4 text-orange-600" />
-                            <CardTitle className="text-sm">Existing Contact Found</CardTitle>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowComparison(!showComparison)}
-                          >
-                            {showComparison ? <IconChevronUp className="h-4 w-4" /> : <IconChevronDown className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      {showComparison && (
-                        <CardContent>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <h4 className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-2">Existing</h4>
-                              <div className="space-y-2 text-xs">
-                                <div>
-                                  <span className="font-medium">Name:</span> {existingContact.first_name} {existingContact.last_name}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Email:</span> {existingContact.email_address || 'N/A'}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Phone:</span> {existingContact.phone || 'N/A'}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Event Date:</span> {existingContact.event_date ? dayjs(existingContact.event_date).format('MMM D, YYYY') : 'N/A'}
-                                </div>
-                              </div>
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-2">Imported</h4>
-                              <div className="space-y-2 text-xs">
-                                <div>
-                                  <span className="font-medium">Name:</span> {editableFields.firstName || parsedPreview?.contact.firstName || ''} {editableFields.lastName || parsedPreview?.contact.lastName || ''}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Email:</span> {editableFields.email || parsedPreview?.contact.email || 'N/A'}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Phone:</span> {editableFields.phone || parsedPreview?.contact.phoneE164 || parsedPreview?.contact.phoneDigits || 'N/A'}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Event Date:</span> {editableFields.eventDate || parsedPreview?.contact.eventDate || 'N/A'}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-4 pt-4 border-t">
-                            <Link
-                              href={`/admin/contacts/${existingContact.id}`}
-                              className="text-xs text-blue-600 hover:underline dark:text-blue-400"
-                            >
-                              View existing contact →
-                            </Link>
-                          </div>
-                        </CardContent>
-                      )}
-                    </Card>
-                  )}
-
                   {/* Import Options */}
                   <Card>
                     <CardHeader>
@@ -1352,32 +1864,38 @@ export default function FloatingAdminAssistant() {
                       </CardContent>
                     )}
                   </Card>
-                </div>
-              </ScrollArea>
+                    </div>
+                  </div>
 
-              <DialogFooter className="px-6 py-4 border-t">
-                <Button
-                  onClick={handleImport}
-                  disabled={!threadText.trim() || importStatus.state === 'processing'}
-                  className="w-full sm:w-auto"
-                >
-                  {importStatus.state === 'processing' ? (
-                    <>
-                      <IconLoader2 className="h-4 w-4 animate-spin mr-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <IconClipboardCheck className="h-4 w-4 mr-2" />
-                      Import Lead
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog>
-    </div>
+                  {/* Import Footer */}
+                  <div className="border-t border-zinc-200 dark:border-zinc-800 px-6 py-4 bg-white dark:bg-zinc-900">
+                    <div className="max-w-4xl mx-auto">
+                      <Button
+                        onClick={handleImport}
+                        disabled={!threadText.trim() || importStatus.state === 'processing'}
+                        className="w-full sm:w-auto"
+                        size="lg"
+                      >
+                        {importStatus.state === 'processing' ? (
+                          <>
+                            <IconLoader2 className="h-4 w-4 animate-spin mr-2" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <IconClipboardCheck className="h-4 w-4 mr-2" />
+                            Import Lead
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -1,3 +1,5 @@
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { logger } from '@/utils/logger';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req, res) {
@@ -6,24 +8,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Use centralized admin authentication
+    const user = await requireAdmin(req, res);
+    // User is guaranteed to be authenticated and admin here
+    
     const supabase = createServerSupabaseClient({ req, res });
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError || !session) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Check if user is admin using email-based authentication
-    const adminEmails = [
-      'admin@m10djcompany.com',
-      'manager@m10djcompany.com',
-      'djbenmurray@gmail.com'  // Ben Murray - Owner
-    ];
-    const isAdmin = adminEmails.includes(session.user.email || '');
-
-    if (!isAdmin) {
-      return res.status(403).json({ error: 'Forbidden: Admin access required' });
-    }
 
     const { contactIds, updates } = req.body;
 
@@ -63,17 +52,24 @@ export default async function handler(req, res) {
       .in('id', contactIds);
 
     if (error) {
-      console.error('Database error:', error);
+      logger.error('Database error in bulk update', error);
       return res.status(500).json({ error: 'Failed to update contacts', details: error.message });
     }
 
+    logger.info('Bulk contacts updated', { count: contactIds.length, userId: user.id });
+    
     return res.status(200).json({ 
       success: true,
       message: `Successfully updated ${contactIds.length} contact(s)`,
       updated: contactIds.length
     });
   } catch (error) {
-    console.error('Error in bulk update:', error);
+    // Error from requireAdmin is already handled
+    if (res.headersSent) {
+      return;
+    }
+    
+    logger.error('Error in bulk update', error);
     return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

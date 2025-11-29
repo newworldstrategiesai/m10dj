@@ -8,7 +8,9 @@
  * Returns: { link: "https://m10djcompany.com/select-services/TOKEN" }
  */
 
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { getEnv } from '@/utils/env-validator';
+import { logger } from '@/utils/logger';
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
@@ -17,24 +19,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Use centralized admin authentication
+    const user = await requireAdmin(req, res);
+    // User is guaranteed to be authenticated and admin here
+    
+    const { createServerSupabaseClient } = await import('@supabase/auth-helpers-nextjs');
     const supabase = createServerSupabaseClient({ req, res });
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError || !session) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Check if user is admin
-    const adminEmails = [
-      'admin@m10djcompany.com',
-      'manager@m10djcompany.com',
-      'djbenmurray@gmail.com'
-    ];
-    const isAdmin = adminEmails.includes(session.user.email || '');
-
-    if (!isAdmin) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
 
     const { contactId } = req.body;
 
@@ -83,14 +73,18 @@ export default async function handler(req, res) {
       })
       .eq('id', contactId);
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+    const env = getEnv();
+    const baseUrl = env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
     // Use the new quote builder route instead of token-based route
     const link = `${baseUrl}/quote/${contact.id}`;
 
     // Log the generation
-    console.log(`✅ Generated service selection link for ${contact.first_name} ${contact.last_name}`);
-    console.log(`   Email: ${contact.email_address}`);
-    console.log(`   Link: ${link}`);
+    logger.info('Generated service selection link', {
+      contactId: contact.id,
+      name: `${contact.first_name} ${contact.last_name}`,
+      email: contact.email_address,
+      link
+    });
 
     res.status(200).json({
       success: true,
@@ -103,7 +97,12 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error generating service selection link:', error);
+    // Error from requireAdmin is already handled
+    if (res.headersSent) {
+      return;
+    }
+    
+    logger.error('Error generating service selection link', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

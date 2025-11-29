@@ -376,11 +376,13 @@ export const NewSMSDialog = ({
             {dialerKeys.slice(rowStart, rowStart + 3).map((keyObj) => (
               <button
                 key={keyObj.key}
-                className="flex flex-col items-center justify-center w-[72px] h-[72px] rounded-full border border-[#494949] text-white hover:bg-[#333336] transition-colors focus:outline-none mx-auto"
+                className="flex flex-col items-center justify-center w-[72px] h-[72px] rounded-full border border-[#494949] text-white hover:bg-[#333336] transition-colors focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:ring-offset-2 mx-auto"
                 onClick={() => handleDialerKeyPress(keyObj.key)}
+                aria-label={`Dial ${keyObj.key}${keyObj.letters ? ` (${keyObj.letters})` : ''}`}
+                type="button"
               >
-                <span className="text-[32px] font-light">{keyObj.key}</span>
-                {keyObj.letters && <span className="text-[10px] text-[#8E8E93] mt-1">{keyObj.letters}</span>}
+                <span className="text-[32px] font-light" aria-hidden="true">{keyObj.key}</span>
+                {keyObj.letters && <span className="text-[10px] text-[#8E8E93] mt-1" aria-hidden="true">{keyObj.letters}</span>}
               </button>
             ))}
           </React.Fragment>
@@ -390,23 +392,30 @@ export const NewSMSDialog = ({
       {/* Bottom action buttons */}
       <div className="flex items-center justify-center mt-6 space-x-6">
         <button
-          className="flex flex-col items-center justify-center w-[72px] h-[72px] rounded-full border border-[#494949] text-white hover:bg-[#333336] transition-colors focus:outline-none"
+          className="flex flex-col items-center justify-center w-[72px] h-[72px] rounded-full border border-[#494949] text-white hover:bg-[#333336] transition-colors focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:ring-offset-2"
           onClick={handleBackspace}
+          aria-label="Delete last digit"
+          type="button"
         >
-          <IconX className="h-8 w-8" />
+          <IconX className="h-8 w-8" aria-hidden="true" />
         </button>
         <button
-          className="flex flex-col items-center justify-center w-[72px] h-[72px] rounded-full bg-[#30D158] text-white hover:bg-[#27b44b] transition-colors focus:outline-none"
+          className="flex flex-col items-center justify-center w-[72px] h-[72px] rounded-full bg-[#30D158] text-white hover:bg-[#27b44b] transition-colors focus:outline-none focus:ring-2 focus:ring-[#30D158] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleSubmit}
           disabled={!isValidNumber || !selectedTwilioNumber}
+          aria-label={!isValidNumber || !selectedTwilioNumber ? 'Call number (disabled - enter valid number)' : 'Call number'}
+          type="button"
         >
-          <IconPhone className="h-8 w-8" />
+          <IconPhone className="h-8 w-8" aria-hidden="true" />
         </button>
         <button
-          className="flex flex-col items-center justify-center w-[72px] h-[72px] rounded-full border border-[#494949] text-[#007AFF] hover:bg-[#333336] transition-colors focus:outline-none"
+          className="flex flex-col items-center justify-center w-[72px] h-[72px] rounded-full border border-[#494949] text-[#007AFF] hover:bg-[#333336] transition-colors focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:ring-offset-2"
           onClick={toggleContactsView}
+          aria-label="Add from contacts"
+          aria-expanded={showContacts}
+          type="button"
         >
-          <IconPlus className="h-8 w-8" />
+          <IconPlus className="h-8 w-8" aria-hidden="true" />
         </button>
       </div>
 

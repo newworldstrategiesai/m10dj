@@ -5,20 +5,14 @@
  * using OpenAI Function Calling
  */
 
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { getEnv } from '@/utils/env-validator';
+import { logger } from '@/utils/logger';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { getFunctionDefinitions } from '../../../utils/admin-assistant/functions';
 import { executeFunction } from '../../../utils/admin-assistant/function-executor';
 import { formatResponseWithUI } from '../../../utils/admin-assistant/format-response';
-
-const openaiApiKey = process.env.OPENAI_API_KEY;
-
-// Admin emails for authentication
-const adminEmails = [
-  'admin@m10djcompany.com',
-  'manager@m10djcompany.com',
-  'djbenmurray@gmail.com'
-];
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -26,22 +20,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Verify admin authentication
+    // Use centralized admin authentication
+    const user = await requireAdmin(req, res);
+    // User is guaranteed to be authenticated and admin here
+    
+    const env = getEnv();
+    const openaiApiKey = env.OPENAI_API_KEY;
+    
     const supabase = createServerSupabaseClient({ req, res });
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError || !session) {
-      return res.status(401).json({ error: 'Unauthorized - Please sign in' });
-    }
-
-    const isAdmin = adminEmails.includes(session.user.email || '');
-    if (!isAdmin) {
-      return res.status(403).json({ error: 'Access denied - Admin only' });
-    }
 
     // 2. Validate OpenAI API key
     if (!openaiApiKey) {
-      console.error('❌ OPENAI_API_KEY is not configured');
+      logger.error('OPENAI_API_KEY is not configured');
       return res.status(500).json({ error: 'AI service not configured' });
     }
 
@@ -53,7 +43,7 @@ export default async function handler(req, res) {
     }
 
     console.log('🤖 Admin Assistant Request:', {
-      user: session.user.email,
+      user: user.email,
       message: message.substring(0, 100) + '...',
       historyLength: conversationHistory.length
     });
@@ -81,7 +71,7 @@ Guidelines:
 
 IMPORTANT: When function results contain data (contacts, quotes, invoices, etc.), the system will automatically format them as clickable cards and buttons. Your text response should provide context and summary. The UI elements will handle navigation and actions.
 
-Current user: ${session.user.email}
+Current user: ${user.email}
 Current time: ${new Date().toLocaleString()}`;
 
     const messages = [
@@ -155,7 +145,7 @@ Current time: ${new Date().toLocaleString()}`;
             functionName,
             functionArgs,
             supabase,
-            session.user.id
+            user.id
           );
 
           functionResults.push({
@@ -244,8 +234,8 @@ Current time: ${new Date().toLocaleString()}`;
       );
 
       await supabaseAdmin.from('admin_assistant_logs').insert({
-        user_id: session.user.id,
-        user_email: session.user.email,
+        user_id: user.id,
+        user_email: user.email,
         message: message,
         response: finalResponse,
         functions_called: assistantMessage.tool_calls?.map(tc => tc.function.name) || [],

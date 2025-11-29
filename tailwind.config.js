@@ -30,8 +30,12 @@ module.exports = {
           500: '#fcba00',
           600: '#e6a800',
           700: '#d19600',
-          800: '#a67600',
+          800: '#a67600', // Use for text on light backgrounds (WCAG AA compliant)
           900: '#7a5500',
+          // Contrast-safe variants
+          'text-light': '#a67600', // For text on white/light backgrounds
+          'text-dark': '#fcba00', // For text on dark backgrounds
+          'text-large': '#d19600', // For large text on light backgrounds
         },
         // Professional grays
         'gray': {

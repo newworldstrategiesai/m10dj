@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   Circle
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface Contract {
   id: string;
@@ -125,9 +127,42 @@ export default function ClientDashboardContent() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-12 h-12 text-brand animate-spin mb-4" />
-        <p className="text-gray-600 dark:text-gray-400">Loading your portal...</p>
+      <div className="space-y-8">
+        {/* Summary Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="h-8 w-32 mt-2" />
+                </div>
+                <Skeleton className="h-12 w-12 rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabs Skeleton */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="border-b border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex gap-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-10 w-24" />
+              ))}
+            </div>
+          </div>
+          <div className="p-6 space-y-4">
+            <Skeleton className="h-6 w-48 mb-4" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <Skeleton className="h-5 w-32 mb-2" />
+                <Skeleton className="h-4 w-full mb-1" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -226,7 +261,7 @@ export default function ClientDashboardContent() {
                   className={`
                     flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors
                     ${activeTab === tab.id
-                      ? 'border-brand text-brand'
+                      ? 'border-brand text-brand-800 dark:text-brand'
                       : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
                     }
                   `}
@@ -294,7 +329,7 @@ export default function ClientDashboardContent() {
                       className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-brand" />
+                        <FileText className="w-5 h-5 text-brand-800 dark:text-brand" />
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">{contract.contract_number}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -314,7 +349,11 @@ export default function ClientDashboardContent() {
                     </div>
                   ))}
                   {data.contracts.length === 0 && (
-                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">No contracts yet</p>
+                    <EmptyState
+                      icon={FileText}
+                      title="No contracts yet"
+                      description="Contracts will appear here once they're created for your events."
+                    />
                   )}
                 </div>
               </div>
@@ -458,7 +497,7 @@ export default function ClientDashboardContent() {
                                             inline-flex items-center gap-2 text-sm font-medium
                                             ${isCompleted
                                               ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700'
-                                              : 'text-brand hover:text-yellow-600'
+                                              : 'text-brand-800 dark:text-brand hover:text-brand-700 dark:hover:text-brand-600'
                                             }
                                           `}
                                         >
@@ -489,7 +528,7 @@ export default function ClientDashboardContent() {
                               href={paymentUrl}
                               className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                             >
-                              <CreditCard className="w-5 h-5 text-brand" />
+                              <CreditCard className="w-5 h-5 text-brand-800 dark:text-brand" />
                               <span className="text-sm font-medium">Make Payment</span>
                             </Link>
                           )}
@@ -498,7 +537,7 @@ export default function ClientDashboardContent() {
                               href={contractUrl}
                               className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                             >
-                              <FileText className="w-5 h-5 text-brand" />
+                              <FileText className="w-5 h-5 text-brand-800 dark:text-brand" />
                               <span className="text-sm font-medium">Sign Contract</span>
                             </Link>
                           )}
@@ -507,7 +546,7 @@ export default function ClientDashboardContent() {
                               href={musicUrl}
                               className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                             >
-                              <Music className="w-5 h-5 text-brand" />
+                              <Music className="w-5 h-5 text-brand-800 dark:text-brand" />
                               <span className="text-sm font-medium">Complete Music Questionnaire</span>
                             </Link>
                           )}
@@ -515,7 +554,7 @@ export default function ClientDashboardContent() {
                             href={quoteUrl}
                             className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                           >
-                            <FileText className="w-5 h-5 text-brand" />
+                            <FileText className="w-5 h-5 text-brand-800 dark:text-brand" />
                             <span className="text-sm font-medium">View Quote</span>
                           </Link>
                         </div>
@@ -524,10 +563,11 @@ export default function ClientDashboardContent() {
                   );
                 })
               ) : (
-                <div className="text-center py-12">
-                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">No events found</p>
-                </div>
+                <EmptyState
+                  icon={Calendar}
+                  title="No events found"
+                  description="Your upcoming events will appear here once they're created."
+                />
               )}
             </div>
           )}
@@ -608,10 +648,11 @@ export default function ClientDashboardContent() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-12">
-                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">No contracts found</p>
-                </div>
+                <EmptyState
+                  icon={FileText}
+                  title="No contracts found"
+                  description="Contracts will appear here once they're created and sent to you."
+                />
               )}
             </div>
           )}
@@ -698,10 +739,11 @@ export default function ClientDashboardContent() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-12">
-                  <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">No invoices found</p>
-                </div>
+                <EmptyState
+                  icon={Receipt}
+                  title="No invoices found"
+                  description="Invoices will appear here once they're generated for your events."
+                />
               )}
             </div>
           )}
@@ -757,10 +799,11 @@ export default function ClientDashboardContent() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-12">
-                  <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">No payment history found</p>
-                </div>
+                <EmptyState
+                  icon={CreditCard}
+                  title="No payment history found"
+                  description="Your payment history will appear here once payments are processed."
+                />
               )}
             </div>
           )}

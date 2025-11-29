@@ -28,6 +28,7 @@ import {
   IconCheck,
   IconFileUpload,
   IconKeyboard,
+  IconClipboard,
   IconSettings,
   IconUser,
   IconCalendar,
@@ -95,6 +96,8 @@ export function EnhancedThreadImport({
 }: EnhancedThreadImportProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [inputMode, setInputMode] = useState<'paste' | 'upload'>('paste');
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editableFields, setEditableFields] = useState<Record<string, string | null>>({});
   const [showComparison, setShowComparison] = useState(false);
@@ -218,10 +221,50 @@ export function EnhancedThreadImport({
     validateFields();
   }, [validateFields]);
 
+  // Paste handler
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        setThreadText(text);
+        setInputMode('paste');
+        toast({
+          title: "Content pasted",
+          description: "Content from clipboard has been loaded",
+        });
+        // Focus textarea after a brief delay
+        setTimeout(() => {
+          textareaRef.current?.focus();
+          textareaRef.current?.setSelectionRange(text.length, text.length);
+        }, 100);
+      } else {
+        toast({
+          title: "Clipboard empty",
+          description: "No text found in clipboard",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      // Fallback: focus textarea and let user paste manually
+      textareaRef.current?.focus();
+      toast({
+        title: "Paste ready",
+        description: "Textarea focused - use Ctrl/Cmd+V to paste",
+      });
+    }
+  }, [setThreadText, toast]);
+
+  // Handle paste events in textarea
+  const handleTextareaPaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    // Auto-detect paste and switch to paste mode
+    setInputMode('paste');
+  }, []);
+
   // File upload handler
   const handleFileUpload = useCallback(async (file: File) => {
     const text = await file.text();
     setThreadText(text);
+    setInputMode('upload');
     toast({
       title: "File loaded",
       description: `Loaded content from ${file.name}`,
@@ -451,36 +494,68 @@ export function EnhancedThreadImport({
         </div>
       )}
 
-      {/* File Upload Area */}
-      <div
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        className={cn(
-          "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
-          "hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
-        )}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".txt,.eml"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        <IconFileUpload className="h-8 w-8 mx-auto mb-2 text-zinc-400" />
-        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-1">
-          Drag and drop a file here, or{' '}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-blue-600 hover:underline dark:text-blue-400"
-          >
-            browse
-          </button>
-        </p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-500">
-          Supports .txt and .eml files
-        </p>
+      {/* Input Method Toggle */}
+      <div className="flex gap-2 mb-4">
+        <Button
+          type="button"
+          variant={inputMode === 'paste' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setInputMode('paste');
+            setTimeout(() => textareaRef.current?.focus(), 100);
+          }}
+          className="flex-1"
+        >
+          <IconClipboard className="h-4 w-4 mr-2" />
+          Paste Text
+        </Button>
+        <Button
+          type="button"
+          variant={inputMode === 'upload' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setInputMode('upload');
+            fileInputRef.current?.click();
+          }}
+          className="flex-1"
+        >
+          <IconFileUpload className="h-4 w-4 mr-2" />
+          Upload File
+        </Button>
       </div>
+
+      {/* File Upload Area - Only show when upload mode */}
+      {inputMode === 'upload' && (
+        <div
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          className={cn(
+            "border-2 border-dashed rounded-lg p-6 text-center transition-colors mb-4",
+            "hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
+          )}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.eml"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <IconFileUpload className="h-8 w-8 mx-auto mb-2 text-zinc-400" />
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-1">
+            Drag and drop a file here, or{' '}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-blue-600 hover:underline dark:text-blue-400"
+            >
+              browse
+            </button>
+          </p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-500">
+            Supports .txt and .eml files
+          </p>
+        </div>
+      )}
 
       {/* Thread Input */}
       <div className="space-y-2">
@@ -489,6 +564,17 @@ export function EnhancedThreadImport({
             Conversation Transcript
           </label>
           <div className="flex items-center gap-2">
+            {inputMode === 'paste' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePaste}
+                className="h-7 text-xs"
+              >
+                <IconClipboard className="h-3 w-3 mr-1" />
+                Paste from Clipboard
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -510,9 +596,14 @@ export function EnhancedThreadImport({
           </div>
         </div>
         <Textarea
+          ref={textareaRef}
           value={threadText}
           onChange={(e) => setThreadText(e.target.value)}
-          placeholder={`Paste SMS thread or email content here...\n\nSMS Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...\n\nEmail Example:\nHey, Ben! I have collected songs for the first dances...`}
+          onPaste={handleTextareaPaste}
+          placeholder={inputMode === 'paste' 
+            ? `Paste SMS thread or email content here (Ctrl/Cmd+V)...\n\nSMS Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...\n\nEmail Example:\nHey, Ben! I have collected songs for the first dances...`
+            : `Paste SMS thread or email content here...\n\nSMS Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...\n\nEmail Example:\nHey, Ben! I have collected songs for the first dances...`
+          }
           className="min-h-[200px] resize-vertical font-mono text-sm"
         />
         {showHelp && (

@@ -85,6 +85,9 @@ export async function executeFunction(functionName, args, supabaseClient, userId
       case 'get_dashboard_stats':
         return await getDashboardStats(args, supabase);
 
+      case 'get_highest_paid_project':
+        return await getHighestPaidProject(args, supabase);
+
       case 'get_recent_leads':
         return await getRecentLeads(args, supabase);
 
@@ -1032,6 +1035,85 @@ async function getDashboardStats(args, supabase) {
       conversion_rate: `${conversionRate}%`,
       date_range: date_range
     }
+  };
+}
+
+async function getHighestPaidProject(args, supabase) {
+  const { limit = 1, date_range = 'all' } = args;
+
+  // Calculate date filter
+  const now = new Date();
+  let startDate;
+  
+  switch (date_range) {
+    case 'today':
+      startDate = new Date(now.setHours(0, 0, 0, 0));
+      break;
+    case 'week':
+      startDate = new Date(now.setDate(now.getDate() - 7));
+      break;
+    case 'month':
+      startDate = new Date(now.setMonth(now.getMonth() - 1));
+      break;
+    case 'quarter':
+      startDate = new Date(now.setMonth(now.getMonth() - 3));
+      break;
+    case 'year':
+      startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+      break;
+    default:
+      startDate = new Date(0); // All time
+  }
+
+  const startDateStr = startDate.toISOString();
+
+  // Query events table for projects with total_amount, ordered by amount descending
+  let query = supabase
+    .from('events')
+    .select('id, event_name, client_name, client_email, event_date, event_type, venue_name, venue_address, total_amount, deposit_amount, deposit_paid, final_payment_paid, status, created_at')
+    .not('total_amount', 'is', null)
+    .gte('created_at', startDateStr)
+    .order('total_amount', { ascending: false })
+    .limit(Math.min(limit, 10));
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to get highest paid projects: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    return {
+      success: true,
+      message: 'No projects with payment information found',
+      projects: []
+    };
+  }
+
+  // Format the results
+  const projects = data.map(project => ({
+    project_id: project.id,
+    event_name: project.event_name,
+    client_name: project.client_name,
+    client_email: project.client_email,
+    event_date: project.event_date,
+    event_type: project.event_type,
+    venue_name: project.venue_name,
+    venue_address: project.venue_address,
+    total_amount: project.total_amount,
+    deposit_amount: project.deposit_amount,
+    deposit_paid: project.deposit_paid,
+    final_payment_paid: project.final_payment_paid,
+    status: project.status,
+    formatted_amount: `$${Number(project.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }));
+
+  return {
+    success: true,
+    count: projects.length,
+    projects: projects,
+    highest_amount: projects[0]?.formatted_amount || '$0.00',
+    date_range: date_range
   };
 }
 

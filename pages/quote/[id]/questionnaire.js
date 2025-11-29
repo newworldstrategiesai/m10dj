@@ -18,6 +18,8 @@ export default function MusicQuestionnaire() {
   const [formData, setFormData] = useState({
     eventDate: '',
     venueName: '',
+    eventTime: '',
+    endTime: '',
     guestCount: '',
     bigNoSongs: '',
     specialDances: [],
@@ -183,7 +185,9 @@ export default function MusicQuestionnaire() {
       setFormData(prev => ({
         ...prev,
         eventDate: prev.eventDate || (leadData.eventDate ? leadData.eventDate.split('T')[0] : ''),
-        venueName: prev.venueName || leadData.venueName || leadData.location || '',
+        venueName: prev.venueName || leadData.venueName || leadData.venue_address || leadData.location || '',
+        eventTime: prev.eventTime || leadData.eventTime || '',
+        endTime: prev.endTime || leadData.endTime || '',
         guestCount: prev.guestCount || leadData.guestCount || ''
       }));
     }
@@ -1240,8 +1244,16 @@ export default function MusicQuestionnaire() {
             </div>
             
             {/* Visual Step Indicator */}
-            <div className="mb-4 sm:mb-6">
-              <div ref={stepIndicatorRef} className="flex items-center overflow-x-auto pb-2 -mx-3 sm:mx-0 px-6 sm:px-0 scrollbar-hide snap-x snap-mandatory">
+            <div className="mb-4 sm:mb-6" role="region" aria-label="Questionnaire progress">
+              <div 
+                ref={stepIndicatorRef} 
+                className="flex items-center overflow-x-auto pb-2 -mx-3 sm:mx-0 px-6 sm:px-0 scrollbar-hide snap-x snap-mandatory"
+                role="progressbar"
+                aria-valuenow={currentStep + 1}
+                aria-valuemin={1}
+                aria-valuemax={steps.length}
+                aria-label={`Step ${currentStep + 1} of ${steps.length}: ${steps[currentStep]?.title || 'Questionnaire'}`}
+              >
               <div className="flex items-center sm:justify-between gap-1 sm:gap-2">
                 {steps.map((step, index) => {
                   const isActive = index === currentStep;
@@ -1267,7 +1279,7 @@ export default function MusicQuestionnaire() {
                                 setCurrentStep(index);
                               }
                             }}
-                            className={`flex items-center justify-center w-12 h-12 sm:w-10 sm:h-10 rounded-full transition-all flex-shrink-0 ${
+                            className={`flex items-center justify-center w-12 h-12 sm:w-10 sm:h-10 rounded-full transition-all flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 ${
                               isActive
                                 ? 'bg-gradient-to-br from-purple-600 to-pink-600 text-white scale-110'
                                 : isSkipped
@@ -1277,7 +1289,9 @@ export default function MusicQuestionnaire() {
                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
                             } ${index <= currentStep ? 'cursor-pointer hover:scale-105' : 'cursor-not-allowed'}`}
                             disabled={index > currentStep}
-                            aria-label={`Go to step ${index + 1}: ${step.title}`}
+                            aria-label={`${isActive ? 'Current step' : isCompleted ? 'Completed' : isSkipped ? 'Skipped' : 'Not started'}: Step ${index + 1} of ${steps.length} - ${step.title}`}
+                            aria-current={isActive ? 'step' : undefined}
+                            type="button"
                           >
                           {isSkipped ? (
                             <span className="text-[9px] sm:text-xs font-semibold">Skip</span>
@@ -1393,69 +1407,148 @@ export default function MusicQuestionnaire() {
                         Venue Name
                       </label>
                       <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
-                        {formData.venueName || leadData?.venueName || leadData?.location || 'Not set'}
+                        {formData.venueName || leadData?.venueName || leadData?.venue_address || leadData?.location || 'Not set'}
                       </div>
                     </div>
 
-                    {/* Start Time */}
-                    {leadData?.eventTime && (
-                      <div>
-                        <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
-                          Start Time
-                        </label>
-                        <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
-                          {leadData.eventTime ? (() => {
-                            try {
-                              let timeStr = leadData.eventTime;
-                              // Handle different time formats
-                              if (!timeStr.includes(':')) {
-                                // Format like "1400" -> "14:00"
-                                if (timeStr.length === 4) {
-                                  timeStr = `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
-                                }
-                              }
-                              const [hours, minutes = '00'] = timeStr.split(':');
-                              const hour24 = parseInt(hours);
-                              const hour12 = hour24 % 12 || 12;
-                              const ampm = hour24 >= 12 ? 'PM' : 'AM';
-                              return `${hour12}:${minutes.padStart(2, '0')} ${ampm}`;
-                            } catch {
-                              return leadData.eventTime;
+                    {/* Helper function to format time */}
+                    {(() => {
+                      const formatTime = (timeStr) => {
+                        if (!timeStr) return null;
+                        try {
+                          // Handle different time formats
+                          let formatted = timeStr;
+                          if (!formatted.includes(':')) {
+                            // Format like "1400" -> "14:00"
+                            if (formatted.length === 4) {
+                              formatted = `${formatted.slice(0, 2)}:${formatted.slice(2)}`;
                             }
-                          })() : 'Not set'}
-                        </div>
-                      </div>
-                    )}
+                          }
+                          const [hours, minutes = '00'] = formatted.split(':');
+                          const hour24 = parseInt(hours);
+                          if (isNaN(hour24)) return null;
+                          const hour12 = hour24 % 12 || 12;
+                          const ampm = hour24 >= 12 ? 'PM' : 'AM';
+                          return `${hour12}:${minutes.padStart(2, '0')} ${ampm}`;
+                        } catch {
+                          return null;
+                        }
+                      };
 
-                    {/* End Time */}
-                    {leadData?.endTime && (
-                      <div>
-                        <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
-                          End Time
-                        </label>
-                        <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
-                          {leadData.endTime ? (() => {
-                            try {
-                              let timeStr = leadData.endTime;
-                              // Handle different time formats
-                              if (!timeStr.includes(':')) {
-                                // Format like "1400" -> "14:00"
-                                if (timeStr.length === 4) {
-                                  timeStr = `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
-                                }
-                              }
-                              const [hours, minutes = '00'] = timeStr.split(':');
-                              const hour24 = parseInt(hours);
-                              const hour12 = hour24 % 12 || 12;
-                              const ampm = hour24 >= 12 ? 'PM' : 'AM';
-                              return `${hour12}:${minutes.padStart(2, '0')} ${ampm}`;
-                            } catch {
-                              return leadData.endTime;
-                            }
-                          })() : 'Not set'}
-                        </div>
-                      </div>
-                    )}
+                      // Get all available times
+                      const eventTime = formData.eventTime || leadData?.eventTime;
+                      const endTime = formData.endTime || leadData?.endTime;
+                      const grandEntrance = leadData?.grandEntranceTime;
+                      const grandExit = leadData?.grandExitTime;
+                      
+                      // Determine which times to show based on available data and selected services
+                      // If grand entrance/exit exist, those are the reception times
+                      // If ceremony audio is selected and we have grand entrance/exit, 
+                      // then event_time/end_time are likely ceremony times
+                      const hasGrandEntrance = !!grandEntrance;
+                      const hasGrandExit = !!grandExit;
+                      const hasReceptionTimes = hasGrandEntrance || hasGrandExit;
+                      
+                      // Ceremony times: If ceremony audio is selected and we have reception times,
+                      // assume event_time/end_time are ceremony times
+                      const ceremonyStart = selectedServices.ceremonyAudio && hasReceptionTimes ? eventTime : null;
+                      const ceremonyEnd = selectedServices.ceremonyAudio && hasReceptionTimes ? endTime : null;
+                      
+                      // Reception times: Use grand entrance/exit if available, otherwise fallback to event_time/end_time
+                      const receptionStart = grandEntrance || (!hasReceptionTimes && selectedServices.reception ? eventTime : null);
+                      const receptionEnd = grandExit || (!hasReceptionTimes && selectedServices.reception ? endTime : null);
+                      
+                      // Cocktail hour: Show if cocktail hour service is selected and we have both ceremony end and reception start
+                      const cocktailStart = selectedServices.cocktailHour && ceremonyEnd ? ceremonyEnd : null;
+                      const cocktailEnd = selectedServices.cocktailHour && receptionStart ? receptionStart : null;
+
+                      return (
+                        <>
+                          {/* Ceremony Start */}
+                          {selectedServices.ceremonyAudio && ceremonyStart && (
+                            <div>
+                              <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                                Ceremony Start
+                              </label>
+                              <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
+                                {formatTime(ceremonyStart) || 'Not set'}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Ceremony End */}
+                          {selectedServices.ceremonyAudio && ceremonyEnd && (
+                            <div>
+                              <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                                Ceremony End
+                              </label>
+                              <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
+                                {formatTime(ceremonyEnd) || 'Not set'}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Cocktail Hour */}
+                          {selectedServices.cocktailHour && cocktailStart && cocktailEnd && (
+                            <div>
+                              <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                                Cocktail Hour
+                              </label>
+                              <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
+                                {formatTime(cocktailStart)} - {formatTime(cocktailEnd)}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Reception Start */}
+                          {selectedServices.reception && receptionStart && (
+                            <div>
+                              <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                                Reception Start
+                              </label>
+                              <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
+                                {formatTime(receptionStart) || 'Not set'}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Reception End */}
+                          {selectedServices.reception && receptionEnd && (
+                            <div>
+                              <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                                Reception End
+                              </label>
+                              <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
+                                {formatTime(receptionEnd) || 'Not set'}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Fallback: Show generic Start/End Time if no services are selected or times don't match service structure */}
+                          {!selectedServices.ceremonyAudio && !selectedServices.reception && eventTime && (
+                            <div>
+                              <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                                Start Time
+                              </label>
+                              <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
+                                {formatTime(eventTime) || 'Not set'}
+                              </div>
+                            </div>
+                          )}
+
+                          {!selectedServices.ceremonyAudio && !selectedServices.reception && endTime && (
+                            <div>
+                              <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                                End Time
+                              </label>
+                              <div className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 cursor-not-allowed">
+                                {formatTime(endTime) || 'Not set'}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Services Provided - Interactive Buttons */}

@@ -1,3 +1,6 @@
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { getEnv } from '@/utils/env-validator';
+import { logger } from '@/utils/logger';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 
@@ -7,24 +10,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Use centralized admin authentication
+    const user = await requireAdmin(req, res);
+    // User is guaranteed to be authenticated and admin here
+    
     const supabase = createServerSupabaseClient({ req, res });
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError || !session) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Check if user is admin
-    const adminEmails = [
-      'admin@m10djcompany.com',
-      'manager@m10djcompany.com',
-      'djbenmurray@gmail.com'
-    ];
-    const isAdmin = adminEmails.includes(session.user.email || '');
-
-    if (!isAdmin) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
 
     const { contactId } = req.body;
 
@@ -44,22 +34,91 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
-    // Create the project using service role client (needed for events table)
+      // Create the project using service role client (needed for events table)
     try {
+      const env = getEnv();
       const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
+        env.NEXT_PUBLIC_SUPABASE_URL,
+        env.SUPABASE_SERVICE_ROLE_KEY
       );
+
+      // Helper function to safely format date without timezone issues
+      const formatDateForDisplay = (dateValue) => {
+        if (!dateValue) return '';
+        
+        // If it's already a string in YYYY-MM-DD format, parse it directly using local time
+        if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+          const [year, month, day] = dateValue.split('-');
+          // Use Date constructor with year, month, day to avoid UTC interpretation
+          const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+          });
+        }
+        
+        // Otherwise, try to parse it - but be careful with date-only strings
+        try {
+          let date;
+          // If it looks like a date-only string, parse it manually
+          if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}(T|$)/.test(dateValue)) {
+            const datePart = dateValue.split('T')[0];
+            const [year, month, day] = datePart.split('-');
+            date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          } else {
+            date = new Date(dateValue);
+          }
+          
+          if (isNaN(date.getTime())) return '';
+          return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+          });
+        } catch {
+          return '';
+        }
+      };
+
+      // Helper function to safely extract date string without timezone issues
+      const extractDateString = (dateValue) => {
+        if (!dateValue) return null;
+        
+        // If it's already a string in YYYY-MM-DD format, use it directly
+        if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+          return dateValue;
+        }
+        
+        // If it's a Date object or ISO string, extract just the date part
+        try {
+          // Parse the date value - if it's a date-only string like "2025-12-06",
+          // append a time to avoid UTC interpretation issues
+          let dateStr = dateValue;
+          if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+            // Already handled above, but just in case
+            return dateValue;
+          }
+          
+          const date = new Date(dateStr);
+          if (isNaN(date.getTime())) return null;
+          
+          // Use local time methods to preserve the intended date
+          // This ensures the date doesn't shift when converted
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        } catch {
+          return null;
+        }
+      };
 
       // Generate project name
       const generateProjectName = (contact) => {
         const clientName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Client';
         const eventType = contact.event_type || 'Event';
-        const eventDate = contact.event_date ? new Date(contact.event_date).toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric', 
-          year: 'numeric' 
-        }) : '';
+        const eventDate = formatDateForDisplay(contact.event_date);
         const venue = contact.venue_name ? ` - ${contact.venue_name}` : '';
         
         return `${clientName} - ${eventType}${eventDate ? ` - ${eventDate}` : ''}${venue}`;
@@ -73,7 +132,7 @@ export default async function handler(req, res) {
         client_email: contact.email_address,
         client_phone: contact.phone || null,
         event_type: contact.event_type || 'other',
-        event_date: contact.event_date || new Date().toISOString().split('T')[0],
+        event_date: extractDateString(contact.event_date) || new Date().toISOString().split('T')[0],
         start_time: contact.event_time || null,
         venue_name: contact.venue_name || null,
         venue_address: contact.venue_address || null,
@@ -99,7 +158,7 @@ export default async function handler(req, res) {
         message: 'Project created successfully'
       });
     } catch (projectError) {
-      console.error('Error creating project:', projectError);
+      logger.error('Error creating project', projectError);
       res.status(500).json({
         success: false,
         error: 'Failed to create project',
@@ -108,7 +167,12 @@ export default async function handler(req, res) {
     }
 
   } catch (error) {
-    console.error('Error in create-project-for-contact:', error);
+    // Error from requireAdmin is already handled
+    if (res.headersSent) {
+      return;
+    }
+    
+    logger.error('Error in create-project-for-contact', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -1,3 +1,5 @@
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { logger } from '@/utils/logger';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req, res) {
@@ -6,24 +8,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Use centralized admin authentication
+    const user = await requireAdmin(req, res);
+    // User is guaranteed to be authenticated and admin here
+    
     const supabase = createServerSupabaseClient({ req, res });
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError || !session) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Check if user is admin using email-based authentication
-    const adminEmails = [
-      'admin@m10djcompany.com',
-      'manager@m10djcompany.com',
-      'djbenmurray@gmail.com'  // Ben Murray - Owner
-    ];
-    const isAdmin = adminEmails.includes(session.user.email || '');
-
-    if (!isAdmin) {
-      return res.status(403).json({ error: 'Forbidden: Admin access required' });
-    }
 
     const { contactIds } = req.body;
 
@@ -40,7 +29,7 @@ export default async function handler(req, res) {
       .is('deleted_at', null);
 
     if (fetchError) {
-      console.error('Error fetching contacts:', fetchError);
+      logger.error('Error fetching contacts for deletion', fetchError);
       // If deleted_at doesn't exist, try direct delete
       const { error: deleteError } = await supabase
         .from('contacts')
@@ -48,10 +37,12 @@ export default async function handler(req, res) {
         .in('id', contactIds);
 
       if (deleteError) {
-        console.error('Database error:', deleteError);
+        logger.error('Database error in bulk delete', deleteError);
         return res.status(500).json({ error: 'Failed to delete contacts', details: deleteError.message });
       }
 
+      logger.info('Bulk contacts deleted (hard delete)', { count: contactIds.length, userId: user.id });
+      
       return res.status(200).json({ 
         success: true,
         message: `Successfully deleted ${contactIds.length} contact(s)`,
@@ -70,17 +61,19 @@ export default async function handler(req, res) {
 
     if (updateError) {
       // If soft delete fails (column might not exist), try hard delete
-      console.log('Soft delete failed, attempting hard delete:', updateError.message);
+      logger.warn('Soft delete failed, attempting hard delete', { error: updateError.message });
       const { error: deleteError } = await supabase
         .from('contacts')
         .delete()
         .in('id', contactIds);
 
       if (deleteError) {
-        console.error('Database error:', deleteError);
+        logger.error('Database error in bulk delete', deleteError);
         return res.status(500).json({ error: 'Failed to delete contacts', details: deleteError.message });
       }
     }
+
+    logger.info('Bulk contacts deleted (soft delete)', { count: contactIds.length, userId: user.id });
 
     return res.status(200).json({ 
       success: true,
@@ -88,7 +81,12 @@ export default async function handler(req, res) {
       deleted: contactIds.length
     });
   } catch (error) {
-    console.error('Error in bulk delete:', error);
+    // Error from requireAdmin is already handled
+    if (res.headersSent) {
+      return;
+    }
+    
+    logger.error('Error in bulk delete', error);
     return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

@@ -9,35 +9,34 @@
  * Usage: POST /api/test-auto-creation
  */
 
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { getEnv } from '@/utils/env-validator';
+import { logger } from '@/utils/logger';
 import { createClient } from '@supabase/supabase-js';
 import { autoCreateQuoteInvoiceContract } from '../../utils/auto-create-quote-invoice-contract';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Check if user is admin (for security)
-  const adminEmails = [
-    'admin@m10djcompany.com',
-    'manager@m10djcompany.com',
-    'djbenmurray@gmail.com'
-  ];
-
-  // In a real scenario, you'd check auth here
-  // For testing, we'll allow it but log a warning
-  console.log('⚠️ Test endpoint called - ensure this is only used in development');
-
-  const supabase = createClient(supabaseUrl, supabaseKey);
-
   try {
-    console.log('🧪 Starting auto-creation test...');
+    // Use centralized admin authentication
+    const user = await requireAdmin(req, res);
+    // User is guaranteed to be authenticated and admin here
+    
+    // Log warning for test endpoint
+    logger.warn('Test endpoint called - ensure this is only used in development', {
+      user: user.email
+    });
+
+    const env = getEnv();
+    const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+    logger.info('Starting auto-creation test');
 
     // Step 1: Create a test contact
-    console.log('📝 Step 1: Creating test contact...');
+    logger.info('Step 1: Creating test contact');
     const testContactData = {
       first_name: 'Test',
       last_name: `User-${Date.now()}`,
@@ -60,7 +59,7 @@ export default async function handler(req, res) {
       .single();
 
     if (contactError || !testContact) {
-      console.error('❌ Failed to create test contact:', contactError);
+      logger.error('Failed to create test contact', contactError);
       return res.status(500).json({
         success: false,
         error: 'Failed to create test contact',
@@ -68,16 +67,18 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log('✅ Test contact created:', testContact.id);
-    console.log('   Name:', `${testContact.first_name} ${testContact.last_name}`);
-    console.log('   Email:', testContact.email_address);
+    logger.info('Test contact created', {
+      contactId: testContact.id,
+      name: `${testContact.first_name} ${testContact.last_name}`,
+      email: testContact.email_address
+    });
 
     // Step 2: Call auto-creation function
-    console.log('\n📦 Step 2: Calling auto-creation function...');
+    logger.info('Step 2: Calling auto-creation function');
     const creationResults = await autoCreateQuoteInvoiceContract(testContact, supabase);
 
     // Step 3: Verify all records were created
-    console.log('\n🔍 Step 3: Verifying created records...');
+    logger.info('Step 3: Verifying created records');
     
     const verification = {
       contact: { exists: true, id: testContact.id },
@@ -102,10 +103,12 @@ export default async function handler(req, res) {
           status: quote.status,
           linked: quote.invoice_id !== null && quote.contract_id !== null
         };
-        console.log('✅ Quote verified:', quote.id);
-        console.log('   Status:', quote.status);
-        console.log('   Linked to invoice:', quote.invoice_id ? 'Yes' : 'No');
-        console.log('   Linked to contract:', quote.contract_id ? 'Yes' : 'No');
+        logger.info('Quote verified', {
+          quoteId: quote.id,
+          status: quote.status,
+          hasInvoice: !!quote.invoice_id,
+          hasContract: !!quote.contract_id
+        });
       }
     }
 
@@ -126,10 +129,12 @@ export default async function handler(req, res) {
           status: invoice.invoice_status,
           total_amount: invoice.total_amount
         };
-        console.log('✅ Invoice verified:', invoice.id);
-        console.log('   Invoice Number:', invoice.invoice_number);
-        console.log('   Status:', invoice.invoice_status);
-        console.log('   Total Amount:', invoice.total_amount);
+        logger.info('Invoice verified', {
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoice_number,
+          status: invoice.invoice_status,
+          totalAmount: invoice.total_amount
+        });
       }
     }
 
@@ -150,15 +155,17 @@ export default async function handler(req, res) {
           invoice_id: contract.invoice_id,
           status: contract.status
         };
-        console.log('✅ Contract verified:', contract.id);
-        console.log('   Contract Number:', contract.contract_number);
-        console.log('   Status:', contract.status);
-        console.log('   Linked to invoice:', contract.invoice_id ? 'Yes' : 'No');
+        logger.info('Contract verified', {
+          contractId: contract.id,
+          contractNumber: contract.contract_number,
+          status: contract.status,
+          hasInvoice: !!contract.invoice_id
+        });
       }
     }
 
     // Step 4: Check cross-references
-    console.log('\n🔗 Step 4: Verifying cross-references...');
+    logger.info('Step 4: Verifying cross-references');
     let crossRefValid = true;
     const issues = [];
 
@@ -195,21 +202,13 @@ export default async function handler(req, res) {
     }
 
     // Step 5: Summary
-    console.log('\n📊 Test Summary:');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('Test Summary', { verification, allLinked });
     
     const allCreated = verification.quote.exists && verification.invoice.exists && verification.contract.exists;
     const allLinked = verification.quote.linked && crossRefValid;
 
-    console.log(`Contact: ${verification.contact.exists ? '✅' : '❌'}`);
-    console.log(`Quote: ${verification.quote.exists ? '✅' : '❌'}`);
-    console.log(`Invoice: ${verification.invoice.exists ? '✅' : '❌'}`);
-    console.log(`Contract: ${verification.contract.exists ? '✅' : '❌'}`);
-    console.log(`All Linked: ${allLinked ? '✅' : '❌'}`);
-
     if (issues.length > 0) {
-      console.log('\n⚠️ Issues found:');
-      issues.forEach(issue => console.log(`   - ${issue}`));
+      logger.warn('Issues found during test', { issues });
     }
 
     // Cleanup: Optionally delete test contact (uncomment to enable)
@@ -241,7 +240,12 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Test failed with error:', error);
+    // Error from requireAdmin is already handled
+    if (res.headersSent) {
+      return;
+    }
+    
+    logger.error('Test failed with error', error);
     return res.status(500).json({
       success: false,
       error: 'Test failed',

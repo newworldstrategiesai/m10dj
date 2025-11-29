@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
+import { isAdminEmail, getAdminRole, updateAdminLastLogin, type AdminRole } from './admin-roles';
 
 export interface AdminUser {
   id: string;
@@ -11,6 +12,10 @@ export interface AdminUser {
   last_login: string | null;
 }
 
+/**
+ * Get admin user from database
+ * Uses centralized admin roles system instead of hardcoded emails
+ */
 export async function getAdminUser(): Promise<AdminUser | null> {
   const supabase = createClient();
 
@@ -18,32 +23,29 @@ export async function getAdminUser(): Promise<AdminUser | null> {
     // Get the current authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (authError || !user) {
+    if (authError || !user || !user.email) {
       return null;
     }
 
-    // For now, we'll check if the user email is in our admin list
-    // This is a simple approach until the admin_users table is properly set up
-    const adminEmails = [
-      'admin@m10djcompany.com',
-      'manager@m10djcompany.com',
-      'djbenmurray@gmail.com',  // Ben Murray - Owner
-      // Add your admin emails here
-    ];
-
-    if (!adminEmails.includes(user.email || '')) {
+    // Check admin role from database
+    const adminRole = await getAdminRole(user.email);
+    
+    if (!adminRole) {
       return null;
     }
 
-    // Return a mock admin user for now
+    // Update last login
+    await updateAdminLastLogin(user.email);
+
+    // Return admin user
     return {
-      id: user.id,
-      user_id: user.id,
-      email: user.email || '',
-      full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Admin',
-      role: 'admin',
-      is_active: true,
-      last_login: new Date().toISOString()
+      id: adminRole.id,
+      user_id: adminRole.user_id,
+      email: adminRole.email,
+      full_name: adminRole.full_name,
+      role: adminRole.role,
+      is_active: adminRole.is_active,
+      last_login: adminRole.last_login
     };
   } catch (error) {
     console.error('Error checking admin user:', error);
@@ -61,12 +63,10 @@ export async function requireAdmin() {
   return adminUser;
 }
 
+/**
+ * Check if user email is admin
+ * Uses centralized admin roles system
+ */
 export async function isAdmin(userEmail: string): Promise<boolean> {
-  const adminEmails = [
-    'admin@m10djcompany.com',
-    'manager@m10djcompany.com',
-    // Add your admin emails here
-  ];
-
-  return adminEmails.includes(userEmail);
+  return await isAdminEmail(userEmail);
 } 

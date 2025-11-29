@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     // First, try to fetch from contacts table (UUID format)
     let { data, error } = await supabase
       .from('contacts')
-      .select('id, first_name, last_name, email_address, phone, event_type, event_date, event_time, end_time, venue_name, venue_address, guest_count, special_requests, created_at, contract_signed_date, deposit_paid, payment_status')
+      .select('id, first_name, last_name, email_address, phone, event_type, event_date, event_time, end_time, venue_name, venue_address, guest_count, special_requests, created_at, contract_signed_date, deposit_paid, payment_status, custom_fields')
       .eq('id', id)
       .is('deleted_at', null)
       .single();
@@ -88,6 +88,11 @@ export default async function handler(req, res) {
     // Combine first and last name
     const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Valued Customer';
 
+    // Extract times from custom_fields
+    const customFields = data.custom_fields || {};
+    const grandEntranceTime = customFields.grand_entrance_time || null;
+    const grandExitTime = customFields.grand_exit_time || null;
+
     // Set cache-control headers to prevent caching
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -109,7 +114,9 @@ export default async function handler(req, res) {
       createdAt: data.created_at,
       contractSignedDate: data.contract_signed_date || null,
       depositPaid: data.deposit_paid || false,
-      paymentStatus: data.payment_status || 'pending'
+      paymentStatus: data.payment_status || 'pending',
+      grandEntranceTime: grandEntranceTime,
+      grandExitTime: grandExitTime
     });
   } catch (error) {
     console.error('❌ Error in lead API:', error);

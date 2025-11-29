@@ -1,58 +1,29 @@
 // API endpoint for testing SMS forwarding system
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { logger } from '@/utils/logger';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Check for admin authentication using Supabase
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'No authorization header' });
-    }
+    // Use centralized admin authentication
+    const user = await requireAdmin(req, res);
+    // User is guaranteed to be authenticated and admin here
 
-    const token = authHeader.replace('Bearer ', '');
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    if (error || !user) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-
-    // Check if user is admin
-    const adminEmails = [
-      'admin@m10djcompany.com', 
-      'manager@m10djcompany.com',
-      'djbenmurray@gmail.com'
-    ];
-
-    if (!adminEmails.includes(user.email)) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-  } catch (authError) {
-    console.error('Auth error:', authError);
-    return res.status(401).json({ error: 'Authentication failed' });
-  }
-
-  try {
     const { testMessage = 'This is a test message from the SMS forwarding system.' } = req.body;
 
     // Simulate an incoming SMS webhook call
     const testSmsData = {
       From: '+19015551234', // Test phone number
-      To: process.env.TWILIO_PHONE_NUMBER || '+19014102020',
+      To: process.env.TWILIO_PHONE_NUMBER || '+19014102020', // TODO: Use getEnv() for consistency
       Body: testMessage,
       MessageSid: 'test_' + Date.now(),
       NumMedia: '0'
     };
 
-    console.log('🧪 Testing SMS forwarding with data:', testSmsData);
+    logger.info('Testing SMS forwarding', { testData: testSmsData });
 
     // Import the SMS handler
     const smsHandler = await import('./sms/incoming-message.js');
@@ -86,7 +57,12 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('SMS forwarding test failed:', error);
+    // Error from requireAdmin is already handled
+    if (res.headersSent) {
+      return;
+    }
+    
+    logger.error('SMS forwarding test failed', error);
     res.status(500).json({
       success: false,
       error: 'SMS forwarding test failed',

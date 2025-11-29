@@ -2,30 +2,46 @@
 
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// Skeleton loading component for contact form
+const ContactFormSkeleton = () => (
+  <div className="min-h-[400px] bg-white dark:bg-slate-800 rounded-xl p-8 space-y-6">
+    <div className="space-y-2">
+      <Skeleton className="h-6 w-48" />
+      <Skeleton className="h-4 w-64" />
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </div>
+    <div className="space-y-2">
+      <Skeleton className="h-4 w-28" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+    <div className="space-y-2">
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="h-24 w-full" />
+    </div>
+    <Skeleton className="h-12 w-32" />
+  </div>
+);
 
 // Lazy load ContactForm to improve initial page load performance
 const ContactForm = dynamic(() => import('./company/ContactForm'), {
-  loading: () => (
-    <div className="min-h-[400px] bg-gray-50 rounded-xl p-8 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading contact form...</p>
-      </div>
-    </div>
-  ),
+  loading: () => <ContactFormSkeleton />,
   ssr: false // Don't render on server since it's interactive
 });
 
 export default function LazyContactForm({ className = '' }: { className?: string }) {
   return (
-    <Suspense fallback={
-      <div className="min-h-[400px] bg-gray-50 rounded-xl p-8 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading contact form...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<ContactFormSkeleton />}>
       <ContactForm className={className} />
     </Suspense>
   );

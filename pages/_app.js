@@ -1,8 +1,10 @@
 import '../styles/company-globals.css';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import { ThemeProvider } from 'next-themes';
 import FloatingAdminAssistant from '@/components/admin/FloatingAdminAssistant';
 import GlobalChatWidget from '@/components/company/GlobalChatWidget';
+import ErrorBoundary from '@/components/ErrorBoundary';
 // Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
 
@@ -13,7 +15,11 @@ export default function App({ Component, pageProps }) {
   const isRequestsPage = router.pathname === '/requests' || router.pathname.startsWith('/crowd-request');
   
   return (
-    <>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
+      <ErrorBoundary
+        title="Application Error"
+        message="Something went wrong. Please refresh the page or contact support if the problem persists."
+      >
       <Head>
         {/* Favicon and app icons */}
         <link rel="icon" href="/logo-static.jpg" />
@@ -54,6 +60,7 @@ export default function App({ Component, pageProps }) {
       {!isSignInPage && !isRequestsPage && <GlobalChatWidget />}
       {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}
-    </>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 } 

@@ -124,8 +124,43 @@ function extractContactInfo(thread: string): ParsedLeadContact {
   const possibleName = structured.name || extractName(thread);
   const { firstName, lastName } = splitName(possibleName);
 
-  const venueName = structured.venueName || extractVenue(thread);
-  const venueAddress = structured.venueAddress || null;
+  // Try structured fields first, then fallback to extraction
+  let venueName = structured.venueName || extractVenue(thread);
+  let venueAddress = structured.venueAddress || null;
+  
+  // If we have venue name but no address, try to extract address from context
+  if (venueName && !venueAddress) {
+    // Look for address patterns near the venue name
+    const venueIndex = thread.toLowerCase().indexOf(venueName.toLowerCase());
+    if (venueIndex >= 0) {
+      // Look in the next 200 characters after venue name
+      const context = thread.slice(venueIndex, venueIndex + 200);
+      const addressPatterns = [
+        /\b(\d+\s+[A-Z][a-z]+(?:\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy))[^,\n]{0,50},\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?)/i,
+        /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy))[^,\n]{0,50},\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*[A-Z]{2}(?:\s+\d{5})?)/i,
+        /\baddress[:\s]+([^.\n]{10,100})/i,
+      ];
+      for (const pattern of addressPatterns) {
+        const match = context.match(pattern);
+        if (match) {
+          venueAddress = capitalize(match[1].trim());
+          break;
+        }
+      }
+    }
+  }
+  
+  // If we have address but no venue name, try to extract venue name from address
+  if (venueAddress && !venueName) {
+    const parts = venueAddress.split(',');
+    if (parts.length > 0) {
+      const firstPart = parts[0].trim();
+      // Check if first part looks like a venue name (not just a street number)
+      if (!/^\d+/.test(firstPart) && /^[A-Z][a-z]+/.test(firstPart)) {
+        venueName = capitalize(firstPart);
+      }
+    }
+  }
   const eventType = structured.eventType || inferEventType(thread);
 
   let eventDate = structured.eventDate || null;
@@ -139,9 +174,58 @@ function extractContactInfo(thread: string): ParsedLeadContact {
   // Extract event time from natural language if not in structured fields
   let eventTime = structured.eventTime || null;
   let endTime = structured.endTime || null;
+  
+  // First, try to extract grand entrance/exit (for reception events)
+  // These take priority over ceremony times for reception/wedding events
+  const grandEntrancePatterns = [
+    /(?:grand\s+entrance|entrance)\s+(?:is\s+at|at|is)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+    /(?:grand\s+entrance|entrance)\s+(?:is\s+scheduled\s+for|scheduled\s+for)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+    /(?:our\s+)?grand\s+entrance\s+is\s+at\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+  ];
+  
+  const grandExitPatterns = [
+    /(?:grand\s+exit|exit)\s+(?:is\s+scheduled\s+for|scheduled\s+for|is\s+at|at|is)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+    /(?:our\s+)?grand\s+exit\s+(?:is\s+scheduled\s+for|scheduled\s+for)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+  ];
+  
+  let grandEntrance = null;
+  let grandExit = null;
+  
+  for (const pattern of grandEntrancePatterns) {
+    const match = thread.match(pattern);
+    if (match) {
+      grandEntrance = match[1].trim();
+      break;
+    }
+  }
+  
+  for (const pattern of grandExitPatterns) {
+    const match = thread.match(pattern);
+    if (match) {
+      grandExit = match[1].trim();
+      break;
+    }
+  }
+  
+  // For reception/wedding events, use grand entrance/exit as event times (these are the actual reception times)
+  const isReceptionEvent = eventType === 'wedding' || eventType === 'private_party' || 
+                          thread.toLowerCase().includes('reception') || 
+                          thread.toLowerCase().includes('grand entrance') ||
+                          thread.toLowerCase().includes('grand exit');
+  
+  if (isReceptionEvent) {
+    if (grandEntrance && !eventTime) {
+      eventTime = grandEntrance;
+    }
+    if (grandExit && !endTime) {
+      endTime = grandExit;
+    }
+  }
+  
   if (!eventTime) {
-    // Try to match time ranges first (e.g., "3pm-5pm", "3:00 PM to 5:00 PM")
+    // Try to match time ranges first (e.g., "3pm-5pm", "3:00 PM to 5:00 PM", "ceremony is 3 pm-3:30")
     const timeRangePatterns = [
+      /(?:the\s+)?ceremony\s+(?:is\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
       /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until|through)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
       /(?:from|between)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:to|until|-)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
     ];
@@ -149,8 +233,13 @@ function extractContactInfo(thread: string): ParsedLeadContact {
     for (const pattern of timeRangePatterns) {
       const match = thread.match(pattern);
       if (match) {
-        eventTime = match[1].trim();
-        endTime = match[2].trim();
+        // Only use ceremony times if we don't have grand entrance/exit
+        if (!grandEntrance) {
+          eventTime = match[1].trim();
+        }
+        if (!grandExit) {
+          endTime = match[2].trim();
+        }
         break;
       }
     }
@@ -158,15 +247,16 @@ function extractContactInfo(thread: string): ParsedLeadContact {
     // If no range found, try single time patterns
     if (!eventTime) {
       const timePatterns = [
-        /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
-        /(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
-        /(?:time|event time|start time)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
+        /(?:the\s+)?ceremony\s+(?:is\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+        /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+        /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
+        /(?:time|event time|start time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
         /(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)/i,
       ];
       
       for (const pattern of timePatterns) {
         const match = thread.match(pattern);
-        if (match) {
+        if (match && !grandEntrance) {
           eventTime = match[1].trim();
           break;
         }
@@ -176,6 +266,7 @@ function extractContactInfo(thread: string): ParsedLeadContact {
     // Try to extract end time separately if not already found
     if (!endTime) {
       const endTimePatterns = [
+        /(?:ceremony|it|event)\s+(?:will\s+)?end\s+(?:no\s+later\s+than|by|at)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
         /(?:ends?|finishes?|ends? at|finishes? at|until|till)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
         /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:end|finish)/i,
         /(?:end time|finish time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
@@ -183,7 +274,7 @@ function extractContactInfo(thread: string): ParsedLeadContact {
       
       for (const pattern of endTimePatterns) {
         const match = thread.match(pattern);
-        if (match) {
+        if (match && !grandExit) {
           endTime = match[1].trim();
           break;
         }
@@ -377,6 +468,9 @@ function capitalize(value: string): string {
 function extractVenue(thread: string): string | null {
   // Multiple venue patterns - prioritize more specific patterns first
   const venuePatterns = [
+    // Structured format patterns (check these first for better accuracy)
+    /\bvenue\s+name[:\s]+([^.\n]+)/gi, // "Venue Name: [venue]" or "venue name: [venue]"
+    // Natural language patterns
     /\b(?:at|for|venue|location)[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3}(?:\s+(?:which is now called|formerly|now called)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})?)/gi, // "at Pin Oak which is now called The Elliot"
     /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})\s+(?:which is now called|formerly|now called)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})/gi, // "Pin Oak which is now called The Elliot"
     /\b(?:at|in|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/g, // "at [Capitalized Name]"
@@ -419,6 +513,9 @@ function sanitizeVenueCandidate(raw: string): string | null {
 
   let value = raw.trim();
   if (!value) return null;
+
+  // Remove "Name:" prefix if it was accidentally captured (e.g., from "Venue Name: The Crossing")
+  value = value.replace(/^name:\s*/i, '').trim();
 
   const lower = value.toLowerCase();
   
@@ -529,10 +626,18 @@ function extractStructuredFields(thread: string): StructuredFields {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    const labeledMatch = trimmed.match(/^([A-Za-z ]{2,40}):\s*(.+)$/);
+    // More flexible label matching - handles various formats
+    // Updated regex to be more permissive with label format (allows numbers, hyphens, etc.)
+    // Pattern: Start with letter, then allow letters, numbers, spaces, hyphens, underscores
+    const labeledMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9\s\-_]{0,49}):\s*(.+)$/);
     if (labeledMatch) {
       const label = labeledMatch[1].toLowerCase().trim();
       const value = labeledMatch[2].trim();
+      
+      // Debug logging for venue name detection
+      if (label.includes('venue') && label.includes('name')) {
+        console.log('[Venue Name Detection] Label:', label, 'Value:', value);
+      }
 
       switch (label) {
         case 'name':
@@ -544,6 +649,9 @@ function extractStructuredFields(thread: string): StructuredFields {
           }
           break;
         case 'email':
+        case 'email address':
+        case 'email_address':
+        case 'emailaddress':
           if (!fields.email) {
             const match = value.match(EMAIL_REGEX);
             if (match) {
@@ -551,7 +659,20 @@ function extractStructuredFields(thread: string): StructuredFields {
             }
           }
           break;
-        case 'date': {
+        case 'phone':
+        case 'phone number':
+        case 'phone_number':
+        case 'phonenumber':
+        case 'tel':
+        case 'telephone':
+          // Phone is extracted separately, but we can note it here
+          fields.notes.push(`Phone: ${value}`);
+          break;
+        case 'date':
+        case 'wedding date':
+        case 'event date':
+        case 'event_date':
+        case 'wedding_date': {
           const normalized = normalizeFlexibleDate(value);
           if (normalized) {
             fields.eventDate = normalized;
@@ -572,8 +693,37 @@ function extractStructuredFields(thread: string): StructuredFields {
           break;
         case 'location':
         case 'event location':
-        case 'venue':
           setVenueFields(fields, value);
+          break;
+        case 'venue name':
+        case 'venue_name':
+        case 'venuename':
+          if (!fields.venueName) {
+            // Clean up the value - remove extra whitespace, trailing punctuation
+            const cleaned = value.trim().replace(/\s+/g, ' ').replace(/[.,;:]+$/, '');
+            fields.venueName = capitalize(cleaned);
+          }
+          break;
+        case 'venue address':
+        case 'venue_address':
+        case 'venueaddress':
+        case 'address':
+          if (!fields.venueAddress) {
+            // Clean up the value - preserve address format but remove extra whitespace
+            const cleaned = value.trim().replace(/\s+/g, ' ').replace(/[.,;:]+$/, '');
+            fields.venueAddress = capitalize(cleaned);
+          }
+          // If venue name not set and address contains venue name pattern, extract it
+          if (!fields.venueName) {
+            const parts = value.split(',');
+            if (parts.length > 0) {
+              const firstPart = parts[0].trim();
+              // Check if first part looks like a venue name (capitalized words, not just a street number)
+              if (!/^\d+/.test(firstPart) && /^[A-Z][a-z]+/.test(firstPart)) {
+                fields.venueName = capitalize(firstPart);
+              }
+            }
+          }
           break;
         case 'guests':
         case 'guest count': {
@@ -680,6 +830,33 @@ function extractStructuredFields(thread: string): StructuredFields {
           if (venueCandidate) {
             fields.venueName = venueCandidate;
             break;
+          }
+        }
+      }
+    }
+    
+    // Enhanced venue address extraction from natural language
+    if (!fields.venueAddress) {
+      const addressPatterns = [
+        /\b(?:venue\s+)?address[:\s]+([^.\n]{5,150})/i,
+        /\b(?:at|located\s+at|address\s+is)[:\s]+([A-Z][^.\n]{10,150})/i,
+        // Match common address patterns: "123 Main St, City, State ZIP"
+        /\b(\d+\s+[A-Z][a-z]+(?:\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy))[^,\n]{0,50},\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?)/i,
+        // Match simpler: "Street, City, State"
+        /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy))[^,\n]{0,50},\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*[A-Z]{2}(?:\s+\d{5})?)/i,
+      ];
+      for (const pattern of addressPatterns) {
+        const addressMatch = trimmed.match(pattern);
+        if (addressMatch) {
+          const addressCandidate = addressMatch[1].trim();
+          // Validate address length and format
+          if (addressCandidate.length > 5 && addressCandidate.length < 200) {
+            // Remove trailing punctuation
+            const cleaned = addressCandidate.replace(/[.,;:]+$/, '').trim();
+            if (cleaned.length > 5) {
+              fields.venueAddress = capitalize(cleaned);
+              break;
+            }
           }
         }
       }

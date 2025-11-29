@@ -492,6 +492,26 @@ export function getFunctionDefinitions() {
       }
     },
     {
+      name: 'get_highest_paid_project',
+      description: 'Get the highest paid project/event. Returns project details including client name, event date, venue, and total amount. Use this when asked about highest paid projects, most valuable projects, or top revenue.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: {
+            type: 'number',
+            description: 'Number of top projects to return (default: 1, max: 10)',
+            default: 1
+          },
+          date_range: {
+            type: 'string',
+            description: 'Filter by date range (today, week, month, quarter, year, all)',
+            enum: ['today', 'week', 'month', 'quarter', 'year', 'all'],
+            default: 'all'
+          }
+        }
+      }
+    },
+    {
       name: 'get_recent_leads',
       description: 'Get recent leads/submissions. Returns new contacts from the specified time period.',
       parameters: {

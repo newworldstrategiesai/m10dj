@@ -4,13 +4,27 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { createRateLimitMiddleware, getClientIp } = require('@/utils/rate-limiter');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Rate limiting: 10 requests per 15 minutes per IP
+const rateLimiter = createRateLimitMiddleware({
+  maxRequests: 10,
+  windowMs: 15 * 60 * 1000,
+  keyGenerator: (req) => getClientIp(req)
+});
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Apply rate limiting
+  await rateLimiter(req, res);
+  if (res.headersSent) {
+    return; // Rate limit exceeded, response already sent
   }
 
   const { token, selections } = req.body;

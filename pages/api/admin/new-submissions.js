@@ -1,5 +1,7 @@
 // API to get new form submissions since admin's last login
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
 import { createClient } from '@supabase/supabase-js';
+import { getEnv } from '@/utils/env-validator';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -7,36 +9,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check authentication
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'No authorization header' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-
-    // Check if user is admin
-    const adminEmails = [
-      'admin@m10djcompany.com',
-      'manager@m10djcompany.com',
-      'djbenmurray@gmail.com'
-    ];
-
-    if (!adminEmails.includes(user.email)) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
+    // Use centralized admin authentication
+    const user = await requireAdmin(req, res);
+    // User is guaranteed to be authenticated and admin here
 
     // Get lastLogin from query params (timestamp when admin last logged in)
     const { lastLogin } = req.query;
+    
+    const env = getEnv();
+    const supabase = createClient(
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      env.SUPABASE_SERVICE_ROLE_KEY
+    );
     
     let query = supabase
       .from('contact_submissions')
@@ -56,7 +40,8 @@ export default async function handler(req, res) {
     const { data: submissions, error } = await query;
 
     if (error) {
-      console.error('Error fetching new submissions:', error);
+      const { logger } = await import('@/utils/logger');
+      logger.error('Error fetching new submissions:', error);
       return res.status(500).json({ error: 'Failed to fetch submissions' });
     }
 
@@ -70,7 +55,13 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error in new-submissions API:', error);
+    // Error from requireAdmin is already handled
+    if (res.headersSent) {
+      return;
+    }
+    
+    const { logger } = await import('@/utils/logger');
+    logger.error('Error in new-submissions API:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

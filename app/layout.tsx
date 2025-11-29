@@ -3,6 +3,8 @@ import Footer from '@/components/company/Footer';
 import FloatingAdminAssistant from '@/components/admin/FloatingAdminAssistant';
 import Navbar from '@/components/ui/Navbar';
 import { Toaster } from '@/components/ui/Toasts/toaster';
+import { Providers } from '@/components/providers';
+import { SkipLink } from '@/components/ui/skip-link';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import { headers } from 'next/headers';
@@ -247,18 +249,22 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         {/* All tracking now handled in _document.js with proper defer loading */}
       </head>
       <body className="bg-black">
-        {!hideNavbar && <Navbar />}
-        <main
-          id="skip"
-          className={`${!hideNavbar ? 'min-h-[calc(100dvh-4rem)] md:min-h[calc(100dvh-5rem)]' : 'min-h-screen'}`}
-        >
-          {children}
-        </main>
-        {!hideFooter && <Footer />}
-        <Suspense>
-          <Toaster />
-        </Suspense>
-        {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
+        <Providers>
+          <SkipLink />
+          {!hideNavbar && <Navbar />}
+          <main
+            id="skip"
+            className={`${!hideNavbar ? 'min-h-[calc(100dvh-4rem)] md:min-h[calc(100dvh-5rem)]' : 'min-h-screen'}`}
+            tabIndex={-1}
+          >
+            {children}
+          </main>
+          {!hideFooter && <Footer />}
+          <Suspense>
+            <Toaster />
+          </Suspense>
+          {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
+        </Providers>
         {/* Performance components disabled during SEO recovery */}
         {/* TODO: Re-enable after traffic recovery with proper optimization */}
         {/* <OptimizedScriptLoader>

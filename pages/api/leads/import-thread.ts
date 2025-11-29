@@ -205,6 +205,93 @@ function detectEmailFormat(text: string): boolean {
   return emailIndicators.some(pattern => pattern.test(text));
 }
 
+// Helper function to update linked projects when contact is updated
+async function updateLinkedProjects(
+  contactId: string,
+  contactData: {
+    event_time?: string | null;
+    end_time?: string | null;
+    venue_name?: string | null;
+    venue_address?: string | null;
+    email_address?: string | null;
+  },
+  adminClient: ReturnType<typeof createClient>
+) {
+  try {
+    // Get the contact to find email
+    const { data: contact } = await adminClient
+      .from('contacts')
+      .select('email_address')
+      .eq('id', contactId)
+      .single<{ email_address: string | null }>();
+
+    if (!contact) {
+      console.log('[updateLinkedProjects] Contact not found');
+      return;
+    }
+
+    const email = contact.email_address || contactData.email_address;
+    if (!email) {
+      console.log('[updateLinkedProjects] No email found for contact');
+      return;
+    }
+
+    // Find all projects linked to this contact by email
+    const { data: projects, error: projectsError } = await adminClient
+      .from('events')
+      .select('id, start_time, end_time, venue_name, venue_address')
+      .eq('client_email', email);
+
+    if (projectsError) {
+      console.error('[updateLinkedProjects] Error finding projects:', projectsError);
+      return;
+    }
+
+    if (!projects || projects.length === 0) {
+      console.log('[updateLinkedProjects] No projects found for contact');
+      return;
+    }
+
+    console.log(`[updateLinkedProjects] Found ${projects.length} project(s) to update`);
+
+    // Build update payload with only fields that have new values
+    const projectUpdates: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    // Map contact event_time to project start_time
+    if (contactData.event_time) {
+      projectUpdates.start_time = contactData.event_time;
+    }
+    if (contactData.end_time) {
+      projectUpdates.end_time = contactData.end_time;
+    }
+    if (contactData.venue_name) {
+      projectUpdates.venue_name = contactData.venue_name;
+    }
+    if (contactData.venue_address) {
+      projectUpdates.venue_address = contactData.venue_address;
+    }
+
+    // Only update if we have fields to update
+    if (Object.keys(projectUpdates).length > 1) { // More than just updated_at
+      // Update all linked projects
+      const { error: updateError } = await adminClient
+        .from('events')
+        .update(projectUpdates)
+        .eq('client_email', email);
+
+      if (updateError) {
+        console.error('[updateLinkedProjects] Error updating projects:', updateError);
+      } else {
+        console.log(`[updateLinkedProjects] Successfully updated ${projects.length} project(s) with:`, projectUpdates);
+      }
+    }
+  } catch (error) {
+    console.error('[updateLinkedProjects] Unexpected error:', error);
+  }
+}
+
 async function handleEmailImport(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -225,14 +312,24 @@ async function handleEmailImport(
     // Update contact record - ALWAYS update times if found (override existing values)
     const contactUpdates: Record<string, any> = {};
     
-    // Update event time - always update if found (even if existing)
-    if (extractedData.ceremonyTime) {
+    // Update event time - use grand entrance for reception start, ceremony time for ceremony start
+    // For reception events, prefer grand entrance as start time
+    if (extractedData.grandEntrance) {
+      contactUpdates.event_time = extractedData.grandEntrance;
+      console.log('[handleEmailImport] Setting event_time (grand entrance):', extractedData.grandEntrance);
+    } else if (extractedData.ceremonyTime) {
       contactUpdates.event_time = extractedData.ceremonyTime;
-      console.log('[handleEmailImport] Setting event_time:', extractedData.ceremonyTime);
+      console.log('[handleEmailImport] Setting event_time (ceremony):', extractedData.ceremonyTime);
     }
-    if (extractedData.ceremonyEndTime) {
+    
+    // Update end time - use grand exit for reception end, ceremony end time for ceremony end
+    // For reception events, prefer grand exit as end time
+    if (extractedData.grandExit) {
+      contactUpdates.end_time = extractedData.grandExit;
+      console.log('[handleEmailImport] Setting end_time (grand exit):', extractedData.grandExit);
+    } else if (extractedData.ceremonyEndTime) {
       contactUpdates.end_time = extractedData.ceremonyEndTime;
-      console.log('[handleEmailImport] Setting end_time:', extractedData.ceremonyEndTime);
+      console.log('[handleEmailImport] Setting end_time (ceremony end):', extractedData.ceremonyEndTime);
     }
     
     // Store grand entrance/exit in custom_fields since those columns don't exist
@@ -264,18 +361,22 @@ async function handleEmailImport(
         : extractedData.specialRequests;
     }
     
-    if (extractedData.notes) {
-      const { data: existingContact } = await adminClient
-        .from('contacts')
-        .select('notes')
-        .eq('id', contactId)
-        .single() as { data: { notes: string | null } | null };
-      
-      const currentNotes = existingContact?.notes || '';
-      contactUpdates.notes = currentNotes 
-        ? `${currentNotes}\n\n--- Email Update ---\n${extractedData.notes}`
-        : extractedData.notes;
-    }
+    // Always append the full email content to notes for reference
+    const { data: existingContact } = await adminClient
+      .from('contacts')
+      .select('notes')
+      .eq('id', contactId)
+      .single() as { data: { notes: string | null } | null };
+    
+    const currentNotes = existingContact?.notes || '';
+    const emailNote = `Imported email on ${new Date().toLocaleString('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })}.\n\n${extractedData.notes ? `Extracted notes:\n${extractedData.notes}\n\n` : ''}--- Full Imported Email ---\n${emailContent}\n--- End of Email ---\n`;
+    
+    contactUpdates.notes = currentNotes 
+      ? `${emailNote}\n\n---\n${currentNotes}`
+      : emailNote;
 
     if (Object.keys(contactUpdates).length > 0) {
       contactUpdates.updated_at = new Date().toISOString();
@@ -299,6 +400,15 @@ async function handleEmailImport(
         event_time: updatedContact?.event_time,
         end_time: updatedContact?.end_time
       });
+
+      // Update linked projects
+      await updateLinkedProjects(contactId, {
+        event_time: updatedContact?.event_time,
+        end_time: updatedContact?.end_time,
+        venue_name: updatedContact?.venue_name,
+        venue_address: updatedContact?.venue_address,
+        email_address: updatedContact?.email_address,
+      }, adminClient);
     } else {
       console.log('[handleEmailImport] No updates to apply');
     }
@@ -675,11 +785,14 @@ export default async function handler(
       ? `New Developments:\n${developments.map((dev) => `- ${dev}`).join('\n')}\n\n`
       : '';
 
+    // Include the full raw thread text for reference
+    const rawThreadSection = `\n\n--- Full Imported Thread ---\n${parsed.rawThread || thread}\n--- End of Thread ---\n`;
+
     const importNote =
       `Imported thread on ${new Date().toLocaleString('en-US', {
         dateStyle: 'medium',
         timeStyle: 'short',
-      })} by ${userEmail}.\n\n` + detailSection + developmentsSection + conversationText;
+      })} by ${userEmail}.\n\n` + detailSection + developmentsSection + conversationText + rawThreadSection;
 
     if (existingContact) {
       // Check for duplicate messages in existing notes
@@ -873,57 +986,44 @@ export default async function handler(
         }
       }
 
-      // Save structured messages to sms_conversations table
+      // Save structured messages to sms_conversations table as individual rows
       if (!isDuplicate && parsed.messages.length > 0) {
         const phoneNumber = parsed.contact.phoneE164 || parsed.contact.phoneDigits;
         if (phoneNumber) {
           try {
-            // Check if conversation exists
-            const { data: existingConversation } = await adminClient
+            // Generate a conversation session ID for grouping these messages
+            const conversationSessionId = crypto.randomUUID();
+            const importTimestamp = new Date().toISOString();
+
+            // Convert parsed messages to individual sms_conversations rows
+            const messageRows = parsed.messages.map((msg, index) => {
+              // Map role to direction and message_type
+              const direction = msg.role === 'contact' ? 'inbound' : 'outbound';
+              const messageType = msg.role === 'contact' ? 'customer' : msg.role === 'team' ? 'admin' : 'customer';
+
+              return {
+                phone_number: phoneNumber,
+                message_content: msg.message,
+                direction: direction,
+                message_type: messageType,
+                customer_id: existingContact.id,
+                conversation_session_id: conversationSessionId,
+                message_status: 'sent',
+                created_at: new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString(), // Stagger timestamps slightly
+                processed_at: importTimestamp
+              };
+            });
+
+            // Insert all messages as individual rows
+            const { error: insertError } = await adminClient
               .from('sms_conversations')
-              .select('id, messages')
-              .eq('phone_number', phoneNumber)
-              .single();
+              .insert(messageRows);
 
-            // Convert parsed messages to structured format
-            const structuredMessages = parsed.messages.map((msg) => ({
-              role: msg.role === 'contact' ? 'user' : msg.role === 'team' ? 'assistant' : 'user',
-              content: msg.message,
-              speaker: msg.speakerLabel,
-              timestamp: new Date().toISOString(),
-              source: 'imported_thread'
-            }));
-
-            if (existingConversation) {
-              // Append to existing messages
-              const existingMessages = existingConversation.messages || [];
-              const updatedMessages = [...existingMessages, ...structuredMessages];
-              
-              await adminClient
-                .from('sms_conversations')
-                .update({
-                  messages: updatedMessages,
-                  last_message_at: new Date().toISOString(),
-                  last_message_from: structuredMessages[structuredMessages.length - 1]?.role === 'user' ? 'user' : 'assistant',
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', existingConversation.id);
+            if (insertError) {
+              console.error('[lead-import-thread] Error inserting messages:', insertError);
             } else {
-              // Create new conversation
-              await adminClient
-                .from('sms_conversations')
-                .insert({
-                  contact_id: existingContact.id,
-                  phone_number: phoneNumber,
-                  messages: structuredMessages,
-                  last_message_at: new Date().toISOString(),
-                  last_message_from: structuredMessages[structuredMessages.length - 1]?.role === 'user' ? 'user' : 'assistant',
-                  conversation_status: 'active',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                });
+              console.log(`[lead-import-thread] Saved ${messageRows.length} messages to sms_conversations as individual rows`);
             }
-            console.log('[lead-import-thread] Saved structured messages to sms_conversations');
           } catch (conversationError) {
             console.error('[lead-import-thread] Error saving structured messages:', conversationError);
             // Don't fail the import if conversation saving fails
@@ -951,6 +1051,15 @@ export default async function handler(
       }
 
       console.log('[lead-import-thread] Contact updated successfully:', data.id);
+
+      // Update linked projects with new contact data
+      await updateLinkedProjects(data.id, {
+        event_time: data.event_time,
+        end_time: data.end_time,
+        venue_name: data.venue_name,
+        venue_address: data.venue_address,
+        email_address: data.email_address,
+      }, adminClient);
 
       return res.status(200).json({
         success: true,
@@ -1060,34 +1169,55 @@ export default async function handler(
 
           if (!updateError && updatedContact) {
             existingContact = updatedContact;
+            
+            // Update linked projects
+            await updateLinkedProjects(updatedContact.id, {
+              event_time: updatedContact.event_time,
+              end_time: updatedContact.end_time,
+              venue_name: updatedContact.venue_name,
+              venue_address: updatedContact.venue_address,
+              email_address: updatedContact.email_address,
+            }, adminClient);
           }
 
-          // Save structured messages
+          // Save structured messages as individual rows
           if (!isDuplicate && parsed.messages.length > 0 && existingContact) {
             const phoneNumber = parsed.contact.phoneE164 || parsed.contact.phoneDigits;
             if (phoneNumber) {
               try {
-                const structuredMessages = parsed.messages.map((msg) => ({
-                  role: msg.role === 'contact' ? 'user' : msg.role === 'team' ? 'assistant' : 'user',
-                  content: msg.message,
-                  speaker: msg.speakerLabel,
-                  timestamp: new Date().toISOString(),
-                  source: 'imported_thread'
-                }));
+                // Generate a conversation session ID for grouping these messages
+                const conversationSessionId = crypto.randomUUID();
+                const importTimestamp = new Date().toISOString();
 
-                await adminClient
-                  .from('sms_conversations')
-                  .upsert({
-                    contact_id: existingContact.id,
+                // Convert parsed messages to individual sms_conversations rows
+                const messageRows = parsed.messages.map((msg, index) => {
+                  // Map role to direction and message_type
+                  const direction = msg.role === 'contact' ? 'inbound' : 'outbound';
+                  const messageType = msg.role === 'contact' ? 'customer' : msg.role === 'team' ? 'admin' : 'customer';
+
+                  return {
                     phone_number: phoneNumber,
-                    messages: structuredMessages,
-                    last_message_at: new Date().toISOString(),
-                    last_message_from: structuredMessages[structuredMessages.length - 1]?.role === 'user' ? 'user' : 'assistant',
-                    conversation_status: 'active',
-                    updated_at: new Date().toISOString()
-                  }, {
-                    onConflict: 'phone_number'
-                  });
+                    message_content: msg.message,
+                    direction: direction,
+                    message_type: messageType,
+                    customer_id: existingContact.id,
+                    conversation_session_id: conversationSessionId,
+                    message_status: 'sent',
+                    created_at: new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString(), // Stagger timestamps slightly
+                    processed_at: importTimestamp
+                  };
+                });
+
+                // Insert all messages as individual rows
+                const { error: insertError } = await adminClient
+                  .from('sms_conversations')
+                  .insert(messageRows);
+
+                if (insertError) {
+                  console.error('[lead-import-thread] Error inserting messages for migrated contact:', insertError);
+                } else {
+                  console.log(`[lead-import-thread] Saved ${messageRows.length} messages to sms_conversations for migrated contact`);
+                }
               } catch (conversationError) {
                 console.error('[lead-import-thread] Error saving structured messages for migrated contact:', conversationError);
               }
@@ -1158,28 +1288,39 @@ export default async function handler(
           const phoneNumber = parsed.contact.phoneE164 || parsed.contact.phoneDigits;
           if (phoneNumber) {
             try {
-              // Convert parsed messages to structured format
-              const structuredMessages = parsed.messages.map((msg) => ({
-                role: msg.role === 'contact' ? 'user' : msg.role === 'team' ? 'assistant' : 'user',
-                content: msg.message,
-                speaker: msg.speakerLabel,
-                timestamp: new Date().toISOString(),
-                source: 'imported_thread'
-              }));
+              // Generate a conversation session ID for grouping these messages
+              const conversationSessionId = crypto.randomUUID();
+              const importTimestamp = new Date().toISOString();
 
-              await adminClient
-                .from('sms_conversations')
-                .insert({
-                  contact_id: newContact.id,
+              // Convert parsed messages to individual sms_conversations rows
+              const messageRows = parsed.messages.map((msg, index) => {
+                // Map role to direction and message_type
+                const direction = msg.role === 'contact' ? 'inbound' : 'outbound';
+                const messageType = msg.role === 'contact' ? 'customer' : msg.role === 'team' ? 'admin' : 'customer';
+
+                return {
                   phone_number: phoneNumber,
-                  messages: structuredMessages,
-                  last_message_at: new Date().toISOString(),
-                  last_message_from: structuredMessages[structuredMessages.length - 1]?.role === 'user' ? 'user' : 'assistant',
-                  conversation_status: 'active',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                });
-              console.log('[lead-import-thread] Saved structured messages to sms_conversations for new contact');
+                  message_content: msg.message,
+                  direction: direction,
+                  message_type: messageType,
+                  customer_id: newContact.id,
+                  conversation_session_id: conversationSessionId,
+                  message_status: 'sent',
+                  created_at: new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString(), // Stagger timestamps slightly
+                  processed_at: importTimestamp
+                };
+              });
+
+              // Insert all messages as individual rows
+              const { error: insertError } = await adminClient
+                .from('sms_conversations')
+                .insert(messageRows);
+
+              if (insertError) {
+                console.error('[lead-import-thread] Error inserting messages for new contact:', insertError);
+              } else {
+                console.log(`[lead-import-thread] Saved ${messageRows.length} messages to sms_conversations for new contact`);
+              }
             } catch (conversationError) {
               console.error('[lead-import-thread] Error saving structured messages for new contact:', conversationError);
               // Don't fail the import if conversation saving fails

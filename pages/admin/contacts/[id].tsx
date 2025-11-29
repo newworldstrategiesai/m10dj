@@ -19,6 +19,7 @@ import PaymentHistory from '@/components/admin/PaymentHistory';
 import InvoiceList from '@/components/admin/InvoiceList';
 import PipelineView from '@/components/admin/PipelineView';
 import UnifiedCommunicationHub from '@/components/admin/UnifiedCommunicationHub';
+import { syncVenueFromContactToProjects } from '@/utils/sync-venue-data';
 
 interface Contact {
   id: string;
@@ -642,6 +643,12 @@ export default function ContactDetailPage() {
       if (error) {
         throw error;
       }
+
+      // Sync venue data to linked projects
+      await syncVenueFromContactToProjects(id, {
+        venue_name: contact.venue_name,
+        venue_address: contact.venue_address,
+      });
 
       toast({
         title: "Success",

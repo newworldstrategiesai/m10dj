@@ -40,7 +40,7 @@ interface StructuredContent {
 
 interface MessageContentRendererProps {
   content: string | StructuredContent;
-  timestamp: string;
+  timestamp?: string;
   functionsCalled?: Array<{ name: string; arguments: any }>;
 }
 
@@ -238,9 +238,11 @@ export function MessageContentRenderer({
         )}
 
         {/* Timestamp */}
-        <div className="text-xs opacity-70 pt-1">
-          {dayjs(timestamp).format('h:mm A')}
-        </div>
+        {timestamp && (
+          <div className="text-xs opacity-70 pt-1">
+            {dayjs(timestamp).format('h:mm A')}
+          </div>
+        )}
       </div>
     </div>
   );

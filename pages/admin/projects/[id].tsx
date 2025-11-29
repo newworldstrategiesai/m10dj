@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import Link from 'next/link';
+import { syncVenueFromProjectToContact } from '@/utils/sync-venue-data';
 
 interface Project {
   id: string;
@@ -162,6 +163,12 @@ export default function ProjectDetailPage() {
         });
         return;
       }
+
+      // Sync venue data to linked contact
+      await syncVenueFromProjectToContact(project.id, {
+        venue_name: project.venue_name,
+        venue_address: project.venue_address,
+      });
 
       toast({
         title: "Success",
