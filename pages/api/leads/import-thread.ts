@@ -215,15 +215,16 @@ async function updateLinkedProjects(
     venue_address?: string | null;
     email_address?: string | null;
   },
-  adminClient: ReturnType<typeof createClient>
+  adminClient: any
 ) {
   try {
     // Get the contact to find email
-    const { data: contact } = await adminClient
+    const result = await (adminClient as any)
       .from('contacts')
       .select('email_address')
       .eq('id', contactId)
-      .single<{ email_address: string | null }>();
+      .single();
+    const contact = result.data as { email_address: string | null } | null;
 
     if (!contact) {
       console.log('[updateLinkedProjects] Contact not found');
@@ -276,8 +277,8 @@ async function updateLinkedProjects(
     // Only update if we have fields to update
     if (Object.keys(projectUpdates).length > 1) { // More than just updated_at
       // Update all linked projects
-      const { error: updateError } = await adminClient
-        .from('events')
+      const { error: updateError } = await (adminClient
+        .from('events') as any)
         .update(projectUpdates)
         .eq('client_email', email);
 
@@ -987,7 +988,7 @@ export default async function handler(
       }
 
       // Save structured messages to sms_conversations table as individual rows
-      if (!isDuplicate && parsed.messages.length > 0) {
+      if (!isDuplicate && parsed.messages.length > 0 && existingContact) {
         const phoneNumber = parsed.contact.phoneE164 || parsed.contact.phoneDigits;
         if (phoneNumber) {
           try {
@@ -996,6 +997,7 @@ export default async function handler(
             const importTimestamp = new Date().toISOString();
 
             // Convert parsed messages to individual sms_conversations rows
+            // existingContact is guaranteed to be non-null here due to the outer if check
             const messageRows = parsed.messages.map((msg, index) => {
               // Map role to direction and message_type
               const direction = msg.role === 'contact' ? 'inbound' : 'outbound';
@@ -1006,7 +1008,7 @@ export default async function handler(
                 message_content: msg.message,
                 direction: direction,
                 message_type: messageType,
-                customer_id: existingContact.id,
+                customer_id: existingContact!.id,
                 conversation_session_id: conversationSessionId,
                 message_status: 'sent',
                 created_at: new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString(), // Stagger timestamps slightly
@@ -1059,7 +1061,7 @@ export default async function handler(
         venue_name: data.venue_name,
         venue_address: data.venue_address,
         email_address: data.email_address,
-      }, adminClient);
+      }, adminClient as any);
 
       return res.status(200).json({
         success: true,
@@ -1200,7 +1202,7 @@ export default async function handler(
                     message_content: msg.message,
                     direction: direction,
                     message_type: messageType,
-                    customer_id: existingContact.id,
+                    customer_id: existingContact!.id,
                     conversation_session_id: conversationSessionId,
                     message_status: 'sent',
                     created_at: new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString(), // Stagger timestamps slightly
