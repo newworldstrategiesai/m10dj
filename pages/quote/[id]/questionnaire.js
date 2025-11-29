@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { ArrowRight, ArrowLeft, CheckCircle, Music, Heart, Mic, Radio, Link as LinkIcon, Save, Loader2, Sparkles, HelpCircle, Edit2, Check, Download, PartyPopper, RotateCcw } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import confetti from 'canvas-confetti';
 import { normalizeSongInput, cleanSongInput } from '../../../utils/song-normalizer';
+import { getQuestionnaireConfig } from '../../../utils/questionnaire-config';
 
 export default function MusicQuestionnaire() {
   const router = useRouter();
@@ -55,6 +56,12 @@ export default function MusicQuestionnaire() {
   });
   const [clickedService, setClickedService] = useState(null);
   const { toast } = useToast();
+
+  // Get questionnaire configuration based on event type
+  const questionnaireConfig = useMemo(() => {
+    const eventType = leadData?.eventType || 'wedding';
+    return getQuestionnaireConfig(eventType);
+  }, [leadData?.eventType]);
 
   useEffect(() => {
     if (!id) return;
@@ -235,156 +242,14 @@ export default function MusicQuestionnaire() {
     }
   }, [currentStep]);
 
-  const specialDanceOptions = [
-    { 
-      id: 'bridal_party_intro', 
-      label: 'Bridal Party Intro Song',
-      tooltip: 'The high-energy song when your wedding party makes their grand entrance'
-    },
-    { 
-      id: 'bride_groom_intro', 
-      label: 'Bride and Groom Introduction Song',
-      tooltip: 'YOUR big moment walking in as the new Mr & Mrs!'
-    },
-    { 
-      id: 'first_dance', 
-      label: 'Bride and Groom First Dance',
-      tooltip: 'The romantic song just for the two of you'
-    },
-    { 
-      id: 'father_daughter', 
-      label: 'Father Daughter Dance',
-      tooltip: 'That tear-jerker moment with Dad'
-    },
-    { 
-      id: 'mother_son', 
-      label: 'Mother Son Dance',
-      tooltip: 'A sweet dedication to Mom'
-    },
-    { 
-      id: 'garter_toss', 
-      label: 'Garter Toss Song',
-      tooltip: 'The fun, upbeat song for the garter toss tradition'
-    },
-    { 
-      id: 'bouquet_toss', 
-      label: 'Bouquet Toss Song',
-      tooltip: 'The celebratory song when you toss the bouquet to your single friends'
-    },
-    { 
-      id: 'cake_cutting', 
-      label: 'Cake Cutting Song',
-      tooltip: 'The sweet song that plays while you cut your wedding cake together'
-    },
-    { 
-      id: 'last_dance', 
-      label: 'Bride and Groom Last Dance of the night',
-      tooltip: 'Your final dance together as the night comes to a close'
-    }
-  ];
+  // Get special dance options from config (or special moments for non-wedding events)
+  const specialDanceOptions = questionnaireConfig.specialDanceFields || [];
 
-  const ceremonyMusicFields = [
-    { 
-      id: 'prelude', 
-      label: 'Prelude', 
-      description: 'Soft background music while guests arrive and find their seats – think peaceful and welcoming'
-    },
-    { 
-      id: 'interlude', 
-      label: 'Interlude', 
-      description: 'A beautiful song during the lighting of the unity candle or another special moment in your ceremony. It can be instrumental or vocal.'
-    },
-    { 
-      id: 'processional', 
-      label: 'Processional', 
-      description: 'Stately, elegant music played as your bridal party walks down the aisle, with you and your escort at the very end. Often the bride\'s walk is accompanied by a different, more emotional tune.'
-    },
-    { 
-      id: 'bridal_march', 
-      label: 'Bridal March', 
-      description: 'The moment everyone\'s been waiting for – the music that plays as you walk down the aisle.'
-    },
-    { 
-      id: 'recessional', 
-      label: 'Recessional', 
-      description: 'Upbeat, triumphant music played at the end of the service as you make your way back up the aisle as newlyweds!'
-    },
-    { 
-      id: 'postlude', 
-      label: 'Postlude',
-      description: 'Background music that plays until every last guest has exited the ceremony area. It should be gentle and last around fifteen minutes.'
-    }
-  ];
+  // Get ceremony music fields from config (empty for non-wedding events)
+  const ceremonyMusicFields = questionnaireConfig.ceremonyMusicFields || [];
 
-  // Base steps array - ceremony steps will be conditionally included
-  const baseSteps = [
-    {
-      id: 'welcome',
-      title: 'Welcome to Your Music Planning',
-      icon: Sparkles,
-      description: 'Let\'s make sure your wedding day music is absolutely perfect!'
-    },
-    {
-      id: 'event_details',
-      title: 'Event Details',
-      icon: PartyPopper,
-      description: 'Help us understand your event basics'
-    },
-    {
-      id: 'big_no',
-      title: 'Songs We\'ll Happily Skip',
-      icon: Music,
-      description: 'We\'ll steer clear of these so your dance floor stays perfect'
-    },
-    {
-      id: 'special_dances',
-      title: 'Special Dances',
-      icon: Heart,
-      description: 'Are we having any special songs played for first dance, father daughter dance, etc?'
-    },
-    {
-      id: 'special_dance_songs',
-      title: 'Special Dance Songs',
-      icon: Music,
-      description: 'Please provide the song names and artists for your special dances'
-    },
-    {
-      id: 'mc_introduction',
-      title: 'MC Introduction',
-      icon: Mic,
-      description: 'How would you like to be introduced?'
-    },
-    {
-      id: 'playlists',
-      title: 'Your Playlists',
-      icon: LinkIcon,
-      description: 'Have a playlist already started? We love it!'
-    },
-    {
-      id: 'ceremony_type',
-      title: 'Ceremony Music',
-      icon: Radio,
-      description: 'What music will be played at the ceremony?'
-    },
-    {
-      id: 'ceremony_fields',
-      title: 'Ceremony Music',
-      icon: Music,
-      description: 'Which ceremony music moments would you like to plan?'
-    },
-    {
-      id: 'ceremony_details',
-      title: 'Ceremony Music Details',
-      icon: Music,
-      description: 'Please provide the song names for your ceremony'
-    },
-    {
-      id: 'review',
-      title: 'Review & Submit',
-      icon: CheckCircle,
-      description: 'Review your music selections before submitting'
-    }
-  ];
+  // Base steps array from config - ceremony steps will be conditionally included
+  const baseSteps = questionnaireConfig.steps || [];
 
   // Determine which steps are needed based on missing information
   const getNeededSteps = () => {
@@ -405,8 +270,8 @@ export default function MusicQuestionnaire() {
       }
     }
     
-    // Check for missing ceremony music details
-    if (formData.ceremonyMusicType === 'pre_recorded' && selectedServices.ceremonyAudio) {
+    // Check for missing ceremony music details (only for events that support ceremony music)
+    if (questionnaireConfig.hasCeremonyMusic && formData.ceremonyMusicType === 'pre_recorded' && selectedServices.ceremonyAudio) {
       const ceremonySongs = Object.values(formData.ceremonyMusic || {}).filter(song => song && song.trim() !== '');
       if (ceremonySongs.length === 0) {
         needed.add('ceremony_fields');
@@ -428,10 +293,11 @@ export default function MusicQuestionnaire() {
     return needed;
   };
 
-  // Filter steps based on selected services and focused mode
+  // Filter steps based on selected services, config, and focused mode
   const steps = baseSteps.filter(step => {
-    // Hide ceremony steps if ceremony audio is not selected
-    if (!selectedServices.ceremonyAudio && (step.id === 'ceremony_type' || step.id === 'ceremony_fields' || step.id === 'ceremony_details')) {
+    // Hide ceremony steps if ceremony audio is not selected OR if config doesn't support ceremony music
+    if ((!selectedServices.ceremonyAudio || !questionnaireConfig.hasCeremonyMusic) && 
+        (step.id === 'ceremony_type' || step.id === 'ceremony_fields' || step.id === 'ceremony_details')) {
       return false;
     }
     
@@ -1360,7 +1226,7 @@ export default function MusicQuestionnaire() {
                     {getGreeting()}
                   </p>
                   <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 mb-4 sm:mb-6 px-2">
-                    We&apos;re so excited to be a part of your wedding day! Let&apos;s make sure your music is absolutely perfect.
+                    {questionnaireConfig.welcomeMessage || "Let's plan the perfect music for your event!"}
                   </p>
                   <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-6 sm:mb-8 px-2">
                     This questionnaire will help us understand your musical preferences and ensure every moment is exactly as you envision.
@@ -1373,7 +1239,7 @@ export default function MusicQuestionnaire() {
                       type="text"
                       value={formData.vibe}
                       onChange={(e) => setFormData(prev => ({ ...prev, vibe: e.target.value }))}
-                      placeholder="Describe your wedding in 3 words (e.g., romantic, upbeat, classy)"
+                      placeholder={questionnaireConfig.vibePlaceholder || "Describe your event in 3 words (e.g., fun, elegant, energetic)"}
                       className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     />
                   </div>

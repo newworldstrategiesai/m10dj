@@ -2499,7 +2499,7 @@ export default function PersonalizedQuote() {
           </div>
         )}
       </header>
-      <main className="min-h-screen bg-white dark:bg-gray-900 pb-24 md:pb-24">
+      <main className="min-h-screen bg-white dark:bg-gray-900 pb-32 md:pb-32">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
           {/* Header Section */}
           <div className="text-center mb-12">

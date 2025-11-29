@@ -594,9 +594,9 @@ export default function PipelineView({
           <p className="text-sm text-gray-600">{progress}% complete</p>
         </div>
 
-        {/* Pipeline Stages */}
-        <div className="relative">
-          <div className="flex items-center justify-between overflow-x-auto pb-4">
+      {/* Pipeline Stages */}
+      <div className="relative">
+        <div className="flex items-center justify-between overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             {visibleStages.map((stage, index) => {
               const StageIcon = stage.icon;
               // Get the actual index in the full PIPELINE_STAGES array for comparison
@@ -662,7 +662,7 @@ export default function PipelineView({
       </Card>
 
       {/* Current Status & Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -1012,43 +1012,43 @@ export default function PipelineView({
       </Card>
 
       {/* Quick Actions */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {leadId && (
-            <>
-              {hasQuote && (
-                <Link href={`/quote/${leadId}`} target="_blank">
-                  <Button variant="outline" className="w-full">
-                    <FileText className="w-4 h-4 mr-2" />
-                    View Quote
-                  </Button>
-                </Link>
+      <Card className="p-4 md:p-6">
+        <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+              {leadId && (
+                <>
+                  {hasQuote && (
+                    <Link href={`/quote/${leadId}`} target="_blank">
+                      <Button variant="outline" className="w-full text-xs sm:text-sm">
+                        <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        View Quote
+                      </Button>
+                    </Link>
+                  )}
+                  
+                  <Link href={`/quote/${leadId}/contract`} target="_blank">
+                    <Button variant="outline" className="w-full text-xs sm:text-sm">
+                      <FileCheck className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      View Contract
+                    </Button>
+                  </Link>
+                  
+                  <Link href={`/quote/${leadId}/invoice`} target="_blank">
+                    <Button variant="outline" className="w-full text-xs sm:text-sm">
+                      <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      View Invoice
+                    </Button>
+                  </Link>
+                </>
               )}
-              
-              <Link href={`/quote/${leadId}/contract`} target="_blank">
-                <Button variant="outline" className="w-full">
-                  <FileCheck className="w-4 h-4 mr-2" />
-                  View Contract
-                </Button>
-              </Link>
-              
-              <Link href={`/quote/${leadId}/invoice`} target="_blank">
-                <Button variant="outline" className="w-full">
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  View Invoice
-                </Button>
-              </Link>
-            </>
-          )}
           
           {contact.email_address && (
             <Button 
               variant="outline" 
-              className="w-full"
+              className="w-full text-xs sm:text-sm"
               onClick={() => window.open(`mailto:${contact.email_address}`, '_blank')}
             >
-              <Mail className="w-4 h-4 mr-2" />
+              <Mail className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Email
             </Button>
           )}
@@ -1056,10 +1056,10 @@ export default function PipelineView({
           {contact.phone && (
             <Button 
               variant="outline" 
-              className="w-full"
+              className="w-full text-xs sm:text-sm"
               onClick={() => window.open(`tel:${contact.phone}`, '_blank')}
             >
-              <Phone className="w-4 h-4 mr-2" />
+              <Phone className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Call
             </Button>
           )}
@@ -1068,12 +1068,15 @@ export default function PipelineView({
 
       {/* Move to Next Stage */}
       {currentStage !== 'Completed' && currentStage !== 'Lost' && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Move to Next Stage</h3>
+        <Card className="p-4 md:p-6">
+          <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Move to Next Stage</h3>
           <div className="flex flex-wrap gap-2">
             {visibleStages.map((stage) => {
               const stageIndex = PIPELINE_STAGES.findIndex(s => s.id === stage.id);
-              if (stageIndex <= currentStageIndex || stage.id === 'Lost') return null;
+              // Don't show "Lost" in this section
+              if (stage.id === 'Lost') return null;
+              // Don't show stages that are already passed
+              if (stageIndex <= currentStageIndex) return null;
               
               return (
                 <Button
@@ -1082,11 +1085,24 @@ export default function PipelineView({
                   size="sm"
                   onClick={() => handleStatusChange(stage.id)}
                   disabled={updating}
+                  className="text-xs sm:text-sm"
                 >
-                  Move to {stage.label}
+                  {updating ? 'Updating...' : `Move to ${stage.label}`}
                 </Button>
               );
             })}
+            {/* Always show "Move to Completed" button if not already completed or lost */}
+            {currentStage !== 'Completed' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleStatusChange('Completed')}
+                disabled={updating}
+                className="text-xs sm:text-sm bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300"
+              >
+                {updating ? 'Updating...' : 'Move to Completed'}
+              </Button>
+            )}
           </div>
         </Card>
       )}

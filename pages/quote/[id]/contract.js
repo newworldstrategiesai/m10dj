@@ -117,6 +117,25 @@ export default function ContractPage() {
           } catch (e) {
             console.log('Could not fetch contract details:', e);
           }
+        } else {
+          // Lazy creation: If quote exists but no contract_id, create contract on first page access
+          try {
+            const createResponse = await fetch(`/api/quote/${id}/ensure-contract`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            if (createResponse.ok) {
+              const result = await createResponse.json();
+              if (result.contract) {
+                setContractData(result.contract);
+                // Update quote data with new contract_id
+                setQuoteData({ ...quote, contract_id: result.contract.id });
+              }
+            }
+          } catch (e) {
+            console.log('Could not ensure contract exists:', e);
+            // Non-critical - page will work without contract record
+          }
         }
         
         // If quote has invoice_id, fetch invoice details to check payment status
@@ -1061,7 +1080,7 @@ export default function ContractPage() {
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Header className="no-print" />
 
-        <main className="section-container py-12 md:py-20">
+        <main className="section-container py-12 md:py-20 pb-32 md:pb-32">
           {/* Header Actions */}
           <div className="no-print max-w-4xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <Link
@@ -1660,7 +1679,7 @@ export default function ContractPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="no-print max-w-4xl mx-auto mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="no-print max-w-4xl mx-auto mt-8 mb-6 sm:mb-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href={`/quote/${id}/invoice`}
               className="btn-outline inline-flex items-center justify-center gap-2"

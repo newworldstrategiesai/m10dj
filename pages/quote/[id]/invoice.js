@@ -248,6 +248,25 @@ export default function InvoicePage() {
           } catch (e) {
             console.log('Could not fetch invoice details:', e);
           }
+        } else {
+          // Lazy creation: If quote exists but no invoice_id, create invoice on first page access
+          try {
+            const createResponse = await fetch(`/api/quote/${id}/ensure-invoice`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            if (createResponse.ok) {
+              const result = await createResponse.json();
+              if (result.invoice) {
+                setInvoiceData(result.invoice);
+                // Update quote data with new invoice_id
+                setQuoteData({ ...quote, invoice_id: result.invoice.id });
+              }
+            }
+          } catch (e) {
+            console.log('Could not ensure invoice exists:', e);
+            // Non-critical - page will work without invoice record
+          }
         }
 
         // Fetch payment data to show payment status
@@ -1069,7 +1088,7 @@ export default function InvoicePage() {
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Header className="no-print" />
 
-        <main className="section-container py-4 md:py-12 lg:py-20 px-4 sm:px-6 pb-24 md:pb-24">
+        <main className="section-container py-4 md:py-12 lg:py-20 px-4 sm:px-6 pb-32 md:pb-32">
           {/* Header Actions */}
           <div className="no-print max-w-4xl mx-auto mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
             <Link
@@ -2447,7 +2466,7 @@ export default function InvoicePage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="no-print max-w-4xl mx-auto mt-4 sm:mt-6 md:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
+          <div className="no-print max-w-4xl mx-auto mt-4 sm:mt-6 md:mt-8 mb-6 sm:mb-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
             <Link
               href={`/quote/${id}/payment`}
               className="btn-primary inline-flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-3"

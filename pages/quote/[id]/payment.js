@@ -520,7 +520,7 @@ export default function PaymentPage() {
         </Head>
         <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
-          <main className="section-container py-12 md:py-20 pb-24 md:pb-24">
+          <main className="section-container py-12 md:py-20 pb-32 md:pb-32">
             <div className="max-w-2xl mx-auto text-center">
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
                 Select Services First
@@ -552,7 +552,7 @@ export default function PaymentPage() {
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Header />
 
-        <main className="section-container py-12 md:py-20 pb-24 md:pb-24">
+          <main className="section-container py-12 md:py-20 pb-32 md:pb-32">
           {/* Header */}
           <div className="max-w-2xl mx-auto mb-8">
             <Link
@@ -1023,7 +1023,7 @@ export default function PaymentPage() {
           })()}
 
           {/* Additional Links */}
-          <div className="max-w-2xl mx-auto mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="max-w-2xl mx-auto mt-8 mb-6 sm:mb-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href={`/quote/${id}/invoice`}
               className="btn-outline inline-flex items-center justify-center gap-2"

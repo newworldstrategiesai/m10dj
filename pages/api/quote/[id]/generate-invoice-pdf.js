@@ -66,6 +66,54 @@ export default async function handler(req, res) {
       }
     }
 
+    // Fetch payment history
+    let payments = [];
+    try {
+      // Find the contact_id from the quote/lead_id
+      let contactId = null;
+      
+      // First, check if lead_id is a contact_submission_id and get its contact_id
+      const { data: submission } = await supabase
+        .from('contact_submissions')
+        .select('contact_id')
+        .eq('id', id)
+        .single();
+      
+      if (submission?.contact_id) {
+        contactId = submission.contact_id;
+      } else {
+        // If not found in contact_submissions, check if it's already a contact_id
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('id')
+          .eq('id', id)
+          .single();
+        
+        if (contact) {
+          contactId = id;
+        }
+      }
+
+      if (contactId) {
+        // Fetch payments for this contact
+        const { data: paymentsData, error: paymentsError } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('contact_id', contactId)
+          .eq('payment_status', 'Paid')
+          .order('transaction_date', { ascending: false })
+          .order('created_at', { ascending: false });
+
+        if (!paymentsError && paymentsData) {
+          payments = paymentsData;
+        }
+      }
+    } catch (paymentError) {
+      console.error('Error fetching payments:', paymentError);
+      // Continue without payment history if fetch fails
+      payments = [];
+    }
+
     // Debug: Log quote structure
     console.log('Quote data:', {
       hasAddons: !!quote.addons,
@@ -122,7 +170,7 @@ export default async function handler(req, res) {
       
       // Generate PDF content
       try {
-        generateQuoteInvoicePDF(doc, lead, quote, paymentUrl, qrCodeDataUrl);
+        generateQuoteInvoicePDF(doc, lead, quote, paymentUrl, qrCodeDataUrl, payments);
       } catch (pdfError) {
         console.error('Error in generateQuoteInvoicePDF:', pdfError);
         reject(pdfError);
@@ -157,7 +205,7 @@ export default async function handler(req, res) {
   }
 }
 
-function generateQuoteInvoicePDF(doc, lead, quote, paymentUrl, qrCodeDataUrl) {
+function generateQuoteInvoicePDF(doc, lead, quote, paymentUrl, qrCodeDataUrl, payments = []) {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -698,9 +746,108 @@ function generateQuoteInvoicePDF(doc, lead, quote, paymentUrl, qrCodeDataUrl) {
     }
   }
 
-  // Footer - positioned right after payment box
-  // Calculate footer position based on payment box end
-  const footerY = paymentBoxStartY + paymentBoxHeight + 20;
+  // Payment History Section - positioned right after payment box
+  let historyY = paymentBoxStartY + paymentBoxHeight + 30;
+  
+  // Only show payment history if there are paid payments
+  if (payments && payments.length > 0) {
+    // Section title
+    doc
+      .fontSize(12)
+      .fillColor(darkGray)
+      .font('Helvetica-Bold')
+      .text('PAYMENT HISTORY', 50, historyY);
+
+    historyY += 20;
+
+    // Table header
+    const historyTableTop = historyY;
+    doc
+      .rect(50, historyTableTop, 495, 20)
+      .fill('#f3f4f6');
+
+    doc
+      .rect(50, historyTableTop, 495, 20)
+      .stroke(brandGold)
+      .lineWidth(1);
+
+    doc
+      .fontSize(9)
+      .fillColor(darkGray)
+      .font('Helvetica-Bold')
+      .text('DATE', 60, historyTableTop + 6)
+      .text('DESCRIPTION', 150, historyTableTop + 6)
+      .text('AMOUNT', 450, historyTableTop + 6, { width: 95, align: 'right' });
+
+    historyY += 25;
+
+    // Payment entries
+    payments.forEach((payment) => {
+      // Check if we need a new page
+      if (historyY > 700) {
+        doc.addPage();
+        historyY = 50;
+      }
+
+      // Payment row separator
+      doc
+        .strokeColor(lightGray)
+        .lineWidth(0.5)
+        .moveTo(50, historyY)
+        .lineTo(545, historyY)
+        .stroke();
+
+      historyY += 8;
+
+      // Payment date
+      const paymentDate = payment.transaction_date 
+        ? formatDate(payment.transaction_date)
+        : payment.created_at 
+          ? formatDate(payment.created_at)
+          : 'N/A';
+
+      doc
+        .fontSize(9)
+        .fillColor(darkGray)
+        .font('Helvetica')
+        .text(paymentDate, 60, historyY, { width: 90 });
+
+      // Payment description
+      const paymentDescription = payment.description || 
+        (payment.payment_type === 'Deposit' || payment.payment_type === 'Retainer' 
+          ? 'Retainer Paid' 
+          : 'Payment Received');
+      
+      doc
+        .fontSize(9)
+        .fillColor(darkGray)
+        .font('Helvetica')
+        .text(paymentDescription, 150, historyY, { width: 290 });
+
+      // Payment amount
+      const paymentAmount = parseFloat(payment.total_amount) || 0;
+      doc
+        .fontSize(9)
+        .fillColor('#059669')
+        .font('Helvetica-Bold')
+        .text(formatCurrency(paymentAmount), 450, historyY, { width: 95, align: 'right' });
+
+      historyY += 15;
+    });
+
+    // Final line after payment history
+    doc
+      .strokeColor(lightGray)
+      .lineWidth(1)
+      .moveTo(50, historyY)
+      .lineTo(545, historyY)
+      .stroke();
+
+    historyY += 20;
+  }
+
+  // Footer - positioned after payment history (or payment box if no history)
+  const footerY = historyY;
 
   doc
     .strokeColor(lightGray)

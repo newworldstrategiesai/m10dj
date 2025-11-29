@@ -5,10 +5,34 @@ import { ThemeProvider } from 'next-themes';
 import FloatingAdminAssistant from '@/components/admin/FloatingAdminAssistant';
 import GlobalChatWidget from '@/components/company/GlobalChatWidget';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import AdminNavbar from '@/components/admin/AdminNavbar';
+import { useEffect } from 'react';
 // Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
 
 export default function App({ Component, pageProps }) {
+  // Suppress React warning about fetchPriority prop (Next.js 13.5.6 compatibility issue)
+  // This is a known issue where Next.js uses fetchPriority but React expects fetchpriority (lowercase)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      const originalError = console.error;
+      console.error = (...args) => {
+        // Filter out fetchPriority warnings from Next.js Image component
+        const message = args[0];
+        if (
+          (typeof message === 'string' && message.includes('fetchPriority') && message.includes('DOM element')) ||
+          (message && typeof message === 'object' && message.toString && message.toString().includes('fetchPriority'))
+        ) {
+          return; // Suppress this specific harmless warning
+        }
+        originalError.apply(console, args);
+      };
+      
+      return () => {
+        console.error = originalError;
+      };
+    }
+  }, []);
   const router = useRouter();
   const isAdminRoute = router.pathname.startsWith('/admin') || router.pathname.startsWith('/chat');
   const isSignInPage = router.pathname.startsWith('/signin');
@@ -55,9 +79,11 @@ export default function App({ Component, pageProps }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </Head>
+      {/* Admin Navbar - appears on all admin pages */}
+      {isAdminRoute && !isSignInPage && <AdminNavbar />}
       <Component {...pageProps} />
       {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
-      {!isSignInPage && !isRequestsPage && <GlobalChatWidget />}
+      {!isSignInPage && !isRequestsPage && !isAdminRoute && <GlobalChatWidget />}
       {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}
       </ErrorBoundary>

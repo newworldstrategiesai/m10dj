@@ -296,6 +296,37 @@ export default async function handler(req, res) {
       eventDate: leadData?.eventDate
     }).catch(err => console.error('Failed to send admin notification:', err));
 
+    // Ensure invoice and contract drafts exist when quote is generated/updated
+    // This creates draft records for tracking even if they haven't been accessed yet
+    if (savedData?.id || data?.id) {
+      const quoteId = savedData?.id || data?.id;
+      (async () => {
+        try {
+          const { ensureInvoiceExists } = await import('../../../utils/ensure-invoice-exists');
+          const { ensureContractExists } = await import('../../../utils/ensure-contract-exists');
+          
+          // Ensure invoice exists (creates draft if needed)
+          const invoiceResult = await ensureInvoiceExists(quoteId, supabase);
+          if (invoiceResult.success) {
+            console.log(`✅ Invoice ${invoiceResult.created ? 'created' : 'exists'} for quote ${quoteId}`);
+          } else {
+            console.warn(`⚠️ Could not ensure invoice exists: ${invoiceResult.error}`);
+          }
+          
+          // Ensure contract exists (creates draft if needed)
+          const contractResult = await ensureContractExists(quoteId, supabase);
+          if (contractResult.success) {
+            console.log(`✅ Contract ${contractResult.created ? 'created' : 'exists'} for quote ${quoteId}`);
+          } else {
+            console.warn(`⚠️ Could not ensure contract exists: ${contractResult.error}`);
+          }
+        } catch (err) {
+          console.error('⚠️ Error ensuring invoice/contract drafts exist:', err);
+          // Non-critical - quote is saved, drafts can be created later
+        }
+      })();
+    }
+
     // Send client notification that quote has been generated/updated
     if (leadData?.id) {
       (async () => {

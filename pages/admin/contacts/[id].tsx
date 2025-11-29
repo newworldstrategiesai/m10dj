@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy } from 'lucide-react';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -852,37 +852,38 @@ export default function ContactDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
             <Link href={from === 'lead' ? `/admin/leads/${id}` : "/admin/contacts"}>
-              <Button variant="outline" className="flex items-center gap-2">
+              <Button variant="outline" className="flex items-center gap-2 w-full sm:w-auto">
                 <ArrowLeft className="h-4 w-4" />
-                {from === 'lead' ? 'Back to Lead Details' : 'Back to Contacts'}
+                <span className="text-xs sm:text-sm">{from === 'lead' ? 'Back to Lead Details' : 'Back to Contacts'}</span>
               </Button>
             </Link>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               {!isEditing ? (
-                <Button onClick={() => setIsEditing(true)} className="flex items-center gap-2">
+                <Button onClick={() => setIsEditing(true)} className="flex items-center gap-2 flex-1 sm:flex-initial">
                   <Edit3 className="h-4 w-4" />
-                  Edit Contact
+                  <span className="text-xs sm:text-sm">Edit Contact</span>
             </Button>
               ) : (
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"
                     onClick={() => {
                       setIsEditing(false);
                       fetchContact(); // Reset changes
                     }}
+                    className="flex-1 sm:flex-initial text-xs sm:text-sm"
                   >
                     Cancel
                   </Button>
                   <Button 
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
                   >
                     <Save className="h-4 w-4" />
                     {saving ? 'Saving...' : 'Save Changes'}
@@ -892,20 +893,20 @@ export default function ContactDetailPage() {
               </div>
             </div>
 
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-[#fcba00] text-black text-xl font-bold">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <Avatar className="h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0">
+              <AvatarFallback className="bg-[#fcba00] text-black text-lg sm:text-xl font-bold">
                 {getContactInitials()}
                       </AvatarFallback>
                     </Avatar>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
                 {`${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown Contact'}
               </h1>
-              <p className="text-gray-600">{contact.email_address}</p>
-              <div className="flex gap-2 mt-2">
+              <p className="text-sm sm:text-base text-gray-600 truncate">{contact.email_address}</p>
+              <div className="flex flex-wrap gap-2 mt-2">
                 {contact.lead_status && (
-                  <Badge className={getLeadStatusColor(contact.lead_status)}>
+                  <Badge className={`${getLeadStatusColor(contact.lead_status)} text-xs`}>
                     {contact.lead_status}
                   </Badge>
                 )}
@@ -918,25 +919,25 @@ export default function ContactDetailPage() {
                 )}
                   </div>
                     </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               {contact.phone && (
-                <Button variant="outline" onClick={() => window.open(`tel:${contact.phone}`)}>
+                <Button variant="outline" onClick={() => window.open(`tel:${contact.phone}`)} size="sm" className="p-2">
                   <Phone className="h-4 w-4" />
                         </Button>
               )}
               {contact.email_address && (
-                <Button variant="outline" onClick={() => setShowEmailModal(true)}>
+                <Button variant="outline" onClick={() => setShowEmailModal(true)} size="sm" className="p-2">
                   <Mail className="h-4 w-4" />
                         </Button>
               )}
               {contact.phone && (
-                <Button variant="outline" onClick={() => window.open(`/chat/sms?contact=${encodeURIComponent(contact.phone || '')}`)}>
+                <Button variant="outline" onClick={() => window.open(`/chat/sms?contact=${encodeURIComponent(contact.phone || '')}`)} size="sm" className="p-2">
                   <MessageSquare className="h-4 w-4" />
                         </Button>
               )}
               <Link href={`/quote/${contact.id}/questionnaire`} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" className="flex items-center gap-2">
-                  <Music className="h-4 w-4" />
+                <Button variant="outline" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm" size="sm">
+                  <Music className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Questionnaire</span>
                 </Button>
               </Link>
@@ -962,88 +963,143 @@ export default function ContactDetailPage() {
           </div>
         )}
 
-        {/* Walkthrough & Questionnaire Sender */}
-        {contact.lead_status !== 'Lost' && 
-         contact.lead_status !== 'Completed' && 
-         contact.email_address && (
-          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-3 text-gray-900">Interactive Tools</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Send interactive walkthroughs and questionnaires to help guide {contact.first_name || 'this lead'} through the booking process.
+        {/* Quick Actions */}
+        {contact.email_address && (
+          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 text-gray-900">Quick Actions</h3>
+            <p className="text-xs sm:text-sm text-gray-600 mb-4">
+              Send important documents and communications to {contact.first_name || 'this contact'}.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Send Walkthrough Button */}
-              {quoteSelections.length === 0 && (
-                <div className="border rounded-lg p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">📋 Pricing Walkthrough</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Help them choose the right package with our interactive questionnaire.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      setEmailModalTemplate('walkthrough');
-                      setShowEmailModal(true);
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Send Walkthrough
-                  </Button>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Send Contract */}
+              {((contracts && contracts.length > 0) || (quoteSelections && quoteSelections.length > 0)) && (
+                <Button
+                  onClick={() => {
+                    setEmailModalTemplate('send_contract');
+                    setShowEmailModal(true);
+                  }}
+                  className="w-full h-auto py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+                >
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Send Contract</span>
+                </Button>
               )}
               
-              {/* Send Questionnaire Button */}
-              {payments.length > 0 && payments.some((p: any) => p.status === 'succeeded' || p.status === 'paid') && (
-                <div className="border rounded-lg p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">🎵 Music Planning Questionnaire</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Collect detailed music preferences after deposit payment.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      setEmailModalTemplate('questionnaire');
-                      setShowEmailModal(true);
-                    }}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    Send Questionnaire
-                  </Button>
-                </div>
+              {/* Send Invoice */}
+              {((invoices && invoices.length > 0) || (quoteSelections && quoteSelections.length > 0)) && (
+                <Button
+                  onClick={() => {
+                    setEmailModalTemplate('send_invoice');
+                    setShowEmailModal(true);
+                  }}
+                  className="w-full h-auto py-3 px-4 bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+                >
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Send Invoice</span>
+                </Button>
               )}
               
-              {quoteSelections.length > 0 && payments.length === 0 && (
-                <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
-                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">🎵 Music Planning Questionnaire</h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                    Available after deposit payment is made.
-                  </p>
-                  <Button
-                    disabled
-                    className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
-                  >
-                    Send Questionnaire
-                  </Button>
-                </div>
+              {/* Send Questionnaire */}
+              {payments.length > 0 && payments.some((p: any) => p.status === 'succeeded' || p.status === 'paid' || p.payment_status === 'Paid') && (
+                <Button
+                  onClick={() => {
+                    setEmailModalTemplate('questionnaire');
+                    setShowEmailModal(true);
+                  }}
+                  className="w-full h-auto py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+                >
+                  <Music className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Send Questionnaire</span>
+                </Button>
+              )}
+              
+              {/* Request Review */}
+              {(contact.lead_status === 'Completed' || (contact.event_date && new Date(contact.event_date) < new Date())) && (
+                <Button
+                  onClick={() => {
+                    setEmailModalTemplate('request_review');
+                    setShowEmailModal(true);
+                  }}
+                  className="w-full h-auto py-3 px-4 bg-yellow-600 hover:bg-yellow-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+                >
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Request Review</span>
+                </Button>
+              )}
+              
+              {/* Send Payment Reminder */}
+              {invoices && invoices.length > 0 && !invoices.every((inv: any) => {
+                const invoicePayments = payments?.filter((p: any) => 
+                  p.invoice_number === inv.invoice_number || 
+                  p.contact_id === contact.id
+                ) || [];
+                const totalPaid = invoicePayments
+                  .filter((p: any) => p.payment_status === 'Paid' || p.status === 'paid' || p.status === 'succeeded')
+                  .reduce((sum: number, p: any) => sum + (parseFloat(p.total_amount) || parseFloat(p.amount) || 0), 0);
+                const invoiceTotal = parseFloat(inv.total_amount) || 0;
+                return totalPaid >= invoiceTotal;
+              }) && (
+                <Button
+                  onClick={() => {
+                    setEmailModalTemplate('payment_reminder');
+                    setShowEmailModal(true);
+                  }}
+                  className="w-full h-auto py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+                >
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Payment Reminder</span>
+                </Button>
+              )}
+              
+              {/* Send Walkthrough (if no quote yet) */}
+              {quoteSelections.length === 0 && contact.lead_status !== 'Lost' && contact.lead_status !== 'Completed' && (
+                <Button
+                  onClick={() => {
+                    setEmailModalTemplate('walkthrough');
+                    setShowEmailModal(true);
+                  }}
+                  className="w-full h-auto py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+                >
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Send Walkthrough</span>
+                </Button>
+              )}
+              
+              {/* Schedule Meeting */}
+              {contact.lead_status !== 'Lost' && contact.lead_status !== 'Completed' && (
+                <Button
+                  onClick={() => {
+                    setEmailModalTemplate('schedule_meeting');
+                    setShowEmailModal(true);
+                  }}
+                  className="w-full h-auto py-3 px-4 bg-teal-600 hover:bg-teal-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+                >
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Schedule Meeting</span>
+                </Button>
               )}
             </div>
           </div>
         )}
 
         {/* Main Content */}
-        <Tabs defaultValue="pipeline" className="space-y-6">
-          <TabsList className="bg-white border rounded-lg p-1">
-            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-            <TabsTrigger value="communications">
-              Communications {communications.length > 0 && `(${communications.length})`}
-            </TabsTrigger>
-            <TabsTrigger value="details">Contact Details</TabsTrigger>
-            <TabsTrigger value="event">Event Information</TabsTrigger>
-            <TabsTrigger value="business">Business Details</TabsTrigger>
-            {socialMessages.length > 0 && (
-              <TabsTrigger value="social">
-                Social Media ({socialMessages.length})
+        <Tabs defaultValue="pipeline" className="space-y-4 sm:space-y-6">
+          <div className="overflow-x-auto">
+            <TabsList className="bg-white border rounded-lg p-1 inline-flex min-w-full sm:min-w-0">
+              <TabsTrigger value="pipeline" className="text-xs sm:text-sm whitespace-nowrap">Pipeline</TabsTrigger>
+              <TabsTrigger value="communications" className="text-xs sm:text-sm whitespace-nowrap">
+                Comm {communications.length > 0 && `(${communications.length})`}
               </TabsTrigger>
-            )}
-          </TabsList>
+              <TabsTrigger value="details" className="text-xs sm:text-sm whitespace-nowrap">Details</TabsTrigger>
+              <TabsTrigger value="event" className="text-xs sm:text-sm whitespace-nowrap">Event</TabsTrigger>
+              <TabsTrigger value="business" className="text-xs sm:text-sm whitespace-nowrap">Business</TabsTrigger>
+              {socialMessages.length > 0 && (
+                <TabsTrigger value="social" className="text-xs sm:text-sm whitespace-nowrap">
+                  Social ({socialMessages.length})
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
 
           <TabsContent value="pipeline">
             <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -1943,6 +1999,125 @@ Ben Murray
 M10 DJ Company
 (901) 410-2020
 djbenmurray@gmail.com`
+    },
+    send_contract: {
+      name: 'Send Contract',
+      subject: `Contract for Your ${contact.event_type?.replace('_', ' ') || 'Event'} - M10 DJ Company`,
+      body: `Hi ${contact.first_name || 'there'},
+
+Great news! I've prepared the contract for your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}.
+
+Please review and sign the contract at your earliest convenience to secure your date. Once I receive the signed contract and deposit, your date will be 100% secured!
+
+Here's the link to view and sign:
+
+You can review all the details, sign electronically, and download a copy for your records. The process is quick and secure.
+
+If you have any questions about the contract terms or anything else, please don't hesitate to reach out. I'm here to make this process as smooth as possible!
+
+Looking forward to working with you!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    send_invoice: {
+      name: 'Send Invoice',
+      subject: `Invoice for Your ${contact.event_type?.replace('_', ' ') || 'Event'} - M10 DJ Company`,
+      body: `Hi ${contact.first_name || 'there'},
+
+I've prepared the invoice for your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}.
+
+You can view your invoice and make a secure payment online:
+
+Here's the link:
+
+The invoice includes all the services we've discussed. You can pay online securely, and you'll receive a receipt automatically.
+
+If you have any questions about the invoice or payment options, please let me know. I'm happy to help!
+
+Thank you for choosing M10 DJ Company!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    request_review: {
+      name: 'Request Review',
+      subject: `How was your ${contact.event_type?.replace('_', ' ') || 'event'}? - We'd love your feedback!`,
+      body: `Hi ${contact.first_name || 'there'},
+
+I hope you had an amazing ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}! 
+
+It was such a pleasure working with you and your guests. I hope the music and entertainment helped make your special day unforgettable!
+
+If you have a moment, I would be incredibly grateful if you could share your experience. Your feedback helps me continue to improve and also helps other couples and event planners who are looking for a great DJ experience.
+
+You can leave a review here:
+• Google: https://g.page/r/[your-google-review-link]
+• Facebook: [your-facebook-page-link]
+
+If you have any specific feedback or suggestions, please feel free to reply to this email. I always appreciate hearing from my clients!
+
+Thank you again for choosing M10 DJ Company. I hope we can work together again in the future!
+
+Warm regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    payment_reminder: {
+      name: 'Payment Reminder',
+      subject: `Payment Reminder - ${contact.event_type?.replace('_', ' ') || 'Event'} Invoice`,
+      body: `Hi ${contact.first_name || 'there'},
+
+I wanted to send a friendly reminder about the outstanding invoice for your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}.
+
+To keep everything on track and ensure your event date is fully secured, please submit your payment at your earliest convenience.
+
+You can view and pay your invoice online:
+
+Here's the link:
+
+If you've already sent payment or have any questions about the invoice, please let me know. I'm happy to help resolve any issues or discuss payment arrangements if needed.
+
+Thank you for your prompt attention to this!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
+    },
+    schedule_meeting: {
+      name: 'Schedule Meeting',
+      subject: `Let's Schedule a Meeting - ${contact.event_type?.replace('_', ' ') || 'Event'} Planning`,
+      body: `Hi ${contact.first_name || 'there'},
+
+As we prepare for your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}, I'd love to schedule a time to discuss the details and ensure everything is aligned with your vision.
+
+Whether it's a quick phone call, video chat, or in-person meeting, I'm flexible with what works best for you. We can discuss:
+
+• Music preferences and playlist planning
+• Timeline and special moments
+• Equipment setup and logistics
+• Any special requests or considerations
+• Final details and confirmation
+
+Please let me know your availability in the coming days, and I'll work with your schedule. You can also call me directly at (901) 410-2020.
+
+Looking forward to our conversation!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
     }
   };
 
@@ -1959,19 +2134,26 @@ djbenmurray@gmail.com`
         let body = template.body;
         
         // Insert links for templates that need them
-        if (contact && (selectedTemplate === 'walkthrough' || selectedTemplate === 'questionnaire')) {
+        if (contact) {
           const baseUrl = typeof window !== 'undefined' 
             ? window.location.origin 
             : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com');
           
           if (selectedTemplate === 'walkthrough') {
             const walkthroughLink = `${baseUrl}/quote/${contact.id}/walkthrough`;
-            // Replace "Here's the link:" with actual link (handle newlines properly)
             body = body.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
           } else if (selectedTemplate === 'questionnaire') {
             const questionnaireLink = `${baseUrl}/quote/${contact.id}/questionnaire`;
-            // Replace "Here's the link:" with actual link (handle newlines properly)
             body = body.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
+          } else if (selectedTemplate === 'send_contract') {
+            const contractLink = `${baseUrl}/quote/${contact.id}/contract`;
+            body = body.replace(/Here's the link to view and sign:\s*\n?/i, `Here's the link to view and sign:\n\n${contractLink}\n\n`);
+          } else if (selectedTemplate === 'send_invoice') {
+            const invoiceLink = `${baseUrl}/quote/${contact.id}/invoice`;
+            body = body.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${invoiceLink}\n\n`);
+          } else if (selectedTemplate === 'payment_reminder') {
+            const invoiceLink = `${baseUrl}/quote/${contact.id}/invoice`;
+            body = body.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${invoiceLink}\n\n`);
           }
         }
         
@@ -2085,15 +2267,23 @@ djbenmurray@gmail.com`
         emailContent += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 VIEW YOUR PERSONALIZED QUOTE\n\nI've created a personalized service selection page for you. Click the link below to view our packages, add-ons, and pricing:\n\n${quoteLink}\n\nThis will help me provide you with an accurate quote tailored to your event!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
       } else if (selectedTemplate === 'walkthrough') {
         // Replace "Here's the link:" placeholder with walkthrough link (handle newlines properly)
-        // If link already inserted (from useEffect), don't duplicate it
         if (!emailContent.includes(walkthroughLink)) {
           emailContent = emailContent.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
         }
       } else if (selectedTemplate === 'questionnaire') {
         // Replace "Here's the link:" placeholder with questionnaire link (handle newlines properly)
-        // If link already inserted (from useEffect), don't duplicate it
         if (!emailContent.includes(questionnaireLink)) {
           emailContent = emailContent.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
+        }
+      } else if (selectedTemplate === 'send_contract') {
+        const contractLink = `${baseUrl}/quote/${contact.id}/contract`;
+        if (!emailContent.includes(contractLink)) {
+          emailContent = emailContent.replace(/Here's the link to view and sign:\s*\n?/i, `Here's the link to view and sign:\n\n${contractLink}\n\n`);
+        }
+      } else if (selectedTemplate === 'send_invoice' || selectedTemplate === 'payment_reminder') {
+        const invoiceLink = `${baseUrl}/quote/${contact.id}/invoice`;
+        if (!emailContent.includes(invoiceLink)) {
+          emailContent = emailContent.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${invoiceLink}\n\n`);
         }
       }
 

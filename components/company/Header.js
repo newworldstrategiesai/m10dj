@@ -298,12 +298,16 @@ export default function Header({ customLogoUrl = null }) {
                 <div className="h-6 w-px bg-gray-300"></div>
                 
                 {/* Admin Link */}
-                <Link
+                <a
                   href="/signin"
                   className="text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.location.href = '/signin';
+                  }}
                 >
                   Admin
-                </Link>
+                </a>
                 
                 {/* CTA Button */}
                 <button 
@@ -421,13 +425,17 @@ export default function Header({ customLogoUrl = null }) {
                       Contact
                     </button>
                     
-                    <Link 
+                    <a 
                       href="/signin" 
                       className="block text-gray-900 hover:text-brand hover:bg-brand/5 font-semibold font-inter py-3 px-4 rounded-lg transition-all"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setIsMobileMenuOpen(false);
+                        window.location.href = '/signin';
+                      }}
                     >
                       Admin Sign In
-                    </Link>
+                    </a>
                   </>
                 )}
                 

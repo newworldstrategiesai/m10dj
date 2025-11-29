@@ -268,7 +268,7 @@ export default function ConfirmationPage() {
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Header />
 
-        <main className="section-container py-12 md:py-20 pb-24 md:pb-24">
+        <main className="section-container py-12 md:py-20 pb-32 md:pb-32">
           {/* Success Header */}
           <div className="text-center mb-12 animate-fade-in">
             <div className="w-24 h-24 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">

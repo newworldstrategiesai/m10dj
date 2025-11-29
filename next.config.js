@@ -20,4 +20,14 @@ module.exports = {
       },
     ],
   },
+  // Exclude backup and copy files from build
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
+  webpack: (config, { isServer }) => {
+    // Exclude backup files and markdown files from build
+    config.module.rules.push({
+      test: /\.(bak|copy|md)$/,
+      use: 'ignore-loader',
+    });
+    return config;
+  },
 }; 

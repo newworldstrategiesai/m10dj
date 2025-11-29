@@ -528,25 +528,25 @@ export default function FloatingAdminAssistant() {
     }
   }, [messages, open]);
 
-  // Assistant handlers
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  // Helper function to send a message
+  const sendMessage = async (messageContent: string) => {
+    if (!messageContent.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: input.trim(),
+      content: messageContent.trim(),
       timestamp: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const messageContent = input.trim();
+    const trimmedContent = messageContent.trim();
     setInput('');
     setIsLoading(true);
 
     const updatedHistory = [
       ...conversationHistory,
-      { role: 'user', content: messageContent }
+      { role: 'user', content: trimmedContent }
     ];
 
     try {
@@ -556,7 +556,7 @@ export default function FloatingAdminAssistant() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: messageContent,
+          message: trimmedContent,
           conversationHistory: updatedHistory.slice(-10)
         })
       });
@@ -600,6 +600,12 @@ export default function FloatingAdminAssistant() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Assistant handlers
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+    await sendMessage(input);
   };
 
   // Import handlers
@@ -810,14 +816,14 @@ export default function FloatingAdminAssistant() {
     <>
       {/* Floating trigger button */}
       {!open && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
           <button
             onClick={() => setOpen(true)}
-            className="group flex items-center gap-3 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2"
+            className="group flex items-center gap-2 sm:gap-3 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-600 px-3 sm:px-4 py-2.5 sm:py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2"
             aria-label="Open Admin Assistant"
           >
             <div className="rounded-full bg-white/10 p-2 transition group-hover:bg-white/20">
-              <IconRobot className="h-4 w-4" />
+              <IconRobot className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <span className="hidden sm:inline">Assistant</span>
           </button>
@@ -828,74 +834,107 @@ export default function FloatingAdminAssistant() {
       {open && (
         <div className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-zinc-900">
           {/* Top Header */}
-          <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 bg-white dark:bg-zinc-900">
-              <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-zinc-900">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 onClick={() => handleClose(false)}
-                className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex-shrink-0"
                 aria-label="Close Admin Assistant"
                 title="Close (ESC)"
               >
                 <IconX className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
               </button>
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
-                  <IconRobot className="h-4 w-4 text-white" />
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <div className="p-1 sm:p-1.5 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex-shrink-0">
+                  <IconRobot className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                 </div>
-                <h1 className="text-lg font-semibold text-zinc-900 dark:text-white">Admin Assistant</h1>
+                <h1 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-white truncate">Admin Assistant</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setActiveTab('assistant')}
                 className={cn(
-                  "flex items-center gap-2",
+                  "flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm",
                   activeTab === 'assistant' && "bg-zinc-100 dark:bg-zinc-800"
                 )}
               >
-                <IconRobot className="h-4 w-4" />
-                Chat
+                <IconRobot className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Chat</span>
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setActiveTab('import')}
                 className={cn(
-                  "flex items-center gap-2",
+                  "flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm",
                   activeTab === 'import' && "bg-zinc-100 dark:bg-zinc-800"
                 )}
               >
-                <IconMessageCirclePlus className="h-4 w-4" />
-                Import
+                <IconMessageCirclePlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Import</span>
               </Button>
             </div>
           </div>
 
           {/* Main Content Area */}
           <div className="flex-1 flex overflow-hidden">
-            {/* Sidebar - Only show for assistant tab */}
+            {/* Sidebar - Only show for assistant tab, hidden on mobile */}
             {activeTab === 'assistant' && (
-              <div className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4 overflow-y-auto">
+              <div className="hidden lg:block w-64 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4 overflow-y-auto">
                 <div className="space-y-4">
                 <div>
                     <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
                       Quick Actions
                     </h3>
                     <div className="space-y-1">
+                      {/* Daily Overview */}
                       <button
-                        onClick={() => setInput("Show me all new leads from this week")}
+                        onClick={() => sendMessage("What's on my dashboard today?")}
+                        className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
+                      >
+                        📈 Today's Dashboard
+                      </button>
+                      
+                      {/* Leads & Opportunities */}
+                      <button
+                        onClick={() => sendMessage("Show me all new leads from this week")}
                         className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
                       >
                         📊 New Leads This Week
                       </button>
                       <button
-                        onClick={() => setInput("What&apos;s on my dashboard today?")}
+                        onClick={() => sendMessage("Show me all booked events")}
                         className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
                       >
-                        📈 Today&apos;s Dashboard
+                        ✅ Booked Events
                       </button>
+                      
+                      {/* Upcoming & Action Items */}
+                      <button
+                        onClick={() => sendMessage("What events are coming up this week?")}
+                        className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
+                      >
+                        📅 Upcoming Events
+                      </button>
+                      <button
+                        onClick={() => sendMessage("Show me leads that need follow-up")}
+                        className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
+                      >
+                        🔔 Follow-ups Needed
+                      </button>
+                      
+                      {/* Revenue & Analytics */}
+                      <button
+                        onClick={() => sendMessage("What's my revenue this month?")}
+                        className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
+                      >
+                        💰 Monthly Revenue
+                      </button>
+                      
+                      {/* Tools */}
                       <button
                         onClick={() => setActiveTab('import')}
                         className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
@@ -913,8 +952,8 @@ export default function FloatingAdminAssistant() {
               {activeTab === 'assistant' ? (
                 <>
                   {/* Messages Area */}
-                  <div className="flex-1 overflow-y-auto px-4 py-6" ref={scrollRef}>
-                    <div className="max-w-3xl mx-auto space-y-6">
+                  <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6" ref={scrollRef}>
+                    <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
                       {messages.map((message) => (
                         <div
                           key={message.id}
@@ -924,28 +963,32 @@ export default function FloatingAdminAssistant() {
                           )}
                         >
                           {message.role === 'assistant' && (
-                            <Avatar className="h-9 w-9 flex-shrink-0 ring-2 ring-zinc-200 dark:ring-zinc-700">
+                            <Avatar className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 ring-2 ring-zinc-200 dark:ring-zinc-700">
                               <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white">
-                                <IconRobot className="h-5 w-5" />
+                                <IconRobot className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
                               </AvatarFallback>
                             </Avatar>
                           )}
 
                           <div className={cn(
-                            "flex flex-col max-w-[80%]",
-                            message.role === 'user' ? 'items-end' : 'items-start'
+                            "flex flex-col",
+                            message.role === 'user' 
+                              ? 'items-end max-w-[85%] sm:max-w-[80%] md:max-w-[75%]' 
+                              : 'items-start max-w-[90%] sm:max-w-[85%] md:max-w-[90%] lg:max-w-[95%]'
                           )}>
                             <div className={cn(
-                              "rounded-2xl px-4 py-3 shadow-sm transition-shadow",
+                              "rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm transition-shadow w-full",
                               message.role === 'user'
                                 ? "bg-gradient-to-br from-purple-600 via-indigo-600 to-purple-700 text-white rounded-br-md shadow-md shadow-purple-500/20"
                                 : "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 rounded-bl-md shadow-sm"
                             )}>
-                              <div className="prose prose-sm dark:prose-invert max-w-none">
+                              <div className="prose prose-sm dark:prose-invert max-w-none text-sm sm:text-base">
                                 <MessageContentRenderer
                                   content={message.content}
                                   timestamp={message.timestamp}
                                   functionsCalled={message.functions_called}
+                                  onNavigate={() => handleClose(false)}
+                                  onSendMessage={sendMessage}
                                 />
                               </div>
                             </div>
@@ -965,14 +1008,14 @@ export default function FloatingAdminAssistant() {
                           </div>
 
                           {message.role === 'user' && (
-                            <Avatar className="h-9 w-9 flex-shrink-0 ring-2 ring-purple-200 dark:ring-purple-900">
+                            <Avatar className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 ring-2 ring-purple-200 dark:ring-purple-900">
                               <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold">
                                 {user?.email ? (
-                                  <span className="text-xs">
+                                  <span className="text-xs sm:text-sm">
                                     {user.email.charAt(0).toUpperCase()}
                                   </span>
                                 ) : (
-                                  <IconUser className="h-5 w-5" />
+                                  <IconUser className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
                                 )}
                               </AvatarFallback>
                             </Avatar>
@@ -981,16 +1024,16 @@ export default function FloatingAdminAssistant() {
                       ))}
 
                       {isLoading && (
-                        <div className="flex gap-4 justify-start">
-                          <Avatar className="h-8 w-8 flex-shrink-0">
+                        <div className="flex gap-3 sm:gap-4 justify-start">
+                          <Avatar className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0">
                             <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white">
-                              <IconRobot className="h-4 w-4" />
+                              <IconRobot className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </AvatarFallback>
                           </Avatar>
-                          <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl px-4 py-3">
+                          <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3">
                             <div className="flex items-center gap-2">
-                              <IconLoader2 className="h-4 w-4 animate-spin text-zinc-500" />
-                              <span className="text-sm text-zinc-500">Thinking...</span>
+                              <IconLoader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-zinc-500" />
+                              <span className="text-xs sm:text-sm text-zinc-500">Thinking...</span>
                             </div>
                           </div>
                         </div>
@@ -998,17 +1041,69 @@ export default function FloatingAdminAssistant() {
                     </div>
                   </div>
 
+                  {/* Mobile Quick Actions - Only show on mobile, above input */}
+                  {activeTab === 'assistant' && (
+                    <div className="lg:hidden border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2">
+                      <div className="max-w-3xl mx-auto">
+                        <div className="flex gap-2 overflow-x-auto pb-2 -mx-3 px-3 snap-x snap-mandatory">
+                          <button
+                            onClick={() => sendMessage("What's on my dashboard today?")}
+                            className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 whitespace-nowrap transition-colors"
+                          >
+                            📈 Dashboard
+                          </button>
+                          <button
+                            onClick={() => sendMessage("Show me all new leads from this week")}
+                            className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 whitespace-nowrap transition-colors"
+                          >
+                            📊 New Leads
+                          </button>
+                          <button
+                            onClick={() => sendMessage("Show me all booked events")}
+                            className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 whitespace-nowrap transition-colors"
+                          >
+                            ✅ Booked
+                          </button>
+                          <button
+                            onClick={() => sendMessage("What events are coming up this week?")}
+                            className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 whitespace-nowrap transition-colors"
+                          >
+                            📅 Upcoming
+                          </button>
+                          <button
+                            onClick={() => sendMessage("Show me leads that need follow-up")}
+                            className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 whitespace-nowrap transition-colors"
+                          >
+                            🔔 Follow-ups
+                          </button>
+                          <button
+                            onClick={() => sendMessage("What's my revenue this month?")}
+                            className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 whitespace-nowrap transition-colors"
+                          >
+                            💰 Revenue
+                          </button>
+                          <button
+                            onClick={() => setActiveTab('import')}
+                            className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 whitespace-nowrap transition-colors"
+                          >
+                            📥 Import
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Input Area */}
-                  <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-4">
+                  <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 sm:px-4 py-3 sm:py-4">
                     <div className="max-w-3xl mx-auto">
-                      <div className="flex gap-3 items-end">
+                      <div className="flex gap-2 sm:gap-3 items-end">
                         <div className="flex-1 relative">
                           <Textarea
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyPress}
                             placeholder="Message Admin Assistant..."
-                            className="min-h-[52px] max-h-[200px] resize-none pr-12 rounded-xl border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-purple-500"
+                            className="min-h-[48px] sm:min-h-[52px] max-h-[150px] sm:max-h-[200px] resize-none pr-11 sm:pr-12 rounded-xl border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
                             disabled={isLoading}
                             rows={1}
                           />
@@ -1017,16 +1112,16 @@ export default function FloatingAdminAssistant() {
                           onClick={handleSend}
                           disabled={!input.trim() || isLoading}
                           size="lg"
-                          className="h-[52px] w-[52px] rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 p-0"
+                          className="h-[48px] w-[48px] sm:h-[52px] sm:w-[52px] rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 p-0 flex-shrink-0"
                         >
                           {isLoading ? (
-                            <IconLoader2 className="h-5 w-5 animate-spin" />
+                            <IconLoader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                           ) : (
-                            <IconSend className="h-5 w-5" />
+                            <IconSend className="h-4 w-4 sm:h-5 sm:w-5" />
                           )}
                         </Button>
                       </div>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 text-center">
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 sm:mt-2 text-center hidden sm:block">
                         Press Enter to send, Shift+Enter for new line
                       </p>
                     </div>
@@ -1035,8 +1130,8 @@ export default function FloatingAdminAssistant() {
               ) : (
                 <>
                   {/* Import Tab Content */}
-                  <div className="flex-1 overflow-y-auto px-6 py-4">
-                    <div className="max-w-4xl mx-auto space-y-4">
+                  <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-4">
+                    <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
                   {/* Progress Steps */}
                   {importStatus.state === 'processing' && (
                     <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">
@@ -1090,7 +1185,7 @@ export default function FloatingAdminAssistant() {
                   )}
 
                   {/* Input Method Toggle */}
-                  <div className="flex gap-2 mb-4">
+                  <div className="flex gap-2 mb-3 sm:mb-4">
                     <Button
                       type="button"
                       variant={inputMode === 'paste' ? 'default' : 'outline'}
@@ -1099,9 +1194,9 @@ export default function FloatingAdminAssistant() {
                         setInputMode('paste');
                         setTimeout(() => textareaRef.current?.focus(), 100);
                       }}
-                      className="flex-1"
+                      className="flex-1 min-h-[40px] text-xs sm:text-sm"
                     >
-                      <IconClipboard className="h-4 w-4 mr-2" />
+                      <IconClipboard className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       Paste Text
                     </Button>
                     <Button
@@ -1112,9 +1207,9 @@ export default function FloatingAdminAssistant() {
                         setInputMode('upload');
                         fileInputRef.current?.click();
                       }}
-                      className="flex-1"
+                      className="flex-1 min-h-[40px] text-xs sm:text-sm"
                     >
-                      <IconFileUpload className="h-4 w-4 mr-2" />
+                      <IconFileUpload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       Upload File
                     </Button>
                   </div>
@@ -1125,7 +1220,7 @@ export default function FloatingAdminAssistant() {
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     className={cn(
-                        "border-2 border-dashed rounded-lg p-6 text-center transition-colors mb-4",
+                        "border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors mb-3 sm:mb-4",
                       "hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
                     )}
                   >
@@ -1136,12 +1231,12 @@ export default function FloatingAdminAssistant() {
                       onChange={handleFileSelect}
                       className="hidden"
                     />
-                    <IconFileUpload className="h-8 w-8 mx-auto mb-2 text-zinc-400" />
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-1">
+                    <IconFileUpload className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-zinc-400" />
+                    <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 mb-1">
                       Drag and drop a file here, or{' '}
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-blue-600 hover:underline dark:text-blue-400"
+                        className="text-blue-600 hover:underline dark:text-blue-400 font-medium"
                       >
                         browse
                       </button>
@@ -1154,27 +1249,28 @@ export default function FloatingAdminAssistant() {
 
                   {/* Thread Input */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                      <label className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-200">
                         Conversation Transcript
                       </label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         {inputMode === 'paste' && (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={handlePaste}
-                            className="h-7 text-xs"
+                            className="h-8 sm:h-7 text-xs px-2 sm:px-3"
                           >
                             <IconClipboard className="h-3 w-3 mr-1" />
-                            Paste from Clipboard
+                            <span className="hidden sm:inline">Paste from Clipboard</span>
+                            <span className="sm:hidden">Paste</span>
                           </Button>
                         )}
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowHelp(!showHelp)}
-                          className="h-7 text-xs"
+                          className="h-8 sm:h-7 text-xs px-2 sm:px-3"
                         >
                           <IconKeyboard className="h-3 w-3 mr-1" />
                           Help
@@ -1188,7 +1284,7 @@ export default function FloatingAdminAssistant() {
                             setFieldUpdateChoices({});
                             setEmailExtractedData(null);
                           }}
-                          className="h-7 text-xs"
+                          className="h-8 sm:h-7 text-xs px-2 sm:px-3"
                           disabled={!threadText.trim()}
                         >
                           Clear
@@ -1204,7 +1300,7 @@ export default function FloatingAdminAssistant() {
                         ? `Paste SMS thread or email content here (Ctrl/Cmd+V)...\n\nSMS Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...\n\nEmail Example:\nHey, Ben! I have collected songs for the first dances...`
                         : `Paste SMS thread or email content here...\n\nSMS Example:\n+1 (901) 562-3974:\n  Hey, I got your number from Tay...\n\nEmail Example:\nHey, Ben! I have collected songs for the first dances...`
                       }
-                      className="min-h-[200px] resize-vertical font-mono text-sm"
+                      className="min-h-[200px] sm:min-h-[250px] resize-vertical font-mono text-xs sm:text-sm"
                     />
                     {showHelp && (
                       <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
@@ -1868,12 +1964,12 @@ export default function FloatingAdminAssistant() {
                   </div>
 
                   {/* Import Footer */}
-                  <div className="border-t border-zinc-200 dark:border-zinc-800 px-6 py-4 bg-white dark:bg-zinc-900">
+                  <div className="border-t border-zinc-200 dark:border-zinc-800 px-3 sm:px-6 py-3 sm:py-4 bg-white dark:bg-zinc-900">
                     <div className="max-w-4xl mx-auto">
                       <Button
                         onClick={handleImport}
                         disabled={!threadText.trim() || importStatus.state === 'processing'}
-                        className="w-full sm:w-auto"
+                        className="w-full sm:w-auto min-h-[44px]"
                         size="lg"
                       >
                         {importStatus.state === 'processing' ? (

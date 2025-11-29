@@ -125,6 +125,31 @@ export default async function handler(req, res) {
     }
 
     console.log('Invoice updated successfully:', data);
+    
+    // Ensure invoice and contract drafts exist (non-blocking, only if missing)
+    // This handles cases where drafts weren't created initially
+    (async () => {
+      try {
+        const { ensureInvoiceExists } = await import('../../../../utils/ensure-invoice-exists');
+        const { ensureContractExists } = await import('../../../../utils/ensure-contract-exists');
+        
+        // Ensure invoice exists (only creates if missing)
+        const invoiceResult = await ensureInvoiceExists(quoteId, supabase);
+        if (invoiceResult.success && invoiceResult.created) {
+          console.log(`✅ Created missing invoice draft for quote ${quoteId}`);
+        }
+        
+        // Ensure contract exists (only creates if missing)
+        const contractResult = await ensureContractExists(quoteId, supabase);
+        if (contractResult.success && contractResult.created) {
+          console.log(`✅ Created missing contract draft for quote ${quoteId}`);
+        }
+      } catch (err) {
+        console.warn('⚠️ Error ensuring invoice/contract drafts exist (non-critical):', err);
+        // Non-critical - quote is updated, drafts can be created later
+      }
+    })();
+    
     // Set cache-control headers to prevent caching
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');

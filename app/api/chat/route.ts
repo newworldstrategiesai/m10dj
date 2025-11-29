@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 const BASE_PROMPT = `

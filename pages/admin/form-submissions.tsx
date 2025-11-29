@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import {
@@ -24,7 +25,8 @@ import {
   RefreshCw,
   Link as LinkIcon,
   Loader,
-  X
+  X,
+  ShieldAlert
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,7 +40,7 @@ interface FormSubmission {
   event_date: string | null;
   location: string | null;
   message: string | null;
-  status: 'new' | 'contacted' | 'quoted' | 'booked' | 'completed' | 'cancelled';
+  status: 'new' | 'contacted' | 'quoted' | 'booked' | 'completed' | 'cancelled' | 'spam';
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +56,7 @@ interface CommunicationLog {
 }
 
 export default function FormSubmissionsPage() {
+  const router = useRouter();
   const supabase = createClientComponentClient();
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [filteredSubmissions, setFilteredSubmissions] = useState<FormSubmission[]>([]);
@@ -65,6 +68,7 @@ export default function FormSubmissionsPage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [lookingUpContact, setLookingUpContact] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSubmissions();
@@ -152,7 +156,16 @@ export default function FormSubmissionsPage() {
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating status:', error);
+        // Check if it's a constraint error
+        if (error.message?.includes('check constraint') || error.message?.includes('violates check constraint')) {
+          alert(`Failed to update status: The database doesn't support the 'spam' status yet. Please run the migration: supabase/migrations/add_spam_status_to_submissions.sql`);
+        } else {
+          alert(`Failed to update status: ${error.message}`);
+        }
+        throw error;
+      }
 
       // Update local state
       setSubmissions(prev =>
@@ -164,7 +177,6 @@ export default function FormSubmissionsPage() {
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Failed to update status');
     }
   };
 
@@ -199,6 +211,7 @@ export default function FormSubmissionsPage() {
       booked: { label: 'Booked', className: 'bg-green-100 text-green-800 border-green-200' },
       completed: { label: 'Completed', className: 'bg-gray-100 text-gray-800 border-gray-200' },
       cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-800 border-red-200' },
+      spam: { label: 'Spam', className: 'bg-orange-100 text-orange-800 border-orange-200' },
     };
 
     const badge = badges[status] || badges.new;
@@ -207,6 +220,40 @@ export default function FormSubmissionsPage() {
         {badge.label}
       </span>
     );
+  };
+
+  const findContactByEmail = async (email: string) => {
+    try {
+      setLookingUpContact(email);
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('email_address', email)
+        .is('deleted_at', null)
+        .limit(1)
+        .single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      return data.id;
+    } catch (error) {
+      console.error('Error finding contact:', error);
+      return null;
+    } finally {
+      setLookingUpContact(null);
+    }
+  };
+
+  const handleNameClick = async (e: React.MouseEvent, submission: FormSubmission) => {
+    e.stopPropagation();
+    const contactId = await findContactByEmail(submission.email);
+    if (contactId) {
+      router.push(`/admin/contacts/${contactId}`);
+    } else {
+      alert(`No contact found with email: ${submission.email}\n\nYou can create a contact from this submission.`);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -256,13 +303,13 @@ export default function FormSubmissionsPage() {
     <AdminLayout title="Form Submissions" description="Manage website contact form submissions">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <ClipboardList className="w-8 h-8 text-[#fcba00]" />
-              Form Submissions
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+          <div className="flex-1 min-w-0 pr-4">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2 mb-1">
+              <ClipboardList className="w-8 h-8 text-[#fcba00] flex-shrink-0" />
+              <span>Form Submissions</span>
             </h1>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 whitespace-normal overflow-visible">
               Contact form submissions from your website
             </p>
           </div>
@@ -270,7 +317,7 @@ export default function FormSubmissionsPage() {
             onClick={handleRefresh}
             variant="slim"
             disabled={refreshing}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 flex-shrink-0 self-start sm:self-center"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Refresh</span>
@@ -348,6 +395,7 @@ export default function FormSubmissionsPage() {
                 <option value="booked">Booked</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="spam">Spam</option>
               </select>
             </div>
           </div>
@@ -446,7 +494,7 @@ export default function FormSubmissionsPage() {
 
       {/* Submission Detail Modal */}
       {selectedSubmission && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-[#fcba00] to-[#d99f00] px-6 py-5 flex items-center justify-between">
@@ -477,6 +525,7 @@ export default function FormSubmissionsPage() {
                   <option value="booked">✅ Booked</option>
                   <option value="completed">🎉 Completed</option>
                   <option value="cancelled">❌ Cancelled</option>
+                  <option value="spam">🚫 Spam</option>
                 </select>
               </div>
 
@@ -490,7 +539,18 @@ export default function FormSubmissionsPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-xs font-medium text-gray-500 uppercase">Name</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedSubmission.name}</p>
+                      <button
+                        onClick={(e) => handleNameClick(e, selectedSubmission)}
+                        disabled={lookingUpContact === selectedSubmission.email}
+                        className="text-sm font-semibold text-gray-900 hover:text-[#fcba00] hover:underline transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {selectedSubmission.name}
+                        {lookingUpContact === selectedSubmission.email ? (
+                          <Loader className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <ExternalLink className="w-3 h-3" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
@@ -665,10 +725,10 @@ export default function FormSubmissionsPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-white px-6 py-4 border-t border-gray-200 flex gap-3">
+            <div className="bg-white px-6 py-4 border-t border-gray-200 flex flex-wrap gap-3">
               <button
                 onClick={() => setShowEmailModal(true)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium min-w-[140px]"
               >
                 <Mail className="w-4 h-4" />
                 <span>Send Email</span>
@@ -676,12 +736,24 @@ export default function FormSubmissionsPage() {
               {selectedSubmission.phone && (
                 <a
                   href={`tel:${selectedSubmission.phone}`}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium min-w-[140px]"
                 >
                   <Phone className="w-4 h-4" />
                   <span>Call</span>
                 </a>
               )}
+              <button
+                onClick={() => {
+                  if (confirm('Mark this submission as spam? This will help filter out unwanted submissions.')) {
+                    updateSubmissionStatus(selectedSubmission.id, 'spam');
+                  }
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors font-medium border border-orange-200"
+              >
+                <ShieldAlert className="w-4 h-4" />
+                <span className="hidden sm:inline">Mark as Spam</span>
+                <span className="sm:hidden">Spam</span>
+              </button>
               <button
                 onClick={() => {
                   if (confirm('Delete this submission?')) {
@@ -691,7 +763,8 @@ export default function FormSubmissionsPage() {
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-200"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>Delete</span>
+                <span className="hidden sm:inline">Delete</span>
+                <span className="sm:hidden">Del</span>
               </button>
             </div>
           </div>
@@ -974,7 +1047,7 @@ djbenmurray@gmail.com`
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
