@@ -444,8 +444,6 @@ export default function GeneralRequestsPage({
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
         <meta name="mobile-web-app-capable" content="yes" />
-        {/* Preload cover photo for faster loading */}
-        <link rel="preload" as="image" href={coverPhoto} />
         <style jsx global>{`
           @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -614,36 +612,28 @@ export default function GeneralRequestsPage({
         
         {!embedMode && <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} />}
         
-        {/* Hero Section with Cover Photo */}
+        {/* Hero Section with Text Fallback */}
         {!embedMode && (
-          <div className="relative w-full h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px] overflow-hidden top-0" style={{ zIndex: 0 }}>
-            {/* Background Image - Optimized loading */}
-            <div className="absolute inset-0 z-0">
-              <img
-                src={coverPhoto}
-                alt="Cover photo"
-                className="absolute inset-0 w-full h-full object-cover"
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-              {/* Fallback background color */}
-              <div className="absolute inset-0 bg-[#1a1a1a] -z-10"></div>
-            </div>
-            {/* Overlay gradient for better text readability - transparent at top, black at bottom */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10"></div>
-            
+          <div className="relative w-full h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px] overflow-hidden top-0 bg-gradient-to-b from-gray-900 via-black to-black" style={{ zIndex: 0 }}>
             {/* Content overlay */}
-            <div className="relative z-20 h-full flex flex-col justify-between items-center text-center px-4 pb-6 sm:pb-12" style={{ paddingTop: '80px' }}>
-              {/* Top spacer - keeps content balanced */}
-              <div className="flex-1"></div>
+            <div className="relative z-20 h-full flex flex-col justify-center items-center text-center px-4" style={{ paddingTop: '80px' }}>
+              {/* Artist Name */}
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 drop-shadow-2xl">
+                DJ Ben Murray
+              </h1>
+              
+              {/* Location */}
+              <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl text-white/90 mb-3 sm:mb-4 drop-shadow-lg">
+                Silky O' Sullivan's
+              </p>
+              
+              {/* Date */}
+              <p className="text-lg sm:text-xl md:text-2xl text-white/80 drop-shadow-md">
+                11.29.25
+              </p>
               
               {/* Bottom section with social icons */}
-              <div className="w-full flex flex-col items-center gap-4">
+              <div className="absolute bottom-6 sm:bottom-12 w-full flex flex-col items-center gap-4">
                 {/* Social Links - Positioned at bottom */}
                 {organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0 ? (
                   <div className="flex items-center justify-center gap-3">
