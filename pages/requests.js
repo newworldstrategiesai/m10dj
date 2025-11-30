@@ -104,13 +104,44 @@ export default function GeneralRequestsPage({
     loading: settingsLoading
   } = usePaymentSettings();
 
-  // Apply dark mode only on requests page
+  // Apply dark mode only on requests page - ensure it overrides any theme settings
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      document.documentElement.classList.add('dark');
+      // Force dark mode on requests page
+      const applyDarkMode = () => {
+        document.documentElement.classList.add('dark');
+        // Also set data attribute to prevent theme provider from overriding
+        document.documentElement.setAttribute('data-force-dark', 'true');
+      };
+      
+      // Apply immediately
+      applyDarkMode();
+      
+      // Also apply after a short delay to override any theme provider changes
+      const timeoutId = setTimeout(applyDarkMode, 100);
+      
+      // Monitor for theme changes and re-apply dark mode
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            if (!document.documentElement.classList.contains('dark')) {
+              applyDarkMode();
+            }
+          }
+        });
+      });
+      
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+      
       // Cleanup: remove dark mode when component unmounts (user navigates away)
       return () => {
+        clearTimeout(timeoutId);
+        observer.disconnect();
         document.documentElement.classList.remove('dark');
+        document.documentElement.removeAttribute('data-force-dark');
       };
     }
   }, []);
@@ -413,6 +444,8 @@ export default function GeneralRequestsPage({
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
         <meta name="mobile-web-app-capable" content="yes" />
+        {/* Preload cover photo for faster loading */}
+        <link rel="preload" as="image" href={coverPhoto} />
         <style jsx global>{`
           @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -584,17 +617,25 @@ export default function GeneralRequestsPage({
         {/* Hero Section with Cover Photo */}
         {!embedMode && (
           <div className="relative w-full h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px] overflow-hidden top-0" style={{ zIndex: 0 }}>
-            {/* Background Image */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat z-0"
-              style={{
-                backgroundImage: `url(${coverPhoto})`,
-                backgroundColor: '#1a1a1a', // Fallback dark background
-              }}
-            >
-              {/* Overlay gradient for better text readability - transparent at top, black at bottom */}
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10"></div>
+            {/* Background Image - Optimized loading */}
+            <div className="absolute inset-0 z-0">
+              <img
+                src={coverPhoto}
+                alt="Cover photo"
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              {/* Fallback background color */}
+              <div className="absolute inset-0 bg-[#1a1a1a] -z-10"></div>
             </div>
+            {/* Overlay gradient for better text readability - transparent at top, black at bottom */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10"></div>
             
             {/* Content overlay */}
             <div className="relative z-20 h-full flex flex-col justify-between items-center text-center px-4 pb-6 sm:pb-12" style={{ paddingTop: '80px' }}>

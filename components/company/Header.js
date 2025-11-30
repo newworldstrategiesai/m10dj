@@ -363,127 +363,129 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
               </div>
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-6">
-              {/* Public Navigation - Hide on quote pages */}
-              {!(isQuotePage && quoteId && isValidQuote) && (
-                <>
-                  <Link href="/" className={`font-medium text-sm transition-colors py-2 ${
-                    shouldBeTransparent && !isScrolled 
-                      ? 'text-white hover:text-yellow-300' 
-                      : 'text-gray-700 dark:text-gray-200 hover:text-brand'
-                  }`}>
-                    Home
-                  </Link>
-                  
-                  {/* Services Dropdown */}
-                  <div className="relative group">
-                    <button
-                      className={`flex items-center font-medium text-sm transition-colors py-2 ${
-                        shouldBeTransparent && !isScrolled 
-                          ? 'text-white hover:text-yellow-300' 
-                          : 'text-gray-700 dark:text-gray-200 hover:text-brand'
-                      }`}
-                      onClick={() => toggleDropdown('services')}
-                    >
-                      Services
-                      <ChevronDown className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" />
-                    </button>
-                    {openDropdown === 'services' && (
-                      <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-black rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-50 animate-fade-in">
-                        {services.map((service) => (
-                          <Link
-                            key={service.name}
-                            href={service.href}
-                            className="block px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-brand/5 dark:hover:bg-brand/10 hover:text-brand font-inter text-sm transition-colors"
-                            onClick={() => {
-                              closeDropdown();
-                              // trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'header_dropdown');
-                            }}
-                          >
-                            {service.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+            {/* Desktop Navigation - Hide on requests page */}
+            {!isRequestsPage && (
+              <nav className="hidden lg:flex items-center space-x-6">
+                {/* Public Navigation - Hide on quote pages */}
+                {!(isQuotePage && quoteId && isValidQuote) && (
+                  <>
+                    <Link href="/" className={`font-medium text-sm transition-colors py-2 ${
+                      shouldBeTransparent && !isScrolled 
+                        ? 'text-white hover:text-yellow-300' 
+                        : 'text-gray-700 dark:text-gray-200 hover:text-brand'
+                    }`}>
+                      Home
+                    </Link>
+                    
+                    {/* Services Dropdown */}
+                    <div className="relative group">
+                      <button
+                        className={`flex items-center font-medium text-sm transition-colors py-2 ${
+                          shouldBeTransparent && !isScrolled 
+                            ? 'text-white hover:text-yellow-300' 
+                            : 'text-gray-700 dark:text-gray-200 hover:text-brand'
+                        }`}
+                        onClick={() => toggleDropdown('services')}
+                      >
+                        Services
+                        <ChevronDown className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" />
+                      </button>
+                      {openDropdown === 'services' && (
+                        <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-black rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-50 animate-fade-in">
+                          {services.map((service) => (
+                            <Link
+                              key={service.name}
+                              href={service.href}
+                              className="block px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-brand/5 dark:hover:bg-brand/10 hover:text-brand font-inter text-sm transition-colors"
+                              onClick={() => {
+                                closeDropdown();
+                                // trackServiceInterest(service.name.toLowerCase().replace(/\s+/g, '_'), 'header_dropdown');
+                              }}
+                            >
+                              {service.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Areas Dropdown */}
-                  <div className="relative group">
-                    <button
-                      className={`flex items-center font-medium text-sm transition-colors py-2 ${
-                        shouldBeTransparent && !isScrolled 
-                          ? 'text-white hover:text-yellow-300' 
-                          : 'text-gray-700 dark:text-gray-200 hover:text-brand'
-                      }`}
-                      onClick={() => toggleDropdown('areas')}
-                    >
-                      Service Areas
-                      <ChevronDown className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" />
-                    </button>
-                    {openDropdown === 'areas' && (
-                      <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-black rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-50 animate-fade-in max-h-96 overflow-y-auto">
-                        {areas.map((area) => (
-                          <Link
-                            key={area.name}
-                            href={area.href}
-                            className="block px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-brand/5 dark:hover:bg-brand/10 hover:text-brand font-inter text-sm transition-colors"
-                            onClick={closeDropdown}
-                          >
-                            {area.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                    {/* Areas Dropdown */}
+                    <div className="relative group">
+                      <button
+                        className={`flex items-center font-medium text-sm transition-colors py-2 ${
+                          shouldBeTransparent && !isScrolled 
+                            ? 'text-white hover:text-yellow-300' 
+                            : 'text-gray-700 dark:text-gray-200 hover:text-brand'
+                        }`}
+                        onClick={() => toggleDropdown('areas')}
+                      >
+                        Service Areas
+                        <ChevronDown className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" />
+                      </button>
+                      {openDropdown === 'areas' && (
+                        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-black rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-50 animate-fade-in max-h-96 overflow-y-auto">
+                          {areas.map((area) => (
+                            <Link
+                              key={area.name}
+                              href={area.href}
+                              className="block px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-brand/5 dark:hover:bg-brand/10 hover:text-brand font-inter text-sm transition-colors"
+                              onClick={closeDropdown}
+                            >
+                              {area.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
-                  <Link href="/about" className={`font-medium text-sm transition-colors py-2 ${
-                    shouldBeTransparent && !isScrolled 
-                      ? 'text-white hover:text-yellow-300' 
-                      : 'text-gray-700 dark:text-gray-200 hover:text-brand'
-                  }`}>
-                    About
-                  </Link>
-                  
-                  <Link href="/contact" className={`font-medium text-sm transition-colors py-2 ${
-                    shouldBeTransparent && !isScrolled 
-                      ? 'text-white hover:text-yellow-300' 
-                      : 'text-gray-700 dark:text-gray-200 hover:text-brand'
-                  }`}>
-                    Contact
-                  </Link>
-                </>
-              )}
-              
-              {/* Customer Navigation Links - Only show on valid quote pages */}
-              {isQuotePage && quoteId && isValidQuote && (
-                <>
-                  <Link href={`/quote/${quoteId}/events`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    My Events
-                  </Link>
-                  <Link href={`/quote/${quoteId}/my-songs`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
-                    <Music className="w-4 h-4" />
-                    My Songs
-                  </Link>
-                  <Link href={`/quote/${quoteId}/invoice`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
-                    <FileText className="w-4 h-4" />
-                    Invoice
-                  </Link>
-                  <Link href={`/quote/${quoteId}/contract`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
-                    <FileText className="w-4 h-4" />
-                    Contract
-                  </Link>
-                  <Link href={`/quote/${quoteId}/payment`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
-                    <CreditCard className="w-4 h-4" />
-                    {hasPayments ? 'Payments' : 'Payment'}
-                  </Link>
-                </>
-              )}
-            </nav>
+                    <Link href="/about" className={`font-medium text-sm transition-colors py-2 ${
+                      shouldBeTransparent && !isScrolled 
+                        ? 'text-white hover:text-yellow-300' 
+                        : 'text-gray-700 dark:text-gray-200 hover:text-brand'
+                    }`}>
+                      About
+                    </Link>
+                    
+                    <Link href="/contact" className={`font-medium text-sm transition-colors py-2 ${
+                      shouldBeTransparent && !isScrolled 
+                        ? 'text-white hover:text-yellow-300' 
+                        : 'text-gray-700 dark:text-gray-200 hover:text-brand'
+                    }`}>
+                      Contact
+                    </Link>
+                  </>
+                )}
+                
+                {/* Customer Navigation Links - Only show on valid quote pages */}
+                {isQuotePage && quoteId && isValidQuote && (
+                  <>
+                    <Link href={`/quote/${quoteId}/events`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      My Events
+                    </Link>
+                    <Link href={`/quote/${quoteId}/my-songs`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                      <Music className="w-4 h-4" />
+                      My Songs
+                    </Link>
+                    <Link href={`/quote/${quoteId}/invoice`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                      <FileText className="w-4 h-4" />
+                      Invoice
+                    </Link>
+                    <Link href={`/quote/${quoteId}/contract`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                      <FileText className="w-4 h-4" />
+                      Contract
+                    </Link>
+                    <Link href={`/quote/${quoteId}/payment`} className="text-gray-700 dark:text-gray-200 hover:text-brand font-medium text-sm transition-colors py-2 flex items-center gap-1">
+                      <CreditCard className="w-4 h-4" />
+                      {hasPayments ? 'Payments' : 'Payment'}
+                    </Link>
+                  </>
+                )}
+              </nav>
+            )}
 
-            {/* Contact Info & CTA - Hide on quote pages */}
-            {!(isQuotePage && quoteId && isValidQuote) && (
+            {/* Contact Info & CTA - Hide on quote pages and requests page */}
+            {!(isQuotePage && quoteId && isValidQuote) && !isRequestsPage && (
               <div className="hidden lg:flex items-center space-x-4">
                 {/* Social Links */}
                 {headerSocialLinks && headerSocialLinks.length > 0 && (
@@ -554,19 +556,26 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     </a>
                   </>
                 )}
-                
-                {/* CTA Button */}
-                <button 
-                  onClick={() => {
-                    // trackLead('quote_request_start', { source: 'header_desktop' });
-                    setIsContactModalOpen(true);
-                  }}
-                  className="btn-primary whitespace-nowrap"
-                >
-                  Get Quote
-                </button>
               </div>
             )}
+
+            {/* CTA Button - Always show on desktop, including requests page */}
+            <div className="hidden lg:flex items-center relative z-50">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Get Quote button clicked, opening modal');
+                  // trackLead('quote_request_start', { source: 'header_desktop' });
+                  setIsContactModalOpen(true);
+                }}
+                className="btn-primary whitespace-nowrap relative z-50 cursor-pointer"
+                type="button"
+                style={{ pointerEvents: 'auto' }}
+              >
+                Get Quote
+              </button>
+            </div>
 
             {/* Mobile Menu Button */}
             <button
@@ -882,11 +891,16 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                 </Link>
 
                 <button 
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Get Quote button clicked (mobile), opening modal');
                     setIsMobileMenuOpen(false);
-                    scrollToContact();
+                    setIsContactModalOpen(true);
                   }}
-                  className="btn-primary w-full text-center shadow-lg hover:shadow-xl min-h-[48px] text-base font-bold"
+                  className="btn-primary w-full text-center shadow-lg hover:shadow-xl min-h-[48px] text-base font-bold cursor-pointer"
+                  type="button"
+                  style={{ pointerEvents: 'auto' }}
                 >
                   Get Your Free Quote
                 </button>

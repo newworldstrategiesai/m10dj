@@ -9,6 +9,7 @@ export default function ContactFormModal({ isOpen, onClose }) {
   useEffect(() => {
     setMounted(true);
     if (isOpen) {
+      console.log('ContactFormModal: Opening modal');
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
