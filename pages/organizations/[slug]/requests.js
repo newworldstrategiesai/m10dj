@@ -87,7 +87,21 @@ export default function OrganizationRequestsPage() {
         <title>Request a Song or Shoutout | {organization.name}</title>
         <meta name="description" content={`Request a song or shoutout for ${organization.name}`} />
       </Head>
-      <GeneralRequestsPage organizationId={organization.id} organizationName={organization.name} />
+      <GeneralRequestsPage 
+        organizationId={organization.id} 
+        organizationName={organization.name}
+        organizationCoverPhoto={organization.requests_cover_photo_url || organization.requests_artist_photo_url || organization.requests_venue_photo_url || '/assets/DJ-Ben-Murray-Dodge-Poster.png'}
+        organizationData={organization}
+        customBranding={organization.white_label_enabled ? {
+          whiteLabelEnabled: organization.white_label_enabled,
+          customLogoUrl: organization.custom_logo_url,
+          primaryColor: organization.primary_color,
+          secondaryColor: organization.secondary_color,
+          backgroundColor: organization.background_color,
+          textColor: organization.text_color,
+          fontFamily: organization.font_family
+        } : null}
+      />
     </>
   );
 }

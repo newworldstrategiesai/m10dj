@@ -49,9 +49,29 @@ export default async function SignIn({
   // Check if the user is already logged in and redirect to the account page if so
   const supabase = createClient();
 
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const {
+      data: { user: authUser },
+      error
+    } = await supabase.auth.getUser();
+    
+    // If we get a refresh token error, ignore it and continue to sign in page
+    if (error && (error.message.includes('refresh_token_not_found') || error.message.includes('Invalid Refresh Token'))) {
+      // Clear invalid session and continue to sign in
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        // Ignore sign out errors
+      }
+      user = null;
+    } else {
+      user = authUser;
+    }
+  } catch (error) {
+    // If there's any other error, just continue to sign in page
+    user = null;
+  }
 
   if (user && viewProp !== 'update_password') {
     // User is already logged in, use redirect param or role-appropriate dashboard

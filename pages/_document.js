@@ -10,7 +10,6 @@ export default function Document() {
         <link rel="icon" href="/favicon.ico" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
-        
         {/* Optimized Google Analytics - Defer Loading */}
         <script
           defer
@@ -61,6 +60,24 @@ export default function Document() {
         </noscript>
       </Head>
       <body>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              /* Remove body padding-top on requests pages - runs immediately on page load before CSS applies */
+              (function() {
+                try {
+                  var path = window.location.pathname;
+                  var isRequestsPage = path === '/requests' || 
+                                       (path && path.includes && path.includes('/organizations/') && path.includes('/requests'));
+                  if (isRequestsPage && document.body) {
+                    document.body.style.setProperty('padding-top', '0', 'important');
+                    document.body.setAttribute('data-no-header-padding', 'true');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
         <Main />
         <NextScript />
       </body>

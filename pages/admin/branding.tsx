@@ -12,6 +12,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Settings, ArrowLeft, Loader2 } from 'lucide-react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import WhiteLabelBranding from '@/components/admin/WhiteLabelBranding';
+import ThemeSelector from '@/components/admin/ThemeSelector';
 
 export default function BrandingPage() {
   const router = useRouter();
@@ -74,6 +75,13 @@ export default function BrandingPage() {
                 Customize your branding for public request pages
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Theme Selector */}
+        <div className="mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+            <ThemeSelector />
           </div>
         </div>
 

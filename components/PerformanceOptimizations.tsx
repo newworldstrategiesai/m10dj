@@ -26,7 +26,7 @@ export default function PerformanceOptimizations() {
       // Preload critical images that appear above fold
       const criticalImages = [
         '/logo-static.jpg',
-        '/assets/m10 dj company logo static.jpg'
+        '/assets/m10%20dj%20company%20logo%20static.jpg'
       ];
 
       criticalImages.forEach(src => {

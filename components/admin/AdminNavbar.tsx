@@ -135,6 +135,7 @@ export default function AdminNavbar() {
     {
       label: 'Content',
       items: [
+        { label: 'Requests Page', href: '/admin/requests-page', icon: <Music className="w-4 h-4" />, description: 'Customize requests page' },
         { label: 'Blog', href: '/admin/blog', icon: <BookOpen className="w-4 h-4" />, description: 'Articles' },
         { label: 'Social Media', href: '/admin/instagram', icon: <Instagram className="w-4 h-4" />, description: 'Instagram' },
       ]

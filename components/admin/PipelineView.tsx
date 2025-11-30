@@ -594,8 +594,8 @@ export default function PipelineView({
           <p className="text-sm text-gray-600">{progress}% complete</p>
         </div>
 
-      {/* Pipeline Stages */}
-      <div className="relative">
+        {/* Pipeline Stages */}
+        <div className="relative">
         <div className="flex items-center justify-between overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             {visibleStages.map((stage, index) => {
               const StageIcon = stage.icon;
@@ -1015,32 +1015,32 @@ export default function PipelineView({
       <Card className="p-4 md:p-6">
         <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-              {leadId && (
-                <>
-                  {hasQuote && (
-                    <Link href={`/quote/${leadId}`} target="_blank">
+          {leadId && (
+            <>
+              {hasQuote && (
+                <Link href={`/quote/${leadId}`} target="_blank">
                       <Button variant="outline" className="w-full text-xs sm:text-sm">
                         <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                        View Quote
-                      </Button>
-                    </Link>
-                  )}
-                  
-                  <Link href={`/quote/${leadId}/contract`} target="_blank">
+                    View Quote
+                  </Button>
+                </Link>
+              )}
+              
+              <Link href={`/quote/${leadId}/contract`} target="_blank">
                     <Button variant="outline" className="w-full text-xs sm:text-sm">
                       <FileCheck className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      View Contract
-                    </Button>
-                  </Link>
-                  
-                  <Link href={`/quote/${leadId}/invoice`} target="_blank">
+                  View Contract
+                </Button>
+              </Link>
+              
+              <Link href={`/quote/${leadId}/invoice`} target="_blank">
                     <Button variant="outline" className="w-full text-xs sm:text-sm">
                       <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      View Invoice
-                    </Button>
-                  </Link>
-                </>
-              )}
+                  View Invoice
+                </Button>
+              </Link>
+            </>
+          )}
           
           {contact.email_address && (
             <Button 

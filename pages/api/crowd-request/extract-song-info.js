@@ -229,9 +229,10 @@ async function extractSpotifyInfo(url) {
         const data = await response.json();
         
         // oEmbed title format can be:
-        // - "Song Title by Artist Name"
-        // - "Artist Name - Song Title"
-        // - "Song Title · Artist Name"
+        // - "Song Title by Artist Name" (most common)
+        // - "Song Title · Artist Name" (bullet separator)
+        // - "Artist Name - Song Title" (dash format)
+        // - "Song Title - Artist Name" (reverse dash)
         const oEmbedTitle = data.title || '';
         
         if (oEmbedTitle) {
@@ -241,18 +242,33 @@ async function extractSpotifyInfo(url) {
             title = byMatch[1].trim();
             artist = byMatch[2].trim();
           } else {
-            // Try "Artist Name - Song Title" format
-            const dashMatch = oEmbedTitle.match(/^(.+?)\s*[-–—]\s*(.+)$/);
-            if (dashMatch) {
-              // Usually "Artist - Song" but could be "Song - Artist", check both
-              artist = dashMatch[1].trim();
-              title = dashMatch[2].trim();
+            // Try "Song Title · Artist Name" format (bullet separator - Spotify's preferred)
+            const dotMatch = oEmbedTitle.match(/^(.+?)\s*·\s*(.+)$/);
+            if (dotMatch) {
+              title = dotMatch[1].trim();
+              artist = dotMatch[2].trim();
             } else {
-              // Try "Song Title · Artist Name" format
-              const dotMatch = oEmbedTitle.match(/^(.+?)\s*·\s*(.+)$/);
-              if (dotMatch) {
-                title = dotMatch[1].trim();
-                artist = dotMatch[2].trim();
+              // Try dash format - need to determine which is artist vs song
+              const dashMatch = oEmbedTitle.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+              if (dashMatch) {
+                const part1 = dashMatch[1].trim();
+                const part2 = dashMatch[2].trim();
+                
+                // Heuristic: If part2 contains common song title indicators or is longer, it's likely the song
+                // If part1 is shorter and doesn't have common indicators, it's likely the artist
+                // Common patterns: "Artist - Song Title" is more common than "Song - Artist"
+                // But also check for song indicators like parentheses, "feat", etc.
+                const hasSongIndicators = /\s*\(.*?\)\s*$|feat\.|ft\.|featuring|official|video|audio|lyrics|remix/i;
+                
+                if (part2.match(hasSongIndicators) || part2.length > part1.length * 1.2) {
+                  // Likely "Song Title - Artist Name"
+                  title = part1;
+                  artist = part2.replace(hasSongIndicators, '').trim();
+                } else {
+                  // Likely "Artist Name - Song Title"
+                  artist = part1;
+                  title = part2;
+                }
               } else {
                 // If no separator found, use the whole title as song title
                 title = oEmbedTitle;
@@ -291,8 +307,8 @@ async function extractSpotifyInfo(url) {
       }
     }
     
-    // If we still don't have artist, try fetching the actual Spotify page
-    if (!artist || !title) {
+    // If we still don't have artist (even if we have title), try fetching the actual Spotify page
+    if (!artist) {
       try {
         const pageUrl = `https://open.spotify.com/track/${trackId}`;
         const pageController = new AbortController();
@@ -328,40 +344,82 @@ async function extractSpotifyInfo(url) {
             }
           }
           
-          // Extract from og:title meta tag
-          if (!title || !artist) {
+          // Extract from og:title meta tag - prioritize artist extraction
+          if (!artist) {
             const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i);
             if (ogTitleMatch) {
               const ogTitle = ogTitleMatch[1];
-              // Format is often "Song Title · Artist Name"
+              // Format is often "Song Title · Artist Name" (bullet separator)
               const parts = ogTitle.split(/\s*·\s*/);
               if (parts.length === 2) {
-                title = title || parts[0].trim();
-                artist = artist || parts[1].trim();
+                if (!title) title = parts[0].trim();
+                if (!artist) artist = parts[1].trim();
               } else {
                 // Try "Song Title by Artist Name"
                 const byMatch = ogTitle.match(/(.+?)\s+by\s+(.+)/i);
                 if (byMatch) {
-                  title = title || byMatch[1].trim();
-                  artist = artist || byMatch[2].trim();
+                  if (!title) title = byMatch[1].trim();
+                  if (!artist) artist = byMatch[2].trim();
                 } else {
-                  title = title || ogTitle;
+                  // Try dash format
+                  const dashMatch = ogTitle.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+                  if (dashMatch) {
+                    // Usually "Song Title · Artist" format, so first part is song, second is artist
+                    if (!title) title = dashMatch[1].trim();
+                    if (!artist) artist = dashMatch[2].trim();
+                  } else {
+                    if (!title) title = ogTitle;
+                  }
                 }
               }
             }
           }
           
-          // Extract from title tag as fallback
-          if (!title || !artist) {
+          // Extract from title tag as fallback - prioritize artist extraction
+          if (!artist) {
             const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
             if (titleTagMatch) {
               const titleTag = titleTagMatch[1];
+              // Spotify title format: "Song Title by Artist Name on Spotify"
               const byMatch = titleTag.match(/(.+?)\s+by\s+(.+?)\s+on\s+Spotify/i);
               if (byMatch) {
-                title = title || byMatch[1].trim();
-                artist = artist || byMatch[2].trim();
+                if (!title) title = byMatch[1].trim();
+                if (!artist) artist = byMatch[2].trim();
               } else {
-                title = title || titleTag.replace(/\s*[-–—]\s*Spotify.*$/i, '').trim();
+                // Try parsing without "on Spotify"
+                const byMatch2 = titleTag.match(/(.+?)\s+by\s+(.+)/i);
+                if (byMatch2) {
+                  if (!title) title = byMatch2[1].trim();
+                  if (!artist) artist = byMatch2[2].trim();
+                } else {
+                  // Try bullet separator in title tag
+                  const parts = titleTag.split(/\s*·\s*/);
+                  if (parts.length === 2) {
+                    if (!title) title = parts[0].trim();
+                    if (!artist) artist = parts[1].replace(/\s*on\s+Spotify.*$/i, '').trim();
+                  } else {
+                    if (!title) title = titleTag.replace(/\s*[-–—]\s*Spotify.*$/i, '').trim();
+                  }
+                }
+              }
+            }
+          }
+          
+          // Additional fallback: try to find artist in page content
+          if (!artist) {
+            // Look for common Spotify HTML patterns that contain artist info
+            const artistPatterns = [
+              /"artist":\s*"([^"]+)"/i,
+              /"artistName":\s*"([^"]+)"/i,
+              /<span[^>]*data-testid="entityTitle"[^>]*>([^<]+)<\/span>/i,
+              /"byArtist":\s*\{\s*"name":\s*"([^"]+)"/i
+            ];
+            
+            for (const pattern of artistPatterns) {
+              const match = html.match(pattern);
+              if (match && match[1]) {
+                artist = match[1].trim();
+                break;
               }
             }
           }

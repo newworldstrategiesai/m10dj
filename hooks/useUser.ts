@@ -12,11 +12,26 @@ export function useUser() {
   useEffect(() => {
     // Get initial user
     const getUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (!error) {
-        setUser(user);
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        // Ignore refresh token errors - they'll be handled by middleware
+        if (error && (error.message.includes('refresh_token_not_found') || 
+                      error.message.includes('Invalid Refresh Token') ||
+                      error.message.includes('over_request_rate_limit'))) {
+          // Just set user to null and continue
+          setUser(null);
+        } else if (!error) {
+          setUser(user);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        // Handle any other errors gracefully
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     getUser();

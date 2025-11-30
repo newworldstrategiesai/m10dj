@@ -1,7 +1,7 @@
 import '../styles/company-globals.css';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { ThemeProvider } from 'next-themes';
+import ThemeProviderWrapper from '@/components/ThemeProviderWrapper';
 import FloatingAdminAssistant from '@/components/admin/FloatingAdminAssistant';
 import GlobalChatWidget from '@/components/company/GlobalChatWidget';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -14,22 +14,50 @@ export default function App({ Component, pageProps }) {
   // Suppress React warning about fetchPriority prop (Next.js 13.5.6 compatibility issue)
   // This is a known issue where Next.js uses fetchPriority but React expects fetchpriority (lowercase)
   useEffect(() => {
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    if (typeof window !== 'undefined') {
+      // Suppress console.error warnings
       const originalError = console.error;
       console.error = (...args) => {
         // Filter out fetchPriority warnings from Next.js Image component
         const message = args[0];
-        if (
-          (typeof message === 'string' && message.includes('fetchPriority') && message.includes('DOM element')) ||
-          (message && typeof message === 'object' && message.toString && message.toString().includes('fetchPriority'))
-        ) {
+        const shouldSuppress = (
+          (typeof message === 'string' && (
+            message.includes('fetchPriority') || 
+            message.includes('fetchpriority') ||
+            (message.includes('React does not recognize') && message.includes('prop on a DOM element'))
+          )) ||
+          (message && typeof message === 'object' && (
+            (message.toString && message.toString().includes('fetchPriority')) ||
+            (message.message && typeof message.message === 'string' && message.message.includes('fetchPriority'))
+          ))
+        );
+        
+        if (shouldSuppress) {
           return; // Suppress this specific harmless warning
         }
         originalError.apply(console, args);
       };
+
+      // Also suppress React DevTools warnings
+      const originalWarn = console.warn;
+      console.warn = (...args) => {
+        const message = args[0];
+        const shouldSuppress = (
+          typeof message === 'string' && (
+            message.includes('fetchPriority') || 
+            message.includes('fetchpriority')
+          )
+        );
+        
+        if (shouldSuppress) {
+          return;
+        }
+        originalWarn.apply(console, args);
+      };
       
       return () => {
         console.error = originalError;
+        console.warn = originalWarn;
       };
     }
   }, []);
@@ -39,7 +67,7 @@ export default function App({ Component, pageProps }) {
   const isRequestsPage = router.pathname === '/requests' || router.pathname.startsWith('/crowd-request');
   
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
+    <ThemeProviderWrapper>
       <ErrorBoundary
         title="Application Error"
         message="Something went wrong. Please refresh the page or contact support if the problem persists."
@@ -87,6 +115,6 @@ export default function App({ Component, pageProps }) {
       {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}
       </ErrorBoundary>
-    </ThemeProvider>
+    </ThemeProviderWrapper>
   );
 } 

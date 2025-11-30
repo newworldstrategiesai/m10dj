@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Header from '../components/company/Header';
-import { Music, Mic, Loader2, AlertCircle, Gift, Zap } from 'lucide-react';
+import { Music, Mic, Loader2, AlertCircle, Gift, Zap, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2 } from 'lucide-react';
+import SocialAccountSelector from '../components/ui/SocialAccountSelector';
 import PaymentMethodSelection from '../components/crowd-request/PaymentMethodSelection';
 import PaymentSuccessScreen from '../components/crowd-request/PaymentSuccessScreen';
 import PaymentAmountSelector from '../components/crowd-request/PaymentAmountSelector';
@@ -16,12 +17,18 @@ import { CROWD_REQUEST_CONSTANTS } from '../constants/crowd-request';
 
 const logger = createLogger('GeneralRequestsPage');
 
+const DEFAULT_COVER_PHOTO = '/assets/DJ-Ben-Murray-Dodge-Poster.png';
+
 export default function GeneralRequestsPage({ 
   organizationId = null, 
   organizationName = null,
   embedMode = false,
-  customBranding = null
+  customBranding = null,
+  organizationCoverPhoto = null,
+  organizationData = null
 } = {}) {
+  // Use default cover photo if none is provided - always show a cover photo
+  const coverPhoto = organizationCoverPhoto || DEFAULT_COVER_PHOTO;
   const [requestType, setRequestType] = useState('song_request'); // 'song_request' or 'shoutout'
   const [formData, setFormData] = useState({
     songArtist: '',
@@ -50,6 +57,40 @@ export default function GeneralRequestsPage({
   const [currentStep, setCurrentStep] = useState(1); // 1: Song/Shoutout, 2: Payment (Step 2 removed - contact info collected after payment)
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [additionalSongs, setAdditionalSongs] = useState([]); // Array of {songTitle, songArtist}
+  const [socialSelectorOpen, setSocialSelectorOpen] = useState(false);
+  const [selectedSocialPlatform, setSelectedSocialPlatform] = useState(null);
+
+  // Helper function to get social URL with user preference
+  const getSocialUrl = (platform, defaultUrl) => {
+    if (platform === 'instagram' || platform === 'facebook') {
+      const saved = typeof window !== 'undefined' 
+        ? localStorage.getItem(`${platform}_account_preference`)
+        : null;
+      if (saved === 'djbenmurray') {
+        return `https://${platform}.com/djbenmurray`;
+      } else if (saved === 'm10djcompany') {
+        return `https://${platform}.com/m10djcompany`;
+      }
+    }
+    return defaultUrl;
+  };
+
+  // Handle social link click
+  const handleSocialClick = (e, platform) => {
+    if (platform === 'instagram' || platform === 'facebook') {
+      e.preventDefault();
+      setSelectedSocialPlatform(platform);
+      setSocialSelectorOpen(true);
+    }
+  };
+
+  // Handle account selection
+  const handleAccountSelect = (account) => {
+    if (selectedSocialPlatform) {
+      const url = `https://${selectedSocialPlatform}.com/${account}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   // Use payment settings hook
   const {
@@ -62,6 +103,17 @@ export default function GeneralRequestsPage({
     bundleDiscount: bundleDiscountPercent,
     loading: settingsLoading
   } = usePaymentSettings();
+
+  // Apply dark mode only on requests page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.add('dark');
+      // Cleanup: remove dark mode when component unmounts (user navigates away)
+      return () => {
+        document.documentElement.classList.remove('dark');
+      };
+    }
+  }, []);
 
   // Set initial preset amount when settings load
   useEffect(() => {
@@ -368,18 +420,40 @@ export default function GeneralRequestsPage({
           }
         `}</style>
         <style dangerouslySetInnerHTML={{__html: `
+          /* Remove body padding-top on requests page to allow hero image to start at top - MUST be first with highest specificity */
+          html body,
+          body,
+          body[data-no-header-padding="true"],
+          html[data-requests-page="true"] body {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+          }
+          /* Ensure header is transparent from the start on requests page */
+          header[data-transparent="true"],
+          header:not([data-transparent="false"]) {
+            background-color: transparent !important;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            border-bottom: none !important;
+          }
           /* Prevent scrollbar from appearing and causing layout shift */
           /* Force scrollbar to always be present but invisible to prevent layout shift */
           html {
             overflow-y: scroll !important; /* Always show scrollbar space */
+            overflow-x: hidden !important; /* Prevent horizontal scroll */
             scrollbar-gutter: stable !important; /* Reserve space even when hidden */
           }
           body {
             overflow-y: scroll !important; /* Always show scrollbar space */
+            overflow-x: hidden !important; /* Prevent horizontal scroll */
             scrollbar-gutter: stable !important; /* Reserve space even when hidden */
             -ms-overflow-style: none !important;
             scrollbar-width: thin !important; /* Use thin scrollbar to minimize space */
             scrollbar-color: transparent transparent !important; /* Make it transparent */
+            max-width: 100vw !important; /* Prevent horizontal overflow */
           }
           /* Make scrollbar completely transparent but keep it present */
           html::-webkit-scrollbar,
@@ -439,7 +513,7 @@ export default function GeneralRequestsPage({
       </Head>
 
       <div 
-        className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-slate-900 relative overflow-hidden"
+        className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/30 dark:from-black dark:via-black dark:to-black relative overflow-x-hidden"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -505,25 +579,125 @@ export default function GeneralRequestsPage({
           ></div>
         </div>
         
-        {!embedMode && <Header customLogoUrl={customBranding?.customLogoUrl} />}
+        {!embedMode && <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} />}
         
-        <main className="section-container py-2 sm:py-3 px-4 sm:px-6 relative z-10" style={{ minHeight: embedMode ? '100vh' : 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
-          <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col">
-            {/* Header - Compact for no-scroll design */}
-            <div className="text-center mb-2 sm:mb-3">
-              <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 mb-2 shadow-md shadow-purple-500/40 dark:shadow-purple-500/20">
-                <Music className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-              </div>
-              <h1 className="text-xl sm:text-2xl md:text-2xl font-extrabold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 dark:from-white dark:via-purple-200 dark:to-pink-200 bg-clip-text text-transparent mb-1 sm:mb-2 px-2">
-                Request a Song or Shoutout
-              </h1>
+        {/* Hero Section with Cover Photo */}
+        {!embedMode && (
+          <div className="relative w-full h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px] overflow-hidden top-0" style={{ zIndex: 0 }}>
+            {/* Background Image */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat z-0"
+              style={{
+                backgroundImage: `url(${coverPhoto})`,
+                backgroundColor: '#1a1a1a', // Fallback dark background
+              }}
+            >
+              {/* Overlay gradient for better text readability - transparent at top, black at bottom */}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10"></div>
+            </div>
+            
+            {/* Content overlay */}
+            <div className="relative z-20 h-full flex flex-col justify-between items-center text-center px-4 pb-6 sm:pb-12" style={{ paddingTop: '80px' }}>
+              {/* Top spacer - keeps content balanced */}
+              <div className="flex-1"></div>
               
-              {/* Step Indicator */}
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <div className={`h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
-                <div className={`h-1.5 rounded-full transition-all ${currentStep >= 2 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
+              {/* Bottom section with social icons */}
+              <div className="w-full flex flex-col items-center gap-4">
+                {/* Social Links - Positioned at bottom */}
+                {organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0 ? (
+                  <div className="flex items-center justify-center gap-3">
+                    {organizationData.social_links
+                      .filter(link => link.enabled !== false)
+                      .sort((a, b) => (a.order || 0) - (b.order || 0))
+                      .map((link, index) => {
+                        const getSocialIcon = (platform) => {
+                          const iconProps = { className: "w-5 h-5", strokeWidth: 2, fill: "none" };
+                          switch (platform?.toLowerCase()) {
+                            case 'facebook':
+                              return <Facebook {...iconProps} />;
+                            case 'instagram':
+                              return <Instagram {...iconProps} />;
+                            case 'twitter':
+                              return <Twitter {...iconProps} />;
+                            case 'youtube':
+                              return <Youtube {...iconProps} />;
+                            case 'linkedin':
+                              return <Linkedin {...iconProps} />;
+                            default:
+                              return <Link2 {...iconProps} />;
+                          }
+                        };
+                        return (
+                          <a
+                            key={index}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70"
+                            aria-label={link.label || link.platform}
+                          >
+                            {getSocialIcon(link.platform)}
+                          </a>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  // Default fallback social links
+                  <div className="flex items-center justify-center gap-3">
+                    <a
+                      href="#"
+                      onClick={(e) => handleSocialClick(e, 'instagram')}
+                      className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer"
+                      aria-label="Instagram"
+                    >
+                      <Instagram className="w-5 h-5" strokeWidth={2} fill="none" />
+                    </a>
+                    <a
+                      href="#"
+                      onClick={(e) => handleSocialClick(e, 'facebook')}
+                      className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer"
+                      aria-label="Facebook"
+                    >
+                      <Facebook className="w-5 h-5" strokeWidth={2} fill="none" />
+                    </a>
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            </div>
+          </div>
+        )}
+        
+        <main className={`section-container relative z-10 py-3 sm:py-6 md:py-8 lg:py-12 px-3 sm:px-4 md:px-6 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : 'auto', display: 'flex', flexDirection: 'column', maxWidth: '100vw' }}>
+          <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col overflow-x-hidden">
+            {/* Header - Compact for no-scroll design - Hide when hero image is shown */}
+            {false && (
+              <div className="text-center mb-2 sm:mb-3">
+                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 mb-2 shadow-md shadow-purple-500/40 dark:shadow-purple-500/20">
+                  <Music className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                </div>
+                <h1 className="text-xl sm:text-2xl md:text-2xl font-extrabold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 dark:from-white dark:via-purple-200 dark:to-pink-200 bg-clip-text text-transparent mb-1 sm:mb-2 px-2">
+                  Request a Song or Shoutout
+                </h1>
+                
+                {/* Step Indicator */}
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <div className={`h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
+                  <div className={`h-1.5 rounded-full transition-all ${currentStep >= 2 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {currentStep === 1 && 'Step 1 of 2: Choose your request'}
+                  {currentStep === 2 && 'Step 2 of 2: Payment'}
+                </p>
+              </div>
+            )}
+            
+            {/* Step Indicator - Show below hero image when hero is present - Compact on mobile */}
+            <div className="text-center mb-1 sm:mb-3 md:mb-4 lg:mb-6">
+              <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+                <div className={`h-1 sm:h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-white w-6 sm:w-8' : 'bg-white/30 w-1.5 sm:w-2'}`}></div>
+                <div className={`h-1 sm:h-1.5 rounded-full transition-all ${currentStep >= 2 ? 'bg-white w-6 sm:w-8' : 'bg-white/30 w-1.5 sm:w-2'}`}></div>
+              </div>
+              <p className="text-[9px] sm:text-[10px] md:text-xs text-white/80 mt-0.5 sm:mt-1 md:mt-2">
                 {currentStep === 1 && 'Step 1 of 2: Choose your request'}
                 {currentStep === 2 && 'Step 2 of 2: Payment'}
               </p>
@@ -574,73 +748,73 @@ export default function GeneralRequestsPage({
               ) : (
               <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
                 {/* Request Type Selection */}
-                <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-4 sm:p-5 flex-shrink-0">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-                    <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
-                    What would you like to request?
+                <div className="bg-white/70 dark:bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
+                  <h2 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4 lg:mb-6 flex items-center gap-2 sm:gap-3">
+                    <div className="w-1 h-5 sm:h-6 md:h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full hidden sm:block"></div>
+                    <span className="leading-tight">What would you like to request?</span>
                   </h2>
                   
-                  <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
                     <button
                       type="button"
                       onClick={() => setRequestType('song_request')}
-                      className={`group relative p-6 sm:p-8 rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                      className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
                         requestType === 'song_request'
                           ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/30 dark:to-purple-800/20 shadow-lg shadow-purple-500/20 scale-105'
-                          : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-md'
+                          : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-md'
                       }`}
                     >
                       {requestType === 'song_request' && (
                         <div className="absolute inset-0 bg-gradient-to-br from-purple-400/10 to-transparent"></div>
                       )}
-                      <div className="relative">
-                        <div className={`inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-xl mb-4 transition-all duration-300 ${
+                      <div className="relative flex flex-col items-center justify-center">
+                        <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
                           requestType === 'song_request'
                             ? 'bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/50'
-                            : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30'
+                            : 'bg-gray-100 dark:bg-black/50 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30'
                         }`}>
-                          <Music className={`w-7 h-7 sm:w-8 sm:h-8 transition-colors ${
+                          <Music className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
                             requestType === 'song_request' ? 'text-white' : 'text-gray-400 group-hover:text-purple-500'
                           }`} />
                         </div>
-                        <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white mb-2">Song Request</h3>
+                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">Song Request</h3>
                       </div>
                     </button>
                     
                     <button
                       type="button"
                       onClick={() => setRequestType('shoutout')}
-                      className={`group relative p-6 sm:p-8 rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                      className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
                         requestType === 'shoutout'
                           ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-pink-100/50 dark:from-pink-900/30 dark:to-pink-800/20 shadow-lg shadow-pink-500/20 scale-105'
-                          : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-pink-300 hover:scale-[1.02] hover:shadow-md'
+                          : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-pink-300 hover:scale-[1.02] hover:shadow-md'
                       }`}
                     >
                       {requestType === 'shoutout' && (
                         <div className="absolute inset-0 bg-gradient-to-br from-pink-400/10 to-transparent"></div>
                       )}
-                      <div className="relative">
-                        <div className={`inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-xl mb-4 transition-all duration-300 ${
+                      <div className="relative flex flex-col items-center justify-center">
+                        <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
                           requestType === 'shoutout'
                             ? 'bg-gradient-to-br from-pink-500 to-pink-600 shadow-lg shadow-pink-500/50'
                             : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-pink-100 dark:group-hover:bg-pink-900/30'
                         }`}>
-                          <Mic className={`w-7 h-7 sm:w-8 sm:h-8 transition-colors ${
+                          <Mic className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
                             requestType === 'shoutout' ? 'text-white' : 'text-gray-400 group-hover:text-pink-500'
                           }`} />
                         </div>
-                        <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white mb-2">Shoutout</h3>
+                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">Shoutout</h3>
                       </div>
                     </button>
                   </div>
 
                   {/* Song Request Fields */}
                   {requestType === 'song_request' && (
-                    <div className="space-y-4">
+                    <div className="space-y-2 sm:space-y-3 md:space-y-4">
                       {/* Music Link Input */}
                       <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                          <Music className="w-4 h-4 inline mr-1" />
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                          <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
                           Paste Music Link (Optional)
                         </label>
                         <div className="relative">
@@ -648,35 +822,35 @@ export default function GeneralRequestsPage({
                             type="url"
                             value={songUrl}
                             onChange={handleSongUrlChange}
-                            className="w-full px-5 py-4 text-base rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation pr-12"
+                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation pr-10 sm:pr-12"
                             placeholder="Paste YouTube, Spotify, SoundCloud, or Tidal link"
                             autoComplete="off"
                           />
                           {extractingSong && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                              <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                            <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2">
+                              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-500" />
                               <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline">Extracting...</span>
                             </div>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
                           We&apos;ll automatically fill in the song title and artist name
                         </p>
                       </div>
 
-                      <div className="relative">
+                      <div className="relative my-2 sm:my-3">
                         <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                          <div className="w-full border-t border-gray-300 dark:border-gray-800"></div>
                         </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
+                        <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
+                          <span className="bg-white dark:bg-black px-2 text-gray-500 dark:text-gray-400">
                             Or enter manually
                           </span>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
                           Song Title <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -684,7 +858,7 @@ export default function GeneralRequestsPage({
                           name="songTitle"
                           value={formData.songTitle}
                           onChange={handleInputChange}
-                          className="w-full px-5 py-4 text-base rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation"
+                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation"
                           placeholder="Enter song title"
                           required
                           autoComplete="off"
@@ -692,7 +866,7 @@ export default function GeneralRequestsPage({
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
                           Artist Name
                         </label>
                         <input
@@ -700,7 +874,7 @@ export default function GeneralRequestsPage({
                           name="songArtist"
                           value={formData.songArtist}
                           onChange={handleInputChange}
-                          className="w-full px-5 py-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200"
+                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200"
                           placeholder="Enter artist name"
                           required
                           autoComplete="off"
@@ -711,9 +885,9 @@ export default function GeneralRequestsPage({
 
                   {/* Shoutout Fields */}
                   {requestType === 'shoutout' && (
-                    <div className="space-y-4">
+                    <div className="space-y-2 sm:space-y-3 md:space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
                           Recipient Name <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -721,22 +895,22 @@ export default function GeneralRequestsPage({
                           name="recipientName"
                           value={formData.recipientName}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                           placeholder="Who is this shoutout for?"
                           required
                         />
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
                           Message <span className="text-red-500">*</span>
                         </label>
                         <textarea
                           name="recipientMessage"
                           value={formData.recipientMessage}
                           onChange={handleInputChange}
-                          rows={4}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                          rows={3}
+                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
                           placeholder="What would you like to say?"
                           required
                         />
@@ -746,16 +920,16 @@ export default function GeneralRequestsPage({
 
                   {/* Additional Message */}
                   {currentStep === 1 && (
-                  <div className="mt-4">
-                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                  <div className="mt-2 sm:mt-3 md:mt-4">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
                       Additional Notes (optional)
                     </label>
                     <textarea
                       name="message"
                       value={formData.message}
                       onChange={handleInputChange}
-                      rows={3}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={2}
+                      className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                       placeholder="Any additional information..."
                     />
                   </div>
@@ -790,9 +964,9 @@ export default function GeneralRequestsPage({
                 {/* Submit Button - Sticky at bottom, appears when song selection is complete */}
                 {isSongSelectionComplete() && (
                 <div 
-                  className="sticky bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 pt-3 pb-4 border-t border-gray-200 dark:border-gray-700 shadow-lg flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
+                  className="sticky bottom-0 left-0 right-0 z-50 bg-white dark:bg-black pt-2 sm:pt-3 pb-3 sm:pb-4 border-t border-gray-200 dark:border-gray-800 shadow-lg flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
                   style={{ 
-                    paddingBottom: 'max(1rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))',
+                    paddingBottom: 'max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))',
                     position: 'sticky',
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none'
@@ -801,7 +975,7 @@ export default function GeneralRequestsPage({
                   <button
                     type={currentStep === 1 ? "button" : "submit"}
                     disabled={submitting || (currentStep >= 2 && getPaymentAmount() < (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount))}
-                    className="group relative w-full py-5 sm:py-6 text-base sm:text-lg font-bold inline-flex items-center justify-center gap-3 min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-500 hover:via-pink-500 hover:to-purple-500 text-white shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
+                    className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-500 hover:via-pink-500 hover:to-purple-500 text-white shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
                     onClick={(e) => {
                       if (currentStep === 1) {
                         e.preventDefault();
@@ -839,21 +1013,21 @@ export default function GeneralRequestsPage({
                         <Music className="w-6 h-6 relative z-10" />
                         <span className="whitespace-nowrap relative z-10">Continue to Payment</span>
                       </>
-                    ) : (
-                      <>
-                        <Music className="w-6 h-6 relative z-10" />
-                        <span className="whitespace-nowrap relative z-10">Submit Request</span>
-                      </>
-                    )}
-                  </button>
+                          ) : (
+                            <>
+                              <Music className="w-5 h-5 sm:w-6 sm:h-6 relative z-10" />
+                              <span className="whitespace-nowrap relative z-10">Submit Request</span>
+                            </>
+                          )}
+                        </button>
 
-                  {currentStep >= 2 && (
-                    <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-                      You&apos;ll choose your payment method after submitting.
-                    </p>
-                  )}
-                </div>
-                )}
+                        {currentStep >= 2 && (
+                          <p className="text-[10px] sm:text-xs text-center text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">
+                            You&apos;ll choose your payment method after submitting.
+                          </p>
+                        )}
+                      </div>
+                      )}
               </form>
             )}
           </div>
@@ -894,6 +1068,19 @@ export default function GeneralRequestsPage({
         error={error}
         setError={setError}
       />
+
+      {/* Social Account Selector */}
+      {selectedSocialPlatform && (
+        <SocialAccountSelector
+          platform={selectedSocialPlatform}
+          isOpen={socialSelectorOpen}
+          onClose={() => {
+            setSocialSelectorOpen(false);
+            setSelectedSocialPlatform(null);
+          }}
+          onSelect={handleAccountSelect}
+        />
+      )}
     </>
   );
 }

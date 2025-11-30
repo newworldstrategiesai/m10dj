@@ -973,16 +973,16 @@ export default function ContactDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {/* Send Contract */}
               {((contracts && contracts.length > 0) || (quoteSelections && quoteSelections.length > 0)) && (
-                <Button
-                  onClick={() => {
+                  <Button
+                    onClick={() => {
                     setEmailModalTemplate('send_contract');
-                    setShowEmailModal(true);
-                  }}
+                      setShowEmailModal(true);
+                    }}
                   className="w-full h-auto py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
-                >
+                  >
                   <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>Send Contract</span>
-                </Button>
+                  </Button>
               )}
               
               {/* Send Invoice */}
@@ -1001,30 +1001,30 @@ export default function ContactDetailPage() {
               
               {/* Send Questionnaire */}
               {payments.length > 0 && payments.some((p: any) => p.status === 'succeeded' || p.status === 'paid' || p.payment_status === 'Paid') && (
-                <Button
-                  onClick={() => {
-                    setEmailModalTemplate('questionnaire');
-                    setShowEmailModal(true);
-                  }}
+                  <Button
+                    onClick={() => {
+                      setEmailModalTemplate('questionnaire');
+                      setShowEmailModal(true);
+                    }}
                   className="w-full h-auto py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
-                >
+                  >
                   <Music className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>Send Questionnaire</span>
-                </Button>
+                  </Button>
               )}
               
               {/* Request Review */}
               {(contact.lead_status === 'Completed' || (contact.event_date && new Date(contact.event_date) < new Date())) && (
-                <Button
+                  <Button
                   onClick={() => {
                     setEmailModalTemplate('request_review');
                     setShowEmailModal(true);
                   }}
                   className="w-full h-auto py-3 px-4 bg-yellow-600 hover:bg-yellow-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
-                >
+                  >
                   <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>Request Review</span>
-                </Button>
+                  </Button>
               )}
               
               {/* Send Payment Reminder */}
@@ -1089,16 +1089,16 @@ export default function ContactDetailPage() {
               <TabsTrigger value="pipeline" className="text-xs sm:text-sm whitespace-nowrap">Pipeline</TabsTrigger>
               <TabsTrigger value="communications" className="text-xs sm:text-sm whitespace-nowrap">
                 Comm {communications.length > 0 && `(${communications.length})`}
-              </TabsTrigger>
+            </TabsTrigger>
               <TabsTrigger value="details" className="text-xs sm:text-sm whitespace-nowrap">Details</TabsTrigger>
               <TabsTrigger value="event" className="text-xs sm:text-sm whitespace-nowrap">Event</TabsTrigger>
               <TabsTrigger value="business" className="text-xs sm:text-sm whitespace-nowrap">Business</TabsTrigger>
-              {socialMessages.length > 0 && (
+            {socialMessages.length > 0 && (
                 <TabsTrigger value="social" className="text-xs sm:text-sm whitespace-nowrap">
                   Social ({socialMessages.length})
-                </TabsTrigger>
-              )}
-            </TabsList>
+              </TabsTrigger>
+            )}
+          </TabsList>
           </div>
 
           <TabsContent value="pipeline">

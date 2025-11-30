@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { updateSession } from '@/utils/supabase/middleware';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Add pathname to headers so we can access it in app/layout.tsx
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-pathname', request.nextUrl.pathname);
 
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  // Update Supabase session and handle refresh tokens
+  const response = await updateSession(request);
+  
+  // Preserve the pathname header in the response
+  response.headers.set('x-pathname', request.nextUrl.pathname);
+
+  return response;
 }
 
 export const config = {

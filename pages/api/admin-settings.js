@@ -28,14 +28,31 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     // Get admin settings for the user
     try {
-      const { data, error } = await supabase
+      const { settingKey } = req.query;
+      
+      let query = supabase
         .from('admin_settings')
         .select('setting_key, setting_value')
         .eq('user_id', user.id);
 
+      // If settingKey is provided, filter by it
+      if (settingKey) {
+        query = query.eq('setting_key', settingKey);
+      }
+
+      const { data, error } = await query;
+
       if (error) {
         console.error('Error fetching admin settings:', error);
         return res.status(500).json({ error: 'Failed to fetch admin settings' });
+      }
+
+      // If filtering by settingKey, return the single setting
+      if (settingKey && data.length > 0) {
+        return res.status(200).json({ 
+          setting: data[0],
+          settings: { [settingKey]: data[0].setting_value }
+        });
       }
 
       // Convert array of settings to object
