@@ -24,7 +24,18 @@ import {
   Printer,
   Zap,
   X,
-  RotateCcw
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  MoreVertical,
+  Clock,
+  Mail,
+  Phone,
+  ExternalLink,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +70,7 @@ interface CrowdRequest {
   priority_order: number;
   created_at: string;
   paid_at: string | null;
+  organization_id: string | null;
 }
 
 export default function CrowdRequestsPage() {
@@ -73,6 +85,24 @@ export default function CrowdRequestsPage() {
   const [showQRGenerator, setShowQRGenerator] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [qrType, setQrType] = useState<'event' | 'public'>('event');
+  
+  // New feature states
+  const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<CrowdRequest | null>(null);
+  const [dateRangeStart, setDateRangeStart] = useState<string>('');
+  const [dateRangeEnd, setDateRangeEnd] = useState<string>('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
+  const [requestTypeFilter, setRequestTypeFilter] = useState<string>('all');
+  const [eventCodeFilter, setEventCodeFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [sortColumn, setSortColumn] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [stripeDetails, setStripeDetails] = useState<any>(null);
+  const [loadingStripeDetails, setLoadingStripeDetails] = useState(false);
   
   // QR Code Generator State
   const [qrEventCode, setQrEventCode] = useState('');
@@ -101,7 +131,27 @@ export default function CrowdRequestsPage() {
   useEffect(() => {
     fetchRequests();
     fetchPaymentSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        fetchRequests();
+      }, 30000); // Refresh every 30 seconds
+      setAutoRefreshInterval(interval);
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    } else {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        setAutoRefreshInterval(null);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh]);
 
   const fetchPaymentSettings = async () => {
     try {
@@ -259,13 +309,12 @@ export default function CrowdRequestsPage() {
         throw new Error('No organization found');
       }
 
-      // Filter by organization_id
+      // Filter by organization_id OR null (to catch orphaned requests that need assignment)
+      // Note: We'll handle sorting in the frontend to allow dynamic column sorting
       const { data, error } = await supabase
         .from('crowd_requests')
         .select('*')
-        .eq('organization_id', org.id) // CRITICAL: Filter by organization
-        .order('priority_order', { ascending: true }) // Fast-track (0) comes first
-        .order('created_at', { ascending: false }); // Then by date within each priority group
+        .or(`organization_id.eq.${org.id},organization_id.is.null`); // Include requests for this org OR orphaned requests
 
       if (error) throw error;
       setRequests(data || []);
@@ -504,19 +553,340 @@ export default function CrowdRequestsPage() {
     }
   };
 
+  // Bulk operations
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRequests(new Set(paginatedRequests.map(r => r.id)));
+    } else {
+      setSelectedRequests(new Set());
+    }
+  };
+
+  const handleSelectRequest = (requestId: string, checked: boolean) => {
+    const newSelected = new Set(selectedRequests);
+    if (checked) {
+      newSelected.add(requestId);
+    } else {
+      newSelected.delete(requestId);
+    }
+    setSelectedRequests(newSelected);
+  };
+
+  const handleBulkStatusUpdate = async (newStatus: string) => {
+    if (selectedRequests.size === 0) {
+      toast({
+        title: 'No Selection',
+        description: 'Please select at least one request',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const updates = Array.from(selectedRequests).map(id => 
+        supabase
+          .from('crowd_requests')
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', id)
+      );
+
+      await Promise.all(updates);
+      
+      toast({
+        title: 'Success',
+        description: `Updated ${selectedRequests.size} request(s) to ${newStatus}`,
+      });
+      
+      setSelectedRequests(new Set());
+      fetchRequests();
+    } catch (error) {
+      console.error('Error updating statuses:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update request statuses',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleBulkPaymentStatusUpdate = async (paymentStatus: string) => {
+    if (selectedRequests.size === 0) {
+      toast({
+        title: 'No Selection',
+        description: 'Please select at least one request',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const updates = Array.from(selectedRequests).map(id => 
+        fetch('/api/crowd-request/update-payment-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestId: id,
+            paymentStatus,
+            paymentMethod: 'manual'
+          })
+        })
+      );
+
+      await Promise.all(updates);
+      
+      toast({
+        title: 'Success',
+        description: `Updated payment status for ${selectedRequests.size} request(s)`,
+      });
+      
+      setSelectedRequests(new Set());
+      fetchRequests();
+    } catch (error) {
+      console.error('Error updating payment statuses:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update payment statuses',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // CSV Export
+  const exportToCSV = () => {
+    const headers = [
+      'ID', 'Type', 'Song Title', 'Song Artist', 'Recipient Name', 'Recipient Message',
+      'Requester Name', 'Requester Email', 'Requester Phone', 'Amount Requested', 'Amount Paid',
+      'Payment Status', 'Payment Method', 'Status', 'Event Code', 'Event Name', 'Event Date',
+      'Fast Track', 'Fast Track Fee', 'Created At', 'Paid At'
+    ];
+
+    const rows = filteredRequests.map(request => [
+      request.id,
+      request.request_type,
+      request.song_title || '',
+      request.song_artist || '',
+      request.recipient_name || '',
+      request.recipient_message || '',
+      request.requester_name,
+      request.requester_email || '',
+      request.requester_phone || '',
+      (request.amount_requested / 100).toFixed(2),
+      (request.amount_paid / 100).toFixed(2),
+      request.payment_status,
+      request.payment_method || '',
+      request.status,
+      request.event_qr_code,
+      request.event_name || '',
+      request.event_date || '',
+      request.is_fast_track ? 'Yes' : 'No',
+      (request.fast_track_fee / 100).toFixed(2),
+      new Date(request.created_at).toISOString(),
+      request.paid_at ? new Date(request.paid_at).toISOString() : ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `crowd-requests-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: 'Export Complete',
+      description: `Exported ${filteredRequests.length} requests to CSV`,
+    });
+  };
+
+  // Open detail modal
+  const openDetailModal = (request: CrowdRequest) => {
+    setSelectedRequest(request);
+    setShowDetailModal(true);
+    setStripeDetails(null);
+    // Auto-fetch Stripe details if payment_intent_id or stripe_session_id exists
+    if (request.payment_intent_id || (request as any).stripe_session_id) {
+      fetchStripeDetails(request);
+    }
+  };
+
+  // Fetch Stripe payment details
+  const fetchStripeDetails = async (request: CrowdRequest) => {
+    if (!request.payment_intent_id && !(request as any).stripe_session_id) {
+      return;
+    }
+
+    setLoadingStripeDetails(true);
+    try {
+      const params = new URLSearchParams();
+      if (request.id) params.append('requestId', request.id);
+      if (request.payment_intent_id) params.append('paymentIntentId', request.payment_intent_id);
+      if ((request as any).stripe_session_id) params.append('sessionId', (request as any).stripe_session_id);
+
+      const response = await fetch(`/api/crowd-request/stripe-details?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setStripeDetails(data.stripe);
+      } else {
+        console.error('Failed to fetch Stripe details');
+      }
+    } catch (error) {
+      console.error('Error fetching Stripe details:', error);
+    } finally {
+      setLoadingStripeDetails(false);
+    }
+  };
+
+  // Assign orphaned request to current organization
+  const assignRequestToOrganization = async (requestId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single();
+
+      if (!org) {
+        throw new Error('No organization found');
+      }
+
+      const { error } = await supabase
+        .from('crowd_requests')
+        .update({ 
+          organization_id: org.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+      
+      toast({
+        title: 'Success',
+        description: 'Request assigned to your organization',
+      });
+      
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error assigning request:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to assign request',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const filteredRequests = requests.filter(request => {
     const matchesSearch = 
       request.requester_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.song_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.song_artist?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.event_qr_code?.toLowerCase().includes(searchTerm.toLowerCase());
+      request.event_qr_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.requester_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.requester_phone?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || request.status === statusFilter || 
                          (statusFilter === 'paid' && request.payment_status === 'paid');
     
-    return matchesSearch && matchesStatus;
+    const matchesDateRange = (!dateRangeStart || new Date(request.created_at) >= new Date(dateRangeStart)) &&
+                             (!dateRangeEnd || new Date(request.created_at) <= new Date(dateRangeEnd + 'T23:59:59'));
+    
+    const matchesPaymentMethod = paymentMethodFilter === 'all' || request.payment_method === paymentMethodFilter;
+    
+    const matchesRequestType = requestTypeFilter === 'all' || request.request_type === requestTypeFilter;
+    
+    const matchesEventCode = !eventCodeFilter || request.event_qr_code?.toLowerCase().includes(eventCodeFilter.toLowerCase());
+    
+    return matchesSearch && matchesStatus && matchesDateRange && matchesPaymentMethod && matchesRequestType && matchesEventCode;
   });
+
+  // Sorting function
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
+    // Handle priority_order first (fast-track requests should appear first when sorting by date)
+    if (sortColumn === 'created_at' || sortColumn === 'date') {
+      // Fast-track requests (priority_order = 0) always come first
+      if (a.is_fast_track && !b.is_fast_track) return -1;
+      if (!a.is_fast_track && b.is_fast_track) return 1;
+    }
+
+    let aValue: any;
+    let bValue: any;
+
+    switch (sortColumn) {
+      case 'created_at':
+      case 'date':
+        aValue = new Date(a.created_at).getTime();
+        bValue = new Date(b.created_at).getTime();
+        break;
+      case 'requester_name':
+        aValue = a.requester_name?.toLowerCase() || '';
+        bValue = b.requester_name?.toLowerCase() || '';
+        break;
+      case 'amount':
+        aValue = (a.amount_paid || a.amount_requested || 0);
+        bValue = (b.amount_paid || b.amount_requested || 0);
+        break;
+      case 'status':
+        aValue = a.status?.toLowerCase() || '';
+        bValue = b.status?.toLowerCase() || '';
+        break;
+      case 'payment_status':
+        aValue = a.payment_status?.toLowerCase() || '';
+        bValue = b.payment_status?.toLowerCase() || '';
+        break;
+      case 'song_title':
+        aValue = a.song_title?.toLowerCase() || '';
+        bValue = b.song_title?.toLowerCase() || '';
+        break;
+      case 'event_code':
+        aValue = a.event_qr_code?.toLowerCase() || '';
+        bValue = b.event_qr_code?.toLowerCase() || '';
+        break;
+      default:
+        aValue = a[sortColumn as keyof CrowdRequest];
+        bValue = b[sortColumn as keyof CrowdRequest];
+    }
+
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Pagination calculations
+  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = sortedRequests.slice(startIndex, endIndex);
+
+  // Handle column header click for sorting
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Toggle direction if clicking the same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new column and default to descending for dates, ascending for text
+      setSortColumn(column);
+      setSortDirection(column === 'created_at' || column === 'date' ? 'desc' : 'asc');
+    }
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, dateRangeStart, dateRangeEnd, paymentMethodFilter, requestTypeFilter, eventCodeFilter]);
 
   const getStatusBadge = (status: string, paymentStatus: string) => {
     if (paymentStatus === 'refunded') {
@@ -1063,40 +1433,183 @@ export default function CrowdRequestsPage() {
           </div>
         )}
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search requests..."
-              className="pl-10"
-            />
+        {/* Enhanced Filters */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex flex-col gap-4">
+            {/* First Row: Search and Quick Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search requests, names, emails, phones..."
+                  className="pl-10"
+                />
+              </div>
+              
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[140px]"
+              >
+                <option value="all">All Status</option>
+                <option value="new">New</option>
+                <option value="acknowledged">Acknowledged</option>
+                <option value="playing">Playing</option>
+                <option value="played">Played</option>
+                <option value="paid">Paid</option>
+              </select>
+
+              <select
+                value={paymentMethodFilter}
+                onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[140px]"
+              >
+                <option value="all">All Payment Methods</option>
+                <option value="card">Card</option>
+                <option value="cashapp">CashApp</option>
+                <option value="venmo">Venmo</option>
+                <option value="manual">Manual</option>
+              </select>
+
+              <select
+                value={requestTypeFilter}
+                onChange={(e) => setRequestTypeFilter(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[140px]"
+              >
+                <option value="all">All Types</option>
+                <option value="song_request">Song Request</option>
+                <option value="shoutout">Shoutout</option>
+              </select>
+            </div>
+
+            {/* Second Row: Date Range and Event Code */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <Input
+                  type="date"
+                  value={dateRangeStart}
+                  onChange={(e) => setDateRangeStart(e.target.value)}
+                  placeholder="Start Date"
+                  className="min-w-[150px]"
+                />
+                <span className="text-gray-500">to</span>
+                <Input
+                  type="date"
+                  value={dateRangeEnd}
+                  onChange={(e) => setDateRangeEnd(e.target.value)}
+                  placeholder="End Date"
+                  className="min-w-[150px]"
+                />
+              </div>
+
+              <Input
+                value={eventCodeFilter}
+                onChange={(e) => setEventCodeFilter(e.target.value)}
+                placeholder="Filter by event code..."
+                className="flex-1 max-w-xs"
+              />
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setDateRangeStart('');
+                    setDateRangeEnd('');
+                    setEventCodeFilter('');
+                    setSearchTerm('');
+                    setStatusFilter('all');
+                    setPaymentMethodFilter('all');
+                    setRequestTypeFilter('all');
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="inline-flex items-center gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Clear Filters
+                </Button>
+                
+                <Button
+                  onClick={fetchRequests}
+                  variant="outline"
+                  className="inline-flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Refresh
+                </Button>
+
+                <Button
+                  onClick={exportToCSV}
+                  variant="outline"
+                  className="inline-flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </Button>
+
+                <Button
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  variant={autoRefresh ? "default" : "outline"}
+                  className="inline-flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
+                  {autoRefresh ? 'Auto-Refresh ON' : 'Auto-Refresh OFF'}
+                </Button>
+              </div>
+            </div>
           </div>
-          
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="all">All Status</option>
-            <option value="new">New</option>
-            <option value="acknowledged">Acknowledged</option>
-            <option value="playing">Playing</option>
-            <option value="played">Played</option>
-            <option value="paid">Paid</option>
-          </select>
-          
-          <Button
-            onClick={fetchRequests}
-            variant="outline"
-            className="inline-flex items-center gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </Button>
         </div>
+
+        {/* Bulk Action Bar */}
+        {selectedRequests.size > 0 && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {selectedRequests.size} request(s) selected
+              </span>
+              <Button
+                onClick={() => setSelectedRequests(new Set())}
+                variant="ghost"
+                size="sm"
+              >
+                Clear Selection
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleBulkStatusUpdate(e.target.value);
+                    e.target.value = '';
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              >
+                <option value="">Bulk Update Status</option>
+                <option value="new">New</option>
+                <option value="acknowledged">Acknowledged</option>
+                <option value="playing">Playing</option>
+                <option value="played">Played</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleBulkPaymentStatusUpdate(e.target.value);
+                    e.target.value = '';
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              >
+                <option value="">Bulk Update Payment</option>
+                <option value="paid">Mark as Paid</option>
+                <option value="pending">Mark as Pending</option>
+              </select>
+            </div>
+          </div>
+        )}
 
         {/* Requests List */}
         {loading ? (
@@ -1108,41 +1621,152 @@ export default function CrowdRequestsPage() {
           <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400">No requests found</p>
+            {(searchTerm || statusFilter !== 'all' || dateRangeStart || dateRangeEnd || paymentMethodFilter !== 'all' || requestTypeFilter !== 'all' || eventCodeFilter) && (
+              <Button
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                  setDateRangeStart('');
+                  setDateRangeEnd('');
+                  setPaymentMethodFilter('all');
+                  setRequestTypeFilter('all');
+                  setEventCodeFilter('');
+                }}
+                variant="outline"
+                className="mt-4"
+              >
+                Clear All Filters
+              </Button>
+            )}
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-900">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Request
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Requester
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredRequests.map((request) => (
+          <>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                      <th className="px-4 py-3 text-left">
+                        <input
+                          type="checkbox"
+                          checked={paginatedRequests.length > 0 && paginatedRequests.every(r => selectedRequests.has(r.id))}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                        onClick={() => handleSort('song_title')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Request
+                          {sortColumn === 'song_title' ? (
+                            sortDirection === 'asc' ? (
+                              <ArrowUp className="w-3 h-3" />
+                            ) : (
+                              <ArrowDown className="w-3 h-3" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 opacity-30" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                        onClick={() => handleSort('requester_name')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Requester
+                          {sortColumn === 'requester_name' ? (
+                            sortDirection === 'asc' ? (
+                              <ArrowUp className="w-3 h-3" />
+                            ) : (
+                              <ArrowDown className="w-3 h-3" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 opacity-30" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                        onClick={() => handleSort('amount')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Amount
+                          {sortColumn === 'amount' ? (
+                            sortDirection === 'asc' ? (
+                              <ArrowUp className="w-3 h-3" />
+                            ) : (
+                              <ArrowDown className="w-3 h-3" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 opacity-30" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                        onClick={() => handleSort('status')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Status
+                          {sortColumn === 'status' ? (
+                            sortDirection === 'asc' ? (
+                              <ArrowUp className="w-3 h-3" />
+                            ) : (
+                              <ArrowDown className="w-3 h-3" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 opacity-30" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                        onClick={() => handleSort('created_at')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Date
+                          {sortColumn === 'created_at' ? (
+                            sortDirection === 'asc' ? (
+                              <ArrowUp className="w-3 h-3" />
+                            ) : (
+                              <ArrowDown className="w-3 h-3" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 opacity-30" />
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {paginatedRequests.map((request) => (
                     <tr 
                       key={request.id} 
-                      className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                      className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
                         request.is_fast_track ? 'bg-orange-50 dark:bg-orange-900/10 border-l-4 border-orange-500' : ''
+                      } ${
+                        !request.organization_id ? 'bg-yellow-50 dark:bg-yellow-900/10 border-l-4 border-yellow-500' : ''
                       }`}
+                      onClick={() => openDetailModal(request)}
                     >
+                        <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedRequests.has(request.id)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleSelectRequest(request.id, e.target.checked);
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                        </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {request.request_type === 'song_request' ? (
@@ -1181,6 +1805,11 @@ export default function CrowdRequestsPage() {
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">
                             {request.requester_name}
+                            {(request.payment_intent_id || (request as any).stripe_session_id) && (
+                              <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400" title="Stripe payment - click to view details">
+                                💳
+                              </span>
+                            )}
                           </p>
                           {request.requester_email && (
                             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -1210,11 +1839,42 @@ export default function CrowdRequestsPage() {
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                         {new Date(request.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex flex-col gap-2">
+                          {!request.organization_id && (
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm('Assign this orphaned request to your organization?')) {
+                                  assignRequestToOrganization(request.id);
+                                }
+                              }}
+                              size="sm"
+                              className="text-xs h-7 w-full bg-yellow-600 hover:bg-yellow-700 text-white"
+                              title="This request has no organization assigned. Click to assign it to your organization."
+                            >
+                              Assign to Org
+                            </Button>
+                          )}
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDetailModal(request);
+                            }}
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-7 w-full"
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            View Details
+                          </Button>
                           <select
                             value={request.status}
-                            onChange={(e) => updateRequestStatus(request.id, e.target.value)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              updateRequestStatus(request.id, e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
                             className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           >
                             <option value="new">New</option>
@@ -1227,7 +1887,8 @@ export default function CrowdRequestsPage() {
                           {/* Payment Status Update - Show for pending payments */}
                           {request.payment_status === 'pending' && (
                             <Button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 const paymentMethod = request.payment_method || 'manual';
                                 updatePaymentStatus(request.id, 'paid', paymentMethod);
                               }}
@@ -1250,7 +1911,8 @@ export default function CrowdRequestsPage() {
                               {/* Refund button - for Stripe, Venmo, and CashApp payments */}
                               {(request.payment_intent_id || request.payment_method === 'venmo' || request.payment_method === 'cashapp') && (
                                 <Button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     if (request.payment_method === 'venmo') {
                                       handleVenmoRefundClick(request);
                                     } else {
@@ -1304,6 +1966,518 @@ export default function CrowdRequestsPage() {
               </table>
             </div>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredRequests.length)} of {filteredRequests.length} requests
+                </span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={25}>25 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  size="sm"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600 dark:text-gray-400 px-4">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  size="sm"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+        )}
+
+        {/* Request Detail Modal */}
+        {showDetailModal && selectedRequest && (
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowDetailModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Request Details
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setSelectedRequest(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                {/* Orphaned Request Warning */}
+                {!selectedRequest.organization_id && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+                          Orphaned Request
+                        </p>
+                        <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                          This request has no organization assigned. It may not appear in filtered views. Assign it to your organization to manage it properly.
+                        </p>
+                        <Button
+                          onClick={() => {
+                            assignRequestToOrganization(selectedRequest.id);
+                            setShowDetailModal(false);
+                            setSelectedRequest(null);
+                          }}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                        >
+                          Assign to My Organization
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Request Type & Status */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Request Type</p>
+                    <div className="flex items-center gap-2">
+                      {selectedRequest.request_type === 'song_request' ? (
+                        <Music className="w-5 h-5 text-purple-500" />
+                      ) : (
+                        <Mic className="w-5 h-5 text-pink-500" />
+                      )}
+                      <p className="font-semibold text-gray-900 dark:text-white capitalize">
+                        {selectedRequest.request_type.replace('_', ' ')}
+                      </p>
+                      {selectedRequest.is_fast_track && (
+                        <Badge className="bg-orange-500 text-white flex items-center gap-1 px-2 py-0.5">
+                          <Zap className="w-3 h-3" />
+                          Fast-Track
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Status</p>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(selectedRequest.status, selectedRequest.payment_status)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Song/Shoutout Details */}
+                {selectedRequest.request_type === 'song_request' ? (
+                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Song Request</p>
+                    <p className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                      {selectedRequest.song_title || 'Unknown Song'}
+                    </p>
+                    {selectedRequest.song_artist && (
+                      <p className="text-lg text-gray-700 dark:text-gray-300">
+                        by {selectedRequest.song_artist}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-4 border border-pink-200 dark:border-pink-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Shoutout</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      For: {selectedRequest.recipient_name || 'Unknown Recipient'}
+                    </p>
+                    {selectedRequest.recipient_message && (
+                      <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                        {selectedRequest.recipient_message}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Requester Information */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Requester Information</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Name</p>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {stripeDetails?.customer?.name || selectedRequest.requester_name}
+                        {stripeDetails?.customer?.name && stripeDetails.customer.name !== selectedRequest.requester_name && (
+                          <span className="text-xs text-gray-500 ml-2">(from Stripe)</span>
+                        )}
+                      </p>
+                    </div>
+                    {(stripeDetails?.customer?.email || selectedRequest.requester_email) && (
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Email</p>
+                        <a 
+                          href={`mailto:${stripeDetails?.customer?.email || selectedRequest.requester_email}`}
+                          className="font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                        >
+                          <Mail className="w-3 h-3" />
+                          {stripeDetails?.customer?.email || selectedRequest.requester_email}
+                          {stripeDetails?.customer?.email && (
+                            <span className="text-xs text-gray-500 ml-1">(Stripe)</span>
+                          )}
+                        </a>
+                      </div>
+                    )}
+                    {(stripeDetails?.customer?.phone || selectedRequest.requester_phone) && (
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Phone</p>
+                        <a 
+                          href={`tel:${stripeDetails?.customer?.phone || selectedRequest.requester_phone}`}
+                          className="font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                        >
+                          <Phone className="w-3 h-3" />
+                          {stripeDetails?.customer?.phone || selectedRequest.requester_phone}
+                          {stripeDetails?.customer?.phone && (
+                            <span className="text-xs text-gray-500 ml-1">(Stripe)</span>
+                          )}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stripe Payment Details */}
+                {(selectedRequest.payment_intent_id || (selectedRequest as any).stripe_session_id) && (
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">Stripe Payment Details</p>
+                      {!stripeDetails && !loadingStripeDetails && (
+                        <Button
+                          onClick={() => fetchStripeDetails(selectedRequest)}
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Load Stripe Details
+                        </Button>
+                      )}
+                      {loadingStripeDetails && (
+                        <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />
+                      )}
+                    </div>
+                    
+                    {stripeDetails ? (
+                      <div className="space-y-4">
+                        {/* Stripe Customer Info */}
+                        {stripeDetails.customer && (
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Stripe Customer</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                              {stripeDetails.customer.name && (
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Name</p>
+                                  <p className="font-medium text-gray-900 dark:text-white">{stripeDetails.customer.name}</p>
+                                </div>
+                              )}
+                              {stripeDetails.customer.email && (
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                                  <p className="font-medium text-gray-900 dark:text-white">{stripeDetails.customer.email}</p>
+                                </div>
+                              )}
+                              {stripeDetails.customer.phone && (
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Phone</p>
+                                  <p className="font-medium text-gray-900 dark:text-white">{stripeDetails.customer.phone}</p>
+                                </div>
+                              )}
+                              {stripeDetails.customer.id && (
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Customer ID</p>
+                                  <p className="font-mono text-xs text-gray-600 dark:text-gray-400">{stripeDetails.customer.id}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Card Details */}
+                        {stripeDetails.charge?.payment_method_details?.card && (
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Card Details</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Brand</p>
+                                <p className="font-medium text-gray-900 dark:text-white capitalize">
+                                  {stripeDetails.charge.payment_method_details.card.brand}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Last 4</p>
+                                <p className="font-mono font-medium text-gray-900 dark:text-white">
+                                  •••• {stripeDetails.charge.payment_method_details.card.last4}
+                                </p>
+                              </div>
+                              {stripeDetails.charge.payment_method_details.card.country && (
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Country</p>
+                                  <p className="font-medium text-gray-900 dark:text-white">
+                                    {stripeDetails.charge.payment_method_details.card.country}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Payment Intent Info */}
+                        {stripeDetails.paymentIntent && (
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Payment Intent</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">ID</p>
+                                <p className="font-mono text-xs text-gray-600 dark:text-gray-400 break-all">
+                                  {stripeDetails.paymentIntent.id}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
+                                <p className="font-medium text-gray-900 dark:text-white capitalize">
+                                  {stripeDetails.paymentIntent.status}
+                                </p>
+                              </div>
+                              {stripeDetails.paymentIntent.created && (
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Date</p>
+                                  <p className="font-medium text-gray-900 dark:text-white">
+                                    {new Date(stripeDetails.paymentIntent.created * 1000).toLocaleString()}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Billing Details */}
+                        {stripeDetails.charge?.billing_details && (
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Billing Details</p>
+                            <div className="text-sm">
+                              {stripeDetails.charge.billing_details.name && (
+                                <p className="text-gray-900 dark:text-white">
+                                  <span className="text-gray-500 dark:text-gray-400">Name: </span>
+                                  {stripeDetails.charge.billing_details.name}
+                                </p>
+                              )}
+                              {stripeDetails.charge.billing_details.email && (
+                                <p className="text-gray-900 dark:text-white">
+                                  <span className="text-gray-500 dark:text-gray-400">Email: </span>
+                                  {stripeDetails.charge.billing_details.email}
+                                </p>
+                              )}
+                              {stripeDetails.charge.billing_details.phone && (
+                                <p className="text-gray-900 dark:text-white">
+                                  <span className="text-gray-500 dark:text-gray-400">Phone: </span>
+                                  {stripeDetails.charge.billing_details.phone}
+                                </p>
+                              )}
+                              {stripeDetails.charge.billing_details.address && (
+                                <div className="mt-1">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Address</p>
+                                  <p className="text-gray-900 dark:text-white text-xs">
+                                    {[
+                                      stripeDetails.charge.billing_details.address.line1,
+                                      stripeDetails.charge.billing_details.address.line2,
+                                      stripeDetails.charge.billing_details.address.city,
+                                      stripeDetails.charge.billing_details.address.state,
+                                      stripeDetails.charge.billing_details.address.postal_code,
+                                      stripeDetails.charge.billing_details.address.country,
+                                    ].filter(Boolean).join(', ')}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : !loadingStripeDetails ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Click "Load Stripe Details" to fetch customer information from Stripe.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Loading Stripe details...</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Payment Information */}
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Payment Information</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Amount Requested</p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-white">
+                        ${(selectedRequest.amount_requested / 100).toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Amount Paid</p>
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        ${((selectedRequest.amount_paid || 0) / 100).toFixed(2)}
+                      </p>
+                    </div>
+                    {selectedRequest.is_fast_track && selectedRequest.fast_track_fee > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Fast-Track Fee</p>
+                        <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                          ${(selectedRequest.fast_track_fee / 100).toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Payment Status</p>
+                      <p className="font-medium text-gray-900 dark:text-white capitalize">
+                        {selectedRequest.payment_status}
+                      </p>
+                    </div>
+                    {selectedRequest.payment_method && (
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Payment Method</p>
+                        <p className="font-medium text-gray-900 dark:text-white capitalize">
+                          {selectedRequest.payment_method === 'card' ? '💳 Card' : 
+                           selectedRequest.payment_method === 'cashapp' ? '💰 CashApp' :
+                           selectedRequest.payment_method === 'venmo' ? '💸 Venmo' :
+                           selectedRequest.payment_method || 'N/A'}
+                        </p>
+                      </div>
+                    )}
+                    {selectedRequest.refund_amount && (
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Refund Amount</p>
+                        <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                          ${(selectedRequest.refund_amount / 100).toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Event Information */}
+                {(selectedRequest.event_qr_code || selectedRequest.event_name || selectedRequest.event_date) && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Event Information</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {selectedRequest.event_qr_code && (
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Event Code</p>
+                          <p className="font-medium text-gray-900 dark:text-white font-mono">
+                            {selectedRequest.event_qr_code}
+                          </p>
+                        </div>
+                      )}
+                      {selectedRequest.event_name && (
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Event Name</p>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {selectedRequest.event_name}
+                          </p>
+                        </div>
+                      )}
+                      {selectedRequest.event_date && (
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Event Date</p>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {new Date(selectedRequest.event_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Timestamps */}
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Timestamps</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Created At</p>
+                      <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        {new Date(selectedRequest.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    {selectedRequest.paid_at && (
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Paid At</p>
+                        <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          {new Date(selectedRequest.paid_at).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {selectedRequest.refunded_at && (
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Refunded At</p>
+                        <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          {new Date(selectedRequest.refunded_at).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <Button
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      setSelectedRequest(null);
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Close
+                  </Button>
+                  {selectedRequest.payment_status === 'pending' && (
+                    <Button
+                      onClick={() => {
+                        const paymentMethod = selectedRequest.payment_method || 'manual';
+                        updatePaymentStatus(selectedRequest.id, 'paid', paymentMethod);
+                        setShowDetailModal(false);
+                        setSelectedRequest(null);
+                      }}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      Mark as Paid
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Venmo Refund Modal */}
@@ -1340,7 +2514,7 @@ export default function CrowdRequestsPage() {
                     <strong>Steps to process refund:</strong>
                   </p>
                   <ol className="list-decimal list-inside space-y-2 text-sm text-blue-700 dark:text-blue-300">
-                    <li>Click "Open Venmo" below to open Venmo with the refund amount pre-filled</li>
+                    <li>Click &quot;Open Venmo&quot; below to open Venmo with the refund amount pre-filled</li>
                     {refundRequest.requester_phone && (
                       <li className="ml-4">Venmo will try to find the customer using their phone: {refundRequest.requester_phone}</li>
                     )}
@@ -1348,7 +2522,7 @@ export default function CrowdRequestsPage() {
                       <li className="ml-4">Search for the customer by name, phone, or Venmo username</li>
                     )}
                     <li>Complete the payment in Venmo</li>
-                    <li>Return here and click "Mark as Refunded" to update the record</li>
+                    <li>Return here and click &quot;Mark as Refunded&quot; to update the record</li>
                   </ol>
                   {refundRequest.requester_name && (
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">

@@ -7,21 +7,48 @@ export interface UserRole {
 }
 
 /**
+ * Helper function to add timeout to a promise
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs))
+  ]);
+}
+
+/**
  * Determines user role based on email and returns role information
  */
 export async function getUserRole(): Promise<UserRole | null> {
   const supabase = createClient();
   
   try {
-    const { data: { user }, error } = await supabase.auth.getUser();
+    // Add timeout to prevent hanging on getUser()
+    const getUserResult = await withTimeout(
+      supabase.auth.getUser(),
+      3000,
+      { data: { user: null }, error: { 
+        message: 'Timeout',
+        name: 'AuthTimeoutError',
+        status: 408,
+        __isAuthError: true
+      } as any }
+    );
+    
+    const { data: { user }, error } = getUserResult;
     
     if (error || !user || !user.email) {
       return null;
     }
 
     // Check admin status using centralized admin roles system
+    // Add timeout to prevent hanging on admin check
     const { isAdminEmail } = await import('./admin-roles');
-    const isAdmin = await isAdminEmail(user.email);
+    const isAdmin = await withTimeout(
+      isAdminEmail(user.email),
+      3000,
+      false // Default to non-admin on timeout
+    );
     const isClient = !isAdmin; // For now, non-admins are clients
 
     return {
@@ -52,36 +79,59 @@ export async function getRoleBasedRedirectUrl(baseUrl: string = ''): Promise<str
   }
 
   // For non-admin users, check if they have an organization (SaaS customers)
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (user) {
-    // Check if user has an organization (SaaS customer)
-    const { data: organization } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
+  try {
+    const supabase = createClient();
+    const getUserResult = await withTimeout(
+      supabase.auth.getUser(),
+      3000,
+      { data: { user: null }, error: { 
+        message: 'Timeout',
+        name: 'AuthTimeoutError',
+        status: 408,
+        __isAuthError: true
+      } as any }
+    );
+    
+    const { data: { user } } = getUserResult;
+    
+    if (user) {
+      // Check if user has an organization (SaaS customer)
+      // Use maybeSingle() instead of single() to avoid errors when no row exists
+      let organizationResult;
+      try {
+        const timeoutPromise = new Promise<{ data: null; error: null }>((resolve) => 
+          setTimeout(() => resolve({ data: null, error: null }), 3000)
+        );
+        const queryPromise = supabase
+          .from('organizations')
+          .select('id')
+          .eq('owner_id', user.id)
+          .maybeSingle();
+        organizationResult = await Promise.race([queryPromise, timeoutPromise]);
+      } catch (error) {
+        organizationResult = { data: null, error: null };
+      }
 
-    if (organization) {
-      // User has an organization - they're a SaaS customer
-      // Send them to onboarding (which will show their dashboard if org exists)
+      if (organizationResult.data) {
+        // User has an organization - they're a SaaS customer
+        // Send them to onboarding (which will show their dashboard if org exists)
+        return `${baseUrl}/onboarding/welcome`;
+      }
+      
+      // No organization - could be:
+      // 1. New signup (organization being created) - send to onboarding
+      // 2. Event client (not a SaaS customer) - send to client portal
+      // For now, send to onboarding to let the trigger create the org
       return `${baseUrl}/onboarding/welcome`;
     }
-    
-    // No organization - could be:
-    // 1. New signup (organization being created) - send to onboarding
-    // 2. Event client (not a SaaS customer) - send to client portal
-    // For now, send to onboarding to let the trigger create the org
-    return `${baseUrl}/onboarding/welcome`;
+  } catch (error) {
+    console.error('Error checking organization:', error);
+    // Fall through to default redirect
   }
 
   // Fallback: if somehow we get here without a user, this shouldn't happen
   // but send to signin just in case
   return `${baseUrl}/signin`;
-
-  // Fallback to home page
-  return `${baseUrl}/`;
 }
 
 /**
