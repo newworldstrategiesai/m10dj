@@ -24,6 +24,7 @@ import {
   Printer,
   Zap,
   X,
+  Settings,
   RotateCcw,
   ChevronLeft,
   ChevronRight,
@@ -43,6 +44,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/utils/cn';
+import { getCoverPhotoUrl } from '@/utils/cover-photo-helper';
 
 interface CrowdRequest {
   id: string;
@@ -71,6 +79,17 @@ interface CrowdRequest {
   created_at: string;
   paid_at: string | null;
   organization_id: string | null;
+  // New fields for audio uploads
+  audio_file_url: string | null;
+  is_custom_audio: boolean;
+  audio_upload_fee: number;
+  artist_rights_confirmed: boolean;
+  is_artist: boolean;
+  // Charity donation fields (from organization)
+  charity_donation_enabled?: boolean;
+  charity_donation_percentage?: number;
+  charity_name?: string;
+  charity_url?: string;
 }
 
 export default function CrowdRequestsPage() {
@@ -84,6 +103,7 @@ export default function CrowdRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showQRGenerator, setShowQRGenerator] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('payment');
   const [qrType, setQrType] = useState<'event' | 'public'>('event');
   
   // New feature states
@@ -95,14 +115,67 @@ export default function CrowdRequestsPage() {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [requestTypeFilter, setRequestTypeFilter] = useState<string>('all');
   const [eventCodeFilter, setEventCodeFilter] = useState<string>('');
+  const [audioUploadFilter, setAudioUploadFilter] = useState<string>('all'); // 'all', 'custom', 'standard'
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [organization, setOrganization] = useState<any>(null);
+  const [headerSettings, setHeaderSettings] = useState({
+    artistName: '',
+    location: '',
+    date: ''
+  });
+  const [coverPhotoSettings, setCoverPhotoSettings] = useState({
+    requests_cover_photo_url: '',
+    requests_artist_photo_url: '',
+    requests_venue_photo_url: '',
+    requests_primary_cover_source: 'artist' as 'artist' | 'venue', // Which to use as primary when both artist and venue are set
+  });
+  const [coverPhotoHistory, setCoverPhotoHistory] = useState<string[]>([]);
+  const [artistPhotoHistory, setArtistPhotoHistory] = useState<string[]>([]);
+  const [venuePhotoHistory, setVenuePhotoHistory] = useState<string[]>([]);
+  const [pageSettings, setPageSettings] = useState({
+    pageTitle: '',
+    pageDescription: '',
+    mainHeading: '',
+    songRequestLabel: '',
+    shoutoutLabel: '',
+    musicLinkLabel: '',
+    musicLinkPlaceholder: '',
+    musicLinkHelpText: '',
+    manualEntryDivider: '',
+    startOverText: '',
+    songTitleLabel: '',
+    songTitlePlaceholder: '',
+    artistNameLabel: '',
+    artistNamePlaceholder: '',
+    audioUploadLabel: '',
+    audioUploadDescription: '',
+    artistRightsText: '',
+    isArtistText: '',
+    audioFeeText: '',
+    recipientNameLabel: '',
+    recipientNamePlaceholder: '',
+    messageLabel: '',
+    messagePlaceholder: '',
+    submitButtonText: '',
+    step1Text: '',
+    step2Text: '',
+    defaultRequestType: 'song_request',
+    showAudioUpload: true,
+    showFastTrack: true,
+    showNextSong: true,
+    showBundleDiscount: true
+  });
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [stripeDetails, setStripeDetails] = useState<any>(null);
   const [loadingStripeDetails, setLoadingStripeDetails] = useState(false);
+  const [showLinkPaymentModal, setShowLinkPaymentModal] = useState(false);
+  const [linkPaymentIntentId, setLinkPaymentIntentId] = useState('');
+  const [linkPaymentRequestId, setLinkPaymentRequestId] = useState<string | null>(null);
   
   // QR Code Generator State
   const [qrEventCode, setQrEventCode] = useState('');
@@ -155,9 +228,24 @@ export default function CrowdRequestsPage() {
 
   const fetchPaymentSettings = async () => {
     try {
-      const response = await fetch('/api/admin-settings');
+      // Get auth token for API calls
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('Not authenticated when fetching payment settings');
+        return;
+      }
+
+      const authToken = session.access_token;
+
+      const response = await fetch('/api/admin-settings', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
+        const data = result.settings ? Object.entries(result.settings).map(([key, value]) => ({ setting_key: key, setting_value: value })) : [];
         const cashAppSetting = data.find((s: any) => s.setting_key === 'crowd_request_cashapp_tag');
         const venmoSetting = data.find((s: any) => s.setting_key === 'crowd_request_venmo_username');
         const fastTrackFeeSetting = data.find((s: any) => s.setting_key === 'crowd_request_fast_track_fee');
@@ -167,20 +255,20 @@ export default function CrowdRequestsPage() {
         const bundleDiscountPercentSetting = data.find((s: any) => s.setting_key === 'crowd_request_bundle_discount_percent');
         
         if (cashAppSetting) {
-          setPaymentSettings(prev => ({ ...prev, cashAppTag: cashAppSetting.setting_value }));
+          setPaymentSettings(prev => ({ ...prev, cashAppTag: String(cashAppSetting.setting_value ?? '') }));
         }
         if (venmoSetting) {
-          setPaymentSettings(prev => ({ ...prev, venmoUsername: venmoSetting.setting_value }));
+          setPaymentSettings(prev => ({ ...prev, venmoUsername: String(venmoSetting.setting_value ?? '') }));
         }
         if (fastTrackFeeSetting) {
-          setRequestSettings(prev => ({ ...prev, fastTrackFee: parseInt(fastTrackFeeSetting.setting_value) || 1000 }));
+          setRequestSettings(prev => ({ ...prev, fastTrackFee: parseInt(String(fastTrackFeeSetting.setting_value || '1000')) || 1000 }));
         }
         if (minimumAmountSetting) {
-          setRequestSettings(prev => ({ ...prev, minimumAmount: parseInt(minimumAmountSetting.setting_value) || 100 }));
+          setRequestSettings(prev => ({ ...prev, minimumAmount: parseInt(String(minimumAmountSetting.setting_value || '100')) || 100 }));
         }
         if (presetAmountsSetting) {
           try {
-            const amounts = JSON.parse(presetAmountsSetting.setting_value);
+            const amounts = JSON.parse(String(presetAmountsSetting.setting_value || '[]'));
             if (Array.isArray(amounts)) {
               setRequestSettings(prev => ({ ...prev, presetAmounts: amounts }));
             }
@@ -189,10 +277,10 @@ export default function CrowdRequestsPage() {
           }
         }
         if (bundleDiscountEnabledSetting) {
-          setRequestSettings(prev => ({ ...prev, bundleDiscountEnabled: bundleDiscountEnabledSetting.setting_value === 'true' }));
+          setRequestSettings(prev => ({ ...prev, bundleDiscountEnabled: String(bundleDiscountEnabledSetting.setting_value) === 'true' }));
         }
         if (bundleDiscountPercentSetting) {
-          setRequestSettings(prev => ({ ...prev, bundleDiscountPercent: parseInt(bundleDiscountPercentSetting.setting_value) || 10 }));
+          setRequestSettings(prev => ({ ...prev, bundleDiscountPercent: parseInt(String(bundleDiscountPercentSetting.setting_value || '10')) || 10 }));
         }
       }
     } catch (err) {
@@ -203,85 +291,341 @@ export default function CrowdRequestsPage() {
   const saveSettings = async () => {
     setSavingSettings(true);
     try {
+      // Get auth token for API calls
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('Not authenticated. Please sign in again.');
+      }
+
+      const authToken = session.access_token;
+
+      // Helper function to save admin setting
+      const saveAdminSetting = async (settingKey: string, settingValue: string) => {
+        const response = await fetch('/api/admin-settings', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            settingKey,
+            settingValue
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to save ${settingKey}`);
+        }
+
+        return response.json();
+      };
+
       // Save CashApp tag
-      await fetch('/api/admin-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settingKey: 'crowd_request_cashapp_tag',
-          settingValue: paymentSettings.cashAppTag
-        })
-      });
+      await saveAdminSetting('crowd_request_cashapp_tag', paymentSettings.cashAppTag);
 
       // Save Venmo username
-      await fetch('/api/admin-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settingKey: 'crowd_request_venmo_username',
-          settingValue: paymentSettings.venmoUsername
-        })
-      });
+      await saveAdminSetting('crowd_request_venmo_username', paymentSettings.venmoUsername);
 
       // Save fast-track fee
-      await fetch('/api/admin-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settingKey: 'crowd_request_fast_track_fee',
-          settingValue: requestSettings.fastTrackFee.toString()
-        })
-      });
+      await saveAdminSetting('crowd_request_fast_track_fee', requestSettings.fastTrackFee.toString());
 
       // Save minimum amount
-      await fetch('/api/admin-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settingKey: 'crowd_request_minimum_amount',
-          settingValue: requestSettings.minimumAmount.toString()
-        })
-      });
+      await saveAdminSetting('crowd_request_minimum_amount', requestSettings.minimumAmount.toString());
 
       // Save preset amounts
-      await fetch('/api/admin-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settingKey: 'crowd_request_preset_amounts',
-          settingValue: JSON.stringify(requestSettings.presetAmounts)
-        })
-      });
+      await saveAdminSetting('crowd_request_preset_amounts', JSON.stringify(requestSettings.presetAmounts));
 
       // Save bundle discount enabled
-      await fetch('/api/admin-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settingKey: 'crowd_request_bundle_discount_enabled',
-          settingValue: requestSettings.bundleDiscountEnabled.toString()
-        })
-      });
+      await saveAdminSetting('crowd_request_bundle_discount_enabled', requestSettings.bundleDiscountEnabled.toString());
 
       // Save bundle discount percentage
-      await fetch('/api/admin-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settingKey: 'crowd_request_bundle_discount_percent',
-          settingValue: requestSettings.bundleDiscountPercent.toString()
-        })
-      });
+      await saveAdminSetting('crowd_request_bundle_discount_percent', requestSettings.bundleDiscountPercent.toString());
 
+      // Save header and page settings to organization
+      if (organization?.id) {
+        // Only save fields that we know exist in the organizations table
+        // Store detailed page settings in a JSONB field if available
+        const updateData: any = {
+          // Header settings (confirmed to exist)
+          requests_header_artist_name: headerSettings.artistName || null,
+          requests_header_location: headerSettings.location || null,
+          requests_header_date: headerSettings.date || null,
+          // Cover photo settings (confirmed to exist)
+          requests_cover_photo_url: coverPhotoSettings.requests_cover_photo_url || null,
+          requests_artist_photo_url: coverPhotoSettings.requests_artist_photo_url || null,
+          requests_venue_photo_url: coverPhotoSettings.requests_venue_photo_url || null,
+          requests_primary_cover_source: coverPhotoSettings.requests_primary_cover_source || 'artist',
+        };
+
+        // Helper function to update photo history
+        const updatePhotoHistory = (
+          currentUrl: string | undefined,
+          currentHistory: string[],
+          orgHistoryField: any
+        ): string[] => {
+          const url = currentUrl?.trim();
+          if (!url || !url.startsWith('http')) {
+            // Keep existing history if no valid URL
+            return currentHistory.length > 0 
+              ? currentHistory 
+              : (orgHistoryField 
+                  ? (Array.isArray(orgHistoryField) 
+                      ? orgHistoryField
+                      : (typeof orgHistoryField === 'string'
+                          ? JSON.parse(orgHistoryField)
+                          : []))
+                  : []);
+          }
+          
+          // Start with existing history from state, or from organization if state is empty
+          const baseHistory = currentHistory.length > 0 
+            ? [...currentHistory] 
+            : (orgHistoryField 
+                ? (Array.isArray(orgHistoryField) 
+                    ? [...orgHistoryField]
+                    : (typeof orgHistoryField === 'string'
+                        ? JSON.parse(orgHistoryField)
+                        : []))
+                : []);
+          
+          const updatedHistory = [...baseHistory];
+          // Remove if already exists (to move to front)
+          const existingIndex = updatedHistory.indexOf(url);
+          if (existingIndex > -1) {
+            updatedHistory.splice(existingIndex, 1);
+          }
+          // Add to front (most recent first)
+          updatedHistory.unshift(url);
+          // Keep only last 20 URLs
+          return updatedHistory.slice(0, 20);
+        };
+
+        // Update cover photo history
+        const updatedCoverHistory = updatePhotoHistory(
+          coverPhotoSettings.requests_cover_photo_url,
+          coverPhotoHistory,
+          organization?.requests_cover_photo_history
+        );
+        updateData.requests_cover_photo_history = updatedCoverHistory;
+        setCoverPhotoHistory(updatedCoverHistory);
+
+        // Update artist photo history
+        const updatedArtistHistory = updatePhotoHistory(
+          coverPhotoSettings.requests_artist_photo_url,
+          artistPhotoHistory,
+          organization?.requests_artist_photo_history
+        );
+        updateData.requests_artist_photo_history = updatedArtistHistory;
+        setArtistPhotoHistory(updatedArtistHistory);
+
+        // Update venue photo history
+        const updatedVenueHistory = updatePhotoHistory(
+          coverPhotoSettings.requests_venue_photo_url,
+          venuePhotoHistory,
+          organization?.requests_venue_photo_history
+        );
+        updateData.requests_venue_photo_history = updatedVenueHistory;
+        setVenuePhotoHistory(updatedVenueHistory);
+
+        // Log the primary cover source being saved
+        console.log('🎯 Saving primary cover source:', {
+          requests_primary_cover_source: coverPhotoSettings.requests_primary_cover_source,
+          hasArtist: !!coverPhotoSettings.requests_artist_photo_url,
+          artistUrl: coverPhotoSettings.requests_artist_photo_url,
+          hasVenue: !!coverPhotoSettings.requests_venue_photo_url,
+          venueUrl: coverPhotoSettings.requests_venue_photo_url,
+          primaryCoverUrl: coverPhotoSettings.requests_cover_photo_url
+        });
+
+        // Add all page settings fields (after migration, all should exist)
+        updateData.requests_page_title = pageSettings.pageTitle || null;
+        updateData.requests_page_description = pageSettings.pageDescription || null;
+        updateData.requests_main_heading = pageSettings.mainHeading || null;
+        updateData.requests_song_request_label = pageSettings.songRequestLabel || null;
+        updateData.requests_shoutout_label = pageSettings.shoutoutLabel || null;
+        updateData.requests_music_link_label = pageSettings.musicLinkLabel || null;
+        updateData.requests_music_link_placeholder = pageSettings.musicLinkPlaceholder || null;
+        updateData.requests_music_link_help_text = pageSettings.musicLinkHelpText || null;
+        updateData.requests_manual_entry_divider = pageSettings.manualEntryDivider || null;
+        updateData.requests_start_over_text = pageSettings.startOverText || null;
+        updateData.requests_song_title_label = pageSettings.songTitleLabel || null;
+        updateData.requests_song_title_placeholder = pageSettings.songTitlePlaceholder || null;
+        updateData.requests_artist_name_label = pageSettings.artistNameLabel || null;
+        updateData.requests_artist_name_placeholder = pageSettings.artistNamePlaceholder || null;
+        updateData.requests_audio_upload_label = pageSettings.audioUploadLabel || null;
+        updateData.requests_audio_upload_description = pageSettings.audioUploadDescription || null;
+        updateData.requests_artist_rights_text = pageSettings.artistRightsText || null;
+        updateData.requests_is_artist_text = pageSettings.isArtistText || null;
+        updateData.requests_audio_fee_text = pageSettings.audioFeeText || null;
+        updateData.requests_recipient_name_label = pageSettings.recipientNameLabel || null;
+        updateData.requests_recipient_name_placeholder = pageSettings.recipientNamePlaceholder || null;
+        updateData.requests_message_label = pageSettings.messageLabel || null;
+        updateData.requests_message_placeholder = pageSettings.messagePlaceholder || null;
+        updateData.requests_submit_button_text = pageSettings.submitButtonText || null;
+        updateData.requests_step_1_text = pageSettings.step1Text || null;
+        updateData.requests_step_2_text = pageSettings.step2Text || null;
+        updateData.requests_default_request_type = pageSettings.defaultRequestType || 'song_request';
+        updateData.requests_show_audio_upload = pageSettings.showAudioUpload;
+        updateData.requests_show_fast_track = pageSettings.showFastTrack;
+        updateData.requests_show_next_song = pageSettings.showNextSong;
+        updateData.requests_show_bundle_discount = pageSettings.showBundleDiscount;
+
+        const { data: updatedOrg, error: orgError } = await supabase
+          .from('organizations')
+          .update(updateData)
+          .eq('id', organization.id)
+          .select()
+          .single();
+
+        if (orgError) {
+          console.error('Error updating organization:', orgError);
+          
+          // If error is about missing columns, try updating with only basic fields
+          if (orgError.message?.includes('column') && orgError.message?.includes('does not exist')) {
+            console.warn('Some columns do not exist, retrying with basic fields only');
+            
+            // Remove JSONB field and any other potentially missing fields
+            const basicUpdateData: any = {
+              requests_header_artist_name: headerSettings.artistName || null,
+              requests_header_location: headerSettings.location || null,
+              requests_header_date: headerSettings.date || null,
+              requests_cover_photo_url: coverPhotoSettings.requests_cover_photo_url || null,
+              requests_artist_photo_url: coverPhotoSettings.requests_artist_photo_url || null,
+              requests_venue_photo_url: coverPhotoSettings.requests_venue_photo_url || null,
+            };
+            
+            // Only add page fields that we're confident exist
+            if (organization.requests_page_title !== undefined) {
+              basicUpdateData.requests_page_title = pageSettings.pageTitle || null;
+            }
+            if (organization.requests_page_description !== undefined) {
+              basicUpdateData.requests_page_description = pageSettings.pageDescription || null;
+            }
+            if (organization.requests_main_heading !== undefined) {
+              basicUpdateData.requests_main_heading = pageSettings.mainHeading || null;
+            }
+            
+            const { data: retryOrg, error: retryError } = await supabase
+              .from('organizations')
+              .update(basicUpdateData)
+              .eq('id', organization.id)
+              .select()
+              .single();
+              
+            if (retryError) {
+              throw new Error(`Failed to save organization settings: ${retryError.message}`);
+            }
+            
+            // Update local state with retry result
+            if (retryOrg) {
+              setOrganization(retryOrg);
+            }
+            
+            // Show warning that some settings couldn't be saved
+            toast({
+              title: 'Settings Partially Saved',
+              description: 'Basic settings saved successfully. Some advanced page settings could not be saved as the database columns do not exist yet.',
+              variant: 'default',
+            });
+            return; // Exit early since we handled the error
+          }
+          
+          throw new Error(`Failed to save organization settings: ${orgError.message}`);
+        }
+
+        // Update local organization state with new data
+        if (updatedOrg) {
+          setOrganization(updatedOrg);
+          console.log('✅ Organization updated successfully:', updatedOrg);
+        }
+      }
+
+      console.log('✅ All settings saved successfully');
+      
+      // Refresh organization data to show updated values
+      if (organization?.id) {
+        const { data: refreshedOrg, error: refreshError } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('id', organization.id)
+          .single();
+        
+        if (refreshError) {
+          console.error('Error refreshing organization:', refreshError);
+        } else if (refreshedOrg) {
+          setOrganization(refreshedOrg);
+          // Update cover photo history from refreshed org
+          let history: string[] = [];
+          if (refreshedOrg.requests_cover_photo_history) {
+            if (Array.isArray(refreshedOrg.requests_cover_photo_history)) {
+              history = refreshedOrg.requests_cover_photo_history;
+            } else if (typeof refreshedOrg.requests_cover_photo_history === 'string') {
+              try {
+                history = JSON.parse(refreshedOrg.requests_cover_photo_history);
+              } catch (e) {
+                console.warn('Failed to parse cover photo history:', e);
+                history = [];
+              }
+            }
+          }
+          setCoverPhotoHistory(history);
+          setHeaderSettings({
+            artistName: refreshedOrg.requests_header_artist_name || '',
+            location: refreshedOrg.requests_header_location || '',
+            date: refreshedOrg.requests_header_date || ''
+          });
+          setCoverPhotoSettings({
+            requests_cover_photo_url: refreshedOrg.requests_cover_photo_url || '',
+            requests_artist_photo_url: refreshedOrg.requests_artist_photo_url || '',
+            requests_venue_photo_url: refreshedOrg.requests_venue_photo_url || '',
+            requests_primary_cover_source: (refreshedOrg.requests_primary_cover_source as 'artist' | 'venue') || 'artist',
+          });
+          // Helper to load photo history
+          const loadPhotoHistory = (historyData: any): string[] => {
+            if (!historyData) return [];
+            if (Array.isArray(historyData)) return historyData;
+            if (typeof historyData === 'string') {
+              try {
+                return JSON.parse(historyData);
+              } catch (e) {
+                console.warn('Failed to parse photo history:', e);
+                return [];
+              }
+            }
+            return [];
+          };
+
+          // Update all photo histories from refreshed org
+          setCoverPhotoHistory(loadPhotoHistory(refreshedOrg.requests_cover_photo_history));
+          setArtistPhotoHistory(loadPhotoHistory(refreshedOrg.requests_artist_photo_history));
+          setVenuePhotoHistory(loadPhotoHistory(refreshedOrg.requests_venue_photo_history));
+          console.log('✅ Organization data refreshed:', refreshedOrg);
+          console.log('🎯 Primary cover source after refresh:', {
+            requests_primary_cover_source: refreshedOrg.requests_primary_cover_source,
+            requests_artist_photo_url: refreshedOrg.requests_artist_photo_url,
+            requests_venue_photo_url: refreshedOrg.requests_venue_photo_url,
+            requests_cover_photo_url: refreshedOrg.requests_cover_photo_url
+          });
+        }
+      }
+
+      // Show success toast
+      console.log('📢 Showing success toast...');
       toast({
-        title: 'Success',
-        description: 'Settings saved successfully',
+        title: 'Settings Saved',
+        description: 'All settings have been saved successfully. Changes will appear on the public requests page within 10 seconds.',
       });
-    } catch (err) {
+      console.log('✅ Toast called');
+      
+      // Force a small delay to ensure database write is complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (err: any) {
       console.error('Error saving settings:', err);
       toast({
         title: 'Error',
-        description: 'Failed to save settings',
+        description: err.message || 'Failed to save settings. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -301,13 +645,77 @@ export default function CrowdRequestsPage() {
 
       const { data: org } = await supabase
         .from('organizations')
-        .select('id')
+        .select('*')
         .eq('owner_id', user.id)
         .single();
 
       if (!org) {
         throw new Error('No organization found');
       }
+
+      setOrganization(org);
+      setHeaderSettings({
+        artistName: org.requests_header_artist_name || '',
+        location: org.requests_header_location || '',
+        date: org.requests_header_date || ''
+      });
+      setCoverPhotoSettings({
+        requests_cover_photo_url: org.requests_cover_photo_url || '',
+        requests_artist_photo_url: org.requests_artist_photo_url || '',
+        requests_venue_photo_url: org.requests_venue_photo_url || '',
+        requests_primary_cover_source: (org.requests_primary_cover_source as 'artist' | 'venue') || 'artist',
+      });
+      // Load cover photo history - handle both JSONB array and string array
+      const loadPhotoHistory = (historyData: any): string[] => {
+        if (!historyData) return [];
+        if (Array.isArray(historyData)) return historyData;
+        if (typeof historyData === 'string') {
+          try {
+            return JSON.parse(historyData);
+          } catch (e) {
+            console.warn('Failed to parse photo history:', e);
+            return [];
+          }
+        }
+        return [];
+      };
+      
+      setCoverPhotoHistory(loadPhotoHistory(org.requests_cover_photo_history));
+      setArtistPhotoHistory(loadPhotoHistory(org.requests_artist_photo_history));
+      setVenuePhotoHistory(loadPhotoHistory(org.requests_venue_photo_history));
+      setPageSettings({
+        pageTitle: org.requests_page_title || '',
+        pageDescription: org.requests_page_description || '',
+        mainHeading: org.requests_main_heading || '',
+        songRequestLabel: org.requests_song_request_label || '',
+        shoutoutLabel: org.requests_shoutout_label || '',
+        musicLinkLabel: org.requests_music_link_label || '',
+        musicLinkPlaceholder: org.requests_music_link_placeholder || '',
+        musicLinkHelpText: org.requests_music_link_help_text || '',
+        manualEntryDivider: org.requests_manual_entry_divider || '',
+        startOverText: org.requests_start_over_text || '',
+        songTitleLabel: org.requests_song_title_label || '',
+        songTitlePlaceholder: org.requests_song_title_placeholder || '',
+        artistNameLabel: org.requests_artist_name_label || '',
+        artistNamePlaceholder: org.requests_artist_name_placeholder || '',
+        audioUploadLabel: org.requests_audio_upload_label || '',
+        audioUploadDescription: org.requests_audio_upload_description || '',
+        artistRightsText: org.requests_artist_rights_text || '',
+        isArtistText: org.requests_is_artist_text || '',
+        audioFeeText: org.requests_audio_fee_text || '',
+        recipientNameLabel: org.requests_recipient_name_label || '',
+        recipientNamePlaceholder: org.requests_recipient_name_placeholder || '',
+        messageLabel: org.requests_message_label || '',
+        messagePlaceholder: org.requests_message_placeholder || '',
+        submitButtonText: org.requests_submit_button_text || '',
+        step1Text: org.requests_step_1_text || '',
+        step2Text: org.requests_step_2_text || '',
+        defaultRequestType: org.requests_default_request_type || 'song_request',
+        showAudioUpload: org.requests_show_audio_upload !== false,
+        showFastTrack: org.requests_show_fast_track !== false,
+        showNextSong: org.requests_show_next_song !== false,
+        showBundleDiscount: org.requests_show_bundle_discount !== false
+      });
 
       // Filter by organization_id OR null (to catch orphaned requests that need assignment)
       // Note: We'll handle sorting in the frontend to allow dynamic column sorting
@@ -743,6 +1151,103 @@ export default function CrowdRequestsPage() {
     }
   };
 
+  // Link Stripe payment to request
+  const linkStripePayment = async (requestId: string, paymentIntentId: string) => {
+    try {
+      const response = await fetch('/api/crowd-request/link-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          paymentIntentId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to link payment');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Stripe payment linked successfully',
+      });
+
+      setShowLinkPaymentModal(false);
+      setLinkPaymentIntentId('');
+      setLinkPaymentRequestId(null);
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error linking payment:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to link payment',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Search for request by Stripe payment intent
+  const searchByPaymentIntent = async (paymentIntentId: string) => {
+    try {
+      // First try linking by metadata (most reliable - uses request_id from Stripe metadata)
+      const metadataResponse = await fetch('/api/crowd-request/link-by-metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId }),
+      });
+
+      if (metadataResponse.ok) {
+        const metadataData = await metadataResponse.json();
+        if (metadataData.linked && metadataData.request) {
+          setLinkPaymentRequestId(metadataData.request.id);
+          toast({
+            title: 'Payment Linked!',
+            description: `Successfully linked payment to request: ${metadataData.request.song_title || metadataData.request.recipient_name || 'Request'}`,
+          });
+          fetchRequests(); // Refresh the list
+          return;
+        } else if (metadataData.alreadyLinked && metadataData.request) {
+          setLinkPaymentRequestId(metadataData.request.id);
+          toast({
+            title: 'Already Linked',
+            description: `This payment is already linked to a request.`,
+          });
+          fetchRequests(); // Refresh the list
+          return;
+        }
+      }
+
+      // If metadata link didn't work, try the find endpoint
+      const response = await fetch(`/api/crowd-request/find-by-payment-intent?paymentIntentId=${paymentIntentId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.request) {
+          setLinkPaymentRequestId(data.request.id);
+          toast({
+            title: 'Request Found',
+            description: `Found request: ${data.request.song_title || data.request.recipient_name || 'Request'}`,
+          });
+        } else {
+          toast({
+            title: 'No Request Found',
+            description: 'No request found with this payment intent. You can manually link it.',
+            variant: 'destructive',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error searching by payment intent:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to search for payment intent',
+        variant: 'destructive',
+      });
+    }
+  };
+
+
   // Assign orphaned request to current organization
   const assignRequestToOrganization = async (requestId: string) => {
     try {
@@ -809,7 +1314,11 @@ export default function CrowdRequestsPage() {
     
     const matchesEventCode = !eventCodeFilter || request.event_qr_code?.toLowerCase().includes(eventCodeFilter.toLowerCase());
     
-    return matchesSearch && matchesStatus && matchesDateRange && matchesPaymentMethod && matchesRequestType && matchesEventCode;
+    const matchesAudioUpload = audioUploadFilter === 'all' || 
+      (audioUploadFilter === 'custom' && request.is_custom_audio) ||
+      (audioUploadFilter === 'standard' && !request.is_custom_audio);
+    
+    return matchesSearch && matchesStatus && matchesDateRange && matchesPaymentMethod && matchesRequestType && matchesEventCode && matchesAudioUpload;
   });
 
   // Sorting function
@@ -886,7 +1395,7 @@ export default function CrowdRequestsPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, dateRangeStart, dateRangeEnd, paymentMethodFilter, requestTypeFilter, eventCodeFilter]);
+  }, [searchTerm, statusFilter, dateRangeStart, dateRangeEnd, paymentMethodFilter, requestTypeFilter, eventCodeFilter, audioUploadFilter]);
 
   const getStatusBadge = (status: string, paymentStatus: string) => {
     if (paymentStatus === 'refunded') {
@@ -928,13 +1437,16 @@ export default function CrowdRequestsPage() {
               Manage song requests and shoutouts from events
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
-              onClick={() => setShowSettings(!showSettings)}
+              onClick={() => {
+                setShowSettings(true);
+                setSettingsTab('payment');
+              }}
               variant="outline"
               className="inline-flex items-center gap-2"
             >
-              <Edit3 className="w-5 h-5" />
+              <Settings className="w-5 h-5" />
               Payment Settings
             </Button>
             <Button
@@ -1195,8 +1707,1234 @@ export default function CrowdRequestsPage() {
           </div>
         )}
 
-        {/* Settings */}
-        {showSettings && (
+        {/* Settings - Full Screen Modal */}
+        <Dialog open={showSettings} onOpenChange={setShowSettings}>
+          <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 gap-0 overflow-hidden flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
+            {/* Premium Header */}
+            <DialogHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-700 dark:to-indigo-700 px-8 py-6 border-b border-purple-500/20 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <Settings className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-2xl font-bold text-white mb-1">
+                      Request Settings
+                    </DialogTitle>
+                    <p className="text-purple-100 text-sm">
+                      Customize your crowd request experience
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowSettings(false)}
+                  variant="outline"
+                  className="bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-sm"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Close
+                </Button>
+              </div>
+            </DialogHeader>
+
+            {/* Tabbed Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-8">
+              <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v)} className="w-full">
+                <TabsList className="grid w-full grid-cols-4 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                  <TabsTrigger value="payment" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                    <DollarSign className="w-4 h-4" />
+                    <span className="hidden sm:inline">Payment</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="pricing" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                    <Zap className="w-4 h-4" />
+                    <span className="hidden sm:inline">Pricing</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="appearance" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                    <Eye className="w-4 h-4" />
+                    <span className="hidden sm:inline">Appearance</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="content" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                    <FileText className="w-4 h-4" />
+                    <span className="hidden sm:inline">Content</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Payment Tab */}
+                <TabsContent value="payment" className="space-y-6 mt-0">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                        <DollarSign className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          Payment Methods
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Configure alternative payment options
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                          CashApp Tag
+                        </label>
+                        <Input
+                          value={paymentSettings.cashAppTag}
+                          onChange={(e) => setPaymentSettings(prev => ({ ...prev, cashAppTag: e.target.value }))}
+                          placeholder="$DJbenmurray"
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Your CashApp cashtag for manual payments
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                          Venmo Username
+                        </label>
+                        <Input
+                          value={paymentSettings.venmoUsername}
+                          onChange={(e) => setPaymentSettings(prev => ({ ...prev, venmoUsername: e.target.value }))}
+                          placeholder="@djbenmurray"
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Your Venmo username for manual payments
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Pricing Tab */}
+                <TabsContent value="pricing" className="space-y-6 mt-0">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          Pricing Configuration
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Set fees and payment amounts
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                          Fast-Track Fee
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={(requestSettings.fastTrackFee / 100).toFixed(2)}
+                            onChange={(e) => {
+                              const dollars = parseFloat(e.target.value) || 0;
+                              setRequestSettings(prev => ({ ...prev, fastTrackFee: Math.round(dollars * 100) }));
+                            }}
+                            placeholder="10.00"
+                            className="w-full pl-8"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Priority placement fee
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                          Minimum Payment
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={(requestSettings.minimumAmount / 100).toFixed(2)}
+                            onChange={(e) => {
+                              const dollars = parseFloat(e.target.value) || 0;
+                              setRequestSettings(prev => ({ ...prev, minimumAmount: Math.round(dollars * 100) }));
+                            }}
+                            placeholder="1.00"
+                            className="w-full pl-8"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Minimum amount per request
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                      <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-4">
+                        Quick Amount Presets
+                      </label>
+                      <div className="space-y-3">
+                        {requestSettings.presetAmounts.map((amount, index) => (
+                          <div key={index} className="flex items-center gap-3">
+                            <div className="relative flex-1">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={(amount / 100).toFixed(2)}
+                                onChange={(e) => {
+                                  const dollars = parseFloat(e.target.value) || 0;
+                                  if (dollars > 0) {
+                                    const newAmounts = [...requestSettings.presetAmounts];
+                                    newAmounts[index] = Math.round(dollars * 100);
+                                    setRequestSettings(prev => ({ ...prev, presetAmounts: newAmounts }));
+                                  }
+                                }}
+                                className="pl-8"
+                                placeholder="0.00"
+                              />
+                            </div>
+                            {requestSettings.presetAmounts.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const newAmounts = requestSettings.presetAmounts.filter((_, i) => i !== index);
+                                  setRequestSettings(prev => ({ ...prev, presetAmounts: newAmounts }));
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setRequestSettings(prev => ({ 
+                              ...prev, 
+                              presetAmounts: [...prev.presetAmounts, 500]
+                            }));
+                          }}
+                          className="w-full border-dashed"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Preset Amount
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-start gap-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <input
+                          type="checkbox"
+                          id="bundleDiscountEnabled"
+                          checked={requestSettings.bundleDiscountEnabled}
+                          onChange={(e) => setRequestSettings(prev => ({ ...prev, bundleDiscountEnabled: e.target.checked }))}
+                          className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500 mt-0.5"
+                        />
+                        <div className="flex-1">
+                          <label htmlFor="bundleDiscountEnabled" className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer block mb-1">
+                            Enable Bundle Discount
+                          </label>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                            Offer discounts when users request multiple songs
+                          </p>
+                          {requestSettings.bundleDiscountEnabled && (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="1"
+                                value={requestSettings.bundleDiscountPercent}
+                                onChange={(e) => {
+                                  const percent = parseInt(e.target.value) || 0;
+                                  if (percent >= 0 && percent <= 100) {
+                                    setRequestSettings(prev => ({ ...prev, bundleDiscountPercent: percent }));
+                                  }
+                                }}
+                                placeholder="10"
+                                className="w-24"
+                              />
+                              <span className="text-sm text-gray-600 dark:text-gray-400">% discount per additional song</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Appearance Tab */}
+                <TabsContent value="appearance" className="space-y-6 mt-0">
+                  {/* Header Settings */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                        <Music className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          Page Header
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Customize the header displayed on your requests page
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                          Artist/DJ Name
+                        </label>
+                        <Input
+                          value={headerSettings.artistName}
+                          onChange={(e) => setHeaderSettings(prev => ({ ...prev, artistName: e.target.value }))}
+                          placeholder="DJ Ben Murray"
+                          className="w-full"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                          Location/Venue
+                        </label>
+                        <div className="relative">
+                          <Input
+                            value={headerSettings.location}
+                            onChange={(e) => setHeaderSettings(prev => ({ ...prev, location: e.target.value }))}
+                            placeholder="Silky O' Sullivan's"
+                            className="w-full pr-10"
+                          />
+                          {headerSettings.location && (
+                            <button
+                              type="button"
+                              onClick={() => setHeaderSettings(prev => ({ ...prev, location: '' }))}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                              title="Clear location/venue"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Leave empty for a general requests page
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                          Date
+                        </label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal pr-10",
+                                !headerSettings.date && "text-muted-foreground"
+                              )}
+                            >
+                              <Calendar className="mr-2 h-4 w-4" />
+                              {headerSettings.date ? (
+                                headerSettings.date
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent
+                              mode="single"
+                              selected={headerSettings.date ? (() => {
+                                // Try to parse the date string - handle various formats
+                                const dateStr = headerSettings.date;
+                                // Try common formats
+                                const dateFormats = [
+                                  /(\d{1,2})\.(\d{1,2})\.(\d{2,4})/, // MM.DD.YY or MM.DD.YYYY
+                                  /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/, // MM/DD/YY or MM/DD/YYYY
+                                  /(\d{4})-(\d{1,2})-(\d{1,2})/, // YYYY-MM-DD
+                                ];
+                                
+                                for (let i = 0; i < dateFormats.length; i++) {
+                                  const dateFormat = dateFormats[i];
+                                  const matchResult = dateStr.match(dateFormat);
+                                  if (!matchResult) continue;
+                                  // TypeScript doesn't narrow after continue, so we assert non-null
+                                  const match = matchResult as RegExpMatchArray;
+                                  const match1 = match[1];
+                                  const match2 = match[2];
+                                  const match3 = match[3];
+                                  if (match1 && match2 && match3) {
+                                    let month = parseInt(match1, 10);
+                                    let day = parseInt(match2, 10);
+                                    let year = parseInt(match3, 10);
+                                    
+                                    // Handle 2-digit years
+                                    if (year < 100) {
+                                      year += 2000;
+                                    }
+                                    
+                                    // Check if format is YYYY-MM-DD (ISO)
+                                    if (i === 2) {
+                                      year = parseInt(match1, 10);
+                                      month = parseInt(match2, 10);
+                                      day = parseInt(match3, 10);
+                                    }
+                                    
+                                    const date = new Date(year, month - 1, day);
+                                    if (!isNaN(date.getTime())) {
+                                      return date;
+                                    }
+                                  }
+                                }
+                                
+                                // Fallback: try direct Date parsing
+                                const parsed = new Date(dateStr);
+                                return !isNaN(parsed.getTime()) ? parsed : undefined;
+                              })() : undefined}
+                              onSelect={(date) => {
+                                if (date) {
+                                  // Format as MM.dd.yy to match the placeholder format
+                                  const formatted = format(date, 'MM.dd.yy');
+                                  setHeaderSettings(prev => ({ ...prev, date: formatted }));
+                                } else {
+                                  setHeaderSettings(prev => ({ ...prev, date: '' }));
+                                }
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <div className="relative">
+                          <Input
+                            value={headerSettings.date}
+                            onChange={(e) => setHeaderSettings(prev => ({ ...prev, date: e.target.value }))}
+                            placeholder="11.29.25 or pick from calendar"
+                            className="w-full pr-10"
+                          />
+                          {headerSettings.date && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              onClick={() => setHeaderSettings(prev => ({ ...prev, date: '' }))}
+                              title="Clear date"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Leave empty for a general requests page
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cover Photos */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 bg-pink-100 dark:bg-pink-900/30 rounded-lg flex items-center justify-center">
+                        <Eye className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          Cover Photos
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Set background images for your requests page
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      {/* Primary Cover Photo URL - Only show when neither artist nor venue photos are set */}
+                      {!coverPhotoSettings.requests_artist_photo_url && !coverPhotoSettings.requests_venue_photo_url && (
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                            Primary Cover Photo URL
+                          </label>
+                          <Input
+                            type="url"
+                            value={coverPhotoSettings.requests_cover_photo_url}
+                            onChange={(e) => setCoverPhotoSettings(prev => ({ ...prev, requests_cover_photo_url: e.target.value }))}
+                            placeholder="https://example.com/cover-photo.jpg"
+                            className="w-full"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Set a cover photo for your requests page. Once you add artist or venue photos, you can choose between them instead.
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Recommended: 1920x800px or larger
+                          </p>
+                          {coverPhotoSettings.requests_cover_photo_url && (
+                            <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                              <img
+                                src={coverPhotoSettings.requests_cover_photo_url}
+                                alt="Cover preview"
+                                className="w-full h-48 object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+                          {/* Cover Photo History */}
+                          {coverPhotoHistory.length > 0 && (
+                            <div className="mt-4 space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Previously Used Cover Photos
+                              </label>
+                              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                                {coverPhotoHistory.map((url, index) => (
+                                  <button
+                                    key={index}
+                                    type="button"
+                                    onClick={() => setCoverPhotoSettings(prev => ({ ...prev, requests_cover_photo_url: url }))}
+                                    className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                                      coverPhotoSettings.requests_cover_photo_url === url
+                                        ? 'border-purple-500 ring-2 ring-purple-300 dark:ring-purple-700'
+                                        : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600'
+                                    }`}
+                                    title={url}
+                                  >
+                                    <img
+                                      src={url}
+                                      alt={`Cover ${index + 1}`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.parentElement?.classList.add('hidden');
+                                      }}
+                                    />
+                                    {coverPhotoSettings.requests_cover_photo_url === url && (
+                                      <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                                        <CheckCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                      </div>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Click a photo to reuse it
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Primary Cover Photo Source Selection - Show when both artist and venue are set */}
+                      {coverPhotoSettings.requests_artist_photo_url && coverPhotoSettings.requests_venue_photo_url && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                            Primary Cover Photo Source
+                          </label>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                            Both artist and venue photos are set. Choose which one to use as the primary cover photo:
+                          </p>
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 font-medium">
+                            ⚠️ Remember to click &quot;Save Settings&quot; after making your selection for changes to take effect on the requests page.
+                          </p>
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                console.log('🎯 Selecting artist photo as primary');
+                                setCoverPhotoSettings(prev => ({ ...prev, requests_primary_cover_source: 'artist' }));
+                              }}
+                              className={`flex-1 p-3 rounded-lg border-2 transition-all ${
+                                coverPhotoSettings.requests_primary_cover_source === 'artist'
+                                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300 dark:ring-purple-700'
+                                  : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 bg-white dark:bg-gray-800'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Artist Photo</div>
+                              <div className="text-xs text-gray-600 dark:text-gray-400">Use artist photo as primary</div>
+                              {coverPhotoSettings.requests_primary_cover_source === 'artist' && (
+                                <div className="mt-2 text-xs text-purple-600 dark:text-purple-400 font-medium">✓ Selected</div>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                console.log('🎯 Selecting venue photo as primary');
+                                setCoverPhotoSettings(prev => ({ ...prev, requests_primary_cover_source: 'venue' }));
+                              }}
+                              className={`flex-1 p-3 rounded-lg border-2 transition-all ${
+                                coverPhotoSettings.requests_primary_cover_source === 'venue'
+                                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300 dark:ring-purple-700'
+                                  : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 bg-white dark:bg-gray-800'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Venue Photo</div>
+                              <div className="text-xs text-gray-600 dark:text-gray-400">Use venue photo as primary</div>
+                              {coverPhotoSettings.requests_primary_cover_source === 'venue' && (
+                                <div className="mt-2 text-xs text-purple-600 dark:text-purple-400 font-medium">✓ Selected</div>
+                              )}
+                            </button>
+                          </div>
+                          
+                          {/* Current Cover Photo Preview */}
+                          {(() => {
+                            // Create a mock organization object to use with getCoverPhotoUrl
+                            const mockOrg = {
+                              requests_cover_photo_url: coverPhotoSettings.requests_cover_photo_url || null,
+                              requests_artist_photo_url: coverPhotoSettings.requests_artist_photo_url || null,
+                              requests_venue_photo_url: coverPhotoSettings.requests_venue_photo_url || null,
+                              requests_primary_cover_source: coverPhotoSettings.requests_primary_cover_source || 'artist'
+                            };
+                            const currentCoverPhoto = getCoverPhotoUrl(mockOrg, '');
+                            
+                            if (!currentCoverPhoto) return null;
+                            
+                            return (
+                              <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Current Cover Photo Preview
+                                </label>
+                                <div className="relative rounded-lg overflow-hidden border-2 border-blue-300 dark:border-blue-700">
+                                  <img
+                                    src={currentCoverPhoto}
+                                    alt="Current cover photo preview"
+                                    className="w-full h-32 object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                    <p className="text-xs text-white font-medium">
+                                      {coverPhotoSettings.requests_primary_cover_source === 'venue' 
+                                        ? 'Using Venue Photo' 
+                                        : 'Using Artist Photo'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                  This is the photo that will appear on your requests page
+                                </p>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                      
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                            Artist Photo URL (Fallback)
+                          </label>
+                          <Input
+                            type="url"
+                            value={coverPhotoSettings.requests_artist_photo_url}
+                            onChange={(e) => setCoverPhotoSettings(prev => ({ ...prev, requests_artist_photo_url: e.target.value }))}
+                            placeholder="https://example.com/artist-photo.jpg"
+                            className="w-full"
+                          />
+                          {coverPhotoSettings.requests_artist_photo_url && (
+                            <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                              <img
+                                src={coverPhotoSettings.requests_artist_photo_url}
+                                alt="Artist preview"
+                                className="w-full h-32 object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+                          {/* Artist Photo History */}
+                          {artistPhotoHistory.length > 0 && (
+                            <div className="mt-4 space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Previously Used Artist Photos
+                              </label>
+                              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                                {artistPhotoHistory.map((url, index) => (
+                                  <button
+                                    key={index}
+                                    type="button"
+                                    onClick={() => setCoverPhotoSettings(prev => ({ ...prev, requests_artist_photo_url: url }))}
+                                    className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                                      coverPhotoSettings.requests_artist_photo_url === url
+                                        ? 'border-purple-500 ring-2 ring-purple-300 dark:ring-purple-700'
+                                        : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600'
+                                    }`}
+                                    title={url}
+                                  >
+                                    <img
+                                      src={url}
+                                      alt={`Artist ${index + 1}`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.parentElement?.classList.add('hidden');
+                                      }}
+                                    />
+                                    {coverPhotoSettings.requests_artist_photo_url === url && (
+                                      <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                                        <CheckCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                      </div>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Click a photo to reuse it
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                            Venue Photo URL (Fallback)
+                          </label>
+                          <Input
+                            type="url"
+                            value={coverPhotoSettings.requests_venue_photo_url}
+                            onChange={(e) => setCoverPhotoSettings(prev => ({ ...prev, requests_venue_photo_url: e.target.value }))}
+                            placeholder="https://example.com/venue-photo.jpg"
+                            className="w-full"
+                          />
+                          {coverPhotoSettings.requests_venue_photo_url && (
+                            <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                              <img
+                                src={coverPhotoSettings.requests_venue_photo_url}
+                                alt="Venue preview"
+                                className="w-full h-32 object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+                          {/* Venue Photo History */}
+                          {venuePhotoHistory.length > 0 && (
+                            <div className="mt-4 space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Previously Used Venue Photos
+                              </label>
+                              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                                {venuePhotoHistory.map((url, index) => (
+                                  <button
+                                    key={index}
+                                    type="button"
+                                    onClick={() => setCoverPhotoSettings(prev => ({ ...prev, requests_venue_photo_url: url }))}
+                                    className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                                      coverPhotoSettings.requests_venue_photo_url === url
+                                        ? 'border-purple-500 ring-2 ring-purple-300 dark:ring-purple-700'
+                                        : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600'
+                                    }`}
+                                    title={url}
+                                  >
+                                    <img
+                                      src={url}
+                                      alt={`Venue ${index + 1}`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.parentElement?.classList.add('hidden');
+                                      }}
+                                    />
+                                    {coverPhotoSettings.requests_venue_photo_url === url && (
+                                      <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                                        <CheckCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                      </div>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Click a photo to reuse it
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Content Tab */}
+                <TabsContent value="content" className="space-y-6 mt-0">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          Page Content & Text
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Customize all text and labels on your requests page
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      {/* SEO Settings */}
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-5 border border-blue-200 dark:border-blue-800">
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                          SEO & Page Info
+                        </h4>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                              Page Title
+                            </label>
+                            <Input
+                              value={pageSettings.pageTitle}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, pageTitle: e.target.value }))}
+                              placeholder="Request a Song or Shoutout | M10 DJ Company"
+                              className="w-full"
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Browser tab title and SEO title
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                              Meta Description
+                            </label>
+                            <Textarea
+                              value={pageSettings.pageDescription}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, pageDescription: e.target.value }))}
+                              placeholder="Request songs and shoutouts for your event"
+                              className="w-full"
+                              rows={2}
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              SEO meta description
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Main Content */}
+                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-5 border border-purple-200 dark:border-purple-800">
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                          <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                          Main Content
+                        </h4>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                              Main Heading
+                            </label>
+                            <Input
+                              value={pageSettings.mainHeading}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, mainHeading: e.target.value }))}
+                              placeholder="What would you like to request?"
+                              className="w-full"
+                            />
+                          </div>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                                Song Request Button Label
+                              </label>
+                              <Input
+                                value={pageSettings.songRequestLabel}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, songRequestLabel: e.target.value }))}
+                                placeholder="Song Request"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                                Shoutout Button Label
+                              </label>
+                              <Input
+                                value={pageSettings.shoutoutLabel}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, shoutoutLabel: e.target.value }))}
+                                placeholder="Shoutout"
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                              Default Request Type
+                            </label>
+                            <select
+                              value={pageSettings.defaultRequestType}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, defaultRequestType: e.target.value }))}
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            >
+                              <option value="song_request">Song Request</option>
+                              <option value="shoutout">Shoutout</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Form Fields - Collapsible Sections */}
+                      <div className="space-y-4">
+                        {/* Music Link Section */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Music Link Section</h4>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Label
+                              </label>
+                              <Input
+                                value={pageSettings.musicLinkLabel}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, musicLinkLabel: e.target.value }))}
+                                placeholder="Paste Music Link (Optional)"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Placeholder
+                              </label>
+                              <Input
+                                value={pageSettings.musicLinkPlaceholder}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, musicLinkPlaceholder: e.target.value }))}
+                                placeholder="Paste YouTube, Spotify, SoundCloud link"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="md:col-span-2 space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Help Text
+                              </label>
+                              <Input
+                                value={pageSettings.musicLinkHelpText}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, musicLinkHelpText: e.target.value }))}
+                                placeholder="We'll automatically fill in the song title and artist name"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="md:col-span-2 space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Manual Entry Divider Text
+                              </label>
+                              <Input
+                                value={pageSettings.manualEntryDivider}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, manualEntryDivider: e.target.value }))}
+                                placeholder="Or enter manually"
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Song Request Fields */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Song Request Fields</h4>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Song Title Label
+                              </label>
+                              <Input
+                                value={pageSettings.songTitleLabel}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, songTitleLabel: e.target.value }))}
+                                placeholder="Song Title"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Song Title Placeholder
+                              </label>
+                              <Input
+                                value={pageSettings.songTitlePlaceholder}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, songTitlePlaceholder: e.target.value }))}
+                                placeholder="Enter song title"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Artist Name Label
+                              </label>
+                              <Input
+                                value={pageSettings.artistNameLabel}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, artistNameLabel: e.target.value }))}
+                                placeholder="Artist Name"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Artist Name Placeholder
+                              </label>
+                              <Input
+                                value={pageSettings.artistNamePlaceholder}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, artistNamePlaceholder: e.target.value }))}
+                                placeholder="Enter artist name"
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Shoutout Fields */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Shoutout Fields</h4>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Recipient Name Label
+                              </label>
+                              <Input
+                                value={pageSettings.recipientNameLabel}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, recipientNameLabel: e.target.value }))}
+                                placeholder="Recipient Name"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Recipient Name Placeholder
+                              </label>
+                              <Input
+                                value={pageSettings.recipientNamePlaceholder}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, recipientNamePlaceholder: e.target.value }))}
+                                placeholder="Who is this shoutout for?"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Message Label
+                              </label>
+                              <Input
+                                value={pageSettings.messageLabel}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, messageLabel: e.target.value }))}
+                                placeholder="Message"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Message Placeholder
+                              </label>
+                              <Input
+                                value={pageSettings.messagePlaceholder}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, messagePlaceholder: e.target.value }))}
+                                placeholder="What would you like to say?"
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Audio Upload Section */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">Audio Upload Section</h4>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={pageSettings.showAudioUpload}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, showAudioUpload: e.target.checked }))}
+                                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                              />
+                              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Enable</span>
+                            </label>
+                          </div>
+                          {pageSettings.showAudioUpload && (
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div className="md:col-span-2 space-y-2">
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                  Audio Upload Label
+                                </label>
+                                <Input
+                                  value={pageSettings.audioUploadLabel}
+                                  onChange={(e) => setPageSettings(prev => ({ ...prev, audioUploadLabel: e.target.value }))}
+                                  placeholder="Upload Your Own Audio File"
+                                  className="w-full"
+                                />
+                              </div>
+                              <div className="md:col-span-2 space-y-2">
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                  Description
+                                </label>
+                                <Textarea
+                                  value={pageSettings.audioUploadDescription}
+                                  onChange={(e) => setPageSettings(prev => ({ ...prev, audioUploadDescription: e.target.value }))}
+                                  placeholder="Upload your own audio file to be played..."
+                                  className="w-full"
+                                  rows={2}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                  Artist Rights Text
+                                </label>
+                                <Input
+                                  value={pageSettings.artistRightsText}
+                                  onChange={(e) => setPageSettings(prev => ({ ...prev, artistRightsText: e.target.value }))}
+                                  placeholder="I confirm that I own the rights..."
+                                  className="w-full"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                  Is Artist Text
+                                </label>
+                                <Input
+                                  value={pageSettings.isArtistText}
+                                  onChange={(e) => setPageSettings(prev => ({ ...prev, isArtistText: e.target.value }))}
+                                  placeholder="I am the artist..."
+                                  className="w-full"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                  Audio Fee Text
+                                </label>
+                                <Input
+                                  value={pageSettings.audioFeeText}
+                                  onChange={(e) => setPageSettings(prev => ({ ...prev, audioFeeText: e.target.value }))}
+                                  placeholder="+$100.00 for audio upload"
+                                  className="w-full"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Buttons & Steps */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Buttons & Steps</h4>
+                          <div className="grid md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Submit Button Text
+                              </label>
+                              <Input
+                                value={pageSettings.submitButtonText}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, submitButtonText: e.target.value }))}
+                                placeholder="Submit Request"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Step 1 Text
+                              </label>
+                              <Input
+                                value={pageSettings.step1Text}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, step1Text: e.target.value }))}
+                                placeholder="Step 1 of 2: Choose your request"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                Step 2 Text
+                              </label>
+                              <Input
+                                value={pageSettings.step2Text}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, step2Text: e.target.value }))}
+                                placeholder="Step 2 of 2: Payment"
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Feature Toggles */}
+                        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-5 border border-emerald-200 dark:border-emerald-800">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                            Feature Toggles
+                          </h4>
+                          <div className="grid md:grid-cols-3 gap-4">
+                            <label className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={pageSettings.showFastTrack}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, showFastTrack: e.target.checked }))}
+                                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                              />
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">Fast-Track</span>
+                            </label>
+                            <label className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={pageSettings.showNextSong}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, showNextSong: e.target.checked }))}
+                                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                              />
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">Next Song</span>
+                            </label>
+                            <label className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={pageSettings.showBundleDiscount}
+                                onChange={(e) => setPageSettings(prev => ({ ...prev, showBundleDiscount: e.target.checked }))}
+                                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                              />
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">Bundle Discount</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {/* Save Button - Sticky Footer */}
+              <div className="sticky bottom-0 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 -mx-8 px-8 pb-6">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Changes are saved automatically when you click Save
+                  </p>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => setShowSettings(false)}
+                      variant="outline"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={saveSettings}
+                      disabled={savingSettings}
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg"
+                    >
+                      {savingSettings ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Save All Settings
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* OLD SETTINGS REMOVED - Using new tabbed design above */}
+        {false && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
               Crowd Request Settings
@@ -1406,6 +3144,692 @@ export default function CrowdRequestsPage() {
                   )}
                 </div>
               </div>
+
+              {/* Requests Page Header Settings */}
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Requests Page Header
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Customize the header text displayed on the public requests page.
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      Artist/DJ Name
+                    </label>
+                    <Input
+                      value={headerSettings.artistName}
+                      onChange={(e) => setHeaderSettings(prev => ({ ...prev, artistName: e.target.value }))}
+                      placeholder="DJ Ben Murray"
+                      className="max-w-md"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      The main artist/DJ name displayed at the top of the requests page
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      Location/Venue
+                    </label>
+                    <Input
+                      value={headerSettings.location}
+                      onChange={(e) => setHeaderSettings(prev => ({ ...prev, location: e.target.value }))}
+                      placeholder="Silky O' Sullivan's"
+                      className="max-w-md"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      The location or venue name displayed below the artist name
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      Date
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full max-w-md justify-start text-left font-normal",
+                            !headerSettings.date && "text-muted-foreground"
+                          )}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {headerSettings.date ? (
+                            headerSettings.date
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={headerSettings.date ? (() => {
+                            // Try to parse the date string - handle various formats
+                            const dateStr = headerSettings.date;
+                            // Try common formats
+                            const dateFormats = [
+                              /(\d{1,2})\.(\d{1,2})\.(\d{2,4})/, // MM.DD.YY or MM.DD.YYYY
+                              /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/, // MM/DD/YY or MM/DD/YYYY
+                              /(\d{4})-(\d{1,2})-(\d{1,2})/, // YYYY-MM-DD
+                            ];
+                            
+                            for (let i = 0; i < dateFormats.length; i++) {
+                              const dateFormat = dateFormats[i];
+                              const matchResult = dateStr.match(dateFormat);
+                              if (!matchResult) continue;
+                              // TypeScript doesn't narrow after continue, so we assert non-null
+                              const match = matchResult as RegExpMatchArray;
+                              const match1 = match[1];
+                              const match2 = match[2];
+                              const match3 = match[3];
+                              if (!match1 || !match2 || !match3) continue;
+                              let month = parseInt(match1, 10);
+                              let day = parseInt(match2, 10);
+                              let year = parseInt(match3, 10);
+                              
+                              // Handle 2-digit years
+                              if (year < 100) {
+                                year += 2000;
+                              }
+                              
+                              // Check if format is YYYY-MM-DD (ISO)
+                              if (i === 2) {
+                                year = parseInt(match1, 10);
+                                month = parseInt(match2, 10);
+                                day = parseInt(match3, 10);
+                              }
+                              
+                              const date = new Date(year, month - 1, day);
+                              if (!isNaN(date.getTime())) {
+                                return date;
+                              }
+                            }
+                                
+                            // Fallback: try direct Date parsing
+                            const parsed = new Date(dateStr);
+                            return !isNaN(parsed.getTime()) ? parsed : undefined;
+                          })() : undefined}
+                          onSelect={(date) => {
+                            if (date) {
+                              // Format as MM.dd.yy to match the placeholder format
+                              const formatted = format(date, 'MM.dd.yy');
+                              setHeaderSettings(prev => ({ ...prev, date: formatted }));
+                            } else {
+                              setHeaderSettings(prev => ({ ...prev, date: '' }));
+                            }
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <div className="relative mt-2 max-w-md">
+                      <Input
+                        value={headerSettings.date}
+                        onChange={(e) => setHeaderSettings(prev => ({ ...prev, date: e.target.value }))}
+                        placeholder="11.29.25 or pick from calendar"
+                        className="w-full pr-10"
+                      />
+                      {headerSettings.date && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                          onClick={() => setHeaderSettings(prev => ({ ...prev, date: '' }))}
+                          title="Clear date"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      The date displayed below the location (format: MM.DD.YY or any format you prefer)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cover Photo Settings */}
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Cover Photos
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Set the background images displayed on the public requests page header.
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      Primary Cover Photo URL
+                    </label>
+                    <Input
+                      type="url"
+                      value={coverPhotoSettings.requests_cover_photo_url}
+                      onChange={(e) => setCoverPhotoSettings(prev => ({ ...prev, requests_cover_photo_url: e.target.value }))}
+                      placeholder="https://example.com/cover-photo.jpg"
+                      className="max-w-md"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Main hero image displayed at the top (recommended: 1920x800px or larger)
+                    </p>
+                    {coverPhotoSettings.requests_cover_photo_url && (
+                      <div className="mt-3">
+                        <img
+                          src={coverPhotoSettings.requests_cover_photo_url}
+                          alt="Cover preview"
+                          className="w-full max-w-md h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      Artist/DJ Photo URL (Fallback)
+                    </label>
+                    <Input
+                      type="url"
+                      value={coverPhotoSettings.requests_artist_photo_url}
+                      onChange={(e) => setCoverPhotoSettings(prev => ({ ...prev, requests_artist_photo_url: e.target.value }))}
+                      placeholder="https://example.com/artist-photo.jpg"
+                      className="max-w-md"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Used if primary cover photo is not set
+                    </p>
+                    {coverPhotoSettings.requests_artist_photo_url && (
+                      <div className="mt-3">
+                        <img
+                          src={coverPhotoSettings.requests_artist_photo_url}
+                          alt="Artist preview"
+                          className="w-full max-w-md h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      Venue Photo URL (Fallback)
+                    </label>
+                    <Input
+                      type="url"
+                      value={coverPhotoSettings.requests_venue_photo_url}
+                      onChange={(e) => setCoverPhotoSettings(prev => ({ ...prev, requests_venue_photo_url: e.target.value }))}
+                      placeholder="https://example.com/venue-photo.jpg"
+                      className="max-w-md"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Used if other cover photos are not set
+                    </p>
+                    {coverPhotoSettings.requests_venue_photo_url && (
+                      <div className="mt-3">
+                        <img
+                          src={coverPhotoSettings.requests_venue_photo_url}
+                          alt="Venue preview"
+                          className="w-full max-w-md h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Requests Page Content Settings */}
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Requests Page Content & Text
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Customize all text, labels, and content displayed on the public requests page.
+                </p>
+                
+                <div className="space-y-4">
+                  {/* SEO Settings */}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">SEO & Page Info</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Page Title
+                        </label>
+                        <Input
+                          value={pageSettings.pageTitle}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, pageTitle: e.target.value }))}
+                          placeholder="Request a Song or Shoutout | M10 DJ Company"
+                          className="max-w-md"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Browser tab title and SEO title
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Meta Description
+                        </label>
+                        <Textarea
+                          value={pageSettings.pageDescription}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, pageDescription: e.target.value }))}
+                          placeholder="Request songs and shoutouts for your event"
+                          className="max-w-md"
+                          rows={2}
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          SEO meta description
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Main Content */}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Main Content</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Main Heading
+                        </label>
+                        <Input
+                          value={pageSettings.mainHeading}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, mainHeading: e.target.value }))}
+                          placeholder="What would you like to request?"
+                          className="max-w-md"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Song Request Button Label
+                          </label>
+                          <Input
+                            value={pageSettings.songRequestLabel}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, songRequestLabel: e.target.value }))}
+                            placeholder="Song Request"
+                            className="max-w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Shoutout Button Label
+                          </label>
+                          <Input
+                            value={pageSettings.shoutoutLabel}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, shoutoutLabel: e.target.value }))}
+                            placeholder="Shoutout"
+                            className="max-w-full"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Default Request Type
+                        </label>
+                        <select
+                          value={pageSettings.defaultRequestType}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, defaultRequestType: e.target.value }))}
+                          className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white max-w-md"
+                        >
+                          <option value="song_request">Song Request</option>
+                          <option value="shoutout">Shoutout</option>
+                        </select>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Which option is selected by default when page loads
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Music Link Section */}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Music Link Section</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Music Link Label
+                        </label>
+                        <Input
+                          value={pageSettings.musicLinkLabel}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, musicLinkLabel: e.target.value }))}
+                          placeholder="Paste Music Link (Optional)"
+                          className="max-w-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Music Link Placeholder
+                        </label>
+                        <Input
+                          value={pageSettings.musicLinkPlaceholder}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, musicLinkPlaceholder: e.target.value }))}
+                          placeholder="Paste YouTube, Spotify, SoundCloud, Tidal, or Apple Music link"
+                          className="max-w-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Help Text
+                        </label>
+                        <Input
+                          value={pageSettings.musicLinkHelpText}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, musicLinkHelpText: e.target.value }))}
+                          placeholder="We'll automatically fill in the song title and artist name"
+                          className="max-w-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Manual Entry Divider Text
+                        </label>
+                        <Input
+                          value={pageSettings.manualEntryDivider}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, manualEntryDivider: e.target.value }))}
+                          placeholder="Or enter manually"
+                          className="max-w-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Start Over Button Text
+                        </label>
+                        <Input
+                          value={pageSettings.startOverText}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, startOverText: e.target.value }))}
+                          placeholder="Start over"
+                          className="max-w-md"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Song Request Fields */}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Song Request Fields</h4>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Song Title Label
+                          </label>
+                          <Input
+                            value={pageSettings.songTitleLabel}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, songTitleLabel: e.target.value }))}
+                            placeholder="Song Title"
+                            className="max-w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Song Title Placeholder
+                          </label>
+                          <Input
+                            value={pageSettings.songTitlePlaceholder}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, songTitlePlaceholder: e.target.value }))}
+                            placeholder="Enter song title"
+                            className="max-w-full"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Artist Name Label
+                          </label>
+                          <Input
+                            value={pageSettings.artistNameLabel}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, artistNameLabel: e.target.value }))}
+                            placeholder="Artist Name"
+                            className="max-w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Artist Name Placeholder
+                          </label>
+                          <Input
+                            value={pageSettings.artistNamePlaceholder}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, artistNamePlaceholder: e.target.value }))}
+                            placeholder="Enter artist name"
+                            className="max-w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Audio Upload Section */}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Audio Upload Section</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="showAudioUpload"
+                          checked={pageSettings.showAudioUpload}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, showAudioUpload: e.target.checked }))}
+                          className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                        />
+                        <label htmlFor="showAudioUpload" className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer">
+                          Show Audio Upload Option
+                        </label>
+                      </div>
+                      {pageSettings.showAudioUpload && (
+                        <>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                              Audio Upload Label
+                            </label>
+                            <Input
+                              value={pageSettings.audioUploadLabel}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, audioUploadLabel: e.target.value }))}
+                              placeholder="Upload Your Own Audio File"
+                              className="max-w-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                              Audio Upload Description
+                            </label>
+                            <Textarea
+                              value={pageSettings.audioUploadDescription}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, audioUploadDescription: e.target.value }))}
+                              placeholder="Upload your own audio file to be played. This is perfect for upcoming artists or custom tracks. ($100 per file)"
+                              className="max-w-md"
+                              rows={2}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                              Artist Rights Checkbox Text
+                            </label>
+                            <Input
+                              value={pageSettings.artistRightsText}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, artistRightsText: e.target.value }))}
+                              placeholder="I confirm that I own the rights to this music or have permission to use it"
+                              className="max-w-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                              Is Artist Checkbox Text
+                            </label>
+                            <Input
+                              value={pageSettings.isArtistText}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, isArtistText: e.target.value }))}
+                              placeholder="I am the artist (this is for promotion, not just a play)"
+                              className="max-w-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                              Audio Fee Text
+                            </label>
+                            <Input
+                              value={pageSettings.audioFeeText}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, audioFeeText: e.target.value }))}
+                              placeholder="+$100.00 for audio upload"
+                              className="max-w-md"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Shoutout Fields */}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Shoutout Fields</h4>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Recipient Name Label
+                          </label>
+                          <Input
+                            value={pageSettings.recipientNameLabel}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, recipientNameLabel: e.target.value }))}
+                            placeholder="Recipient Name"
+                            className="max-w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Recipient Name Placeholder
+                          </label>
+                          <Input
+                            value={pageSettings.recipientNamePlaceholder}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, recipientNamePlaceholder: e.target.value }))}
+                            placeholder="Who is this shoutout for?"
+                            className="max-w-full"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Message Label
+                          </label>
+                          <Input
+                            value={pageSettings.messageLabel}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, messageLabel: e.target.value }))}
+                            placeholder="Message"
+                            className="max-w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Message Placeholder
+                          </label>
+                          <Input
+                            value={pageSettings.messagePlaceholder}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, messagePlaceholder: e.target.value }))}
+                            placeholder="What would you like to say?"
+                            className="max-w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Buttons & Steps */}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Buttons & Steps</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          Submit Button Text
+                        </label>
+                        <Input
+                          value={pageSettings.submitButtonText}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, submitButtonText: e.target.value }))}
+                          placeholder="Submit Request"
+                          className="max-w-md"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Step 1 Text
+                          </label>
+                          <Input
+                            value={pageSettings.step1Text}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, step1Text: e.target.value }))}
+                            placeholder="Step 1 of 2: Choose your request"
+                            className="max-w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Step 2 Text
+                          </label>
+                          <Input
+                            value={pageSettings.step2Text}
+                            onChange={(e) => setPageSettings(prev => ({ ...prev, step2Text: e.target.value }))}
+                            placeholder="Step 2 of 2: Payment"
+                            className="max-w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feature Toggles */}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Feature Toggles</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="showFastTrack"
+                          checked={pageSettings.showFastTrack}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, showFastTrack: e.target.checked }))}
+                          className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                        />
+                        <label htmlFor="showFastTrack" className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer">
+                          Show Fast-Track Option
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="showNextSong"
+                          checked={pageSettings.showNextSong}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, showNextSong: e.target.checked }))}
+                          className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                        />
+                        <label htmlFor="showNextSong" className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer">
+                          Show &quot;Next Song&quot; Option
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="showBundleDiscount"
+                          checked={pageSettings.showBundleDiscount}
+                          onChange={(e) => setPageSettings(prev => ({ ...prev, showBundleDiscount: e.target.checked }))}
+                          className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                        />
+                        <label htmlFor="showBundleDiscount" className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer">
+                          Show Bundle Discount Feature
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               <div className="flex gap-2 pt-4">
                 <Button
@@ -1435,31 +3859,58 @@ export default function CrowdRequestsPage() {
 
         {/* Enhanced Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex flex-col gap-4">
+          {/* Mobile Filter Toggle Button */}
+          <div className="lg:hidden mb-4">
+            <Button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              variant="outline"
+              className="w-full justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                Filters
+                {(statusFilter !== 'all' || paymentMethodFilter !== 'all' || requestTypeFilter !== 'all' || dateRangeStart || dateRangeEnd || eventCodeFilter || audioUploadFilter !== 'all') && (
+                  <Badge className="ml-2 bg-purple-500 text-white">Active</Badge>
+                )}
+              </span>
+              <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${showMobileFilters ? 'rotate-90' : ''}`} />
+            </Button>
+          </div>
+          
+          <div className={`flex flex-col gap-4 ${showMobileFilters ? 'block' : 'hidden lg:flex'}`}>
             {/* First Row: Search and Quick Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search requests, names, emails, phones..."
-                  className="pl-10"
-                />
-              </div>
-              
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search requests, names, emails, phones, or payment IDs (pi_xxx/ch_xxx)..."
+              className="pl-10"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (searchTerm.startsWith('pi_') || searchTerm.startsWith('ch_'))) {
+                      // If searching by payment ID, open link payment modal
+                      const paymentId = searchTerm.trim();
+                      setLinkPaymentIntentId(paymentId);
+                      setShowLinkPaymentModal(true);
+                      searchByPaymentIntent(paymentId);
+                    }
+                  }}
+            />
+          </div>
+          
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[140px]"
-              >
-                <option value="all">All Status</option>
-                <option value="new">New</option>
-                <option value="acknowledged">Acknowledged</option>
-                <option value="playing">Playing</option>
-                <option value="played">Played</option>
-                <option value="paid">Paid</option>
-              </select>
+          >
+            <option value="all">All Status</option>
+            <option value="new">New</option>
+            <option value="acknowledged">Acknowledged</option>
+            <option value="playing">Playing</option>
+            <option value="played">Played</option>
+            <option value="paid">Paid</option>
+          </select>
 
               <select
                 value={paymentMethodFilter}
@@ -1482,10 +3933,20 @@ export default function CrowdRequestsPage() {
                 <option value="song_request">Song Request</option>
                 <option value="shoutout">Shoutout</option>
               </select>
+
+              <select
+                value={audioUploadFilter}
+                onChange={(e) => setAudioUploadFilter(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[140px]"
+              >
+                <option value="all">All Audio Types</option>
+                <option value="custom">Custom Upload</option>
+                <option value="standard">Standard Link</option>
+              </select>
             </div>
 
             {/* Second Row: Date Range and Event Code */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row gap-4">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-400" />
                 <Input
@@ -1530,15 +3991,15 @@ export default function CrowdRequestsPage() {
                   <X className="w-4 h-4" />
                   Clear Filters
                 </Button>
-                
-                <Button
-                  onClick={fetchRequests}
-                  variant="outline"
-                  className="inline-flex items-center gap-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Refresh
-                </Button>
+          
+          <Button
+            onClick={fetchRequests}
+            variant="outline"
+            className="inline-flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
 
                 <Button
                   onClick={exportToCSV}
@@ -1556,7 +4017,7 @@ export default function CrowdRequestsPage() {
                 >
                   <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
                   {autoRefresh ? 'Auto-Refresh ON' : 'Auto-Refresh OFF'}
-                </Button>
+          </Button>
               </div>
             </div>
           </div>
@@ -1631,6 +4092,7 @@ export default function CrowdRequestsPage() {
                   setPaymentMethodFilter('all');
                   setRequestTypeFilter('all');
                   setEventCodeFilter('');
+                  setAudioUploadFilter('all');
                 }}
                 variant="outline"
                 className="mt-4"
@@ -1641,11 +4103,12 @@ export default function CrowdRequestsPage() {
           </div>
         ) : (
           <>
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-900">
-                    <tr>
+          {/* Desktop Table View */}
+          <div className="hidden lg:block bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-900">
+                  <tr>
                       <th className="px-4 py-3 text-left">
                         <input
                           type="checkbox"
@@ -1660,7 +4123,7 @@ export default function CrowdRequestsPage() {
                         onClick={() => handleSort('song_title')}
                       >
                         <div className="flex items-center gap-2">
-                          Request
+                      Request
                           {sortColumn === 'song_title' ? (
                             sortDirection === 'asc' ? (
                               <ArrowUp className="w-3 h-3" />
@@ -1671,13 +4134,13 @@ export default function CrowdRequestsPage() {
                             <ArrowUpDown className="w-3 h-3 opacity-30" />
                           )}
                         </div>
-                      </th>
+                    </th>
                       <th 
                         className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
                         onClick={() => handleSort('requester_name')}
                       >
                         <div className="flex items-center gap-2">
-                          Requester
+                      Requester
                           {sortColumn === 'requester_name' ? (
                             sortDirection === 'asc' ? (
                               <ArrowUp className="w-3 h-3" />
@@ -1688,13 +4151,13 @@ export default function CrowdRequestsPage() {
                             <ArrowUpDown className="w-3 h-3 opacity-30" />
                           )}
                         </div>
-                      </th>
+                    </th>
                       <th 
                         className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
                         onClick={() => handleSort('amount')}
                       >
                         <div className="flex items-center gap-2">
-                          Amount
+                      Amount
                           {sortColumn === 'amount' ? (
                             sortDirection === 'asc' ? (
                               <ArrowUp className="w-3 h-3" />
@@ -1705,13 +4168,13 @@ export default function CrowdRequestsPage() {
                             <ArrowUpDown className="w-3 h-3 opacity-30" />
                           )}
                         </div>
-                      </th>
+                    </th>
                       <th 
                         className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
                         onClick={() => handleSort('status')}
                       >
                         <div className="flex items-center gap-2">
-                          Status
+                      Status
                           {sortColumn === 'status' ? (
                             sortDirection === 'asc' ? (
                               <ArrowUp className="w-3 h-3" />
@@ -1722,7 +4185,7 @@ export default function CrowdRequestsPage() {
                             <ArrowUpDown className="w-3 h-3 opacity-30" />
                           )}
                         </div>
-                      </th>
+                    </th>
                       <th 
                         className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
                         onClick={() => handleSort('created_at')}
@@ -1739,13 +4202,13 @@ export default function CrowdRequestsPage() {
                             <ArrowUpDown className="w-3 h-3 opacity-30" />
                           )}
                         </div>
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {paginatedRequests.map((request) => (
                     <tr 
                       key={request.id} 
@@ -1775,7 +4238,7 @@ export default function CrowdRequestsPage() {
                             <Mic className="w-5 h-5 text-pink-500" />
                           )}
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <p className="font-semibold text-gray-900 dark:text-white">
                                 {request.request_type === 'song_request' 
                                   ? request.song_title || 'Unknown Song'
@@ -1785,6 +4248,18 @@ export default function CrowdRequestsPage() {
                                 <Badge className="bg-orange-500 text-white flex items-center gap-1 px-2 py-0.5">
                                   <Zap className="w-3 h-3" />
                                   Fast-Track
+                                </Badge>
+                              )}
+                              {request.is_custom_audio && (
+                                <Badge className="bg-blue-500 text-white flex items-center gap-1 px-2 py-0.5">
+                                  <FileText className="w-3 h-3" />
+                                  Custom Audio
+                                </Badge>
+                              )}
+                              {request.is_artist && (
+                                <Badge className="bg-green-500 text-white flex items-center gap-1 px-2 py-0.5">
+                                  <User className="w-3 h-3" />
+                                  Artist
                                 </Badge>
                               )}
                             </div>
@@ -1804,16 +4279,26 @@ export default function CrowdRequestsPage() {
                       <td className="px-6 py-4">
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">
-                            {request.requester_name}
-                            {(request.payment_intent_id || (request as any).stripe_session_id) && (
-                              <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400" title="Stripe payment - click to view details">
-                                💳
+                            {/* Prioritize Stripe customer name if payment exists, otherwise use DB name */}
+                            {request.payment_intent_id || (request as any).stripe_session_id ? (
+                              <span className="flex items-center gap-1">
+                                <span className="text-indigo-600 dark:text-indigo-400" title="Stripe payment - customer data from Stripe">
+                                  💳
+                                </span>
+                                {request.requester_name || 'Loading...'}
                               </span>
+                            ) : (
+                              request.requester_name || 'N/A'
                             )}
                           </p>
                           {request.requester_email && (
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                               {request.requester_email}
+                            </p>
+                          )}
+                          {request.requester_phone && (
+                            <p className="text-xs text-gray-500 dark:text-gray-500">
+                              {request.requester_phone}
                             </p>
                           )}
                         </div>
@@ -1829,6 +4314,11 @@ export default function CrowdRequestsPage() {
                           {request.is_fast_track && request.fast_track_fee > 0 && (
                             <span className="text-xs text-orange-600 dark:text-orange-400">
                               +${(request.fast_track_fee / 100).toFixed(2)} fast-track
+                            </span>
+                          )}
+                          {request.is_custom_audio && request.audio_upload_fee > 0 && (
+                            <span className="text-xs text-blue-600 dark:text-blue-400">
+                              +${(request.audio_upload_fee / 100).toFixed(2)} audio upload
                             </span>
                           )}
                         </div>
@@ -1965,6 +4455,167 @@ export default function CrowdRequestsPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-3 mt-4">
+            {paginatedRequests.map((request) => (
+              <div
+                key={request.id}
+                onClick={() => openDetailModal(request)}
+                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-4 cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] ${
+                  request.is_fast_track ? 'border-l-4 border-l-orange-500 bg-orange-50/50 dark:bg-orange-900/10' : ''
+                } ${
+                  !request.organization_id ? 'border-l-4 border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-900/10' : ''
+                }`}
+              >
+                {/* Card Header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {request.request_type === 'song_request' ? (
+                      <Music className={`w-6 h-6 flex-shrink-0 ${request.is_fast_track ? 'text-orange-500' : 'text-purple-500'}`} />
+                    ) : (
+                      <Mic className="w-6 h-6 flex-shrink-0 text-pink-500" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-bold text-gray-900 dark:text-white text-base">
+                          {request.request_type === 'song_request' 
+                            ? request.song_title || 'Unknown Song'
+                            : `Shoutout for ${request.recipient_name}`}
+                        </p>
+                        {request.is_fast_track && (
+                          <Badge className="bg-orange-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs">
+                            <Zap className="w-3 h-3" />
+                            Fast-Track
+                          </Badge>
+                        )}
+                        {request.is_custom_audio && (
+                          <Badge className="bg-blue-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs">
+                            <FileText className="w-3 h-3" />
+                            Custom Audio
+                          </Badge>
+                        )}
+                        {request.is_artist && (
+                          <Badge className="bg-green-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs">
+                            <User className="w-3 h-3" />
+                            Artist
+                          </Badge>
+                        )}
+                      </div>
+                      {request.request_type === 'song_request' && request.song_artist && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          by {request.song_artist}
+                        </p>
+                      )}
+                      {request.request_type === 'shoutout' && request.recipient_message && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                          {request.recipient_message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={selectedRequests.has(request.id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleSelectRequest(request.id, e.target.checked);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 flex-shrink-0"
+                  />
+                </div>
+
+                {/* Requester Info */}
+                <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2 mb-1">
+                    <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                      {request.payment_intent_id || (request as any).stripe_session_id ? (
+                        <span className="flex items-center gap-1">
+                          <span className="text-indigo-600 dark:text-indigo-400">💳</span>
+                          {request.requester_name || 'Loading...'}
+                        </span>
+                      ) : (
+                        request.requester_name || 'N/A'
+                      )}
+                    </p>
+                  </div>
+                  {request.requester_email && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400 ml-6 truncate">
+                      {request.requester_email}
+                    </p>
+                  )}
+                  {request.requester_phone && (
+                    <p className="text-xs text-gray-500 dark:text-gray-500 ml-6">
+                      {request.requester_phone}
+                    </p>
+                  )}
+                </div>
+
+                {/* Amount and Status Row */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <DollarSign className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <span className="font-bold text-lg text-gray-900 dark:text-white">
+                      ${((request.amount_paid || request.amount_requested) / 100).toFixed(2)}
+                    </span>
+                    {request.is_fast_track && request.fast_track_fee > 0 && (
+                      <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                        +${(request.fast_track_fee / 100).toFixed(2)}
+                      </span>
+                    )}
+                    {request.is_custom_audio && request.audio_upload_fee > 0 && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                        +${(request.audio_upload_fee / 100).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    {getStatusBadge(request.status, request.payment_status)}
+                  </div>
+                </div>
+
+                {/* Date and Actions */}
+                <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      {new Date(request.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    {!request.organization_id && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm('Assign this orphaned request to your organization?')) {
+                            assignRequestToOrganization(request.id);
+                          }
+                        }}
+                        size="sm"
+                        className="text-xs h-8 bg-yellow-600 hover:bg-yellow-700 text-white"
+                      >
+                        Assign
+                      </Button>
+                    )}
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDetailModal(request);
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-8"
+                    >
+                      <Eye className="w-3 h-3 mr-1" />
+                      View
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Pagination */}
@@ -2324,7 +4975,7 @@ export default function CrowdRequestsPage() {
                       </div>
                     ) : !loadingStripeDetails ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Click "Load Stripe Details" to fetch customer information from Stripe.
+                        Click &quot;Load Stripe Details&quot; to fetch customer information from Stripe.
                       </p>
                     ) : (
                       <p className="text-sm text-gray-500 dark:text-gray-400">Loading Stripe details...</p>
@@ -2475,6 +5126,124 @@ export default function CrowdRequestsPage() {
                     </Button>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Link Stripe Payment Modal */}
+        {showLinkPaymentModal && (
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Link Stripe Payment
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowLinkPaymentModal(false);
+                    setLinkPaymentIntentId('');
+                    setLinkPaymentRequestId(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                    Stripe Payment Intent ID
+                  </label>
+                  <Input
+                    value={linkPaymentIntentId}
+                    onChange={(e) => setLinkPaymentIntentId(e.target.value)}
+                    placeholder="pi_xxxxx or ch_xxxxx"
+                    className="w-full font-mono"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Enter the Payment Intent ID from Stripe (starts with pi_) or Charge ID (starts with ch_)
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      if (linkPaymentIntentId) {
+                        searchByPaymentIntent(linkPaymentIntentId);
+                      }
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={!linkPaymentIntentId}
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Search for Request
+                  </Button>
+                </div>
+
+                {linkPaymentRequestId ? (
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <p className="text-sm text-green-800 dark:text-green-200 mb-2">
+                      Request found! Click below to link the payment.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        if (linkPaymentRequestId && linkPaymentIntentId) {
+                          linkStripePayment(linkPaymentRequestId, linkPaymentIntentId);
+                        }
+                      }}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      Link Payment to Request
+                    </Button>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      Or Select Request Manually
+                    </label>
+                    <select
+                      value={linkPaymentRequestId || ''}
+                      onChange={(e) => setLinkPaymentRequestId(e.target.value || null)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select a request...</option>
+                      {requests.map((req) => (
+                        <option key={req.id} value={req.id}>
+                          {req.request_type === 'song_request' 
+                            ? `${req.song_title || 'Unknown'}${req.song_artist ? ` by ${req.song_artist}` : ''}`
+                            : `Shoutout for ${req.recipient_name}`} - {req.requester_name} - ${new Date(req.created_at).toLocaleDateString()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {linkPaymentRequestId && linkPaymentIntentId && (
+                  <Button
+                    onClick={() => {
+                      linkStripePayment(linkPaymentRequestId, linkPaymentIntentId);
+                    }}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                  >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Link Payment
+                  </Button>
+                )}
+
+                <Button
+                  onClick={() => {
+                    setShowLinkPaymentModal(false);
+                    setLinkPaymentIntentId('');
+                    setLinkPaymentRequestId(null);
+                  }}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
           </div>

@@ -9,44 +9,95 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Header from '../../components/company/Header';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getCoverPhotoUrl } from '../../utils/cover-photo-helper';
 // Organization will be loaded via API
 import GeneralRequestsPage from '../requests';
 
 export default function OrganizationRequestsPage() {
   const router = useRouter();
   const { slug } = router.query;
+  const supabase = createClientComponentClient();
   const [organization, setOrganization] = useState(null);
   const [branding, setBranding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function loadOrganization() {
-      if (!slug) return;
+    async function loadOrganization(forceRefresh = false) {
+      if (!slug) {
+        console.log('⏸️ [SLUG/REQUESTS] No slug, skipping organization load');
+        return;
+      }
 
       try {
-        const response = await fetch(`/api/organizations/get-by-slug?slug=${slug}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.organization) {
-            setOrganization(data.organization);
-            
-            // Load branding if available (use slug for public access)
-            const brandingResponse = await fetch(`/api/organizations/branding/get?slug=${slug}`);
-            if (brandingResponse.ok) {
-              const brandingData = await brandingResponse.json();
-              if (brandingData.branding) {
-                setBranding(brandingData.branding);
-              }
+        console.log(`🔄 [SLUG/REQUESTS] Loading organization (${forceRefresh ? 'force refresh' : 'initial load'}) for slug: ${slug}`);
+        
+        // Add a small delay to ensure database changes are propagated
+        if (forceRefresh) {
+          console.log('⏳ [SLUG/REQUESTS] Waiting 1 second for database propagation...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Load full organization data directly from Supabase to get all settings fields
+        console.log('📡 [SLUG/REQUESTS] Querying Supabase for organization...');
+        const { data: org, error: orgError } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('slug', slug)
+          .single();
+
+        if (orgError) {
+          console.error('❌ [SLUG/REQUESTS] Error loading organization:', orgError);
+          setError('Organization not found');
+          setLoading(false);
+          return;
+        }
+
+        if (!org) {
+          console.error('❌ [SLUG/REQUESTS] No organization found');
+          setError('Organization not found');
+          setLoading(false);
+          return;
+        }
+
+        // Check if organization subscription is active
+        if (org.subscription_status !== 'active' && org.subscription_status !== 'trial') {
+          console.warn('⚠️ [SLUG/REQUESTS] Organization not active:', org.subscription_status);
+          setError('This organization is not currently active');
+          setLoading(false);
+          return;
+        }
+
+        // Force update by creating a new object reference
+        const freshOrg = { ...org };
+        setOrganization(freshOrg);
+        
+        console.log('✅ [SLUG/REQUESTS] Organization loaded:', {
+          id: freshOrg.id,
+          name: freshOrg.name,
+          artist_name: freshOrg.requests_header_artist_name,
+          location: freshOrg.requests_header_location,
+          date: freshOrg.requests_header_date,
+          updated_at: freshOrg.updated_at,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Load branding if available (use slug for public access)
+        try {
+          const brandingResponse = await fetch(`/api/organizations/branding/get?slug=${slug}`);
+          if (brandingResponse.ok) {
+            const brandingData = await brandingResponse.json();
+            if (brandingData.branding) {
+              setBranding(brandingData.branding);
             }
-          } else {
-            setError('Organization not found');
           }
-        } else {
-          setError('Failed to load organization');
+        } catch (brandingErr) {
+          console.warn('⚠️ [SLUG/REQUESTS] Error loading branding:', brandingErr);
+          // Non-critical, continue without branding
         }
       } catch (err) {
-        console.error('Error loading organization:', err);
+        console.error('❌ [SLUG/REQUESTS] Error loading organization:', err);
         setError('Failed to load organization');
       } finally {
         setLoading(false);
@@ -54,9 +105,43 @@ export default function OrganizationRequestsPage() {
     }
 
     loadOrganization();
-  }, [slug]);
+    
+    // Set up interval to refresh organization data every 10 seconds
+    const refreshInterval = setInterval(() => {
+      if (slug) {
+        loadOrganization(true);
+      }
+    }, 10000); // Refresh every 10 seconds
+
+    // Also listen for focus events to refresh when user returns to tab
+    const handleFocus = () => {
+      if (slug) {
+        loadOrganization(true);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(refreshInterval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [slug, supabase]);
+
+  // Debug: Log when component renders
+  useEffect(() => {
+    console.log('🎬 [SLUG/REQUESTS] OrganizationRequestsPage rendered:', {
+      loading,
+      hasOrganization: !!organization,
+      slug,
+      artistName: organization?.requests_header_artist_name,
+      location: organization?.requests_header_location,
+      date: organization?.requests_header_date,
+      organizationKeys: organization ? Object.keys(organization) : []
+    });
+  }, [loading, organization, slug]);
 
   if (loading) {
+    console.log('⏳ [SLUG/REQUESTS] Showing loading state...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
@@ -65,6 +150,7 @@ export default function OrganizationRequestsPage() {
   }
 
   if (error || !organization) {
+    console.log('❌ [SLUG/REQUESTS] Error or no organization:', { error, hasOrganization: !!organization });
     return (
       <>
         <Head>
@@ -114,9 +200,21 @@ export default function OrganizationRequestsPage() {
           <link rel="icon" href={branding.customFaviconUrl} />
         </Head>
       )}
+      {(() => {
+        console.log('📤 [SLUG/REQUESTS] Passing organizationData to GeneralRequestsPage:', {
+          hasOrganization: !!organization,
+          artistName: organization?.requests_header_artist_name,
+          organizationId: organization?.id,
+          organizationDataKeys: organization ? Object.keys(organization).filter(k => k.startsWith('requests_')) : []
+        });
+        return null;
+      })()}
       <GeneralRequestsPage
+        key={`${organization.id}-${organization.updated_at || Date.now()}`}
         organizationId={organization.id}
         organizationName={organization.name}
+        organizationCoverPhoto={getCoverPhotoUrl(organization, '/assets/DJ-Ben-Murray-Dodge-Poster.png')}
+        organizationData={organization}
         embedMode={false}
         customBranding={hasBranding ? {
           logoUrl: branding.customLogoUrl,
@@ -127,7 +225,15 @@ export default function OrganizationRequestsPage() {
           textColor: branding.textColor,
           fontFamily: branding.fontFamily,
           companyName: organization.name,
-        } : null}
+        } : (organization.white_label_enabled ? {
+          whiteLabelEnabled: organization.white_label_enabled,
+          customLogoUrl: organization.custom_logo_url,
+          primaryColor: organization.primary_color,
+          secondaryColor: organization.secondary_color,
+          backgroundColor: organization.background_color,
+          textColor: organization.text_color,
+          fontFamily: organization.font_family
+        } : null)}
       />
     </>
   );

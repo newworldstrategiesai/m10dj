@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getCoverPhotoUrl } from '../../../utils/cover-photo-helper';
 import GeneralRequestsPage from '../../requests'; // Reuse the existing requests page component
 
 export default function OrganizationRequestsPage() {
@@ -21,15 +22,34 @@ export default function OrganizationRequestsPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function loadOrganization() {
-      if (!slug) return;
+    async function loadOrganization(forceRefresh = false) {
+      if (!slug) {
+        console.log('⏸️ No slug, skipping organization load');
+        return;
+      }
 
       try {
+        // Force fresh data by using a timestamp in the query
+        // Supabase client-side queries can be cached, so we need to bypass that
+        const timestamp = Date.now();
+        console.log(`🔄 [REQUESTS PAGE] Loading organization (${forceRefresh ? 'force refresh' : 'initial load'}) at ${new Date(timestamp).toISOString()}`);
+        console.log(`📍 Slug: ${slug}`);
+        
+        // Add a small delay to ensure database changes are propagated
+        if (forceRefresh) {
+          console.log('⏳ Waiting 1 second for database propagation...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Query with explicit cache control - use a fresh query each time
+        console.log('📡 Querying Supabase for organization...');
         const { data: org, error: orgError } = await supabase
           .from('organizations')
           .select('*')
           .eq('slug', slug)
           .single();
+        
+        console.log('📥 Supabase response received:', { hasData: !!org, hasError: !!orgError });
 
         if (orgError) {
           console.error('Error loading organization:', orgError);
@@ -45,7 +65,23 @@ export default function OrganizationRequestsPage() {
           return;
         }
 
-        setOrganization(org);
+        // Force update by creating a new object reference
+        const freshOrg = { ...org };
+        setOrganization(freshOrg);
+        
+        console.log('✅ Organization loaded on requests page:', {
+          id: freshOrg.id,
+          name: freshOrg.name,
+          artist_name: freshOrg.requests_header_artist_name,
+          location: freshOrg.requests_header_location,
+          date: freshOrg.requests_header_date,
+          updated_at: freshOrg.updated_at,
+          timestamp: new Date().toISOString(),
+          forceRefresh
+        });
+        
+        // Also log the full object to verify data
+        console.log('📋 Full organization data:', freshOrg);
       } catch (err) {
         console.error('Error:', err);
         setError('Failed to load organization');
@@ -55,9 +91,43 @@ export default function OrganizationRequestsPage() {
     }
 
     loadOrganization();
+    
+    // Set up interval to refresh organization data every 10 seconds
+    // This ensures changes appear on the public page without requiring a full page reload
+    const refreshInterval = setInterval(() => {
+      if (slug) {
+        loadOrganization(true);
+      }
+    }, 10000); // Refresh every 10 seconds
+
+    // Also listen for focus events to refresh when user returns to tab
+    const handleFocus = () => {
+      if (slug) {
+        loadOrganization(true);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(refreshInterval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [slug, supabase]);
 
+  // Debug: Log when component renders
+  useEffect(() => {
+    console.log('🎬 [REQUESTS PAGE] OrganizationRequestsPage rendered:', {
+      loading,
+      hasOrganization: !!organization,
+      slug,
+      artistName: organization?.requests_header_artist_name,
+      location: organization?.requests_header_location,
+      date: organization?.requests_header_date
+    });
+  }, [loading, organization, slug]);
+
   if (loading) {
+    console.log('⏳ [REQUESTS PAGE] Showing loading state...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -88,9 +158,10 @@ export default function OrganizationRequestsPage() {
         <meta name="description" content={`Request a song or shoutout for ${organization.name}`} />
       </Head>
       <GeneralRequestsPage 
+        key={`${organization.id}-${organization.updated_at || Date.now()}`}
         organizationId={organization.id} 
         organizationName={organization.name}
-        organizationCoverPhoto={organization.requests_cover_photo_url || organization.requests_artist_photo_url || organization.requests_venue_photo_url || '/assets/DJ-Ben-Murray-Dodge-Poster.png'}
+        organizationCoverPhoto={getCoverPhotoUrl(organization, '/assets/DJ-Ben-Murray-Dodge-Poster.png')}
         organizationData={organization}
         customBranding={organization.white_label_enabled ? {
           whiteLabelEnabled: organization.white_label_enabled,

@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import Header from '../components/company/Header';
 import { Music, Mic, Loader2, AlertCircle, Gift, Zap, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2 } from 'lucide-react';
 import SocialAccountSelector from '../components/ui/SocialAccountSelector';
 import PaymentMethodSelection from '../components/crowd-request/PaymentMethodSelection';
 import PaymentSuccessScreen from '../components/crowd-request/PaymentSuccessScreen';
 import PaymentAmountSelector from '../components/crowd-request/PaymentAmountSelector';
-import UpsellModal from '../components/crowd-request/UpsellModal';
 import { usePaymentSettings } from '../hooks/usePaymentSettings';
 import { useSongExtraction } from '../hooks/useSongExtraction';
 import { useCrowdRequestPayment } from '../hooks/useCrowdRequestPayment';
@@ -14,12 +14,95 @@ import { useCrowdRequestValidation } from '../hooks/useCrowdRequestValidation';
 import { crowdRequestAPI } from '../utils/crowd-request-api';
 import { createLogger } from '../utils/logger';
 import { CROWD_REQUEST_CONSTANTS } from '../constants/crowd-request';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getCoverPhotoUrl } from '../utils/cover-photo-helper';
 
 const logger = createLogger('GeneralRequestsPage');
 
 const DEFAULT_COVER_PHOTO = '/assets/DJ-Ben-Murray-Dodge-Poster.png';
 
-export default function GeneralRequestsPage({ 
+// Wrapper component for /requests route that loads organization data
+export default function RequestsPageWrapper() {
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+  const [organization, setOrganization] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDefaultOrganization() {
+      try {
+        console.log('🔄 [REQUESTS] Loading default organization for /requests route...');
+        
+        // Load the default organization (M10 DJ Company with slug 'm10dj')
+        // You can change this to load a different default organization
+        const { data: org, error } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('slug', 'm10dj')
+          .single();
+
+        if (error) {
+          console.error('❌ [REQUESTS] Error loading organization:', error);
+          // Continue without organization data - will use defaults
+          setLoading(false);
+          return;
+        }
+
+        if (org && (org.subscription_status === 'active' || org.subscription_status === 'trial')) {
+          setOrganization(org);
+          console.log('✅ [REQUESTS] Organization loaded:', {
+            id: org.id,
+            name: org.name,
+            artist_name: org.requests_header_artist_name
+          });
+        }
+      } catch (err) {
+        console.error('❌ [REQUESTS] Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDefaultOrganization();
+    
+    // Set up interval to refresh organization data every 10 seconds
+    const refreshInterval = setInterval(() => {
+      loadDefaultOrganization();
+    }, 10000);
+
+    return () => clearInterval(refreshInterval);
+  }, [supabase]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <GeneralRequestsPage
+      key={`${organization?.id || 'default'}-${organization?.updated_at || Date.now()}`}
+      organizationId={organization?.id || null}
+      organizationName={organization?.name || null}
+      organizationCoverPhoto={getCoverPhotoUrl(organization, DEFAULT_COVER_PHOTO)}
+      organizationData={organization}
+      customBranding={organization?.white_label_enabled ? {
+        whiteLabelEnabled: organization.white_label_enabled,
+        customLogoUrl: organization.custom_logo_url,
+        primaryColor: organization.primary_color,
+        secondaryColor: organization.secondary_color,
+        backgroundColor: organization.background_color,
+        textColor: organization.text_color,
+        fontFamily: organization.font_family
+      } : null}
+    />
+  );
+}
+
+// The actual GeneralRequestsPage component
+export function GeneralRequestsPage({ 
   organizationId = null, 
   organizationName = null,
   embedMode = false,
@@ -27,9 +110,35 @@ export default function GeneralRequestsPage({
   organizationCoverPhoto = null,
   organizationData = null
 } = {}) {
+  // Log when organizationData changes
+  useEffect(() => {
+    console.log('🎨 [GENERAL REQUESTS] GeneralRequestsPage organizationData changed:', {
+      hasOrganizationData: !!organizationData,
+      artist_name: organizationData?.requests_header_artist_name,
+      location: organizationData?.requests_header_location,
+      date: organizationData?.requests_header_date,
+      updated_at: organizationData?.updated_at,
+      organizationDataType: typeof organizationData,
+      organizationDataKeys: organizationData ? Object.keys(organizationData).filter(k => k.startsWith('requests_')) : []
+    });
+  }, [organizationData]);
   // Use default cover photo if none is provided - always show a cover photo
   const coverPhoto = organizationCoverPhoto || DEFAULT_COVER_PHOTO;
-  const [requestType, setRequestType] = useState('song_request'); // 'song_request' or 'shoutout'
+  
+  // Log cover photo for debugging
+  useEffect(() => {
+    console.log('🖼️ [GENERAL REQUESTS] Cover photo:', {
+      organizationCoverPhoto,
+      coverPhoto,
+      fromOrganizationData: organizationData?.requests_cover_photo_url || organizationData?.requests_artist_photo_url || organizationData?.requests_venue_photo_url,
+      primaryCoverSource: organizationData?.requests_primary_cover_source,
+      hasArtist: !!organizationData?.requests_artist_photo_url,
+      hasVenue: !!organizationData?.requests_venue_photo_url,
+      artistUrl: organizationData?.requests_artist_photo_url,
+      venueUrl: organizationData?.requests_venue_photo_url
+    });
+  }, [organizationCoverPhoto, coverPhoto, organizationData]);
+  const [requestType, setRequestType] = useState(organizationData?.requests_default_request_type || 'song_request'); // 'song_request' or 'shoutout'
   const [formData, setFormData] = useState({
     songArtist: '',
     songTitle: '',
@@ -50,15 +159,24 @@ export default function GeneralRequestsPage({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [songUrl, setSongUrl] = useState('');
+  const [extractedSongUrl, setExtractedSongUrl] = useState(''); // Store the URL that was used for extraction
+  const [isExtractedFromLink, setIsExtractedFromLink] = useState(false); // Track if song was extracted from link
+  const [showLinkField, setShowLinkField] = useState(true); // Track if link field should be shown
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
+  const songTitleInputRef = useRef(null); // Ref for scrolling to song title field
   const [requestId, setRequestId] = useState(null);
   const [paymentCode, setPaymentCode] = useState(null);
+  const [additionalRequestIds, setAdditionalRequestIds] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [currentStep, setCurrentStep] = useState(1); // 1: Song/Shoutout, 2: Payment (Step 2 removed - contact info collected after payment)
-  const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [additionalSongs, setAdditionalSongs] = useState([]); // Array of {songTitle, songArtist}
   const [socialSelectorOpen, setSocialSelectorOpen] = useState(false);
   const [selectedSocialPlatform, setSelectedSocialPlatform] = useState(null);
+  const [audioFile, setAudioFile] = useState(null); // Selected audio file
+  const [audioUploading, setAudioUploading] = useState(false); // Upload status
+  const [audioFileUrl, setAudioFileUrl] = useState(''); // Uploaded file URL
+  const [artistRightsConfirmed, setArtistRightsConfirmed] = useState(false); // Artist rights checkbox
+  const [isArtist, setIsArtist] = useState(false); // Is the requester the artist
 
   // Helper function to get social URL with user preference
   const getSocialUrl = (platform, defaultUrl) => {
@@ -78,7 +196,10 @@ export default function GeneralRequestsPage({
   // Handle social link click
   const handleSocialClick = (e, platform) => {
     if (platform === 'instagram' || platform === 'facebook') {
-      e.preventDefault();
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       setSelectedSocialPlatform(platform);
       setSocialSelectorOpen(true);
     }
@@ -169,20 +290,38 @@ export default function GeneralRequestsPage({
     fastTrackFee,
     nextFee,
     additionalSongs,
-    bundleDiscount: bundleDiscountPercent
+    bundleDiscount: bundleDiscountPercent,
+    audioFileUrl,
+    audioUploadFee: 10000 // $100.00 in cents
   });
 
-  // Use validation hook
+  // Use validation hook - pass isExtractedFromLink to make artist optional when extracted
   const { isSongSelectionComplete, validateForm: validateFormHook } = useCrowdRequestValidation({
     requestType,
     formData,
     getPaymentAmount,
     presetAmounts,
-    minimumAmount
+    minimumAmount,
+    isExtractedFromLink // Pass flag to validation hook
   });
 
-  const handleInputChange = (e) => {
+  const handleInputChange = async (e) => {
     const { name, value } = e.target;
+    
+    // Detect if a URL was pasted into song title or artist field
+    if ((name === 'songTitle' || name === 'songArtist') && value) {
+      const urlPattern = /(youtube\.com|youtu\.be|spotify\.com|soundcloud\.com|tidal\.com|music\.apple\.com|itunes\.apple\.com)/i;
+      if (urlPattern.test(value)) {
+        // Move the URL to the link field and extract from there
+        setSongUrl(value);
+        // Extract song info from the URL (this will populate songTitle and songArtist)
+        await extractSongInfo(value);
+        // Clear the field that had the URL (don't set it as the field value)
+        return;
+      }
+    }
+    
+    // Normal input change - set the field value
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -193,17 +332,49 @@ export default function GeneralRequestsPage({
     // Auto-extract when URL is pasted and looks complete
     if (url && (url.includes('youtube.com') || url.includes('youtu.be') || 
         url.includes('spotify.com') || url.includes('soundcloud.com') || 
-        url.includes('tidal.com'))) {
+        url.includes('tidal.com') || url.includes('music.apple.com') || 
+        url.includes('itunes.apple.com'))) {
       await extractSongInfo(url);
     }
   };
 
   const extractSongInfo = async (url) => {
     await extractSongInfoHook(url, setFormData);
-    // Clear URL field after successful extraction
+    // Store the URL that was used for extraction and mark as extracted
+    setExtractedSongUrl(url);
+    setIsExtractedFromLink(true);
+    // Keep URL visible in the link field for a moment, then clear it
+    // The useEffect will handle hiding the field when song info is populated
     setTimeout(() => {
       setSongUrl('');
     }, CROWD_REQUEST_CONSTANTS.SONG_EXTRACTION_DELAY);
+  };
+
+  // Hide link field when song is manually entered
+  useEffect(() => {
+    if (formData.songTitle && formData.songArtist && showLinkField && !extractingSong) {
+      // Song is populated manually or from extraction, hide link field
+      setShowLinkField(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.songTitle, formData.songArtist, extractingSong]);
+
+  // Reset form to clean slate when "Share another song" is clicked
+  const handleShareAnotherSong = () => {
+    setFormData(prev => ({
+      ...prev,
+      songTitle: '',
+      songArtist: ''
+    }));
+    setSongUrl('');
+    setExtractedSongUrl('');
+    setIsExtractedFromLink(false);
+    setShowLinkField(true);
+    setError('');
+    // Reset step if we're on payment step
+    if (currentStep >= 2) {
+      setCurrentStep(1);
+    }
   };
 
   // Update error state from extraction hook
@@ -216,21 +387,51 @@ export default function GeneralRequestsPage({
   // getBaseAmount and getPaymentAmount are now provided by useCrowdRequestPayment hook
   // isSongSelectionComplete is now provided by useCrowdRequestValidation hook
 
+  // Track previous extraction state to detect when extraction completes
+  const prevExtractingSong = useRef(extractingSong);
+  
   // Auto-advance to payment step when song selection is complete
   useEffect(() => {
-    if (requestType === 'song_request' && currentStep === 1) {
-      const songTitleFilled = formData?.songTitle?.trim()?.length > 0;
-      const songArtistFilled = formData?.songArtist?.trim()?.length > 0;
-      
-      if (songTitleFilled && songArtistFilled) {
-        // Small delay to ensure smooth transition and allow user to see the fields are filled
-        const timer = setTimeout(() => {
-          setCurrentStep(2);
-        }, CROWD_REQUEST_CONSTANTS.AUTO_ADVANCE_DELAY);
-        return () => clearTimeout(timer);
-      }
+    if (requestType === 'song_request' && isSongSelectionComplete() && currentStep === 1) {
+      // Auto-advance to step 2 (payment) when song selection is complete
+      setCurrentStep(2);
+      // Scroll to payment section after a brief delay to ensure it's rendered
+      setTimeout(() => {
+        const paymentElement = document.querySelector('[data-payment-section]');
+        if (paymentElement) {
+          paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.songTitle, formData.songArtist, requestType, currentStep]);
+  
+  // Scroll to song title field after extraction completes (don't auto-advance)
+  useEffect(() => {
+    // If extraction just finished (was extracting, now not extracting)
+    if (prevExtractingSong.current && !extractingSong && isExtractedFromLink) {
+      // Small delay to ensure fields are rendered
+      const timer = setTimeout(() => {
+        if (songTitleInputRef.current) {
+          // Scroll to the song title field
+          songTitleInputRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          });
+          // Focus the field briefly to highlight it
+          songTitleInputRef.current.focus();
+          setTimeout(() => {
+            if (songTitleInputRef.current) {
+              songTitleInputRef.current.blur();
+            }
+          }, 500);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    prevExtractingSong.current = extractingSong;
+  }, [extractingSong, isExtractedFromLink]);
 
   const validateForm = () => {
     return validateFormHook(setError);
@@ -275,14 +476,21 @@ export default function GeneralRequestsPage({
         throw new Error(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
       }
 
-      // Validate additional songs if any
-      if (requestType === 'song_request' && additionalSongs.length > 0) {
-        const invalidSongs = additionalSongs.filter(song => !song.songTitle?.trim());
-        if (invalidSongs.length > 0) {
-          throw new Error('Please enter a song title for all additional songs');
-        }
+      // Note: We allow payment even if additional songs don't have titles yet
+      // Users can enter song details after payment
+      
+      // Build message with song URL if extracted from link
+      let messageWithUrl = formData?.message?.trim() || '';
+      if (extractedSongUrl && requestType === 'song_request') {
+        const urlNote = `Song URL: ${extractedSongUrl}`;
+        messageWithUrl = messageWithUrl ? `${messageWithUrl}\n\n${urlNote}` : urlNote;
       }
       
+      // Validate audio upload requirements
+      if (audioFileUrl && !artistRightsConfirmed) {
+        throw new Error('Please confirm that you own the rights to the music');
+      }
+
       // Create main request with total amount (includes all songs)
       // The main request amount will be the total, and additional requests will be $0 (bundled)
       const mainRequestBody = {
@@ -295,30 +503,38 @@ export default function GeneralRequestsPage({
         requesterName: formData?.requesterName?.trim() || 'Guest',
         requesterEmail: formData?.requesterEmail?.trim() || null,
         requesterPhone: formData?.requesterPhone?.trim() || null,
-        message: formData?.message?.trim() || null,
+        message: messageWithUrl || null,
         amount: amount, // Total amount for all songs
         isFastTrack: (requestType === 'song_request' && isFastTrack) || false,
         isNext: (requestType === 'song_request' && isNext) || false,
         fastTrackFee: (requestType === 'song_request' && isFastTrack) ? fastTrackFee : 0,
         nextFee: (requestType === 'song_request' && isNext) ? nextFee : 0,
-        organizationId: organizationId || null // Include organization ID if provided
+        organizationId: organizationId || null, // Include organization ID if provided
+        audioFileUrl: audioFileUrl || null,
+        isCustomAudio: !!audioFileUrl,
+        artistRightsConfirmed: artistRightsConfirmed,
+        isArtist: isArtist
       };
       
       const mainData = await crowdRequestAPI.submitRequest(mainRequestBody);
 
-      // Create additional song requests if any
-      const validAdditionalSongs = additionalSongs.filter(song => song.songTitle?.trim());
+      // Create additional song requests if any (even without titles - users can add them after payment)
+      // Count the number of additional songs (based on array length, not whether they have titles)
+      const additionalSongCount = additionalSongs.length;
       const baseAmount = getBaseAmount();
       const discountedAmountPerSong = Math.round(baseAmount * (1 - bundleDiscountPercent));
       const allRequestIds = [mainData.requestId];
 
-      if (validAdditionalSongs.length > 0) {
-        for (const song of validAdditionalSongs) {
+      // Create placeholder requests for additional songs (users will fill in details after payment)
+      const additionalIds = [];
+      if (additionalSongCount > 0) {
+        for (let i = 0; i < additionalSongCount; i++) {
+          const song = additionalSongs[i] || {};
           const additionalRequestBody = {
             eventCode: 'general',
             requestType: 'song_request',
             songArtist: song.songArtist?.trim() || null,
-            songTitle: song.songTitle?.trim() || null,
+            songTitle: song.songTitle?.trim() || null, // Can be null - user will add after payment
             requesterName: formData?.requesterName?.trim() || 'Guest',
             requesterEmail: formData?.requesterEmail?.trim() || null,
             requesterPhone: formData?.requesterPhone?.trim() || null,
@@ -327,7 +543,7 @@ export default function GeneralRequestsPage({
             isNext: false,
             fastTrackFee: 0,
             nextFee: 0,
-            message: `Bundled with main request - ${Math.round(bundleDiscountPercent * 100)}% discount applied`,
+            message: `Bundled with main request - ${Math.round(bundleDiscountPercent * 100)}% discount applied. ${song.songTitle?.trim() ? '' : 'Song details to be added after payment.'}`,
             organizationId: organizationId || null // Include organization ID if provided
           };
 
@@ -335,6 +551,7 @@ export default function GeneralRequestsPage({
             const additionalData = await crowdRequestAPI.submitRequest(additionalRequestBody);
             if (additionalData?.requestId) {
               allRequestIds.push(additionalData.requestId);
+              additionalIds.push(additionalData.requestId);
             }
           } catch (err) {
             logger.warn('Failed to create additional song request', err);
@@ -342,6 +559,9 @@ export default function GeneralRequestsPage({
           }
         }
       }
+      
+      // Store additional request IDs for post-payment form
+      setAdditionalRequestIds(additionalIds);
 
       // Save main request ID, payment code, and show payment method selection
       if (mainData?.requestId) {
@@ -351,6 +571,13 @@ export default function GeneralRequestsPage({
         }
         setShowPaymentMethods(true);
         setSubmitting(false);
+        // Scroll to payment UI after a brief delay to ensure it's rendered
+        setTimeout(() => {
+          const paymentElement = document.querySelector('[data-payment-methods]');
+          if (paymentElement) {
+            paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
       } else if (mainData?.checkoutUrl) {
         window.location.href = mainData.checkoutUrl;
       } else {
@@ -440,14 +667,22 @@ export default function GeneralRequestsPage({
   return (
     <>
       <Head>
-        <title>Request a Song or Shoutout | M10 DJ Company</title>
+        <title>{organizationData?.requests_page_title || 'Request a Song or Shoutout | M10 DJ Company'}</title>
+        {organizationData?.requests_page_description && (
+          <meta name="description" content={organizationData.requests_page_description} />
+        )}
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <style jsx global>{`
           @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(10px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          /* Ensure modal appears in all browsers */
+          [role="dialog"] {
+            animation: fadeIn 0.2s ease-in-out !important;
+            -webkit-animation: fadeIn 0.2s ease-in-out !important;
           }
         `}</style>
         <style dangerouslySetInnerHTML={{__html: `
@@ -590,50 +825,102 @@ export default function GeneralRequestsPage({
         )}
         
         {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div 
-            className="absolute -top-40 -right-40 w-80 h-80 rounded-full blur-3xl animate-pulse"
-            style={{ 
-              backgroundColor: customBranding?.whiteLabelEnabled 
-                ? `${customBranding.primaryColor}20` 
-                : 'rgba(147, 51, 234, 0.2)'
-            }}
-          ></div>
-          <div 
-            className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full blur-3xl animate-pulse" 
-            style={{ 
-              animationDelay: '1s',
-              backgroundColor: customBranding?.whiteLabelEnabled 
-                ? `${customBranding.secondaryColor}20` 
-                : 'rgba(236, 72, 153, 0.2)'
-            }}
-          ></div>
-        </div>
+        {!showPaymentMethods && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div 
+              className="absolute -top-40 -right-40 w-80 h-80 rounded-full blur-3xl animate-pulse"
+              style={{ 
+                backgroundColor: customBranding?.whiteLabelEnabled 
+                  ? `${customBranding.primaryColor}20` 
+                  : 'rgba(147, 51, 234, 0.2)'
+              }}
+            ></div>
+            <div 
+              className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full blur-3xl animate-pulse" 
+              style={{ 
+                animationDelay: '1s',
+                backgroundColor: customBranding?.whiteLabelEnabled 
+                  ? `${customBranding.secondaryColor}20` 
+                  : 'rgba(236, 72, 153, 0.2)'
+              }}
+            ></div>
+          </div>
+        )}
         
-        {!embedMode && <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} />}
+        {!embedMode && !showPaymentMethods && <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} />}
         
         {/* Hero Section with Text Fallback */}
-        {!embedMode && (
-          <div className="relative w-full h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px] overflow-hidden top-0 bg-gradient-to-b from-gray-900 via-black to-black" style={{ zIndex: 0 }}>
+        {!embedMode && !showPaymentMethods && (
+          <div 
+            className="relative w-full h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px] overflow-hidden top-0 bg-gradient-to-b from-gray-900 via-black to-black" 
+            style={{ 
+              zIndex: 0,
+              backgroundImage: coverPhoto ? `url(${coverPhoto})` : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
+            {/* Gradient overlay for text readability - dark at top, darker at bottom */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black/70 z-10"></div>
             {/* Content overlay */}
-            <div className="relative z-20 h-full flex flex-col justify-center items-center text-center px-4" style={{ paddingTop: '80px' }}>
-              {/* Artist Name */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 drop-shadow-2xl">
-                DJ Ben Murray
-              </h1>
-              
-              {/* Location */}
-              <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl text-white/90 mb-3 sm:mb-4 drop-shadow-lg">
-                Silky O' Sullivan's
-              </p>
-              
-              {/* Date */}
-              <p className="text-lg sm:text-xl md:text-2xl text-white/80 drop-shadow-md">
-                11.29.25
-              </p>
+            <div className="relative z-20 h-full flex flex-col justify-between items-center text-center px-4" style={{ paddingTop: '80px', paddingBottom: '20px' }}>
+              {/* Top content section */}
+              <div className="flex flex-col items-center justify-center flex-1">
+                {/* Artist Name */}
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 drop-shadow-2xl">
+                  {(() => {
+                    const artistName = organizationData?.requests_header_artist_name || 'DJ Ben Murray';
+                    console.log('🎨 Rendering artist name:', artistName, 'from organizationData:', organizationData?.requests_header_artist_name);
+                    return artistName;
+                  })()}
+                </h1>
+                
+                {/* Location - Only show if value exists */}
+                {organizationData?.requests_header_location && (
+                  <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl text-white/90 mb-3 sm:mb-4 drop-shadow-lg">
+                    {organizationData.requests_header_location}
+                  </p>
+                )}
+                
+                {/* Date - Only show if value exists */}
+                {organizationData?.requests_header_date && (
+                  <p className="text-lg sm:text-xl md:text-2xl text-white/80 drop-shadow-md">
+                    {organizationData.requests_header_date}
+                  </p>
+                )}
+                
+                {/* Charity Donation Info */}
+                {organizationData?.charity_donation_enabled && organizationData?.charity_name && (
+                  <div className="mt-4 sm:mt-6 px-4 py-2 sm:py-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                    <p className="text-sm sm:text-base md:text-lg text-white/90 font-semibold mb-1">
+                      💝 Supporting {organizationData.charity_name}
+                    </p>
+                    {organizationData.charity_donation_percentage === 100 ? (
+                      <p className="text-xs sm:text-sm text-white/80">
+                        All proceeds go to charity
+                      </p>
+                    ) : (
+                      <p className="text-xs sm:text-sm text-white/80">
+                        {organizationData.charity_donation_percentage}% of tips donated
+                      </p>
+                    )}
+                    {organizationData.charity_url && (
+                      <a
+                        href={organizationData.charity_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs sm:text-sm text-white/90 underline hover:text-white mt-1 inline-block"
+                      >
+                        Learn more →
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
               
               {/* Bottom section with social icons */}
-              <div className="absolute bottom-6 sm:bottom-12 w-full flex flex-col items-center gap-4">
+              <div className="w-full flex flex-col items-center gap-4 mt-4 sm:mt-6">
                 {/* Social Links - Positioned at bottom */}
                 {organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0 ? (
                   <div className="flex items-center justify-center gap-3">
@@ -658,6 +945,27 @@ export default function GeneralRequestsPage({
                               return <Link2 {...iconProps} />;
                           }
                         };
+                        const platform = link.platform?.toLowerCase();
+                        const isSelectable = platform === 'instagram' || platform === 'facebook';
+                        
+                        if (isSelectable) {
+                          return (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleSocialClick(e, platform);
+                              }}
+                              className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer border-0 bg-transparent p-0"
+                              aria-label={link.label || link.platform}
+                            >
+                              {getSocialIcon(link.platform)}
+                            </button>
+                          );
+                        }
+                        
                         return (
                           <a
                             key={index}
@@ -675,22 +983,30 @@ export default function GeneralRequestsPage({
                 ) : (
                   // Default fallback social links
                   <div className="flex items-center justify-center gap-3">
-                    <a
-                      href="#"
-                      onClick={(e) => handleSocialClick(e, 'instagram')}
-                      className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer"
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSocialClick(e, 'instagram');
+                      }}
+                      className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer border-0 bg-transparent p-0"
                       aria-label="Instagram"
                     >
                       <Instagram className="w-5 h-5" strokeWidth={2} fill="none" />
-                    </a>
-                    <a
-                      href="#"
-                      onClick={(e) => handleSocialClick(e, 'facebook')}
-                      className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer"
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSocialClick(e, 'facebook');
+                      }}
+                      className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer border-0 bg-transparent p-0"
                       aria-label="Facebook"
                     >
                       <Facebook className="w-5 h-5" strokeWidth={2} fill="none" />
-                    </a>
+                    </button>
                   </div>
                 )}
               </div>
@@ -698,8 +1014,8 @@ export default function GeneralRequestsPage({
           </div>
         )}
         
-        <main className={`section-container relative z-10 py-3 sm:py-6 md:py-8 lg:py-12 px-3 sm:px-4 md:px-6 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : 'auto', display: 'flex', flexDirection: 'column', maxWidth: '100vw' }}>
-          <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col overflow-x-hidden">
+        <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-8 sm:py-12 md:py-16' : 'py-3 sm:py-6 md:py-8 lg:py-12'} px-3 sm:px-4 md:px-6 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto'), display: 'flex', flexDirection: 'column', maxWidth: '100vw' }}>
+          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-2xl'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden`}>
             {/* Header - Compact for no-scroll design - Hide when hero image is shown */}
             {false && (
               <div className="text-center mb-2 sm:mb-3">
@@ -723,16 +1039,18 @@ export default function GeneralRequestsPage({
             )}
             
             {/* Step Indicator - Show below hero image when hero is present - Compact on mobile */}
-            <div className="text-center mb-1 sm:mb-3 md:mb-4 lg:mb-6">
-              <div className="flex items-center justify-center gap-1.5 sm:gap-2">
-                <div className={`h-1 sm:h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-white w-6 sm:w-8' : 'bg-white/30 w-1.5 sm:w-2'}`}></div>
-                <div className={`h-1 sm:h-1.5 rounded-full transition-all ${currentStep >= 2 ? 'bg-white w-6 sm:w-8' : 'bg-white/30 w-1.5 sm:w-2'}`}></div>
+            {!showPaymentMethods && (
+              <div className="text-center mb-1 sm:mb-3 md:mb-4 lg:mb-6">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+                  <div className={`h-1 sm:h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-white w-6 sm:w-8' : 'bg-white/30 w-1.5 sm:w-2'}`}></div>
+                  <div className={`h-1 sm:h-1.5 rounded-full transition-all ${currentStep >= 2 ? 'bg-white w-6 sm:w-8' : 'bg-white/30 w-1.5 sm:w-2'}`}></div>
+                </div>
+                <p className="text-[9px] sm:text-[10px] md:text-xs text-white/80 mt-0.5 sm:mt-1 md:mt-2">
+                  {currentStep === 1 && (organizationData?.requests_step_1_text || 'Step 1 of 2: Choose your request')}
+                  {currentStep === 2 && (organizationData?.requests_step_2_text || 'Step 2 of 2: Payment')}
+                </p>
               </div>
-              <p className="text-[9px] sm:text-[10px] md:text-xs text-white/80 mt-0.5 sm:mt-1 md:mt-2">
-                {currentStep === 1 && 'Step 1 of 2: Choose your request'}
-                {currentStep === 2 && 'Step 2 of 2: Payment'}
-              </p>
-            </div>
+            )}
 
             {/* Error Message - Show at top level so it's always visible */}
             {error && (
@@ -755,7 +1073,11 @@ export default function GeneralRequestsPage({
             )}
 
             {success ? (
-              <PaymentSuccessScreen requestId={requestId} amount={getPaymentAmount()} />
+              <PaymentSuccessScreen 
+                requestId={requestId} 
+                amount={getPaymentAmount()} 
+                additionalRequestIds={additionalRequestIds}
+              />
             ) : showPaymentMethods ? (
               <PaymentMethodSelection
                 requestId={requestId}
@@ -768,6 +1090,12 @@ export default function GeneralRequestsPage({
                 songTitle={formData.songTitle}
                 songArtist={formData.songArtist}
                 recipientName={formData.recipientName}
+                additionalSongs={additionalSongs}
+                setAdditionalSongs={setAdditionalSongs}
+                bundleDiscount={bundleDiscountPercent}
+                    bundleDiscountEnabled={organizationData?.requests_show_bundle_discount !== false ? bundleDiscountEnabled : false}
+                getBaseAmount={getBaseAmount}
+                getPaymentAmount={getPaymentAmount}
                 onPaymentMethodSelected={handlePaymentMethodSelected}
                 onError={setError}
                 onBack={() => {
@@ -782,7 +1110,7 @@ export default function GeneralRequestsPage({
                 <div className="bg-white/70 dark:bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
                   <h2 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4 lg:mb-6 flex items-center gap-2 sm:gap-3">
                     <div className="w-1 h-5 sm:h-6 md:h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full hidden sm:block"></div>
-                    <span className="leading-tight">What would you like to request?</span>
+                    <span className="leading-tight">{organizationData?.requests_main_heading || 'What would you like to request?'}</span>
                   </h2>
                   
                   <div className="grid grid-cols-2 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
@@ -808,7 +1136,7 @@ export default function GeneralRequestsPage({
                             requestType === 'song_request' ? 'text-white' : 'text-gray-400 group-hover:text-purple-500'
                           }`} />
                         </div>
-                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">Song Request</h3>
+                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_song_request_label || 'Song Request'}</h3>
                       </div>
                     </button>
                     
@@ -834,7 +1162,7 @@ export default function GeneralRequestsPage({
                             requestType === 'shoutout' ? 'text-white' : 'text-gray-400 group-hover:text-pink-500'
                           }`} />
                         </div>
-                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">Shoutout</h3>
+                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_shoutout_label || 'Shoutout'}</h3>
                       </div>
                     </button>
                   </div>
@@ -842,55 +1170,74 @@ export default function GeneralRequestsPage({
                   {/* Song Request Fields */}
                   {requestType === 'song_request' && (
                     <div className="space-y-2 sm:space-y-3 md:space-y-4">
-                      {/* Music Link Input */}
-                      <div>
-                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                          <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                          Paste Music Link (Optional)
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="url"
-                            value={songUrl}
-                            onChange={handleSongUrlChange}
-                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation pr-10 sm:pr-12"
-                            placeholder="Paste YouTube, Spotify, SoundCloud, or Tidal link"
-                            autoComplete="off"
-                          />
-                          {extractingSong && (
-                            <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2">
-                              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-500" />
-                              <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline">Extracting...</span>
+                      {/* Music Link Input - Show only when showLinkField is true */}
+                      {showLinkField ? (
+                        <>
+                          <div>
+                            <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                              <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                              {organizationData?.requests_music_link_label || 'Paste Music Link (Optional)'}
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="url"
+                                value={songUrl}
+                                onChange={handleSongUrlChange}
+                                className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation ${
+                                  extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : 'pr-3 sm:pr-4'
+                                }`}
+                                placeholder={organizationData?.requests_music_link_placeholder || "Paste YouTube, Spotify, SoundCloud, Tidal, or Apple Music link"}
+                                autoComplete="off"
+                              />
+                              {extractingSong && (
+                                <div className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2 pointer-events-none">
+                                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-500 flex-shrink-0" />
+                                  <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline whitespace-nowrap">Extracting...</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          We&apos;ll automatically fill in the song title and artist name
-                        </p>
-                      </div>
+                            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {organizationData?.requests_music_link_help_text || "We'll automatically fill in the song title and artist name"}
+                            </p>
+                          </div>
 
-                      <div className="relative my-2 sm:my-3">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-300 dark:border-gray-800"></div>
+                          <div className="relative my-2 sm:my-3">
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="w-full border-t border-gray-300 dark:border-gray-800"></div>
+                            </div>
+                            <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
+                              <span className="bg-white dark:bg-black px-2 text-gray-500 dark:text-gray-400">
+                                {organizationData?.requests_manual_entry_divider || 'Or enter manually'}
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        /* Show "Start over" button when link field is hidden */
+                        <div className="mb-2 sm:mb-3">
+                          <button
+                            type="button"
+                            onClick={handleShareAnotherSong}
+                            className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                          >
+                            <Music className="w-3 h-3 sm:w-4 sm:h-4" />
+                            {organizationData?.requests_start_over_text || 'Start over'}
+                          </button>
                         </div>
-                        <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
-                          <span className="bg-white dark:bg-black px-2 text-gray-500 dark:text-gray-400">
-                            Or enter manually
-                          </span>
-                        </div>
-                      </div>
+                      )}
 
                       <div>
                         <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                          Song Title <span className="text-red-500">*</span>
+                          {organizationData?.requests_song_title_label || 'Song Title'} <span className="text-red-500">*</span>
                         </label>
                         <input
+                          ref={songTitleInputRef}
                           type="text"
                           name="songTitle"
                           value={formData.songTitle}
                           onChange={handleInputChange}
                           className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation"
-                          placeholder="Enter song title"
+                          placeholder={organizationData?.requests_song_title_placeholder || "Enter song title"}
                           required
                           autoComplete="off"
                         />
@@ -898,7 +1245,7 @@ export default function GeneralRequestsPage({
                       
                       <div>
                         <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                          Artist Name
+                          {organizationData?.requests_artist_name_label || 'Artist Name'}
                         </label>
                         <input
                           type="text"
@@ -906,11 +1253,123 @@ export default function GeneralRequestsPage({
                           value={formData.songArtist}
                           onChange={handleInputChange}
                           className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200"
-                          placeholder="Enter artist name"
+                          placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
                           required
                           autoComplete="off"
                         />
                       </div>
+
+                      {/* Audio File Upload Section */}
+                      {organizationData?.requests_show_audio_upload !== false && (
+                      <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Music className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                          <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                            {organizationData?.requests_audio_upload_label || 'Upload Your Own Audio File'}
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                          {organizationData?.requests_audio_upload_description || 'Upload your own audio file to be played. This is perfect for upcoming artists or custom tracks. ($100 per file)'}
+                        </p>
+                        
+                        {!audioFileUrl ? (
+                          <div>
+                            <input
+                              type="file"
+                              accept="audio/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setAudioFile(file);
+                                  setAudioUploading(true);
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append('audio', file);
+                                    
+                                    const response = await fetch('/api/crowd-request/upload-audio', {
+                                      method: 'POST',
+                                      body: formData
+                                    });
+                                    
+                                    if (!response.ok) {
+                                      throw new Error('Upload failed');
+                                    }
+                                    
+                                    const data = await response.json();
+                                    setAudioFileUrl(data.url);
+                                  } catch (err) {
+                                    logger.error('Audio upload error', err);
+                                    setError('Failed to upload audio file. Please try again.');
+                                    setAudioFile(null);
+                                  } finally {
+                                    setAudioUploading(false);
+                                  }
+                                }
+                              }}
+                              className="w-full text-sm text-gray-700 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 dark:file:bg-purple-700 dark:hover:file:bg-purple-600"
+                              disabled={audioUploading}
+                            />
+                            {audioUploading && (
+                              <div className="mt-2 flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Uploading...
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Music className="w-5 h-5 text-green-600 dark:text-green-400" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {audioFile?.name || 'Audio file uploaded'}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAudioFile(null);
+                                setAudioFileUrl('');
+                              }}
+                              className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Artist Rights Checkboxes */}
+                        {audioFileUrl && (
+                          <div className="mt-4 space-y-2">
+                            <label className="flex items-start gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={artistRightsConfirmed}
+                                onChange={(e) => setArtistRightsConfirmed(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"
+                                required={!!audioFileUrl}
+                              />
+                              <span className="text-xs text-gray-700 dark:text-gray-300">
+                                {organizationData?.requests_artist_rights_text || 'I confirm that I own the rights to this music or have permission to use it'}
+                              </span>
+                            </label>
+                            <label className="flex items-start gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isArtist}
+                                onChange={(e) => setIsArtist(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <span className="text-xs text-gray-700 dark:text-gray-300">
+                                {organizationData?.requests_is_artist_text || 'I am the artist (this is for promotion, not just a play)'}
+                              </span>
+                            </label>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mt-2">
+                              {organizationData?.requests_audio_fee_text || '+$100.00 for audio upload'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      )}
                     </div>
                   )}
 
@@ -919,7 +1378,7 @@ export default function GeneralRequestsPage({
                     <div className="space-y-2 sm:space-y-3 md:space-y-4">
                       <div>
                         <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                          Recipient Name <span className="text-red-500">*</span>
+                          {organizationData?.requests_recipient_name_label || 'Recipient Name'} <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -927,14 +1386,14 @@ export default function GeneralRequestsPage({
                           value={formData.recipientName}
                           onChange={handleInputChange}
                           className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                          placeholder="Who is this shoutout for?"
+                          placeholder={organizationData?.requests_recipient_name_placeholder || "Who is this shoutout for?"}
                           required
                         />
                       </div>
                       
                       <div>
                         <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                          Message <span className="text-red-500">*</span>
+                          {organizationData?.requests_message_label || 'Message'} <span className="text-red-500">*</span>
                         </label>
                         <textarea
                           name="recipientMessage"
@@ -942,7 +1401,7 @@ export default function GeneralRequestsPage({
                           onChange={handleInputChange}
                           rows={3}
                           className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
-                          placeholder="What would you like to say?"
+                          placeholder={organizationData?.requests_message_placeholder || "What would you like to say?"}
                           required
                         />
                       </div>
@@ -970,7 +1429,8 @@ export default function GeneralRequestsPage({
 
                 {/* Payment Amount - Only show after song selection is complete and step 2 */}
                 {isSongSelectionComplete() && currentStep >= 2 && (
-                  <PaymentAmountSelector
+                  <div data-payment-section>
+                    <PaymentAmountSelector
                     amountType={amountType}
                     setAmountType={setAmountType}
                     presetAmount={presetAmount}
@@ -980,15 +1440,16 @@ export default function GeneralRequestsPage({
                     presetAmounts={presetAmounts}
                     minimumAmount={minimumAmount}
                     requestType={requestType}
-                    isFastTrack={isFastTrack}
-                    setIsFastTrack={setIsFastTrack}
-                    isNext={isNext}
-                    setIsNext={setIsNext}
+                    isFastTrack={organizationData?.requests_show_fast_track !== false ? isFastTrack : false}
+                    setIsFastTrack={organizationData?.requests_show_fast_track !== false ? setIsFastTrack : () => {}}
+                    isNext={organizationData?.requests_show_next_song !== false ? isNext : false}
+                    setIsNext={organizationData?.requests_show_next_song !== false ? setIsNext : () => {}}
                     fastTrackFee={fastTrackFee}
                     nextFee={nextFee}
                     getBaseAmount={getBaseAmount}
                     getPaymentAmount={getPaymentAmount}
                   />
+                  </div>
                 )}
 
 
@@ -1010,14 +1471,16 @@ export default function GeneralRequestsPage({
                     onClick={(e) => {
                       if (currentStep === 1) {
                         e.preventDefault();
-                        // Clear any previous errors and show upsell modal
+                        // Clear any previous errors and go to payment step
                         setError('');
-                        if (requestType === 'song_request' && bundleDiscountEnabled) {
-                          setShowUpsellModal(true);
-                        } else {
-                          setCurrentStep(2);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }
+                        setCurrentStep(2);
+                        // Scroll to payment section
+                        setTimeout(() => {
+                          const paymentElement = document.querySelector('[data-payment-section]');
+                          if (paymentElement) {
+                            paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }, 100);
                         return;
                       }
                       if (window.innerWidth < 640) {
@@ -1047,7 +1510,7 @@ export default function GeneralRequestsPage({
                           ) : (
                             <>
                               <Music className="w-5 h-5 sm:w-6 sm:h-6 relative z-10" />
-                              <span className="whitespace-nowrap relative z-10">Submit Request</span>
+                              <span className="whitespace-nowrap relative z-10">{organizationData?.requests_submit_button_text || 'Submit Request'}</span>
                             </>
                           )}
                         </button>
@@ -1065,40 +1528,6 @@ export default function GeneralRequestsPage({
         </main>
       </div>
 
-      {/* Upsell Modal - Multiple Song Requests Bundle */}
-      <UpsellModal
-        show={showUpsellModal && requestType === 'song_request'}
-        onClose={() => setShowUpsellModal(false)}
-        formData={formData}
-        additionalSongs={additionalSongs}
-        setAdditionalSongs={setAdditionalSongs}
-        bundleDiscount={bundleDiscountPercent}
-        getBaseAmount={getBaseAmount}
-        getPaymentAmount={getPaymentAmount}
-        onContinue={() => {
-          // Validate that all additional songs have titles
-          const validSongs = additionalSongs.filter(song => song.songTitle?.trim());
-          const invalidSongs = additionalSongs.filter(song => !song.songTitle?.trim());
-          
-          if (invalidSongs.length > 0) {
-            setError('Please enter a song title for all additional songs, or remove empty ones');
-            return;
-          }
-          
-          // Remove any empty songs
-          setAdditionalSongs(validSongs);
-          setShowUpsellModal(false);
-          setCurrentStep(2);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onSkip={() => {
-          setShowUpsellModal(false);
-          setCurrentStep(2);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        error={error}
-        setError={setError}
-      />
 
       {/* Social Account Selector */}
       {selectedSocialPlatform && (
