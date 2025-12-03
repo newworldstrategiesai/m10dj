@@ -2313,7 +2313,6 @@ async function sendEmail(args, supabase) {
 
 async function requestReview(args, supabase) {
   const { contact_id, method } = args;
-  const GOOGLE_REVIEW_LINK = 'https://g.page/r/CSD9ayo7-MivEBE/review';
 
   if (!contact_id) {
     throw new Error('contact_id is required');
@@ -2322,13 +2321,28 @@ async function requestReview(args, supabase) {
   // Get contact details
   const { data: contact, error: contactError } = await supabase
     .from('contacts')
-    .select('id, first_name, last_name, email_address, phone, lead_status, event_type, event_date')
+    .select('id, first_name, last_name, email_address, phone, lead_status, event_type, event_date, organization_id')
     .eq('id', contact_id)
     .is('deleted_at', null)
     .single();
 
   if (contactError || !contact) {
     throw new Error('Contact not found');
+  }
+
+  // Get Google Review link from organization
+  let GOOGLE_REVIEW_LINK = 'https://g.page/r/CSD9ayo7-MivEBE/review'; // Default fallback
+  
+  if (contact.organization_id) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('google_review_link')
+      .eq('id', contact.organization_id)
+      .single();
+    
+    if (org?.google_review_link) {
+      GOOGLE_REVIEW_LINK = org.google_review_link;
+    }
   }
 
   // Check if contact has completed status or completed projects

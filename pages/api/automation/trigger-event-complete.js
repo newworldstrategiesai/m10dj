@@ -8,9 +8,6 @@ const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Your Google Business Place ID for direct review link
-const GOOGLE_PLACE_ID = process.env.GOOGLE_PLACE_ID || 'YOUR_PLACE_ID_HERE';
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -53,8 +50,26 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
-    // Generate direct Google review link
-    const reviewLink = `https://search.google.com/local/writereview?placeid=${GOOGLE_PLACE_ID}`;
+    // Get Google Review link from organization, or use default
+    let reviewLink = 'https://g.page/r/CSD9ayo7-MivEBE/review'; // Default fallback
+    
+    // Try to get organization_id from contact or event
+    let organizationId = contact.organization_id;
+    if (!organizationId && event) {
+      organizationId = event.organization_id;
+    }
+    
+    if (organizationId) {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('google_review_link')
+        .eq('id', organizationId)
+        .single();
+      
+      if (org?.google_review_link) {
+        reviewLink = org.google_review_link;
+      }
+    }
 
     // Update contact with review link
     await supabase

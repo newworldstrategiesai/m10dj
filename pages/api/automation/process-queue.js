@@ -69,6 +69,27 @@ export default async function handler(req, res) {
           continue;
         }
 
+        // Get Google Review link from organization, or use fallback
+        let reviewLink = contact.google_review_link || automation.metadata?.review_link;
+        
+        // If no review link from contact or automation metadata, try to get from organization
+        if (!reviewLink && contact.organization_id) {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('google_review_link')
+            .eq('id', contact.organization_id)
+            .single();
+          
+          if (org?.google_review_link) {
+            reviewLink = org.google_review_link;
+          }
+        }
+        
+        // Final fallback to default link
+        if (!reviewLink) {
+          reviewLink = 'https://g.page/r/CSD9ayo7-MivEBE/review';
+        }
+
         // Render the template with contact data
         const emailData = {
           first_name: contact.first_name || 'there',
@@ -76,7 +97,7 @@ export default async function handler(req, res) {
           email_address: contact.email_address || contact.primary_email,
           event_type: automation.events?.event_type || automation.metadata?.event_type || 'event',
           event_date: automation.events?.event_date || automation.metadata?.event_date,
-          review_link: contact.google_review_link || automation.metadata?.review_link,
+          review_link: reviewLink,
           calendar_link: process.env.NEXT_PUBLIC_CALENDAR_LINK || 'https://calendly.com/m10djcompany',
           owner_name: process.env.OWNER_NAME || 'M10 DJ Company'
         };

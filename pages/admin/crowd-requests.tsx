@@ -173,6 +173,7 @@ export default function CrowdRequestsPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [stripeDetails, setStripeDetails] = useState<any>(null);
   const [loadingStripeDetails, setLoadingStripeDetails] = useState(false);
+  const [stripeCustomerNames, setStripeCustomerNames] = useState<Record<string, string>>({});
   const [showLinkPaymentModal, setShowLinkPaymentModal] = useState(false);
   const [linkPaymentIntentId, setLinkPaymentIntentId] = useState('');
   const [linkPaymentRequestId, setLinkPaymentRequestId] = useState<string | null>(null);
@@ -188,7 +189,8 @@ export default function CrowdRequestsPage() {
   // Settings State
   const [paymentSettings, setPaymentSettings] = useState({
     cashAppTag: '$DJbenmurray',
-    venmoUsername: '@djbenmurray'
+    venmoUsername: '@djbenmurray',
+    googleReviewLink: 'https://g.page/r/CSD9ayo7-MivEBE/review'
   });
   const [requestSettings, setRequestSettings] = useState({
     fastTrackFee: 1000, // in cents ($10.00)
@@ -327,6 +329,18 @@ export default function CrowdRequestsPage() {
 
       // Save Venmo username
       await saveAdminSetting('crowd_request_venmo_username', paymentSettings.venmoUsername);
+
+      // Save Google Review link to organization
+      if (organization?.id && paymentSettings.googleReviewLink) {
+        const { error: reviewLinkError } = await supabase
+          .from('organizations')
+          .update({ google_review_link: paymentSettings.googleReviewLink })
+          .eq('id', organization.id);
+        
+        if (reviewLinkError) {
+          console.error('Error saving Google Review link:', reviewLinkError);
+        }
+      }
 
       // Save fast-track fee
       await saveAdminSetting('crowd_request_fast_track_fee', requestSettings.fastTrackFee.toString());
@@ -601,6 +615,10 @@ export default function CrowdRequestsPage() {
           setCoverPhotoHistory(loadPhotoHistory(refreshedOrg.requests_cover_photo_history));
           setArtistPhotoHistory(loadPhotoHistory(refreshedOrg.requests_artist_photo_history));
           setVenuePhotoHistory(loadPhotoHistory(refreshedOrg.requests_venue_photo_history));
+          // Update Google Review link from refreshed org
+          if (refreshedOrg.google_review_link) {
+            setPaymentSettings(prev => ({ ...prev, googleReviewLink: refreshedOrg.google_review_link }));
+          }
           console.log('✅ Organization data refreshed:', refreshedOrg);
           console.log('🎯 Primary cover source after refresh:', {
             requests_primary_cover_source: refreshedOrg.requests_primary_cover_source,
@@ -633,6 +651,91 @@ export default function CrowdRequestsPage() {
     }
   };
 
+  // Sync payment status from Stripe for requests that might be out of sync
+  const syncPaymentStatusFromStripe = async (requests: CrowdRequest[]) => {
+    const updates: Array<{ id: string; payment_status: string; amount_paid: number; paid_at: string | null }> = [];
+    
+    // Check payment status in parallel (limit to 10 at a time to avoid rate limits)
+    const batches = [];
+    for (let i = 0; i < requests.length; i += 10) {
+      batches.push(requests.slice(i, i + 10));
+    }
+    
+    for (const batch of batches) {
+      await Promise.all(
+        batch.map(async (request) => {
+          try {
+            if (!request.payment_intent_id) return;
+            
+            const params = new URLSearchParams();
+            params.append('paymentIntentId', request.payment_intent_id);
+            
+            const response = await fetch(`/api/crowd-request/stripe-details?${params.toString()}`);
+            if (response.ok) {
+              const data = await response.json();
+              const paymentIntent = data.stripe?.paymentIntent;
+              
+              // If payment succeeded in Stripe but status is pending in DB, update it
+              if (paymentIntent && paymentIntent.status === 'succeeded' && request.payment_status === 'pending') {
+                updates.push({
+                  id: request.id,
+                  payment_status: 'paid',
+                  amount_paid: paymentIntent.amount || request.amount_paid || 0,
+                  paid_at: paymentIntent.created ? new Date(paymentIntent.created * 1000).toISOString() : null
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`Error syncing payment status for request ${request.id}:`, error);
+          }
+        })
+      );
+    }
+    
+    // Update database for all requests that need status updates
+    if (updates.length > 0) {
+      try {
+        const updatePromises = updates.map(async (update) => {
+          const { error } = await supabase
+            .from('crowd_requests')
+            .update({
+              payment_status: update.payment_status,
+              amount_paid: update.amount_paid,
+              paid_at: update.paid_at,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', update.id);
+          
+          if (error) {
+            console.error(`Error updating payment status for request ${update.id}:`, error);
+          }
+        });
+        
+        await Promise.all(updatePromises);
+        
+        // Update local state to reflect the changes without full refresh
+        setRequests(prevRequests => 
+          prevRequests.map(req => {
+            const update = updates.find(u => u.id === req.id);
+            if (update) {
+              return {
+                ...req,
+                payment_status: update.payment_status as any,
+                amount_paid: update.amount_paid,
+                paid_at: update.paid_at
+              };
+            }
+            return req;
+          })
+        );
+        
+        console.log(`✅ Synced payment status for ${updates.length} request(s)`);
+      } catch (error) {
+        console.error('Error updating payment statuses:', error);
+      }
+    }
+  };
+
   const fetchRequests = async () => {
     try {
       setLoading(true);
@@ -659,6 +762,10 @@ export default function CrowdRequestsPage() {
         location: org.requests_header_location || '',
         date: org.requests_header_date || ''
       });
+      // Load Google Review link from organization
+      if (org.google_review_link) {
+        setPaymentSettings(prev => ({ ...prev, googleReviewLink: org.google_review_link }));
+      }
       setCoverPhotoSettings({
         requests_cover_photo_url: org.requests_cover_photo_url || '',
         requests_artist_photo_url: org.requests_artist_photo_url || '',
@@ -726,6 +833,30 @@ export default function CrowdRequestsPage() {
 
       if (error) throw error;
       setRequests(data || []);
+      
+      // Fetch Stripe customer names for requests that need them
+      // (have payment_intent_id but requester_name is "Guest" or empty)
+      const requestsNeedingNames = (data || []).filter(
+        (req: CrowdRequest) => 
+          (req.payment_intent_id || (req as any).stripe_session_id) && 
+          (!req.requester_name || req.requester_name === 'Guest')
+      );
+      
+      if (requestsNeedingNames.length > 0) {
+        fetchStripeNamesForRequests(requestsNeedingNames);
+      }
+      
+      // Sync payment status from Stripe for requests that might be out of sync
+      // (have payment_intent_id but payment_status is "pending")
+      const requestsNeedingStatusSync = (data || []).filter(
+        (req: CrowdRequest) => 
+          req.payment_intent_id && 
+          req.payment_status === 'pending'
+      );
+      
+      if (requestsNeedingStatusSync.length > 0) {
+        syncPaymentStatusFromStripe(requestsNeedingStatusSync);
+      }
     } catch (error) {
       console.error('Error fetching requests:', error);
       toast({
@@ -735,6 +866,49 @@ export default function CrowdRequestsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch Stripe customer names for multiple requests
+  const fetchStripeNamesForRequests = async (requests: CrowdRequest[]) => {
+    const nameMap: Record<string, string> = {};
+    
+    // Fetch names in parallel (limit to 10 at a time to avoid rate limits)
+    const batches = [];
+    for (let i = 0; i < requests.length; i += 10) {
+      batches.push(requests.slice(i, i + 10));
+    }
+    
+    for (const batch of batches) {
+      await Promise.all(
+        batch.map(async (request) => {
+          try {
+            const params = new URLSearchParams();
+            if (request.id) params.append('requestId', request.id);
+            if (request.payment_intent_id) params.append('paymentIntentId', request.payment_intent_id);
+            if ((request as any).stripe_session_id) params.append('sessionId', (request as any).stripe_session_id);
+            
+            const response = await fetch(`/api/crowd-request/stripe-details?${params.toString()}`);
+            if (response.ok) {
+              const data = await response.json();
+              const stripe = data.stripe;
+              // Try customer.name first, then billing_details.name
+              const name = stripe?.customer?.name || 
+                          stripe?.charge?.billing_details?.name ||
+                          stripe?.session?.customer_details?.name;
+              if (name && name !== 'Guest' && request.id) {
+                nameMap[request.id] = name;
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching Stripe name for request ${request.id}:`, error);
+          }
+        })
+      );
+    }
+    
+    if (Object.keys(nameMap).length > 0) {
+      setStripeCustomerNames(prev => ({ ...prev, ...nameMap }));
     }
   };
 
@@ -1059,6 +1233,92 @@ export default function CrowdRequestsPage() {
     }
   };
 
+  // Delete single request
+  const handleDeleteRequest = async (requestId: string) => {
+    if (!confirm('Are you sure you want to delete this request? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/crowd-request/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestIds: [requestId] })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete request');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Request deleted successfully',
+      });
+
+      // Remove from selected if it was selected
+      const newSelected = new Set(selectedRequests);
+      newSelected.delete(requestId);
+      setSelectedRequests(newSelected);
+
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error deleting request:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete request',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Bulk delete requests
+  const handleBulkDelete = async () => {
+    if (selectedRequests.size === 0) {
+      toast({
+        title: 'No Selection',
+        description: 'Please select at least one request to delete',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const count = selectedRequests.size;
+    if (!confirm(`Are you sure you want to delete ${count} request(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/crowd-request/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestIds: Array.from(selectedRequests) })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete requests');
+      }
+
+      toast({
+        title: 'Success',
+        description: `Successfully deleted ${count} request(s)`,
+      });
+
+      setSelectedRequests(new Set());
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error deleting requests:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete requests',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // CSV Export
   const exportToCSV = () => {
     const headers = [
@@ -1321,8 +1581,22 @@ export default function CrowdRequestsPage() {
     return matchesSearch && matchesStatus && matchesDateRange && matchesPaymentMethod && matchesRequestType && matchesEventCode && matchesAudioUpload;
   });
 
+  // Helper function to determine if a request is paid
+  const isPaid = (request: CrowdRequest) => {
+    return request.payment_status === 'paid' || 
+           (request.amount_paid > 0 && request.payment_intent_id);
+  };
+
   // Sorting function
   const sortedRequests = [...filteredRequests].sort((a, b) => {
+    // ALWAYS prioritize paid requests over unpaid ones (unless sorting by payment_status column)
+    if (sortColumn !== 'payment_status') {
+      const aPaid = isPaid(a);
+      const bPaid = isPaid(b);
+      if (aPaid && !bPaid) return -1; // Paid comes first
+      if (!aPaid && bPaid) return 1;  // Unpaid comes after
+    }
+
     // Handle priority_order first (fast-track requests should appear first when sorting by date)
     if (sortColumn === 'created_at' || sortColumn === 'date') {
       // Fast-track requests (priority_order = 0) always come first
@@ -1352,8 +1626,10 @@ export default function CrowdRequestsPage() {
         bValue = b.status?.toLowerCase() || '';
         break;
       case 'payment_status':
-        aValue = a.payment_status?.toLowerCase() || '';
-        bValue = b.payment_status?.toLowerCase() || '';
+        // Sort payment status: paid > pending > failed
+        const statusOrder = { 'paid': 0, 'pending': 1, 'failed': 2, 'refunded': 3, 'partially_refunded': 4 };
+        aValue = statusOrder[a.payment_status as keyof typeof statusOrder] ?? 99;
+        bValue = statusOrder[b.payment_status as keyof typeof statusOrder] ?? 99;
         break;
       case 'song_title':
         aValue = a.song_title?.toLowerCase() || '';
@@ -1397,7 +1673,16 @@ export default function CrowdRequestsPage() {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, dateRangeStart, dateRangeEnd, paymentMethodFilter, requestTypeFilter, eventCodeFilter, audioUploadFilter]);
 
-  const getStatusBadge = (status: string, paymentStatus: string) => {
+  const getStatusBadge = (status: string, paymentStatus: string, request?: CrowdRequest) => {
+    // If we have a request object, check if payment is actually completed
+    // (has payment_intent_id and amount_paid > 0) even if payment_status says pending
+    if (request) {
+      const isActuallyPaid = (request.payment_intent_id && request.amount_paid > 0);
+      if (isActuallyPaid && paymentStatus !== 'refunded' && paymentStatus !== 'partially_refunded') {
+        return <Badge className="bg-green-500 text-white">Paid</Badge>;
+      }
+    }
+    
     if (paymentStatus === 'refunded') {
       return <Badge className="bg-red-600 text-white">Refunded</Badge>;
     } else if (paymentStatus === 'partially_refunded') {
@@ -1426,35 +1711,37 @@ export default function CrowdRequestsPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 px-4 lg:px-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
               Crowd Requests
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">
               Manage song requests and shoutouts from events
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
             <Button
               onClick={() => {
                 setShowSettings(true);
                 setSettingsTab('payment');
               }}
               variant="outline"
-              className="inline-flex items-center gap-2"
+              className="inline-flex items-center gap-2 whitespace-nowrap"
             >
-              <Settings className="w-5 h-5" />
-              Payment Settings
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Payment Settings</span>
+              <span className="sm:hidden">Settings</span>
             </Button>
             <Button
               onClick={() => setShowQRGenerator(!showQRGenerator)}
-              className="btn-primary inline-flex items-center gap-2"
+              className="btn-primary inline-flex items-center gap-2 whitespace-nowrap"
             >
-              <QrCode className="w-5 h-5" />
-              {showQRGenerator ? 'Hide' : 'Generate'} QR Code
+              <QrCode className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">{showQRGenerator ? 'Hide' : 'Generate'} QR Code</span>
+              <span className="sm:hidden">QR Code</span>
             </Button>
           </div>
         </div>
@@ -1804,6 +2091,23 @@ export default function CrowdRequestsPage() {
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           Your Venmo username for manual payments
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                          Google Review Link
+                        </label>
+                        <Input
+                          value={paymentSettings.googleReviewLink}
+                          onChange={(e) => setPaymentSettings(prev => ({ ...prev, googleReviewLink: e.target.value }))}
+                          placeholder="https://g.page/r/CSD9ayo7-MivEBE/review"
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          The Google Review link used in review request emails and SMS messages
                         </p>
                       </div>
                     </div>
@@ -4068,6 +4372,15 @@ export default function CrowdRequestsPage() {
                 <option value="paid">Mark as Paid</option>
                 <option value="pending">Mark as Pending</option>
               </select>
+              <Button
+                onClick={handleBulkDelete}
+                variant="destructive"
+                size="sm"
+                className="inline-flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Selected ({selectedRequests.size})
+              </Button>
             </div>
           </div>
         )}
@@ -4279,17 +4592,27 @@ export default function CrowdRequestsPage() {
                       <td className="px-6 py-4">
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">
-                            {/* Prioritize Stripe customer name if payment exists, otherwise use DB name */}
-                            {request.payment_intent_id || (request as any).stripe_session_id ? (
-                              <span className="flex items-center gap-1">
-                                <span className="text-indigo-600 dark:text-indigo-400" title="Stripe payment - customer data from Stripe">
-                                  💳
-                                </span>
-                                {request.requester_name || 'Loading...'}
-                              </span>
-                            ) : (
-                              request.requester_name || 'N/A'
-                            )}
+                            {/* Show requester name - prioritize Stripe name if available */}
+                            {(() => {
+                              const stripeName = stripeCustomerNames[request.id];
+                              const displayName = stripeName || 
+                                (request.requester_name && request.requester_name !== 'Guest' 
+                                  ? request.requester_name 
+                                  : null);
+                              
+                              if (request.payment_intent_id || (request as any).stripe_session_id) {
+                                return (
+                                  <span className="flex items-center gap-1">
+                                    <span className="text-indigo-600 dark:text-indigo-400" title="Stripe payment - customer data from Stripe">
+                                      💳
+                                    </span>
+                                    {displayName || 'Loading...'}
+                                  </span>
+                                );
+                              } else {
+                                return displayName || 'N/A';
+                              }
+                            })()}
                           </p>
                           {request.requester_email && (
                             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -4324,7 +4647,7 @@ export default function CrowdRequestsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        {getStatusBadge(request.status, request.payment_status)}
+                        {getStatusBadge(request.status, request.payment_status, request)}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                         {new Date(request.created_at).toLocaleDateString()}
@@ -4357,6 +4680,18 @@ export default function CrowdRequestsPage() {
                           >
                             <Eye className="w-3 h-3 mr-1" />
                             View Details
+                          </Button>
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteRequest(request.id);
+                            }}
+                            size="sm"
+                            variant="destructive"
+                            className="text-xs h-7 w-full"
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Delete
                           </Button>
                           <select
                             value={request.status}
@@ -4532,14 +4867,24 @@ export default function CrowdRequestsPage() {
                   <div className="flex items-center gap-2 mb-1">
                     <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-                      {request.payment_intent_id || (request as any).stripe_session_id ? (
-                        <span className="flex items-center gap-1">
-                          <span className="text-indigo-600 dark:text-indigo-400">💳</span>
-                          {request.requester_name || 'Loading...'}
-                        </span>
-                      ) : (
-                        request.requester_name || 'N/A'
-                      )}
+                      {(() => {
+                        const stripeName = stripeCustomerNames[request.id];
+                        const displayName = stripeName || 
+                          (request.requester_name && request.requester_name !== 'Guest' 
+                            ? request.requester_name 
+                            : null);
+                        
+                        if (request.payment_intent_id || (request as any).stripe_session_id) {
+                          return (
+                            <span className="flex items-center gap-1">
+                              <span className="text-indigo-600 dark:text-indigo-400">💳</span>
+                              {displayName || 'Loading...'}
+                            </span>
+                          );
+                        } else {
+                          return displayName || 'N/A';
+                        }
+                      })()}
                     </p>
                   </div>
                   {request.requester_email && (
@@ -4611,6 +4956,18 @@ export default function CrowdRequestsPage() {
                     >
                       <Eye className="w-3 h-3 mr-1" />
                       View
+                    </Button>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteRequest(request.id);
+                      }}
+                      size="sm"
+                      variant="destructive"
+                      className="text-xs h-8"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -4739,7 +5096,7 @@ export default function CrowdRequestsPage() {
                   <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Status</p>
                     <div className="flex items-center gap-2">
-                      {getStatusBadge(selectedRequest.status, selectedRequest.payment_status)}
+                      {getStatusBadge(selectedRequest.status, selectedRequest.payment_status, selectedRequest)}
                     </div>
                   </div>
                 </div>
@@ -5111,6 +5468,20 @@ export default function CrowdRequestsPage() {
                     className="flex-1"
                   >
                     Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this request? This action cannot be undone.')) {
+                        handleDeleteRequest(selectedRequest.id);
+                        setShowDetailModal(false);
+                        setSelectedRequest(null);
+                      }
+                    }}
+                    variant="destructive"
+                    className="flex-1 inline-flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
                   </Button>
                   {selectedRequest.payment_status === 'pending' && (
                     <Button
