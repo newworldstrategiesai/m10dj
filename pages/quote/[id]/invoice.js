@@ -251,20 +251,32 @@ export default function InvoicePage() {
         } else {
           // Lazy creation: If quote exists but no invoice_id, create invoice on first page access
           try {
+            console.log(`🔍 Ensuring invoice exists for quote: ${id}`);
             const createResponse = await fetch(`/api/quote/${id}/ensure-invoice`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
             });
+            
             if (createResponse.ok) {
               const result = await createResponse.json();
+              console.log('✅ Invoice ensured:', result);
               if (result.invoice) {
                 setInvoiceData(result.invoice);
                 // Update quote data with new invoice_id
                 setQuoteData({ ...quote, invoice_id: result.invoice.id });
               }
+            } else {
+              // Response was not ok - log the error
+              const errorData = await createResponse.json().catch(() => ({ error: 'Could not parse error response' }));
+              console.error('❌ ensure-invoice failed:', {
+                status: createResponse.status,
+                statusText: createResponse.statusText,
+                error: errorData
+              });
+              console.error('Full error details:', JSON.stringify(errorData, null, 2));
             }
           } catch (e) {
-            console.log('Could not ensure invoice exists:', e);
+            console.error('❌ Could not ensure invoice exists:', e);
             // Non-critical - page will work without invoice record
           }
         }

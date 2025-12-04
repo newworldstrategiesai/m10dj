@@ -44,10 +44,13 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error in ensure-invoice endpoint:', error);
+    console.error('❌ Error in ensure-invoice endpoint:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request query:', req.query);
     return res.status(500).json({ 
       error: error.message || 'Internal server error',
-      success: false
+      success: false,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }

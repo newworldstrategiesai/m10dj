@@ -126,6 +126,30 @@ export default async function handler(req, res) {
 
     console.log('Invoice updated successfully:', data);
     
+    // Update the actual invoice amount if invoice exists and total_price changed
+    if (data.invoice_id && total_price) {
+      try {
+        const invoiceAmount = parseFloat(total_price);
+        const { error: invoiceUpdateError } = await supabase
+          .from('invoices')
+          .update({
+            subtotal: invoiceAmount,
+            total_amount: invoiceAmount,
+            balance_due: invoiceAmount, // Will be recalculated by trigger if amount_paid exists
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', data.invoice_id);
+        
+        if (invoiceUpdateError) {
+          console.warn('⚠️ Could not update invoice amount:', invoiceUpdateError);
+        } else {
+          console.log(`✅ Updated invoice ${data.invoice_id} amount to ${invoiceAmount}`);
+        }
+      } catch (err) {
+        console.warn('⚠️ Error updating invoice amount (non-critical):', err);
+      }
+    }
+    
     // Ensure invoice and contract drafts exist (non-blocking, only if missing)
     // This handles cases where drafts weren't created initially
     (async () => {

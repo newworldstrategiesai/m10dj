@@ -3,7 +3,7 @@
  * View and manage a specific invoice
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
@@ -79,6 +79,27 @@ interface Payment {
   notes: string;
 }
 
+interface QuoteData {
+  id: string;
+  package_id: string;
+  package_name: string;
+  package_price: number;
+  total_price: number;
+  addons: any[];
+  custom_line_items: any[];
+  custom_addons: any[];
+  discount_type: string | null;
+  discount_value: number | null;
+  discount_note: string | null;
+  show_line_item_prices: boolean;
+  payment_terms_type: string | null;
+  number_of_payments: number | null;
+  payment_schedule: any[];
+  due_date_type: string | null;
+  deposit_due_date: string | null;
+  remaining_balance_due_date: string | null;
+}
+
 export default function InvoiceDetailPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -88,15 +109,10 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      fetchInvoiceDetails();
-    }
-  }, [id]);
-
-  const fetchInvoiceDetails = async () => {
+  const fetchInvoiceDetails = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch invoice summary
@@ -129,12 +145,32 @@ export default function InvoiceDetailPage() {
       if (paymentsError) throw paymentsError;
       setPayments(paymentsData || []);
 
+      // Fetch quote_selections data linked to this invoice
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('quote_selections')
+        .select('*')
+        .eq('invoice_id', id)
+        .maybeSingle();
+      
+      if (quoteError && quoteError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.warn('Error fetching quote data:', quoteError);
+      } else if (quoteData) {
+        setQuoteData(quoteData);
+        console.log('✅ Loaded quote data:', quoteData);
+      }
+
     } catch (error) {
       console.error('Error fetching invoice details:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, supabase]);
+
+  useEffect(() => {
+    if (id) {
+      fetchInvoiceDetails();
+    }
+  }, [id, fetchInvoiceDetails]);
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -242,7 +278,7 @@ export default function InvoiceDetailPage() {
         <div className="text-center">
           <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Invoice Not Found</h2>
-          <p className="text-gray-600 mb-6">The invoice you're looking for doesn't exist.</p>
+          <p className="text-gray-600 mb-6">The invoice you&apos;re looking for doesn&apos;t exist.</p>
           <Button onClick={() => router.push('/admin/invoices')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Invoices
@@ -282,6 +318,14 @@ export default function InvoiceDetailPage() {
               <Mail className="h-4 w-4 mr-2" />
               Send Email
             </Button>
+            {invoice.contact_id && (
+              <Link href={`/quote/${invoice.contact_id}/invoice`}>
+                <Button variant="slim">
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Quote Page
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -393,17 +437,44 @@ export default function InvoiceDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {lineItems.map((item) => (
-                  <tr key={item.id}>
-                    <td className="py-4 px-6">
-                      <p className="font-medium text-gray-900">{item.description}</p>
-                      {item.notes && <p className="text-sm text-gray-600 mt-1">{item.notes}</p>}
+                {/* Show invoice line items if available, otherwise show quote line items */}
+                {lineItems.length > 0 ? (
+                  lineItems.map((item) => (
+                    <tr key={item.id}>
+                      <td className="py-4 px-6">
+                        <p className="font-medium text-gray-900">{item.description}</p>
+                        {item.notes && <p className="text-sm text-gray-600 mt-1">{item.notes}</p>}
+                      </td>
+                      <td className="py-4 px-6 text-center text-gray-700">{item.quantity || 1}</td>
+                      <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.unit_price)}</td>
+                      <td className="py-4 px-6 text-right font-semibold text-gray-900">{formatCurrency(item.total_amount)}</td>
+                    </tr>
+                  ))
+                ) : quoteData?.custom_line_items && Array.isArray(quoteData.custom_line_items) && quoteData.custom_line_items.length > 0 ? (
+                  quoteData.custom_line_items.map((item: any, index: number) => (
+                    <tr key={`quote-item-${index}`}>
+                      <td className="py-4 px-6">
+                        <p className="font-medium text-gray-900">{item.item || item.description || 'Line Item'}</p>
+                        {item.description && item.description !== item.item && (
+                          <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 text-center text-gray-700">1</td>
+                      <td className="py-4 px-6 text-right text-gray-700">
+                        {quoteData.show_line_item_prices !== false && item.price ? formatCurrency(item.price) : '—'}
+                      </td>
+                      <td className="py-4 px-6 text-right font-semibold text-gray-900">
+                        {quoteData.show_line_item_prices !== false && item.price ? formatCurrency(item.price) : '—'}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="py-8 px-6 text-center text-gray-500">
+                      No line items found
                     </td>
-                    <td className="py-4 px-6 text-center text-gray-700">{item.quantity}</td>
-                    <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.unit_price)}</td>
-                    <td className="py-4 px-6 text-right font-semibold text-gray-900">{formatCurrency(item.total_amount)}</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -432,6 +503,152 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Quote Details Section */}
+        {quoteData && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Quote Details</h2>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Package Information */}
+              {quoteData.package_id && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Package</h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="font-semibold text-gray-900">{quoteData.package_name || quoteData.package_id}</p>
+                    {quoteData.package_price && (
+                      <p className="text-sm text-gray-600 mt-1">Package Price: {formatCurrency(quoteData.package_price)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Custom Line Items from Quote */}
+              {quoteData.custom_line_items && Array.isArray(quoteData.custom_line_items) && quoteData.custom_line_items.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Package Line Items</h3>
+                  <div className="space-y-2">
+                    {quoteData.custom_line_items.map((item: any, index: number) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">{item.item || item.description || 'Line Item'}</p>
+                            {item.description && item.description !== item.item && (
+                              <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                            )}
+                          </div>
+                          {quoteData.show_line_item_prices !== false && item.price && (
+                            <span className="font-semibold text-gray-900 ml-4">{formatCurrency(item.price)}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add-ons */}
+              {(quoteData.addons || quoteData.custom_addons) && 
+               ((Array.isArray(quoteData.addons) && quoteData.addons.length > 0) || 
+                (Array.isArray(quoteData.custom_addons) && quoteData.custom_addons.length > 0)) && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Add-ons</h3>
+                  <div className="space-y-2">
+                    {(quoteData.custom_addons || quoteData.addons || []).map((addon: any, index: number) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">{addon.name || addon.item || 'Add-on'}</p>
+                            {addon.description && (
+                              <p className="text-sm text-gray-600 mt-1">{addon.description}</p>
+                            )}
+                          </div>
+                          {addon.price && (
+                            <span className="font-semibold text-gray-900 ml-4">{formatCurrency(addon.price)}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Discount */}
+              {quoteData.discount_type && quoteData.discount_value && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Discount</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {quoteData.discount_type === 'percentage' 
+                            ? `${quoteData.discount_value}% Discount`
+                            : `${formatCurrency(quoteData.discount_value)} Discount`}
+                        </p>
+                        {quoteData.discount_note && (
+                          <p className="text-sm text-gray-600 mt-1">{quoteData.discount_note}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Terms */}
+              {quoteData.payment_terms_type && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Payment Terms</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    {quoteData.payment_terms_type === 'set_number' && quoteData.number_of_payments && (
+                      <div className="space-y-2">
+                        <p className="font-medium text-gray-900">
+                          {quoteData.number_of_payments} Payment{quoteData.number_of_payments > 1 ? 's' : ''}
+                        </p>
+                        {quoteData.payment_schedule && Array.isArray(quoteData.payment_schedule) && quoteData.payment_schedule.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {quoteData.payment_schedule.map((payment: any, index: number) => (
+                              <div key={index} className="flex justify-between text-sm">
+                                <span className="text-gray-600">
+                                  Payment {index + 1} {payment.dueDate ? `(${formatDate(payment.dueDate)})` : ''}
+                                </span>
+                                <span className="font-medium text-gray-900">{formatCurrency(payment.amount || 0)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {quoteData.payment_terms_type === 'client_selects' && (
+                      <p className="font-medium text-gray-900">Client selects payment schedule</p>
+                    )}
+                    {quoteData.deposit_due_date && (
+                      <p className="text-sm text-gray-600 mt-2">Deposit Due: {formatDate(quoteData.deposit_due_date)}</p>
+                    )}
+                    {quoteData.remaining_balance_due_date && (
+                      <p className="text-sm text-gray-600 mt-1">Balance Due: {formatDate(quoteData.remaining_balance_due_date)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Due Date Type */}
+              {quoteData.due_date_type && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Due Date</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="font-medium text-gray-900">
+                      {quoteData.due_date_type === 'upon_receipt' && 'Due Upon Receipt'}
+                      {quoteData.due_date_type === 'day_of_event' && 'Due on Event Date'}
+                      {quoteData.due_date_type === '7_days_before' && 'Due 7 Days Before Event'}
+                      {!['upon_receipt', 'day_of_event', '7_days_before'].includes(quoteData.due_date_type) && quoteData.due_date_type}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Payment History */}
         {payments.length > 0 && (
