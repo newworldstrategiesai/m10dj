@@ -120,6 +120,23 @@ export default function OnboardingWizard() {
           setOrganization(org);
           updateFormData({ organizationSlug: org.slug });
           
+          // Save organization slug to user metadata so we can redirect after email confirmation
+          try {
+            const { error: metadataError } = await supabase.auth.updateUser({
+              data: {
+                organization_slug: org.slug,
+                organization_id: org.id
+              }
+            });
+            if (metadataError) {
+              console.error('Error saving organization slug to metadata:', metadataError);
+            } else {
+              console.log('✅ Organization slug saved to user metadata:', org.slug);
+            }
+          } catch (error) {
+            console.error('Error updating user metadata:', error);
+          }
+          
           // Save location if provided
           if (formData.location) {
             try {
@@ -513,8 +530,12 @@ function CompleteStep({ formData, organization }: any) {
 
           const data = await response.json();
           if (data.success) {
-            // Starter plan activated - go to dashboard
-            router.push('/admin/dashboard');
+            // Starter plan activated - redirect to requests page
+            if (organization?.slug) {
+              router.push(`/organizations/${organization.slug}/requests`);
+            } else {
+              router.push('/admin/dashboard');
+            }
           } else {
             console.error('Error activating Starter plan:', data);
             router.push('/onboarding/select-plan');
@@ -548,8 +569,12 @@ function CompleteStep({ formData, organization }: any) {
         }
       }
     } else {
-      // No plan selected - skip to dashboard
-      router.push('/admin/dashboard');
+      // No plan selected - redirect to requests page if organization exists
+      if (organization?.slug) {
+        router.push(`/organizations/${organization.slug}/requests`);
+      } else {
+        router.push('/admin/dashboard');
+      }
     }
   };
 

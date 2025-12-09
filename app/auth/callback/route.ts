@@ -9,9 +9,9 @@ export async function GET(request: NextRequest) {
   // by the `@supabase/ssr` package. It exchanges an auth code for the user's session.
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
+  const supabase = createClient();
 
   if (code) {
-    const supabase = createClient();
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -63,6 +63,26 @@ export async function GET(request: NextRequest) {
       // Don't fail the auth flow if linking fails
       console.error('Error linking contacts during auth callback:', linkError);
     }
+  }
+
+  // Check if user has organization slug in metadata (from onboarding)
+  // If so, redirect to their requests page after email confirmation
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && user.user_metadata?.organization_slug) {
+      const orgSlug = user.user_metadata.organization_slug;
+      const requestsUrl = `${requestUrl.origin}/organizations/${orgSlug}/requests`;
+      return NextResponse.redirect(
+        getStatusRedirect(
+          requestsUrl,
+          'Email confirmed!',
+          'Welcome back! Here\'s your requests page.'
+        )
+      );
+    }
+  } catch (error) {
+    console.error('Error checking user metadata for organization slug:', error);
+    // Fall through to default redirect
   }
 
   // Get role-based redirect URL

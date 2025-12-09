@@ -61,9 +61,17 @@ export default function SignupPage() {
             router.push('/onboarding/wizard');
           }, 1500);
         } else {
-          // Email confirmation required
-          setEmailSent(true);
+          // Email confirmation required, but allow immediate access to onboarding
+          // Store a flag in localStorage to indicate they should complete onboarding
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('pending_onboarding', 'true');
+            localStorage.setItem('pending_email', email);
+          }
+          // Still redirect to onboarding - they can complete it even without confirmed email
           setSuccess(true);
+          setTimeout(() => {
+            router.push('/onboarding/wizard');
+          }, 1500);
         }
       }
     } catch (err: any) {

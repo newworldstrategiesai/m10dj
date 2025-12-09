@@ -139,7 +139,7 @@ export default async function handler(req, res) {
         organization_id: organization.id,
         subscription_tier: subscriptionTier,
       },
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/onboarding/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/onboarding/success?session_id={CHECKOUT_SESSION_ID}&org_slug=${organization.slug}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/onboarding/select-plan?canceled=true`,
     });
 

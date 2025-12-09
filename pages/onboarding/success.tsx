@@ -14,7 +14,7 @@ import Link from 'next/link';
 
 export default function OnboardingSuccessPage() {
   const router = useRouter();
-  const { session_id } = router.query;
+  const { session_id, org_slug } = router.query;
   const supabase = createClientComponentClient();
   const [organization, setOrganization] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -24,11 +24,19 @@ export default function OnboardingSuccessPage() {
       const org = await getCurrentOrganization(supabase);
       if (org) {
         setOrganization(org);
+        // Auto-redirect to requests page after 2 seconds
+        setTimeout(() => {
+          if (org.slug) {
+            router.push(`/organizations/${org.slug}/requests`);
+          } else if (org_slug) {
+            router.push(`/organizations/${org_slug}/requests`);
+          }
+        }, 2000);
       }
       setLoading(false);
     }
     loadOrganization();
-  }, [supabase]);
+  }, [supabase, router, org_slug]);
 
   if (loading) {
     return (
@@ -76,19 +84,29 @@ export default function OnboardingSuccessPage() {
           )}
 
           <div className="space-y-4">
+            {organization?.slug && (
+              <Link
+                href={`/organizations/${organization.slug}/requests`}
+                className="block w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+              >
+                View Your Requests Page
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            )}
+            {org_slug && !organization?.slug && (
+              <Link
+                href={`/organizations/${org_slug}/requests`}
+                className="block w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+              >
+                View Your Requests Page
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            )}
             <Link
-              href="/admin/crowd-requests"
-              className="block w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
-            >
-              Go to Dashboard
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-
-            <Link
-              href="/onboarding/welcome"
+              href="/admin/dashboard"
               className="block w-full px-6 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold rounded-lg transition-colors"
             >
-              View Your URLs & Embed Codes
+              Go to Dashboard
             </Link>
           </div>
         </div>
