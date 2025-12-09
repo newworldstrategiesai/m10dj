@@ -32,7 +32,7 @@ export default async function TipJarSignIn({
     ? `?redirect=${encodeURIComponent(searchParams.redirect)}` 
     : '';
   
-  // Server-side redirect to the actual signin page
-  redirect(`/signin/${defaultView}${redirectParam}`);
+  // Server-side redirect to the actual signin page (TipJar-specific)
+  redirect(`/tipjar/signin/${defaultView}${redirectParam}`);
 }
 
