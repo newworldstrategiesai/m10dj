@@ -49,19 +49,33 @@ export default async function handler(req, res) {
       });
     }
 
-    // Check account balance
+    // Check account balance including instant_available
     const balance = await getAccountBalance(organization.stripe_connect_account_id);
     const availableAmount = balance.available / 100; // Convert cents to dollars
+    const instantAvailableAmount = balance.instant_available / 100; // Amount eligible for instant payouts
 
-    if (availableAmount < amount) {
+    // Check if user is eligible for instant payouts
+    if (instantAvailableAmount === 0) {
       return res.status(400).json({ 
-        error: `Insufficient balance. Available: $${availableAmount.toFixed(2)}, Requested: $${amount.toFixed(2)}` 
+        error: 'You are not currently eligible for Instant Payouts. Check your eligibility in the Dashboard or wait for funds to become available.',
+        details: 'Instant Payouts require eligible balance and a debit card or supported bank account on file.'
       });
     }
 
-    // Calculate instant payout fee
-    const feePercentage = organization.instant_payout_fee_percentage || 1.00;
-    const feeCalculation = calculateInstantPayoutFee(amount, feePercentage);
+    if (instantAvailableAmount < amount) {
+      return res.status(400).json({ 
+        error: `Insufficient instant-available balance. Available for instant payout: $${instantAvailableAmount.toFixed(2)}, Requested: $${amount.toFixed(2)}`,
+        instantAvailable: instantAvailableAmount,
+        standardAvailable: availableAmount
+      });
+    }
+
+    // Determine fee percentage based on country (default to US rate of 1.5%)
+    // US, AU, NZ, AE: 1.5%
+    // CA, EU, UK, SG, NO, MY: 1%
+    const feePercentage = organization.instant_payout_fee_percentage || 1.50;
+    const currency = balance.currency || 'usd';
+    const feeCalculation = calculateInstantPayoutFee(amount, feePercentage, currency);
 
     // Verify the payout amount after fees is sufficient
     if (feeCalculation.payoutAmount < 0.01) {
@@ -70,12 +84,17 @@ export default async function handler(req, res) {
       });
     }
 
+    // Get destination (debit card or bank account) if provided
+    const { destination } = req.body;
+
     // Create instant payout
     try {
       const payout = await createInstantPayout(
         organization.stripe_connect_account_id,
         amount,
-        feePercentage
+        feePercentage,
+        currency,
+        destination // Optional: specific payout destination
       );
 
       console.log(`✅ Created instant payout for organization ${organization.name}: $${feeCalculation.payoutAmount.toFixed(2)} (fee: $${feeCalculation.feeAmount.toFixed(2)})`);

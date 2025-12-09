@@ -29,6 +29,21 @@ export default async function handler(req, res) {
     // Check if user is platform admin
     const isAdmin = isPlatformAdmin(session.user.email);
 
+    // Check subscription access for contracts feature (skip for platform admins)
+    if (!isAdmin) {
+      const { canAccessAdminPage } = await import('@/utils/subscription-access');
+      const access = await canAccessAdminPage(supabase, session.user.email, 'contracts');
+      
+      if (!access.canAccess) {
+        return res.status(403).json({
+          error: 'Subscription required',
+          message: access.reason || 'This feature requires a Professional subscription.',
+          upgradeRequired: true,
+          requiredTier: access.requiredTier || 'professional'
+        });
+      }
+    }
+
     // Get organization context (null for admins, org_id for SaaS users)
     const orgId = await getOrganizationContext(
       supabase,

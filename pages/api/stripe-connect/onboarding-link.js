@@ -23,14 +23,23 @@ export default async function handler(req, res) {
 
     // Get user's organization
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: organization, error: orgError } = await supabaseAdmin
+    let { data: organization, error: orgError } = await supabaseAdmin
       .from('organizations')
       .select('id, stripe_connect_account_id')
       .eq('owner_id', user.id)
       .single();
 
+    // If organization doesn't exist, return error (shouldn't happen if create-account was called first)
     if (orgError || !organization) {
-      return res.status(404).json({ error: 'Organization not found' });
+      console.error('Organization not found for onboarding link:', {
+        userId: user.id,
+        email: user.email,
+        error: orgError?.message
+      });
+      return res.status(404).json({ 
+        error: 'Organization not found',
+        details: 'Please set up your Stripe Connect account first.'
+      });
     }
 
     if (!organization.stripe_connect_account_id) {

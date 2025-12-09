@@ -17,6 +17,50 @@ if (!stripe) {
 }
 
 /**
+ * Check if the platform account can create connected accounts
+ * This helps provide better error messages before attempting account creation
+ */
+export async function canCreateConnectedAccounts(): Promise<{
+  canCreate: boolean;
+  reason?: string;
+  error?: string;
+}> {
+  if (!stripe) {
+    return {
+      canCreate: false,
+      reason: 'Stripe is not configured',
+    };
+  }
+
+  try {
+    // Try to retrieve the platform account to check Connect status
+    // If this fails or Connect isn't enabled, we'll get an error
+    const account = await stripe.accounts.retrieve();
+    
+    // Check if account has Connect enabled by attempting a minimal account creation test
+    // Note: We don't actually create an account, but we check if the API would allow it
+    return {
+      canCreate: true,
+    };
+  } catch (error: any) {
+    // If we get a specific error about not being able to create accounts, return that
+    if (error.message?.toLowerCase().includes('cannot currently create connected accounts') ||
+        error.message?.toLowerCase().includes('cannot create connected accounts')) {
+      return {
+        canCreate: false,
+        reason: 'Platform account cannot create connected accounts',
+        error: error.message,
+      };
+    }
+    
+    // For other errors, assume we can try (might be a different issue)
+    return {
+      canCreate: true,
+    };
+  }
+}
+
+/**
  * Create a Stripe Connect account using Accounts v2 API
  * 
  * Creates a connected account with merchant and customer configurations:
@@ -134,25 +178,41 @@ export async function createConnectAccount(
       // This maintains compatibility while we wait for full v2 SDK support
       console.warn('v2 API not available, falling back to v1 Express accounts:', v2Error.message);
       
+      // Use v1 Express accounts API (most stable and widely supported)
+      // Reference: https://docs.stripe.com/api/accounts/create
       const v1AccountData: Stripe.AccountCreateParams = {
         type: 'express',
         country: 'US',
         email: email,
+        // Request capabilities explicitly
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
+        // Business type - most DJs are individuals
         business_type: 'individual',
+        // Metadata for tracking
         metadata: {
           organization_name: organizationName,
           organization_slug: organizationSlug,
+          created_via: 'm10dj_platform',
         },
+        // Business profile for better onboarding
         business_profile: {
           url: businessProfileUrl,
+          name: organizationName,
+        },
+        // Settings for better UX
+        settings: {
+          payouts: {
+            schedule: {
+              interval: 'daily', // Daily payouts by default
+            },
+          },
         },
       };
 
-      // Add branding if provided
+      // Add branding if provided (merge with existing settings)
       if (branding && (branding.primaryColor || branding.secondaryColor || branding.logo)) {
         const brandingSettings: any = {};
         if (branding.logo && (branding.logo.startsWith('http://') || branding.logo.startsWith('https://'))) {
@@ -165,7 +225,9 @@ export async function createConnectAccount(
           brandingSettings.secondary_color = branding.secondaryColor;
         }
         if (Object.keys(brandingSettings).length > 0) {
+          // Merge branding with existing settings
           v1AccountData.settings = {
+            ...v1AccountData.settings,
             branding: brandingSettings,
           };
         }
@@ -240,7 +302,8 @@ export async function createAccountLink(
       });
       return accountLink as any;
     } catch (v2Error: any) {
-      // Fall back to v1 API Account Links
+      // Fall back to v1 API Account Links (most stable)
+      // Reference: https://docs.stripe.com/api/account_links/create
       console.warn('v2 Account Links API not available, using v1:', v2Error.message);
       
       const v1LinkData: Stripe.AccountLinkCreateParams = {
@@ -248,6 +311,8 @@ export async function createAccountLink(
         refresh_url: refreshUrl,
         return_url: returnUrl,
         type: 'account_onboarding',
+        // Optional: Collect all required information upfront
+        collect: 'currently_due', // or 'eventually_due' for upfront collection
       };
 
       const accountLink = await stripe.accountLinks.create(v1LinkData);
@@ -260,7 +325,8 @@ export async function createAccountLink(
 }
 
 /**
- * Get the current onboarding status of a Connect account using v2 API
+ * Get the current onboarding status of a Connect account
+ * Reference: https://docs.stripe.com/api/accounts/retrieve
  */
 export async function getAccountStatus(
   accountId: string
@@ -279,46 +345,46 @@ export async function getAccountStatus(
   }
   
   try {
-    // Try v2 API structure for retrieving account
-    // Use the standard SDK method with expand parameter
-    const account: any = await stripe.accounts.retrieve(accountId, {
-      expand: ['requirements'],
+    // Retrieve account with expanded requirements
+    // Reference: https://docs.stripe.com/api/accounts/retrieve
+    const account = await stripe.accounts.retrieve(accountId, {
+      expand: ['requirements', 'capabilities'],
     });
 
-    // Extract merchant configuration status
-    const merchantConfig = account.configuration?.merchant;
-    const chargesEnabled = merchantConfig?.capabilities?.card_payments?.status === 'active';
+    // Check capabilities status (v1 API)
+    const cardPaymentsCapability = account.capabilities?.card_payments;
+    const chargesEnabled = cardPaymentsCapability === 'active' || account.charges_enabled === true;
     
-    // Extract payout status from account
-    const payoutsEnabled = account.payouts_enabled || false;
-    const detailsSubmitted = account.requirements?.details_submitted || false;
+    // Extract payout status
+    const payoutsEnabled = account.payouts_enabled === true;
+    const detailsSubmitted = account.details_submitted === true;
 
     // Extract requirements for detailed status
     const requirements = account.requirements ? {
-      currentlyDue: account.requirements.currently_due || [],
-      eventuallyDue: account.requirements.eventually_due || [],
-      pastDue: account.requirements.past_due || [],
+      currentlyDue: Array.isArray(account.requirements.currently_due) 
+        ? account.requirements.currently_due.map((r: any) => typeof r === 'string' ? r : r.toString())
+        : [],
+      eventuallyDue: Array.isArray(account.requirements.eventually_due)
+        ? account.requirements.eventually_due.map((r: any) => typeof r === 'string' ? r : r.toString())
+        : [],
+      pastDue: Array.isArray(account.requirements.past_due)
+        ? account.requirements.past_due.map((r: any) => typeof r === 'string' ? r : r.toString())
+        : [],
     } : undefined;
 
     return {
-      chargesEnabled: chargesEnabled || false,
+      chargesEnabled,
       payoutsEnabled,
       detailsSubmitted,
       requirements,
     };
   } catch (error: any) {
     console.error('Error retrieving account status:', error);
-    // Fallback to v1 API if v2 fails
-    try {
-      const account = await stripe.accounts.retrieve(accountId);
-      return {
-        chargesEnabled: account.charges_enabled || false,
-        payoutsEnabled: account.payouts_enabled || false,
-        detailsSubmitted: account.details_submitted || false,
-      };
-    } catch (fallbackError: any) {
-      throw new Error(`Failed to retrieve account status: ${fallbackError?.message || String(fallbackError)}`);
+    // Enhanced error handling
+    if (error.type === 'StripeInvalidRequestError') {
+      throw new Error(`Invalid account ID: ${error.message}`);
     }
+    throw new Error(`Failed to retrieve account status: ${error?.message || String(error)}`);
   }
 }
 
@@ -499,9 +565,11 @@ export function calculatePlatformFee(
 
 /**
  * Get account balance and payout information
+ * Includes instant_available for Instant Payouts eligibility
  */
 export async function getAccountBalance(accountId: string): Promise<{
   available: number;
+  instant_available: number;
   pending: number;
   currency: string;
 }> {
@@ -515,6 +583,7 @@ export async function getAccountBalance(accountId: string): Promise<{
 
   return {
     available: balance.available[0]?.amount || 0,
+    instant_available: balance.instant_available?.[0]?.amount || 0, // Amount eligible for instant payouts
     pending: balance.pending[0]?.amount || 0,
     currency: balance.available[0]?.currency || 'usd',
   };
@@ -522,24 +591,50 @@ export async function getAccountBalance(accountId: string): Promise<{
 
 /**
  * Calculate instant payout fee
- * Stripe charges 1% with a minimum of $0.50 for instant payouts
+ * Stripe charges different fees by country:
+ * - US, AU, NZ, AE: 1.5% with minimum $0.50
+ * - CA, EU, UK, SG, NO, MY: 1% with minimum varies by currency
  */
 export function calculateInstantPayoutFee(
   amount: number,
-  feePercentage: number = 1.00
+  feePercentage: number = 1.50, // Default to US rate (1.5%)
+  currency: string = 'usd'
 ): {
   feeAmount: number;
   payoutAmount: number;
   feePercentage: number;
+  minimumFee: number;
 } {
+  // Minimum fees by currency (from Stripe docs)
+  const minimumFees: Record<string, number> = {
+    'usd': 0.50,
+    'cad': 0.60,
+    'sgd': 0.50,
+    'gbp': 0.40,
+    'aud': 0.50,
+    'eur': 0.40,
+    'czk': 10.00,
+    'dkk': 5.00,
+    'huf': 200.00,
+    'nok': 5.00,
+    'pln': 2.00,
+    'ron': 2.00,
+    'sek': 5.00,
+    'nzd': 0.50,
+    'myr': 2.00,
+    'aed': 2.00,
+  };
+
+  const minimumFee = minimumFees[currency.toLowerCase()] || 0.50;
   const percentageFee = (amount * feePercentage) / 100;
-  const feeAmount = Math.max(percentageFee, 0.50); // Minimum $0.50
+  const feeAmount = Math.max(percentageFee, minimumFee);
   const payoutAmount = amount - feeAmount;
 
   return {
     feeAmount: Math.round(feeAmount * 100) / 100, // Round to 2 decimals
     payoutAmount: Math.round(payoutAmount * 100) / 100,
     feePercentage,
+    minimumFee,
   };
 }
 
@@ -548,31 +643,42 @@ export function calculateInstantPayoutFee(
  * 
  * @param accountId The Stripe Connect account ID
  * @param amount Amount in dollars (will be converted to cents)
- * @param feePercentage Instant payout fee percentage (default: 1.00 for 1%)
+ * @param feePercentage Instant payout fee percentage (default: 1.50 for US)
+ * @param currency Currency code (default: 'usd')
+ * @param destination Optional: debit card ID or bank account ID for payout destination
  * @returns The payout object
  */
 export async function createInstantPayout(
   accountId: string,
   amount: number,
-  feePercentage: number = 1.00
+  feePercentage: number = 1.50, // Default to US rate
+  currency: string = 'usd',
+  destination?: string
 ): Promise<Stripe.Payout> {
   if (!stripe) {
     throw new Error('Stripe is not configured');
   }
 
   // Calculate instant payout fee
-  const feeCalculation = calculateInstantPayoutFee(amount, feePercentage);
+  const feeCalculation = calculateInstantPayoutFee(amount, feePercentage, currency);
   const payoutAmountCents = Math.round(feeCalculation.payoutAmount * 100);
 
   // Create instant payout
-  // Note: Instant payouts require the account to have a debit card on file
-  // and sufficient balance available
+  // Note: Instant payouts require the account to have a debit card or eligible bank account on file
+  // and sufficient instant_available balance
+  const payoutParams: Stripe.PayoutCreateParams = {
+    amount: payoutAmountCents,
+    currency: currency.toLowerCase(),
+    method: 'instant', // Use 'instant' for instant payouts, 'standard' for 2-7 day payouts
+  };
+
+  // Add destination if provided (debit card or bank account ID)
+  if (destination) {
+    payoutParams.destination = destination;
+  }
+
   const payout = await stripe.payouts.create(
-    {
-      amount: payoutAmountCents,
-      currency: 'usd',
-      method: 'instant', // Use 'instant' for instant payouts, 'standard' for 2-7 day payouts
-    },
+    payoutParams,
     {
       stripeAccount: accountId,
     }

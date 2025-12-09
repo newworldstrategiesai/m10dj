@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Get account balance
+    // Get account balance with instant_available for Instant Payouts eligibility
     const balance = await getAccountBalance(organization.stripe_connect_account_id);
     
     // Get payout schedule
@@ -94,6 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       balance: {
         available: balance.available,
+        instant_available: balance.instant_available || 0, // Amount available for instant payouts
         pending: balance.pending,
         currency: balance.currency,
       },

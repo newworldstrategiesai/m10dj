@@ -22,30 +22,73 @@ export default async function handler(req, res) {
 
     const user = session.user;
 
-        // Get user's organization
-        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-        const { data: organization, error: orgError } = await supabaseAdmin
-          .from('organizations')
-          .select('id, name, slug, stripe_connect_account_id')
-          .eq('owner_id', user.id)
-          .single();
+    // Get user's organization
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    let { data: organization, error: orgError } = await supabaseAdmin
+      .from('organizations')
+      .select('id, name, slug, stripe_connect_account_id')
+      .eq('owner_id', user.id)
+      .single();
 
-    if (orgError) {
-      console.error('Error fetching organization:', orgError);
-      console.error('User ID:', user.id);
-      console.error('User Email:', user.email);
-      return res.status(404).json({ 
-        error: 'Organization not found',
-        details: orgError.message,
-        userId: user.id 
-      });
-    }
-
-    if (!organization) {
-      console.error('No organization found for user:', user.id);
-      return res.status(404).json({ 
-        error: 'Organization not found. Please complete onboarding first.',
-        userId: user.id 
+    // If organization doesn't exist, create one automatically
+    if (orgError || !organization) {
+      console.log('No organization found for user, creating one automatically:', user.id);
+      
+      // Generate a default organization name from user email or use a generic name
+      const defaultName = user.email 
+        ? user.email.split('@')[0].replace(/[^a-z0-9]/gi, ' ').trim() || 'My DJ Business'
+        : 'My DJ Business';
+      
+      // Generate slug from name
+      const slug = defaultName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || `dj-${Math.random().toString(36).substring(2, 8)}`;
+      
+      // Check if slug exists and make it unique if needed
+      let finalSlug = slug;
+      const { data: existingOrg } = await supabaseAdmin
+        .from('organizations')
+        .select('id')
+        .eq('slug', slug)
+        .single();
+      
+      if (existingOrg) {
+        finalSlug = `${slug}-${Math.random().toString(36).substring(2, 8)}`;
+      }
+      
+      // Create organization with trial
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14-day trial
+      
+      const { data: newOrg, error: createError } = await supabaseAdmin
+        .from('organizations')
+        .insert({
+          name: defaultName,
+          slug: finalSlug,
+          owner_id: user.id,
+          subscription_tier: 'starter',
+          subscription_status: 'trial',
+          trial_ends_at: trialEndsAt.toISOString(),
+          requests_header_artist_name: defaultName,
+        })
+        .select('id, name, slug, stripe_connect_account_id')
+        .single();
+      
+      if (createError || !newOrg) {
+        console.error('Error creating organization:', createError);
+        return res.status(500).json({ 
+          error: 'Failed to create organization',
+          details: createError?.message || 'Unknown error',
+          userId: user.id 
+        });
+      }
+      
+      organization = newOrg;
+      console.log('✅ Organization created automatically:', {
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug
       });
     }
 
@@ -92,6 +135,10 @@ export default async function handler(req, res) {
         details: 'Stripe secret key is missing or invalid. Please check your environment variables.'
       });
     }
+    
+    // Optional: Pre-check if platform can create connected accounts
+    // This provides better error messages but adds an extra API call
+    // We'll let the actual creation attempt handle errors for now to avoid extra latency
     
     console.log('Creating Stripe Connect account for:', user.email, organization.name);
     
@@ -140,6 +187,22 @@ export default async function handler(req, res) {
     const originalMessage = error.originalMessage || error.message || '';
     const errorMsg = error.message || '';
     
+    // Check if this is the "cannot create connected accounts" error
+    const cannotCreateAccountsError = (
+      originalMessage.toLowerCase().includes('cannot currently create connected accounts') ||
+      originalMessage.toLowerCase().includes('cannot create connected accounts') ||
+      originalMessage.toLowerCase().includes('account cannot currently create') ||
+      originalMessage.toLowerCase().includes('contact us via') ||
+      errorMsg.toLowerCase().includes('cannot currently create connected accounts') ||
+      errorMsg.toLowerCase().includes('cannot create connected accounts') ||
+      errorMsg.toLowerCase().includes('account cannot currently create') ||
+      (error.stripeError && (
+        error.stripeError.message?.toLowerCase().includes('cannot currently create connected accounts') ||
+        error.stripeError.message?.toLowerCase().includes('cannot create connected accounts') ||
+        error.stripeError.message?.toLowerCase().includes('account cannot currently create')
+      ))
+    );
+    
     // Check if this is the platform profile/verification error
     // Check both the error message and any nested stripe error
     const isPlatformProfileError = (
@@ -171,7 +234,17 @@ export default async function handler(req, res) {
     let errorDetails = originalMessage || errorMsg || 'Unknown error';
     let helpUrl = null;
     
-    if (isPlatformProfileError) {
+    if (cannotCreateAccountsError) {
+      // This is a critical error - Stripe account needs to be enabled for Connect
+      finalErrorMessage = 'Stripe Connect Not Enabled';
+      if (isTestMode) {
+        errorDetails = 'Your Stripe test account cannot currently create connected accounts. This usually means you need to complete Stripe\'s platform verification or contact Stripe support to enable Connect for your account.';
+        helpUrl = 'https://support.stripe.com/contact';
+      } else {
+        errorDetails = 'Your Stripe account cannot currently create connected accounts. You need to contact Stripe support to enable Connect for your account. This is a one-time setup required by Stripe.';
+        helpUrl = 'https://support.stripe.com/contact';
+      }
+    } else if (isPlatformProfileError) {
       if (isTestMode) {
         finalErrorMessage = 'Stripe Test Mode Setup Required';
         errorDetails = originalMessage || 'You need to complete the Stripe Connect platform profile questionnaire in your test mode dashboard.';
@@ -193,7 +266,8 @@ export default async function handler(req, res) {
       error: finalErrorMessage,
       details: errorDetails,
       helpUrl: helpUrl,
-      isPlatformProfileError: isPlatformProfileError,
+      isPlatformProfileError: isPlatformProfileError || cannotCreateAccountsError,
+      cannotCreateAccounts: cannotCreateAccountsError,
       isTestMode: isTestMode,
       // Only include stack in development
       ...(process.env.NODE_ENV === 'development' && { 

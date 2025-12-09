@@ -27,6 +27,7 @@ import { useToast } from '@/components/ui/Toasts/use-toast';
 
 interface PaymentBalance {
   available: number;
+  instant_available?: number; // Amount available for instant payouts
   pending: number;
   currency: string;
 }
@@ -251,6 +252,7 @@ export default function PayoutsPage() {
   }
 
   const availableAmount = balance ? balance.available / 100 : 0;
+  const instantAvailableAmount = balance ? (balance.instant_available || 0) / 100 : 0;
   const pendingAmount = balance ? balance.pending / 100 : 0;
 
   return (
@@ -301,8 +303,13 @@ export default function PayoutsPage() {
                   </p>
                 </div>
               </div>
+              {instantAvailableAmount > 0 && (
+                <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-1">
+                  {formatCurrency(instantAvailableAmount)} available for instant payout
+                </p>
+              )}
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Ready for immediate payout
+                {instantAvailableAmount > 0 ? 'Ready for instant or standard payout' : 'Ready for standard payout'}
               </p>
             </div>
 
@@ -325,13 +332,18 @@ export default function PayoutsPage() {
           </div>
 
           {/* Instant Payout */}
-          {availableAmount > 0 && (
+          {instantAvailableAmount > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                 Request Instant Payout
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Get your money immediately (1% fee, minimum $0.50). Available balance: {formatCurrency(availableAmount)}
+                Get your money immediately (1.5% fee for US, minimum $0.50). Available for instant payout: {formatCurrency(instantAvailableAmount)}
+                {availableAmount > instantAvailableAmount && (
+                  <span className="block mt-1 text-xs text-gray-500">
+                    Standard balance: {formatCurrency(availableAmount)} (available for standard payouts)
+                  </span>
+                )}
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1">
@@ -342,7 +354,7 @@ export default function PayoutsPage() {
                     onChange={(e) => setInstantPayoutAmount(e.target.value)}
                     min="0.50"
                     step="0.01"
-                    max={availableAmount.toFixed(2)}
+                    max={instantAvailableAmount.toFixed(2)}
                     className="w-full"
                   />
                 </div>
@@ -365,8 +377,13 @@ export default function PayoutsPage() {
                 </Button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Instant payouts arrive within minutes. Standard payouts are free and arrive in 2-7 business days.
+                Instant payouts arrive within 30 minutes. Standard payouts are free and arrive in 2-7 business days.
               </p>
+              {instantAvailableAmount < availableAmount && (
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                  Note: Only {formatCurrency(instantAvailableAmount)} is eligible for instant payouts. The remaining {formatCurrency(availableAmount - instantAvailableAmount)} will be paid out on your regular schedule.
+                </p>
+              )}
             </div>
           )}
 

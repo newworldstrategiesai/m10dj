@@ -70,7 +70,7 @@ export async function hasFeatureAccess(
 export async function canAccessAdminPage(
   supabase: SupabaseClient,
   userEmail: string | null | undefined,
-  page: 'contacts' | 'projects' | 'invoices' | 'financial' | 'analytics' | 'team' | 'settings'
+  page: 'contacts' | 'projects' | 'invoices' | 'financial' | 'analytics' | 'team' | 'settings' | 'contracts'
 ): Promise<{ canAccess: boolean; reason?: string; requiredTier?: string }> {
   // Platform admins can access everything
   if (isPlatformAdmin(userEmail)) {
@@ -101,7 +101,8 @@ export async function canAccessAdminPage(
     'financial': 'financial',
     'analytics': 'analytics',
     'team': 'team',
-    'settings': 'crm' // Settings available to all, but some settings require higher tiers
+    'settings': 'crm', // Settings available to all, but some settings require higher tiers
+    'contracts': 'financial' // Contracts are part of financial/invoicing workflow
   };
 
   const feature = pageFeatureMap[page] || 'crm';

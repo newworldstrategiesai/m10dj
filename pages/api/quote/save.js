@@ -21,6 +21,47 @@ export default async function handler(req, res) {
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Check subscription access for quote creation
+    // First, get the user from the request (if authenticated)
+    let userEmail = null;
+    let userId = null;
+    
+    // Try to get user from auth header or session
+    try {
+      const { createServerSupabaseClient } = require('@supabase/auth-helpers-nextjs');
+      const serverSupabase = createServerSupabaseClient({ req, res });
+      const { data: { user } } = await serverSupabase.auth.getUser();
+      if (user) {
+        userEmail = user.email;
+        userId = user.id;
+      }
+    } catch (authError) {
+      // If no auth, continue - this might be a public route
+      console.log('No authenticated user for quote save - may be public route');
+    }
+
+    // If we have a user, check subscription access
+    if (userEmail && userId) {
+      const { isPlatformAdmin } = require('@/utils/auth-helpers/platform-admin');
+      const { canAccessAdminPage } = require('@/utils/subscription-access');
+      const serverSupabase = require('@supabase/auth-helpers-nextjs').createServerSupabaseClient({ req, res });
+      
+      const isAdmin = isPlatformAdmin(userEmail);
+      
+      if (!isAdmin) {
+        const access = await canAccessAdminPage(serverSupabase, userEmail, 'projects');
+        
+        if (!access.canAccess) {
+          return res.status(403).json({
+            error: 'Subscription required',
+            message: access.reason || 'This feature requires a Professional subscription.',
+            upgradeRequired: true,
+            requiredTier: access.requiredTier || 'professional'
+          });
+        }
+      }
+    }
+
     // Fetch lead data for email notification
     let leadData = null;
     try {

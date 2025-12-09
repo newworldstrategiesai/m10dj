@@ -58,6 +58,37 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        tipjar: {
+          primary: {
+            500: "hsl(var(--tipjar-primary-500))",
+            600: "hsl(var(--tipjar-primary-600))",
+            700: "hsl(var(--tipjar-primary-700))",
+          },
+          accent: {
+            500: "hsl(var(--tipjar-accent-500))",
+          },
+          success: {
+            500: "hsl(var(--tipjar-success-500))",
+          },
+          gray: {
+            50: "hsl(var(--tipjar-gray-50))",
+            900: "hsl(var(--tipjar-gray-900))",
+          },
+        },
+        djdash: {
+          primary: {
+            500: "hsl(var(--djdash-primary-500))",
+            600: "hsl(var(--djdash-primary-600))",
+            700: "hsl(var(--djdash-primary-700))",
+          },
+          accent: {
+            500: "hsl(var(--djdash-accent-500))",
+          },
+          neutral: {
+            50: "hsl(var(--djdash-neutral-50))",
+            900: "hsl(var(--djdash-neutral-900))",
+          },
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

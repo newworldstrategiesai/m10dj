@@ -12,25 +12,142 @@ const supabase = createClient(
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get('host') || '';
+  const hostnameLower = hostname.toLowerCase();
   
-  // Extract subdomain (e.g., "m10dj" from "m10dj.yourdomain.com")
-  const subdomain = hostname.split('.')[0];
-  const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'm10djcompany.com';
-  
-  // Skip subdomain routing for:
-  // - Main domain
-  // - www subdomain
-  // - API routes
-  // - Static files
-  // - Admin routes (when on main domain)
-  const isMainDomain = hostname === mainDomain || hostname === `www.${mainDomain}`;
+  // Handle domain-based routing for marketing sites
   const isApiRoute = url.pathname.startsWith('/api');
   const isStaticFile = url.pathname.startsWith('/_next') || 
                        url.pathname.startsWith('/favicon') ||
                        url.pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js)$/);
   
-  // Handle subdomain routing
-  if (!isMainDomain && !isApiRoute && !isStaticFile && subdomain && subdomain !== 'www') {
+  // Skip routing for API routes and static files
+  if (isApiRoute || isStaticFile) {
+    const response = await updateSession(request);
+    response.headers.set('x-pathname', request.nextUrl.pathname);
+    return response;
+  }
+  
+  // Check which domain we're on
+  // Route groups (marketing) don't appear in URLs, so we rewrite to the actual route structure
+  const isTipJarDomain = hostnameLower === 'tipjar.live' || 
+                         hostnameLower === 'www.tipjar.live' ||
+                         hostnameLower.endsWith('.tipjar.live');
+  
+  const isDJDashDomain = hostnameLower === 'djdash.net' || 
+                         hostnameLower === 'www.djdash.net' ||
+                         hostnameLower.endsWith('.djdash.net');
+  
+  // Route tipjar.live to marketing pages
+  if (isTipJarDomain) {
+    const path = url.pathname;
+    let rewritePath = '';
+    
+    // Rewrite paths to tipjar marketing routes
+    if (path === '/' || path === '') {
+      rewritePath = '/tipjar';
+    } else if (path === '/pricing' || path.startsWith('/pricing/')) {
+      rewritePath = '/tipjar/pricing';
+    } else if (path === '/features' || path.startsWith('/features/')) {
+      rewritePath = '/tipjar/features';
+    } else if (path === '/how-it-works' || path.startsWith('/how-it-works/')) {
+      rewritePath = '/tipjar/how-it-works';
+    } else if (path === '/signup' || path.startsWith('/signup/')) {
+      rewritePath = '/tipjar/signup';
+    } else if (path === '/embed' || path.startsWith('/embed/')) {
+      rewritePath = '/tipjar/embed';
+    }
+
+    // Update session and add headers
+    const response = await updateSession(request);
+    
+    if (rewritePath) {
+      // Rewrite to the marketing route
+      url.pathname = rewritePath;
+      const rewriteResponse = NextResponse.rewrite(url);
+      rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+      rewriteResponse.headers.set('x-product', 'tipjar');
+      // Copy session headers from updateSession
+      response.headers.forEach((value, key) => {
+        if (key.startsWith('x-') || key === 'set-cookie') {
+          rewriteResponse.headers.set(key, value);
+        }
+      });
+      return rewriteResponse;
+    }
+    
+    // For other paths, let Next.js handle routing normally but set product header
+    response.headers.set('x-pathname', url.pathname);
+    response.headers.set('x-product', 'tipjar');
+    return response;
+  }
+  
+  // Route djdash.net to marketing pages
+  if (isDJDashDomain) {
+    const path = url.pathname;
+    let rewritePath = '';
+    
+    // Rewrite paths to djdash marketing routes
+    if (path === '/' || path === '') {
+      rewritePath = '/djdash';
+    } else if (path === '/pricing' || path.startsWith('/pricing/')) {
+      rewritePath = '/djdash/pricing';
+    } else if (path === '/features' || path.startsWith('/features/')) {
+      rewritePath = '/djdash/features';
+    } else if (path === '/how-it-works' || path.startsWith('/how-it-works/')) {
+      rewritePath = '/djdash/how-it-works';
+    } else if (path === '/signup' || path.startsWith('/signup/')) {
+      rewritePath = '/djdash/signup';
+    } else if (path === '/use-cases' || path.startsWith('/use-cases/')) {
+      rewritePath = '/djdash/use-cases';
+    }
+
+    // Update session and add headers
+    const response = await updateSession(request);
+    
+    if (rewritePath) {
+      // Rewrite to the marketing route
+      url.pathname = rewritePath;
+      const rewriteResponse = NextResponse.rewrite(url);
+      rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+      rewriteResponse.headers.set('x-product', 'djdash');
+      // Copy session headers from updateSession
+      response.headers.forEach((value, key) => {
+        if (key.startsWith('x-') || key === 'set-cookie') {
+          rewriteResponse.headers.set(key, value);
+        }
+      });
+      return rewriteResponse;
+    }
+    
+    // For other paths, let Next.js handle routing normally but set product header
+    response.headers.set('x-pathname', url.pathname);
+    response.headers.set('x-product', 'djdash');
+    return response;
+  }
+  
+  // Extract subdomain (e.g., "m10dj" from "m10dj.yourdomain.com")
+  const subdomain = hostname.split('.')[0];
+  const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'm10djcompany.com';
+  const mainDomainLower = mainDomain.toLowerCase();
+  
+  // Skip subdomain routing for:
+  // - Main domain (m10djcompany.com uses Pages Router)
+  // - www subdomain
+  // - Explicitly exclude main domain from marketing routing
+  const isMainDomain = hostnameLower === mainDomainLower || 
+                       hostnameLower === `www.${mainDomainLower}` ||
+                       hostnameLower.endsWith(`.${mainDomainLower}`);
+  
+  // If this is the main domain, let Pages Router handle it (pages/index.js)
+  // Make sure we're not matching tipjar or djdash domains
+  if (isMainDomain && !isTipJarDomain && !isDJDashDomain) {
+    const response = await updateSession(request);
+    response.headers.set('x-pathname', request.nextUrl.pathname);
+    return response;
+  }
+  
+  // Handle subdomain routing for organizations
+  if (!isMainDomain && subdomain && subdomain !== 'www') {
     // Check if subdomain matches an organization slug
     try {
       // Skip lookup for localhost/development

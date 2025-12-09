@@ -24,6 +24,15 @@
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
     --radius: 0.5rem;
+    
+    /* TipJar Color Palette */
+    --tipjar-primary-500: 271 81% 56%; /* #7C3AED */
+    --tipjar-primary-600: 271 76% 53%; /* #6D28D9 */
+    --tipjar-primary-700: 271 70% 50%; /* #5B21B6 */
+    --tipjar-accent-500: 330 81% 60%; /* #EC4899 */
+    --tipjar-success-500: 160 84% 39%; /* #10B981 */
+    --tipjar-gray-50: 0 0% 98%; /* #FAFAFA */
+    --tipjar-gray-900: 0 0% 7%; /* #111111 */
   }
 
   .dark {
@@ -46,6 +55,33 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
+    
+    /* TipJar Color Palette - Dark Mode */
+    --tipjar-primary-500: 271 81% 56%;
+    --tipjar-primary-600: 271 76% 53%;
+    --tipjar-primary-700: 271 70% 50%;
+    --tipjar-accent-500: 330 81% 60%;
+    --tipjar-success-500: 160 84% 39%;
+    --tipjar-gray-50: 0 0% 7%;
+    --tipjar-gray-900: 0 0% 98%;
+    
+    /* DJDash Color Palette - Dark Mode */
+    --djdash-primary-500: 217 91% 60%;
+    --djdash-primary-600: 217 91% 50%;
+    --djdash-primary-700: 217 91% 45%;
+    --djdash-accent-500: 142 71% 45%;
+    --djdash-neutral-50: 0 0% 7%;
+    --djdash-neutral-900: 0 0% 98%;
+  }
+  
+  /* DJDash Color Palette - Light Mode */
+  :root {
+    --djdash-primary-500: 217 91% 60%; /* #3B82F6 */
+    --djdash-primary-600: 217 91% 50%; /* #2563EB */
+    --djdash-primary-700: 217 91% 45%; /* #1D4ED8 */
+    --djdash-accent-500: 142 71% 45%; /* #10B981 */
+    --djdash-neutral-50: 0 0% 98%; /* #FAFAFA */
+    --djdash-neutral-900: 0 0% 7%; /* #111827 */
   }
 }
 
@@ -73,5 +109,70 @@
 @layer utilities {
   .animate-fadeIn {
     animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  /* TipJar gradient backgrounds */
+  .bg-tipjar-gradient {
+    background: linear-gradient(135deg, #111111 0%, #1A0B2E 100%);
+  }
+  
+  .bg-tipjar-gradient-light {
+    background: linear-gradient(135deg, #FAFAFA 0%, #F3F4F6 100%);
+  }
+  
+  .bg-tipjar-cta-gradient {
+    background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+  }
+  
+  /* Particle animation for hero */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  /* DJDash Typography */
+  .font-inter {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  .text-djdash-heading {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+  
+  .text-djdash-body {
+    font-weight: 400;
+    line-height: 1.75;
+  }
+  
+  .text-djdash-cta {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  /* DJDash Gradient Backgrounds */
+  .bg-djdash-hero {
+    background: linear-gradient(to bottom, #FAFAFA 0%, #E0F2FE 100%);
+  }
+  
+  .dark .bg-djdash-hero {
+    background: linear-gradient(to bottom, #111827 0%, #1e293b 100%);
+  }
+  
+  .bg-djdash-cta {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  }
+  
+  .bg-djdash-stats {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
   }
 }

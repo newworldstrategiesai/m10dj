@@ -10,6 +10,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCurrentOrganization, Organization } from '@/utils/organization-context';
 import { CreditCard, CheckCircle, AlertCircle, ArrowRight, Loader2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import BankAccountCollection from './BankAccountCollection';
 
 interface ConnectStatus {
   hasAccount: boolean;
@@ -86,9 +87,19 @@ export default function StripeConnectSetup() {
     }
   };
 
+  const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<{
+    isPlatformProfileError?: boolean;
+    cannotCreateAccounts?: boolean;
+    helpUrl?: string;
+    isTestMode?: boolean;
+  } | null>(null);
+
   const handleSetup = async () => {
     try {
       setSettingUp(true);
+      setError(null);
+      setErrorDetails(null);
 
       // First, create the account if it doesn't exist
       if (!connectStatus?.hasAccount) {
@@ -97,16 +108,41 @@ export default function StripeConnectSetup() {
         });
 
         if (!createResponse.ok) {
-          const error = await createResponse.json();
-          throw new Error(error.error || 'Failed to create Stripe account');
+          const errorData = await createResponse.json();
+          const errorMessage = errorData.details || errorData.error || 'Failed to create Stripe account';
+          
+          // Check if it's a "cannot create accounts" error (most critical)
+          const cannotCreateAccounts = errorData.cannotCreateAccounts || 
+            errorMessage.toLowerCase().includes('cannot currently create connected accounts') ||
+            errorMessage.toLowerCase().includes('cannot create connected accounts');
+          
+          // Check if it's a platform verification error
+          const isPlatformProfileError = errorData.isPlatformProfileError || 
+            errorMessage.includes('verify your identity') ||
+            errorMessage.includes('platform profile') ||
+            errorMessage.includes('complete verification');
+          
+          if (cannotCreateAccounts || isPlatformProfileError) {
+            setError(errorMessage);
+            setErrorDetails({
+              isPlatformProfileError: isPlatformProfileError,
+              cannotCreateAccounts: cannotCreateAccounts,
+              helpUrl: errorData.helpUrl || 'https://support.stripe.com/contact',
+              isTestMode: errorData.isTestMode || false,
+            });
+            setSettingUp(false);
+            return;
+          }
+          
+          throw new Error(errorMessage);
         }
       }
 
       // Then get the onboarding link
       const linkResponse = await fetch('/api/stripe-connect/onboarding-link');
       if (!linkResponse.ok) {
-        const error = await linkResponse.json();
-        throw new Error(error.error || 'Failed to get onboarding link');
+        const errorData = await linkResponse.json();
+        throw new Error(errorData.error || 'Failed to get onboarding link');
       }
 
       const data = await linkResponse.json();
@@ -117,7 +153,7 @@ export default function StripeConnectSetup() {
       }
     } catch (error: any) {
       console.error('Error setting up Stripe Connect:', error);
-      alert(error.message || 'Failed to start setup. Please try again.');
+      setError(error.message || 'Failed to start setup. Please try again.');
     } finally {
       setSettingUp(false);
     }
@@ -166,33 +202,182 @@ export default function StripeConnectSetup() {
 
   // If account exists but not complete, show completion prompt
   if (connectStatus.hasAccount && !connectStatus.isComplete) {
+    // If charges are enabled but payouts aren't, offer Financial Connections for bank account
+    const needsBankAccount = connectStatus.chargesEnabled && !connectStatus.payoutsEnabled;
+    
     return (
-      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6">
+      <div className="space-y-4">
+        {needsBankAccount ? (
+          <>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="bg-blue-100 dark:bg-blue-900/50 rounded-lg p-3 flex-shrink-0">
+                  <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                    Link Your Bank Account
+                  </h3>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Your payment account is ready! Link your bank account to start receiving automatic payouts.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <BankAccountCollection
+              onSuccess={() => {
+                // Reload status after successful bank account linking
+                loadStatus();
+              }}
+              onError={(errorMessage) => {
+                setError(errorMessage);
+              }}
+            />
+            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                <strong>Alternative:</strong> You can also complete the full Stripe onboarding process if you prefer.
+              </p>
+              <Button
+                onClick={handleSetup}
+                disabled={settingUp}
+                variant="outline"
+                className="w-full border-gray-300 dark:border-gray-700"
+              >
+                {settingUp ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Complete Full Onboarding <ExternalLink className="h-4 w-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <div className="bg-yellow-100 dark:bg-yellow-900/50 rounded-lg p-3 flex-shrink-0">
+                <AlertCircle className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                  Complete Payment Setup
+                </h3>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                  Your Stripe account is created but needs to be activated. Complete the onboarding process to start receiving payments.
+                </p>
+                <Button
+                  onClick={handleSetup}
+                  disabled={settingUp}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                >
+                  {settingUp ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      Complete Setup <ArrowRight className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // If there's an error (especially platform verification or cannot create accounts), show it
+  if (error && errorDetails && (errorDetails.isPlatformProfileError || errorDetails.cannotCreateAccounts)) {
+    const isCannotCreateError = errorDetails.cannotCreateAccounts;
+    
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6">
         <div className="flex items-start gap-4">
-          <div className="bg-yellow-100 dark:bg-yellow-900/50 rounded-lg p-3 flex-shrink-0">
-            <AlertCircle className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+          <div className="bg-red-100 dark:bg-red-900/50 rounded-lg p-3 flex-shrink-0">
+            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
-              Complete Payment Setup
+            <h3 className="font-semibold text-red-900 dark:text-red-100 mb-2">
+              {isCannotCreateError ? 'Stripe Connect Not Enabled' : 'Stripe Setup Required'}
             </h3>
-            <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
-              Your Stripe account is created but needs to be activated. Complete the onboarding process to start receiving payments.
+            <p className="text-sm text-red-800 dark:text-red-200 mb-4">
+              {error}
             </p>
+            
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+              {isCannotCreateError ? (
+                <>
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                    <strong>Critical Action Required:</strong> Your Stripe account needs to be enabled for Connect before DJs can set up automatic payouts. This is a one-time setup that requires contacting Stripe support.
+                  </p>
+                  <ol className="text-sm text-yellow-800 dark:text-yellow-200 space-y-2 list-decimal list-inside mb-3">
+                    <li>Click the button below to contact Stripe support</li>
+                    <li>Request to enable Stripe Connect for your account</li>
+                    <li>Complete any required verification or compliance steps</li>
+                    <li>Once enabled, return here and DJs can set up their accounts</li>
+                  </ol>
+                  {errorDetails.helpUrl && (
+                    <a
+                      href={errorDetails.helpUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-colors mb-3"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Contact Stripe Support
+                    </a>
+                  )}
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    💡 <strong>Note:</strong> Your request pages will continue to accept payments during this time. Payments will go to your platform account until Connect is enabled.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                    <strong>Action Required:</strong> Before creating Connect accounts, you need to complete Stripe's platform verification. This is a one-time setup that takes 2-3 minutes.
+                  </p>
+                  <ol className="text-sm text-yellow-800 dark:text-yellow-200 space-y-2 list-decimal list-inside mb-3">
+                    <li>Click the button below to open your Stripe Dashboard</li>
+                    <li>Complete the platform profile questionnaire and identity verification</li>
+                    <li>Return here and click "Try Again"</li>
+                  </ol>
+                  {errorDetails.helpUrl && (
+                    <a
+                      href={errorDetails.helpUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-colors mb-3"
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                      Open Stripe Dashboard {errorDetails.isTestMode ? '(Test Mode)' : '(Live Mode)'}
+                    </a>
+                  )}
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    💡 <strong>Note:</strong> You can skip this step for now and set up payments later. Your request page will still work without payment processing.
+                  </p>
+                </>
+              )}
+            </div>
+            
             <Button
               onClick={handleSetup}
               disabled={settingUp}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {settingUp ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Loading...
+                  Setting Up...
                 </>
               ) : (
-                <>
-                  Complete Setup <ArrowRight className="h-4 w-4 ml-2" />
-                </>
+                'Try Again'
               )}
             </Button>
           </div>
@@ -216,6 +401,11 @@ export default function StripeConnectSetup() {
             Connect your Stripe account to automatically receive payments from song requests and shoutouts. 
             Payments are deposited directly to your bank account with a small platform fee (3.5% + $0.30).
           </p>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               onClick={handleSetup}

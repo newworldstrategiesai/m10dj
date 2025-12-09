@@ -22,6 +22,7 @@ export default function StripeConnectSetup({ organizationId, onComplete }: Strip
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<{
     isPlatformProfileError?: boolean;
+    cannotCreateAccounts?: boolean;
     helpUrl?: string;
     isTestMode?: boolean;
   } | null>(null);
@@ -94,6 +95,11 @@ export default function StripeConnectSetup({ organizationId, onComplete }: Strip
         // Handle platform profile/verification errors with helpful message
         const errorMessage = errorData.details || errorData.error || 'Stripe setup required';
         
+        // Check if it's a "cannot create accounts" error (most critical)
+        const cannotCreateAccounts = errorData.cannotCreateAccounts || 
+            errorMessage.toLowerCase().includes('cannot currently create connected accounts') ||
+            errorMessage.toLowerCase().includes('cannot create connected accounts');
+        
         // Check if it's a platform verification error (multiple variations)
         const isVerificationError = errorMessage.includes('verify your identity') || 
             errorMessage.includes('verify identity') ||
@@ -102,10 +108,11 @@ export default function StripeConnectSetup({ organizationId, onComplete }: Strip
             errorMessage.includes('platform profile') ||
             errorData.isPlatformProfileError;
         
-        if (isVerificationError) {
+        if (cannotCreateAccounts || isVerificationError) {
           const error = new Error(errorMessage);
-          (error as any).helpUrl = errorData.helpUrl || 'https://dashboard.stripe.com/connect/accounts/overview';
-          (error as any).isPlatformProfileError = true;
+          (error as any).helpUrl = errorData.helpUrl || (cannotCreateAccounts ? 'https://support.stripe.com/contact' : 'https://dashboard.stripe.com/connect/accounts/overview');
+          (error as any).isPlatformProfileError = isVerificationError;
+          (error as any).cannotCreateAccounts = cannotCreateAccounts;
           (error as any).isTestMode = errorData.isTestMode;
           throw error;
         }
@@ -131,6 +138,7 @@ export default function StripeConnectSetup({ organizationId, onComplete }: Strip
       // Store additional error details for UI display
       setErrorDetails({
         isPlatformProfileError: err.isPlatformProfileError || false,
+        cannotCreateAccounts: err.cannotCreateAccounts || false,
         helpUrl: err.helpUrl || null,
         isTestMode: err.isTestMode || false,
       });
@@ -221,8 +229,9 @@ export default function StripeConnectSetup({ organizationId, onComplete }: Strip
   }
 
   if (status === 'error') {
-    // Check if this is a platform profile error
+    // Check if this is a platform profile error or cannot create accounts error
     const isPlatformProfileError = errorDetails?.isPlatformProfileError || false;
+    const cannotCreateAccounts = errorDetails?.cannotCreateAccounts || false;
     const helpUrl = errorDetails?.helpUrl;
     const isTestMode = errorDetails?.isTestMode || false;
     
@@ -231,37 +240,67 @@ export default function StripeConnectSetup({ organizationId, onComplete }: Strip
         <div className="flex items-center gap-3 mb-4">
           <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
           <h3 className="text-lg font-semibold text-red-900 dark:text-red-100">
-            {isPlatformProfileError ? 'Stripe Setup Required' : 'Setup Error'}
+            {cannotCreateAccounts ? 'Stripe Connect Not Enabled' : isPlatformProfileError ? 'Stripe Setup Required' : 'Setup Error'}
           </h3>
         </div>
         <p className="text-sm text-red-800 dark:text-red-200 mb-4">
           {error || 'An error occurred while setting up payment processing.'}
         </p>
         
-        {isPlatformProfileError && (
+        {(isPlatformProfileError || cannotCreateAccounts) && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
-              <strong>Action Required:</strong> Before creating Connect accounts, you need to complete Stripe's platform verification. This is a one-time setup that takes 2-3 minutes.
-            </p>
-            <ol className="text-sm text-yellow-800 dark:text-yellow-200 space-y-2 list-decimal list-inside mb-3">
-              <li>Click the button below to open your Stripe Dashboard</li>
-              <li>Complete the platform profile questionnaire and identity verification</li>
-              <li>Return here and click "Try Again"</li>
-            </ol>
-            {helpUrl && (
-              <a
-                href={helpUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-colors mb-3"
-              >
-                <ArrowRight className="w-4 h-4" />
-                Open Stripe Dashboard {isTestMode ? '(Test Mode)' : '(Live Mode)'}
-              </a>
+            {cannotCreateAccounts ? (
+              <>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                  <strong>Critical Action Required:</strong> Your Stripe account needs to be enabled for Connect before DJs can set up automatic payouts. This is a one-time setup that requires contacting Stripe support.
+                </p>
+                <ol className="text-sm text-yellow-800 dark:text-yellow-200 space-y-2 list-decimal list-inside mb-3">
+                  <li>Click the button below to contact Stripe support</li>
+                  <li>Request to enable Stripe Connect for your account</li>
+                  <li>Complete any required verification or compliance steps</li>
+                  <li>Once enabled, return here and DJs can set up their accounts</li>
+                </ol>
+                {helpUrl && (
+                  <a
+                    href={helpUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-colors mb-3"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    Contact Stripe Support
+                  </a>
+                )}
+                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                  💡 <strong>Note:</strong> Your request pages will continue to accept payments during this time. Payments will go to your platform account until Connect is enabled.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                  <strong>Action Required:</strong> Before creating Connect accounts, you need to complete Stripe's platform verification. This is a one-time setup that takes 2-3 minutes.
+                </p>
+                <ol className="text-sm text-yellow-800 dark:text-yellow-200 space-y-2 list-decimal list-inside mb-3">
+                  <li>Click the button below to open your Stripe Dashboard</li>
+                  <li>Complete the platform profile questionnaire and identity verification</li>
+                  <li>Return here and click "Try Again"</li>
+                </ol>
+                {helpUrl && (
+                  <a
+                    href={helpUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-colors mb-3"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    Open Stripe Dashboard {isTestMode ? '(Test Mode)' : '(Live Mode)'}
+                  </a>
+                )}
+                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                  💡 <strong>Note:</strong> You can skip this step for now and set up payments later. Your request page will still work without payment processing.
+                </p>
+              </>
             )}
-            <p className="text-xs text-yellow-700 dark:text-yellow-300">
-              💡 <strong>Note:</strong> You can skip this step for now and set up payments later. Your request page will still work without payment processing.
-            </p>
           </div>
         )}
         

@@ -25,6 +25,88 @@ export interface FeatureGateResult {
 }
 
 /**
+ * Check if organization can create a new contact
+ * Starter: 50 contacts/month
+ * Professional/Enterprise: Unlimited
+ */
+export async function canCreateContact(
+  supabase: SupabaseClient,
+  org: Organization
+): Promise<SubscriptionLimit> {
+  // Check subscription status
+  if (org.subscription_status !== 'active' && org.subscription_status !== 'trial') {
+    return {
+      allowed: false,
+      limit: 0,
+      current: 0,
+      message: `Your subscription is ${org.subscription_status}. Please update your subscription to create contacts.`,
+    };
+  }
+
+  // Check if trial expired
+  if (org.subscription_status === 'trial' && org.trial_ends_at) {
+    const trialEnd = new Date(org.trial_ends_at);
+    if (trialEnd < new Date()) {
+      return {
+        allowed: false,
+        limit: 0,
+        current: 0,
+        message: 'Your trial has expired. Please upgrade to continue creating contacts.',
+      };
+    }
+  }
+
+  // Professional and Enterprise have unlimited contacts
+  if (org.subscription_tier === 'professional' || org.subscription_tier === 'enterprise') {
+    return {
+      allowed: true,
+      limit: -1, // Unlimited
+      current: 0,
+    };
+  }
+
+  // Starter tier: 50 contacts per month
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const { count, error } = await supabase
+    .from('contacts')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', org.id)
+    .is('deleted_at', null)
+    .gte('created_at', startOfMonth.toISOString());
+
+  if (error) {
+    console.error('Error checking contact limit:', error);
+    // FAIL CLOSED - Deny access if we can't verify limits (security first)
+    return {
+      allowed: false,
+      limit: 50,
+      current: 0,
+      message: 'Unable to verify subscription limits. Please try again or contact support.',
+    };
+  }
+
+  const current = count || 0;
+  const limit = 50; // Starter tier limit
+
+  if (current >= limit) {
+    return {
+      allowed: false,
+      limit,
+      current,
+      message: `You've reached your monthly contact limit (${limit}). Upgrade to Professional for unlimited contacts.`,
+    };
+  }
+
+  return {
+    allowed: true,
+    limit,
+    current,
+  };
+}
+
+/**
  * Check if organization can create a new event
  * Starter: 5 events/month
  * Professional/Enterprise: Unlimited
@@ -242,6 +324,8 @@ export async function getUsageStats(
 ): Promise<{
   eventsThisMonth: number;
   eventsLimit: number; // -1 for unlimited
+  contactsThisMonth: number;
+  contactsLimit: number; // -1 for unlimited
   smsSentThisMonth?: number;
   teamMembersCount?: number;
   teamMembersLimit?: number; // -1 for unlimited
@@ -277,9 +361,22 @@ export async function getUsageStats(
   // TODO: Count SMS messages sent this month
   // This would require tracking SMS usage in a separate table
 
+  // Count contacts this month
+  const { count: contactsCount } = await supabase
+    .from('contacts')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', org.id)
+    .is('deleted_at', null)
+    .gte('created_at', startOfMonth.toISOString());
+
+  // Determine contact limits based on tier
+  const contactsLimit = (org.subscription_tier === 'professional' || org.subscription_tier === 'enterprise') ? -1 : 50;
+
   return {
     eventsThisMonth: eventsCount || 0,
     eventsLimit,
+    contactsThisMonth: contactsCount || 0,
+    contactsLimit,
     teamMembersCount,
     teamMembersLimit,
   };

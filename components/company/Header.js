@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Phone, Mail, Menu, X, ChevronDown, MapPin, FileText, Calendar, CreditCard, Music, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2 } from 'lucide-react';
+import { Phone, Mail, Menu, X, ChevronDown, MapPin, FileText, Calendar, CreditCard, Music, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2, Users, Settings, DollarSign } from 'lucide-react';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackContactAction, trackLead, trackServiceInterest } from '../EnhancedTracking';
 import { scrollToContact } from '../../utils/scroll-helpers';
@@ -637,13 +637,18 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                 {/* Owner Navigation - Show on requests page if user is owner */}
                 {isRequestsPage && isOwner && (
                   <div className="space-y-1">
+                    <div className="px-4 py-2 mb-2">
+                      <p className={`text-xs font-semibold uppercase tracking-wider ${shouldBeTransparent && !isScrolled ? 'text-yellow-300/80' : 'text-brand/80'}`}>
+                        Admin Menu
+                      </p>
+                    </div>
                     <Link 
                       href={`/admin/crowd-requests${organizationId ? `?org=${organizationId}` : ''}`}
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       <Music className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
-                      <span className="font-medium">View Song Requests</span>
+                      <span className="font-medium">Song Requests</span>
                     </Link>
                     <Link 
                       href={`/admin/requests-page${organizationId ? `?org=${organizationId}` : ''}`}
@@ -660,6 +665,55 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     >
                       <Calendar className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
                       <span className="font-medium">Dashboard</span>
+                    </Link>
+                    <Link 
+                      href="/admin/contacts"
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Users className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <span className="font-medium">Contacts</span>
+                    </Link>
+                    <Link 
+                      href="/admin/contracts"
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <FileText className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <span className="font-medium">Contracts</span>
+                    </Link>
+                    <Link 
+                      href="/admin/invoices"
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <CreditCard className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <span className="font-medium">Invoices</span>
+                    </Link>
+                    <Link 
+                      href="/admin/projects"
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Calendar className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <span className="font-medium">Projects</span>
+                    </Link>
+                    <Link 
+                      href="/admin/payouts"
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <DollarSign className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <span className="font-medium">Payouts</span>
+                    </Link>
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                    <Link 
+                      href="/account"
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Settings className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <span className="font-medium">Account Settings</span>
                     </Link>
                   </div>
                 )}

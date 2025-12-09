@@ -96,6 +96,23 @@ export default function ProjectsDashboard() {
       router.push('/signin');
       return;
     }
+
+    // Check subscription access for projects feature
+    const { isPlatformAdmin } = await import('@/utils/auth-helpers/platform-admin');
+    const { canAccessAdminPage } = await import('@/utils/subscription-access');
+    
+    const isAdmin = isPlatformAdmin(user.email);
+    
+    if (!isAdmin) {
+      const access = await canAccessAdminPage(supabase, user.email, 'projects');
+      
+      if (!access.canAccess) {
+        // Redirect to starter dashboard with upgrade prompt
+        router.push('/admin/dashboard-starter');
+        return;
+      }
+    }
+
     setUser(user);
   };
 

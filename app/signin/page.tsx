@@ -1,18 +1,28 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getDefaultSignInView } from '@/utils/auth-helpers/settings';
-import { cookies } from 'next/headers';
 
-export default function SignIn() {
-  const preferredSignInView =
-    cookies().get('preferredSignInView')?.value || null;
-  const defaultView = getDefaultSignInView(preferredSignInView);
-
-  if (!defaultView) {
-    // Fallback to password_signin if something goes wrong
-    redirect('/signin/password_signin');
+export default async function SignIn({
+  searchParams
+}: {
+  searchParams?: { redirect?: string };
+}) {
+  // Get preferred sign in view from cookies (server-side)
+  let preferredSignInView: string | null = null;
+  try {
+    preferredSignInView = cookies().get('preferredSignInView')?.value || null;
+  } catch (cookieError) {
+    // If cookies() fails, use default
+    preferredSignInView = null;
   }
-
-  // Note: redirect() throws a NEXT_REDIRECT error which is expected behavior
-  // Do not catch this error - let it propagate so Next.js can handle the redirect
-  redirect(`/signin/${defaultView}`);
+  
+  const defaultView = getDefaultSignInView(preferredSignInView);
+  
+  // Preserve redirect query parameter when redirecting to view-specific page
+  const redirectParam = searchParams?.redirect 
+    ? `?redirect=${encodeURIComponent(searchParams.redirect)}` 
+    : '';
+  
+  // Server-side redirect (immediate, no loading state needed)
+  redirect(`/signin/${defaultView}${redirectParam}`);
 }

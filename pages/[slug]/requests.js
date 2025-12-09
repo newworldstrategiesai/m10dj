@@ -23,6 +23,7 @@ export default function OrganizationRequestsPage() {
   const [branding, setBranding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     async function loadOrganization(forceRefresh = false) {
@@ -73,6 +74,20 @@ export default function OrganizationRequestsPage() {
         // Force update by creating a new object reference
         const freshOrg = { ...org };
         setOrganization(freshOrg);
+        
+        // Check if logged-in user is the owner
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user && freshOrg.owner_id === user.id) {
+            setIsOwner(true);
+            console.log('✅ [SLUG/REQUESTS] User is owner of organization');
+          } else {
+            setIsOwner(false);
+          }
+        } catch (authError) {
+          // User not logged in or error - not owner
+          setIsOwner(false);
+        }
         
         console.log('✅ [SLUG/REQUESTS] Organization loaded:', {
           id: freshOrg.id,
@@ -127,6 +142,41 @@ export default function OrganizationRequestsPage() {
       window.removeEventListener('focus', handleFocus);
     };
   }, [slug, supabase]);
+
+  // Check owner status when auth state changes
+  useEffect(() => {
+    if (!organization) return;
+
+    async function checkOwnerStatus() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && organization.owner_id === user.id) {
+          setIsOwner(true);
+        } else {
+          setIsOwner(false);
+        }
+      } catch (authError) {
+        setIsOwner(false);
+      }
+    }
+
+    checkOwnerStatus();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (organization) {
+        if (session?.user && organization.owner_id === session.user.id) {
+          setIsOwner(true);
+        } else {
+          setIsOwner(false);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [organization, supabase]);
 
   // Debug: Log when component renders
   useEffect(() => {
@@ -265,6 +315,7 @@ export default function OrganizationRequestsPage() {
         organizationCoverPhoto={getCoverPhotoUrl(organization, '/assets/DJ-Ben-Murray-Dodge-Poster.png')}
         organizationData={organization}
         embedMode={false}
+        isOwner={isOwner}
         customBranding={hasBranding ? {
           logoUrl: branding.customLogoUrl,
           faviconUrl: branding.customFaviconUrl,

@@ -34,8 +34,15 @@ export default async function SignIn({
   if (params?.id && typeof params.id === 'string' && viewTypes.includes(params.id)) {
     viewProp = params.id;
   } else {
-    const preferredSignInView =
-      cookies().get('preferredSignInView')?.value || null;
+    // Safely get preferred sign in view from cookies
+    let preferredSignInView: string | null = null;
+    try {
+      preferredSignInView = cookies().get('preferredSignInView')?.value || null;
+    } catch (cookieError) {
+      // If cookies() fails (e.g., in some browser contexts), use default
+      console.warn('Could not read cookies, using default sign in view:', cookieError);
+      preferredSignInView = null;
+    }
     viewProp = getDefaultSignInView(preferredSignInView);
     // Preserve redirect query parameter when redirecting to view-specific page
     const redirectParam = searchParams?.redirect 
@@ -49,21 +56,31 @@ export default async function SignIn({
   try {
     const supabase = createClient();
     
-    // Add timeout to prevent hanging on getUser()
-    const getUserPromise = supabase.auth.getUser();
+    // Add timeout to prevent hanging on getUser() - reduced timeout for faster failure
+    // This helps with browsers that may have different cookie/session handling
+    const getUserPromise = supabase.auth.getUser().catch((err) => {
+      // Catch any errors from getUser() and return them as part of the result
+      return { data: { user: null }, error: err };
+    });
+    
     const timeoutPromise = new Promise<{ data: { user: null }, error: { message: string } }>((resolve) => 
-      setTimeout(() => resolve({ data: { user: null }, error: { message: 'Timeout' } }), 3000)
+      setTimeout(() => resolve({ data: { user: null }, error: { message: 'Timeout' } }), 2000)
     );
+    
+    const result = await Promise.race([getUserPromise, timeoutPromise]);
     
     const {
       data: { user: authUser },
       error
-    } = await Promise.race([getUserPromise, timeoutPromise]);
+    } = result || { data: { user: null }, error: null };
     
     // If we get a refresh token error, ignore it and continue to sign in page
-    if (error && (error.message.includes('refresh_token_not_found') || error.message.includes('Invalid Refresh Token') || error.message === 'Timeout')) {
+    if (error && (error?.message?.includes('refresh_token_not_found') || 
+                  error?.message?.includes('Invalid Refresh Token') || 
+                  error?.message === 'Timeout' ||
+                  !error)) {
       // Clear invalid session and continue to sign in (only if not timeout)
-      if (error.message !== 'Timeout') {
+      if (error?.message && error.message !== 'Timeout') {
         try {
           await supabase.auth.signOut();
         } catch (signOutError) {
