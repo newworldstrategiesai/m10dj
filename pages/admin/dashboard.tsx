@@ -3,6 +3,8 @@
  * Comprehensive overview with real-time data, upcoming events, financial stats, and quick actions
  */
 
+'use client';
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -345,14 +347,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <AdminLayout title="Dashboard" description="M10 DJ Company Admin Dashboard">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 dark:border-gray-700 mx-auto mb-6"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-[#fcba00] absolute top-0 left-1/2 -translate-x-1/2"></div>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 font-medium">Loading your dashboard...</p>
+          </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
@@ -362,99 +376,204 @@ export default function AdminDashboard() {
         {/* Stripe Connect Requirement Banner */}
         <StripeConnectRequirementBanner organization={organization} className="mb-6" />
         
-        {/* Page Header with Refresh */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-sm text-gray-600 mt-1">Welcome back, {user?.email?.split('@')[0] || 'Admin'}</p>
+        {/* Epic Hero Section */}
+        <div className="relative mb-8 lg:mb-12 overflow-hidden rounded-2xl lg:rounded-3xl">
+          {/* Background with gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#fcba00] via-[#ffd700] to-[#fcba00] opacity-90 dark:opacity-80"></div>
+          <div className="absolute inset-0 opacity-20" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          }}></div>
+          
+          {/* Content */}
+          <div className="relative px-6 lg:px-12 py-8 lg:py-16">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <Music className="h-6 w-6 lg:h-8 lg:w-8 text-black dark:text-white opacity-90" />
+                  <span className="text-sm lg:text-base font-semibold text-black dark:text-white opacity-90 uppercase tracking-wider">
+                    M10 DJ Company
+                  </span>
+                </div>
+                <h1 className="text-3xl lg:text-5xl xl:text-6xl font-bold text-black dark:text-white mb-3 leading-tight">
+                  {getGreeting()},<br />
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-black via-gray-900 to-black dark:from-white dark:via-gray-100 dark:to-white">
+                    {user?.email?.split('@')[0] || 'DJ'}
+                  </span>
+                </h1>
+                <p className="text-base lg:text-lg text-black dark:text-white opacity-80 max-w-2xl">
+                  Your command center for managing events, clients, and growing your DJ business.
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-100 border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-6 rounded-xl"
+                >
+                  <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
           </div>
-          <Button
-            onClick={handleRefresh}
-            variant="slim"
-            disabled={refreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
         </div>
-          {/* Stats Cards - Mobile Optimized: 2 cols on mobile, 4 on desktop */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
-            <Link href="/admin/contacts" className="block group">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 lg:p-6 text-white shadow-lg hover:shadow-xl transition-shadow min-h-[140px] lg:min-h-[160px]">
-                <div className="flex items-center justify-between mb-3 lg:mb-4">
-                  <Users className="h-6 w-6 lg:h-8 lg:w-8" />
-                  <TrendingUp className="h-4 w-4 lg:h-5 lg:w-5 opacity-75" />
-                </div>
-                <h3 className="text-xs lg:text-sm font-medium opacity-90 mb-1">Total Contacts</h3>
-                <p className="text-2xl lg:text-3xl font-bold mb-1">{stats?.totalContacts || 0}</p>
-                <p className="text-xs lg:text-sm opacity-75">{stats?.newLeads || 0} new</p>
-              </div>
-            </Link>
 
-            <Link href="/admin/projects" className="block group">
-              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 lg:p-6 text-white shadow-lg hover:shadow-xl transition-shadow min-h-[140px] lg:min-h-[160px]">
-                <div className="flex items-center justify-between mb-3 lg:mb-4">
-                  <Briefcase className="h-6 w-6 lg:h-8 lg:w-8" />
-                  <Clock className="h-4 w-4 lg:h-5 lg:w-5 opacity-75" />
-                </div>
-                <h3 className="text-xs lg:text-sm font-medium opacity-90 mb-1">Projects</h3>
-                <p className="text-2xl lg:text-3xl font-bold mb-1">{stats?.totalProjects || 0}</p>
-                <p className="text-xs lg:text-sm opacity-75">{stats?.upcomingEvents || 0} upcoming</p>
+        {/* Premium Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8 lg:mb-12">
+          <Link href="/admin/contacts" className="group">
+            <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+              {/* Accent bar */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500"></div>
+              
+              {/* Background pattern */}
+              <div className="absolute inset-0 opacity-5 dark:opacity-10">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 rounded-full blur-3xl"></div>
               </div>
-            </Link>
-
-            <Link href="/admin/financial" className="block group">
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 lg:p-6 text-white shadow-lg hover:shadow-xl transition-shadow min-h-[140px] lg:min-h-[160px]">
-                <div className="flex items-center justify-between mb-3 lg:mb-4">
-                  <DollarSign className="h-6 w-6 lg:h-8 lg:w-8" />
-                  <CheckCircle className="h-4 w-4 lg:h-5 lg:w-5 opacity-75" />
+              
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                    <Users className="h-6 w-6 lg:h-7 lg:w-7 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <TrendingUp className="h-5 w-5 text-blue-400 dark:text-blue-500 opacity-60" />
                 </div>
-                <h3 className="text-xs lg:text-sm font-medium opacity-90 mb-1">Revenue</h3>
-                <p className="text-xl lg:text-3xl font-bold mb-1 truncate">{formatCurrency(stats?.thisMonthRevenue || 0)}</p>
-                <p className="text-xs lg:text-sm opacity-75 truncate">{formatCurrency(stats?.totalRevenue || 0)} total</p>
+                <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                  Total Contacts
+                </h3>
+                <p className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-1">
+                  {stats?.totalContacts || 0}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                  {stats?.newLeads || 0} new leads
+                </p>
               </div>
-            </Link>
+            </div>
+          </Link>
 
-            <Link href="/admin/invoices" className="block group">
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 lg:p-6 text-white shadow-lg hover:shadow-xl transition-shadow min-h-[140px] lg:min-h-[160px]">
-                <div className="flex items-center justify-between mb-3 lg:mb-4">
-                  <AlertCircle className="h-6 w-6 lg:h-8 lg:w-8" />
+          <Link href="/admin/projects" className="group">
+            <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-500"></div>
+              <div className="absolute inset-0 opacity-5 dark:opacity-10">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500 rounded-full blur-3xl"></div>
+              </div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
+                    <Briefcase className="h-6 w-6 lg:h-7 lg:w-7 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <Clock className="h-5 w-5 text-purple-400 dark:text-purple-500 opacity-60" />
                 </div>
-                <h3 className="text-xs lg:text-sm font-medium opacity-90 mb-1">Outstanding</h3>
-                <p className="text-xl lg:text-3xl font-bold mb-1 truncate">{formatCurrency(stats?.outstandingBalance || 0)}</p>
-                <p className="text-xs lg:text-sm opacity-75">Pending</p>
+                <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                  Projects
+                </h3>
+                <p className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-1">
+                  {stats?.totalProjects || 0}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {stats?.upcomingEvents || 0} upcoming
+                </p>
               </div>
-            </Link>
-          </div>
+            </div>
+          </Link>
 
-          {/* Quick Actions - Mobile Optimized */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 mb-6 lg:mb-8">
-            <h2 className="text-base lg:text-lg font-bold text-gray-900 mb-3 lg:mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
-              <Link href="/admin/contacts" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors min-h-[80px] lg:min-h-0">
-                <Users className="h-6 w-6 lg:h-5 lg:w-5 text-blue-600 flex-shrink-0" />
-                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Contacts</span>
+          <Link href="/admin/financial" className="group">
+            <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-500"></div>
+              <div className="absolute inset-0 opacity-5 dark:opacity-10">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 rounded-full blur-3xl"></div>
+              </div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl">
+                    <DollarSign className="h-6 w-6 lg:h-7 lg:w-7 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <CheckCircle className="h-5 w-5 text-emerald-400 dark:text-emerald-500 opacity-60" />
+                </div>
+                <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                  This Month
+                </h3>
+                <p className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-1 truncate">
+                  {formatCurrency(stats?.thisMonthRevenue || 0)}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                  {formatCurrency(stats?.totalRevenue || 0)} total
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/admin/invoices" className="group">
+            <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500"></div>
+              <div className="absolute inset-0 opacity-5 dark:opacity-10">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500 rounded-full blur-3xl"></div>
+              </div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
+                    <AlertCircle className="h-6 w-6 lg:h-7 lg:w-7 text-amber-600 dark:text-amber-400" />
+                  </div>
+                </div>
+                <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                  Outstanding
+                </h3>
+                <p className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-1 truncate">
+                  {formatCurrency(stats?.outstandingBalance || 0)}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Pending payment
+                </p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+          {/* Quick Actions - Premium Design */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8 mb-8 lg:mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-1">Quick Actions</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Jump to your most-used features</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              <Link href="/admin/contacts" className="group flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:shadow-md">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-xl group-hover:scale-110 transition-transform">
+                  <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white text-center">Contacts</span>
               </Link>
-              <Link href="/admin/projects" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-colors min-h-[80px] lg:min-h-0">
-                <Briefcase className="h-6 w-6 lg:h-5 lg:w-5 text-purple-600 flex-shrink-0" />
-                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Projects</span>
+              <Link href="/admin/projects" className="group flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 hover:shadow-md">
+                <div className="p-3 bg-purple-100 dark:bg-purple-900/40 rounded-xl group-hover:scale-110 transition-transform">
+                  <Briefcase className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white text-center">Projects</span>
               </Link>
-              <Link href="/admin/invoices" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-colors min-h-[80px] lg:min-h-0">
-                <FileText className="h-6 w-6 lg:h-5 lg:w-5 text-green-600 flex-shrink-0" />
-                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Invoices</span>
+              <Link href="/admin/invoices" className="group flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all duration-200 hover:shadow-md">
+                <div className="p-3 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl group-hover:scale-110 transition-transform">
+                  <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white text-center">Invoices</span>
               </Link>
-              <Link href="/admin/financial" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-orange-500 hover:bg-orange-50 transition-colors min-h-[80px] lg:min-h-0">
-                <BarChart3 className="h-6 w-6 lg:h-5 lg:w-5 text-orange-600 flex-shrink-0" />
-                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Financial</span>
+              <Link href="/admin/financial" className="group flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-amber-500 dark:hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all duration-200 hover:shadow-md">
+                <div className="p-3 bg-amber-100 dark:bg-amber-900/40 rounded-xl group-hover:scale-110 transition-transform">
+                  <BarChart3 className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white text-center">Financial</span>
               </Link>
-              <Link href="#analytics" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-colors min-h-[80px] lg:min-h-0">
-                <BarChart3 className="h-6 w-6 lg:h-5 lg:w-5 text-indigo-600 flex-shrink-0" />
-                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Analytics</span>
+              <Link href="#analytics" className="group flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all duration-200 hover:shadow-md">
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl group-hover:scale-110 transition-transform">
+                  <BarChart3 className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white text-center">Analytics</span>
               </Link>
-              <Link href="/admin/instagram" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-pink-500 hover:bg-pink-50 transition-colors min-h-[80px] lg:min-h-0">
-                <Music className="h-6 w-6 lg:h-5 lg:w-5 text-pink-600 flex-shrink-0" />
-                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Social</span>
+              <Link href="/admin/instagram" className="group flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-pink-500 dark:hover:border-pink-500 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-all duration-200 hover:shadow-md">
+                <div className="p-3 bg-pink-100 dark:bg-pink-900/40 rounded-xl group-hover:scale-110 transition-transform">
+                  <Music className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white text-center">Social</span>
               </Link>
             </div>
           </div>
@@ -469,49 +588,63 @@ export default function AdminDashboard() {
             <AnalyticsDashboard />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8 lg:mb-12">
             {/* Upcoming Events */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-purple-600" />
-                  <h2 className="text-lg font-bold text-gray-900">Upcoming Events</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="p-6 lg:p-8 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-transparent dark:from-purple-900/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">Upcoming Events</h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Your next gigs</p>
+                    </div>
+                  </div>
+                  <Link href="/admin/projects" className="text-sm font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 flex items-center gap-1 transition-colors">
+                    View All <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
-                <Link href="/admin/projects" className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                  View All <ArrowRight className="h-4 w-4" />
-                </Link>
               </div>
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {upcomingEvents.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
-                    <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p>No upcoming events scheduled</p>
+                  <div className="p-12 text-center">
+                    <div className="inline-flex p-4 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+                      <Calendar className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium">No upcoming events scheduled</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">New bookings will appear here</p>
                   </div>
                 ) : (
-                  upcomingEvents.map(event => (
+                  upcomingEvents.map((event, index) => (
                     <Link
                       key={event.id}
                       href={`/admin/projects/${event.id}`}
-                      className="block p-4 hover:bg-gray-50 transition-colors"
+                      className="block p-5 lg:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900">{event.client_name}</p>
-                          <p className="text-sm text-gray-600 mt-1">{event.event_name}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              {formatDate(event.event_date)}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <p className="font-bold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors truncate">
+                              {event.client_name}
+                            </p>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-1">{event.event_name}</p>
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span className="font-medium">{formatDate(event.event_date)}</span>
                             </div>
                             {event.venue_name && (
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {event.venue_name}
+                              <div className="flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5" />
+                                <span className="truncate max-w-[150px]">{event.venue_name}</span>
                               </div>
                             )}
                           </div>
                         </div>
-                        <Badge className={getStatusColor(event.status)}>
+                        <Badge className={`${getStatusColor(event.status)} flex-shrink-0`}>
                           {event.status}
                         </Badge>
                       </div>
@@ -522,43 +655,57 @@ export default function AdminDashboard() {
             </div>
 
             {/* Recent Contacts */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-600" />
-                  <h2 className="text-lg font-bold text-gray-900">Recent Contacts</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="p-6 lg:p-8 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">Recent Contacts</h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Latest inquiries</p>
+                    </div>
+                  </div>
+                  <Link href="/admin/contacts" className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 transition-colors">
+                    View All <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
-                <Link href="/admin/contacts" className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                  View All <ArrowRight className="h-4 w-4" />
-                </Link>
               </div>
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {recentContacts.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
-                    <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p>No contacts yet</p>
+                  <div className="p-12 text-center">
+                    <div className="inline-flex p-4 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+                      <Users className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium">No contacts yet</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">New leads will appear here</p>
                   </div>
                 ) : (
                   recentContacts.map(contact => (
                     <Link
                       key={contact.id}
                       href={`/admin/contacts/${contact.id}`}
-                      className="block p-4 hover:bg-gray-50 transition-colors"
+                      className="block p-5 lg:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900">
-                            {contact.first_name} {contact.last_name}
-                          </p>
-                          <p className="text-sm text-gray-600 mt-1">{contact.email_address}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                            <span className="capitalize">{contact.event_type}</span>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <p className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                              {contact.first_name} {contact.last_name}
+                            </p>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 truncate">{contact.email_address}</p>
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="capitalize font-medium px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md">
+                              {contact.event_type}
+                            </span>
                             {contact.event_date && (
-                              <span>{formatDate(contact.event_date)}</span>
+                              <span className="font-medium">{formatDate(contact.event_date)}</span>
                             )}
                           </div>
                         </div>
-                        <Badge className={getStatusColor(contact.lead_status)}>
+                        <Badge className={`${getStatusColor(contact.lead_status)} flex-shrink-0`}>
                           {contact.lead_status}
                         </Badge>
                       </div>
@@ -571,33 +718,40 @@ export default function AdminDashboard() {
 
           {/* Recent Payments */}
           {recentPayments.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-green-600" />
-                  <h2 className="text-lg font-bold text-gray-900">Recent Payments</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="p-6 lg:p-8 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-transparent dark:from-emerald-900/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                      <CreditCard className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">Recent Payments</h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Latest transactions</p>
+                    </div>
+                  </div>
+                  <Link href="/admin/financial" className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1 transition-colors">
+                    View All <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
-                <Link href="/admin/financial" className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                  View All <ArrowRight className="h-4 w-4" />
-                </Link>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Client</th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Method</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Date</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Client</th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Method</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {recentPayments.map(payment => (
-                      <tr key={payment.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{payment.contact_name}</td>
-                        <td className="px-6 py-4 text-sm text-right font-semibold text-green-600">{formatCurrency(payment.amount)}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{payment.payment_method}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{formatDate(payment.payment_date)}</td>
+                      <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">{payment.contact_name}</td>
+                        <td className="px-6 py-4 text-sm text-right font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(payment.amount)}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{payment.payment_method}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{formatDate(payment.payment_date)}</td>
                       </tr>
                     ))}
                   </tbody>

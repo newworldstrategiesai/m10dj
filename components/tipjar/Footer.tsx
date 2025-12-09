@@ -59,22 +59,22 @@ export default function TipJarFooter() {
             <h3 className="font-semibold text-lg mb-4">Product</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/features" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/tipjar/features" className="text-gray-400 hover:text-white transition-colors">
                   Features
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/tipjar/pricing" className="text-gray-400 hover:text-white transition-colors">
                   Pricing
                 </Link>
               </li>
               <li>
-                <Link href="/how-it-works" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/tipjar/how-it-works" className="text-gray-400 hover:text-white transition-colors">
                   How It Works
                 </Link>
               </li>
               <li>
-                <Link href="/embed" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/tipjar/embed" className="text-gray-400 hover:text-white transition-colors">
                   Embed Guide
                 </Link>
               </li>

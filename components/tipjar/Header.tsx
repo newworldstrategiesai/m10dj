@@ -51,7 +51,7 @@ export default function TipJarHeader() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <Link
-              href="/features"
+              href="/tipjar/features"
               className={`font-medium transition-colors hover:text-purple-600 dark:hover:text-purple-400 ${
                 isScrolled
                   ? 'text-gray-700 dark:text-gray-300'
@@ -61,7 +61,7 @@ export default function TipJarHeader() {
               Features
             </Link>
             <Link
-              href="/pricing"
+              href="/tipjar/pricing"
               className={`font-medium transition-colors hover:text-purple-600 dark:hover:text-purple-400 ${
                 isScrolled
                   ? 'text-gray-700 dark:text-gray-300'
@@ -71,7 +71,7 @@ export default function TipJarHeader() {
               Pricing
             </Link>
             <Link
-              href="/how-it-works"
+              href="/tipjar/how-it-works"
               className={`font-medium transition-colors hover:text-purple-600 dark:hover:text-purple-400 ${
                 isScrolled
                   ? 'text-gray-700 dark:text-gray-300'
@@ -126,21 +126,21 @@ export default function TipJarHeader() {
           <div className="md:hidden py-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-col space-y-4">
               <Link
-                href="/features"
+                href="/tipjar/features"
                 className="font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Features
               </Link>
               <Link
-                href="/pricing"
+                href="/tipjar/pricing"
                 className="font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Pricing
               </Link>
               <Link
-                href="/how-it-works"
+                href="/tipjar/how-it-works"
                 className="font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
                 onClick={() => setIsMobileMenuOpen(false)}
               >

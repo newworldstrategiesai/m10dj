@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, X, ChevronDown } from 'lucide-react';
 
 export default function DJDashHeader() {
@@ -22,28 +23,35 @@ export default function DJDashHeader() {
   };
 
   const navLinks = [
-    { name: 'Features', href: '/features' },
-    { name: 'Pricing', href: '/pricing' },
-    { name: 'How It Works', href: '/how-it-works' },
-    { name: 'Use Cases', href: '/use-cases' },
+    { name: 'Features', href: '/djdash/features' },
+    { name: 'Pricing', href: '/djdash/pricing' },
+    { name: 'How It Works', href: '/djdash/how-it-works' },
+    { name: 'Use Cases', href: '/djdash/use-cases' },
   ];
 
   return (
     <header
       className={`fixed w-full top-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg border-b border-gray-200 dark:border-gray-800'
-          : 'bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm'
+          ? 'bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl shadow-lg border-b border-gray-200/50 dark:border-gray-800/50'
+          : 'bg-white/60 dark:bg-gray-950/60 backdrop-blur-xl'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">DJ</span>
+          <Link href="/" className="flex items-center space-x-3 group">
+            <div className="relative flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+              <Image
+                src="/assets/DJ-Dash-Logo-Black-1.PNG"
+                alt="DJ Dash Logo"
+                width={40}
+                height={40}
+                className="drop-shadow-lg"
+                priority
+              />
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">DJ Dash</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">DJ Dash</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -62,8 +70,8 @@ export default function DJDashHeader() {
           {/* CTA Button */}
           <div className="hidden md:flex items-center space-x-4">
             <Link
-              href="/signup"
-              className="bg-green-500 hover:bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold text-sm uppercase tracking-wider transition-colors"
+              href="/djdash/signup"
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
             >
               Start Free Trial
             </Link>
@@ -101,8 +109,8 @@ export default function DJDashHeader() {
             ))}
             <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
               <Link
-                href="/signup"
-                className="block bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold text-sm uppercase tracking-wider text-center transition-colors"
+                href="/djdash/signup"
+                className="block bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-3 rounded-xl font-semibold text-sm text-center shadow-lg transition-all duration-300"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Start Free Trial

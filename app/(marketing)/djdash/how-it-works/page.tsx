@@ -268,7 +268,7 @@ export default function HowItWorksPage() {
             </div>
           </div>
           <Link
-            href="/signup"
+            href="/djdash/signup"
             className="inline-flex items-center bg-white hover:bg-gray-100 text-green-600 px-8 py-4 rounded-lg font-semibold text-lg uppercase tracking-wider transition-colors"
           >
             Start Free Trial <ArrowRight className="ml-2 w-5 h-5" />

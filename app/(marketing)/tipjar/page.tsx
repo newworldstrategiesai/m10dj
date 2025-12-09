@@ -492,7 +492,7 @@ export default function TipJarHomePage() {
           </div>
           
           <div className="text-center">
-            <Link href="/pricing">
+            <Link href="/tipjar/pricing">
               <Button 
                 variant="outline"
                 className="border-2 border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-semibold px-8 py-6 text-lg"

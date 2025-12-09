@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Music } from 'lucide-react';
 
 export default function DJDashFooter() {
@@ -11,10 +12,13 @@ export default function DJDashFooter() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12">
           {/* Brand */}
           <div className="md:col-span-2">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">DJ</span>
-              </div>
+            <div className="flex items-center space-x-3 mb-4">
+              <Image
+                src="/assets/DJ-Dash-Logo-Black-1.PNG"
+                alt="DJ Dash Logo"
+                width={32}
+                height={32}
+              />
               <span className="text-xl font-bold text-white">DJ Dash</span>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed max-w-md">
@@ -27,22 +31,22 @@ export default function DJDashFooter() {
             <h4 className="font-semibold text-white mb-4">Product</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/features" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/djdash/features" className="text-gray-400 hover:text-white text-sm transition-colors">
                   Features
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/djdash/pricing" className="text-gray-400 hover:text-white text-sm transition-colors">
                   Pricing
                 </Link>
               </li>
               <li>
-                <Link href="/how-it-works" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/djdash/how-it-works" className="text-gray-400 hover:text-white text-sm transition-colors">
                   How It Works
                 </Link>
               </li>
               <li>
-                <Link href="/use-cases" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/djdash/use-cases" className="text-gray-400 hover:text-white text-sm transition-colors">
                   Use Cases
                 </Link>
               </li>
@@ -54,7 +58,7 @@ export default function DJDashFooter() {
             <h4 className="font-semibold text-white mb-4">Company</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/signup" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/djdash/signup" className="text-gray-400 hover:text-white text-sm transition-colors">
                   Start Free Trial
                 </Link>
               </li>

@@ -340,7 +340,7 @@ export default function UseCasesPage() {
             Join thousands of DJs who've streamlined their business with DJ Dash.
           </p>
           <Link
-            href="/signup"
+            href="/djdash/signup"
             className="inline-flex items-center bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-lg font-semibold text-lg uppercase tracking-wider transition-colors"
           >
             Start Free Trial <ArrowRight className="ml-2 w-5 h-5" />
