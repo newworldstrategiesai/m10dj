@@ -49,7 +49,11 @@ export default function PaymentStatus() {
       setOrganization(org);
 
       // Only fetch balance if Stripe Connect is set up
-      if (org.stripe_connect_account_id && org.stripe_connect_payouts_enabled) {
+      // Access optional fields with optional chaining
+      const hasConnectAccount = (org as any).stripe_connect_account_id;
+      const hasPayoutsEnabled = (org as any).stripe_connect_payouts_enabled;
+      
+      if (hasConnectAccount && hasPayoutsEnabled) {
         const response = await fetch('/api/stripe-connect/balance');
         if (response.ok) {
           const data = await response.json();
@@ -104,7 +108,11 @@ export default function PaymentStatus() {
   }
 
   // If no Stripe Connect account, don't show this component
-  if (!organization?.stripe_connect_account_id || !organization?.stripe_connect_payouts_enabled) {
+  // Access optional fields with type assertion
+  const hasConnectAccount = (organization as any)?.stripe_connect_account_id;
+  const hasPayoutsEnabled = (organization as any)?.stripe_connect_payouts_enabled;
+  
+  if (!hasConnectAccount || !hasPayoutsEnabled) {
     return null;
   }
 

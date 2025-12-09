@@ -44,10 +44,12 @@ export default function StripeConnectSetup() {
       setOrganization(org);
 
       // Check if organization has Stripe Connect account
-      const hasAccount = !!org.stripe_connect_account_id;
-      const chargesEnabled = org.stripe_connect_charges_enabled || false;
-      const payoutsEnabled = org.stripe_connect_payouts_enabled || false;
-      const detailsSubmitted = org.stripe_connect_details_submitted || false;
+      // Access optional fields with type assertion (fields exist in DB but may not be in type)
+      const orgData = org as any;
+      const hasAccount = !!orgData.stripe_connect_account_id;
+      const chargesEnabled = orgData.stripe_connect_charges_enabled || false;
+      const payoutsEnabled = orgData.stripe_connect_payouts_enabled || false;
+      const detailsSubmitted = orgData.stripe_connect_details_submitted || false;
 
       setConnectStatus({
         hasAccount,

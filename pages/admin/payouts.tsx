@@ -101,7 +101,9 @@ export default function PayoutsPage() {
       if (!organization) return;
 
       // Only load if Stripe Connect is set up
-      if (organization.stripe_connect_account_id && organization.stripe_connect_payouts_enabled) {
+      // Access optional fields with type assertion
+      const orgData = organization as any;
+      if (orgData.stripe_connect_account_id && orgData.stripe_connect_payouts_enabled) {
         // Load balance
         const balanceResponse = await fetch('/api/stripe-connect/balance');
         if (balanceResponse.ok) {
@@ -212,9 +214,11 @@ export default function PayoutsPage() {
     return null;
   }
 
-  // Check if Stripe Connect is set up
-  const hasConnect = organization.stripe_connect_account_id && 
-                    organization.stripe_connect_payouts_enabled;
+      // Check if Stripe Connect is set up
+      // Access optional fields with type assertion
+      const orgData = organization as any;
+      const hasConnect = orgData.stripe_connect_account_id && 
+                    orgData.stripe_connect_payouts_enabled;
 
   if (!hasConnect) {
     return (

@@ -67,13 +67,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const next = new Date(now);
         next.setDate(next.getDate() + 1);
         nextPayoutDate = next.toISOString();
-      } else if (payoutSchedule.interval === 'weekly') {
+      } else if (payoutSchedule.interval === 'weekly' && payoutSchedule.weeklyAnchor) {
         const next = new Date(now);
-        const daysUntilNext = (7 - now.getDay() + payoutSchedule.weeklyAnchor) % 7 || 7;
+        // Convert day name to day number (0 = Sunday, 1 = Monday, etc.)
+        const dayMap: Record<string, number> = {
+          'monday': 1,
+          'tuesday': 2,
+          'wednesday': 3,
+          'thursday': 4,
+          'friday': 5,
+          'saturday': 6,
+          'sunday': 0,
+        };
+        const targetDay = dayMap[payoutSchedule.weeklyAnchor.toLowerCase()] ?? 1;
+        const currentDay = now.getDay();
+        let daysUntilNext = (targetDay - currentDay + 7) % 7;
+        if (daysUntilNext === 0) daysUntilNext = 7; // If same day, go to next week
         next.setDate(next.getDate() + daysUntilNext);
         nextPayoutDate = next.toISOString();
-      } else if (payoutSchedule.interval === 'monthly') {
-        const next = new Date(now.getFullYear(), now.getMonth() + 1, payoutSchedule.monthlyAnchor || 1);
+      } else if (payoutSchedule.interval === 'monthly' && payoutSchedule.monthlyAnchor) {
+        const next = new Date(now.getFullYear(), now.getMonth() + 1, payoutSchedule.monthlyAnchor);
         nextPayoutDate = next.toISOString();
       }
     }
