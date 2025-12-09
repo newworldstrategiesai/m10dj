@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { FAQ } from '@/components/tipjar/FAQ';
+import TipJarHeader from '@/components/tipjar/Header';
+import TipJarFooter from '@/components/tipjar/Footer';
 import {
   CheckCircle,
   ArrowRight,
@@ -67,8 +69,9 @@ export default function HowItWorksPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
+      <TipJarHeader />
       {/* Hero Section */}
-      <section className="bg-tipjar-gradient dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 py-20">
+      <section className="bg-tipjar-gradient dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 pt-32 pb-20">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-center text-white mb-4">
             How to Collect Tips as a DJ<br />Simple 3-Step Guide
@@ -200,6 +203,7 @@ export default function HowItWorksPage() {
           </Link>
         </div>
       </section>
+      <TipJarFooter />
     </div>
   );
 }

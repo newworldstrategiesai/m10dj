@@ -91,13 +91,20 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: PropsWithChildren) {
   const headersList = headers();
   const pathname = headersList.get('x-pathname') || '';
+  const product = headersList.get('x-product') || '';
   
   // Hide navbar on sign-in pages
   const isSignInPage = pathname.includes('/signin');
   const isChatPage = pathname.startsWith('/chat');
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/chat');
-  const hideNavbar = isSignInPage || isChatPage;
-  const hideFooter = isSignInPage || isChatPage;
+  
+  // Hide M10 navbar/footer on marketing sites (tipjar, djdash)
+  // These sites have their own headers/footers
+  const isMarketingSite = product === 'tipjar' || product === 'djdash' || 
+                          pathname.startsWith('/tipjar') || pathname.startsWith('/djdash');
+  
+  const hideNavbar = isSignInPage || isChatPage || isMarketingSite;
+  const hideFooter = isSignInPage || isChatPage || isMarketingSite;
 
   return (
     <html lang="en">

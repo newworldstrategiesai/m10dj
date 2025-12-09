@@ -1,5 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import TipJarHeader from '@/components/tipjar/Header';
+import TipJarFooter from '@/components/tipjar/Footer';
 import { 
   CheckCircle,
   ArrowRight,
@@ -40,29 +42,19 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
-      {/* Simple Header */}
-      <nav className="bg-tipjar-gradient dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center">
-              <Music className="w-8 h-8 text-white" />
-              <span className="ml-2 text-xl font-bold text-white">
-                TipJar.Live
-              </span>
-            </Link>
-            <Link 
-              href="/signin"
-              className="text-white hover:text-gray-200"
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <TipJarHeader />
       
       {/* Hero */}
-      <section className="pt-20 pb-20 px-4 sm:px-6 lg:px-8 bg-tipjar-gradient dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950">
-        <div className="max-w-6xl mx-auto">
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-600 via-purple-700 to-pink-600 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.3) 1px, transparent 0)',
+            backgroundSize: '40px 40px'
+          }} />
+        </div>
+        
+        <div className="relative z-10 max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Signup Form */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-8 md:p-10 shadow-xl border border-gray-200 dark:border-gray-700">
@@ -70,7 +62,7 @@ export default function SignupPage() {
                 Start Collecting Tips & Song Requests
               </h1>
               <p className="text-gray-600 dark:text-gray-300 mb-8">
-                No credit card required. Start free, upgrade when you're making money.
+                No credit card required. Start free, upgrade when you&apos;re making money.
               </p>
               
               <form action="/api/auth/signup" method="POST" className="space-y-6">
@@ -246,6 +238,8 @@ export default function SignupPage() {
           </div>
         </div>
       </section>
+      
+      <TipJarFooter />
     </div>
   );
 }

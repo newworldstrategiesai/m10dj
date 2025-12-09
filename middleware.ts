@@ -53,8 +53,14 @@ export async function middleware(request: NextRequest) {
       rewritePath = '/tipjar/how-it-works';
     } else if (path === '/signup' || path.startsWith('/signup/')) {
       rewritePath = '/tipjar/signup';
+    } else if (path === '/signin' || path.startsWith('/signin/')) {
+      rewritePath = '/tipjar/signin';
     } else if (path === '/embed' || path.startsWith('/embed/')) {
       rewritePath = '/tipjar/embed';
+    } else if (path === '/alerts' || path.startsWith('/alerts/')) {
+      rewritePath = path.replace('/alerts', '/tipjar/alerts');
+    } else if (path.startsWith('/dashboard/')) {
+      rewritePath = path.replace('/dashboard', '/tipjar/dashboard');
     }
 
     // Update session and add headers

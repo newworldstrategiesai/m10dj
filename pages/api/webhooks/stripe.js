@@ -101,6 +101,51 @@ export default async function handler(req, res) {
 async function handleCheckoutSessionCompleted(session, supabase) {
   console.log(`✅ Processing checkout.session.completed for session ${session.id}`);
 
+  // Handle live stream tips
+  if (session.metadata?.type === 'live_stream_tip') {
+    const { broadcastTipToLiveStream } = await import('../../../lib/livekit-tip-broadcast');
+    const streamerUserId = session.metadata.streamer_user_id;
+    const tipperName = session.metadata.tipper_name || 'Anonymous';
+    const tipMessage = session.metadata.tip_message || '';
+    const amount = (session.amount_total || 0) / 100;
+
+    if (streamerUserId && amount > 0) {
+      try {
+        await broadcastTipToLiveStream(streamerUserId, {
+          amount,
+          name: tipperName,
+          message: tipMessage,
+        });
+        console.log(`✅ Broadcasted tip of $${amount} from ${tipperName} to live stream`);
+      } catch (error) {
+        console.error('❌ Error broadcasting tip to live stream:', error);
+      }
+    }
+    return; // Don't process as crowd request
+  }
+
+  // Handle PPV stream payments
+  if (session.metadata?.type === 'ppv_stream') {
+    const streamId = session.metadata.stream_id;
+    const ppvToken = session.metadata.ppv_token;
+
+    if (streamId && ppvToken) {
+      // Token is already created in ppv-payment route
+      // Just verify it exists and mark payment as completed
+      const { data: tokenData } = await supabase
+        .from('ppv_tokens')
+        .select('*')
+        .eq('token', ppvToken)
+        .eq('stream_id', streamId)
+        .single();
+
+      if (tokenData) {
+        console.log(`✅ PPV payment successful for stream ${streamId}, token: ${ppvToken}`);
+      }
+    }
+    return; // Don't process as crowd request
+  }
+
   const requestId = session.metadata?.request_id;
 
   if (!requestId) {

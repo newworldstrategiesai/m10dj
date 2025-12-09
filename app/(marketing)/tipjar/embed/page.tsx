@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import TipJarHeader from '@/components/tipjar/Header';
+import TipJarFooter from '@/components/tipjar/Footer';
 import {
   QrCode,
   Smartphone,
@@ -31,8 +33,9 @@ export default function EmbedPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
+      <TipJarHeader />
       {/* Hero Section */}
-      <section className="bg-tipjar-gradient dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 py-20">
+      <section className="bg-tipjar-gradient dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 pt-32 pb-20">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-center text-white mb-4">
             Mobile Tip Jar & QR Code<br />Song Requests for DJs
@@ -290,6 +293,7 @@ export default function EmbedPage() {
           </Link>
         </div>
       </section>
+      <TipJarFooter />
     </div>
   );
 }

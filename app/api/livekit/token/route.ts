@@ -1,0 +1,127 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { AccessToken } from 'livekit-server-sdk';
+import { createClient } from '@/utils/supabase/server';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { roomName, participantName, participantIdentity } = body;
+
+    if (!roomName) {
+      return NextResponse.json(
+        { error: 'roomName is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get authenticated user
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Verify user has access to this room (check if they own it or it's public)
+    const { data: stream } = await supabase
+      .from('live_streams')
+      .select('id, user_id, is_live, ppv_price_cents')
+      .eq('room_name', roomName)
+      .single();
+
+    if (!stream) {
+      return NextResponse.json(
+        { error: 'Stream not found' },
+        { status: 404 }
+      );
+    }
+
+    const typedStream = stream as { id: string; user_id: string; is_live: boolean; ppv_price_cents: number | null };
+
+    // Check PPV access
+    const isOwner = typedStream.user_id === user.id;
+    const isPublic = typedStream.is_live && (!typedStream.ppv_price_cents || typedStream.ppv_price_cents === 0);
+    const ppvToken = body.ppvToken;
+
+    if (!isOwner && !isPublic) {
+      // Check if user has valid PPV token
+      if (!ppvToken) {
+        return NextResponse.json(
+          { error: 'Payment required' },
+          { status: 402 }
+        );
+      }
+
+      const { data: tokenData } = await supabase
+        .from('ppv_tokens')
+        .select('*')
+        .eq('token', ppvToken)
+        .eq('stream_id', typedStream.id)
+        .eq('used', false)
+        .single();
+
+      if (!tokenData) {
+        return NextResponse.json(
+          { error: 'Invalid or expired access token' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Generate LiveKit token
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+
+    if (!apiKey || !apiSecret) {
+      return NextResponse.json(
+        { error: 'LiveKit not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Set token expiry to 2 hours
+    const at = new AccessToken(apiKey, apiSecret, {
+      identity: participantIdentity || user.id,
+      name: participantName || user.email || 'Anonymous',
+      ttl: '2h', // 2-hour expiry for security
+    });
+
+    // Grant permissions based on role
+    if (isOwner) {
+      // Streamer can publish video/audio
+      at.addGrant({
+        room: roomName,
+        roomJoin: true,
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: true,
+      });
+    } else {
+      // Viewer can only subscribe
+      at.addGrant({
+        room: roomName,
+        roomJoin: true,
+        canPublish: false,
+        canSubscribe: true,
+        canPublishData: true, // For chat
+      });
+    }
+
+    const token = await at.toJwt();
+
+    return NextResponse.json({
+      token,
+      url: process.env.LIVEKIT_URL,
+    });
+  } catch (error) {
+    console.error('Error generating LiveKit token:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+

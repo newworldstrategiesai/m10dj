@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { PricingCard } from '@/components/tipjar/PricingCard';
 import { Card } from '@/components/ui/card';
 import { FAQ } from '@/components/tipjar/FAQ';
+import TipJarHeader from '@/components/tipjar/Header';
+import TipJarFooter from '@/components/tipjar/Footer';
 import { Check } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -21,8 +23,9 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
+      <TipJarHeader />
       {/* Hero Section */}
-      <section className="bg-tipjar-gradient dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 py-20">
+      <section className="bg-tipjar-gradient dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 pt-32 pb-20">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-center text-white mb-4">
             Event Tipping App Pricing<br />Best Tip Jar App for DJs
@@ -225,6 +228,7 @@ export default function PricingPage() {
           </Link>
         </div>
       </section>
+      <TipJarFooter />
     </div>
   );
 }
