@@ -33,7 +33,7 @@ export default function ContactFormModal({ isOpen, onClose }) {
 
   const modalContent = (
     <div 
-      className="fixed inset-0 z-[9999] bg-white dark:bg-gray-900"
+      className="fixed inset-0 z-[9999] bg-white dark:bg-black"
       style={{ 
         position: 'fixed', 
         top: 0, 

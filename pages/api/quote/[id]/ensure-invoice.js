@@ -5,7 +5,10 @@
  * for the quote. Called when the invoice page is first accessed.
  */
 
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 import { ensureInvoiceExists } from '../../../../utils/ensure-invoice-exists';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -17,16 +20,52 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Get authenticated user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context (null for admins, org_id for SaaS users)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    );
+
     const { id } = req.query;
 
     if (!id) {
       return res.status(400).json({ error: 'Quote ID is required' });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Verify quote belongs to user's organization
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+    let quoteQuery = supabaseAdmin
+      .from('quote_selections')
+      .select('id, organization_id')
+      .eq('lead_id', id);
+
+    // For SaaS users, filter by organization_id
+    if (!isAdmin && orgId) {
+      quoteQuery = quoteQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      return res.status(403).json({ error: 'Access denied - no organization found' });
+    }
+
+    const { data: quote, error: quoteError } = await quoteQuery.single();
+
+    if (quoteError || !quote) {
+      return res.status(404).json({ error: 'Quote not found' });
+    }
 
     // Ensure invoice exists (will create if needed)
-    const result = await ensureInvoiceExists(id, supabase);
+    const result = await ensureInvoiceExists(id, supabaseAdmin);
 
     if (!result.success) {
       return res.status(500).json({ 

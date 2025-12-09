@@ -3,6 +3,8 @@ import { getEnv } from '@/utils/env-validator';
 import { logger } from '@/utils/logger';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { getOrganizationContext } from '@/utils/organization-helpers';
+import { getViewAsOrgIdFromRequest } from '@/utils/auth-helpers/view-as';
 
 export default async function handler(req, res) {
   if (req.method !== 'PATCH') {
@@ -15,6 +17,7 @@ export default async function handler(req, res) {
     // User is guaranteed to be authenticated and admin here
     
     const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session } } = await supabase.auth.getSession();
 
     const { id } = req.query;
     const updates = req.body;
@@ -23,6 +26,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Contact ID is required' });
     }
 
+    // Get organization context (supports view-as mode for admins)
+    const viewAsOrgId = getViewAsOrgIdFromRequest(req);
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email,
+      viewAsOrgId
+    );
+
     // Use service role for admin updates
     const env = getEnv();
     const adminSupabase = createClient(
@@ -30,10 +42,41 @@ export default async function handler(req, res) {
       env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const { data, error } = await adminSupabase
+    // First, verify the contact belongs to the specified organization (if orgId is specified)
+    if (orgId) {
+      const { data: contact, error: verifyError } = await adminSupabase
+        .from('contacts')
+        .select('id, organization_id')
+        .eq('id', id)
+        .is('deleted_at', null)
+        .single();
+
+      if (verifyError || !contact) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+
+      if (contact.organization_id !== orgId) {
+        logger.warn('Attempted to update contact from different organization', {
+          contactId: id,
+          contactOrgId: contact.organization_id,
+          expectedOrgId: orgId
+        });
+        return res.status(403).json({ error: 'Cannot update contact from different organization' });
+      }
+    }
+
+    // Build update query
+    let updateQuery = adminSupabase
       .from('contacts')
       .update(updates)
-      .eq('id', id)
+      .eq('id', id);
+
+    // Add organization filter if specified (for safety)
+    if (orgId) {
+      updateQuery = updateQuery.eq('organization_id', orgId);
+    }
+
+    const { data, error } = await updateQuery
       .select()
       .single();
 

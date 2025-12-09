@@ -211,7 +211,12 @@ END $$;
 -- STEP 7: Create SQL Views
 
 -- View: Invoice Summary with payment tracking
-CREATE OR REPLACE VIEW public.invoice_summary AS
+-- Drop all dependent views first to allow column changes
+DROP VIEW IF EXISTS public.overdue_invoices CASCADE;
+DROP VIEW IF EXISTS public.monthly_invoice_stats CASCADE;
+DROP VIEW IF EXISTS public.invoice_summary CASCADE;
+
+CREATE VIEW public.invoice_summary AS
 SELECT 
   i.id,
   i.invoice_number,
@@ -225,6 +230,7 @@ SELECT
   i.amount_paid,
   i.balance_due,
   i.contact_id,
+  i.organization_id,
   c.first_name,
   c.last_name,
   c.email_address,
@@ -254,7 +260,7 @@ LEFT JOIN public.payments p ON p.invoice_id = i.id AND p.payment_status = 'Paid'
 GROUP BY 
   i.id, i.invoice_number, i.invoice_status, i.invoice_title, i.invoice_date, i.due_date,
   i.sent_date, i.paid_date, i.total_amount, i.amount_paid, i.balance_due, i.contact_id,
-  c.first_name, c.last_name, c.email_address, c.phone, c.event_type, c.event_date,
+  i.organization_id, c.first_name, c.last_name, c.email_address, c.phone, c.event_type, c.event_date,
   i.project_id, e.event_name
 ORDER BY i.invoice_date DESC;
 

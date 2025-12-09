@@ -1,9 +1,10 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { createClient } from '@/utils/supabase/client';
-import { useAdminNotifications } from '../../hooks/useAdminNotifications';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   ArrowLeft,
   Bell,
@@ -47,7 +48,7 @@ export default function AdminNotifications() {
     let mounted = true;
     
     const checkAuth = async () => {
-      const supabase = createClient();
+      const supabase = createClientComponentClient();
       
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
@@ -94,7 +95,7 @@ export default function AdminNotifications() {
   }, []);
 
   const handleSignOut = async () => {
-    const supabase = createClient();
+    const supabase = createClientComponentClient();
     await supabase.auth.signOut();
     window.location.href = '/';
   };

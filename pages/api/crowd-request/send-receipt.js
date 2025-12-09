@@ -63,7 +63,7 @@ export default async function handler(req, res) {
                          request.payment_method || 'Payment';
 
     // Format request type
-    const requestTypeLabel = request.request_type === 'song_request' ? 'Song Request' : 'Shoutout';
+    const requestTypeLabel = request.request_type === 'song_request' ? 'Song Request' : request.request_type === 'shoutout' ? 'Shoutout' : 'Tip';
     const requestDetails = request.request_type === 'song_request'
       ? `${request.song_title || 'Unknown Song'}${request.song_artist ? ` by ${request.song_artist}` : ''}`
       : `For ${request.recipient_name || 'Recipient'}`;

@@ -233,7 +233,10 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
   // Handle social link click
   const handleSocialClick = (e, platform, defaultUrl) => {
     if (platform === 'instagram' || platform === 'facebook') {
-      e.preventDefault();
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       setSelectedSocialPlatform(platform);
       setSocialSelectorOpen(true);
     }
@@ -494,13 +497,35 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       {headerSocialLinks.map((link, index) => {
                         const socialUrl = getSocialUrl(link.platform, link.url);
                         const isSelectable = link.platform === 'instagram' || link.platform === 'facebook';
+                        
+                        if (isSelectable) {
+                          return (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleSocialClick(e, link.platform, link.url);
+                              }}
+                              className={`flex items-center justify-center w-7 h-7 rounded transition-opacity hover:opacity-70 cursor-pointer border-0 bg-transparent p-0 ${
+                                shouldBeTransparent && !isScrolled
+                                  ? 'text-white/90'
+                                  : 'text-gray-600 dark:text-gray-400'
+                              }`}
+                              aria-label={link.label || link.platform}
+                            >
+                              {getSocialIcon(link.platform)}
+                            </button>
+                          );
+                        }
+                        
                         return (
                           <a
                             key={index}
-                            href={isSelectable ? '#' : socialUrl}
-                            target={isSelectable ? undefined : '_blank'}
-                            rel={isSelectable ? undefined : 'noopener noreferrer'}
-                            onClick={isSelectable ? (e) => handleSocialClick(e, link.platform, link.url) : undefined}
+                            href={socialUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className={`flex items-center justify-center w-7 h-7 rounded transition-opacity hover:opacity-70 cursor-pointer ${
                               shouldBeTransparent && !isScrolled
                                 ? 'text-white/90'
@@ -803,19 +828,37 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       {headerSocialLinks.map((link, index) => {
                         const socialUrl = getSocialUrl(link.platform, link.url);
                         const isSelectable = link.platform === 'instagram' || link.platform === 'facebook';
+                        
+                        if (isSelectable) {
+                          return (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleSocialClick(e, link.platform, link.url);
+                              }}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border-0 bg-transparent w-full text-left ${
+                                shouldBeTransparent && !isScrolled
+                                  ? 'text-white hover:text-yellow-300 hover:bg-white/10'
+                                  : 'text-gray-700 dark:text-gray-300 hover:text-brand hover:bg-gray-100 dark:hover:bg-gray-600'
+                              }`}
+                              aria-label={link.label || link.platform}
+                            >
+                              {getSocialIcon(link.platform)}
+                              <span className="text-sm font-medium">{link.label}</span>
+                            </button>
+                          );
+                        }
+                        
                         return (
                           <a
                             key={index}
-                            href={isSelectable ? '#' : socialUrl}
-                            target={isSelectable ? undefined : '_blank'}
-                            rel={isSelectable ? undefined : 'noopener noreferrer'}
-                            onClick={(e) => {
-                              if (isSelectable) {
-                                handleSocialClick(e, link.platform, link.url);
-                              } else {
-                                setIsMobileMenuOpen(false);
-                              }
-                            }}
+                            href={socialUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setIsMobileMenuOpen(false)}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
                               shouldBeTransparent && !isScrolled
                                 ? 'text-white hover:text-yellow-300 hover:bg-white/10'

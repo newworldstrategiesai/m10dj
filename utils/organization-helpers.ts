@@ -19,6 +19,7 @@ export interface Organization {
 /**
  * Get the current user's organization
  * Supports view-as mode for super admins (checks cookie on client-side)
+ * Now supports team members - checks both owner_id and organization_members table
  */
 export async function getCurrentOrganization(
   supabase: SupabaseClient,
@@ -44,12 +45,36 @@ export async function getCurrentOrganization(
       }
     }
 
-    // Otherwise, get user's own organization
-    const { data: org, error: orgError } = await supabase
+    // First try: user is owner
+    let { data: org, error: orgError } = await supabase
       .from('organizations')
       .select('*')
       .eq('owner_id', user.id)
       .single();
+
+    // Second try: user is a team member
+    if (orgError || !org) {
+      const { data: membership } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .single();
+
+      if (membership?.organization_id) {
+        const { data: memberOrg, error: memberOrgError } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('id', membership.organization_id)
+          .single();
+
+        if (!memberOrgError && memberOrg) {
+          org = memberOrg;
+          orgError = null;
+        }
+      }
+    }
 
     if (orgError || !org) {
       return null;
@@ -89,16 +114,33 @@ export async function getOrganizationBySlug(
 
 /**
  * Require organization context - throws if user doesn't have an organization
+ * Now supports team members - checks both owner_id and organization_members table
  */
 export async function requireOrganization(
   supabase: SupabaseClient,
   userId: string
 ): Promise<string> {
-  const { data: org, error } = await supabase
+  // First try: user is owner
+  let { data: org, error } = await supabase
     .from('organizations')
     .select('id')
     .eq('owner_id', userId)
     .single();
+
+  // Second try: user is a team member
+  if (error || !org) {
+    const { data: membership } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .limit(1)
+      .single();
+
+    if (membership?.organization_id) {
+      return membership.organization_id;
+    }
+  }
 
   if (error || !org) {
     throw new Error('User does not have an organization');

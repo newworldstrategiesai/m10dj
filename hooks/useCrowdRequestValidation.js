@@ -7,14 +7,25 @@ export function useCrowdRequestValidation({
   formData,
   getPaymentAmount,
   presetAmounts,
-  minimumAmount
+  minimumAmount,
+  isExtractedFromLink = false // If true, artist is optional (extracted from link)
 }) {
   const isSongSelectionComplete = () => {
     try {
       if (requestType === 'song_request') {
-        return formData?.songTitle?.trim()?.length > 0 && formData?.songArtist?.trim()?.length > 0;
+        const hasTitle = formData?.songTitle?.trim()?.length > 0;
+        // If extracted from link, only title is required; otherwise both are required
+        if (isExtractedFromLink) {
+          return hasTitle;
+        }
+        return hasTitle && formData?.songArtist?.trim()?.length > 0;
       } else if (requestType === 'shoutout') {
         return formData?.recipientName?.trim()?.length > 0 && formData?.recipientMessage?.trim()?.length > 0;
+      } else if (requestType === 'tip') {
+        // For tips, we only need an amount selected (no form fields required)
+        const amount = getPaymentAmount();
+        const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+        return amount && amount >= minPresetAmount;
       }
       return false;
     } catch (err) {
@@ -29,7 +40,8 @@ export function useCrowdRequestValidation({
           setError('Please enter a song title');
           return false;
         }
-        if (!formData?.songArtist?.trim()) {
+        // Artist is only required if NOT extracted from link
+        if (!isExtractedFromLink && !formData?.songArtist?.trim()) {
           setError('Please enter an artist name');
           return false;
         }
@@ -42,6 +54,8 @@ export function useCrowdRequestValidation({
           setError('Please enter a message for the shoutout');
           return false;
         }
+      } else if (requestType === 'tip') {
+        // For tips, we only validate the amount (no form fields required)
       }
 
       const amount = getPaymentAmount();

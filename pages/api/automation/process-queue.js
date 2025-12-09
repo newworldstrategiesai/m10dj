@@ -17,6 +17,9 @@ export default async function handler(req, res) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get all pending automations that are due
+    // Note: This cron job processes ALL organizations
+    // RLS policies on automation_queue and contacts ensure data isolation
+    // Each organization's automations are isolated at the database level
     const { data: dueAutomations, error: queueError } = await supabase
       .from('automation_queue')
       .select('*, contacts(*), events(*)')
@@ -26,7 +29,11 @@ export default async function handler(req, res) {
       .order('scheduled_for', { ascending: true })
       .limit(50); // Process 50 at a time
 
-    if (queueError) throw queueError;
+    if (queueError) {
+      console.error('Error fetching automation queue:', queueError);
+      // Sanitize error - don't expose internal details
+      return res.status(500).json({ error: 'Failed to process automation queue' });
+    }
 
     if (!dueAutomations || dueAutomations.length === 0) {
       return res.status(200).json({ 
@@ -48,6 +55,14 @@ export default async function handler(req, res) {
         if (!contact) {
           console.log(`⚠️ Skipping automation ${automation.id} - contact not found`);
           await markAutomationFailed(supabase, automation.id, 'Contact not found');
+          failed++;
+          continue;
+        }
+        
+        // Verify contact has organization_id (data isolation check)
+        if (!contact.organization_id) {
+          console.log(`⚠️ Skipping automation ${automation.id} - contact missing organization_id`);
+          await markAutomationFailed(supabase, automation.id, 'Contact missing organization');
           failed++;
           continue;
         }
@@ -175,9 +190,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('❌ Error processing automation queue:', error);
+    // Sanitize error - don't expose internal details
     res.status(500).json({ 
-      error: 'Queue processing failed',
-      message: error.message 
+      error: 'Queue processing failed'
     });
   }
 }

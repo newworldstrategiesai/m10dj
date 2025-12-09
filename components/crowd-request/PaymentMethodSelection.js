@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CreditCard, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CreditCard, Loader2, Plus, X } from 'lucide-react';
 import CashAppPaymentScreen from './CashAppPaymentScreen';
 import VenmoPaymentScreen from './VenmoPaymentScreen';
 
@@ -16,12 +16,27 @@ function PaymentMethodSelection({
   songTitle, 
   songArtist, 
   recipientName,
+  additionalSongs = [],
+  setAdditionalSongs,
+  bundleDiscount = 0,
+  bundleDiscountEnabled = false,
+  getBaseAmount,
+  getPaymentAmount,
   onError 
 }) {
   const [cashAppQr, setCashAppQr] = useState(null);
   const [venmoQr, setVenmoQr] = useState(null);
   const [localSelectedMethod, setLocalSelectedMethod] = useState(null);
   const [localSubmitting, setLocalSubmitting] = useState(false);
+  const [showAddSongs, setShowAddSongs] = useState(false);
+  const [additionalSongCount, setAdditionalSongCount] = useState(additionalSongs?.length || 0);
+  
+  // Sync local count with prop when it changes externally
+  useEffect(() => {
+    if (additionalSongs?.length !== undefined) {
+      setAdditionalSongCount(additionalSongs.length);
+    }
+  }, [additionalSongs?.length]);
 
   const generateQRCode = (text) => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`;
@@ -73,21 +88,27 @@ function PaymentMethodSelection({
         throw new Error('Request not created yet. Please fill out the form first.');
       }
       
-      if (!amount || amount <= 0) {
+      // Use updated amount if additional songs were added
+      const finalAmount = updatedAmount || amount;
+      
+      if (!finalAmount || finalAmount <= 0) {
         throw new Error('Invalid payment amount');
       }
+      
+      // Update additional songs before payment
+      handleProceedWithPayment('cashapp');
       
       // Use Stripe Checkout with Cash App Pay pre-selected
       setLocalSubmitting(true);
       if (onError) onError('');
       
-      console.log('Creating Cash App Pay checkout with:', { requestId, amount });
+      console.log('Creating Cash App Pay checkout with:', { requestId, amount: finalAmount });
       const response = await fetch('/api/crowd-request/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           requestId,
-          amount: amount,
+          amount: finalAmount,
           preferredPaymentMethod: 'cashapp'
         })
       });
@@ -143,13 +164,19 @@ function PaymentMethodSelection({
         throw new Error('Venmo username is not configured. Please contact support.');
       }
       
-      if (!amount || amount <= 0) {
+      // Use updated amount if additional songs were added
+      const finalAmount = updatedAmount || amount;
+      
+      if (!finalAmount || finalAmount <= 0) {
         throw new Error('Invalid payment amount');
       }
       
+      // Update additional songs before payment
+      handleProceedWithPayment('venmo');
+      
       // Strip @ from username if present
       const cleanUsername = paymentSettings.venmoUsername.replace(/^@/, '');
-      const amountStr = (amount / 100).toFixed(2);
+      const amountStr = (finalAmount / 100).toFixed(2);
       
       // Build payment note with song/shoutout details
       const paymentNote = buildPaymentNote();
@@ -184,14 +211,66 @@ function PaymentMethodSelection({
   const currentMethod = localSelectedMethod || selectedPaymentMethod;
   const isSubmitting = localSubmitting || submitting;
 
+  // Calculate updated amount when additional songs are added
+  // Use manual calculation when we have local additionalSongCount to ensure real-time updates
+  const calculateUpdatedAmount = () => {
+    if (!getBaseAmount || !bundleDiscount || additionalSongCount === 0) {
+      return amount;
+    }
+    // Calculate manually based on local additionalSongCount for real-time updates
+    const baseAmount = getBaseAmount();
+    const discountedAmountPerSong = Math.round(baseAmount * (1 - bundleDiscount));
+    const additionalSongsTotal = additionalSongCount * discountedAmountPerSong;
+    return amount + additionalSongsTotal;
+  };
+
+  const updatedAmount = calculateUpdatedAmount();
+
+  // Handle adding/removing additional songs
+  const handleAddSongsClick = () => {
+    setShowAddSongs(true);
+  };
+
+  const handleSongCountChange = (newCount) => {
+    const count = Math.max(0, Math.min(newCount, 10)); // Limit to 10 additional songs
+    setAdditionalSongCount(count);
+    
+    // Update additionalSongs array to match count
+    if (setAdditionalSongs) {
+      const newSongs = [];
+      for (let i = 0; i < count; i++) {
+        newSongs.push(additionalSongs[i] || { songTitle: '', songArtist: '' });
+      }
+      setAdditionalSongs(newSongs);
+    }
+  };
+
+  // Update amount when proceeding with payment
+  const handleProceedWithPayment = (paymentMethod) => {
+    // Update the amount in parent component if needed
+    if (setAdditionalSongs && additionalSongCount > 0) {
+      const newSongs = [];
+      for (let i = 0; i < additionalSongCount; i++) {
+        newSongs.push(additionalSongs[i] || { songTitle: '', songArtist: '' });
+      }
+      setAdditionalSongs(newSongs);
+    }
+    onPaymentMethodSelected(paymentMethod);
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8">
+    <div className="bg-white dark:bg-black rounded-2xl shadow-xl p-6 sm:p-8" data-payment-methods>
       <div className="text-center mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Choose Payment Method
         </h2>
         <p className="text-lg text-gray-600 dark:text-gray-400">
-          Total: <span className="font-bold text-purple-600 dark:text-purple-400">${(amount / 100).toFixed(2)}</span>
+          Total: <span className="font-bold text-purple-600 dark:text-purple-400">${(updatedAmount / 100).toFixed(2)}</span>
+          {additionalSongCount > 0 && (
+            <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+              ({additionalSongCount} additional song{additionalSongCount !== 1 ? 's' : ''} at {Math.round(bundleDiscount * 100)}% off)
+            </span>
+          )}
         </p>
       </div>
 
@@ -199,7 +278,7 @@ function PaymentMethodSelection({
         <CashAppPaymentScreen
           qrCode={cashAppQr}
           cashtag={paymentSettings.cashAppTag}
-          amount={amount}
+          amount={updatedAmount || amount}
           requestId={requestId}
           paymentCode={paymentCode}
           paymentNote={buildPaymentNote()}
@@ -213,7 +292,7 @@ function PaymentMethodSelection({
         <VenmoPaymentScreen
           qrCode={venmoQr}
           username={paymentSettings.venmoUsername}
-          amount={amount}
+          amount={updatedAmount || amount}
           requestId={requestId}
           paymentCode={paymentCode}
           paymentNote={buildPaymentNote()}
@@ -252,7 +331,7 @@ function PaymentMethodSelection({
           <button
             type="button"
             onClick={handleVenmoClick}
-            className="group relative w-full p-5 rounded-2xl border-2 border-blue-500/80 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50 dark:from-blue-950/40 dark:via-cyan-950/30 dark:to-blue-950/40 hover:from-blue-100 hover:via-cyan-100 hover:to-blue-100 dark:hover:from-blue-900/50 dark:hover:via-cyan-900/40 dark:hover:to-blue-900/50 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-blue-500/10 hover:shadow-xl hover:shadow-blue-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-blue-500"
+            className="group relative w-full p-5 rounded-2xl border-2 border-blue-500/80 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 hover:from-blue-100 hover:via-cyan-100 hover:to-blue-100 dark:hover:from-gray-800 dark:hover:via-gray-800 dark:hover:to-gray-800 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-blue-500/10 hover:shadow-xl hover:shadow-blue-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-blue-500"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-blue-400/0 via-blue-400/5 to-blue-400/10 group-hover:from-blue-400/5 group-hover:via-blue-400/10 group-hover:to-blue-400/15 transition-all duration-300"></div>
             <div className="relative flex items-center justify-start gap-4 pl-2">
@@ -286,7 +365,7 @@ function PaymentMethodSelection({
 
           <button
             type="button"
-            onClick={() => onPaymentMethodSelected('card')}
+            onClick={() => handleProceedWithPayment('card')}
             disabled={isSubmitting}
             className="group relative w-full p-4 rounded-lg bg-black hover:bg-gray-900 active:bg-gray-800 transition-all duration-200 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-black"
           >
@@ -299,6 +378,91 @@ function PaymentMethodSelection({
               </span>
             </div>
           </button>
+
+          {/* Add More Songs Link - Only show for song requests */}
+          {requestType === 'song_request' && bundleDiscountEnabled && bundleDiscount > 0 && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={handleAddSongsClick}
+                className="w-full text-center text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 underline transition-colors"
+              >
+                Add more songs last minute for a {Math.round(bundleDiscount * 100)}% discount
+              </button>
+            </div>
+          )}
+
+          {/* Add Songs UI */}
+          {showAddSongs && requestType === 'song_request' && bundleDiscountEnabled && bundleDiscount > 0 && (
+            <div className="mt-4 p-4 bg-purple-50 dark:bg-black rounded-xl border border-purple-200 dark:border-gray-800">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Add More Songs ({Math.round(bundleDiscount * 100)}% discount)
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAddSongs(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  How many additional songs?
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSongCountChange(additionalSongCount - 1)}
+                    disabled={additionalSongCount === 0}
+                    className="w-8 h-8 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
+                  >
+                    −
+                  </button>
+                  <span className="text-lg font-semibold text-gray-900 dark:text-white min-w-[2rem] text-center">
+                    {additionalSongCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSongCountChange(additionalSongCount + 1)}
+                    disabled={additionalSongCount >= 10}
+                    className="w-8 h-8 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {additionalSongCount > 0 && getBaseAmount && (
+                <div className="mt-3 p-3 bg-white dark:bg-gray-900 rounded-lg border border-purple-200 dark:border-gray-700">
+                  <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Original amount:</span>
+                      <span>${(amount / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{additionalSongCount} additional song{additionalSongCount !== 1 ? 's' : ''} ({Math.round(bundleDiscount * 100)}% off):</span>
+                      <span className="text-green-600 dark:text-green-400">
+                        +${((updatedAmount - amount) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">
+                      <span>New Total:</span>
+                      <span className="text-purple-600 dark:text-purple-400">
+                        ${(updatedAmount / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                You can enter song names and artist names after payment.
+              </p>
+            </div>
+          )}
 
           <button
             type="button"

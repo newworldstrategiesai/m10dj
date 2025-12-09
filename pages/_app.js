@@ -6,6 +6,7 @@ import FloatingAdminAssistant from '@/components/admin/FloatingAdminAssistant';
 import GlobalChatWidget from '@/components/company/GlobalChatWidget';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import AdminNavbar from '@/components/admin/AdminNavbar';
+import { Toaster } from '@/components/ui/Toasts/toaster-pages';
 import { useEffect } from 'react';
 // Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
@@ -112,6 +113,8 @@ export default function App({ Component, pageProps }) {
       <Component {...pageProps} />
       {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
       {!isSignInPage && !isRequestsPage && !isAdminRoute && <GlobalChatWidget />}
+      {/* Toast notifications for Pages Router */}
+      <Toaster />
       {/* Temporarily disabled to prevent rate limiting issues */}
       {/* <EnhancedTracking /> */}
       </ErrorBoundary>

@@ -52,6 +52,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get payout history from Stripe
+    if (!stripe) {
+      return res.status(500).json({ error: 'Stripe is not configured' });
+    }
+
     const payouts = await stripe.payouts.list(
       {
         limit: 50, // Get last 50 payouts

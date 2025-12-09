@@ -20,6 +20,23 @@ export default async function handler(req, res) {
 
     console.log(`👨‍💼 Admin response detected for ${phoneNumber}: ${messageContent}`);
 
+    // Get organization_id from contact lookup
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    let organizationId = null;
+    
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('organization_id')
+      .ilike('phone', `%${cleanPhone}%`)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (contact?.organization_id) {
+      organizationId = contact.organization_id;
+    }
+
     // 1. Save admin response to conversation history
     const { error: saveError } = await supabase
       .from('sms_conversations')
@@ -29,6 +46,7 @@ export default async function handler(req, res) {
         direction: 'outbound',
         message_type: 'admin',
         twilio_message_sid: twilioMessageSid,
+        organization_id: organizationId, // Set organization_id for multi-tenant isolation
         created_at: new Date().toISOString()
       }]);
 
@@ -36,8 +54,8 @@ export default async function handler(req, res) {
       console.error('Error saving admin response:', saveError);
     }
 
-    // 2. Cancel any pending AI responses for this phone number
-    const { error: cancelError } = await supabase
+    // 2. Cancel any pending AI responses for this phone number (filter by organization_id if available)
+    let cancelQuery = supabase
       .from('pending_ai_responses')
       .update({ 
         status: 'cancelled',
@@ -46,6 +64,12 @@ export default async function handler(req, res) {
       })
       .eq('phone_number', phoneNumber)
       .eq('status', 'pending');
+    
+    if (organizationId) {
+      cancelQuery = cancelQuery.eq('organization_id', organizationId);
+    }
+    
+    const { error: cancelError } = await cancelQuery;
 
     if (cancelError) {
       console.error('Error cancelling pending AI responses:', cancelError);

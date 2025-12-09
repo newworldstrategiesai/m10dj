@@ -48,13 +48,41 @@ export default function SocialAccountSelector({ platform, isOpen, onClose, onSel
   const Icon = platform === 'instagram' ? Instagram : Facebook;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-black rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-200 border border-gray-200 dark:border-gray-800">
+    <div 
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50"
+      style={{ 
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="social-selector-title"
+    >
+      <div 
+        className="bg-white dark:bg-black rounded-2xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200 dark:border-gray-800"
+        style={{
+          animation: 'fadeIn 0.2s ease-in-out',
+          transform: 'scale(1)',
+          opacity: 1
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close button */}
         <button
-          onClick={onClose}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClose();
+          }}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           aria-label="Close"
+          type="button"
         >
           <X className="w-5 h-5" />
         </button>
@@ -69,7 +97,7 @@ export default function SocialAccountSelector({ platform, isOpen, onClose, onSel
             <Icon className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            <h2 id="social-selector-title" className="text-xl font-bold text-gray-900 dark:text-white">
               Choose {platform === 'instagram' ? 'Instagram' : 'Facebook'} Account
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -83,7 +111,12 @@ export default function SocialAccountSelector({ platform, isOpen, onClose, onSel
           {accounts.map((account) => (
             <button
               key={account.handle}
-              onClick={() => handleSelect(account.handle)}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSelect(account.handle);
+              }}
               className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
                 selectedAccount === account.handle
                   ? 'border-purple-600 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/20'

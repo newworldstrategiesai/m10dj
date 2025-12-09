@@ -23,6 +23,9 @@ export default function PaymentPage() {
   const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
   const [selectedSavedPaymentMethod, setSelectedSavedPaymentMethod] = useState(null);
   const [showSavedPaymentMethods, setShowSavedPaymentMethods] = useState(false);
+  const [tipType, setTipType] = useState('none'); // 'none', 'percentage', 'custom'
+  const [tipPercentage, setTipPercentage] = useState(15); // 10, 15, 20, 25
+  const [customTipAmount, setCustomTipAmount] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -236,7 +239,9 @@ export default function PaymentPage() {
     addons,
     subtotal,
     discountAmount,
-    isCustomPrice
+    isCustomPrice,
+    gratuityAmount,
+    finalTotal
   } = useMemo(() => {
     // Initialize default values
     let total = 0;
@@ -254,7 +259,9 @@ export default function PaymentPage() {
         addons: [],
         subtotal: 0,
         discountAmount: 0,
-        isCustomPrice: false
+        isCustomPrice: false,
+        gratuityAmount: 0,
+        finalTotal: 0
       };
     }
     
@@ -325,15 +332,31 @@ export default function PaymentPage() {
       }
     }
     
+    // Calculate gratuity based on subtotal (before discount)
+    let gratuity = 0;
+    if (tipType === 'percentage') {
+      gratuity = sub * (tipPercentage / 100);
+    } else if (tipType === 'custom' && customTipAmount) {
+      const customAmount = parseFloat(customTipAmount);
+      if (!isNaN(customAmount) && customAmount >= 0) {
+        gratuity = customAmount;
+      }
+    }
+    
+    // Final total includes gratuity
+    const final = total + gratuity;
+    
     return {
       totalAmount: total,
       packagePrice: pkgPrice,
       addons: addonsList,
       subtotal: sub,
       discountAmount: discount,
-      isCustomPrice: isCustom
+      isCustomPrice: isCustom,
+      gratuityAmount: gratuity,
+      finalTotal: final
     };
-  }, [quoteData]);
+  }, [quoteData, tipType, tipPercentage, customTipAmount]);
 
   const handlePayment = async () => {
     if (!quoteData) {
@@ -341,7 +364,7 @@ export default function PaymentPage() {
       return;
     }
     
-    if (totalAmount <= 0) {
+    if (finalTotal <= 0) {
       setError('Invalid payment amount. Please contact support.');
       return;
     }
@@ -351,28 +374,43 @@ export default function PaymentPage() {
 
     try {
       // Calculate payment amount based on payment type and status
+      // Note: Gratuity is included in finalTotal, but we need to calculate deposit/remaining based on base total
       const isSmallAmount = totalAmount < 10;
       let amount;
       let description;
+      let paymentAmountBase; // Base amount without gratuity
       
       if (hasDepositPaid) {
         // If deposit was paid, charge remaining balance (both 'remaining' and 'full' options pay the remaining)
-        amount = Math.round(remainingBalanceAmount * 100);
+        paymentAmountBase = remainingBalanceAmount;
+        amount = Math.round((remainingBalanceAmount + gratuityAmount) * 100);
         description = paymentType === 'full' 
           ? `Full payment (remaining balance) for ${quoteData.package_name}`
           : `Remaining balance for ${quoteData.package_name}`;
       } else if (isSmallAmount) {
         // For small amounts, charge full amount
-        amount = Math.round(totalAmount * 100);
+        paymentAmountBase = totalAmount;
+        amount = Math.round(finalTotal * 100);
         description = `Full payment for ${quoteData.package_name}`;
       } else if (paymentType === 'deposit') {
-        // 50% deposit
-        amount = Math.round(totalAmount * 0.5 * 100);
+        // 50% deposit (includes gratuity if selected)
+        paymentAmountBase = totalAmount * 0.5;
+        amount = Math.round((paymentAmountBase + gratuityAmount) * 100);
         description = `Deposit for ${quoteData.package_name}`;
       } else {
-        // Full payment
-        amount = Math.round(totalAmount * 100);
+        // Full payment (includes gratuity)
+        paymentAmountBase = totalAmount;
+        amount = Math.round(finalTotal * 100);
         description = `Full payment for ${quoteData.package_name}`;
+      }
+      
+      // Add gratuity info to description if applicable
+      if (gratuityAmount > 0) {
+        if (tipType === 'percentage') {
+          description += ` (includes ${tipPercentage}% gratuity)`;
+        } else {
+          description += ` (includes $${gratuityAmount.toFixed(2)} gratuity)`;
+        }
       }
 
       // Create Stripe checkout session
@@ -384,6 +422,9 @@ export default function PaymentPage() {
           amount: amount,
           description: description,
           paymentType: hasDepositPaid ? 'remaining' : (paymentType === 'deposit' ? 'deposit' : 'full'),
+          gratuityAmount: gratuityAmount > 0 ? gratuityAmount : 0,
+          gratuityType: gratuityAmount > 0 ? tipType : null,
+          gratuityPercentage: (tipType === 'percentage') ? tipPercentage : null,
           successUrl: `${window.location.origin}/quote/${id}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/quote/${id}/payment`
         })
@@ -450,29 +491,37 @@ export default function PaymentPage() {
   const hasDepositPaid = totalPaid > 0 && totalPaid < totalAmount;
   const remainingBalanceAmount = Math.max(0, totalAmount - totalPaid);
   
+  // Calculate payment amount including gratuity (only for full payments)
+  const paymentAmountWithGratuity = paymentType === 'full' ? finalTotal : (paymentType === 'deposit' ? (totalAmount * 0.5) : remainingBalanceAmount);
+  
   // For very small amounts (like $1), don't split into deposit - just charge full amount
   // totalAmount, packagePrice, addons, subtotal, and discountAmount are already calculated above
   const depositAmount = totalAmount < 10 ? totalAmount : totalAmount * 0.5;
   const remainingBalance = totalAmount - depositAmount;
   
-  // Determine payment amount based on payment status
+  // Determine payment amount based on payment status (gratuity applies to all payment types)
   let paymentAmount;
   if (hasDepositPaid) {
     // If deposit was paid, show options based on payment type
-    // 'remaining' means pay remaining balance, 'full' means pay in full (remaining balance)
+    // 'remaining' means pay remaining balance, 'full' means pay in full (remaining balance + gratuity)
     if (paymentType === 'remaining' || paymentType === 'deposit') {
-      paymentAmount = remainingBalanceAmount;
+      paymentAmount = remainingBalanceAmount + (tipType !== 'none' ? gratuityAmount : 0);
     } else {
-      // Pay in full (remaining balance)
-      paymentAmount = remainingBalanceAmount;
+      // Pay in full (remaining balance + gratuity if selected)
+      paymentAmount = remainingBalanceAmount + (tipType !== 'none' ? gratuityAmount : 0);
     }
     // Don't auto-set payment type - let user choose
   } else if (totalAmount < 10) {
-    // For small amounts, always use full payment
-    paymentAmount = totalAmount;
+    // For small amounts, always use full payment (includes gratuity if selected)
+    paymentAmount = finalTotal;
   } else {
     // For new payments, use selected payment type
-    paymentAmount = paymentType === 'deposit' ? depositAmount : totalAmount;
+    // Gratuity applies to all payment types
+    if (paymentType === 'deposit') {
+      paymentAmount = depositAmount + (tipType !== 'none' ? gratuityAmount : 0);
+    } else {
+      paymentAmount = finalTotal; // Includes gratuity
+    }
   }
 
   // Check if quote has expired (event date has passed)
@@ -644,10 +693,134 @@ export default function PaymentPage() {
                   <span>Tax:</span>
                   <span>$0.00</span>
                 </div>
+                
+                {/* Gratuity Section - Available for all payment types */}
+                {(
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                    <div className="mb-3">
+                      <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        Gratuity (Optional)
+                      </label>
+                      
+                      {/* Preset Percentage Buttons */}
+                      <div className="grid grid-cols-4 gap-2 mb-3">
+                        {[10, 15, 20, 25].map((percent) => (
+                          <button
+                            key={percent}
+                            type="button"
+                            onClick={() => {
+                              setTipType('percentage');
+                              setTipPercentage(percent);
+                              setCustomTipAmount('');
+                            }}
+                            className={`py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                              tipType === 'percentage' && tipPercentage === percent
+                                ? 'border-brand bg-brand/10 text-brand'
+                                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-brand'
+                            }`}
+                          >
+                            {percent}%
+                          </button>
+                        ))}
+                      </div>
+                      
+                      {/* Custom Amount Option */}
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTipType('custom');
+                            setCustomTipAmount('');
+                          }}
+                          className={`w-full py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                            tipType === 'custom'
+                              ? 'border-brand bg-brand/10 text-brand'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-brand'
+                          }`}
+                        >
+                          Custom Amount
+                        </button>
+                        
+                        {tipType === 'custom' && (
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              value={customTipAmount}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+                                  setCustomTipAmount(value);
+                                }
+                              }}
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                            />
+                          </div>
+                        )}
+                        
+                        {/* No Tip Option */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTipType('none');
+                            setCustomTipAmount('');
+                          }}
+                          className={`w-full py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                            tipType === 'none'
+                              ? 'border-gray-400 dark:border-gray-500 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400'
+                          }`}
+                        >
+                          No Gratuity
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Display Selected Gratuity */}
+                    {gratuityAmount > 0 && (
+                      <>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+                          <span>
+                            Gratuity {tipType === 'percentage' ? `(${tipPercentage}%)` : ''}:
+                          </span>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            ${gratuityAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        {/* Important Notice for Deposit Payments */}
+                        {paymentType === 'deposit' && (
+                          <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-amber-800 dark:text-amber-200">
+                                <strong>Note:</strong> Gratuity is a tip and does not count toward your remaining balance. Your remaining balance will still be ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {/* Important Notice for Remaining Balance Payments */}
+                        {hasDepositPaid && (paymentType === 'remaining' || paymentType === 'deposit') && (
+                          <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-amber-800 dark:text-amber-200">
+                                <strong>Note:</strong> Gratuity is a tip and does not count toward your remaining balance. Your remaining balance is ${remainingBalanceAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+                
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                   <div className="flex justify-between text-xl font-bold text-gray-900 dark:text-white">
                     <span>Total:</span>
-                    <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span>${(paymentType === 'full' ? finalTotal : (paymentType === 'deposit' ? (depositAmount + gratuityAmount) : (remainingBalanceAmount + gratuityAmount))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
@@ -762,6 +935,11 @@ export default function PaymentPage() {
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Amount to Pay</p>
                   <p className="text-3xl font-bold text-brand">${paymentAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  {gratuityAmount > 0 && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Includes ${gratuityAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gratuity
+                    </p>
+                  )}
                 </div>
 
                 {/* Saved Payment Methods */}
@@ -772,7 +950,7 @@ export default function PaymentPage() {
                       {savedPaymentMethods.map((pm) => (
                         <button
                           key={pm.id}
-                          onClick={async () => {
+                            onClick={async () => {
                             setProcessing(true);
                             setError(null);
                             try {
@@ -790,7 +968,10 @@ export default function PaymentPage() {
                                     : (paymentType === 'deposit' 
                                         ? `Deposit for ${quoteData?.package_name || 'event'}`
                                         : `Full payment for ${quoteData?.package_name || 'event'}`),
-                                  paymentType: hasDepositPaid ? (paymentType === 'full' ? 'full' : 'remaining') : paymentType
+                                  paymentType: hasDepositPaid ? (paymentType === 'full' ? 'full' : 'remaining') : paymentType,
+                                  gratuityAmount: gratuityAmount > 0 ? gratuityAmount : 0,
+                                  gratuityType: gratuityAmount > 0 ? tipType : null,
+                                  gratuityPercentage: (tipType === 'percentage') ? tipPercentage : null
                                 })
                               });
 

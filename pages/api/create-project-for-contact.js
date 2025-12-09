@@ -3,6 +3,8 @@ import { getEnv } from '@/utils/env-validator';
 import { logger } from '@/utils/logger';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -22,16 +24,39 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Contact ID is required' });
     }
 
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(user.email);
+
+    // Get organization context
+    const orgId = await getOrganizationContext(
+      supabase,
+      user.id,
+      user.email
+    );
+
     // Get the contact
-    const { data: contact, error: contactError } = await supabase
+    let contactQuery = supabase
       .from('contacts')
       .select('*')
       .eq('id', contactId)
-      .is('deleted_at', null)
-      .single();
+      .is('deleted_at', null);
+
+    // For SaaS users, filter by organization_id. Platform admins see all contacts.
+    if (!isAdmin && orgId) {
+      contactQuery = contactQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      return res.status(403).json({ error: 'Organization required' });
+    }
+
+    const { data: contact, error: contactError } = await contactQuery.single();
 
     if (contactError || !contact) {
       return res.status(404).json({ error: 'Contact not found' });
+    }
+
+    // Verify organization ownership for SaaS users
+    if (!isAdmin && contact.organization_id !== orgId) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
       // Create the project using service role client (needed for events table)
@@ -124,9 +149,16 @@ export default async function handler(req, res) {
         return `${clientName} - ${eventType}${eventDate ? ` - ${eventDate}` : ''}${venue}`;
       };
 
+      // Get organization_id from contact for multi-tenant isolation
+      const contactOrgId = contact.organization_id;
+      if (!contactOrgId) {
+        console.warn('⚠️ Contact missing organization_id, project may not be properly isolated');
+      }
+
       // Map contact data to project data
       const projectData = {
         submission_id: contact.id,
+        organization_id: contactOrgId, // Set organization_id for multi-tenant isolation
         event_name: generateProjectName(contact),
         client_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Client',
         client_email: contact.email_address,

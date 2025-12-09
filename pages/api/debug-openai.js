@@ -1,5 +1,11 @@
 // Debug endpoint to test OpenAI API
+// Blocked in production for security
 export default async function handler(req, res) {
+  // Block in production
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
   try {
     // Check if API key exists
     const apiKey = process.env.OPENAI_API_KEY;

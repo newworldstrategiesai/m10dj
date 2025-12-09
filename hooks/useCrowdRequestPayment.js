@@ -16,7 +16,9 @@ export function useCrowdRequestPayment({
   fastTrackFee,
   nextFee,
   additionalSongs = [],
-  bundleDiscount = 0
+  bundleDiscount = 0,
+  audioFileUrl = null,
+  audioUploadFee = 10000 // $100.00 in cents
 }) {
   const getBaseAmount = useCallback(() => {
     if (amountType === 'preset') {
@@ -33,8 +35,9 @@ export function useCrowdRequestPayment({
     const baseAmount = getBaseAmount();
     const fastTrack = (requestType === 'song_request' && isFastTrack) ? fastTrackFee : 0;
     const next = (requestType === 'song_request' && isNext) ? nextFee : 0;
+    const audioFee = (requestType === 'song_request' && audioFileUrl) ? audioUploadFee : 0;
     
-    let total = baseAmount + fastTrack + next;
+    let total = baseAmount + fastTrack + next + audioFee;
     
     if (requestType === 'song_request' && additionalSongs.length > 0) {
       const validAdditionalSongs = additionalSongs.filter(song => song.songTitle?.trim());
@@ -43,7 +46,7 @@ export function useCrowdRequestPayment({
     }
     
     return total;
-  }, [getBaseAmount, requestType, isFastTrack, isNext, fastTrackFee, nextFee, additionalSongs, bundleDiscount]);
+  }, [getBaseAmount, requestType, isFastTrack, isNext, fastTrackFee, nextFee, additionalSongs, bundleDiscount, audioFileUrl, audioUploadFee]);
 
   return {
     getBaseAmount,

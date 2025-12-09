@@ -1,9 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
+import { getViewAsOrgIdFromRequest } from '@/utils/auth-helpers/view-as';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -11,18 +10,48 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { user_id } = req.query;
-    
-    if (!user_id) {
-      return res.status(400).json({ error: 'user_id is required' });
+    // Authenticate user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Find contacts associated with this user
-    const { data: contacts, error: contactsError } = await supabase
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get view-as organization ID from cookie (if admin is viewing as another org)
+    const viewAsOrgId = getViewAsOrgIdFromRequest(req);
+
+    // Get organization context (null for admins, org_id for SaaS users, or viewAsOrgId if in view-as mode)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email,
+      viewAsOrgId
+    );
+
+    // Use service role for queries
+    const adminSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Find contacts - filter by organization_id instead of just user_id
+    let contactsQuery = adminSupabase
       .from('contacts')
       .select('id')
-      .eq('user_id', user_id)
       .is('deleted_at', null);
+
+    // For SaaS users, filter by organization_id. Platform admins see all contacts.
+    if (!isAdmin && orgId) {
+      contactsQuery = contactsQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      return res.status(200).json({ invoices: [] });
+    }
+
+    const { data: contacts, error: contactsError } = await contactsQuery;
 
     if (contactsError) {
       console.error('Error fetching contacts:', contactsError);
@@ -36,10 +65,17 @@ export default async function handler(req, res) {
     const contactIds = contacts.map(c => c.id);
 
     // Fetch invoices for these contacts
-    const { data: invoices, error: invoicesError } = await supabase
+    let invoicesQuery = adminSupabase
       .from('invoices')
       .select('*')
-      .in('contact_id', contactIds)
+      .in('contact_id', contactIds);
+
+    // Filter by organization_id for SaaS users
+    if (!isAdmin && orgId) {
+      invoicesQuery = invoicesQuery.eq('organization_id', orgId);
+    }
+
+    const { data: invoices, error: invoicesError } = await invoicesQuery
       .order('created_at', { ascending: false });
 
     if (invoicesError) {

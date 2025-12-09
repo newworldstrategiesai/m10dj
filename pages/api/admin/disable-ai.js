@@ -21,6 +21,23 @@ export default async function handler(req, res) {
     // Clean phone number for matching
     const cleanPhone = phoneNumber.replace(/\D/g, '');
 
+    // Get contact to find organization_id
+    const { data: contact, error: contactError } = await supabase
+      .from('contacts')
+      .select('id, organization_id')
+      .ilike('phone', `%${cleanPhone}%`)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (contactError) {
+      console.error('Error finding contact:', contactError);
+      return res.status(500).json({ error: 'Failed to find contact' });
+    }
+
+    const organizationId = contact?.organization_id;
+
     // Update contact to disable AI
     const { data, error } = await supabase
       .from('contacts')
@@ -28,7 +45,7 @@ export default async function handler(req, res) {
         custom_fields: { ai_disabled: true },
         notes: `AI assistant disabled via admin on ${new Date().toLocaleDateString()}`
       })
-      .ilike('phone', `%${cleanPhone}%`)
+      .eq('id', contact.id)
       .is('deleted_at', null);
 
     if (error) {
@@ -36,7 +53,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to disable AI' });
     }
 
-    // Log the AI disable action
+    // Log the AI disable action with organization_id
     await supabase
       .from('sms_conversations')
       .insert([{
@@ -44,6 +61,7 @@ export default async function handler(req, res) {
         message_content: 'AI assistant disabled by admin',
         direction: 'outbound',
         message_type: 'admin',
+        organization_id: organizationId, // Set organization_id for multi-tenant isolation
         created_at: new Date().toISOString()
       }]);
 

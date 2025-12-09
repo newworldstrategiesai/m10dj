@@ -7,6 +7,11 @@ import {
   extractLeadInfo,
   updateContactName
 } from '../../../utils/chatgpt-sms-assistant.js';
+import { createClient } from '@supabase/supabase-js';
+import { canSendSMS, getOrganizationFromPhone } from '@/utils/subscription-helpers';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export default async function handler(req, res) {
   try {
@@ -45,32 +50,62 @@ export default async function handler(req, res) {
       }
     }
     
-    // 4. Generate AI response with full context
-    const aiResponse = await generateAIResponse(Body, customerContext);
-    console.log('AI Response:', aiResponse);
+    // 4. Check subscription for AI SMS features (Professional/Enterprise only)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const org = await getOrganizationFromPhone(supabase, From);
     
-    // 5. Send AI response to customer
+    // Allow AI responses if:
+    // - Organization has Professional/Enterprise tier
+    // - Or if we can't determine organization (backward compatibility)
+    let canUseAI = true;
+    if (org) {
+      const smsCheck = await canSendSMS(supabase, org);
+      canUseAI = smsCheck.allowed;
+      
+      if (!canUseAI) {
+        console.log(`🚫 AI SMS not available for organization ${org.id} (tier: ${org.subscription_tier})`);
+      }
+    }
+    
+    // 5. Generate AI response with full context (if allowed)
+    let aiResponse = null;
+    if (canUseAI) {
+      try {
+        aiResponse = await generateAIResponse(Body, customerContext);
+        console.log('AI Response:', aiResponse);
+      } catch (aiError) {
+        console.error('❌ Failed to generate AI response:', aiError);
+        canUseAI = false;
+      }
+    }
+    
+    // 6. Send AI response to customer (if generated)
     let twilioResponse = null;
-    try {
-      const twilio = require('twilio');
-      const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-      
-      twilioResponse = await twilioClient.messages.create({
-        body: aiResponse,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: From
-      });
-      
-      console.log('✅ AI response sent:', twilioResponse.sid);
-      
-      // Save AI response to conversation history
-      await saveConversationMessage(From, aiResponse, 'outbound', 'ai_assistant');
-      
-    } catch (smsError) {
-      console.error('❌ Failed to send AI response:', smsError);
-      
-      // Send fallback response
-      const fallbackMessage = `Thank you for contacting M10 DJ Company! 🎵 We're experiencing a brief technical issue, but Ben will personally respond within 30 minutes. For immediate assistance: (901) 497-7001`;
+    if (canUseAI && aiResponse) {
+      try {
+        const twilio = require('twilio');
+        const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        
+        twilioResponse = await twilioClient.messages.create({
+          body: aiResponse,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: From
+        });
+        
+        console.log('✅ AI response sent:', twilioResponse.sid);
+        
+        // Save AI response to conversation history
+        await saveConversationMessage(From, aiResponse, 'outbound', 'ai_assistant');
+        
+      } catch (smsError) {
+        console.error('❌ Failed to send AI response:', smsError);
+        canUseAI = false;
+      }
+    }
+    
+    // 7. Send fallback response if AI not available or failed
+    if (!canUseAI || !aiResponse) {
+      const fallbackMessage = `Thank you for contacting M10 DJ Company! 🎵 We've received your message and will respond personally within 30 minutes. For immediate assistance: (901) 497-7001`;
       
       try {
         const twilio = require('twilio');
@@ -83,6 +118,7 @@ export default async function handler(req, res) {
         });
         
         await saveConversationMessage(From, fallbackMessage, 'outbound', 'auto_reply');
+        console.log('✅ Fallback message sent (AI not available for this tier)');
       } catch (fallbackError) {
         console.error('❌ Fallback message also failed:', fallbackError);
       }

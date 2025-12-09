@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { getPackageLineItemsFromQuote, calculateQuoteTotals } from '@/utils/quote-calculations';
 
 interface InvoiceDetail {
   id: string;
@@ -98,6 +99,7 @@ interface QuoteData {
   due_date_type: string | null;
   deposit_due_date: string | null;
   remaining_balance_due_date: string | null;
+  speaker_rental?: any;
 }
 
 export default function InvoiceDetailPage() {
@@ -110,53 +112,209 @@ export default function InvoiceDetailPage() {
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
+  const [paymentData, setPaymentData] = useState<{ totalPaid: number; payments: any[] } | null>(null);
+  const [hasPayment, setHasPayment] = useState(false);
+  const [leadData, setLeadData] = useState<any>(null);
   const [downloading, setDownloading] = useState(false);
 
-  const fetchInvoiceDetails = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Fetch invoice summary
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoice_summary')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (invoiceError) throw invoiceError;
-      setInvoice(invoiceData);
+      const fetchInvoiceDetails = useCallback(async () => {
+        setLoading(true);
+        try {
+          console.log('🔍 Fetching invoice details for:', id);
+          
+          // Fetch invoice summary
+          const { data: invoiceData, error: invoiceError } = await supabase
+            .from('invoice_summary')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (invoiceError) throw invoiceError;
+          
+          console.log('📄 Invoice data loaded:', {
+            id: invoiceData.id,
+            invoice_number: invoiceData.invoice_number,
+            contact_id: invoiceData.contact_id,
+            total_amount: invoiceData.total_amount,
+            invoice_status: invoiceData.invoice_status
+          });
+          
+          setInvoice(invoiceData);
 
-      // Fetch line items
+          // Fetch line items
       const { data: lineItemsData, error: lineItemsError } = await supabase
         .from('invoice_line_items')
         .select('*')
         .eq('invoice_id', id)
         .order('created_at', { ascending: true });
       
-      if (lineItemsError) throw lineItemsError;
+      if (lineItemsError) {
+        console.warn('Error fetching invoice line items:', lineItemsError);
+      }
       setLineItems(lineItemsData || []);
+      console.log('📦 Invoice line items:', lineItemsData?.length || 0);
 
-      // Fetch payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('invoice_id', id)
-        .order('payment_date', { ascending: false });
+      // Fetch payments - use same API endpoint as quote page for consistency
+      let paymentsData = [];
+      let paymentData = null;
+      let hasPayment = false;
       
-      if (paymentsError) throw paymentsError;
-      setPayments(paymentsData || []);
+      if (invoiceData && invoiceData.contact_id) {
+        try {
+          const timestamp = new Date().getTime();
+          const paymentsResponse = await fetch(`/api/quote/${invoiceData.contact_id}/payments?_t=${timestamp}`, { 
+            cache: 'no-store' 
+          });
+          
+          if (paymentsResponse.ok) {
+            const paymentsResult = await paymentsResponse.json();
+            if (paymentsResult.payments && paymentsResult.payments.length > 0) {
+              // Filter for paid payments (same as quote page)
+              const paidPayments = paymentsResult.payments.filter((p: any) => p.payment_status === 'Paid');
+              if (paidPayments.length > 0) {
+                hasPayment = true;
+                const totalPaid = paidPayments.reduce((sum: number, p: any) => sum + (parseFloat(p.total_amount) || 0), 0);
+                paymentData = { totalPaid, payments: paidPayments };
+                paymentsData = paidPayments;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching payments from API:', error);
+          // Fallback to direct query
+          const { data: fallbackPayments, error: paymentsError } = await supabase
+            .from('payments')
+            .select('*')
+            .eq('invoice_id', id)
+            .order('payment_date', { ascending: false });
+          
+          if (paymentsError) {
+            console.warn('Error fetching payments:', paymentsError);
+          } else {
+            paymentsData = fallbackPayments || [];
+          }
+        }
+      }
+      
+      setPayments(paymentsData);
+      setPaymentData(paymentData);
+      setHasPayment(hasPayment);
+      console.log('💳 Payments:', paymentsData?.length || 0, hasPayment ? '(has payment)' : '');
 
-      // Fetch quote_selections data linked to this invoice
-      const { data: quoteData, error: quoteError } = await supabase
-        .from('quote_selections')
-        .select('*')
-        .eq('invoice_id', id)
-        .maybeSingle();
+      // Fetch lead/contact data using the same API endpoint as the quote page
+      // This ensures we get the accurate event date (same as quote page)
+      if (invoiceData && invoiceData.contact_id) {
+        try {
+          const timestamp = new Date().getTime();
+          const leadResponse = await fetch(`/api/leads/get-lead?id=${invoiceData.contact_id}&_t=${timestamp}`, { 
+            cache: 'no-store' 
+          });
+          
+          if (leadResponse.ok) {
+            const lead = await leadResponse.json();
+            console.log('✅ Loaded lead data:', {
+              id: lead.id,
+              eventDate: lead.eventDate || lead.event_date,
+              eventType: lead.eventType || lead.event_type
+            });
+            setLeadData(lead);
+          }
+        } catch (error) {
+          console.warn('Error fetching lead data:', error);
+        }
+      }
+
+      // Fetch quote_selections data using the same API endpoint as the quote page
+      // This ensures consistency and handles all the same parsing logic
+      let quoteData = null;
       
-      if (quoteError && quoteError.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.warn('Error fetching quote data:', quoteError);
-      } else if (quoteData) {
-        setQuoteData(quoteData);
-        console.log('✅ Loaded quote data:', quoteData);
+      if (invoiceData && invoiceData.contact_id) {
+        console.log('🔍 Fetching quote data for contact_id:', invoiceData.contact_id);
+        try {
+          const timestamp = new Date().getTime();
+          const quoteResponse = await fetch(`/api/quote/${invoiceData.contact_id}?_t=${timestamp}`, { 
+            cache: 'no-store' 
+          });
+          
+          if (quoteResponse.ok) {
+            const quote = await quoteResponse.json();
+            console.log('✅ Loaded quote data from API:', {
+              id: quote.id,
+              package_id: quote.package_id,
+              total_price: quote.total_price,
+              discount_type: quote.discount_type,
+              discount_value: quote.discount_value
+            });
+            
+            // Parse speaker_rental if it's a JSON string (same as quote page)
+            if (quote.speaker_rental && typeof quote.speaker_rental === 'string') {
+              try {
+                quote.speaker_rental = JSON.parse(quote.speaker_rental);
+              } catch (e) {
+                console.error('Error parsing speaker_rental:', e);
+              }
+            }
+            
+            quoteData = quote;
+            
+            // If quote doesn't have invoice_id set, update it
+            if (!quote.invoice_id) {
+              console.log('🔗 Linking quote to invoice...');
+              await supabase
+                .from('quote_selections')
+                .update({ invoice_id: id })
+                .eq('id', quote.id);
+            }
+          } else {
+            const errorData = await quoteResponse.json().catch(() => ({}));
+            console.warn('⚠️ Failed to fetch quote from API:', quoteResponse.status, errorData);
+          }
+        } catch (error) {
+          console.error('Error fetching quote from API:', error);
+        }
+      } else {
+        console.warn('⚠️ Cannot fetch quote: invoice data or contact_id missing');
+      }
+      
+      if (quoteData) {
+        // Parse JSON fields if they're strings (API might return them as strings)
+        const parseJsonField = (field: any) => {
+          if (typeof field === 'string') {
+            try {
+              return JSON.parse(field);
+            } catch (e) {
+              // If parsing fails, return as-is (might already be an object)
+              return field;
+            }
+          }
+          return field;
+        };
+        
+        const parsedQuoteData = {
+          ...quoteData,
+          custom_line_items: parseJsonField(quoteData.custom_line_items),
+          custom_addons: parseJsonField(quoteData.custom_addons),
+          addons: parseJsonField(quoteData.addons),
+          payment_schedule: parseJsonField(quoteData.payment_schedule)
+        };
+        
+        console.log('📋 Parsed quote data:', {
+          package_id: parsedQuoteData.package_id,
+          package_name: parsedQuoteData.package_name,
+          total_price: parsedQuoteData.total_price,
+          package_price: parsedQuoteData.package_price,
+          custom_line_items_count: Array.isArray(parsedQuoteData.custom_line_items) ? parsedQuoteData.custom_line_items.length : 0,
+          addons_count: Array.isArray(parsedQuoteData.addons) ? parsedQuoteData.addons.length : 0,
+          custom_addons_count: Array.isArray(parsedQuoteData.custom_addons) ? parsedQuoteData.custom_addons.length : 0,
+          discount_type: parsedQuoteData.discount_type,
+          discount_value: parsedQuoteData.discount_value,
+          speaker_rental: parsedQuoteData.speaker_rental ? 'present' : 'none'
+        });
+        
+        setQuoteData(parsedQuoteData);
+      } else {
+        console.warn('⚠️ No quote data found for invoice:', id);
+        setQuoteData(null);
       }
 
     } catch (error) {
@@ -219,39 +377,94 @@ export default function InvoiceDetailPage() {
     });
   };
 
-  const handleDownloadPDF = async () => {
-    if (!invoice) return;
+  const handleDownloadPDF = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     
+    if (!invoice || !invoice.contact_id) {
+      console.error('Invoice or contact_id is missing');
+      return;
+    }
+
     setDownloading(true);
     try {
-      const response = await fetch('/api/invoices/generate-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId: invoice.id })
+      // Use the same API endpoint as quote page - it uses contact_id (lead_id)
+      const response = await fetch(`/api/quote/${invoice.contact_id}/generate-invoice-pdf`, {
+        method: 'GET',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+        const errorText = await response.text();
+        console.error('PDF generation failed:', response.status, errorText);
+        throw new Error(`Failed to generate PDF: ${response.status}`);
       }
 
-      // Get the PDF blob
+      // Check if response is actually a PDF
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/pdf')) {
+        console.error('Response is not a PDF:', contentType);
+        throw new Error('Server returned invalid PDF format');
+      }
+
+      // Create blob and download
       const blob = await response.blob();
       
-      // Create download link
+      if (!blob || blob.size === 0) {
+        throw new Error('PDF file is empty');
+      }
+
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Invoice-${invoice.invoice_number}.pdf`;
-      document.body.appendChild(link);
-      link.click();
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Create a more descriptive filename (same logic as quote page)
+      const firstName = invoice.first_name?.trim() || '';
+      const lastName = invoice.last_name?.trim() || '';
+      const eventDate = invoice.event_date ? 
+        new Date(invoice.event_date).toISOString().split('T')[0] : '';
+      const eventType = invoice.event_type?.toLowerCase()?.replace(/_/g, '-') || '';
+      const invoiceNumber = invoice.invoice_number;
+      
+      let filename = 'Invoice';
+      
+      // Build filename with available data
+      if (firstName && lastName) {
+        filename = `Invoice-${firstName}-${lastName}`;
+      } else if (firstName) {
+        filename = `Invoice-${firstName}`;
+      } else if (lastName) {
+        filename = `Invoice-${lastName}`;
+      } else if (invoiceNumber) {
+        filename = `Invoice-${invoiceNumber}`;
+      } else if (invoice.id) {
+        filename = `Invoice-${invoice.id.substring(0, 8).toUpperCase()}`;
+      }
+      
+      // Add event type if available
+      if (eventType) {
+        filename += `-${eventType}`;
+      }
+      
+      // Add event date if available
+      if (eventDate) {
+        filename += `-${eventDate}`;
+      }
+      
+      a.download = `${filename}.pdf`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
       
       // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
     } catch (error) {
       console.error('Error downloading PDF:', error);
-      alert('Failed to download PDF. Please try again.');
+      alert(`Failed to download PDF: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     } finally {
       setDownloading(false);
     }
@@ -350,9 +563,12 @@ export default function InvoiceDetailPage() {
                 <div className="flex items-start gap-2">
                   <User className="h-5 w-5 text-gray-400 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-gray-900">
+                    <Link 
+                      href={`/admin/contacts/${invoice.contact_id}`}
+                      className="font-semibold text-gray-900 hover:text-blue-600 transition-colors inline-block"
+                    >
                       {invoice.first_name} {invoice.last_name}
-                    </p>
+                    </Link>
                     <p className="text-sm text-gray-600">{invoice.email_address}</p>
                     {invoice.phone && <p className="text-sm text-gray-600">{invoice.phone}</p>}
                   </div>
@@ -383,10 +599,12 @@ export default function InvoiceDetailPage() {
                   <span className="text-gray-600">Due Date:</span>
                   <span className="font-medium text-gray-900">{formatDate(invoice.due_date)}</span>
                 </div>
-                {invoice.event_date && (
+                {(leadData?.eventDate || leadData?.event_date || invoice.event_date) && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Event Date:</span>
-                    <span className="font-medium text-gray-900">{formatDate(invoice.event_date)}</span>
+                    <span className="font-medium text-gray-900">
+                      {formatDate(leadData?.eventDate || leadData?.event_date || invoice.event_date)}
+                    </span>
                   </div>
                 )}
                 {invoice.venue_name && (
@@ -437,69 +655,234 @@ export default function InvoiceDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {/* Show invoice line items if available, otherwise show quote line items */}
-                {lineItems.length > 0 ? (
-                  lineItems.map((item) => (
-                    <tr key={item.id}>
-                      <td className="py-4 px-6">
-                        <p className="font-medium text-gray-900">{item.description}</p>
-                        {item.notes && <p className="text-sm text-gray-600 mt-1">{item.notes}</p>}
-                      </td>
-                      <td className="py-4 px-6 text-center text-gray-700">{item.quantity || 1}</td>
-                      <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.unit_price)}</td>
-                      <td className="py-4 px-6 text-right font-semibold text-gray-900">{formatCurrency(item.total_amount)}</td>
-                    </tr>
-                  ))
-                ) : quoteData?.custom_line_items && Array.isArray(quoteData.custom_line_items) && quoteData.custom_line_items.length > 0 ? (
-                  quoteData.custom_line_items.map((item: any, index: number) => (
-                    <tr key={`quote-item-${index}`}>
-                      <td className="py-4 px-6">
-                        <p className="font-medium text-gray-900">{item.item || item.description || 'Line Item'}</p>
-                        {item.description && item.description !== item.item && (
-                          <p className="text-sm text-gray-600 mt-1">{item.description}</p>
-                        )}
-                      </td>
-                      <td className="py-4 px-6 text-center text-gray-700">1</td>
-                      <td className="py-4 px-6 text-right text-gray-700">
-                        {quoteData.show_line_item_prices !== false && item.price ? formatCurrency(item.price) : '—'}
-                      </td>
-                      <td className="py-4 px-6 text-right font-semibold text-gray-900">
-                        {quoteData.show_line_item_prices !== false && item.price ? formatCurrency(item.price) : '—'}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="py-8 px-6 text-center text-gray-500">
-                      No line items found
-                    </td>
-                  </tr>
-                )}
+                {(() => {
+                  // Use quote data as source of truth (same as quote page)
+                  const packageLineItems = quoteData ? getPackageLineItemsFromQuote(quoteData) : [];
+                  const showPrices = quoteData?.show_line_item_prices !== false;
+                  
+                  // Parse speaker_rental if present
+                  let speakerRental: any = null;
+                  if (quoteData?.speaker_rental) {
+                    speakerRental = typeof quoteData.speaker_rental === 'string' 
+                      ? JSON.parse(quoteData.speaker_rental) 
+                      : quoteData.speaker_rental;
+                  }
+                  
+                  // Show speaker rental first if present
+                  const hasItems = packageLineItems.length > 0 || speakerRental;
+                  
+                  if (!hasItems && lineItems.length > 0) {
+                    // Fallback to invoice line items if no quote data
+                    return lineItems.map((item) => (
+                      <tr key={item.id}>
+                        <td className="py-4 px-6">
+                          <p className="font-medium text-gray-900">{item.description}</p>
+                          {item.notes && <p className="text-sm text-gray-600 mt-1">{item.notes}</p>}
+                        </td>
+                        <td className="py-4 px-6 text-center text-gray-700">{item.quantity || 1}</td>
+                        <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.unit_price)}</td>
+                        <td className="py-4 px-6 text-right font-semibold text-gray-900">{formatCurrency(item.total_amount)}</td>
+                      </tr>
+                    ));
+                  }
+                  
+                  if (!hasItems) {
+                    return (
+                      <tr>
+                        <td colSpan={4} className="py-8 px-6 text-center text-gray-500">
+                          No line items found
+                        </td>
+                      </tr>
+                    );
+                  }
+                  
+                  return (
+                    <>
+                      {/* Speaker Rental (if present) */}
+                      {speakerRental && speakerRental.price && (
+                        <tr>
+                          <td className="py-4 px-6">
+                            <p className="font-medium text-gray-900">Speaker Rental</p>
+                            {speakerRental.description && (
+                              <p className="text-sm text-gray-600 mt-1">{speakerRental.description}</p>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 text-center text-gray-700">1</td>
+                          <td className="py-4 px-6 text-right text-gray-700">
+                            {showPrices ? formatCurrency(speakerRental.price) : '—'}
+                          </td>
+                          <td className="py-4 px-6 text-right font-semibold text-gray-900">
+                            {showPrices ? formatCurrency(speakerRental.price) : '—'}
+                          </td>
+                        </tr>
+                      )}
+                      
+                      {/* Package Line Items */}
+                      {packageLineItems.map((item, index) => (
+                        <tr key={`quote-item-${index}`}>
+                          <td className="py-4 px-6">
+                            <p className="font-medium text-gray-900">{item.item || item.description || 'Line Item'}</p>
+                            {item.description && item.description !== item.item && (
+                              <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 text-center text-gray-700">1</td>
+                          <td className="py-4 px-6 text-right text-gray-700">
+                            {showPrices && item.price ? formatCurrency(item.price) : '—'}
+                          </td>
+                          <td className="py-4 px-6 text-right font-semibold text-gray-900">
+                            {showPrices && item.price ? formatCurrency(item.price) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
           <div className="bg-gray-50 p-6 border-t border-gray-200">
             <div className="max-w-sm ml-auto space-y-2">
-              <div className="flex justify-between text-gray-700">
-                <span>Subtotal:</span>
-                <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-gray-700">
-                <span>Tax:</span>
-                <span className="font-medium">{formatCurrency(invoice.tax_amount)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-300">
-                <span>Total:</span>
-                <span>{formatCurrency(invoice.total_amount)}</span>
-              </div>
-              <div className="flex justify-between text-green-600 font-semibold">
-                <span>Paid:</span>
-                <span>{formatCurrency(invoice.amount_paid)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-bold text-orange-600 pt-2 border-t border-gray-300">
-                <span>Balance Due:</span>
-                <span>{formatCurrency(invoice.balance_due)}</span>
-              </div>
+              {(() => {
+                // Calculate totals from quote data (same as quote page)
+                // Always use quote totals if quoteData exists, as it's the source of truth
+                const quoteTotals = calculateQuoteTotals(quoteData);
+                const useQuoteTotals = !!quoteData; // Use quote totals if quote data exists
+                
+                // Use quote totals if available, otherwise use invoice totals
+                // Match quote page calculation exactly: total = subtotal - discountAmount (no tax added)
+                const subtotal = useQuoteTotals ? quoteTotals.subtotal : (invoice.subtotal || 0);
+                const discountAmount = useQuoteTotals ? quoteTotals.discountAmount : 0;
+                // For total, use calculated total from quoteTotals (subtotal - discount)
+                // Quote page: total = subtotal - discountAmount (line 918)
+                // Only use quoteData.total_price if it's explicitly set AND matches the calculated total
+                // Otherwise always use calculated total to ensure discount is applied
+                const calculatedTotal = useQuoteTotals 
+                  ? quoteTotals.total  // Always use calculated total (subtotal - discount)
+                  : (invoice.total_amount || 0);
+                const taxAmount = invoice.tax_amount || 0;
+                // Match quote page: total = subtotal - discountAmount (tax is shown separately if > 0)
+                const total = calculatedTotal; // Don't add tax - match quote page exactly
+                // Use paymentData.totalPaid if available (from quote API), otherwise use invoice.amount_paid
+                const amountPaid = paymentData?.totalPaid || invoice.amount_paid || 0;
+                const balanceDue = total - amountPaid;
+                const isFullyPaid = amountPaid >= total;
+                const isPartiallyPaid = amountPaid > 0 && amountPaid < total;
+                
+                console.log('💰 Totals calculation:', {
+                  useQuoteTotals,
+                  quoteSubtotal: quoteTotals.subtotal,
+                  quoteDiscount: quoteTotals.discountAmount,
+                  quoteTotal: quoteTotals.total,
+                  quoteTotalPrice: quoteData?.total_price,
+                  calculatedTotal,
+                  taxAmount,
+                  total,
+                  amountPaid,
+                  balanceDue
+                });
+                
+                return (
+                  <>
+                    <div className="flex justify-between text-gray-700">
+                      <span>Subtotal:</span>
+                      <span className="font-medium">{formatCurrency(subtotal)}</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-gray-700">
+                        <span>Discount:</span>
+                        <span className="font-medium text-green-600">-{formatCurrency(discountAmount)}</span>
+                      </div>
+                    )}
+                    {taxAmount > 0 && (
+                      <div className="flex justify-between text-gray-700">
+                        <span>Tax:</span>
+                        <span className="font-medium">{formatCurrency(taxAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-300">
+                      <span>Total:</span>
+                      <span>{formatCurrency(total)}</span>
+                    </div>
+                    {hasPayment && (
+                      <>
+                        <div className="flex justify-between text-green-600 font-semibold pt-2 border-t border-gray-300">
+                          <span>Amount Paid:</span>
+                          <span>{formatCurrency(amountPaid)}</span>
+                        </div>
+                        
+                        {/* Payment History - Show individual payments (same as quote page) */}
+                        {paymentData?.payments && paymentData.payments.length > 0 && (
+                          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h4 className="font-semibold text-sm text-blue-900 mb-2">
+                              Payment History
+                            </h4>
+                            <div className="space-y-2">
+                              {paymentData.payments.map((payment: any, idx: number) => {
+                                const paymentDate = payment.transaction_date 
+                                  ? new Date(payment.transaction_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                                  : payment.created_at 
+                                    ? new Date(payment.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                                    : 'Date not available';
+                                
+                                // Determine if this is a retainer/deposit payment
+                                const isRetainer = payment.payment_type === 'Deposit' || 
+                                                  payment.payment_type === 'Retainer' ||
+                                                  payment.description?.toLowerCase().includes('deposit') ||
+                                                  payment.description?.toLowerCase().includes('retainer') ||
+                                                  (idx === 0 && paymentData.payments.length > 1);
+                                
+                                return (
+                                  <div key={payment.id || idx} className="flex items-center justify-between py-2 border-b border-blue-200 last:border-b-0">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                        <span className="text-sm font-medium text-blue-900">
+                                          {isRetainer ? '✓ Retainer Paid' : '✓ Payment Received'}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-blue-700 mt-0.5">
+                                        {paymentDate}
+                                        {payment.description && ` • ${payment.description}`}
+                                      </p>
+                                    </div>
+                                    <span className="text-sm font-semibold text-blue-900">
+                                      {formatCurrency(parseFloat(payment.total_amount) || 0)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {isFullyPaid && (
+                          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center gap-2 text-green-800">
+                              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                              <span className="font-semibold text-sm">Invoice Paid in Full</span>
+                            </div>
+                          </div>
+                        )}
+                        {isPartiallyPaid && (
+                          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex items-center gap-2 text-yellow-800 mb-1">
+                              <span className="font-semibold text-sm">Partially Paid</span>
+                            </div>
+                            <p className="text-xs text-yellow-700">
+                              {formatCurrency(balanceDue)} remaining
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <div className="flex justify-between text-lg font-bold text-orange-600 pt-2 border-t border-gray-300">
+                      <span>Balance Due:</span>
+                      <span>{formatCurrency(balanceDue)}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -547,6 +930,32 @@ export default function InvoiceDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Speaker Rental */}
+              {quoteData.speaker_rental && (() => {
+                const speakerRental = typeof quoteData.speaker_rental === 'string' 
+                  ? JSON.parse(quoteData.speaker_rental) 
+                  : quoteData.speaker_rental;
+                if (speakerRental && speakerRental.price) {
+                  return (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Speaker Rental</h3>
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">{speakerRental.name || 'Speaker Rental'}</p>
+                            {speakerRental.description && (
+                              <p className="text-sm text-gray-600 mt-1">{speakerRental.description}</p>
+                            )}
+                          </div>
+                          <span className="font-semibold text-gray-900 ml-4">{formatCurrency(speakerRental.price)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Add-ons */}
               {(quoteData.addons || quoteData.custom_addons) && 

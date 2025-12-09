@@ -1,0 +1,57 @@
+═══════════════════════════════════════════════════════════════
+HOW TO USE THIS IN GOOGLE SHEETS:
+═══════════════════════════════════════════════════════════════
+
+OPTION 1 (Recommended):
+1. Open Google Sheets
+2. Go to File > Import
+3. Upload the file: VERONICA_QUESTIONNAIRE_CLEAN.csv
+4. Choose "Replace spreadsheet" or "Insert new sheet"
+5. Click "Import data"
+
+OPTION 2 (Copy/Paste):
+1. Copy the data below (starting from "Section,Field...")
+2. In Google Sheets, click on cell A1
+3. Right-click > Paste special > Paste values only
+4. Then: Data > Split text to columns
+5. Choose "Comma" as the separator
+
+═══════════════════════════════════════════════════════════════
+COPY FROM HERE:
+═══════════════════════════════════════════════════════════════
+
+Section,Field,Your Response,Notes
+DO NOT PLAY LIST,Songs/Artists to Avoid,,"List songs or artists you don't want played (one per line)"
+DO NOT PLAY LIST,Additional Songs to Avoid,,
+DO NOT PLAY LIST,Additional Songs to Avoid,,
+SPECIAL DANCES,Which dances will you have?,"☐ First Dance ☐ Father-Daughter ☐ Mother-Son ☐ Anniversary ☐ Garter Toss ☐ Bouquet Toss ☐ Other","Check all that apply"
+SPECIAL DANCES,First Dance - Song Title,,
+SPECIAL DANCES,First Dance - Artist,,
+SPECIAL DANCES,Father-Daughter Dance - Song Title,,
+SPECIAL DANCES,Father-Daughter Dance - Artist,,
+SPECIAL DANCES,Mother-Son Dance - Song Title,,
+SPECIAL DANCES,Mother-Son Dance - Artist,,
+SPECIAL DANCES,Anniversary Dance - Song Title,,
+SPECIAL DANCES,Anniversary Dance - Artist,,
+SPECIAL DANCES,Other Special Dance - Description,,
+SPECIAL DANCES,Other Special Dance - Song Title,,
+SPECIAL DANCES,Other Special Dance - Artist,,
+PLAYLIST LINKS,Ceremony Playlist Link,,"Paste Spotify/Apple Music link here"
+PLAYLIST LINKS,Cocktail Hour Playlist Link,,"Paste Spotify/Apple Music link here"
+PLAYLIST LINKS,Reception/Dance Playlist Link,,"Paste Spotify/Apple Music link here"
+CEREMONY MUSIC,Ceremony Music Type,,"Traditional / Modern / Mix / Other"
+CEREMONY MUSIC,Processional Song (Bridal Party),,
+CEREMONY MUSIC,Processional Artist,,
+CEREMONY MUSIC,Bride's Entrance Song,,
+CEREMONY MUSIC,Bride's Entrance Artist,,
+CEREMONY MUSIC,Recessional Song (Exit),,
+CEREMONY MUSIC,Recessional Artist,,
+CEREMONY MUSIC,Unity Ceremony Song,,
+CEREMONY MUSIC,Unity Ceremony Artist,,
+CEREMONY MUSIC,Other Ceremony Moment - Description,,
+CEREMONY MUSIC,Other Ceremony Moment - Song,,
+CEREMONY MUSIC,Other Ceremony Moment - Artist,,
+MC INTRODUCTION,Introduction Preference,,"Standard / Custom / None"
+MC INTRODUCTION,Custom Introduction Text,,"If custom selected, write your introduction here"
+ADDITIONAL NOTES,Special Requests or Notes,,"Any other important information about your music preferences"
+

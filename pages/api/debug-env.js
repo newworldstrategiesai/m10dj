@@ -1,12 +1,12 @@
 /**
  * Debug endpoint to check environment variables
- * DELETE THIS FILE after debugging!
+ * Blocked in production for security
  */
 
 export default async function handler(req, res) {
-  // Only allow in development or with special header
-  if (process.env.NODE_ENV === 'production' && req.headers['x-debug-token'] !== 'debug-m10dj-2025') {
-    return res.status(403).json({ error: 'Forbidden' });
+  // Block in production
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
   }
 
   const envCheck = {

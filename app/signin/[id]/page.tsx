@@ -1,4 +1,3 @@
-import Logo from '@/components/icons/Logo';
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -8,7 +7,6 @@ import {
   getDefaultSignInView,
   getRedirectMethod
 } from '@/utils/auth-helpers/settings';
-import { Card } from '@/components/ui/card';
 import PasswordSignIn from '@/components/ui/AuthForms/PasswordSignIn';
 import EmailSignIn from '@/components/ui/AuthForms/EmailSignIn';
 import Separator from '@/components/ui/AuthForms/Separator';
@@ -23,7 +21,7 @@ export default async function SignIn({
   searchParams
 }: {
   params: { id: string };
-  searchParams: { disable_button: boolean; redirect?: string };
+  searchParams: { disable_button?: boolean; redirect?: string };
 }) {
   const { allowOauth, allowEmail, allowPassword } = getAuthTypes();
   const viewTypes = getViewTypes();
@@ -33,7 +31,7 @@ export default async function SignIn({
   let viewProp: string;
 
   // Assign url id to 'viewProp' if it's a valid string and ViewTypes includes it
-  if (typeof params.id === 'string' && viewTypes.includes(params.id)) {
+  if (params?.id && typeof params.id === 'string' && viewTypes.includes(params.id)) {
     viewProp = params.id;
   } else {
     const preferredSignInView =
@@ -43,26 +41,34 @@ export default async function SignIn({
     const redirectParam = searchParams?.redirect 
       ? `?redirect=${encodeURIComponent(searchParams.redirect)}` 
       : '';
-    return redirect(`/signin/${viewProp}${redirectParam}`);
+    redirect(`/signin/${viewProp}${redirectParam}`);
   }
 
   // Check if the user is already logged in and redirect to the account page if so
-  const supabase = createClient();
-
   let user = null;
   try {
+    const supabase = createClient();
+    
+    // Add timeout to prevent hanging on getUser()
+    const getUserPromise = supabase.auth.getUser();
+    const timeoutPromise = new Promise<{ data: { user: null }, error: { message: string } }>((resolve) => 
+      setTimeout(() => resolve({ data: { user: null }, error: { message: 'Timeout' } }), 3000)
+    );
+    
     const {
       data: { user: authUser },
       error
-    } = await supabase.auth.getUser();
+    } = await Promise.race([getUserPromise, timeoutPromise]);
     
     // If we get a refresh token error, ignore it and continue to sign in page
-    if (error && (error.message.includes('refresh_token_not_found') || error.message.includes('Invalid Refresh Token'))) {
-      // Clear invalid session and continue to sign in
-      try {
-        await supabase.auth.signOut();
-      } catch (signOutError) {
-        // Ignore sign out errors
+    if (error && (error.message.includes('refresh_token_not_found') || error.message.includes('Invalid Refresh Token') || error.message === 'Timeout')) {
+      // Clear invalid session and continue to sign in (only if not timeout)
+      if (error.message !== 'Timeout') {
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutError) {
+          // Ignore sign out errors
+        }
       }
       user = null;
     } else {
@@ -70,17 +76,39 @@ export default async function SignIn({
     }
   } catch (error) {
     // If there's any other error, just continue to sign in page
+    console.warn('Error checking user session (continuing to sign in page):', error);
     user = null;
   }
 
   if (user && viewProp !== 'update_password') {
     // User is already logged in, use redirect param or role-appropriate dashboard
-    const redirectUrl = searchParams?.redirect 
-      ? decodeURIComponent(searchParams.redirect) 
-      : await getRoleBasedRedirectUrl();
-    return redirect(redirectUrl);
+    try {
+      let redirectUrl: string;
+      
+      if (searchParams?.redirect) {
+        redirectUrl = decodeURIComponent(searchParams.redirect);
+      } else {
+        // Add timeout and error handling to prevent hanging
+        const redirectPromise = getRoleBasedRedirectUrl().catch((error) => {
+          console.error('Error getting role-based redirect URL:', error);
+          return '/account'; // Fallback to account page
+        });
+        
+        const timeoutPromise = new Promise<string>((resolve) => 
+          setTimeout(() => resolve('/account'), 3000)
+        );
+        
+        redirectUrl = await Promise.race([redirectPromise, timeoutPromise]);
+      }
+      
+      redirect(redirectUrl);
+    } catch (error) {
+      // If redirect URL fails, just go to account page
+      console.error('Error in redirect logic:', error);
+      redirect('/account');
+    }
   } else if (!user && viewProp === 'update_password') {
-    return redirect('/signin');
+    redirect('/signin');
   }
 
   return (
@@ -90,7 +118,13 @@ export default async function SignIn({
         <div className="flex justify-center mb-8">
           <div className="text-center">
             <div className="inline-block mb-4">
-              <Logo width="80px" height="80px" />
+              <img
+                src="/assets/m10 dj company logo white.gif"
+                alt="M10 DJ Company Logo"
+                width="80"
+                height="80"
+                className="object-contain"
+              />
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">
               {viewProp === 'signup' ? 'DJ Request Pro' : 'M10 DJ Company'}
@@ -103,52 +137,51 @@ export default async function SignIn({
           </div>
         </div>
         
-        {/* Sign In Card */}
-        <Card className="bg-white dark:bg-gray-900 border-0 shadow-2xl">
-          <div className="p-8">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                {viewProp === 'forgot_password'
-                  ? 'Reset Password'
-                  : viewProp === 'update_password'
-                    ? 'Update Password'
-                    : viewProp === 'signup'
-                      ? 'Sign Up'
-                      : 'Sign In'}
-              </h2>
-              {viewProp === 'password_signin' && (
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Enter your credentials to access your account
-                </p>
-              )}
-            </div>
-                  {viewProp === 'password_signin' && (
-          <PasswordSignIn
-            allowEmail={allowEmail}
-            redirectMethod={redirectMethod}
-            redirectTo={searchParams?.redirect ? decodeURIComponent(searchParams.redirect) : ''}
-          />
-        )}
-          {viewProp === 'email_signin' && (
-            <EmailSignIn
-              allowPassword={allowPassword}
-              redirectMethod={redirectMethod}
-              disableButton={searchParams.disable_button}
-            />
-          )}
-          {viewProp === 'forgot_password' && (
-            <ForgotPassword
-              allowEmail={allowEmail}
-              redirectMethod={redirectMethod}
-              disableButton={searchParams.disable_button}
-            />
-          )}
-          {viewProp === 'update_password' && (
-            <UpdatePassword redirectMethod={redirectMethod} />
-          )}
-          {viewProp === 'signup' && (
-            <SignUp allowEmail={allowEmail} redirectMethod={redirectMethod} />
-          )}
+        {/* Sign In Form */}
+        <div className="p-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {viewProp === 'forgot_password'
+                ? 'Reset Password'
+                : viewProp === 'update_password'
+                  ? 'Update Password'
+                  : viewProp === 'signup'
+                    ? 'Sign Up'
+                    : 'Sign In'}
+            </h2>
+            {viewProp === 'password_signin' && (
+              <p className="text-sm text-gray-400">
+                Enter your credentials to access your account
+              </p>
+            )}
+          </div>
+            {viewProp === 'password_signin' && (
+              <PasswordSignIn
+                allowEmail={allowEmail}
+                redirectMethod={redirectMethod}
+                redirectTo={searchParams?.redirect ? decodeURIComponent(searchParams.redirect) : ''}
+              />
+            )}
+            {viewProp === 'email_signin' && (
+              <EmailSignIn
+                allowPassword={allowPassword}
+                redirectMethod={redirectMethod}
+                disableButton={searchParams.disable_button}
+              />
+            )}
+            {viewProp === 'forgot_password' && (
+              <ForgotPassword
+                allowEmail={allowEmail}
+                redirectMethod={redirectMethod}
+                disableButton={searchParams.disable_button}
+              />
+            )}
+            {viewProp === 'update_password' && (
+              <UpdatePassword redirectMethod={redirectMethod} />
+            )}
+            {viewProp === 'signup' && (
+              <SignUp allowEmail={allowEmail} redirectMethod={redirectMethod} />
+            )}
           {viewProp !== 'update_password' &&
             viewProp !== 'signup' &&
             allowOauth && (
@@ -157,8 +190,7 @@ export default async function SignIn({
                 <OauthSignIn />
               </>
             )}
-          </div>
-        </Card>
+        </div>
         
         {/* Footer Links */}
         <div className="mt-6 text-center">

@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
+import { calculateQuoteTotals } from '@/utils/quote-calculations';
 
 interface Invoice {
   id: string;
@@ -36,6 +37,7 @@ interface Invoice {
   invoice_date: string;
   due_date: string;
   total_amount: number;
+  subtotal?: number;
   amount_paid: number;
   balance_due: number;
   contact_id: string;
@@ -141,6 +143,7 @@ export default function InvoicesDashboard() {
         console.warn('No organization found for user');
         setInvoices([]);
         calculateStats([]);
+        setLoading(false);
         return;
       }
 
@@ -172,8 +175,7 @@ export default function InvoicesDashboard() {
             !inv.organization_id || inv.organization_id === org.id
           );
           console.log(`✅ Filtered to ${filtered.length} invoices`);
-          setInvoices(filtered);
-          calculateStats(filtered);
+          await enrichInvoicesWithQuoteData(filtered, supabase);
         } else {
           throw error;
         }
@@ -213,8 +215,7 @@ export default function InvoicesDashboard() {
               organization_id: inv.organization_id,
               contact_id: inv.contact_id
             })));
-            setInvoices(filtered);
-            calculateStats(filtered);
+            await enrichInvoicesWithQuoteData(filtered, supabase);
           } else {
             console.log('❌ No invoices found in invoice_summary view, checking invoices table directly...');
             
@@ -253,12 +254,12 @@ export default function InvoicesDashboard() {
               }));
               
               console.log(`✅ Found ${transformed.length} invoices in invoices table`);
-              setInvoices(transformed);
-              calculateStats(transformed);
+              await enrichInvoicesWithQuoteData(transformed, supabase);
             } else {
               console.log('❌ No invoices found in database at all');
               setInvoices([]);
               calculateStats([]);
+              return;
             }
           }
         } else {
@@ -268,8 +269,9 @@ export default function InvoicesDashboard() {
             invoice_number: inv.invoice_number,
             organization_id: inv.organization_id
           })));
-          setInvoices(data);
-          calculateStats(data);
+          
+          // Fetch quote data for all invoices to get accurate totals
+          await enrichInvoicesWithQuoteData(data, supabase);
         }
       }
     } catch (error) {
@@ -278,6 +280,129 @@ export default function InvoicesDashboard() {
       calculateStats([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const enrichInvoicesWithQuoteData = async (invoices: Invoice[], supabase: any) => {
+    try {
+      // Get all contact_ids and invoice_ids from invoices
+      const contactIds = invoices.map(inv => inv.contact_id).filter(Boolean);
+      const invoiceIds = invoices.map(inv => inv.id).filter(Boolean);
+      
+      if (contactIds.length === 0) {
+        setInvoices(invoices);
+        calculateStats(invoices);
+        return;
+      }
+      
+      console.log(`🔍 Fetching quote data for ${contactIds.length} invoices...`);
+      
+      // Fetch all quote_selections for these contacts in one query
+      const { data: quotes, error: quotesError } = await supabase
+        .from('quote_selections')
+        .select('lead_id, total_price, package_price, discount_type, discount_value, addons, custom_addons, speaker_rental')
+        .in('lead_id', contactIds);
+      
+      if (quotesError) {
+        console.warn('Error fetching quotes:', quotesError);
+      }
+      
+      // Fetch all payments for these invoices to get accurate amount_paid
+      const { data: payments, error: paymentsError } = await supabase
+        .from('payments')
+        .select('invoice_id, total_amount, payment_status')
+        .in('invoice_id', invoiceIds)
+        .eq('payment_status', 'Paid');
+      
+      if (paymentsError) {
+        console.warn('Error fetching payments:', paymentsError);
+      }
+      
+      // Create a map of contact_id -> quote data
+      const quoteMap = new Map();
+      quotes?.forEach((quote: any) => {
+        // Parse JSON fields
+        const parseJsonField = (field: any) => {
+          if (typeof field === 'string') {
+            try {
+              return JSON.parse(field);
+            } catch (e) {
+              return field;
+            }
+          }
+          return field;
+        };
+        
+        quoteMap.set(quote.lead_id, {
+          ...quote,
+          addons: parseJsonField(quote.addons),
+          custom_addons: parseJsonField(quote.custom_addons),
+          speaker_rental: parseJsonField(quote.speaker_rental)
+        });
+      });
+      
+      // Create a map of invoice_id -> total amount paid
+      const paymentMap = new Map<string, number>();
+      payments?.forEach((payment: any) => {
+        const currentTotal = paymentMap.get(payment.invoice_id) || 0;
+        paymentMap.set(payment.invoice_id, currentTotal + (parseFloat(payment.total_amount) || 0));
+      });
+      
+      // Enrich invoices with accurate totals from quote data and payments
+      const enrichedInvoices = invoices.map(invoice => {
+        const quote = quoteMap.get(invoice.contact_id);
+        const accurateAmountPaid = paymentMap.get(invoice.id) || invoice.amount_paid || 0;
+        
+        if (quote) {
+          // Calculate accurate totals from quote data (includes discount)
+          const quoteTotals = calculateQuoteTotals(quote);
+          
+          // Always use calculated total (subtotal - discount) to ensure discount is applied
+          // This matches the detail page logic exactly
+          const accurateTotal = quoteTotals.total; // This is subtotal - discountAmount
+          const accurateBalanceDue = accurateTotal - accurateAmountPaid;
+          
+          console.log(`💰 Invoice ${invoice.invoice_number}:`, {
+            subtotal: quoteTotals.subtotal,
+            discount: quoteTotals.discountAmount,
+            total: accurateTotal,
+            amount_paid: accurateAmountPaid,
+            balance_due: accurateBalanceDue,
+            original_total: invoice.total_amount,
+            original_amount_paid: invoice.amount_paid
+          });
+          
+          // Update invoice with accurate totals and payments
+          return {
+            ...invoice,
+            total_amount: accurateTotal,
+            subtotal: quoteTotals.subtotal,
+            amount_paid: accurateAmountPaid,
+            balance_due: accurateBalanceDue
+          };
+        }
+        
+        // If no quote found, still update amount_paid from payments if available
+        if (accurateAmountPaid !== (invoice.amount_paid || 0)) {
+          return {
+            ...invoice,
+            amount_paid: accurateAmountPaid,
+            balance_due: (invoice.total_amount || 0) - accurateAmountPaid
+          };
+        }
+        
+        // If no quote found and no payment updates, use invoice data as-is
+        return invoice;
+      });
+      
+      console.log(`✅ Enriched ${enrichedInvoices.length} invoices with quote data and payments`);
+      setInvoices(enrichedInvoices);
+      calculateStats(enrichedInvoices);
+    } catch (error) {
+      console.error('Error enriching invoices with quote data:', error);
+      // Fallback to original invoices if enrichment fails
+      setInvoices(invoices);
+      calculateStats(invoices);
     }
   };
 

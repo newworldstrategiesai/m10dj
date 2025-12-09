@@ -7,6 +7,7 @@
  * 3. Checking that all records are properly linked
  * 
  * Usage: POST /api/test-auto-creation
+ * Blocked in production for security
  */
 
 import { requireAdmin } from '@/utils/auth-helpers/api-auth';
@@ -16,6 +17,11 @@ import { createClient } from '@supabase/supabase-js';
 import { autoCreateQuoteInvoiceContract } from '../../utils/auto-create-quote-invoice-contract';
 
 export default async function handler(req, res) {
+  // Block in production
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

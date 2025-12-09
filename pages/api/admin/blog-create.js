@@ -1,4 +1,6 @@
-import { supabase } from '../../../utils/company_lib/supabase';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,6 +8,28 @@ export default async function handler(req, res) {
   }
 
   try {
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context (null for admins, org_id for SaaS users)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    );
+
+    // SaaS users must have an organization
+    if (!isAdmin && !orgId) {
+      return res.status(403).json({ error: 'Organization required' });
+    }
+
     const postData = req.body;
 
     // Basic validation
@@ -26,7 +50,7 @@ export default async function handler(req, res) {
       postData.published_at = new Date().toISOString();
     }
 
-    // Create the blog post
+    // Create the blog post with organization_id
     const { data, error } = await supabase
       .from('blog_posts')
       .insert([{
@@ -43,6 +67,7 @@ export default async function handler(req, res) {
         is_featured: postData.is_featured || false,
         author: postData.author || 'M10 DJ Company',
         published_at: postData.published_at || null,
+        organization_id: orgId, // Add organization_id
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }])

@@ -1,6 +1,14 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { getOrganizationContext } from '@/utils/organization-helpers';
+import { getViewAsOrgIdFromRequest } from '@/utils/auth-helpers/view-as';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
 
 export default async function handler(req, res) {
+  // Block in production
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -12,6 +20,15 @@ export default async function handler(req, res) {
     if (sessionError || !session) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    // Get organization context for test data
+    const viewAsOrgId = getViewAsOrgIdFromRequest(req);
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email,
+      viewAsOrgId
+    );
 
     // Simulate a contact form submission
     const testContactData = {
@@ -32,7 +49,8 @@ export default async function handler(req, res) {
       lead_temperature: 'Hot',
       communication_preference: 'email',
       notes: 'Test contact created via API test',
-      user_id: session.user.id
+      user_id: session.user.id,
+      organization_id: orgId // Include organization_id for multi-tenant isolation
     };
 
     // Test 1: Create contact
@@ -84,12 +102,19 @@ export default async function handler(req, res) {
       });
     }
 
-    // Test 4: Search for contact
-    const { data: searchResults, error: searchError } = await supabase
+    // Test 4: Search for contact (filter by organization if applicable)
+    let searchQuery = supabase
       .from('contacts')
       .select('*')
-      .eq('user_id', session.user.id)
       .or('first_name.ilike.%Sarah%,email_address.ilike.%sarah%');
+
+    if (orgId) {
+      searchQuery = searchQuery.eq('organization_id', orgId);
+    } else {
+      searchQuery = searchQuery.eq('user_id', session.user.id);
+    }
+
+    const { data: searchResults, error: searchError } = await searchQuery;
 
     if (searchError) {
       return res.status(500).json({

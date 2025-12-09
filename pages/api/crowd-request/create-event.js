@@ -6,6 +6,9 @@
 
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
+import { canCreateEvent } from '@/utils/subscription-helpers';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -20,6 +23,9 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    // Check if user is platform admin (admins bypass limits)
+    const isAdmin = isPlatformAdmin(session.user.email);
+
     const { name, date, location, organization_id } = req.body;
 
     // Validate required fields
@@ -29,17 +35,47 @@ export default async function handler(req, res) {
 
     // Get organization ID from user if not provided
     let orgId = organization_id;
+    let org = null;
+    
     if (!orgId) {
-      const { data: org, error: orgError } = await supabase
+      const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('id')
+        .select('*')
         .eq('owner_id', session.user.id)
         .single();
 
-      if (orgError || !org) {
+      if (orgError || !orgData) {
         return res.status(404).json({ error: 'Organization not found' });
       }
-      orgId = org.id;
+      orgId = orgData.id;
+      org = orgData;
+    } else {
+      // Fetch full org data for subscription checks
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', orgId)
+        .single();
+
+      if (orgError || !orgData) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+      org = orgData;
+    }
+
+    // Enforce subscription limits (skip for platform admins)
+    if (!isAdmin && org) {
+      const limitCheck = await canCreateEvent(supabase, org);
+      
+      if (!limitCheck.allowed) {
+        return res.status(403).json({
+          error: 'Event creation limit reached',
+          message: limitCheck.message,
+          limit: limitCheck.limit,
+          current: limitCheck.current,
+          upgradeRequired: true,
+        });
+      }
     }
 
     // Generate event code (short, unique identifier)

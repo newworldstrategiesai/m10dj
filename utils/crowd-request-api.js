@@ -125,6 +125,20 @@ export const crowdRequestAPI = {
         name
       })
     });
+  },
+
+  /**
+   * Update song details for a request
+   */
+  async updateSongDetails({ requestId, songTitle, songArtist }) {
+    return apiRequest('/api/crowd-request/update-song-details', {
+      method: 'POST',
+      body: JSON.stringify({
+        requestId,
+        songTitle,
+        songArtist
+      })
+    });
   }
 };
 

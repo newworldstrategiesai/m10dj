@@ -23,11 +23,44 @@ export default async function handler(req, res) {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get OAuth tokens
-    const { data: tokenData, error: tokenError } = await supabase
+    // Get organization_id from contact if provided
+    let organizationId = null;
+    if (contactId || recordId) {
+      const contactLookupId = contactId || recordId;
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('organization_id')
+        .eq('id', contactLookupId)
+        .single();
+      
+      if (!contact?.organization_id) {
+        // Try contact_submissions as fallback
+        const { data: submission } = await supabase
+          .from('contact_submissions')
+          .select('organization_id')
+          .eq('id', contactLookupId)
+          .single();
+        
+        if (submission?.organization_id) {
+          organizationId = submission.organization_id;
+        }
+      } else {
+        organizationId = contact.organization_id;
+      }
+    }
+
+    // Get OAuth tokens - filter by organization_id if available
+    let tokenQuery = supabase
       .from('email_oauth_tokens')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false });
+    
+    // Filter by organization_id if we have it (prevents using wrong org's email account)
+    if (organizationId) {
+      tokenQuery = tokenQuery.eq('organization_id', organizationId);
+    }
+    
+    const { data: tokenData, error: tokenError } = await tokenQuery
       .limit(1)
       .single();
 
@@ -141,9 +174,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('❌ Error sending email:', error);
+    // Sanitize error - don't expose internal details
     res.status(500).json({ 
-      error: 'Failed to send email',
-      message: error.message 
+      error: 'Failed to send email. Please try again or contact support.'
     });
   }
 }

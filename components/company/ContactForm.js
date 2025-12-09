@@ -10,7 +10,7 @@ import VenueInput from './VenueInput';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackLead, trackContactAction } from '../EnhancedTracking';
 
-export default function ContactForm({ className = '', showSubmitButton = true, isSubmitOnly = false, modalLayout = false }) {
+export default function ContactForm({ className = '', showSubmitButton = true, isSubmitOnly = false, modalLayout = false, organizationId = null }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -269,7 +269,10 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify({
+            ...data,
+            organizationId: organizationId || undefined
+          }),
           signal: controller.signal
         });
         
@@ -552,7 +555,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
     ) : (
       // Full-screen chat
       <div 
-        className="fixed inset-0 z-[99999] bg-white dark:bg-gray-900"
+        className="fixed inset-0 z-[99999] bg-white dark:bg-black"
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
       >
         <ContactFormChat 
@@ -858,7 +861,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
           </div>
 
           {/* Sticky Submit Button Footer */}
-          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg" style={{ flexShrink: 0, flex: '0 0 auto', padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-black shadow-lg" style={{ flexShrink: 0, flex: '0 0 auto', padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
             <button
               type="submit"
               disabled={isSubmitting}

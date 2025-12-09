@@ -1,4 +1,7 @@
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -16,14 +19,41 @@ export default async function handler(req, res) {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Get authenticated user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    // First, find the quote_selections record by lead_id (since id in URL is actually lead_id)
-    const { data: existingQuote, error: findError } = await supabase
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context (null for admins, org_id for SaaS users)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    );
+
+    // Use service role for queries
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // First, find the quote_selections record by lead_id (with org filtering)
+    let quoteQuery = supabaseAdmin
       .from('quote_selections')
-      .select('id')
-      .eq('lead_id', id)
-      .single();
+      .select('id, organization_id')
+      .eq('lead_id', id);
+
+    // For SaaS users, filter by organization_id
+    if (!isAdmin && orgId) {
+      quoteQuery = quoteQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      return res.status(403).json({ error: 'Access denied - no organization found' });
+    }
+
+    const { data: existingQuote, error: findError } = await quoteQuery.single();
 
     if (findError || !existingQuote) {
       console.error('Error finding quote:', findError);

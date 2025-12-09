@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { invoiceId, leadId, amount, description, successUrl, cancelUrl } = req.body;
+  const { invoiceId, leadId, amount, description, successUrl, cancelUrl, paymentType, gratuityAmount, gratuityType, gratuityPercentage } = req.body;
 
   if (!process.env.STRIPE_SECRET_KEY) {
     return res.status(500).json({ error: 'Stripe not configured' });
@@ -146,18 +146,43 @@ export default async function handler(req, res) {
         }
       }
 
-      // Create line item for quote payment
-      const lineItems = [{
+      // Create line items for quote payment
+      const lineItems = [];
+      
+      // Base payment amount (without gratuity)
+      const baseAmount = gratuityAmount ? (amount - Math.round(gratuityAmount * 100)) : amount;
+      
+      // Add base payment line item
+      lineItems.push({
         price_data: {
           currency: 'usd',
           product_data: {
             name: description,
             description: quote?.package_name || 'DJ Services'
           },
-          unit_amount: Math.round(amount) // Amount already in cents
+          unit_amount: Math.round(baseAmount) // Amount already in cents
         },
         quantity: 1
-      }];
+      });
+      
+      // Add gratuity as separate line item if provided (only for full payments)
+      if (gratuityAmount && gratuityAmount > 0 && paymentType === 'full') {
+        const gratuityLabel = gratuityType === 'percentage' 
+          ? `Gratuity (${gratuityPercentage}%)`
+          : 'Gratuity';
+        
+        lineItems.push({
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: gratuityLabel,
+              description: 'Thank you for your generosity!'
+            },
+            unit_amount: Math.round(gratuityAmount * 100) // Convert to cents
+          },
+          quantity: 1
+        });
+      }
 
       // Create Stripe checkout session with customer for saving payment methods
       const sessionParams = {
@@ -168,12 +193,22 @@ export default async function handler(req, res) {
         cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/quote/${leadId}/payment`,
         metadata: {
           lead_id: leadId,
-          payment_type: amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'
+          payment_type: paymentType || (amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'),
+          ...(gratuityAmount && gratuityAmount > 0 && paymentType === 'full' ? {
+            gratuity_amount: gratuityAmount.toString(),
+            gratuity_type: gratuityType || '',
+            gratuity_percentage: gratuityPercentage?.toString() || ''
+          } : {})
         },
         payment_intent_data: {
           metadata: {
             lead_id: leadId,
-            payment_type: amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'
+            payment_type: paymentType || (amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'),
+            ...(gratuityAmount && gratuityAmount > 0 && paymentType === 'full' ? {
+              gratuity_amount: gratuityAmount.toString(),
+              gratuity_type: gratuityType || '',
+              gratuity_percentage: gratuityPercentage?.toString() || ''
+            } : {})
           }
         }
       };

@@ -39,13 +39,24 @@ export default async function handler(req, res) {
     isNext,
     fastTrackFee,
     nextFee,
-    organizationId // Optional: can be passed explicitly or determined from eventCode
+    organizationId, // Optional: can be passed explicitly or determined from eventCode
+    audioFileUrl,
+    isCustomAudio,
+    artistRightsConfirmed,
+    isArtist,
+    scanId, // QR scan ID from sessionStorage
+    sessionId // QR session ID from sessionStorage
   } = req.body;
 
   // Validate required fields
   // Note: requesterName is optional - use 'Guest' as fallback
   if (!eventCode || !requestType || !amount) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Validate request type
+  if (!['song_request', 'shoutout', 'tip'].includes(requestType)) {
+    return res.status(400).json({ error: 'Invalid request type' });
   }
 
   if (requestType === 'song_request' && !songTitle) {
@@ -55,6 +66,8 @@ export default async function handler(req, res) {
   if (requestType === 'shoutout' && (!recipientName || !recipientMessage)) {
     return res.status(400).json({ error: 'Recipient name and message are required for shoutouts' });
   }
+
+  // Tip requests only need an amount (no additional fields required)
 
   // Note: Minimum amount validation should use admin settings, but we'll keep a basic check here
   // The frontend should enforce the minimum from settings
@@ -179,13 +192,34 @@ export default async function handler(req, res) {
       }
     }
 
-    // If still no organization, log warning but allow null for backward compatibility
+    // If still no organization, try harder to find one
     if (!organizationIdToUse) {
-      console.warn('⚠️ No organization_id found for crowd request. Using null (will need manual assignment).');
+      console.warn('⚠️ No organization_id found for crowd request. Trying additional methods...');
       console.warn('   Event code:', eventCode);
       console.warn('   Referrer:', req.headers.referer);
-      // For backward compatibility during migration, we'll allow null
-      // But this should be fixed once all data is migrated
+      
+      // Last resort: Get the most recently created organization (likely the main one)
+      try {
+        const { data: recentOrg } = await supabase
+          .from('organizations')
+          .select('id')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (recentOrg) {
+          organizationIdToUse = recentOrg.id;
+          console.log('✅ Using most recent organization as fallback:', organizationIdToUse);
+        }
+      } catch (err) {
+        console.warn('Could not get fallback organization:', err.message);
+      }
+      
+      // If still no organization, log error but allow null for backward compatibility
+      if (!organizationIdToUse) {
+        console.error('❌ CRITICAL: No organization_id found - request will be orphaned');
+        console.error('   This request will need manual assignment in the admin UI');
+      }
     }
 
     // Set priority: next = 0 (highest), fast-track = 1, regular = 1000
@@ -236,7 +270,12 @@ export default async function handler(req, res) {
       priority_order: priorityOrder,
       payment_status: 'pending',
       payment_code: paymentCode,
-      status: 'new'
+      status: 'new',
+      audio_file_url: audioFileUrl || null,
+      is_custom_audio: isCustomAudio || false,
+      artist_rights_confirmed: artistRightsConfirmed || false,
+      is_artist: isArtist || false,
+      audio_upload_fee: (isCustomAudio && audioFileUrl) ? 10000 : 0 // $100.00 in cents
     };
 
     // Add organization_id if we have it
@@ -274,6 +313,59 @@ export default async function handler(req, res) {
     }
 
     console.log(`✅ Created crowd request (ID: ${crowdRequest.id})`);
+
+    // Link QR scan to request if scanId is provided
+    if (scanId) {
+      try {
+        const { error: scanUpdateError } = await supabase
+          .from('qr_scans')
+          .update({
+            converted: true,
+            converted_at: new Date().toISOString(),
+            request_id: crowdRequest.id
+          })
+          .eq('id', scanId);
+
+        if (scanUpdateError) {
+          console.error('⚠️ Error linking scan to request:', scanUpdateError);
+          // Don't fail the request if scan linking fails
+        } else {
+          console.log(`✅ Linked QR scan ${scanId} to request ${crowdRequest.id}`);
+        }
+      } catch (err) {
+        console.error('⚠️ Error updating scan conversion:', err);
+        // Don't fail the request if scan linking fails
+      }
+    } else if (sessionId && eventCode) {
+      // Try to find scan by session_id and event_code as fallback
+      try {
+        const { data: scans, error: scanFindError } = await supabase
+          .from('qr_scans')
+          .select('id')
+          .eq('session_id', sessionId)
+          .eq('event_qr_code', eventCode)
+          .eq('converted', false)
+          .order('scanned_at', { ascending: false })
+          .limit(1);
+
+        if (!scanFindError && scans && scans.length > 0) {
+          const { error: scanUpdateError } = await supabase
+            .from('qr_scans')
+            .update({
+              converted: true,
+              converted_at: new Date().toISOString(),
+              request_id: crowdRequest.id
+            })
+            .eq('id', scans[0].id);
+
+          if (!scanUpdateError) {
+            console.log(`✅ Linked QR scan ${scans[0].id} to request ${crowdRequest.id} (via session)`);
+          }
+        }
+      } catch (err) {
+        console.error('⚠️ Error finding scan by session:', err);
+      }
+    }
 
     // Return request ID and payment code - payment method selection will happen on frontend
     return res.status(200).json({

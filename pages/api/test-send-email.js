@@ -1,6 +1,7 @@
 /**
  * Test Send Email
  * Simple endpoint to test if email sending works
+ * Blocked in production for security
  */
 
 import { Resend } from 'resend';
@@ -8,6 +9,11 @@ import { Resend } from 'resend';
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export default async function handler(req, res) {
+  // Block in production
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed. Use POST.' });
   }

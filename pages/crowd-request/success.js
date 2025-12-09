@@ -16,12 +16,15 @@ export default function CrowdRequestSuccessPage() {
   const [userRequestCount, setUserRequestCount] = useState(0);
 
   useEffect(() => {
-    if (request_id) {
+    if (request_id && session_id) {
+      // Process payment success first to update payment_intent_id
+      processPaymentSuccess();
+    } else if (request_id) {
       fetchRequestDetails(request_id);
     } else {
       setLoading(false);
     }
-  }, [request_id]);
+  }, [request_id, session_id]);
 
   useEffect(() => {
     if (request) {
@@ -43,6 +46,62 @@ export default function CrowdRequestSuccessPage() {
       }
     } catch (err) {
       console.error('Error fetching user stats:', err);
+    }
+  };
+
+  const processPaymentSuccess = async () => {
+    try {
+      const response = await fetch('/api/crowd-request/process-payment-success', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: session_id,
+          requestId: request_id,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Fetch updated request details
+        await fetchRequestDetails(request_id);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error processing payment success:', errorData.error || 'Unknown error');
+        
+        // Retry once after a short delay
+        setTimeout(async () => {
+          try {
+            const retryResponse = await fetch('/api/crowd-request/process-payment-success', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                sessionId: session_id,
+                requestId: request_id,
+              }),
+            });
+            
+            if (retryResponse.ok) {
+              console.log('✅ Payment processing succeeded on retry');
+              await fetchRequestDetails(request_id);
+            } else {
+              console.error('❌ Payment processing failed on retry - webhook will handle it');
+            }
+          } catch (retryErr) {
+            console.error('Error on retry:', retryErr);
+          }
+        }, 2000);
+        
+        // Still fetch request details even if payment processing fails
+        await fetchRequestDetails(request_id);
+      }
+    } catch (err) {
+      console.error('Error processing payment success:', err);
+      // Still fetch request details even if payment processing fails
+      await fetchRequestDetails(request_id);
     }
   };
 

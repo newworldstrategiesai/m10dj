@@ -2,13 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     return res.status(500).json({ error: 'Supabase configuration missing' });
   }
-
-  const supabase = createClient(supabaseUrl, supabaseKey);
 
   // Get the authorization header
   const authHeader = req.headers.authorization;
@@ -18,19 +17,28 @@ export default async function handler(req, res) {
 
   const token = authHeader.split(' ')[1];
   
-  // Set the session with the token
+  // Create Supabase client with anon key to verify user
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  
+  // Verify the token and get user info
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   
   if (authError || !user) {
     return res.status(401).json({ error: 'Invalid token or user not found' });
   }
 
+  // For database operations, use service role key to bypass RLS
+  // (We've already validated the user above)
+  const dbClient = supabaseServiceKey 
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : supabase; // Fallback to anon key if service key not available
+
   if (req.method === 'GET') {
     // Get admin settings for the user
     try {
       const { settingKey } = req.query;
       
-      let query = supabase
+      let query = dbClient
         .from('admin_settings')
         .select('setting_key, setting_value')
         .eq('user_id', user.id);
@@ -77,7 +85,7 @@ export default async function handler(req, res) {
     }
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await dbClient
         .from('admin_settings')
         .upsert(
           {

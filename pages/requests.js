@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Header from '../components/company/Header';
-import { Music, Mic, Loader2, AlertCircle, Gift, Zap, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2 } from 'lucide-react';
+import { Music, Mic, Loader2, AlertCircle, Gift, Zap, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2, DollarSign } from 'lucide-react';
 import SocialAccountSelector from '../components/ui/SocialAccountSelector';
 import PaymentMethodSelection from '../components/crowd-request/PaymentMethodSelection';
 import PaymentSuccessScreen from '../components/crowd-request/PaymentSuccessScreen';
@@ -16,6 +17,7 @@ import { createLogger } from '../utils/logger';
 import { CROWD_REQUEST_CONSTANTS } from '../constants/crowd-request';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCoverPhotoUrl } from '../utils/cover-photo-helper';
+import { useQRScanTracking } from '../hooks/useQRScanTracking';
 
 const logger = createLogger('GeneralRequestsPage');
 
@@ -138,7 +140,7 @@ export function GeneralRequestsPage({
       venueUrl: organizationData?.requests_venue_photo_url
     });
   }, [organizationCoverPhoto, coverPhoto, organizationData]);
-  const [requestType, setRequestType] = useState(organizationData?.requests_default_request_type || 'song_request'); // 'song_request' or 'shoutout'
+  const [requestType, setRequestType] = useState(organizationData?.requests_default_request_type || 'song_request'); // 'song_request', 'shoutout', or 'tip'
   const [formData, setFormData] = useState({
     songArtist: '',
     songTitle: '',
@@ -224,6 +226,9 @@ export function GeneralRequestsPage({
     bundleDiscount: bundleDiscountPercent,
     loading: settingsLoading
   } = usePaymentSettings();
+
+  // Track QR code scan for public requests page
+  useQRScanTracking('public', organizationId);
 
   // Apply dark mode only on requests page - ensure it overrides any theme settings
   useEffect(() => {
@@ -390,7 +395,7 @@ export function GeneralRequestsPage({
   // Track previous extraction state to detect when extraction completes
   const prevExtractingSong = useRef(extractingSong);
   
-  // Auto-advance to payment step when song selection is complete
+  // Auto-advance to payment step when song selection is complete (not for tip)
   useEffect(() => {
     if (requestType === 'song_request' && isSongSelectionComplete() && currentStep === 1) {
       // Auto-advance to step 2 (payment) when song selection is complete
@@ -403,6 +408,7 @@ export function GeneralRequestsPage({
         }
       }, 100);
     }
+    // For tip, we're already showing the payment selector inline, so no need to advance
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.songTitle, formData.songArtist, requestType, currentStep]);
   
@@ -486,48 +492,54 @@ export function GeneralRequestsPage({
         messageWithUrl = messageWithUrl ? `${messageWithUrl}\n\n${urlNote}` : urlNote;
       }
       
-      // Validate audio upload requirements
-      if (audioFileUrl && !artistRightsConfirmed) {
+      // Validate audio upload requirements (only for song requests)
+      if (requestType === 'song_request' && audioFileUrl && !artistRightsConfirmed) {
         throw new Error('Please confirm that you own the rights to the music');
       }
 
       // Create main request with total amount (includes all songs)
       // The main request amount will be the total, and additional requests will be $0 (bundled)
+      // Get scan tracking data from sessionStorage
+      const scanId = typeof window !== 'undefined' ? sessionStorage.getItem('qr_scan_id') : null;
+      const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem('qr_session_id') : null;
+
       const mainRequestBody = {
         eventCode: 'general',
         requestType: requestType || 'song_request',
-        songArtist: formData?.songArtist?.trim() || null,
-        songTitle: formData?.songTitle?.trim() || null,
-        recipientName: formData?.recipientName?.trim() || null,
-        recipientMessage: formData?.recipientMessage?.trim() || null,
+        songArtist: (requestType === 'song_request' ? formData?.songArtist?.trim() : null) || null,
+        songTitle: (requestType === 'song_request' ? formData?.songTitle?.trim() : null) || null,
+        recipientName: (requestType === 'shoutout' ? formData?.recipientName?.trim() : null) || null,
+        recipientMessage: (requestType === 'shoutout' ? formData?.recipientMessage?.trim() : null) || null,
         requesterName: formData?.requesterName?.trim() || 'Guest',
         requesterEmail: formData?.requesterEmail?.trim() || null,
         requesterPhone: formData?.requesterPhone?.trim() || null,
-        message: messageWithUrl || null,
+        message: (requestType === 'tip' ? 'Tip' : messageWithUrl) || null,
         amount: amount, // Total amount for all songs
         isFastTrack: (requestType === 'song_request' && isFastTrack) || false,
         isNext: (requestType === 'song_request' && isNext) || false,
         fastTrackFee: (requestType === 'song_request' && isFastTrack) ? fastTrackFee : 0,
         nextFee: (requestType === 'song_request' && isNext) ? nextFee : 0,
+        scanId: scanId,
+        sessionId: sessionId,
         organizationId: organizationId || null, // Include organization ID if provided
-        audioFileUrl: audioFileUrl || null,
-        isCustomAudio: !!audioFileUrl,
-        artistRightsConfirmed: artistRightsConfirmed,
-        isArtist: isArtist
+        audioFileUrl: (requestType === 'song_request' ? audioFileUrl : null) || null,
+        isCustomAudio: (requestType === 'song_request' && !!audioFileUrl) || false,
+        artistRightsConfirmed: (requestType === 'song_request' ? artistRightsConfirmed : false) || false,
+        isArtist: (requestType === 'song_request' ? isArtist : false) || false
       };
       
       const mainData = await crowdRequestAPI.submitRequest(mainRequestBody);
 
-      // Create additional song requests if any (even without titles - users can add them after payment)
+      // Create additional song requests if any (only for song requests, not tips or shoutouts)
       // Count the number of additional songs (based on array length, not whether they have titles)
-      const additionalSongCount = additionalSongs.length;
+      const additionalSongCount = (requestType === 'song_request' ? additionalSongs.length : 0);
       const baseAmount = getBaseAmount();
       const discountedAmountPerSong = Math.round(baseAmount * (1 - bundleDiscountPercent));
       const allRequestIds = [mainData.requestId];
 
       // Create placeholder requests for additional songs (users will fill in details after payment)
       const additionalIds = [];
-      if (additionalSongCount > 0) {
+      if (additionalSongCount > 0 && requestType === 'song_request') {
         for (let i = 0; i < additionalSongCount; i++) {
           const song = additionalSongs[i] || {};
           const additionalRequestBody = {
@@ -664,16 +676,63 @@ export function GeneralRequestsPage({
   // Payment Method Selection, CashAppPaymentScreen, and VenmoPaymentScreen components
   // are now imported from components/crowd-request/
 
+  // Get the site URL for absolute image URLs
+  const siteUrl = typeof window !== 'undefined' 
+    ? window.location.origin 
+    : (process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com');
+  
+  // Convert cover photo to absolute URL if it's relative
+  const getAbsoluteImageUrl = (imageUrl) => {
+    if (!imageUrl) return `${siteUrl}${DEFAULT_COVER_PHOTO}`;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // If it starts with /, it's a relative path
+    if (imageUrl.startsWith('/')) {
+      return `${siteUrl}${imageUrl}`;
+    }
+    // Otherwise, assume it's a relative path
+    return `${siteUrl}/${imageUrl}`;
+  };
+
+  const ogImageUrl = getAbsoluteImageUrl(coverPhoto);
+  const pageTitle = organizationData?.requests_page_title || 'Request a Song or Shoutout | M10 DJ Company';
+  const pageDescription = organizationData?.requests_page_description || 
+    (organizationData?.requests_header_artist_name 
+      ? `Request a song or shoutout for ${organizationData.requests_header_artist_name}`
+      : 'Request a song or shoutout for your event');
+  const currentUrl = typeof window !== 'undefined' 
+    ? window.location.href 
+    : `${siteUrl}/requests`;
+
   return (
     <>
       <Head>
-        <title>{organizationData?.requests_page_title || 'Request a Song or Shoutout | M10 DJ Company'}</title>
-        {organizationData?.requests_page_description && (
-          <meta name="description" content={organizationData.requests_page_description} />
-        )}
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
         <meta name="mobile-web-app-capable" content="yes" />
+        
+        {/* Open Graph / Facebook / iPhone SMS Preview */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={currentUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={organizationData?.requests_header_artist_name || 'Request a Song or Shoutout'} />
+        <meta property="og:site_name" content={organizationName || 'M10 DJ Company'} />
+        <meta property="og:locale" content="en_US" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={currentUrl} />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image" content={ogImageUrl} />
+        <meta name="twitter:image:alt" content={organizationData?.requests_header_artist_name || 'Request a Song or Shoutout'} />
         <style jsx global>{`
           @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px) scale(0.95); }
@@ -868,11 +927,21 @@ export function GeneralRequestsPage({
               {/* Top content section */}
               <div className="flex flex-col items-center justify-center flex-1">
                 {/* Artist Name */}
-                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 drop-shadow-2xl">
+                <h1 
+                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white mb-4 sm:mb-6 drop-shadow-2xl uppercase tracking-tight"
+                  style={{
+                    fontFamily: 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
+                    letterSpacing: '0.05em',
+                    textShadow: '3px 3px 6px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.5)'
+                  }}
+                >
                   {(() => {
-                    const artistName = organizationData?.requests_header_artist_name || 'DJ Ben Murray';
-                    console.log('🎨 Rendering artist name:', artistName, 'from organizationData:', organizationData?.requests_header_artist_name);
-                    return artistName;
+                    const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'DJ';
+                    console.log('🎨 Rendering artist name:', artistName, 'from organizationData:', {
+                      requests_header_artist_name: organizationData?.requests_header_artist_name,
+                      name: organizationData?.name
+                    });
+                    return artistName.toUpperCase();
                   })()}
                 </h1>
                 
@@ -1113,7 +1182,7 @@ export function GeneralRequestsPage({
                     <span className="leading-tight">{organizationData?.requests_main_heading || 'What would you like to request?'}</span>
                   </h2>
                   
-                  <div className="grid grid-cols-2 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
                     <button
                       type="button"
                       onClick={() => setRequestType('song_request')}
@@ -1163,6 +1232,32 @@ export function GeneralRequestsPage({
                           }`} />
                         </div>
                         <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_shoutout_label || 'Shoutout'}</h3>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRequestType('tip')}
+                      className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                        requestType === 'tip'
+                          ? 'border-yellow-500 bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-900/30 dark:to-yellow-800/20 shadow-lg shadow-yellow-500/20 scale-105'
+                          : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-yellow-300 hover:scale-[1.02] hover:shadow-md'
+                      }`}
+                    >
+                      {requestType === 'tip' && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-transparent"></div>
+                      )}
+                      <div className="relative flex flex-col items-center justify-center">
+                        <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
+                          requestType === 'tip'
+                            ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/50'
+                            : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-yellow-100 dark:group-hover:bg-yellow-900/30'
+                        }`}>
+                          <Gift className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
+                            requestType === 'tip' ? 'text-white' : 'text-gray-400 group-hover:text-yellow-500'
+                          }`} />
+                        </div>
+                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">Tip Me</h3>
                       </div>
                     </button>
                   </div>
@@ -1408,6 +1503,36 @@ export function GeneralRequestsPage({
                     </div>
                   )}
 
+                  {/* Tip Fields - Show payment amount selector immediately */}
+                  {requestType === 'tip' && (
+                    <div className="space-y-2 sm:space-y-3 md:space-y-4">
+                      <div className="text-center py-2 sm:py-4">
+                        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4">
+                          Show your appreciation with a tip!
+                        </p>
+                      </div>
+                      <PaymentAmountSelector
+                        amountType={amountType}
+                        setAmountType={setAmountType}
+                        presetAmount={presetAmount}
+                        setPresetAmount={setPresetAmount}
+                        customAmount={customAmount}
+                        setCustomAmount={setCustomAmount}
+                        presetAmounts={presetAmounts}
+                        minimumAmount={minimumAmount}
+                        requestType={requestType}
+                        isFastTrack={false}
+                        setIsFastTrack={() => {}}
+                        isNext={false}
+                        setIsNext={() => {}}
+                        fastTrackFee={0}
+                        nextFee={0}
+                        getBaseAmount={getBaseAmount}
+                        getPaymentAmount={getPaymentAmount}
+                      />
+                    </div>
+                  )}
+
                   {/* Additional Message */}
                   {currentStep === 1 && (
                   <div className="mt-2 sm:mt-3 md:mt-4">
@@ -1427,8 +1552,8 @@ export function GeneralRequestsPage({
 
                 </div>
 
-                {/* Payment Amount - Only show after song selection is complete and step 2 */}
-                {isSongSelectionComplete() && currentStep >= 2 && (
+                {/* Payment Amount - Only show after song selection is complete and step 2 (not for tip, which shows inline) */}
+                {requestType !== 'tip' && isSongSelectionComplete() && currentStep >= 2 && (
                   <div data-payment-section>
                     <PaymentAmountSelector
                     amountType={amountType}
@@ -1453,8 +1578,8 @@ export function GeneralRequestsPage({
                 )}
 
 
-                {/* Submit Button - Sticky at bottom, appears when song selection is complete */}
-                {isSongSelectionComplete() && (
+                {/* Submit Button - Sticky at bottom, appears when selection is complete */}
+                {((requestType === 'tip') || isSongSelectionComplete()) && (
                 <div 
                   className="sticky bottom-0 left-0 right-0 z-50 bg-white dark:bg-black pt-2 sm:pt-3 pb-3 sm:pb-4 border-t border-gray-200 dark:border-gray-800 shadow-lg flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
                   style={{ 
@@ -1526,6 +1651,17 @@ export function GeneralRequestsPage({
             )}
           </div>
         </main>
+
+        {/* Inconspicuous "Create Your Page" link for new DJs */}
+        <footer className="mt-8 mb-4 text-center">
+          <Link 
+            href="/onboarding/request-page" 
+            className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 transition-colors inline-flex items-center gap-1"
+          >
+            <span>Are you a DJ?</span>
+            <span className="underline">Create your request page</span>
+          </Link>
+        </footer>
       </div>
 
 

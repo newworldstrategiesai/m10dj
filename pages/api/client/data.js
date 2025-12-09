@@ -1,5 +1,8 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
+import { getViewAsOrgIdFromRequest } from '@/utils/auth-helpers/view-as';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -15,7 +18,19 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const user_id = session.user.id;
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get view-as organization ID from cookie (if admin is viewing as another org)
+    const viewAsOrgId = getViewAsOrgIdFromRequest(req);
+
+    // Get organization context (null for admins, org_id for SaaS users, or viewAsOrgId if in view-as mode)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email,
+      viewAsOrgId
+    );
 
     // Use service role for admin queries
     const adminSupabase = createClient(
@@ -23,12 +38,36 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Find contacts associated with this user
-    const { data: contacts, error: contactsError } = await adminSupabase
+    // Find contacts - filter by organization_id instead of just user_id
+    let contactsQuery = adminSupabase
       .from('contacts')
       .select('*')
-      .eq('user_id', user_id)
-      .is('deleted_at', null)
+      .is('deleted_at', null);
+
+    // For SaaS users, filter by organization_id. Platform admins see all contacts.
+    if (!isAdmin && orgId) {
+      contactsQuery = contactsQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      // SaaS user without organization - return empty
+      return res.status(200).json({ 
+        contacts: [],
+        contracts: [],
+        invoices: [],
+        payments: [],
+        summary: {
+          totalInvoiced: 0,
+          totalPaid: 0,
+          totalOutstanding: 0,
+          signedContracts: 0,
+          pendingContracts: 0,
+          totalContracts: 0,
+          totalInvoices: 0,
+          totalPayments: 0
+        }
+      });
+    }
+
+    const { data: contacts, error: contactsError } = await contactsQuery
       .order('created_at', { ascending: false });
 
     if (contactsError) {
@@ -57,24 +96,34 @@ export default async function handler(req, res) {
 
     const contactIds = contacts.map(c => c.id);
 
+    // Build queries with organization filtering
+    let contractsQuery = adminSupabase
+      .from('contracts')
+      .select('*')
+      .in('contact_id', contactIds);
+
+    let invoicesQuery = adminSupabase
+      .from('invoices')
+      .select('*')
+      .in('contact_id', contactIds);
+
+    let paymentsQuery = adminSupabase
+      .from('payments')
+      .select('*')
+      .in('contact_id', contactIds);
+
+    // Filter by organization_id for SaaS users
+    if (!isAdmin && orgId) {
+      contractsQuery = contractsQuery.eq('organization_id', orgId);
+      invoicesQuery = invoicesQuery.eq('organization_id', orgId);
+      paymentsQuery = paymentsQuery.eq('organization_id', orgId);
+    }
+
     // Fetch all data in parallel
     const [contractsResult, invoicesResult, paymentsResult] = await Promise.all([
-      adminSupabase
-        .from('contracts')
-        .select('*')
-        .in('contact_id', contactIds)
-        .order('created_at', { ascending: false }),
-      adminSupabase
-        .from('invoices')
-        .select('*')
-        .in('contact_id', contactIds)
-        .order('created_at', { ascending: false }),
-      adminSupabase
-        .from('payments')
-        .select('*')
-        .in('contact_id', contactIds)
-        .order('transaction_date', { ascending: false })
-        .order('created_at', { ascending: false })
+      contractsQuery.order('created_at', { ascending: false }),
+      invoicesQuery.order('created_at', { ascending: false }),
+      paymentsQuery.order('transaction_date', { ascending: false }).order('created_at', { ascending: false })
     ]);
 
     // Calculate summary statistics

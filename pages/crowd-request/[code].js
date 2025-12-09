@@ -6,7 +6,6 @@ import { Music, Mic, Loader2, AlertCircle, Gift, Zap } from 'lucide-react';
 import PaymentMethodSelection from '../../components/crowd-request/PaymentMethodSelection';
 import PaymentSuccessScreen from '../../components/crowd-request/PaymentSuccessScreen';
 import PaymentAmountSelector from '../../components/crowd-request/PaymentAmountSelector';
-import UpsellModal from '../../components/crowd-request/UpsellModal';
 import { usePaymentSettings } from '../../hooks/usePaymentSettings';
 import { useSongExtraction } from '../../hooks/useSongExtraction';
 import { useCrowdRequestPayment } from '../../hooks/useCrowdRequestPayment';
@@ -14,6 +13,7 @@ import { useCrowdRequestValidation } from '../../hooks/useCrowdRequestValidation
 import { crowdRequestAPI } from '../../utils/crowd-request-api';
 import { createLogger } from '../../utils/logger';
 import { CROWD_REQUEST_CONSTANTS } from '../../constants/crowd-request';
+import { useQRScanTracking } from '../../hooks/useQRScanTracking';
 
 const logger = createLogger('CrowdRequestPage');
 
@@ -43,13 +43,21 @@ export default function CrowdRequestPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [songUrl, setSongUrl] = useState('');
+  const [extractedSongUrl, setExtractedSongUrl] = useState(''); // Store the URL that was used for extraction
+  const [isExtractedFromLink, setIsExtractedFromLink] = useState(false); // Track if song was extracted from link
+  const [showLinkField, setShowLinkField] = useState(true); // Track if link field should be shown
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
   const [requestId, setRequestId] = useState(null);
   const [paymentCode, setPaymentCode] = useState(null);
+  const [additionalRequestIds, setAdditionalRequestIds] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [currentStep, setCurrentStep] = useState(1); // 1: Song/Shoutout, 2: Payment (contact info collected by Stripe or via receipt request)
-  const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [additionalSongs, setAdditionalSongs] = useState([]); // Array of {songTitle, songArtist}
+  const [audioFile, setAudioFile] = useState(null); // Selected audio file
+  const [audioUploading, setAudioUploading] = useState(false); // Upload status
+  const [audioFileUrl, setAudioFileUrl] = useState(''); // Uploaded file URL
+  const [artistRightsConfirmed, setArtistRightsConfirmed] = useState(false); // Artist rights checkbox
+  const [isArtist, setIsArtist] = useState(false); // Is the requester the artist
 
   // Use payment settings hook
   const {
@@ -86,7 +94,9 @@ export default function CrowdRequestPage() {
     fastTrackFee,
     nextFee,
     additionalSongs,
-    bundleDiscount: bundleDiscountPercent
+    bundleDiscount: bundleDiscountPercent,
+    audioFileUrl,
+    audioUploadFee: 10000 // $100.00 in cents
   });
 
   // Use validation hook
@@ -124,8 +134,23 @@ export default function CrowdRequestPage() {
     }
   }, [extractionError]);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = async (e) => {
     const { name, value } = e.target;
+    
+    // Detect if a URL was pasted into song title or artist field
+    if ((name === 'songTitle' || name === 'songArtist') && value) {
+      const urlPattern = /(youtube\.com|youtu\.be|spotify\.com|soundcloud\.com|tidal\.com|music\.apple\.com|itunes\.apple\.com)/i;
+      if (urlPattern.test(value)) {
+        // Move the URL to the link field and extract from there
+        setSongUrl(value);
+        // Extract song info from the URL (this will populate songTitle and songArtist)
+        await extractSongInfo(value);
+        // Clear the field that had the URL (don't set it as the field value)
+        return;
+      }
+    }
+    
+    // Normal input change - set the field value
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -136,24 +161,70 @@ export default function CrowdRequestPage() {
     // Auto-extract when URL is pasted and looks complete
     if (url && (url.includes('youtube.com') || url.includes('youtu.be') || 
         url.includes('spotify.com') || url.includes('soundcloud.com') || 
-        url.includes('tidal.com'))) {
+        url.includes('tidal.com') || url.includes('music.apple.com') || 
+        url.includes('itunes.apple.com'))) {
       await extractSongInfo(url);
     }
   };
 
   const extractSongInfo = async (url) => {
     await extractSongInfoHook(url, setFormData);
-    // Clear URL field after successful extraction
+    // Store the URL that was used for extraction and mark as extracted
+    setExtractedSongUrl(url);
+    setIsExtractedFromLink(true);
+    // Keep URL visible in the link field for a moment, then clear it
+    // The useEffect will handle hiding the field when song info is populated
     setTimeout(() => {
       setSongUrl('');
     }, CROWD_REQUEST_CONSTANTS.SONG_EXTRACTION_DELAY);
+  };
+
+  // Hide link field when song is manually entered
+  useEffect(() => {
+    if (formData.songTitle && formData.songArtist && showLinkField && !extractingSong) {
+      // Song is populated manually or from extraction, hide link field
+      setShowLinkField(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.songTitle, formData.songArtist, extractingSong]);
+
+  // Reset form to clean slate when "Share another song" is clicked
+  const handleShareAnotherSong = () => {
+    setFormData(prev => ({
+      ...prev,
+      songTitle: '',
+      songArtist: ''
+    }));
+    setSongUrl('');
+    setExtractedSongUrl('');
+    setIsExtractedFromLink(false);
+    setShowLinkField(true);
+    setError('');
+    // Reset step if we're on payment step
+    if (currentStep >= 2) {
+      setCurrentStep(1);
+    }
   };
 
   // getBaseAmount and getPaymentAmount are now provided by useCrowdRequestPayment hook
   // isSongSelectionComplete is now provided by useCrowdRequestValidation hook
   // validateForm is now provided by useCrowdRequestValidation hook
 
-  // Don't auto-advance - let user control with Continue button
+  // Auto-advance to payment step when song selection is complete
+  useEffect(() => {
+    if (requestType === 'song_request' && isSongSelectionComplete() && currentStep === 1) {
+      // Auto-advance to step 2 (payment) when song selection is complete
+      setCurrentStep(2);
+      // Scroll to payment section after a brief delay to ensure it's rendered
+      setTimeout(() => {
+        const paymentElement = document.querySelector('[data-payment-section]');
+        if (paymentElement) {
+          paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.songTitle, formData.songArtist, requestType, currentStep]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -185,6 +256,15 @@ export default function CrowdRequestPage() {
         }
       }
 
+      // Validate audio upload requirements
+      if (audioFileUrl && !artistRightsConfirmed) {
+        throw new Error('Please confirm that you own the rights to the music');
+      }
+
+      // Get scan tracking data from sessionStorage
+      const scanId = typeof window !== 'undefined' ? sessionStorage.getItem('qr_scan_id') : null;
+      const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem('qr_session_id') : null;
+
       // Create main request with total amount (includes all songs)
       const mainRequestBody = {
         eventCode: code,
@@ -201,22 +281,32 @@ export default function CrowdRequestPage() {
         isFastTrack: requestType === 'song_request' ? isFastTrack : false,
         isNext: requestType === 'song_request' ? isNext : false,
         fastTrackFee: requestType === 'song_request' && isFastTrack ? fastTrackFee : 0,
-        nextFee: requestType === 'song_request' && isNext ? nextFee : 0
+        nextFee: requestType === 'song_request' && isNext ? nextFee : 0,
+        audioFileUrl: audioFileUrl || null,
+        isCustomAudio: !!audioFileUrl,
+        artistRightsConfirmed: artistRightsConfirmed,
+        isArtist: isArtist,
+        scanId: scanId,
+        sessionId: sessionId
       };
       
       const mainData = await crowdRequestAPI.submitRequest(mainRequestBody);
 
-      // Create additional song requests if any
-      const validAdditionalSongs = additionalSongs.filter(song => song.songTitle?.trim());
+      // Create additional song requests if any (even without titles - users can add them after payment)
+      // Count the number of additional songs (based on array length, not whether they have titles)
+      const additionalSongCount = additionalSongs.length;
       const allRequestIds = [mainData.requestId];
 
-      if (validAdditionalSongs.length > 0) {
-        for (const song of validAdditionalSongs) {
+      // Create placeholder requests for additional songs (users will fill in details after payment)
+      const additionalIds = [];
+      if (additionalSongCount > 0) {
+        for (let i = 0; i < additionalSongCount; i++) {
+          const song = additionalSongs[i] || {};
           const additionalRequestBody = {
             eventCode: code,
             requestType: 'song_request',
             songArtist: song.songArtist?.trim() || null,
-            songTitle: song.songTitle?.trim() || null,
+            songTitle: song.songTitle?.trim() || null, // Can be null - user will add after payment
             requesterName: formData.requesterName?.trim() || 'Guest',
             requesterEmail: formData.requesterEmail || null,
             requesterPhone: formData.requesterPhone || null,
@@ -225,13 +315,14 @@ export default function CrowdRequestPage() {
             isNext: false,
             fastTrackFee: 0,
             nextFee: 0,
-            message: `Bundled with main request - ${Math.round(bundleDiscountPercent * 100)}% discount applied`
+            message: `Bundled with main request - ${Math.round(bundleDiscountPercent * 100)}% discount applied. ${song.songTitle?.trim() ? '' : 'Song details to be added after payment.'}`
           };
 
           try {
             const additionalData = await crowdRequestAPI.submitRequest(additionalRequestBody);
             if (additionalData?.requestId) {
               allRequestIds.push(additionalData.requestId);
+              additionalIds.push(additionalData.requestId);
             }
           } catch (err) {
             logger.warn('Failed to create additional song request', err);
@@ -239,6 +330,9 @@ export default function CrowdRequestPage() {
           }
         }
       }
+      
+      // Store additional request IDs for post-payment form
+      setAdditionalRequestIds(additionalIds);
 
       // Save request ID, payment code, and show payment method selection
       if (mainData.requestId) {
@@ -248,6 +342,13 @@ export default function CrowdRequestPage() {
         }
         setShowPaymentMethods(true);
         setSubmitting(false);
+        // Scroll to payment UI after a brief delay to ensure it's rendered
+        setTimeout(() => {
+          const paymentElement = document.querySelector('[data-payment-methods]');
+          if (paymentElement) {
+            paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
       } else if (mainData.checkoutUrl) {
         window.location.href = mainData.checkoutUrl;
       } else {
@@ -337,42 +438,50 @@ export default function CrowdRequestPage() {
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-slate-900 relative overflow-hidden">
         {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-300/20 dark:bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        </div>
+        {!showPaymentMethods && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-300/20 dark:bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+          </div>
+        )}
         
-        <Header />
+        {!showPaymentMethods && <Header />}
         
-        <main className="section-container py-4 sm:py-6 px-4 sm:px-6 relative z-10" style={{ minHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
-          <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col">
+        <main className={`section-container ${showPaymentMethods ? 'py-8 sm:py-12 md:py-16' : 'py-4 sm:py-6'} px-4 sm:px-6 relative z-10`} style={{ minHeight: showPaymentMethods ? '100vh' : 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
+          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-2xl'} mx-auto w-full flex-1 flex flex-col`}>
             {/* Header - Compact for no-scroll design */}
-            <div className="text-center mb-4 sm:mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 mb-3 sm:mb-4 shadow-lg shadow-purple-500/50 dark:shadow-purple-500/30">
-                <Music className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 dark:from-white dark:via-purple-200 dark:to-pink-200 bg-clip-text text-transparent mb-2 sm:mb-3 px-2">
-                Request a Song or Shoutout
-              </h1>
-              {eventInfo?.event_name && (
-                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 px-2">
-                  {eventInfo.event_name}
+            {!showPaymentMethods && (
+              <div className="text-center mb-4 sm:mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 mb-3 sm:mb-4 shadow-lg shadow-purple-500/50 dark:shadow-purple-500/30">
+                  <Music className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                </div>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 dark:from-white dark:via-purple-200 dark:to-pink-200 bg-clip-text text-transparent mb-2 sm:mb-3 px-2">
+                  Request a Song or Shoutout
+                </h1>
+                {eventInfo?.event_name && (
+                  <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 px-2">
+                    {eventInfo.event_name}
+                  </p>
+                )}
+                
+                {/* Step Indicator */}
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <div className={`h-2 rounded-full transition-all ${currentStep >= 1 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
+                  <div className={`h-2 rounded-full transition-all ${currentStep >= 2 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  {currentStep === 1 && 'Step 1 of 2: Choose your request'}
+                  {currentStep === 2 && 'Step 2 of 2: Payment'}
                 </p>
-              )}
-              
-              {/* Step Indicator */}
-              <div className="flex items-center justify-center gap-2 mt-4">
-                <div className={`h-2 rounded-full transition-all ${currentStep >= 1 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
-                <div className={`h-2 rounded-full transition-all ${currentStep >= 2 ? 'bg-purple-500 w-8' : 'bg-gray-300 dark:bg-gray-600 w-2'}`}></div>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                {currentStep === 1 && 'Step 1 of 2: Choose your request'}
-                {currentStep === 2 && 'Step 2 of 2: Payment'}
-              </p>
-            </div>
+            )}
 
               {success ? (
-                <PaymentSuccessScreen requestId={requestId} amount={getPaymentAmount()} />
+                <PaymentSuccessScreen 
+                  requestId={requestId} 
+                  amount={getPaymentAmount()} 
+                  additionalRequestIds={additionalRequestIds}
+                />
               ) : showPaymentMethods ? (
                 <PaymentMethodSelection
                   requestId={requestId}
@@ -385,6 +494,12 @@ export default function CrowdRequestPage() {
                   songTitle={formData.songTitle}
                   songArtist={formData.songArtist}
                   recipientName={formData.recipientName}
+                  additionalSongs={additionalSongs}
+                  setAdditionalSongs={setAdditionalSongs}
+                  bundleDiscount={bundleDiscountPercent}
+                  bundleDiscountEnabled={bundleDiscountEnabled}
+                  getBaseAmount={getBaseAmount}
+                  getPaymentAmount={getPaymentAmount}
                   onPaymentMethodSelected={handlePaymentMethodSelected}
                   onError={setError}
                   onBack={() => {
@@ -436,43 +551,59 @@ export default function CrowdRequestPage() {
                   {/* Song Request Fields */}
                   {requestType === 'song_request' && (
                     <div className="space-y-4">
-                      {/* Music Link Input */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                          <Music className="w-4 h-4 inline mr-1" />
-                          Paste Music Link (Optional)
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="url"
-                            value={songUrl}
-                            onChange={handleSongUrlChange}
-                            className="w-full px-4 py-3.5 sm:py-3 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent touch-manipulation pr-12"
-                            placeholder="Paste YouTube, Spotify, SoundCloud, or Tidal link"
-                            autoComplete="off"
-                          />
-                          {extractingSong && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                              <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
-                              <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline">Extracting...</span>
+                      {/* Music Link Input - Show only when showLinkField is true */}
+                      {showLinkField ? (
+                        <>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                              <Music className="w-4 h-4 inline mr-1" />
+                              Paste Music Link (Optional)
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="url"
+                                value={songUrl}
+                                onChange={handleSongUrlChange}
+                                className="w-full px-4 py-3.5 sm:py-3 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent touch-manipulation pr-12"
+                                placeholder="Paste YouTube, Spotify, SoundCloud, Tidal, or Apple Music link"
+                                autoComplete="off"
+                              />
+                              {extractingSong && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                  <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                                  <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline">Extracting...</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-                            We&apos;ll automatically fill in the song title and artist name
-                          </p>
-                      </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                              We&apos;ll automatically fill in the song title and artist name
+                            </p>
+                          </div>
 
-                      <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                          <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                              <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
+                                Or enter manually
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        /* Show "Start over" button when link field is hidden */
+                        <div className="mb-2">
+                          <button
+                            type="button"
+                            onClick={handleShareAnotherSong}
+                            className="inline-flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                          >
+                            <Music className="w-4 h-4" />
+                            Start over
+                          </button>
                         </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
-                            Or enter manually
-                          </span>
-                        </div>
-                      </div>
+                      )}
 
                       <div>
                         <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
@@ -504,6 +635,117 @@ export default function CrowdRequestPage() {
                           required
                           autoComplete="off"
                         />
+                      </div>
+
+                      {/* Audio File Upload Section */}
+                      <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Music className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                          <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                            Upload Your Own Audio File
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                          Upload your own audio file to be played. This is perfect for upcoming artists or custom tracks. ($100 per file)
+                        </p>
+                        
+                        {!audioFileUrl ? (
+                          <div>
+                            <input
+                              type="file"
+                              accept="audio/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setAudioFile(file);
+                                  setAudioUploading(true);
+                                  try {
+                                    // Upload to API endpoint
+                                    const formData = new FormData();
+                                    formData.append('audio', file);
+                                    
+                                    const response = await fetch('/api/crowd-request/upload-audio', {
+                                      method: 'POST',
+                                      body: formData
+                                    });
+                                    
+                                    if (!response.ok) {
+                                      throw new Error('Upload failed');
+                                    }
+                                    
+                                    const data = await response.json();
+                                    setAudioFileUrl(data.url);
+                                  } catch (err) {
+                                    logger.error('Audio upload error', err);
+                                    setError('Failed to upload audio file. Please try again.');
+                                    setAudioFile(null);
+                                  } finally {
+                                    setAudioUploading(false);
+                                  }
+                                }
+                              }}
+                              className="w-full text-sm text-gray-700 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 dark:file:bg-purple-700 dark:hover:file:bg-purple-600"
+                              disabled={audioUploading}
+                            />
+                            {audioUploading && (
+                              <div className="mt-2 flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Uploading...
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Music className="w-5 h-5 text-green-600 dark:text-green-400" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {audioFile?.name || 'Audio file uploaded'}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAudioFile(null);
+                                setAudioFileUrl('');
+                              }}
+                              className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Artist Rights Checkboxes */}
+                        {audioFileUrl && (
+                          <div className="mt-4 space-y-2">
+                            <label className="flex items-start gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={artistRightsConfirmed}
+                                onChange={(e) => setArtistRightsConfirmed(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"
+                                required={!!audioFileUrl}
+                              />
+                              <span className="text-xs text-gray-700 dark:text-gray-300">
+                                I confirm that I own the rights to this music or have permission to use it
+                              </span>
+                            </label>
+                            <label className="flex items-start gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isArtist}
+                                onChange={(e) => setIsArtist(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <span className="text-xs text-gray-700 dark:text-gray-300">
+                                I am the artist (this is for promotion, not just a play)
+                              </span>
+                            </label>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mt-2">
+                              +$100.00 for audio upload
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -549,14 +791,16 @@ export default function CrowdRequestPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          // Clear any previous errors and show upsell modal
+                          // Clear any previous errors and go to payment step
                           setError('');
-                          if (requestType === 'song_request' && bundleDiscountEnabled) {
-                            setShowUpsellModal(true);
-                          } else {
-                            setCurrentStep(2);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }
+                          setCurrentStep(2);
+                          // Scroll to payment section
+                          setTimeout(() => {
+                            const paymentElement = document.querySelector('[data-payment-section]');
+                            if (paymentElement) {
+                              paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }, 100);
                         }}
                         className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
                       >
@@ -588,7 +832,7 @@ export default function CrowdRequestPage() {
 
                 {/* Payment Amount - Only show after song selection is complete and step 2 */}
                 {isSongSelectionComplete() && currentStep >= 2 && (
-                  <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards]">
+                  <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards]" data-payment-section>
                     <PaymentAmountSelector
                       amountType={amountType}
                       setAmountType={setAmountType}
@@ -672,40 +916,6 @@ export default function CrowdRequestPage() {
         </main>
       </div>
 
-      {/* Upsell Modal - Multiple Song Requests Bundle */}
-      <UpsellModal
-        show={showUpsellModal && requestType === 'song_request'}
-        onClose={() => setShowUpsellModal(false)}
-        formData={formData}
-        additionalSongs={additionalSongs}
-        setAdditionalSongs={setAdditionalSongs}
-        bundleDiscount={bundleDiscountPercent}
-        getBaseAmount={getBaseAmount}
-        getPaymentAmount={getPaymentAmount}
-        onContinue={() => {
-          // Validate that all additional songs have titles
-          const validSongs = additionalSongs.filter(song => song.songTitle?.trim());
-          const invalidSongs = additionalSongs.filter(song => !song.songTitle?.trim());
-          
-          if (invalidSongs.length > 0) {
-            setError('Please enter a song title for all additional songs, or remove empty ones');
-            return;
-          }
-          
-          // Remove any empty songs
-          setAdditionalSongs(validSongs);
-          setShowUpsellModal(false);
-          setCurrentStep(2);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onSkip={() => {
-          setShowUpsellModal(false);
-          setCurrentStep(2);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        error={error}
-        setError={setError}
-      />
     </>
   );
 }

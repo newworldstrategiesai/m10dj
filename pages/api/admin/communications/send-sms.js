@@ -47,6 +47,29 @@ export default async function handler(req, res) {
     // Log the communication in database
     const supabase = createClient();
     
+    // Get organization_id from contact
+    let organizationId = null;
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('organization_id')
+      .eq('id', contactId)
+      .single();
+    
+    if (contact?.organization_id) {
+      organizationId = contact.organization_id;
+    } else {
+      // Try contact_submissions if not found in contacts
+      const { data: submission } = await supabase
+        .from('contact_submissions')
+        .select('organization_id')
+        .eq('id', contactId)
+        .single();
+      
+      if (submission?.organization_id) {
+        organizationId = submission.organization_id;
+      }
+    }
+    
     const { error: logError } = await supabase
       .from('communication_log')
       .insert([{
@@ -58,6 +81,7 @@ export default async function handler(req, res) {
         sent_by: 'Admin',
         sent_to: to,
         status: 'sent', // or smsResult.status
+        organization_id: organizationId, // Set organization_id for multi-tenant isolation
         metadata: {
           twilio_sid: smsResult.sid || 'demo',
           simulated: true // Remove this when using real Twilio
@@ -96,6 +120,30 @@ export default async function handler(req, res) {
     // Try to log the failed attempt
     try {
       const supabase = createClient();
+      
+      // Get organization_id from contact
+      let organizationId = null;
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('organization_id')
+        .eq('id', contactId)
+        .single();
+      
+      if (contact?.organization_id) {
+        organizationId = contact.organization_id;
+      } else {
+        // Try contact_submissions if not found in contacts
+        const { data: submission } = await supabase
+          .from('contact_submissions')
+          .select('organization_id')
+          .eq('id', contactId)
+          .single();
+        
+        if (submission?.organization_id) {
+          organizationId = submission.organization_id;
+        }
+      }
+      
       await supabase
         .from('communication_log')
         .insert([{
@@ -107,6 +155,7 @@ export default async function handler(req, res) {
           sent_by: 'Admin',
           sent_to: to,
           status: 'failed',
+          organization_id: organizationId, // Set organization_id for multi-tenant isolation
           metadata: { error: error.message }
         }]);
     } catch (logError) {

@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { leadId, paymentMethodId, amount, description, paymentType } = req.body;
+  const { leadId, paymentMethodId, amount, description, paymentType, gratuityAmount, gratuityType, gratuityPercentage } = req.body;
 
   if (!leadId || !paymentMethodId || !amount) {
     return res.status(400).json({ error: 'leadId, paymentMethodId, and amount are required' });
@@ -69,15 +69,30 @@ export default async function handler(req, res) {
         .eq('lead_id', leadId);
     }
 
+    // Extract gratuity from request body if provided
+    const { gratuityAmount, gratuityType, gratuityPercentage } = req.body;
+    const gratuity = gratuityAmount ? parseFloat(gratuityAmount) : 0;
+    
+    // Build payment notes with gratuity info if applicable
+    let paymentNotes = `Stripe Payment Intent: ${paymentIntent.id} (Saved Payment Method)`;
+    if (gratuity > 0) {
+      if (gratuityType === 'percentage' && gratuityPercentage) {
+        paymentNotes += ` | Gratuity: ${gratuityPercentage}% ($${gratuity.toFixed(2)})`;
+      } else {
+        paymentNotes += ` | Gratuity: $${gratuity.toFixed(2)}`;
+      }
+    }
+
     // Create payment record
     const paymentRecord = {
       contact_id: leadId,
       payment_name: paymentType === 'deposit' ? 'Deposit' : paymentType === 'remaining' ? 'Remaining Balance' : 'Full Payment',
       total_amount: amount,
+      gratuity: gratuity,
       payment_status: 'Paid',
       payment_method: 'Credit Card (Saved)',
       transaction_date: new Date().toISOString().split('T')[0],
-      payment_notes: `Stripe Payment Intent: ${paymentIntent.id} (Saved Payment Method)`,
+      payment_notes: paymentNotes,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };

@@ -1,10 +1,11 @@
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Default contract template HTML (used when no templates exist)
 function getDefaultContractTemplate() {
@@ -119,25 +120,60 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch contact details
-    const { data: contact, error: contactError } = await supabase
+    // Get authenticated user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context (null for admins, org_id for SaaS users)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    );
+
+    // Use service role for queries
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch contact details with organization filtering
+    let contactQuery = supabaseAdmin
       .from('contacts')
       .select('*')
-      .eq('id', contactId)
-      .single();
+      .eq('id', contactId);
+
+    // For SaaS users, filter by organization_id. Platform admins see all contacts.
+    if (!isAdmin && orgId) {
+      contactQuery = contactQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      return res.status(403).json({ error: 'Access denied - no organization found' });
+    }
+
+    const { data: contact, error: contactError } = await contactQuery.single();
 
     if (contactError || !contact) {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
-    // Fetch invoice if provided
+    // Fetch invoice if provided (with organization filtering)
     let invoice = null;
     if (invoiceId) {
-      const { data: invoiceData, error: invoiceError } = await supabase
+      let invoiceQuery = supabaseAdmin
         .from('invoices')
         .select('*')
-        .eq('id', invoiceId)
-        .single();
+        .eq('id', invoiceId);
+
+      // For SaaS users, filter by organization_id
+      if (!isAdmin && orgId) {
+        invoiceQuery = invoiceQuery.eq('organization_id', orgId);
+      }
+
+      const { data: invoiceData, error: invoiceError } = await invoiceQuery.single();
 
       if (!invoiceError && invoiceData) {
         invoice = invoiceData;
@@ -145,13 +181,23 @@ export default async function handler(req, res) {
     }
 
     // Fetch template (use default if not specified, or create inline template if none exists)
+    // Templates should be filtered by organization_id if the table has it
     let template;
     if (templateId) {
-      const { data: templateData, error: templateError } = await supabase
+      let templateQuery = supabaseAdmin
         .from('contract_templates')
         .select('*')
-        .eq('id', templateId)
-        .single();
+        .eq('id', templateId);
+
+      // If contract_templates has organization_id, filter by it
+      // Otherwise, allow access (templates may be shared)
+      if (!isAdmin && orgId) {
+        // Check if table has organization_id column - if so, filter
+        // For now, allow access (templates may be organization-scoped or shared)
+        templateQuery = templateQuery;
+      }
+
+      const { data: templateData, error: templateError } = await templateQuery.single();
 
       if (templateError || !templateData) {
         console.error('Template fetch error:', templateError);
@@ -283,13 +329,14 @@ export default async function handler(req, res) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // Token valid for 30 days
 
-    // Create contract record
-    const { data: newContract, error: contractError } = await supabase
+    // Create contract record (must set organization_id)
+    const { data: newContract, error: contractError } = await supabaseAdmin
       .from('contracts')
       .insert({
         contact_id: contactId,
         invoice_id: invoiceId || null,
         service_selection_id: serviceSelectionId || null,
+        organization_id: orgId || contact.organization_id, // Set organization_id
         
         event_name: variables.event_name,
         event_type: variables.event_type,

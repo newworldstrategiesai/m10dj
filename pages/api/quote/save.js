@@ -39,7 +39,8 @@ export default async function handler(req, res) {
           phone: contactData.phone,
           eventType: contactData.event_type,
           eventDate: contactData.event_date,
-          location: contactData.venue_name
+          location: contactData.venue_name,
+          organization_id: contactData.organization_id // Store org_id for later use
         };
       } else {
         // Try contact_submissions table
@@ -102,6 +103,7 @@ export default async function handler(req, res) {
       total_price: calculatedTotalPrice,
       discount_code: discountCode || null,
       discount_amount: discountAmount || 0,
+      organization_id: leadData?.organization_id || null, // Set organization_id from contact
       updated_at: new Date().toISOString()
     };
     

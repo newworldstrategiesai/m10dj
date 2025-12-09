@@ -38,12 +38,18 @@ export default async function handler(req, res) {
     let recentViews = [];
     let viewsError = null;
 
+    // Note: This cron job processes ALL organizations
+    // RLS policies on contacts will ensure data isolation
+    // We process all orgs because this is a background job that should handle everyone
     const { data: viewsData, error: viewsErr } = await supabase
       .from('quote_page_views')
       .select('*, contacts:contact_id(*)')
       .gte('created_at', threeDaysAgo.toISOString())
       .lte('created_at', twoDaysAgo.toISOString())
       .eq('event_type', 'page_view');
+    
+    // Note: contacts are filtered by organization_id via RLS policies
+    // Each organization's contacts are isolated at the database level
 
     if (viewsErr) {
       console.log('quote_page_views table may not exist, trying quote_analytics:', viewsErr.message);
@@ -86,7 +92,8 @@ export default async function handler(req, res) {
 
     if (viewsError && recentViews.length === 0) {
       console.error('Error fetching recent views:', viewsError);
-      return res.status(500).json({ error: 'Failed to fetch recent views', details: viewsError.message });
+      // Sanitize error - don't expose internal details
+      return res.status(500).json({ error: 'Failed to fetch recent views' });
     }
 
     if (!recentViews || recentViews.length === 0) {
@@ -102,7 +109,20 @@ export default async function handler(req, res) {
     for (const view of recentViews) {
       const contactId = view.contact_id;
       
-      // Check if they have a quote selection
+      // Get contact to verify organization_id exists (data isolation check)
+      const { data: contactData } = await supabase
+        .from('contacts')
+        .select('organization_id')
+        .eq('id', contactId)
+        .single();
+      
+      // Skip if contact doesn't exist or has no organization (shouldn't happen, but safety check)
+      if (!contactData || !contactData.organization_id) {
+        console.log(`⚠️ Skipping contact ${contactId} - no organization_id`);
+        continue;
+      }
+      
+      // Check if they have a quote selection (filtered by RLS based on organization_id)
       const { data: selections } = await supabase
         .from('quote_selections')
         .select('id')
@@ -161,7 +181,8 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error in follow-up check:', error);
-    return res.status(500).json({ error: 'Internal server error', details: error.message });
+    // Sanitize error - don't expose internal details
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
 

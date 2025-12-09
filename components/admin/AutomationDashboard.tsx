@@ -16,10 +16,13 @@ import {
   Star,
   Send,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  Settings,
+  Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 
 interface AutomationStats {
@@ -52,11 +55,74 @@ export default function AutomationDashboard() {
   const [processing, setProcessing] = useState(false);
   const [stats, setStats] = useState<AutomationStats | null>(null);
   const [queuedAutomations, setQueuedAutomations] = useState<QueuedAutomation[]>([]);
+  const [googleReviewLink, setGoogleReviewLink] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [organization, setOrganization] = useState<any>(null);
 
   useEffect(() => {
     fetchStats();
     fetchQueuedAutomations();
+    fetchOrganization();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchOrganization = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('owner_id', user.id)
+        .single();
+
+      if (org) {
+        setOrganization(org);
+        setGoogleReviewLink(org.google_review_link || 'https://g.page/r/CSD9ayo7-MivEBE/review');
+      }
+    } catch (error) {
+      console.error('Error fetching organization:', error);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!organization?.id) {
+      toast({
+        title: 'Error',
+        description: 'Organization not found',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ google_review_link: googleReviewLink })
+        .eq('id', organization.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Settings Saved',
+        description: 'Google Review link updated successfully',
+      });
+
+      // Refresh organization data
+      await fetchOrganization();
+    } catch (error: any) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to save settings',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -324,6 +390,47 @@ export default function AutomationDashboard() {
         </div>
       </div>
 
+      {/* Review Settings */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+              <Settings className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Review Request Settings</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Configure the Google Review link used in review request emails and SMS</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                Google Review Link
+              </label>
+              <Input
+                value={googleReviewLink}
+                onChange={(e) => setGoogleReviewLink(e.target.value)}
+                placeholder="https://g.page/r/CSD9ayo7-MivEBE/review"
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                This link will be included in all review request emails and SMS messages sent to clients after their events.
+              </p>
+            </div>
+            <Button
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+              className="flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {savingSettings ? 'Saving...' : 'Save Settings'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Quick Actions */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">💡 Automation Tips</h3>
@@ -332,7 +439,7 @@ export default function AutomationDashboard() {
           <li>• Review requests sent 48 hours after event completion</li>
           <li>• Reminders automatically cancelled when review is completed</li>
           <li>• Lead follow-ups sent 3 and 7 days after initial inquiry</li>
-          <li>• Click "Process Queue Now" to send due automations immediately</li>
+          <li>• Click &quot;Process Queue Now&quot; to send due automations immediately</li>
         </ul>
       </div>
     </div>

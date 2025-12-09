@@ -139,6 +139,29 @@ ${htmlEmailContent}
     if (recordId) {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
       
+      // Get organization_id from contact or contact_submission
+      let organizationId = null;
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('organization_id')
+        .eq('id', recordId)
+        .single();
+      
+      if (contact?.organization_id) {
+        organizationId = contact.organization_id;
+      } else {
+        // Try contact_submissions if not found in contacts
+        const { data: submission } = await supabase
+          .from('contact_submissions')
+          .select('organization_id')
+          .eq('id', recordId)
+          .single();
+        
+        if (submission?.organization_id) {
+          organizationId = submission.organization_id;
+        }
+      }
+      
       const { error: logError } = await supabase
         .from('communication_log')
         .insert([{
@@ -150,6 +173,7 @@ ${htmlEmailContent}
           sent_by: 'Admin',
           sent_to: emailTo,
           status: 'sent',
+          organization_id: organizationId, // Set organization_id for multi-tenant isolation
           metadata: {
             resend_id: emailResult.data?.id,
             template_used: originalTemplate || null
@@ -190,6 +214,30 @@ ${htmlEmailContent}
     if (recordId) {
       try {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        // Get organization_id from contact or contact_submission
+        let organizationId = null;
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('organization_id')
+          .eq('id', recordId)
+          .single();
+        
+        if (contact?.organization_id) {
+          organizationId = contact.organization_id;
+        } else {
+          // Try contact_submissions if not found in contacts
+          const { data: submission } = await supabase
+            .from('contact_submissions')
+            .select('organization_id')
+            .eq('id', recordId)
+            .single();
+          
+          if (submission?.organization_id) {
+            organizationId = submission.organization_id;
+          }
+        }
+        
         await supabase
           .from('communication_log')
           .insert([{
@@ -201,6 +249,7 @@ ${htmlEmailContent}
             sent_by: 'Admin',
             sent_to: emailTo,
             status: 'failed',
+            organization_id: organizationId, // Set organization_id for multi-tenant isolation
             metadata: { error: error.message }
           }]);
       } catch (logError) {

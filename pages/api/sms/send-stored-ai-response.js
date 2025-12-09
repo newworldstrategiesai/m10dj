@@ -5,6 +5,11 @@ import {
   extractLeadInfo,
   getCustomerContext 
 } from '../../../utils/chatgpt-sms-assistant.js';
+import { createClient } from '@supabase/supabase-js';
+import { canSendSMS, getOrganizationFromPhone } from '@/utils/subscription-helpers';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -20,11 +25,7 @@ export default async function handler(req, res) {
 
     console.log(`📤 Processing stored AI response ID: ${id}`);
 
-    const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get the stored AI response
     const { data: pendingResponse, error: fetchError } = await supabase
@@ -45,6 +46,35 @@ export default async function handler(req, res) {
     const { phone_number, original_message, ai_response, original_message_id } = pendingResponse;
 
     console.log(`🤖 Sending stored AI response to ${phone_number}: ${ai_response}`);
+
+    // Check subscription for AI SMS features (Professional/Enterprise only)
+    const org = await getOrganizationFromPhone(supabase, phone_number);
+    let canUseAI = true;
+    
+    if (org) {
+      const smsCheck = await canSendSMS(supabase, org);
+      canUseAI = smsCheck.allowed;
+      
+      if (!canUseAI) {
+        console.log(`🚫 AI SMS not available for organization ${org.id} (tier: ${org.subscription_tier})`);
+        
+        // Mark as cancelled due to subscription limit
+        await supabase
+          .from('pending_ai_responses')
+          .update({ 
+            status: 'cancelled',
+            processed_at: new Date().toISOString(),
+            error_message: `AI SMS not available on ${org.subscription_tier} tier`
+          })
+          .eq('id', id);
+        
+        return res.status(200).json({ 
+          success: true, 
+          message: 'AI SMS not available for this subscription tier',
+          cancelled: true
+        });
+      }
+    }
 
     // Check if admin has already responded
     const adminAlreadyResponded = await checkForAdminResponse(phone_number);

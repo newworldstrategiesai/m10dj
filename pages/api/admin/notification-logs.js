@@ -53,23 +53,13 @@ export default async function handler(req, res) {
       `)
       .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-    // For SaaS users, filter by organization_id via contact_submissions
-    // Note: notification_log may not have organization_id directly, so we filter via contact_submissions
+    // For SaaS users, filter by organization_id
+    // After migration, notification_log will have organization_id directly
     if (!isAdmin && orgId) {
-      // Get contact_submission_ids for this organization
-      const { data: orgSubmissions } = await supabaseAdmin
-        .from('contact_submissions')
-        .select('id')
-        .eq('organization_id', orgId);
-      
-      const submissionIds = orgSubmissions?.map(s => s.id) || [];
-      
-      if (submissionIds.length > 0) {
-        logsQuery = logsQuery.in('contact_submission_id', submissionIds);
-      } else {
-        // No submissions for this org, return empty
-        logsQuery = logsQuery.eq('id', '00000000-0000-0000-0000-000000000000'); // Impossible match
-      }
+      logsQuery = logsQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      // SaaS user without organization - return empty
+      logsQuery = logsQuery.eq('id', '00000000-0000-0000-0000-000000000000'); // Impossible match
     }
 
     const { data: logs, error } = await logsQuery

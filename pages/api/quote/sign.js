@@ -1,4 +1,7 @@
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,14 +18,33 @@ export default async function handler(req, res) {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Get authenticated user (for organization filtering)
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Note: This endpoint may be called by clients, so we'll allow it but verify org if user is authenticated
+    const isAdmin = session ? isPlatformAdmin(session.user?.email) : false;
+    const orgId = session ? await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    ) : null;
 
-    // Get quote data
-    const { data: quote, error: quoteError } = await supabase
+    // Use service role for queries
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+    // Get quote data (with org filtering if user is authenticated)
+    let quoteQuery = supabaseAdmin
       .from('quote_selections')
       .select('*')
-      .eq('lead_id', leadId)
-      .single();
+      .eq('lead_id', leadId);
+
+    // If user is authenticated and not admin, filter by organization
+    if (session && !isAdmin && orgId) {
+      quoteQuery = quoteQuery.eq('organization_id', orgId);
+    }
+
+    const { data: quote, error: quoteError } = await quoteQuery.single();
 
     if (quoteError || !quote) {
       console.error('Quote error:', quoteError);

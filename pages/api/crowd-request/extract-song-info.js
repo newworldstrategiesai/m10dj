@@ -1,3 +1,102 @@
+// Helper function to clean up artist names by removing service suffixes
+function cleanArtistName(artist) {
+  if (!artist || typeof artist !== 'string') return artist;
+  
+  // Remove common service suffixes that might be included
+  let cleaned = artist
+    .replace(/\s*\|\s*Spotify\s*$/i, '') // Remove "| Spotify" suffix
+    .replace(/\s*on\s+Spotify\s*$/i, '') // Remove "on Spotify" suffix
+    .replace(/\s*[-–—]\s*Spotify\s*$/i, '') // Remove "- Spotify" suffix
+    .replace(/\s*·\s*Spotify\s*$/i, '') // Remove "· Spotify" suffix
+    .trim();
+  
+  return cleaned;
+}
+
+// Helper function to format artist names (e.g., "djbenmurray" -> "DJ Ben Murray")
+function formatArtistName(artist) {
+  if (!artist || typeof artist !== 'string') return artist;
+  
+  // Clean up service suffixes first
+  artist = cleanArtistName(artist);
+  
+  const trimmed = artist.trim();
+  
+  // If it's already properly formatted (has spaces or mixed case), return as-is
+  if (trimmed.includes(' ') || /[A-Z]/.test(trimmed)) {
+    return trimmed;
+  }
+  
+  // If it's all lowercase with no spaces, try to format it
+  // Handle "dj" prefix specially
+  let formatted = trimmed;
+  const lowerTrimmed = trimmed.toLowerCase();
+  
+  if (lowerTrimmed.startsWith('dj') && trimmed.length > 2) {
+    // Split "dj" from the rest (case-insensitive)
+    const rest = trimmed.substring(2);
+    
+    // Try to detect word boundaries in the rest
+    // For "benmurray" -> "Ben Murray"
+    // Common pattern: firstname (3-6 chars) + lastname (rest)
+    // Try splitting at common name lengths
+    let foundSplit = false;
+    
+    // Try splitting at various positions (3-6 chars for first name)
+    for (let i = 3; i <= Math.min(6, rest.length - 2); i++) {
+      const firstPart = rest.substring(0, i);
+      const secondPart = rest.substring(i);
+      
+      // If both parts look reasonable (at least 2 chars each)
+      if (firstPart.length >= 2 && secondPart.length >= 2) {
+        formatted = 'DJ ' + 
+                     firstPart.charAt(0).toUpperCase() + firstPart.slice(1) + ' ' +
+                     secondPart.charAt(0).toUpperCase() + secondPart.slice(1);
+        foundSplit = true;
+        break;
+      }
+    }
+    
+    // If no good split found, try common name patterns
+    if (!foundSplit) {
+      // Try splitting at 4 chars (common first name length)
+      if (rest.length >= 6) {
+        const firstPart = rest.substring(0, 4);
+        const secondPart = rest.substring(4);
+        formatted = 'DJ ' + 
+                     firstPart.charAt(0).toUpperCase() + firstPart.slice(1) + ' ' +
+                     secondPart.charAt(0).toUpperCase() + secondPart.slice(1);
+      } else {
+        // Fallback: just capitalize first letter of rest
+        formatted = 'DJ ' + rest.charAt(0).toUpperCase() + rest.slice(1);
+      }
+    }
+  } else {
+    // No "dj" prefix, try to split words
+    // Try splitting at common name lengths (3-6 chars for first name)
+    let foundSplit = false;
+    
+    for (let i = 3; i <= Math.min(6, trimmed.length - 2); i++) {
+      const firstPart = trimmed.substring(0, i);
+      const secondPart = trimmed.substring(i);
+      
+      if (firstPart.length >= 2 && secondPart.length >= 2) {
+        formatted = firstPart.charAt(0).toUpperCase() + firstPart.slice(1) + ' ' +
+                     secondPart.charAt(0).toUpperCase() + secondPart.slice(1);
+        foundSplit = true;
+        break;
+      }
+    }
+    
+    // If no split found, just capitalize first letter
+    if (!foundSplit) {
+      formatted = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+    }
+  }
+  
+  return formatted;
+}
+
 // API endpoint to extract song information from music service URLs
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -40,9 +139,13 @@ export default async function handler(req, res) {
       else if (hostname.includes('tidal.com')) {
         songInfo = await extractTidalInfo(url);
       }
+      // Apple Music
+      else if (hostname.includes('music.apple.com') || hostname.includes('itunes.apple.com')) {
+        songInfo = await extractAppleMusicInfo(url);
+      }
       else {
         return res.status(400).json({ 
-          error: 'Unsupported service. Please use YouTube, Spotify, SoundCloud, or Tidal links.' 
+          error: 'Unsupported service. Please use YouTube, Spotify, SoundCloud, Tidal, or Apple Music links.' 
         });
       }
     } catch (extractionError) {
@@ -183,6 +286,11 @@ async function extractYouTubeInfo(url) {
       }
     }
 
+    // Format artist name if it looks like a username
+    if (artist) {
+      artist = formatArtistName(artist);
+    }
+
     return {
       title: songTitle || title,
       artist: artist || '',
@@ -240,13 +348,19 @@ async function extractSpotifyInfo(url) {
           const byMatch = oEmbedTitle.match(/^(.+?)\s+by\s+(.+)$/i);
           if (byMatch) {
             title = byMatch[1].trim();
-            artist = byMatch[2].trim();
+            artist = byMatch[2]
+              .replace(/\s*\|\s*Spotify.*$/i, '') // Remove "| Spotify" suffix
+              .replace(/\s*on\s+Spotify.*$/i, '') // Remove "on Spotify" suffix
+              .trim();
           } else {
             // Try "Song Title · Artist Name" format (bullet separator - Spotify's preferred)
             const dotMatch = oEmbedTitle.match(/^(.+?)\s*·\s*(.+)$/);
             if (dotMatch) {
               title = dotMatch[1].trim();
-              artist = dotMatch[2].trim();
+              artist = dotMatch[2]
+                .replace(/\s*\|\s*Spotify.*$/i, '') // Remove "| Spotify" suffix
+                .replace(/\s*on\s+Spotify.*$/i, '') // Remove "on Spotify" suffix
+                .trim();
             } else {
               // Try dash format - need to determine which is artist vs song
               const dashMatch = oEmbedTitle.match(/^(.+?)\s*[-–—]\s*(.+)$/);
@@ -353,7 +467,12 @@ async function extractSpotifyInfo(url) {
               const parts = ogTitle.split(/\s*·\s*/);
               if (parts.length === 2) {
                 if (!title) title = parts[0].trim();
-                if (!artist) artist = parts[1].trim();
+                if (!artist) {
+                  artist = parts[1]
+                    .replace(/\s*\|\s*Spotify.*$/i, '') // Remove "| Spotify" suffix
+                    .replace(/\s*on\s+Spotify.*$/i, '') // Remove "on Spotify" suffix
+                    .trim();
+                }
               } else {
                 // Try "Song Title by Artist Name"
                 const byMatch = ogTitle.match(/(.+?)\s+by\s+(.+)/i);
@@ -386,17 +505,27 @@ async function extractSpotifyInfo(url) {
                 if (!title) title = byMatch[1].trim();
                 if (!artist) artist = byMatch[2].trim();
               } else {
-                // Try parsing without "on Spotify"
+                // Try parsing without "on Spotify" - but also check for "| Spotify" format
                 const byMatch2 = titleTag.match(/(.+?)\s+by\s+(.+)/i);
                 if (byMatch2) {
                   if (!title) title = byMatch2[1].trim();
-                  if (!artist) artist = byMatch2[2].trim();
+                  if (!artist) {
+                    artist = byMatch2[2]
+                      .replace(/\s*\|\s*Spotify.*$/i, '') // Remove "| Spotify" suffix
+                      .replace(/\s*on\s+Spotify.*$/i, '') // Remove "on Spotify" suffix
+                      .trim();
+                  }
                 } else {
                   // Try bullet separator in title tag
                   const parts = titleTag.split(/\s*·\s*/);
                   if (parts.length === 2) {
                     if (!title) title = parts[0].trim();
-                    if (!artist) artist = parts[1].replace(/\s*on\s+Spotify.*$/i, '').trim();
+                    if (!artist) {
+                      artist = parts[1]
+                        .replace(/\s*\|\s*Spotify.*$/i, '') // Remove "| Spotify" suffix
+                        .replace(/\s*on\s+Spotify.*$/i, '') // Remove "on Spotify" suffix
+                        .trim();
+                    }
                   } else {
                     if (!title) title = titleTag.replace(/\s*[-–—]\s*Spotify.*$/i, '').trim();
                   }
@@ -433,6 +562,11 @@ async function extractSpotifyInfo(url) {
     
     if (!title && !artist) {
       return null;
+    }
+
+    // Format artist name if it looks like a username
+    if (artist) {
+      artist = formatArtistName(artist);
     }
 
     return {
@@ -477,14 +611,30 @@ async function extractSoundCloudInfo(url) {
     const data = await response.json();
     const title = data.title || '';
 
-    // SoundCloud format is usually "Artist - Song Title"
+    // SoundCloud format can be:
+    // 1. "Song Title by Artist" (most common)
+    // 2. "Artist - Song Title"
+    // 3. Just "Song Title"
     let artist = '';
     let songTitle = title;
 
-    const dashMatch = title.match(/^(.+?)\s*[-–—]\s*(.+)$/);
-    if (dashMatch) {
-      artist = dashMatch[1].trim();
-      songTitle = dashMatch[2].trim();
+    // First, try "Song Title by Artist" format (most common on SoundCloud)
+    const byMatch = title.match(/^(.+?)\s+by\s+(.+)$/i);
+    if (byMatch) {
+      songTitle = byMatch[1].trim();
+      artist = byMatch[2].trim();
+    } else {
+      // Try "Artist - Song Title" format
+      const dashMatch = title.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+      if (dashMatch) {
+        artist = dashMatch[1].trim();
+        songTitle = dashMatch[2].trim();
+      }
+    }
+
+    // Format artist name if it looks like a username (all lowercase, no spaces)
+    if (artist) {
+      artist = formatArtistName(artist);
     }
 
     return {
@@ -628,6 +778,11 @@ async function extractTidalInfo(url) {
         }
       }
       
+      // Format artist name if it looks like a username
+      if (artist) {
+        artist = formatArtistName(artist);
+      }
+      
       return {
         title: title || '',
         artist: artist || '',
@@ -640,6 +795,180 @@ async function extractTidalInfo(url) {
     return null;
   } catch (error) {
     console.error('Tidal extraction error:', error);
+    // Re-throw timeout errors with a user-friendly message
+    if (error.message && error.message.includes('timeout')) {
+      throw error;
+    }
+    return null;
+  }
+}
+
+// Extract Apple Music track information
+async function extractAppleMusicInfo(url) {
+  try {
+    // Apple Music URL formats:
+    // https://music.apple.com/us/album/song-name/123456789?i=987654321
+    // https://music.apple.com/us/album/album-name/123456789
+    // https://itunes.apple.com/us/album/song-name/id123456789?i=987654321
+    
+    // Normalize URL to use music.apple.com
+    let normalizedUrl = url;
+    if (url.includes('itunes.apple.com')) {
+      normalizedUrl = url.replace('itunes.apple.com', 'music.apple.com');
+    }
+    
+    // Extract track ID from URL if present
+    const trackIdMatch = url.match(/[?&]i=(\d+)/);
+    const albumIdMatch = url.match(/\/(\d+)(?:\?|$)/);
+    
+    // Fetch the Apple Music page HTML with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
+    let response;
+    try {
+      response = await fetch(normalizedUrl, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
+        }
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('Apple Music page fetch timeout');
+        throw new Error('Apple Music request timed out. Please try again or enter the song details manually.');
+      }
+      throw fetchError;
+    }
+    
+    if (!response.ok) {
+      console.error('Apple Music page fetch failed:', response.status);
+      return null;
+    }
+
+    const html = await response.text();
+    
+    // Apple Music stores track info in JSON-LD structured data
+    const jsonLdMatch = html.match(/<script type="application\/ld\+json">([^<]+)<\/script>/i);
+    if (jsonLdMatch) {
+      try {
+        const jsonLd = JSON.parse(jsonLdMatch[1]);
+        
+        // Handle different JSON-LD structures
+        if (Array.isArray(jsonLd)) {
+          // Find the track/recording object
+          const track = jsonLd.find(item => item['@type'] === 'MusicRecording' || item['@type'] === 'MusicComposition');
+          if (track) {
+            const title = track.name || '';
+            const artist = track.byArtist?.name || track.artist?.name || '';
+            
+            if (title || artist) {
+              return {
+                title: title || '',
+                artist: artist || '',
+                source: 'apple_music',
+                url: url
+              };
+            }
+          }
+        } else if (jsonLd['@type'] === 'MusicRecording' || jsonLd['@type'] === 'MusicComposition') {
+          const title = jsonLd.name || '';
+          const artist = jsonLd.byArtist?.name || jsonLd.artist?.name || '';
+          
+          if (title || artist) {
+            return {
+              title: title || '',
+              artist: artist || '',
+              source: 'apple_music',
+              url: url
+            };
+          }
+        }
+      } catch (e) {
+        console.log('Could not parse Apple Music JSON-LD:', e);
+      }
+    }
+    
+    // Fallback: Parse meta tags (og:title, og:description, etc.)
+    const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i);
+    const ogDescriptionMatch = html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i);
+    const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
+    
+    let title = '';
+    let artist = '';
+    
+    if (ogTitleMatch) {
+      const ogTitle = ogTitleMatch[1];
+      // Apple Music og:title format is often "Song Title by Artist Name"
+      const byMatch = ogTitle.match(/^(.+?)\s+by\s+(.+)$/i);
+      if (byMatch) {
+        title = byMatch[1].trim();
+        artist = byMatch[2].trim();
+      } else {
+        // Try dash format "Artist - Song"
+        const dashMatch = ogTitle.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+        if (dashMatch) {
+          artist = dashMatch[1].trim();
+          title = dashMatch[2].trim();
+        } else {
+          title = ogTitle;
+        }
+      }
+    }
+    
+    // Try title tag as fallback
+    if ((!title || !artist) && titleTagMatch) {
+      const titleTag = titleTagMatch[1];
+      // Apple Music title format: "Song Title by Artist Name on Apple Music"
+      const byMatch = titleTag.match(/^(.+?)\s+by\s+(.+?)\s+on\s+Apple\s+Music/i);
+      if (byMatch) {
+        if (!title) title = byMatch[1].trim();
+        if (!artist) artist = byMatch[2].trim();
+      } else {
+        // Try without "on Apple Music"
+        const byMatch2 = titleTag.match(/^(.+?)\s+by\s+(.+)/i);
+        if (byMatch2) {
+          if (!title) title = byMatch2[1].trim();
+          if (!artist) artist = byMatch2[2].trim();
+        } else if (!title) {
+          title = titleTag.replace(/\s*[-–—]\s*Apple\s+Music.*$/i, '').trim();
+        }
+      }
+    }
+    
+    // Try description as fallback for artist
+    if (!artist && ogDescriptionMatch) {
+      const desc = ogDescriptionMatch[1];
+      const artistMatch = desc.match(/(?:by|from)\s+([^,\.]+)/i);
+      if (artistMatch) {
+        artist = artistMatch[1].trim();
+      }
+    }
+    
+    // Format artist name if it looks like a username
+    if (artist) {
+      artist = formatArtistName(artist);
+    }
+    
+    if (!title && !artist) {
+      return null;
+    }
+
+    return {
+      title: title || '',
+      artist: artist || '',
+      source: 'apple_music',
+      url: url
+    };
+  } catch (error) {
+    console.error('Apple Music extraction error:', error);
     // Re-throw timeout errors with a user-friendly message
     if (error.message && error.message.includes('timeout')) {
       throw error;

@@ -2,12 +2,15 @@ import { useRouter } from 'next/router';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { ArrowRight, ArrowLeft, CheckCircle, Music, Heart, Mic, Radio, Link as LinkIcon, Save, Loader2, Sparkles, HelpCircle, Edit2, Check, Download, PartyPopper, RotateCcw } from 'lucide-react';
+import { ArrowRight, ArrowLeft, CheckCircle, Music, Heart, Mic, Radio, Link as LinkIcon, Save, Loader2, Sparkles, HelpCircle, Edit2, Check, Download, PartyPopper, RotateCcw, AlertTriangle, Wifi, WifiOff, FileText } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import confetti from 'canvas-confetti';
+import QuestionnaireStorage from '../../../utils/questionnaire-storage';
+import QuestionnaireQueue from '../../../utils/questionnaire-queue';
 import { normalizeSongInput, cleanSongInput } from '../../../utils/song-normalizer';
 import { getQuestionnaireConfig } from '../../../utils/questionnaire-config';
 
@@ -200,21 +203,175 @@ export default function MusicQuestionnaire() {
     }
   }, [leadData]);
 
-  // Auto-save functionality
+  // Function to save questionnaire to database (without marking as complete)
+  const saveQuestionnaireToDatabase = async (dataToSave, showStatus = true) => {
+    if (!id) return false;
+
+    try {
+      // Save to all storage layers first (IndexedDB, localStorage, memory)
+      if (storageRef.current) {
+        await storageRef.current.save(dataToSave);
+      } else {
+        // Fallback to localStorage if storage not initialized
+        localStorage.setItem(`questionnaire_${id}`, JSON.stringify(dataToSave));
+      }
+
+      // If offline, queue the save
+      if (!isOnline) {
+        if (queueRef.current) {
+          await queueRef.current.enqueue(dataToSave, false);
+        }
+        return false; // Return false but data is saved locally
+      }
+
+      // Check if there's any meaningful data to save
+      const hasData = !!(
+        dataToSave.bigNoSongs?.trim() ||
+        (dataToSave.specialDances && dataToSave.specialDances.length > 0) ||
+        (dataToSave.specialDanceSongs && Object.keys(dataToSave.specialDanceSongs).length > 0) ||
+        (dataToSave.playlistLinks && Object.values(dataToSave.playlistLinks).some(link => link && link.trim())) ||
+        dataToSave.ceremonyMusicType?.trim() ||
+        (dataToSave.ceremonyMusic && Object.keys(dataToSave.ceremonyMusic).length > 0) ||
+        dataToSave.mcIntroduction !== null
+      );
+
+      // Still save even if empty to update the started_at timestamp
+      const response = await fetch('/api/questionnaire/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          leadId: id,
+          ...dataToSave,
+          isComplete: false, // Don't mark as complete for auto-save
+          _idempotencyKey: `${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        })
+      });
+
+      if (response.ok) {
+        return true;
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('Auto-save to database failed:', errorData);
+        // Queue for retry
+        if (queueRef.current) {
+          await queueRef.current.enqueue(dataToSave, false);
+        }
+        return false;
+      }
+    } catch (error) {
+      console.warn('Auto-save error:', error);
+      // Queue for retry when online
+      if (queueRef.current) {
+        await queueRef.current.enqueue(dataToSave, false);
+      }
+      return false;
+    }
+  };
+
+  // Track consecutive auto-save failures
+  const autoSaveFailureCount = useRef(0);
+  const lastSuccessfulSave = useRef(null);
+
+  // Auto-save functionality - saves to both database and localStorage
   useEffect(() => {
     if (!id || currentStep === 0) return;
     
-    const autoSaveTimer = setTimeout(() => {
+    // Don't auto-save on the last step (user should click submit)
+    if (currentStep === steps.length - 1) return;
+    
+    const autoSaveTimer = setTimeout(async () => {
       setAutoSaveStatus('saving');
-      localStorage.setItem(`questionnaire_${id}`, JSON.stringify(formData));
-      setTimeout(() => {
+      
+      // Save to database
+      const dbSuccess = await saveQuestionnaireToDatabase(formData, false);
+      
+      if (dbSuccess) {
         setAutoSaveStatus('saved');
+        autoSaveFailureCount.current = 0; // Reset failure count on success
+        lastSuccessfulSave.current = new Date();
         setTimeout(() => setAutoSaveStatus(null), 2000);
-      }, 300);
-    }, 2000);
+      } else {
+        autoSaveFailureCount.current += 1;
+        setAutoSaveStatus('error');
+        
+        // Show warning if multiple failures
+        if (autoSaveFailureCount.current >= 3) {
+          toast({
+            title: 'Auto-save Issues Detected',
+            description: 'Auto-save has failed multiple times. Your data is saved locally. Please use the "Save Now" button or contact support if issues persist.',
+            variant: 'destructive',
+            duration: 8000
+          });
+        }
+        
+        setTimeout(() => setAutoSaveStatus(null), 3000);
+      }
+    }, 3000); // Auto-save every 3 seconds
 
     return () => clearTimeout(autoSaveTimer);
   }, [formData, id, currentStep]);
+
+  // Periodic sync: Try to sync localStorage to database every 30 seconds if there's unsaved data
+  useEffect(() => {
+    if (!id) return;
+
+    const syncInterval = setInterval(async () => {
+      // Only sync if we haven't successfully saved recently
+      const timeSinceLastSave = lastSuccessfulSave.current 
+        ? Date.now() - lastSuccessfulSave.current.getTime()
+        : Infinity;
+      
+      // If last save was more than 30 seconds ago, try to sync
+      if (timeSinceLastSave > 30000) {
+        const localData = localStorage.getItem(`questionnaire_${id}`);
+        if (localData) {
+          try {
+            const parsed = JSON.parse(localData);
+            // Try to sync to database silently
+            await saveQuestionnaireToDatabase(parsed, false);
+          } catch (e) {
+            // Silent fail - just log
+            console.warn('Periodic sync failed:', e);
+          }
+        }
+      }
+    }, 30000); // Every 30 seconds
+
+    return () => clearInterval(syncInterval);
+  }, [id]);
+
+  // Warn user before leaving if there's unsaved data
+  useEffect(() => {
+    if (!id) return;
+
+    const handleBeforeUnload = (e) => {
+      const localData = localStorage.getItem(`questionnaire_${id}`);
+      if (localData) {
+        // Check if there's meaningful data
+        try {
+          const parsed = JSON.parse(localData);
+          const hasData = !!(
+            parsed.bigNoSongs?.trim() ||
+            (parsed.specialDances && parsed.specialDances.length > 0) ||
+            (parsed.playlistLinks && Object.values(parsed.playlistLinks).some(link => link))
+          );
+          
+          if (hasData && !saved) {
+            e.preventDefault();
+            e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+            return e.returnValue;
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [id, saved]);
 
   // Auto-scroll step indicator to center active step
   useEffect(() => {
@@ -625,8 +782,66 @@ export default function MusicQuestionnaire() {
   };
 
   const handleSubmit = async () => {
+    // Show confirmation dialog first
+    setShowSubmitConfirm(true);
+  };
+
+  const confirmSubmit = async () => {
+    setShowSubmitConfirm(false);
     setSaving(true);
+    
     try {
+      // Validate that we have a leadId
+      if (!id) {
+        throw new Error('Missing contact ID. Please refresh the page and try again.');
+      }
+
+      // Generate idempotency key to prevent duplicate submissions
+      const idempotencyKey = `${id}_submit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setSubmissionIdempotencyKey.current = idempotencyKey;
+
+      // Save to all storage layers first
+      if (storageRef.current) {
+        await storageRef.current.save(formData);
+      }
+
+      // Merge data from all sources
+      let finalData = { ...formData };
+      
+      // Try to load from storage to merge any newer data
+      if (storageRef.current) {
+        const storedData = await storageRef.current.load();
+        if (storedData) {
+          finalData = {
+            ...storedData,
+            ...formData, // Current form data takes priority
+            // But merge arrays and objects intelligently
+            specialDances: formData.specialDances?.length > 0 ? formData.specialDances : (storedData.specialDances || []),
+            specialDanceSongs: { ...storedData.specialDanceSongs, ...formData.specialDanceSongs },
+            playlistLinks: { ...storedData.playlistLinks, ...formData.playlistLinks },
+            ceremonyMusic: { ...storedData.ceremonyMusic, ...formData.ceremonyMusic }
+          };
+        }
+      }
+
+      // Pre-save to ensure we have the latest data
+      await saveQuestionnaireToDatabase(finalData, false);
+
+      // If offline, queue the submission
+      if (!isOnline) {
+        if (queueRef.current) {
+          await queueRef.current.enqueue(finalData, true);
+        }
+        toast({
+          title: 'Submission Queued',
+          description: 'You are offline. Your submission will be sent when you reconnect.',
+          variant: 'default',
+          duration: 5000
+        });
+        setSaved(true);
+        return;
+      }
+
       const response = await fetch('/api/questionnaire/save', {
         method: 'POST',
         headers: {
@@ -634,30 +849,106 @@ export default function MusicQuestionnaire() {
         },
         body: JSON.stringify({
           leadId: id,
-          ...formData,
-          isComplete: true // Mark as complete when submitted
+          ...finalData,
+          isComplete: true, // Mark as complete when submitted
+          _idempotencyKey: idempotencyKey
         })
       });
 
+      const responseData = await response.json().catch(() => ({}));
+
       if (response.ok) {
-        // Trigger confetti celebration
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
+        // Verify submission before clearing storage
+        const submissionLogId = responseData.submissionLogId;
+        let verified = false;
         
-        setSaved(true);
+        try {
+          const verifyResponse = await fetch('/api/questionnaire/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              leadId: id,
+              submissionLogId: submissionLogId,
+              submittedData: finalData
+            })
+          });
+          
+          const verifyData = await verifyResponse.json().catch(() => ({}));
+          
+          if (verifyData.verified) {
+            verified = true;
+          } else {
+            // Verification failed - don't clear storage yet
+            console.error('Verification failed:', verifyData);
+            throw new Error(verifyData.message || 'Submission verification failed. Your data is still saved locally.');
+          }
+        } catch (verifyError) {
+          // Verification error - keep local storage as backup
+          console.error('Verification error:', verifyError);
+          toast({
+            title: 'Verification Warning',
+            description: verifyError.message || 'Could not verify submission. Your data is saved locally. Please contact support if you don\'t receive confirmation.',
+            variant: 'destructive',
+            duration: 10000
+          });
+          // Don't clear storage if verification fails
+          setSaved(true); // Still mark as saved since API returned success
+          return;
+        }
+        
+        // Only clear storage after successful verification
+        if (verified) {
+          if (storageRef.current) {
+            await storageRef.current.clear();
+          }
+          if (queueRef.current) {
+            queueRef.current.clear();
+          }
+          
+          // Trigger confetti celebration
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+          
+          setSaved(true);
+          toast({
+            title: 'Success!',
+            description: 'Your questionnaire has been saved and verified successfully.',
+            variant: 'default'
+          });
+        }
         // Don't auto-redirect, show celebration screen
       } else {
-        throw new Error('Failed to save questionnaire');
+        // Extract error message from response
+        const errorMessage = responseData.error || responseData.message || `Server error (${response.status})`;
+        const errorDetails = responseData.details ? `: ${responseData.details}` : '';
+        
+        console.error('Questionnaire save failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMessage,
+          details: responseData.details,
+          leadId: id,
+          formData: Object.keys(formData)
+        });
+
+        throw new Error(`${errorMessage}${errorDetails}`);
       }
     } catch (error) {
       console.error('Error saving questionnaire:', error);
+      
+      // Show detailed error message to user
+      const errorMessage = error.message || 'There was an error saving your questionnaire. Please try again.';
+      
       toast({
-        title: 'Error',
-        description: 'There was an error saving your questionnaire. Please try again.',
-        variant: 'destructive'
+        title: 'Error Saving Questionnaire',
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 5000
       });
     } finally {
       setSaving(false);
@@ -1011,6 +1302,57 @@ export default function MusicQuestionnaire() {
 
   return (
     <>
+      {/* Submission Confirmation Dialog */}
+      <Dialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Submission</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to submit your questionnaire? This will lock in your music preferences.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {!isOnline && (
+              <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                  <WifiOff className="w-4 h-4" />
+                  <span className="text-sm font-medium">You are offline</span>
+                </div>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                  Your submission will be queued and sent when you reconnect.
+                </p>
+              </div>
+            )}
+            {queueStatus.pending > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm font-medium">{queueStatus.pending} pending save(s)</span>
+                </div>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  These will be processed before your submission.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSubmitConfirm(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmSubmit} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                'Confirm & Submit'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Head>
         <title>Music Planning Questionnaire | M10 DJ Company</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -1083,9 +1425,54 @@ export default function MusicQuestionnaire() {
                     <span>Saved</span>
                   </div>
                 )}
+                {autoSaveStatus === 'error' && (
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-red-600 dark:text-red-400">
+                    <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span>Auto-save failed</span>
+                  </div>
+                )}
+                {saving && (
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-semibold">
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                    <span>Submitting...</span>
+                  </div>
+                )}
                 <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   Step {currentStep + 1} of {steps.length}
                 </div>
+                {/* Manual Save Button - Backup if auto-save fails */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    setAutoSaveStatus('saving');
+                    const success = await saveQuestionnaireToDatabase(formData, true);
+                    if (success) {
+                      setAutoSaveStatus('saved');
+                      toast({
+                        title: 'Saved!',
+                        description: 'Your progress has been saved to the database.',
+                        variant: 'default'
+                      });
+                      setTimeout(() => setAutoSaveStatus(null), 2000);
+                    } else {
+                      setAutoSaveStatus('error');
+                      toast({
+                        title: 'Save Failed',
+                        description: 'Could not save to database. Data saved to browser storage as backup.',
+                        variant: 'destructive',
+                        duration: 5000
+                      });
+                      setTimeout(() => setAutoSaveStatus(null), 3000);
+                    }
+                  }}
+                  className="text-xs sm:text-sm border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  title="Manually save your progress"
+                >
+                  <Save className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
+                  Save Now
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -2236,14 +2623,15 @@ export default function MusicQuestionnaire() {
               {currentStep === steps.length - 1 ? (
                 <button
                   onClick={handleSubmit}
-                  disabled={saving}
+                  disabled={saving || !id}
                   className="flex items-center justify-center px-3 sm:px-4 md:px-8 py-2.5 sm:py-3 min-h-[44px] text-sm sm:text-base bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg touch-manipulation flex-1 sm:flex-initial"
+                  title={!id ? 'Missing contact ID. Please refresh the page.' : ''}
                 >
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 animate-spin" />
-                      <span className="hidden sm:inline">Saving...</span>
-                      <span className="sm:hidden">Saving</span>
+                      <span className="hidden sm:inline">Submitting...</span>
+                      <span className="sm:hidden">Submitting</span>
                     </>
                   ) : (
                     <>

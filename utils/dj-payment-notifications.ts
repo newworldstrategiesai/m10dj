@@ -8,8 +8,8 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 interface PaymentNotificationData {
   organizationId: string;
@@ -34,6 +34,9 @@ export async function notifyDJOfPayment(data: PaymentNotificationData): Promise<
   }
 
   try {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration missing');
+    }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get organization and owner email
@@ -178,6 +181,9 @@ export async function notifyDJOfPayout(
   }
 
   try {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration missing');
+    }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get organization and owner email

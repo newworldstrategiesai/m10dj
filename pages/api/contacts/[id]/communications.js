@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
+import { getViewAsOrgIdFromRequest } from '@/utils/auth-helpers/view-as';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Unified Communications API
@@ -20,15 +23,66 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Authenticate user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get view-as organization ID from cookie (if admin is viewing as another org)
+    const viewAsOrgId = getViewAsOrgIdFromRequest(req);
+
+    // Get organization context (null for admins, org_id for SaaS users, or viewAsOrgId if in view-as mode)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email,
+      viewAsOrgId
+    );
+
+    // Use service role for queries
+    const adminSupabase = createClient(supabaseUrl, supabaseKey);
+
+    // First, verify the contact exists and belongs to the user's organization
+    let contactQuery = adminSupabase
+      .from('contacts')
+      .select('id, organization_id, phone, email_address')
+      .eq('id', id)
+      .is('deleted_at', null);
+
+    // For SaaS users, filter by organization_id. Platform admins see all contacts.
+    if (!isAdmin && orgId) {
+      contactQuery = contactQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      return res.status(403).json({ error: 'Access denied - no organization found' });
+    }
+
+    const { data: contact, error: contactError } = await contactQuery.single();
+
+    if (contactError || !contact) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+
     const allCommunications = [];
     const contactId = id;
 
     // 1. Fetch SMS conversations
-    const { data: smsConversations } = await supabase
+    let smsQuery = adminSupabase
       .from('sms_conversations')
       .select('*')
-      .or(`phone_number.eq.${contactId},contact_id.eq.${contactId}`)
-      .order('created_at', { ascending: false });
+      .or(`phone_number.eq.${contactId},contact_id.eq.${contactId}`);
+
+    // Filter by organization_id for SaaS users
+    if (!isAdmin && orgId) {
+      smsQuery = smsQuery.eq('organization_id', orgId);
+    }
+
+    const { data: smsConversations } = await smsQuery.order('created_at', { ascending: false });
 
     if (smsConversations) {
       // Also try to match by phone number from contacts table
@@ -38,12 +92,18 @@ export default async function handler(req, res) {
         .eq('id', contactId)
         .single();
 
-      if (contactData?.phone) {
-        const { data: phoneSMS } = await supabase
+      if (contact?.phone) {
+        let phoneSMSQuery = adminSupabase
           .from('sms_conversations')
           .select('*')
-          .eq('phone_number', contactData.phone)
-          .order('created_at', { ascending: false });
+          .eq('phone_number', contact.phone);
+
+        // Filter by organization_id for SaaS users
+        if (!isAdmin && orgId) {
+          phoneSMSQuery = phoneSMSQuery.eq('organization_id', orgId);
+        }
+
+        const { data: phoneSMS } = await phoneSMSQuery.order('created_at', { ascending: false });
 
         if (phoneSMS) {
           phoneSMS.forEach(msg => {
@@ -89,11 +149,17 @@ export default async function handler(req, res) {
     }
 
     // 2. Fetch email tracking
-    const { data: emailTracking } = await supabase
+    let emailTrackingQuery = adminSupabase
       .from('email_tracking')
       .select('*')
-      .eq('contact_id', contactId)
-      .order('created_at', { ascending: false });
+      .eq('contact_id', contactId);
+
+    // Filter by organization_id for SaaS users
+    if (!isAdmin && orgId) {
+      emailTrackingQuery = emailTrackingQuery.eq('organization_id', orgId);
+    }
+
+    const { data: emailTracking } = await emailTrackingQuery.order('created_at', { ascending: false });
 
     if (emailTracking) {
       emailTracking.forEach(email => {
@@ -117,33 +183,41 @@ export default async function handler(req, res) {
     }
 
     // 3. Fetch communication_log entries
-    // First, try to find contact_submission_id for this contact
-    const { data: contactData } = await supabase
-      .from('contacts')
-      .select('email_address, phone')
-      .eq('id', contactId)
-      .single();
-
-    if (contactData) {
+    // Use contact data we already fetched
+    if (contact) {
       // Try to find contact_submissions by email or phone
       let submissionIds = [];
       
-      if (contactData.email_address) {
-        const { data: submissionsByEmail } = await supabase
+      if (contact.email_address) {
+        let submissionsQuery = adminSupabase
           .from('contact_submissions')
           .select('id')
-          .eq('email', contactData.email_address);
+          .eq('email', contact.email_address);
+
+        // Filter by organization_id for SaaS users
+        if (!isAdmin && orgId) {
+          submissionsQuery = submissionsQuery.eq('organization_id', orgId);
+        }
+
+        const { data: submissionsByEmail } = await submissionsQuery;
         
         if (submissionsByEmail) {
           submissionIds = submissionsByEmail.map(s => s.id);
         }
       }
 
-      if (contactData.phone) {
-        const { data: submissionsByPhone } = await supabase
+      if (contact.phone) {
+        let submissionsQuery = adminSupabase
           .from('contact_submissions')
           .select('id')
-          .eq('phone', contactData.phone);
+          .eq('phone', contact.phone);
+
+        // Filter by organization_id for SaaS users
+        if (!isAdmin && orgId) {
+          submissionsQuery = submissionsQuery.eq('organization_id', orgId);
+        }
+
+        const { data: submissionsByPhone } = await submissionsQuery;
         
         if (submissionsByPhone) {
           submissionIds = [...submissionIds, ...submissionsByPhone.map(s => s.id)];
@@ -151,11 +225,17 @@ export default async function handler(req, res) {
       }
 
       if (submissionIds.length > 0) {
-        const { data: commLogs } = await supabase
+        let commLogsQuery = adminSupabase
           .from('communication_log')
           .select('*')
-          .in('contact_submission_id', submissionIds)
-          .order('created_at', { ascending: false });
+          .in('contact_submission_id', submissionIds);
+
+        // Filter by organization_id for SaaS users
+        if (!isAdmin && orgId) {
+          commLogsQuery = commLogsQuery.eq('organization_id', orgId);
+        }
+
+        const { data: commLogs } = await commLogsQuery.order('created_at', { ascending: false });
 
         if (commLogs) {
           commLogs.forEach(log => {
@@ -176,8 +256,8 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Fetch notes from contacts table
-    const { data: contactNotes } = await supabase
+    // 4. Fetch notes from contacts table (already verified above)
+    const { data: contactNotes } = await adminSupabase
       .from('contacts')
       .select('notes, updated_at')
       .eq('id', contactId)

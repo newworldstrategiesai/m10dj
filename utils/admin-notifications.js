@@ -71,6 +71,14 @@ async function sendAdminSMSNotification(eventType, data) {
       message = `💰 PAYMENT RECEIVED\n\n${data.leadName || 'Lead'} made a payment\nAmount: $${data.amount || '0'}\nTotal Paid: $${data.totalPaid || '0'}\nRemaining: $${data.remaining || '0'}\nView: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/admin/contacts/${data.contactId || data.leadId}`;
       break;
     
+    case 'questionnaire_completed':
+      message = `✅ QUESTIONNAIRE COMPLETED\n\n${data.leadName || 'Client'} completed their questionnaire\nEvent: ${data.eventType || 'N/A'}\nDate: ${data.eventDate || 'N/A'}\nView: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/admin/contacts/${data.leadId}`;
+      break;
+    
+    case 'questionnaire_submission_failed':
+      message = `🚨 QUESTIONNAIRE SUBMISSION FAILED\n\n${data.leadName || 'Client'} tried to submit but it failed\nError: ${data.error || 'Unknown error'}\nError Type: ${data.errorType || 'Unknown'}\nLead ID: ${data.leadId}\n⚠️ ACTION REQUIRED: Check submission log and recover data`;
+      break;
+    
     default:
       return;
   }
@@ -223,6 +231,62 @@ async function sendAdminEmailNotification(eventType, data) {
               <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/admin/contacts/${data.contactId || data.leadId}" 
                  style="background: #10b981; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                 View Contact
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+      break;
+    
+    case 'questionnaire_completed':
+      subject = `✅ Questionnaire Completed: ${data.leadName || 'Client'}`;
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: #fff; margin: 0;">✅ Questionnaire Completed!</h1>
+          </div>
+          <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px;">
+            <p><strong>Client:</strong> ${data.leadName || 'N/A'}</p>
+            <p><strong>Event Type:</strong> ${data.eventType || 'N/A'}</p>
+            <p><strong>Event Date:</strong> ${data.eventDate || 'N/A'}</p>
+            <p><strong>Completed At:</strong> ${new Date(data.completedAt || Date.now()).toLocaleString()}</p>
+            <div style="margin-top: 20px; text-align: center;">
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/admin/contacts/${data.leadId}" 
+                 style="background: #10b981; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                View Contact
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+      break;
+    
+    case 'questionnaire_submission_failed':
+      subject = `🚨 URGENT: Questionnaire Submission Failed - ${data.leadName || 'Client'}`;
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: #fff; margin: 0;">🚨 Questionnaire Submission Failed</h1>
+          </div>
+          <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px;">
+            <div style="background: #fef2f2; border: 2px solid #fecaca; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+              <h3 style="color: #dc2626; margin-top: 0;">⚠️ ACTION REQUIRED</h3>
+              <p style="color: #991b1b; margin-bottom: 0;">A client tried to submit their questionnaire but it failed. The submission data may be recoverable from the audit log.</p>
+            </div>
+            <p><strong>Client:</strong> ${data.leadName || 'N/A'}</p>
+            <p><strong>Lead ID:</strong> ${data.leadId || 'N/A'}</p>
+            <p><strong>Error Type:</strong> ${data.errorType || 'Unknown'}</p>
+            <p><strong>Error Message:</strong> ${data.error || 'Unknown error'}</p>
+            <p><strong>Failed At:</strong> ${new Date(data.timestamp || Date.now()).toLocaleString()}</p>
+            ${data.submissionData?.hasData ? '<p style="color: #059669;"><strong>✅ Data was present in submission</strong></p>' : '<p style="color: #dc2626;"><strong>❌ No data in submission</strong></p>'}
+            <div style="margin-top: 20px; text-align: center;">
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/admin/contacts/${data.leadId}" 
+                 style="background: #dc2626; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 5px;">
+                View Contact
+              </a>
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/admin/questionnaire-recovery?leadId=${data.leadId}" 
+                 style="background: #fcba00; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 5px;">
+                Recover Submission
               </a>
             </div>
           </div>

@@ -151,11 +151,55 @@ export default function OrganizationRequestsPage() {
 
   // Pass organization context to the requests page
   // The GeneralRequestsPage will use this to set organization_id when creating requests
+  const siteUrl = typeof window !== 'undefined' 
+    ? window.location.origin 
+    : (process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com');
+  const coverPhoto = getCoverPhotoUrl(organization, '/assets/DJ-Ben-Murray-Dodge-Poster.png');
+  const getAbsoluteImageUrl = (imageUrl) => {
+    if (!imageUrl) return `${siteUrl}/assets/DJ-Ben-Murray-Dodge-Poster.png`;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    if (imageUrl.startsWith('/')) {
+      return `${siteUrl}${imageUrl}`;
+    }
+    return `${siteUrl}/${imageUrl}`;
+  };
+  const ogImageUrl = getAbsoluteImageUrl(coverPhoto);
+  const pageTitle = organization.requests_page_title || `Request a Song or Shoutout | ${organization.name}`;
+  const pageDescription = organization.requests_page_description || 
+    (organization.requests_header_artist_name 
+      ? `Request a song or shoutout for ${organization.requests_header_artist_name}`
+      : `Request a song or shoutout for ${organization.name}`);
+  const currentUrl = typeof window !== 'undefined' 
+    ? window.location.href 
+    : `${siteUrl}/organizations/${organization.slug}/requests`;
+
   return (
     <>
       <Head>
-        <title>Request a Song or Shoutout | {organization.name}</title>
-        <meta name="description" content={`Request a song or shoutout for ${organization.name}`} />
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        
+        {/* Open Graph / Facebook / iPhone SMS Preview */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={currentUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={organization.requests_header_artist_name || organization.name || 'Request a Song or Shoutout'} />
+        <meta property="og:site_name" content={organization.name || 'M10 DJ Company'} />
+        <meta property="og:locale" content="en_US" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={currentUrl} />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image" content={ogImageUrl} />
+        <meta name="twitter:image:alt" content={organization.requests_header_artist_name || organization.name || 'Request a Song or Shoutout'} />
       </Head>
       <GeneralRequestsPage 
         key={`${organization.id}-${organization.updated_at || Date.now()}`}

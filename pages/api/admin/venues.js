@@ -1,6 +1,9 @@
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 
-const supabase = createClient(
+const supabaseService = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
@@ -11,6 +14,28 @@ export default async function handler(req, res) {
   }
 
   try {
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context (null for admins, org_id for SaaS users)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    );
+
+    // SaaS users must have an organization
+    if (!isAdmin && !orgId) {
+      return res.status(403).json({ error: 'Organization required' });
+    }
+
     const venues = req.body.venues;
 
     if (!Array.isArray(venues)) {
@@ -105,7 +130,8 @@ export default async function handler(req, res) {
         amenities: amenities,
         pricing_notes: null,
         is_featured: false,
-        is_active: true
+        is_active: true,
+        organization_id: orgId // Add organization_id
         // Note: slug will be generated dynamically from venue_name in the frontend
       };
     });
@@ -117,7 +143,7 @@ export default async function handler(req, res) {
     for (let i = 0; i < processedVenues.length; i += batchSize) {
       const batch = processedVenues.slice(i, i + batchSize);
       
-      const { data, error } = await supabase
+      const { data, error } = await supabaseService
         .from('preferred_venues')
         .insert(batch)
         .select();

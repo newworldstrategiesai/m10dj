@@ -4,7 +4,10 @@
  */
 
 const PDFDocument = require('pdfkit');
+const { createServerSupabaseClient } = require('@supabase/auth-helpers-nextjs');
 const { createClient } = require('@supabase/supabase-js');
+const { isPlatformAdmin } = require('@/utils/auth-helpers/platform-admin');
+const { getOrganizationContext } = require('@/utils/organization-helpers');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,14 +24,41 @@ export default async function handler(req, res) {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Get authenticated user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    // Fetch invoice details
-    const { data: invoice, error: invoiceError } = await supabase
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context (null for admins, org_id for SaaS users)
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    );
+
+    // Use service role for queries
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch invoice details with organization filtering
+    let invoiceQuery = supabaseAdmin
       .from('invoice_summary')
       .select('*')
-      .eq('id', invoiceId)
-      .single();
+      .eq('id', invoiceId);
+
+    // For SaaS users, filter by organization_id. Platform admins see all invoices.
+    if (!isAdmin && orgId) {
+      invoiceQuery = invoiceQuery.eq('organization_id', orgId);
+    } else if (!isAdmin && !orgId) {
+      return res.status(403).json({ error: 'Access denied - no organization found' });
+    }
+
+    const { data: invoice, error: invoiceError } = await invoiceQuery.single();
 
     if (invoiceError || !invoice) {
       return res.status(404).json({ error: 'Invoice not found' });
