@@ -26,6 +26,8 @@ import AdminLayout from '@/components/layouts/AdminLayout';
 import { getCurrentOrganization, Organization } from '@/utils/organization-context';
 import UsageDashboard from '@/components/subscription/UsageDashboard';
 import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import StripeConnectSetup from '@/components/subscription/StripeConnectSetup';
+import PaymentStatus from '@/components/subscription/PaymentStatus';
 
 interface RequestStats {
   totalRequests: number;
@@ -291,6 +293,16 @@ export default function StarterDashboard() {
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.pendingRequests || 0}</p>
           </div>
+        </div>
+
+        {/* Stripe Connect Setup */}
+        <div className="mb-6">
+          <StripeConnectSetup />
+        </div>
+
+        {/* Payment Status (if Connect is set up) */}
+        <div className="mb-6">
+          <PaymentStatus />
         </div>
 
         {/* Usage Dashboard */}

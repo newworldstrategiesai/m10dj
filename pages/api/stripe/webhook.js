@@ -75,6 +75,11 @@ export default async function handler(req, res) {
           const paymentAmount = session.amount_total / 100;
           const paymentType = session.metadata?.payment_type || 'deposit';
           
+          // Extract gratuity information from metadata
+          const gratuityAmount = session.metadata?.gratuity_amount ? parseFloat(session.metadata.gratuity_amount) : 0;
+          const gratuityType = session.metadata?.gratuity_type || null;
+          const gratuityPercentage = session.metadata?.gratuity_percentage ? parseInt(session.metadata.gratuity_percentage) : null;
+          
           // Find the contact_id from the lead_id
           let contactId = leadId;
           
@@ -109,15 +114,26 @@ export default async function handler(req, res) {
             })
             .eq('lead_id', leadId);
 
+          // Build payment notes with gratuity info if applicable
+          let paymentNotes = `Stripe Payment Intent: ${session.payment_intent || session.id}`;
+          if (gratuityAmount > 0) {
+            if (gratuityType === 'percentage' && gratuityPercentage) {
+              paymentNotes += ` | Gratuity: ${gratuityPercentage}% ($${gratuityAmount.toFixed(2)})`;
+            } else {
+              paymentNotes += ` | Gratuity: $${gratuityAmount.toFixed(2)}`;
+            }
+          }
+
           // Create payment record in payments table
           const paymentRecord = {
             contact_id: contactId,
             payment_name: paymentType === 'deposit' ? 'Deposit' : 'Full Payment',
             total_amount: paymentAmount,
+            gratuity: gratuityAmount,
             payment_status: 'Paid',
             payment_method: 'Credit Card',
             transaction_date: new Date().toISOString().split('T')[0], // Date only
-            payment_notes: `Stripe Payment Intent: ${session.payment_intent || session.id}`,
+            payment_notes: paymentNotes,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
@@ -180,6 +196,13 @@ export default async function handler(req, res) {
             updateData.requester_phone = customerPhone;
           }
           
+          // Get request data before updating (for notifications)
+          const { data: requestDataBeforeUpdate } = await supabase
+            .from('crowd_requests')
+            .select('*, organization_id')
+            .eq('id', requestId)
+            .single();
+
           const { error: updateError } = await supabase
             .from('crowd_requests')
             .update(updateData)
@@ -219,6 +242,47 @@ export default async function handler(req, res) {
                 console.error('Error sending crowd request notification:', err);
               }
             })();
+
+            // Notify DJ of payment (non-blocking)
+            if (requestDataBeforeUpdate?.organization_id) {
+              (async () => {
+                try {
+                  const { notifyDJOfPayment } = await import('../../../utils/dj-payment-notifications');
+                  
+                  // Get organization to check if using Connect (for payout amount calculation)
+                  const { data: org } = await supabase
+                    .from('organizations')
+                    .select('stripe_connect_account_id, platform_fee_percentage, platform_fee_fixed')
+                    .eq('id', requestDataBeforeUpdate.organization_id)
+                    .single();
+
+                  let payoutAmount, platformFee;
+                  if (org?.stripe_connect_account_id) {
+                    // Calculate payout if using Connect
+                    const feePercentage = org.platform_fee_percentage || 3.50;
+                    const feeFixed = org.platform_fee_fixed || 0.30;
+                    const feeAmount = (paymentAmount * feePercentage / 100) + feeFixed;
+                    platformFee = feeAmount;
+                    payoutAmount = paymentAmount - feeAmount;
+                  }
+
+                  await notifyDJOfPayment({
+                    organizationId: requestDataBeforeUpdate.organization_id,
+                    amount: paymentAmount,
+                    requestId: requestId,
+                    requestType: requestDataBeforeUpdate.request_type,
+                    requesterName: requestDataBeforeUpdate.requester_name || 'Customer',
+                    songTitle: requestDataBeforeUpdate.song_title,
+                    songArtist: requestDataBeforeUpdate.song_artist,
+                    recipientName: requestDataBeforeUpdate.recipient_name,
+                    payoutAmount,
+                    platformFee,
+                  });
+                } catch (err) {
+                  console.error('Error sending DJ payment notification:', err);
+                }
+              })();
+            }
           }
         }
         break;

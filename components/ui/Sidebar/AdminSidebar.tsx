@@ -110,6 +110,7 @@ export default function AdminSidebar({ onSignOut }: AdminSidebarProps) {
         { label: 'Dashboard', href: '/admin/dashboard-starter', icon: <Home className="w-5 h-5" /> },
         { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
         { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
+        { label: 'Payouts', href: '/admin/payouts', icon: <DollarSign className="w-5 h-5" /> },
       ];
     }
 

@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import { 
   QrCode, 
   Music, 
@@ -1712,6 +1710,12 @@ export default function CrowdRequestsPage() {
 
       // Give browser time to fully render the layout
       await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Dynamically import browser-only libraries
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf')
+      ]);
 
       // Convert to canvas and then to PDF
       const canvas = await html2canvas(pdfContainer, {

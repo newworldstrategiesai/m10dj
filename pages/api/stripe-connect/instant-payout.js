@@ -80,6 +80,21 @@ export default async function handler(req, res) {
 
       console.log(`✅ Created instant payout for organization ${organization.name}: $${feeCalculation.payoutAmount.toFixed(2)} (fee: $${feeCalculation.feeAmount.toFixed(2)})`);
 
+      // Notify DJ of payout (non-blocking)
+      (async () => {
+        try {
+          const { notifyDJOfPayout } = await import('../../../utils/dj-payment-notifications');
+          await notifyDJOfPayout(
+            organization.id,
+            feeCalculation.payoutAmount,
+            payout.id,
+            payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : undefined
+          );
+        } catch (err) {
+          console.error('Error sending payout notification:', err);
+        }
+      })();
+
       return res.status(200).json({
         success: true,
         payout: {
