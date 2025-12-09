@@ -4,11 +4,37 @@ module.exports = {
   experimental: {
     serverActions: true,
   },
+  // Performance optimizations
+  swcMinify: true, // Use SWC for minification (faster than Terser)
+  compiler: {
+    // Remove console logs in production
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
+  // Optimize compilation
+  typescript: {
+    // Skip type checking during build (faster, but less safe)
+    // You can run `tsc --noEmit` separately for type checking
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    // Only run ESLint on changed files during dev (faster)
+    ignoreDuringBuilds: false,
+  },
+  // Reduce compilation time
+  onDemandEntries: {
+    // Period (in ms) where the server will keep pages in the buffer
+    maxInactiveAge: 25 * 1000,
+    // Number of pages that should be kept simultaneously without being disposed
+    pagesBufferLength: 2,
+  },
   images: {
-    formats: ['image/webp', 'image/avif'],
-    minimumCacheTTL: 3600, // Cache optimized images for 1 hour
+    formats: ['image/avif', 'image/webp'], // AVIF first for better compression
+    minimumCacheTTL: 31536000, // Cache for 1 year (images are immutable)
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Enable image optimization
+    dangerouslyAllowSVG: false, // Security: disable SVG optimization
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
         protocol: 'https',
@@ -32,6 +58,16 @@ module.exports = {
       test: /\.(bak|copy|md)$/,
       use: 'ignore-loader',
     });
+    
+    // Exclude browser-only libraries from server-side bundle
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'html2canvas': 'commonjs html2canvas',
+        'jspdf': 'commonjs jspdf',
+      });
+    }
+    
     return config;
   },
 }; 
