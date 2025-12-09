@@ -17,6 +17,7 @@ export default function RequestPageOnboarding() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     // Step 1: Account
     email: '',
@@ -42,6 +43,11 @@ export default function RequestPageOnboarding() {
     e.preventDefault();
     setError('');
 
+    // Prevent duplicate submissions
+    if (submitting || loading) {
+      return;
+    }
+
     // Validation
     if (!formData.email || !formData.password) {
       setError('Email and password are required');
@@ -59,8 +65,38 @@ export default function RequestPageOnboarding() {
     }
 
     setLoading(true);
+    setSubmitting(true);
 
     try {
+      // First, check if user already exists by trying to sign in
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // If sign in succeeds, user already exists - proceed to step 2
+      if (signInData.user && signInData.session) {
+        console.log('✅ User already exists, signed in:', {
+          userId: signInData.user.id,
+          email: signInData.user.email,
+          hasSession: !!signInData.session,
+        });
+        setStep(2);
+        setLoading(false);
+        return;
+      }
+
+      // If sign in fails with "Invalid login credentials", user doesn't exist - proceed with signup
+      // If it's a different error (like rate limiting), handle it
+      if (signInError && signInError.message !== 'Invalid login credentials') {
+        // Check if it's a rate limit error
+        if (signInError.message.includes('429') || signInError.message.includes('rate limit') || signInError.message.includes('too many')) {
+          throw new Error('Too many attempts. Please wait a few minutes and try again.');
+        }
+        // For other errors, still try to sign up (maybe user doesn't exist)
+        console.log('Sign in failed, attempting signup:', signInError.message);
+      }
+
       // Sign up the user
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
@@ -74,6 +110,27 @@ export default function RequestPageOnboarding() {
       });
 
       if (signUpError) {
+        // Handle rate limiting specifically
+        if (signUpError.message.includes('429') || signUpError.message.includes('rate limit') || signUpError.message.includes('too many')) {
+          throw new Error('Too many signup attempts. Please wait a few minutes and try again.');
+        }
+        // Check if user already exists
+        if (signUpError.message.includes('already registered') || signUpError.message.includes('already exists')) {
+          // Try to sign in instead
+          const { data: retrySignIn, error: retryError } = await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+          });
+          
+          if (retrySignIn?.user && retrySignIn?.session) {
+            console.log('✅ User exists, signed in after signup error');
+            setStep(2);
+            setLoading(false);
+            return;
+          } else {
+            throw new Error('Account already exists. Please sign in instead.');
+          }
+        }
         throw new Error(signUpError.message);
       }
 
@@ -85,10 +142,26 @@ export default function RequestPageOnboarding() {
           emailConfirmed: data.user.email_confirmed_at !== null
         });
         
-        // User created, proceed to next step
-        // Note: Since email confirmations are disabled, user should have a session
-        // If they don't, they'll need to sign in manually
-        setStep(2);
+        // Check if we have a session (email confirmations might be disabled)
+        if (data.session) {
+          // User has session, proceed to next step
+          setStep(2);
+        } else {
+          // No session - email confirmation might be required
+          // Check if email is confirmed
+          if (data.user.email_confirmed_at) {
+            // Email is confirmed but no session - try to get session
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData?.session) {
+              setStep(2);
+            } else {
+              throw new Error('Please check your email to confirm your account, then return here to continue.');
+            }
+          } else {
+            // Email not confirmed - user needs to check email
+            throw new Error('Please check your email to confirm your account, then return here to continue.');
+          }
+        }
       } else {
         throw new Error('Failed to create account. Please try again.');
       }
@@ -96,12 +169,18 @@ export default function RequestPageOnboarding() {
       setError(err.message || 'Failed to create account');
     } finally {
       setLoading(false);
+      setSubmitting(false);
     }
   };
 
   const handleStep2 = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Prevent duplicate submissions
+    if (submitting || loading) {
+      return;
+    }
 
     // Validation
     if (!formData.businessName.trim()) {
@@ -115,13 +194,40 @@ export default function RequestPageOnboarding() {
     }
 
     setLoading(true);
+    setSubmitting(true);
 
     try {
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // Get current user - try multiple methods to ensure we have a session
+      let user = null;
+      let session = null;
+
+      // First, try to get session
+      const { data: sessionData } = await supabase.auth.getSession();
+      session = sessionData?.session;
+
+      // If no session, try to get user (might work if session is in cookies)
+      if (!session) {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userData?.user && !userError) {
+          user = userData.user;
+        }
+      } else {
+        user = session.user;
+      }
+
+      // If still no user, try refreshing the session
+      if (!user) {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshData?.session && !refreshError) {
+          session = refreshData.session;
+          user = refreshData.session.user;
+        }
+      }
       
-      if (userError || !user) {
-        throw new Error('Please complete step 1 first');
+      if (!user) {
+        // Last resort: check if we can sign in with stored credentials
+        // But we don't have password here, so we need to redirect back to step 1
+        throw new Error('Please complete step 1 first. If you already created an account, please sign in.');
       }
 
       // Create organization
@@ -255,6 +361,7 @@ export default function RequestPageOnboarding() {
       setError(err.message || 'Failed to create your request page');
     } finally {
       setLoading(false);
+      setSubmitting(false);
     }
   };
 
