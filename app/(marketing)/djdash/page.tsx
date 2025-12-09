@@ -20,17 +20,26 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'DJ Booking Software & DJ CRM | DJ Business Management Software | DJ Dash',
-  description: 'The best DJ booking software and DJ CRM for managing your entire DJ business. Handle bookings, client management, contracts, invoicing, and analytics all in one platform. Trusted by 1,200+ professional DJs.',
+  title: 'Find a DJ | DJ Directory | DJ Booking Software | DJ Dash',
+  description: 'Find professional DJs in your city or manage your DJ business with DJ Dash. The #1 DJ directory and booking software. Connect with 1,200+ verified DJs nationwide. Free quotes. Start your search or grow your business today.',
   keywords: [
+    'find a DJ',
+    'DJ directory',
+    'DJs near me',
+    'DJs in Memphis',
+    'DJs in Nashville',
+    'wedding DJs',
+    'corporate DJs',
+    'find DJ',
+    'DJ booking',
     'DJ booking software',
     'DJ CRM',
-    'DJ business management software',
+    'DJ business management',
     'DJ management software',
-    'event DJ software',
-    'mobile DJ software',
-    'DJ client management software',
-    'DJ event management software'
+    'DJ gigs',
+    'DJ leads',
+    'hire a DJ',
+    'DJ services'
   ],
   openGraph: {
     title: 'DJ Dash - DJ Booking Software & DJ CRM',
@@ -58,8 +67,47 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      <DJDashHeader />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: 'DJ Dash - DJ Gigs Management Software',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
+            offers: {
+              '@type': 'Offer',
+              price: '0',
+              priceCurrency: 'USD',
+              priceValidUntil: '2025-12-31',
+            },
+            aggregateRating: {
+              '@type': 'AggregateRating',
+              ratingValue: '4.9',
+              ratingCount: '1200',
+              bestRating: '5',
+              worstRating: '1',
+            },
+            featureList: [
+              'DJ Gig Tracking',
+              'Client Management',
+              'Automated Invoicing',
+              'Contract Management',
+              'Payment Processing',
+              'Calendar Management',
+              'Analytics & Reporting',
+            ],
+            areaServed: {
+              '@type': 'Country',
+              name: 'United States',
+            },
+          }),
+        }}
+      />
+      <div className="min-h-screen bg-white dark:bg-gray-900">
+        <DJDashHeader />
       
       {/* Epic Hero Section */}
       <section className="relative pt-32 pb-24 lg:pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
@@ -88,15 +136,15 @@ export default function HomePage() {
 
               <div className="space-y-6">
                 <h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.1] tracking-tight">
-                  <span className="block text-gray-900 dark:text-white">The Future of</span>
+                  <span className="block text-gray-900 dark:text-white">Find a DJ</span>
                   <span className="block bg-gradient-to-r from-blue-600 via-cyan-500 to-purple-600 bg-clip-text text-transparent">
-                    DJ Business
+                    Or Grow Your
                   </span>
-                  <span className="block text-gray-900 dark:text-white">Management</span>
+                  <span className="block text-gray-900 dark:text-white">DJ Business</span>
                 </h1>
                 
                 <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl">
-                  One platform. Infinite possibilities. Manage bookings, clients, contracts, and revenue with AI-powered automation.
+                  The #1 DJ directory and booking software. Find professional DJs in your city or manage your DJ business with powerful tools. Connect with 1,200+ verified DJs nationwide.
                 </p>
               </div>
 
@@ -189,6 +237,119 @@ export default function HomePage() {
                 {/* Floating Elements */}
                 <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-cyan-400/20 to-blue-500/20 rounded-2xl blur-xl"></div>
                 <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-pink-500/20 rounded-2xl blur-xl"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dual Purpose: Directory + SaaS */}
+      <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-950">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4">
+              Two Powerful Platforms.<br />
+              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">One Mission.</span>
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+              Find professional DJs for your event, or grow your DJ business with powerful tools. DJ Dash does both.
+            </p>
+          </div>
+          
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Directory Side */}
+            <div className="group relative bg-white dark:bg-gray-800 rounded-2xl p-8 border-2 border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 transition-all shadow-xl hover:shadow-2xl">
+              <div className="absolute top-4 right-4 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-semibold">
+                For Event Planners
+              </div>
+              
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mb-4">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                  Find a Professional DJ
+                </h3>
+                <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+                  Browse our directory of 1,200+ verified professional DJs. Get free quotes, read reviews, and find the perfect DJ for your wedding, corporate event, or party.
+                </p>
+              </div>
+              
+              <div className="space-y-4 mb-6">
+                {[
+                  'Browse verified DJs by city',
+                  'Get free quotes instantly',
+                  'Read real reviews & portfolios',
+                  'Compare pricing & availability',
+                ].map((feature, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link
+                  href="/djdash/find-dj/memphis-tn"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all text-center"
+                >
+                  Find a DJ
+                </Link>
+                <Link
+                  href="/djdash/find-dj/memphis-tn/wedding-djs"
+                  className="px-6 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg font-semibold hover:border-blue-500 dark:hover:border-blue-500 transition-all text-center"
+                >
+                  Wedding DJs
+                </Link>
+              </div>
+            </div>
+            
+            {/* SaaS Side */}
+            <div className="group relative bg-white dark:bg-gray-800 rounded-2xl p-8 border-2 border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600 transition-all shadow-xl hover:shadow-2xl">
+              <div className="absolute top-4 right-4 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-semibold">
+                For DJs
+              </div>
+              
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mb-4">
+                  <BarChart3 className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                  Manage Your DJ Business
+                </h3>
+                <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+                  The all-in-one platform for DJs. Manage bookings, clients, contracts, invoicing, and analytics. Get leads from our directory network.
+                </p>
+              </div>
+              
+              <div className="space-y-4 mb-6">
+                {[
+                  'Track all your gigs & clients',
+                  'Automated invoicing & contracts',
+                  'Get leads from our directory',
+                  'Analytics & business insights',
+                ].map((feature, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link
+                  href="/djdash/signup"
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all text-center"
+                >
+                  Start Free Trial
+                </Link>
+                <Link
+                  href="/djdash/pricing"
+                  className="px-6 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg font-semibold hover:border-purple-500 dark:hover:border-purple-500 transition-all text-center"
+                >
+                  View Pricing
+                </Link>
               </div>
             </div>
           </div>
@@ -644,7 +805,108 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Location-Based DJ Gigs Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              Find DJ Gigs in Your City
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              DJ Dash helps DJs find and manage gigs in cities across the United States
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[
+              { city: 'Memphis', state: 'TN', slug: 'dj-gigs-memphis-tn' },
+              { city: 'Nashville', state: 'TN', slug: 'dj-gigs/nashville-tn' },
+              { city: 'Atlanta', state: 'GA', slug: 'dj-gigs/atlanta-ga' },
+              { city: 'Los Angeles', state: 'CA', slug: 'dj-gigs/los-angeles-ca' },
+              { city: 'New York', state: 'NY', slug: 'dj-gigs/new-york-ny' },
+              { city: 'Chicago', state: 'IL', slug: 'dj-gigs/chicago-il' },
+              { city: 'Houston', state: 'TX', slug: 'dj-gigs/houston-tx' },
+              { city: 'Miami', state: 'FL', slug: 'dj-gigs/miami-fl' },
+            ].map((location) => (
+              <Link
+                key={location.slug}
+                href={`/djdash/${location.slug}`}
+                className="p-4 rounded-lg bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all text-center"
+              >
+                <div className="font-semibold text-gray-900 dark:text-white">
+                  {location.city}, {location.state}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  DJ Gigs in {location.city}
+                </div>
+              </Link>
+            ))}
+          </div>
+          
+          <div className="text-center">
+            <Link
+              href="/djdash/dj-gigs-memphis-tn"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all"
+            >
+              View All Cities
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Find DJs by City - Directory Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              Find Professional DJs in Your City
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Browse our directory of verified professional DJs across the United States
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[
+              { city: 'Memphis', state: 'TN', slug: 'find-dj/memphis-tn' },
+              { city: 'Nashville', state: 'TN', slug: 'find-dj/nashville-tn' },
+              { city: 'Atlanta', state: 'GA', slug: 'find-dj/atlanta-ga' },
+              { city: 'Los Angeles', state: 'CA', slug: 'find-dj/los-angeles-ca' },
+              { city: 'New York', state: 'NY', slug: 'find-dj/new-york-ny' },
+              { city: 'Chicago', state: 'IL', slug: 'find-dj/chicago-il' },
+              { city: 'Houston', state: 'TX', slug: 'find-dj/houston-tx' },
+              { city: 'Miami', state: 'FL', slug: 'find-dj/miami-fl' },
+            ].map((location) => (
+              <Link
+                key={location.slug}
+                href={`/djdash/${location.slug}`}
+                className="p-4 rounded-lg bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all text-center"
+              >
+                <div className="font-semibold text-gray-900 dark:text-white">
+                  DJs in {location.city}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {location.city}, {location.state}
+                </div>
+              </Link>
+            ))}
+          </div>
+          
+          <div className="text-center">
+            <Link
+              href="/djdash/find-dj/memphis-tn"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all"
+            >
+              Browse All Cities
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <DJDashFooter />
     </div>
+    </>
   );
 }

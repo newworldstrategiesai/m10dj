@@ -14,6 +14,20 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const hostnameLower = hostname.toLowerCase();
   
+  // Handle /tipjar/admin/* paths - rewrite to /admin/* (admin routes are in pages router)
+  if (url.pathname.startsWith('/tipjar/admin/')) {
+    url.pathname = url.pathname.replace('/tipjar/admin', '/admin');
+    const response = await updateSession(request);
+    const rewriteResponse = NextResponse.rewrite(url);
+    rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+    response.headers.forEach((value, key) => {
+      if (key.startsWith('x-') || key === 'set-cookie') {
+        rewriteResponse.headers.set(key, value);
+      }
+    });
+    return rewriteResponse;
+  }
+  
   // Handle domain-based routing for marketing sites
   const isApiRoute = url.pathname.startsWith('/api');
   const isStaticFile = url.pathname.startsWith('/_next') || 
@@ -68,8 +82,28 @@ export async function middleware(request: NextRequest) {
       rewritePath = '/tipjar/embed';
     } else if (path === '/alerts' || path.startsWith('/alerts/')) {
       rewritePath = path.replace('/alerts', '/tipjar/alerts');
+    } else if (path.startsWith('/live/')) {
+      // Keep live stream paths as-is (handled by app router)
+      // Don't rewrite, let it fall through
+    } else if (path.startsWith('/dashboard/go-live')) {
+      rewritePath = '/tipjar/dashboard/go-live';
     } else if (path.startsWith('/dashboard/')) {
       rewritePath = path.replace('/dashboard', '/tipjar/dashboard');
+    } else if (path.startsWith('/admin/')) {
+      // Admin routes are in pages router, keep as-is
+      // Don't rewrite, let it fall through to pages router
+      rewritePath = '';
+    } else if (path.startsWith('/requests')) {
+      // Keep requests path as-is (handled by pages router)
+      // Don't rewrite, let it fall through
+    } else {
+      // Check if this is an artist page slug (e.g., /m10dj)
+      // Extract slug from path (remove leading slash)
+      const slug = path.replace(/^\//, '').split('/')[0];
+      if (slug && slug !== 'api' && slug !== '_next') {
+        // Route to artist page
+        rewritePath = `/tipjar/${slug}`;
+      }
     }
 
     // Update session and add headers

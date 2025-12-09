@@ -28,7 +28,8 @@ import {
   ArrowRight,
   MapPin,
   Music,
-  Star
+  Star,
+  Video
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -538,7 +539,7 @@ export default function AdminDashboard() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Jump to your most-used features</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
               <Link href="/admin/contacts" className="group flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:shadow-md">
                 <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-xl group-hover:scale-110 transition-transform">
                   <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -574,6 +575,13 @@ export default function AdminDashboard() {
                   <Music className="h-6 w-6 text-pink-600 dark:text-pink-400" />
                 </div>
                 <span className="text-sm font-semibold text-gray-900 dark:text-white text-center">Social</span>
+              </Link>
+              <Link href="/tipjar/dashboard/go-live" className="group flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20 hover:border-red-600 dark:hover:border-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200 hover:shadow-md relative">
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                <div className="p-3 bg-red-100 dark:bg-red-900/40 rounded-xl group-hover:scale-110 transition-transform">
+                  <Video className="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white text-center">Go Live</span>
               </Link>
             </div>
           </div>

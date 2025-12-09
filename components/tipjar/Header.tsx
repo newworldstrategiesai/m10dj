@@ -2,25 +2,36 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Music, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function TipJarHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const isLivePage = pathname?.startsWith('/live/');
 
   useEffect(() => {
+    // On live pages, keep header transparent
+    if (isLivePage) {
+      setIsScrolled(false);
+      return;
+    }
+    
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isLivePage]);
 
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
+        isLivePage
+          ? 'bg-black/60 backdrop-blur-md'
+          : isScrolled
           ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg'
           : 'bg-transparent'
       }`}
@@ -33,16 +44,16 @@ export default function TipJarHeader() {
               <Music className="w-6 h-6 text-white" />
             </div>
             <span className={`text-2xl font-bold transition-colors ${
-              isScrolled 
-                ? 'text-gray-900 dark:text-white' 
-                : 'text-white'
+              isLivePage || !isScrolled
+                ? 'text-white' 
+                : 'text-gray-900 dark:text-white'
             }`}>
               TipJar
             </span>
             <span className={`text-sm font-medium transition-colors ${
-              isScrolled 
-                ? 'text-gray-600 dark:text-gray-400' 
-                : 'text-gray-200'
+              isLivePage || !isScrolled
+                ? 'text-gray-200' 
+                : 'text-gray-600 dark:text-gray-400'
             }`}>
               .Live
             </span>
@@ -52,40 +63,40 @@ export default function TipJarHeader() {
           <div className="hidden md:flex items-center space-x-8">
             <Link
               href="/tipjar/features"
-              className={`font-medium transition-colors hover:text-purple-600 dark:hover:text-purple-400 ${
-                isScrolled
-                  ? 'text-gray-700 dark:text-gray-300'
-                  : 'text-white'
+              className={`font-medium transition-colors hover:text-purple-400 ${
+                isLivePage || !isScrolled
+                  ? 'text-white'
+                  : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               Features
             </Link>
             <Link
               href="/tipjar/pricing"
-              className={`font-medium transition-colors hover:text-purple-600 dark:hover:text-purple-400 ${
-                isScrolled
-                  ? 'text-gray-700 dark:text-gray-300'
-                  : 'text-white'
+              className={`font-medium transition-colors hover:text-purple-400 ${
+                isLivePage || !isScrolled
+                  ? 'text-white'
+                  : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               Pricing
             </Link>
             <Link
               href="/tipjar/how-it-works"
-              className={`font-medium transition-colors hover:text-purple-600 dark:hover:text-purple-400 ${
-                isScrolled
-                  ? 'text-gray-700 dark:text-gray-300'
-                  : 'text-white'
+              className={`font-medium transition-colors hover:text-purple-400 ${
+                isLivePage || !isScrolled
+                  ? 'text-white'
+                  : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               How It Works
             </Link>
             <Link
               href="/signin"
-              className={`font-medium transition-colors hover:text-purple-600 dark:hover:text-purple-400 ${
-                isScrolled
-                  ? 'text-gray-700 dark:text-gray-300'
-                  : 'text-white'
+              className={`font-medium transition-colors hover:text-purple-400 ${
+                isLivePage || !isScrolled
+                  ? 'text-white'
+                  : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               Sign In
@@ -93,9 +104,9 @@ export default function TipJarHeader() {
             <Link href="/signup">
               <Button
                 className={`font-semibold ${
-                  isScrolled
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
-                    : 'bg-white text-purple-600 hover:bg-gray-100'
+                  isLivePage || !isScrolled
+                    ? 'bg-white text-purple-600 hover:bg-gray-100'
+                    : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
                 }`}
               >
                 Start Free
@@ -107,9 +118,9 @@ export default function TipJarHeader() {
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className={`md:hidden p-2 rounded-lg transition-colors ${
-              isScrolled
-                ? 'text-gray-700 dark:text-gray-300'
-                : 'text-white'
+              isLivePage || !isScrolled
+                ? 'text-white'
+                : 'text-gray-700 dark:text-gray-300'
             }`}
             aria-label="Toggle menu"
           >

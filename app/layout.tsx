@@ -97,14 +97,16 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   const isSignInPage = pathname.includes('/signin');
   const isChatPage = pathname.startsWith('/chat');
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/chat');
+  const isLivePage = pathname.startsWith('/live/');
   
   // Hide M10 navbar/footer on marketing sites (tipjar, djdash)
   // These sites have their own headers/footers
+  // Live pages use TipJar header directly, so hide M10 navbar/footer
   const isMarketingSite = product === 'tipjar' || product === 'djdash' || 
                           pathname.startsWith('/tipjar') || pathname.startsWith('/djdash');
   
-  const hideNavbar = isSignInPage || isChatPage || isMarketingSite;
-  const hideFooter = isSignInPage || isChatPage || isMarketingSite;
+  const hideNavbar = isSignInPage || isChatPage || isMarketingSite || isLivePage;
+  const hideFooter = isSignInPage || isChatPage || isMarketingSite || isLivePage;
 
   return (
     <html lang="en">

@@ -7,8 +7,9 @@ import { LiveVideoPlayer } from '@/components/LiveVideoPlayer';
 import { LiveChat } from '@/components/LiveChat';
 import { TipJarInStream } from '@/components/TipJarInStream';
 import { TipAlertOverlay } from '@/components/TipAlertOverlay';
+import TipJarHeader from '@/components/tipjar/Header';
 import { Button } from '@/components/ui/button';
-import { Lock, Share2, Users } from 'lucide-react';
+import { Lock, Share2, Users, MessageSquare, X, ChevronUp, ChevronDown } from 'lucide-react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface LiveStream {
@@ -25,7 +26,9 @@ interface LiveStream {
 export default function LiveStreamPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const username = (params?.username as string) || '';
+  // Decode and clean username parameter
+  const rawUsername = (params?.username as string) || '';
+  const username = decodeURIComponent(rawUsername).replace(/^@/, '');
   const ppvToken = searchParams?.get('token') || null;
   
   const [stream, setStream] = useState<LiveStream | null>(null);
@@ -37,6 +40,7 @@ export default function LiveStreamPage() {
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [viewerCount, setViewerCount] = useState(0);
   const [paidAccess, setPaidAccess] = useState(false);
+  const [showChat, setShowChat] = useState(false); // Hidden by default on mobile
   const viewerCountChannelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
 
@@ -50,14 +54,34 @@ export default function LiveStreamPage() {
           setCurrentUsername(user.email?.split('@')[0] || null);
         }
 
-        // Load stream info
+        // Load stream info - username is already cleaned above
+        const cleanUsername = username.replace(/^@/, '').trim();
+        
+        if (!cleanUsername) {
+          setError('Invalid username');
+          setLoading(false);
+          return;
+        }
+
         const { data: streamData, error: streamError } = await supabase
           .from('live_streams')
           .select('*')
-          .eq('username', username.replace('@', ''))
+          .eq('username', cleanUsername)
           .single();
 
-        if (streamError || !streamData) {
+        if (streamError) {
+          console.error('Error loading stream:', streamError);
+          // Check if it's a 406 error (Not Acceptable) - might be encoding issue
+          if (streamError.message?.includes('406') || streamError.code === 'PGRST116') {
+            setError('Stream not found. Please check the username.');
+          } else {
+            setError(`Failed to load stream: ${streamError.message}`);
+          }
+          setLoading(false);
+          return;
+        }
+
+        if (!streamData) {
           setError('Stream not found');
           setLoading(false);
           return;
@@ -194,16 +218,19 @@ export default function LiveStreamPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Loading stream...</div>
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-white text-lg">Loading stream...</div>
+        </div>
       </div>
     );
   }
 
   if (error || !stream) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center text-white max-w-md px-4">
+      <div className="fixed inset-0 bg-black flex items-center justify-center p-4">
+        <div className="text-center text-white max-w-md w-full">
           <h1 className="text-2xl font-bold mb-4">{error || 'Stream not found'}</h1>
           {stream?.ppv_price_cents && stream.ppv_price_cents > 0 && !paidAccess && (
             <div className="space-y-4">
@@ -212,10 +239,10 @@ export default function LiveStreamPage() {
               </p>
               <Button
                 onClick={() => {
-                  window.location.href = `/live/${username}/pay?price=${stream.ppv_price_cents}`;
+                  window.location.href = `/live/@${username}/pay?price=${stream.ppv_price_cents}`;
                 }}
                 size="lg"
-                className="w-full"
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
               >
                 <Lock className="h-4 w-4 mr-2" />
                 Unlock for ${(stream.ppv_price_cents / 100).toFixed(2)}
@@ -234,84 +261,106 @@ export default function LiveStreamPage() {
 
   if (!token || !serverUrl) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Connecting...</div>
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-white text-lg">Connecting...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col relative">
+    <div className="fixed inset-0 bg-black flex flex-col overflow-hidden">
+      {/* TipJar Header */}
+      <TipJarHeader />
+
       {/* Tip Alert Overlay */}
       <TipAlertOverlay roomName={stream.room_name} />
 
-      {/* Header */}
-      <div className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 p-4 z-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-white truncate">
-              {stream.title || `${stream.username}'s Stream`}
+      {/* Stream Info Bar - Below TipJar header */}
+      <div className="absolute top-16 md:top-20 left-0 right-0 bg-gradient-to-b from-black/90 via-black/50 to-transparent px-3 sm:px-4 py-2 z-20 pointer-events-none">
+        <div className="flex items-center justify-between gap-2 pointer-events-auto">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse flex-shrink-0"></div>
+            <h1 className="text-xs sm:text-sm font-semibold text-white truncate">
+              {stream.title || `${stream.username}`}
             </h1>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-400">LIVE</span>
-              {viewerCount > 0 && (
-                <>
-                  <span className="text-gray-600">•</span>
-                  <div className="flex items-center gap-1 text-sm text-gray-400">
-                    <Users className="h-4 w-4" />
-                    <span>{viewerCount}</span>
-                  </div>
-                </>
-              )}
-            </div>
+            {viewerCount > 0 && (
+              <div className="hidden sm:flex items-center gap-1 text-xs text-gray-300 bg-black/40 px-2 py-0.5 rounded-full">
+                <Users className="h-3 w-3" />
+                <span>{viewerCount}</span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Mobile: Show chat toggle */}
+            <Button
+              onClick={() => setShowChat(!showChat)}
+              variant="ghost"
+              size="sm"
+              className="lg:hidden text-white hover:bg-white/20 bg-black/40 p-2 h-9 w-9 rounded-full"
+            >
+              <MessageSquare className="h-4 w-4" />
+            </Button>
             <Button
               onClick={handleShare}
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+              className="text-white hover:bg-white/20 bg-black/40 p-2 h-9 w-9 rounded-full"
             >
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
+              <Share2 className="h-4 w-4" />
             </Button>
-            <TipJarInStream
-              streamerUserId={stream.user_id}
-              streamerUsername={stream.username}
-            />
+            <div className="bg-black/40 rounded-full">
+              <TipJarInStream
+                streamerUserId={stream.user_id}
+                streamerUsername={stream.username}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full">
-        {/* Video Player */}
-        <div className="flex-1 bg-black relative">
-          <div className="h-full w-full">
-            <LiveVideoPlayer
-              roomName={stream.room_name}
-              token={token}
-              serverUrl={serverUrl}
-              viewerCount={viewerCount}
-            />
-          </div>
+      {/* Main Content - Full Screen */}
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* Video Player - Full screen on mobile */}
+        <div className={`${showChat ? 'hidden lg:flex' : 'flex'} flex-1 bg-black relative min-h-0`}>
+          <LiveVideoPlayer
+            roomName={stream.room_name}
+            token={token}
+            serverUrl={serverUrl}
+            viewerCount={viewerCount}
+          />
           
           {/* Watermark */}
-          <div className="absolute bottom-4 right-4 z-10 pointer-events-none">
-            <div className="bg-black/50 backdrop-blur-sm px-2 py-1 rounded text-xs text-white">
-              Live on TipJar.live
+          <div className="absolute bottom-2 right-2 z-10 pointer-events-none">
+            <div className="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-white/80">
+              TipJar.live
             </div>
           </div>
         </div>
 
-        {/* Chat Sidebar */}
-        <div className="w-full lg:w-96 h-96 lg:h-auto border-t lg:border-t-0 lg:border-l border-gray-800">
-          <LiveChat
-            roomName={stream.room_name}
-            currentUserId={currentUserId || undefined}
-            currentUsername={currentUsername || undefined}
-          />
+        {/* Chat - Hidden by default on mobile, sidebar on desktop */}
+        <div className={`${showChat ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-gray-800/50 bg-gray-900/98 backdrop-blur-md`}>
+          {/* Chat Header with close button on mobile */}
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-800/50 lg:hidden bg-gray-900/95">
+            <span className="text-sm font-semibold text-white">Live Chat</span>
+            <Button
+              onClick={() => setShowChat(false)}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/10 p-1.5 h-7 w-7 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <LiveChat
+              roomName={stream.room_name}
+              currentUserId={currentUserId || undefined}
+              currentUsername={currentUsername || undefined}
+            />
+          </div>
         </div>
       </div>
     </div>
