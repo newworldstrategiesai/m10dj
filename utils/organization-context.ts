@@ -18,12 +18,20 @@ export interface Organization {
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   trial_ends_at?: string | null;
+  stripe_connect_account_id?: string | null;
+  stripe_connect_charges_enabled?: boolean | null;
+  stripe_connect_payouts_enabled?: boolean | null;
+  stripe_connect_onboarding_complete?: boolean | null;
+  stripe_connect_details_submitted?: boolean | null;
+  platform_fee_percentage?: number | null;
+  platform_fee_fixed?: number | null;
   created_at: string;
   updated_at: string;
 }
 
 /**
  * Get the current user's organization (client-side)
+ * Now supports team members - checks both owner_id and organization_members table
  */
 export async function getCurrentOrganization(
   supabase: SupabaseClient
@@ -35,11 +43,36 @@ export async function getCurrentOrganization(
       return null;
     }
 
-    const { data: org, error: orgError } = await supabase
+    // First try: user is owner
+    let { data: org, error: orgError } = await supabase
       .from('organizations')
       .select('*')
       .eq('owner_id', user.id)
       .single();
+
+    // Second try: user is a team member
+    if (orgError || !org) {
+      const { data: membership } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .single();
+
+      if (membership?.organization_id) {
+        const { data: memberOrg, error: memberOrgError } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('id', membership.organization_id)
+          .single();
+
+        if (!memberOrgError && memberOrg) {
+          org = memberOrg;
+          orgError = null;
+        }
+      }
+    }
 
     if (orgError || !org) {
       return null;

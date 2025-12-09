@@ -5,7 +5,7 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getAccountBalance, getPayoutSchedule } from '@/utils/stripe/connect';
-import { getOrganizationContext } from '@/utils/organization-context';
+import { getOrganizationContext } from '@/utils/organization-helpers';
 import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
