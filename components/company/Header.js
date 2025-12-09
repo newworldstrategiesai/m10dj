@@ -9,7 +9,7 @@ import { scrollToContact } from '../../utils/scroll-helpers';
 import ContactFormModal from './ContactFormModal';
 import SocialAccountSelector from '../ui/SocialAccountSelector';
 
-export default function Header({ customLogoUrl = null, transparent = false, socialLinks = null }) {
+export default function Header({ customLogoUrl = null, transparent = false, socialLinks = null, isOwner = false, organizationSlug = null, organizationId = null }) {
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -634,8 +634,38 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
           }>
             <div className="section-container py-6">
               <nav className="space-y-2">
-                {/* Public Navigation - Hide on quote pages */}
-                {!(isQuotePage && quoteId && isValidQuote) && (
+                {/* Owner Navigation - Show on requests page if user is owner */}
+                {isRequestsPage && isOwner && (
+                  <div className="space-y-1">
+                    <Link 
+                      href={`/admin/crowd-requests${organizationId ? `?org=${organizationId}` : ''}`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Music className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <span className="font-medium">View Song Requests</span>
+                    </Link>
+                    <Link 
+                      href={`/admin/requests-page${organizationId ? `?org=${organizationId}` : ''}`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <FileText className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <span className="font-medium">Edit Requests Page</span>
+                    </Link>
+                    <Link 
+                      href="/admin/dashboard"
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Calendar className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <span className="font-medium">Dashboard</span>
+                    </Link>
+                  </div>
+                )}
+                
+                {/* Public Navigation - Hide on quote pages and when owner is logged in on requests page */}
+                {!(isQuotePage && quoteId && isValidQuote) && !(isRequestsPage && isOwner) && (
                   <>
                     <Link 
                       href="/" 
@@ -809,8 +839,8 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                 )}
               </nav>
 
-              {/* Mobile Contact Info - Hide on quote pages */}
-              {!(isQuotePage && quoteId && isValidQuote) && (
+              {/* Mobile Contact Info - Hide on quote pages and when owner is logged in on requests page */}
+              {!(isQuotePage && quoteId && isValidQuote) && !(isRequestsPage && isOwner) && (
               <div className={`mt-6 pt-6 border-t space-y-3 ${shouldBeTransparent && !isScrolled ? 'border-white/20' : 'border-gray-300 dark:border-gray-800'}`}>
                 {/* Social Links */}
                 {headerSocialLinks && headerSocialLinks.length > 0 && (

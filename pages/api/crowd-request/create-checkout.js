@@ -213,6 +213,18 @@ export default async function handler(req, res) {
                               organization?.stripe_connect_charges_enabled && 
                               organization?.stripe_connect_payouts_enabled;
     
+    // PLATFORM OWNER BYPASS: M10 DJ Company can use platform account (existing behavior)
+    // This ensures your business operations are never disrupted
+    const isPlatformOwner = organization?.is_platform_owner || false;
+    
+    // For non-platform owners without Connect, require setup
+    if (!isPlatformOwner && !hasConnectAccount) {
+      return res.status(400).json({ 
+        error: 'Please set up Stripe Connect to receive payments. Visit your dashboard to complete setup.',
+        requires_connect: true 
+      });
+    }
+    
     // Import Connect helpers (if needed)
     let createCheckoutSessionWithPlatformFee, calculatePlatformFee;
     if (hasConnectAccount) {
@@ -232,6 +244,9 @@ export default async function handler(req, res) {
       console.log(`   Total: $${amount.toFixed(2)}`);
       console.log(`   Platform Fee: $${feeCalculation.feeAmount.toFixed(2)} (${platformFeePercentage}% + $${platformFeeFixed.toFixed(2)})`);
       console.log(`   DJ Payout: $${feeCalculation.payoutAmount.toFixed(2)}`);
+    } else if (isPlatformOwner) {
+      // Platform owner using platform account (expected behavior for M10 DJ Company)
+      console.log(`💰 Platform owner ${organization.name} using platform account (expected)`);
     }
     
     // Create checkout session - use Connect if available, otherwise regular checkout

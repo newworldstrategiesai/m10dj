@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import UsageDashboard from '@/components/subscription/UsageDashboard';
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
+import StripeConnectRequirementBanner from '@/components/subscription/StripeConnectRequirementBanner';
 import { getCurrentOrganization, Organization } from '@/utils/organization-context';
 
 interface DashboardStats {
@@ -358,6 +359,9 @@ export default function AdminDashboard() {
   return (
     <AdminLayout title="Dashboard" description="M10 DJ Company Admin Dashboard">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        {/* Stripe Connect Requirement Banner */}
+        <StripeConnectRequirementBanner organization={organization} className="mb-6" />
+        
         {/* Page Header with Refresh */}
         <div className="flex items-center justify-between mb-6">
           <div>

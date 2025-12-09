@@ -1,219 +1,163 @@
-# 🧪 Onboarding Test Checklist
+# Onboarding Flow Test Checklist
 
-## ✅ Pre-Test Setup
+## Pre-Test Setup
+- [ ] Dev server is running on port 3004
+- [ ] Clear browser cache or use incognito mode
+- [ ] Have a test email ready (or use a new one)
 
-1. **Run Database Migration**
-   ```sql
-   -- Run in Supabase SQL Editor
-   -- File: supabase/migrations/20250125000004_add_onboarding_tracking.sql
-   ```
+## Test Flow: New DJ Signup
 
-2. **Start Dev Server**
-   ```bash
-   npm run dev
-   ```
-   Server should be running on `http://localhost:3003` (or next available port)
+### Step 1: Signup Page (`/signup`)
+1. Navigate to: `http://localhost:3004/signup`
+2. Fill out the form:
+   - **DJ Business Name**: Enter a unique name (e.g., "Test DJ Company")
+   - **Email**: Use a test email
+   - **Password**: Create a password (min 6 characters)
+3. Click "Start Free Trial"
+4. **Expected**: 
+   - If email confirmation required: Shows "Check Your Email" message
+   - If auto-logged in: Redirects to `/onboarding/wizard`
 
----
+### Step 2: Email Confirmation (if required)
+1. Check email inbox
+2. Click confirmation link
+3. **Expected**: Redirects to `/onboarding/wizard`
 
-## 🎯 Test Scenarios
+### Step 3: Onboarding Wizard
 
-### Test 1: New User Signup Flow
-- [ ] Sign up as a new user at `/signin/signup`
-- [ ] Enter business name (optional)
-- [ ] Verify redirect to `/onboarding/welcome`
-- [ ] Check that onboarding wizard loads
+#### Step 3.1: Welcome Screen
+- [ ] Welcome message displays
+- [ ] "Get Started" button works
+- [ ] Progress bar shows step 1 of 5
 
-### Test 2: Welcome Step
-- [ ] Verify welcome message displays
-- [ ] Check business name field is pre-filled
-- [ ] Click "Let's Get Started" button
-- [ ] Verify progress bar shows "Step 1 of 6"
-- [ ] Verify step indicator shows step 1 as active
-
-### Test 3: Request Page Step
-- [ ] Verify request page URL is displayed
-- [ ] Click "Copy" button - verify URL is copied
-- [ ] Click "Test" button - verify page opens in new tab
-- [ ] Click "Generate QR Code" button
-- [ ] Verify QR code image appears
-- [ ] Click "Continue" button
-- [ ] Verify progress bar updates to "Step 2 of 6"
-
-### Test 4: Embed Step
-- [ ] Verify embed code is displayed
-- [ ] Test customization options (theme, height, border radius)
-- [ ] Click "Copy Code" button
-- [ ] Verify code is copied to clipboard
-- [ ] Click "Preview" button (if available)
-- [ ] Click "Continue" button
-- [ ] Verify progress bar updates
-
-### Test 5: Payment Step
-- [ ] Verify Stripe Connect setup component loads
-- [ ] Click "Set Up Payment Processing" button
-- [ ] Verify Stripe onboarding flow starts (or error message if not configured)
-- [ ] Test "Skip for now" option
-- [ ] Verify can proceed without completing
-
-### Test 6: First Event Step
-- [ ] Enter event name
-- [ ] Select event date
+#### Step 3.2: Organization Details
+- [ ] Enter organization name (e.g., "Test DJ Company")
+- [ ] **VERIFY**: URL slug preview shows correctly (e.g., `test-dj-company`)
+- [ ] **VERIFY**: Slug should NOT have random suffix if it's unique
 - [ ] Enter location (optional)
-- [ ] Click "Create Event" button
-- [ ] Verify success message appears
-- [ ] Verify event URL is displayed
-- [ ] Test "Skip for now" option
+- [ ] Click "Next"
+- [ ] **Expected**: Organization is created in database
+- [ ] **VERIFY**: Check browser console for log: `Slug "test-dj-company" is available, using it`
 
-### Test 7: Completion Step
-- [ ] Verify success celebration displays
-- [ ] Check "What's Next" section
-- [ ] Click "Go to Dashboard" button
-- [ ] Verify redirects to `/admin/crowd-requests`
-- [ ] Click "View Request Page" button
-- [ ] Verify opens request page
+#### Step 3.3: Profile Step
+- [ ] Enter owner name
+- [ ] Enter email (should be pre-filled)
+- [ ] Enter phone (optional)
+- [ ] Click "Next"
 
-### Test 8: Navigation
-- [ ] Test "Back" button on step 2
-- [ ] Verify returns to step 1
-- [ ] Test "Next" button advances steps
-- [ ] Test clicking step indicators
-- [ ] Verify can jump to any completed step
+#### Step 3.4: Choose Plan
+- [ ] See three plan options: Starter ($0), Professional ($49), Enterprise ($149)
+- [ ] **VERIFY**: Starter plan shows $0 (not free trial text)
+- [ ] Select a plan (try Starter first)
+- [ ] Click "Continue to Checkout"
+- [ ] **Expected**: Moves to Complete step
 
-### Test 9: Progress Tracking
-- [ ] Complete step 1, refresh page
-- [ ] Verify progress is maintained (if database connected)
-- [ ] Complete all steps
-- [ ] Check database for `onboarding_completed_at` timestamp
-- [ ] Check `onboarding_progress` JSON field
+#### Step 3.5: Complete Step
+- [ ] See success message with organization name
+- [ ] **If Starter plan selected**: Should go directly to dashboard (no Stripe checkout)
+- [ ] **If paid plan selected**: Should redirect to Stripe checkout
+- [ ] Click "Complete Setup" or "Go to Dashboard"
 
-### Test 10: Skip Functionality
-- [ ] On embed step, click "Skip for now"
-- [ ] Verify step is marked as skipped
-- [ ] Verify can proceed to next step
-- [ ] Verify can return to skipped step later
+### Step 4: Post-Onboarding Verification
 
----
+#### 4.1: Dashboard Access
+- [ ] Redirected to `/admin/dashboard`
+- [ ] Dashboard loads successfully
+- [ ] Organization name displays correctly
 
-## 🐛 Known Issues to Check
+#### 4.2: Requests Page
+- [ ] Navigate to: `http://localhost:3004/organizations/[your-slug]/requests`
+- [ ] **VERIFY**: Artist name appears in header (should match organization name)
+- [ ] **VERIFY**: URL slug is clean (no random suffix like `-kbx5aw`)
+- [ ] Page loads without errors
 
-1. **Stripe Connect Setup**
-   - May show error if Stripe platform profile not completed
-   - This is expected - verify error message is helpful
+#### 4.3: Organization Settings
+- [ ] Check organization in database or admin panel
+- [ ] **VERIFY**: `requests_header_artist_name` is set to organization name
+- [ ] **VERIFY**: Slug is clean (no random suffix)
+- [ ] **VERIFY**: Subscription tier is "starter"
+- [ ] **VERIFY**: Subscription status is "trial"
 
-2. **Event Creation**
-   - Requires database connection
-   - May fail if `crowd_requests` table structure differs
-   - Check console for errors
+## Issues to Watch For
 
-3. **QR Code Generation**
-   - Uses external service (qrserver.com)
-   - May be slow on first load
-   - Verify image loads correctly
+### Slug Generation
+- ❌ **BAD**: URL like `/organizations/test-dj-company-kbx5aw/requests`
+- ✅ **GOOD**: URL like `/organizations/test-dj-company/requests`
+- **If you see random suffix**: Check browser console for slug conflict logs
 
----
+### Artist Name in Header
+- ❌ **BAD**: Header shows "DJ" or is blank
+- ✅ **GOOD**: Header shows your organization name (e.g., "TEST DJ COMPANY")
+- **If missing**: Check that `requests_header_artist_name` was set during org creation
 
-## 📊 Expected Behavior
+### Stripe Connect Banner
+- [ ] **For new DJs**: Should see Stripe Connect requirement banner on dashboard
+- [ ] **For M10 DJ Company**: Should NOT see banner (platform owner bypass)
 
-### Progress Bar
-- Should show percentage (e.g., "17% Complete" for step 1 of 6)
-- Should fill from left to right
-- Should update smoothly on step changes
+## Test Scenarios
 
-### Step Indicators
-- Active step: Purple background, white number
-- Completed step: Green background, checkmark icon
-- Skipped step: Gray background
-- Future step: Gray background, number
+### Scenario 1: Clean Signup (No Conflicts)
+1. Use a completely unique organization name
+2. **Expected**: Clean slug, no random suffix
+3. **Expected**: Artist name appears in requests page header
 
-### Navigation
-- "Back" button disabled on first step
-- "Next" button changes to "Complete Setup" on last step
-- Step indicators are clickable (can jump to any step)
+### Scenario 2: Duplicate Slug (Different User)
+1. Create first account with "Test DJ"
+2. Create second account with "Test DJ" (different email)
+3. **Expected**: Second account gets slug like "test-dj-xxxxxx"
+4. **Expected**: Console log shows: "Slug already taken by another user"
 
-### Data Persistence
-- Steps completed should save to database
-- Progress should persist across page refreshes
-- Completion timestamp should be saved
+### Scenario 3: Starter Plan ($0)
+1. Select Starter plan during onboarding
+2. **Expected**: No Stripe checkout redirect
+3. **Expected**: Direct redirect to dashboard
+4. **Expected**: Can access basic features
 
----
+## Console Logs to Check
 
-## 🔍 Console Checks
+Look for these logs in browser console:
+- ✅ `Slug "[slug]" is available, using it` - Good, slug is unique
+- ⚠️ `Slug "[slug]" already taken by another user` - Expected if duplicate
+- ✅ `Auto-set requests_header_artist_name to: [name]` - Good, artist name fixed
+- ❌ Any errors about organization creation
 
-Open browser DevTools and check for:
+## Database Verification
 
-- [ ] No JavaScript errors
-- [ ] No React warnings
-- [ ] API calls succeed (check Network tab):
-  - `/api/organizations/update-onboarding` (200 status)
-  - `/api/qr-code/generate` (200 status)
-  - `/api/crowd-request/create-event` (200 status, if creating event)
-
----
-
-## ✅ Success Criteria
-
-- [ ] All 6 steps load without errors
-- [ ] Progress bar updates correctly
-- [ ] Navigation works (Next, Back, Skip)
-- [ ] Step indicators are clickable
-- [ ] QR code generates successfully
-- [ ] Event creation works (if tested)
-- [ ] Progress saves to database
-- [ ] Completion timestamp is saved
-- [ ] No console errors
-- [ ] Responsive design works on mobile
-
----
-
-## 🚨 If Tests Fail
-
-### Build Errors
-- Check TypeScript compilation
-- Verify all imports are correct
-- Check for missing dependencies
-
-### Runtime Errors
-- Check browser console
-- Verify API endpoints are accessible
-- Check database connection
-- Verify environment variables
-
-### UI Issues
-- Check Tailwind classes
-- Verify dark mode support
-- Test responsive breakpoints
-
----
-
-## 📝 Test Results Template
-
-```
-Date: ___________
-Tester: ___________
-Environment: Development (localhost:3003)
-
-Results:
-- Welcome Step: ✅ / ❌
-- Request Page Step: ✅ / ❌
-- Embed Step: ✅ / ❌
-- Payment Step: ✅ / ❌
-- First Event Step: ✅ / ❌
-- Completion Step: ✅ / ❌
-- Navigation: ✅ / ❌
-- Progress Tracking: ✅ / ❌
-
-Issues Found:
-1. 
-2. 
-3. 
-
-Notes:
+After signup, verify in Supabase:
+```sql
+SELECT 
+  id, 
+  name, 
+  slug, 
+  owner_id,
+  requests_header_artist_name,
+  subscription_tier,
+  subscription_status,
+  is_platform_owner
+FROM organizations
+WHERE owner_id = '[your-user-id]';
 ```
 
----
+**Expected values:**
+- `slug`: Clean slug without random suffix (unless conflict)
+- `requests_header_artist_name`: Should match `name`
+- `subscription_tier`: 'starter'
+- `subscription_status`: 'trial'
+- `is_platform_owner`: false (unless you're M10 DJ Company)
 
-**Ready to Test!** 🚀
+## Next Steps After Testing
 
-Start the dev server and navigate to `/onboarding/welcome` (after signing up) to begin testing.
+1. If slug has random suffix unnecessarily:
+   - Check if slug actually exists in database
+   - Verify `getOrganizationBySlug` is working correctly
+   - Check browser console logs
 
+2. If artist name missing:
+   - Check that auto-fix ran in requests page
+   - Verify `requests_header_artist_name` in database
+   - May need to manually update in admin settings
+
+3. If onboarding fails:
+   - Check browser console for errors
+   - Check network tab for API errors
+   - Verify Supabase connection

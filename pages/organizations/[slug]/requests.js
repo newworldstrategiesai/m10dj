@@ -20,6 +20,7 @@ export default function OrganizationRequestsPage() {
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     async function loadOrganization(forceRefresh = false) {
@@ -47,7 +48,7 @@ export default function OrganizationRequestsPage() {
           .from('organizations')
           .select('*')
           .eq('slug', slug)
-          .single();
+          .maybeSingle(); // Use maybeSingle to avoid errors on not found
         
         console.log('📥 Supabase response received:', { hasData: !!org, hasError: !!orgError });
 
@@ -65,13 +66,62 @@ export default function OrganizationRequestsPage() {
           return;
         }
 
+        // Auto-fix: If requests_header_artist_name is missing, set it to organization name
+        // This ensures the header displays correctly for organizations created before this fix
+        if (!org.requests_header_artist_name && org.name) {
+          try {
+            const { error: updateError } = await supabase
+              .from('organizations')
+              .update({ requests_header_artist_name: org.name })
+              .eq('id', org.id);
+            
+            if (!updateError) {
+              // Update the org object for this request
+              org.requests_header_artist_name = org.name;
+              console.log('✅ [ORGANIZATION REQUESTS] Auto-set requests_header_artist_name to:', org.name);
+            } else {
+              console.error('❌ [ORGANIZATION REQUESTS] Error auto-setting requests_header_artist_name:', updateError);
+            }
+          } catch (updateError) {
+            console.error('❌ [ORGANIZATION REQUESTS] Error auto-setting requests_header_artist_name:', updateError);
+            // Continue anyway - the page will fall back to using org.name
+          }
+        }
+
         // Force update by creating a new object reference
-        const freshOrg = { ...org };
-        setOrganization(freshOrg);
+        // This ensures React detects the change and re-renders
+        const freshOrg = { 
+          ...org,
+          // Ensure these fields are explicitly set (in case they're null/undefined)
+          requests_header_artist_name: org.requests_header_artist_name || org.name || '',
+          requests_header_location: org.requests_header_location || '',
+          requests_header_date: org.requests_header_date || '',
+        };
+        
+        // Force a state update by using a new object reference with timestamp
+        setOrganization({
+          ...freshOrg,
+          _refreshKey: Date.now(), // Force React to see this as new data
+        });
+        
+        // Check if current user is the owner
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user && freshOrg.owner_id === user.id) {
+            setIsOwner(true);
+            console.log('✅ User is the owner of this organization');
+          } else {
+            setIsOwner(false);
+          }
+        } catch (authError) {
+          console.log('User not logged in or auth error:', authError);
+          setIsOwner(false);
+        }
         
         console.log('✅ Organization loaded on requests page:', {
           id: freshOrg.id,
           name: freshOrg.name,
+          slug: freshOrg.slug,
           artist_name: freshOrg.requests_header_artist_name,
           location: freshOrg.requests_header_location,
           date: freshOrg.requests_header_date,
@@ -121,10 +171,44 @@ export default function OrganizationRequestsPage() {
       hasOrganization: !!organization,
       slug,
       artistName: organization?.requests_header_artist_name,
+      organizationName: organization?.name,
       location: organization?.requests_header_location,
-      date: organization?.requests_header_date
+      date: organization?.requests_header_date,
+      // Log the actual values being used
+      willDisplayArtistName: organization?.requests_header_artist_name || organization?.name || 'DJ'
     });
   }, [loading, organization, slug]);
+  
+  // Force a re-render when organization data changes (especially after auto-fix)
+  // This ensures the page updates if the auto-fix runs and updates the database
+  useEffect(() => {
+    if (organization && !organization.requests_header_artist_name && organization.name) {
+      console.log('🔄 [REQUESTS PAGE] Artist name missing, triggering refresh in 1 second...');
+      // Wait a moment for auto-fix to complete, then refresh
+      const timer = setTimeout(() => {
+        console.log('🔄 [REQUESTS PAGE] Refreshing organization data...');
+        // Force a refresh by reloading the organization
+        supabase
+          .from('organizations')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle()
+          .then(({ data: freshOrg, error }) => {
+            if (!error && freshOrg) {
+              console.log('✅ [REQUESTS PAGE] Refreshed organization:', {
+                artist_name: freshOrg.requests_header_artist_name,
+                name: freshOrg.name
+              });
+              setOrganization({
+                ...freshOrg,
+                _refreshKey: Date.now(),
+              });
+            }
+          });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [organization, slug, supabase]);
 
   if (loading) {
     console.log('⏳ [REQUESTS PAGE] Showing loading state...');
@@ -202,11 +286,18 @@ export default function OrganizationRequestsPage() {
         <meta name="twitter:image:alt" content={organization.requests_header_artist_name || organization.name || 'Request a Song or Shoutout'} />
       </Head>
       <GeneralRequestsPage 
-        key={`${organization.id}-${organization.updated_at || Date.now()}`}
+        key={`${organization.id}-${organization.updated_at || Date.now()}-${organization.requests_header_artist_name || ''}`}
         organizationId={organization.id} 
         organizationName={organization.name}
         organizationCoverPhoto={getCoverPhotoUrl(organization, '/assets/DJ-Ben-Murray-Dodge-Poster.png')}
-        organizationData={organization}
+        organizationData={{
+          ...organization,
+          // Ensure these fields are explicitly set for the component
+          requests_header_artist_name: organization.requests_header_artist_name || organization.name || '',
+          requests_header_location: organization.requests_header_location || '',
+          requests_header_date: organization.requests_header_date || '',
+        }}
+        isOwner={isOwner}
         customBranding={organization.white_label_enabled ? {
           whiteLabelEnabled: organization.white_label_enabled,
           customLogoUrl: organization.custom_logo_url,

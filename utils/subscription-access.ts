@@ -29,6 +29,11 @@ export async function hasFeatureAccess(
     return { hasAccess: false, requiredTier: 'professional' };
   }
 
+  // Platform owners (M10 DJ Company) always have access
+  if (org.is_platform_owner) {
+    return { hasAccess: true, requiredTier: 'platform_owner', currentTier: 'platform_owner' };
+  }
+
   const currentTier = org.subscription_tier;
 
   // Feature access rules
@@ -81,6 +86,11 @@ export async function canAccessAdminPage(
       reason: 'No organization found. Please complete onboarding.',
       requiredTier: 'professional'
     };
+  }
+
+  // Platform owners (M10 DJ Company) always have access
+  if (org.is_platform_owner) {
+    return { canAccess: true };
   }
 
   // Map pages to features

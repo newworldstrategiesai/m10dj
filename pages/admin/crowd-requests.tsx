@@ -55,6 +55,7 @@ import { format } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { getCoverPhotoUrl } from '@/utils/cover-photo-helper';
 import UpgradePrompt from '@/components/subscription/UpgradePrompt';
+import StripeConnectRequirementBanner from '@/components/subscription/StripeConnectRequirementBanner';
 import { getCurrentOrganization } from '@/utils/organization-context';
 
 interface CrowdRequest {
@@ -2432,6 +2433,7 @@ export default function CrowdRequestsPage() {
         const org = await getCurrentOrganization(supabase);
         if (org) {
           setSubscriptionTier(org.subscription_tier);
+          setOrganization(org);
         }
       } catch (error) {
         console.error('Error checking subscription tier:', error);
@@ -2443,6 +2445,9 @@ export default function CrowdRequestsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6 px-4 lg:px-6">
+        {/* Stripe Connect Requirement Banner */}
+        <StripeConnectRequirementBanner organization={organization} />
+        
         {/* Upgrade Prompt for Starter Tier */}
         {subscriptionTier === 'starter' && (
           <UpgradePrompt 

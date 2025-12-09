@@ -119,6 +119,27 @@ export default function OnboardingWizard() {
         if (org) {
           setOrganization(org);
           updateFormData({ organizationSlug: org.slug });
+          
+          // Save location if provided
+          if (formData.location) {
+            try {
+              const { error: updateError } = await supabase
+                .from('organizations')
+                .update({ requests_header_location: formData.location })
+                .eq('id', org.id);
+              
+              if (updateError) {
+                console.error('Error saving location:', updateError);
+              } else {
+                console.log('✅ Location saved:', formData.location);
+                // Update local org object
+                org.requests_header_location = formData.location;
+                setOrganization({ ...org });
+              }
+            } catch (error) {
+              console.error('Error saving location:', error);
+            }
+          }
         }
       } catch (error) {
         console.error('Error creating organization:', error);
@@ -377,24 +398,24 @@ function PlanStep({ formData, updateFormData, onNext, onBack, organization }: an
     {
       id: 'starter',
       name: 'Starter',
-      price: 19,
-      description: 'Perfect for part-time DJs',
-      features: ['5 events per month', 'Basic features', 'Email support']
+      price: 0,
+      description: 'Perfect for DJs just getting started',
+      features: ['5 events per month', 'Basic features', 'Email support', 'Platform fees: 5% + $0.50']
     },
     {
       id: 'professional',
       name: 'Professional',
       price: 49,
-      description: 'For serious DJs',
-      features: ['Unlimited events', 'SMS AI features', 'Advanced analytics', 'Priority support'],
+      description: 'For established DJs who want to grow',
+      features: ['Unlimited events', 'Full CRM & analytics', 'Advanced features', 'Priority support', 'Platform fees: 3.5% + $0.30'],
       popular: true
     },
     {
       id: 'enterprise',
       name: 'Enterprise',
       price: 149,
-      description: 'For DJ companies',
-      features: ['Everything in Pro', 'Team members', 'White-label', 'API access', 'Custom support']
+      description: 'For high-volume DJ companies',
+      features: ['Everything in Professional', 'White-label branding', 'API access', 'Multi-user accounts', 'Platform fees: 2.5% + $0.20']
     }
   ];
 
@@ -430,8 +451,10 @@ function PlanStep({ formData, updateFormData, onNext, onBack, organization }: an
             <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
             <p className="text-gray-600 text-sm mb-4">{plan.description}</p>
             <div className="mb-4">
-              <span className="text-3xl font-bold text-gray-900">${plan.price}</span>
-              <span className="text-gray-600">/month</span>
+              <span className="text-3xl font-bold text-gray-900">
+                {plan.price === 0 ? 'Free' : `$${plan.price}`}
+              </span>
+              {plan.price > 0 && <span className="text-gray-600">/month</span>}
             </div>
             <ul className="space-y-2 mb-4">
               {plan.features.map((feature, idx) => (
@@ -463,7 +486,7 @@ function PlanStep({ formData, updateFormData, onNext, onBack, organization }: an
           disabled={!formData.selectedPlan}
           className="ml-auto bg-brand-gold text-gray-900 px-8 py-3 rounded-lg font-semibold hover:bg-yellow-500 transition-colors inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Continue to Checkout <ArrowRight className="w-5 h-5 ml-2" />
+          {formData.selectedPlan === 'starter' ? 'Continue' : 'Continue to Checkout'} <ArrowRight className="w-5 h-5 ml-2" />
         </button>
       </div>
     </div>
@@ -475,29 +498,57 @@ function CompleteStep({ formData, organization }: any) {
 
   const handleComplete = async () => {
     if (formData.selectedPlan && organization) {
-      // Redirect to Stripe checkout with organization context
-      try {
-        const response = await fetch('/api/subscriptions/create-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            priceId: getPriceIdForPlan(formData.selectedPlan),
-            organizationId: organization.id,
-          }),
-        });
+      // Handle Starter plan ($0) vs paid plans differently
+      if (formData.selectedPlan === 'starter') {
+        // Starter plan - activate directly without Stripe checkout
+        try {
+          const response = await fetch('/api/subscriptions/create-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              priceId: getPriceIdForPlan(formData.selectedPlan),
+              organizationId: organization.id,
+            }),
+          });
 
-        const data = await response.json();
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
+          const data = await response.json();
+          if (data.success) {
+            // Starter plan activated - go to dashboard
+            router.push('/admin/dashboard');
+          } else {
+            console.error('Error activating Starter plan:', data);
+            router.push('/onboarding/select-plan');
+          }
+        } catch (error) {
+          console.error('Error activating Starter plan:', error);
           router.push('/onboarding/select-plan');
         }
-      } catch (error) {
-        console.error('Error creating checkout:', error);
-        router.push('/onboarding/select-plan');
+      } else {
+        // Paid plans - redirect to Stripe checkout
+        try {
+          const response = await fetch('/api/subscriptions/create-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              priceId: getPriceIdForPlan(formData.selectedPlan),
+              organizationId: organization.id,
+            }),
+          });
+
+          const data = await response.json();
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            console.error('No checkout URL returned:', data);
+            router.push('/onboarding/select-plan');
+          }
+        } catch (error) {
+          console.error('Error creating checkout:', error);
+          router.push('/onboarding/select-plan');
+        }
       }
     } else {
-      // Skip to dashboard
+      // No plan selected - skip to dashboard
       router.push('/admin/dashboard');
     }
   };

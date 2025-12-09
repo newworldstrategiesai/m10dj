@@ -29,6 +29,7 @@ export default function RequestsPageWrapper() {
   const supabase = createClientComponentClient();
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     async function loadDefaultOrganization() {
@@ -51,6 +52,26 @@ export default function RequestsPageWrapper() {
         }
 
         if (org && (org.subscription_status === 'active' || org.subscription_status === 'trial')) {
+          // Auto-fix: If requests_header_artist_name is missing, set it to organization name
+          // This ensures the header displays correctly for organizations created before this fix
+          if (!org.requests_header_artist_name && org.name) {
+            try {
+              const { error: updateError } = await supabase
+                .from('organizations')
+                .update({ requests_header_artist_name: org.name })
+                .eq('id', org.id);
+              
+              if (!updateError) {
+                // Update the org object for this request
+                org.requests_header_artist_name = org.name;
+                console.log('✅ [REQUESTS] Auto-set requests_header_artist_name to:', org.name);
+              }
+            } catch (updateError) {
+              console.error('❌ [REQUESTS] Error auto-setting requests_header_artist_name:', updateError);
+              // Continue anyway - the page will fall back to using org.name
+            }
+          }
+          
           setOrganization(org);
           console.log('✅ [REQUESTS] Organization loaded:', {
             id: org.id,
@@ -90,6 +111,7 @@ export default function RequestsPageWrapper() {
       organizationName={organization?.name || null}
       organizationCoverPhoto={getCoverPhotoUrl(organization, DEFAULT_COVER_PHOTO)}
       organizationData={organization}
+      isOwner={isOwner}
       customBranding={organization?.white_label_enabled ? {
         whiteLabelEnabled: organization.white_label_enabled,
         customLogoUrl: organization.custom_logo_url,
@@ -110,7 +132,8 @@ export function GeneralRequestsPage({
   embedMode = false,
   customBranding = null,
   organizationCoverPhoto = null,
-  organizationData = null
+  organizationData = null,
+  isOwner = false
 } = {}) {
   // Log when organizationData changes
   useEffect(() => {
@@ -906,7 +929,7 @@ export function GeneralRequestsPage({
           </div>
         )}
         
-        {!embedMode && !showPaymentMethods && <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} />}
+        {!embedMode && !showPaymentMethods && <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} isOwner={isOwner} organizationSlug={organizationData?.slug} organizationId={organizationId} />}
         
         {/* Hero Section with Text Fallback */}
         {!embedMode && !showPaymentMethods && (

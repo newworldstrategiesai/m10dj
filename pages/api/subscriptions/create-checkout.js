@@ -87,7 +87,36 @@ export default async function handler(req, res) {
 
     const subscriptionTier = priceIdToTier[priceId] || 'starter';
 
-    // Create checkout session
+    // Handle Starter plan ($0) - skip Stripe checkout and activate directly
+    if (subscriptionTier === 'starter') {
+      // Update organization to Starter tier with active status
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({
+          subscription_tier: 'starter',
+          subscription_status: 'active', // Starter is free, so activate immediately
+          trial_ends_at: null, // No trial needed for free plan
+        })
+        .eq('id', organization.id);
+
+      if (updateError) {
+        console.error('Error updating organization for Starter plan:', updateError);
+        return res.status(500).json({
+          error: 'Failed to activate Starter plan',
+          message: updateError.message,
+        });
+      }
+
+      // Return success without Stripe checkout URL
+      return res.status(200).json({
+        success: true,
+        subscriptionTier: 'starter',
+        message: 'Starter plan activated successfully',
+        // No URL - frontend should redirect to dashboard
+      });
+    }
+
+    // For paid plans, create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',

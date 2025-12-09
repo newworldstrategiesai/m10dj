@@ -25,6 +25,10 @@ export interface Organization {
   stripe_connect_details_submitted?: boolean | null;
   platform_fee_percentage?: number | null;
   platform_fee_fixed?: number | null;
+  is_platform_owner?: boolean | null; // Platform owner (M10 DJ Company) bypasses restrictions
+  requests_header_artist_name?: string | null;
+  requests_header_location?: string | null;
+  requests_header_date?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -101,6 +105,7 @@ export async function getCurrentOrganizationServer(
 
 /**
  * Require an active organization (throws error if not found or inactive)
+ * Platform owners (M10 DJ Company) bypass subscription restrictions
  */
 export async function requireActiveOrganization(
   supabase: SupabaseClient
@@ -111,6 +116,13 @@ export async function requireActiveOrganization(
     throw new Error('No organization found. Please complete onboarding.');
   }
 
+  // PLATFORM OWNER BYPASS - M10 DJ Company never blocked
+  // This ensures your business operations are never disrupted
+  if (org.is_platform_owner) {
+    return org; // Always allow platform owner, no subscription checks
+  }
+
+  // Regular subscription checks for other DJs
   if (org.subscription_status !== 'active' && org.subscription_status !== 'trial') {
     throw new Error(`Organization subscription is ${org.subscription_status}. Please update your subscription.`);
   }
@@ -162,9 +174,16 @@ export async function getOrganizationBySlug(
       .from('organizations')
       .select('*')
       .eq('slug', slug)
-      .single();
+      .maybeSingle(); // Use maybeSingle() instead of single() to avoid throwing on not found
 
-    if (error || !org) {
+    // If there's an error (other than "not found"), log it
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+      console.error('Error getting organization by slug:', error);
+      return null;
+    }
+
+    // If no org found, return null (this is expected and not an error)
+    if (!org) {
       return null;
     }
 
@@ -190,14 +209,31 @@ export async function createOrganization(
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
 
-    // Check if slug already exists
-    const existing = await getOrganizationBySlug(supabase, slug);
-    if (existing) {
-      // Append random string if slug exists
-      const uniqueSlug = `${slug}-${Math.random().toString(36).substring(2, 8)}`;
-      return await createOrganizationWithSlug(supabase, name, uniqueSlug, ownerId);
+    if (!slug) {
+      console.error('Error: Generated slug is empty for name:', name);
+      return null;
     }
 
+    // Check if slug already exists for a DIFFERENT owner
+    // Users should be able to reuse their own slugs if they delete and recreate
+    const existing = await getOrganizationBySlug(supabase, slug);
+    if (existing) {
+      // Only add suffix if the existing org belongs to a different owner
+      if (existing.owner_id !== ownerId) {
+        console.log(`Slug "${slug}" already taken by another user, generating unique slug`);
+        // Append random string if slug exists for another user
+        const uniqueSlug = `${slug}-${Math.random().toString(36).substring(2, 8)}`;
+        return await createOrganizationWithSlug(supabase, name, uniqueSlug, ownerId);
+      } else {
+        // Same owner already has this slug - this shouldn't happen for new signups
+        // But if it does, we'll still create a unique one to avoid database conflicts
+        console.warn(`User ${ownerId} already has organization with slug "${slug}", creating with unique suffix`);
+        const uniqueSlug = `${slug}-${Math.random().toString(36).substring(2, 8)}`;
+        return await createOrganizationWithSlug(supabase, name, uniqueSlug, ownerId);
+      }
+    }
+
+    console.log(`Slug "${slug}" is available, using it`);
     return await createOrganizationWithSlug(supabase, name, slug, ownerId);
   } catch (error) {
     console.error('Error creating organization:', error);
@@ -227,6 +263,8 @@ async function createOrganizationWithSlug(
         subscription_tier: 'starter',
         subscription_status: 'trial',
         trial_ends_at: trialEndsAt.toISOString(),
+        // Set requests_header_artist_name to the organization name so it displays in the requests page header
+        requests_header_artist_name: name,
       })
       .select()
       .single();
