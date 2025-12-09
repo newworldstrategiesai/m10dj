@@ -59,15 +59,6 @@ module.exports = {
       use: 'ignore-loader',
     });
     
-    // Exclude browser-only libraries from server-side bundle
-    if (isServer) {
-      config.externals = config.externals || [];
-      config.externals.push({
-        'html2canvas': 'commonjs html2canvas',
-        'jspdf': 'commonjs jspdf',
-      });
-    }
-    
     return config;
   },
 }; 

@@ -1711,11 +1711,20 @@ export default function CrowdRequestsPage() {
       // Give browser time to fully render the layout
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Dynamically import browser-only libraries
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf')
-      ]);
+      // Dynamically import browser-only libraries (only in browser)
+      if (typeof window === 'undefined') {
+        throw new Error('PDF generation is only available in the browser');
+      }
+
+      // Lazy load browser-only libraries using dynamic import
+      // These are only loaded when this function runs (client-side only)
+      const loadPDFLibraries = async () => {
+        const html2canvas = (await import('html2canvas')).default;
+        const { jsPDF } = await import('jspdf');
+        return { html2canvas, jsPDF };
+      };
+
+      const { html2canvas, jsPDF } = await loadPDFLibraries();
 
       // Convert to canvas and then to PDF
       const canvas = await html2canvas(pdfContainer, {
