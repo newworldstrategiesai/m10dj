@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OG Image Generator</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    .og-container {
+      width: 1200px;
+      height: 630px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* DJ Dash OG Image */
+    .djdash-og {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px;
+      color: white;
+      text-align: center;
+    }
+    
+    .djdash-og h1 {
+      font-size: 72px;
+      font-weight: 800;
+      margin: 0 0 20px 0;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    
+    .djdash-og p {
+      font-size: 32px;
+      margin: 0 0 30px 0;
+      opacity: 0.95;
+      font-weight: 300;
+    }
+    
+    .djdash-og .trust {
+      font-size: 24px;
+      opacity: 0.9;
+      font-weight: 500;
+    }
+    
+    /* TipJar OG Image */
+    .tipjar-og {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px;
+      color: white;
+      text-align: center;
+    }
+    
+    .tipjar-og h1 {
+      font-size: 72px;
+      font-weight: 800;
+      margin: 0 0 20px 0;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    
+    .tipjar-og p {
+      font-size: 32px;
+      margin: 0 0 30px 0;
+      opacity: 0.95;
+      font-weight: 300;
+    }
+    
+    .tipjar-og .cta {
+      font-size: 24px;
+      opacity: 0.9;
+      font-weight: 500;
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- DJ Dash OG Image -->
+  <div class="og-container djdash-og" id="djdash">
+    <h1>DJ Dash</h1>
+    <p>DJ Booking Software & DJ CRM</p>
+    <div class="trust">Trusted by 1,200+ professional DJs</div>
+  </div>
+  
+  <!-- TipJar OG Image -->
+  <div class="og-container tipjar-og hidden" id="tipjar">
+    <h1>TipJar Live</h1>
+    <p>DJ Tip Collection & Song Request App</p>
+    <div class="cta">Start free, upgrade when you're making money</div>
+  </div>
+  
+  <script>
+    // Instructions:
+    // 1. Open this file in a browser
+    // 2. Use browser DevTools to hide/show the images you want
+    // 3. Take a screenshot at exactly 1200x630px
+    // 4. Save as PNG
+    // 5. Or use a tool like html2canvas to generate the images programmatically
+    
+    console.log('OG Image Generator');
+    console.log('To generate images:');
+    console.log('1. Hide/show divs using display: none/block');
+    console.log('2. Take screenshot at 1200x630px');
+    console.log('3. Save as PNG files');
+  </script>
+</body>
+</html>
+

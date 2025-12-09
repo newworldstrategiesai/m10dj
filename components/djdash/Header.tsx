@@ -47,7 +47,7 @@ export default function DJDashHeader() {
                 alt="DJ Dash Logo"
                 width={40}
                 height={40}
-                className="drop-shadow-lg"
+                className="drop-shadow-lg dark:brightness-0 dark:invert"
                 priority
               />
             </div>

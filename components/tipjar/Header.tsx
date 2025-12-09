@@ -123,7 +123,15 @@ export default function TipJarHeader() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200 dark:border-gray-700">
+          <div className={`md:hidden py-4 border-t ${
+            isScrolled
+              ? 'border-gray-200 dark:border-gray-700'
+              : 'border-white/20'
+          } ${
+            isScrolled
+              ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md'
+              : 'bg-white/98 dark:bg-gray-900/98 backdrop-blur-md shadow-lg'
+          }`}>
             <div className="flex flex-col space-y-4">
               <Link
                 href="/tipjar/features"

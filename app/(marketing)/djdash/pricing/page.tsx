@@ -13,6 +13,26 @@ export const metadata: Metadata = {
     'DJ management software cost',
     'DJ CRM pricing'
   ],
+  openGraph: {
+    title: 'DJ Dash Pricing - DJ Booking Software Plans',
+    description: 'Transparent pricing for DJ invoicing software and the best DJ booking software. All plans include automated invoicing, contract management, and CRM features. 14-day free trial.',
+    url: 'https://www.djdash.net/pricing',
+    siteName: 'DJ Dash',
+    images: [
+      {
+        url: '/assets/DJ-Dash-Logo-Black-1.PNG',
+        width: 1200,
+        height: 630,
+        alt: 'DJ Dash Pricing',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'DJ Dash Pricing - DJ Booking Software Plans',
+    description: 'Transparent pricing for DJ invoicing software. All plans include automated invoicing, contract management, and CRM features.',
+    images: ['/assets/DJ-Dash-Logo-Black-1.PNG'],
+  },
 };
 
 export default function PricingPage() {

@@ -42,6 +42,15 @@ export async function middleware(request: NextRequest) {
     const path = url.pathname;
     let rewritePath = '';
     
+    // Route sitemap and robots to domain-specific versions
+    if (path === '/sitemap.xml' || path === '/sitemap') {
+      url.pathname = '/sitemap-tipjar.xml';
+      return NextResponse.rewrite(url);
+    } else if (path === '/robots.txt' || path === '/robots') {
+      url.pathname = '/robots-tipjar.txt';
+      return NextResponse.rewrite(url);
+    }
+    
     // Rewrite paths to tipjar marketing routes
     if (path === '/' || path === '') {
       rewritePath = '/tipjar';
@@ -91,6 +100,15 @@ export async function middleware(request: NextRequest) {
   if (isDJDashDomain) {
     const path = url.pathname;
     let rewritePath = '';
+    
+    // Route sitemap and robots to domain-specific versions
+    if (path === '/sitemap.xml' || path === '/sitemap') {
+      url.pathname = '/sitemap-djdash.xml';
+      return NextResponse.rewrite(url);
+    } else if (path === '/robots.txt' || path === '/robots') {
+      url.pathname = '/robots-djdash.txt';
+      return NextResponse.rewrite(url);
+    }
     
     // Rewrite paths to djdash marketing routes
     if (path === '/' || path === '') {

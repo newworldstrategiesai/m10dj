@@ -36,6 +36,28 @@ export const metadata: Metadata = {
     'mobile tip jar',
     'DJ song request app'
   ],
+  openGraph: {
+    title: 'TipJar Live - DJ Tip Collection & Song Request App',
+    description: 'The best tip jar app and song request app for DJs. Easy DJ tip collection with QR codes—no app downloads required. Start free, upgrade when you\'re making money.',
+    url: 'https://www.tipjar.live',
+    siteName: 'TipJar Live',
+    images: [
+      {
+        url: '/assets/tipjar-og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'TipJar Live - DJ Tip Collection & Song Request App',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'TipJar Live - DJ Tip Collection & Song Request App',
+    description: 'The best tip jar app and song request app for DJs. Easy DJ tip collection with QR codes—no app downloads required.',
+    images: ['/assets/tipjar-og-image.png'],
+  },
 };
 
 export default function TipJarHomePage() {

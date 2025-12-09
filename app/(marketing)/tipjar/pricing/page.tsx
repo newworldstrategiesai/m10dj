@@ -18,6 +18,26 @@ export const metadata: Metadata = {
     'DJ tip collection pricing',
     'song request app pricing'
   ],
+  openGraph: {
+    title: 'TipJar Live Pricing - Best Tip Jar App for DJs',
+    description: 'Pricing for the best tip jar app for DJs and event tipping app. Start free, upgrade when you\'re making money. All plans include 3.5% + $0.30 platform fee only when you get paid.',
+    url: 'https://www.tipjar.live/pricing',
+    siteName: 'TipJar Live',
+    images: [
+      {
+        url: '/assets/tipjar-og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'TipJar Live Pricing',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'TipJar Live Pricing - Best Tip Jar App for DJs',
+    description: 'Start free, upgrade when you\'re making money. All plans include 3.5% + $0.30 platform fee only when you get paid.',
+    images: ['/assets/tipjar-og-image.png'],
+  },
 };
 
 export default function PricingPage() {

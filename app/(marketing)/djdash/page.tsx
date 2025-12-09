@@ -32,6 +32,28 @@ export const metadata: Metadata = {
     'DJ client management software',
     'DJ event management software'
   ],
+  openGraph: {
+    title: 'DJ Dash - DJ Booking Software & DJ CRM',
+    description: 'The best DJ booking software and DJ CRM for managing your entire DJ business. Handle bookings, client management, contracts, invoicing, and analytics all in one platform. Trusted by 1,200+ professional DJs.',
+    url: 'https://www.djdash.net',
+    siteName: 'DJ Dash',
+    images: [
+      {
+        url: '/assets/DJ-Dash-Logo-Black-1.PNG', // Fallback to logo until OG image is created
+        width: 1200,
+        height: 630,
+        alt: 'DJ Dash - DJ Booking Software & DJ CRM',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'DJ Dash - DJ Booking Software & DJ CRM',
+    description: 'The best DJ booking software and DJ CRM for managing your entire DJ business. Trusted by 1,200+ professional DJs.',
+    images: ['/assets/DJ-Dash-Logo-Black-1.PNG'],
+  },
 };
 
 export default function HomePage() {
