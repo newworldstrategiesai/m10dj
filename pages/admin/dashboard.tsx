@@ -31,6 +31,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import UsageDashboard from '@/components/subscription/UsageDashboard';
+import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
+import { getCurrentOrganization, Organization } from '@/utils/organization-context';
 
 interface DashboardStats {
   totalContacts: number;
@@ -81,6 +84,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [organization, setOrganization] = useState<Organization | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [recentContacts, setRecentContacts] = useState<RecentContact[]>([]);
@@ -105,17 +109,31 @@ export default function AdminDashboard() {
         return;
       }
 
+      // Check if user is platform admin
       const adminEmails = [
         'admin@m10djcompany.com', 
         'manager@m10djcompany.com',
         'djbenmurray@gmail.com'
       ];
 
-      if (!adminEmails.includes(user.email || '')) {
-        router.push('/');
-        return;
+      const isPlatformAdmin = adminEmails.includes(user.email || '');
+
+      // If not platform admin, check their organization subscription tier
+      if (!isPlatformAdmin) {
+        const org = await getCurrentOrganization(supabase);
+        
+        if (org) {
+          setOrganization(org);
+          
+          if (org.subscription_tier === 'starter') {
+            // Redirect starter tier users to simplified dashboard
+            router.push('/admin/dashboard-starter');
+            return;
+          }
+        }
       }
 
+      // Platform admins and paid tier users see full dashboard
       setUser(user);
     } catch (err) {
       console.error('Auth error:', err);
@@ -426,11 +444,25 @@ export default function AdminDashboard() {
                 <BarChart3 className="h-6 w-6 lg:h-5 lg:w-5 text-orange-600 flex-shrink-0" />
                 <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Financial</span>
               </Link>
+              <Link href="#analytics" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-colors min-h-[80px] lg:min-h-0">
+                <BarChart3 className="h-6 w-6 lg:h-5 lg:w-5 text-indigo-600 flex-shrink-0" />
+                <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Analytics</span>
+              </Link>
               <Link href="/admin/instagram" className="flex flex-col lg:flex-row items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-lg border border-gray-200 hover:border-pink-500 hover:bg-pink-50 transition-colors min-h-[80px] lg:min-h-0">
                 <Music className="h-6 w-6 lg:h-5 lg:w-5 text-pink-600 flex-shrink-0" />
                 <span className="text-xs lg:text-sm font-medium text-gray-900 text-center lg:text-left">Social</span>
               </Link>
             </div>
+          </div>
+
+          {/* Subscription Usage Dashboard */}
+          <div className="mb-8">
+            <UsageDashboard />
+          </div>
+
+          {/* Analytics Dashboard */}
+          <div className="mb-8">
+            <AnalyticsDashboard />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

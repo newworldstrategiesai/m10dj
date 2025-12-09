@@ -25,16 +25,21 @@ export default function ContactsPage() {
                 return;
             }
 
-            // Check if user is admin using email-based authentication (same as other admin helpers)
-            const adminEmails = [
-                'admin@m10djcompany.com',
-                'manager@m10djcompany.com',
-                'djbenmurray@gmail.com'  // Ben Murray - Owner
-            ];
-
-            if (!adminEmails.includes(user.email || '')) {
-                router.push('/signin');
-                return;
+            // Check if user is platform admin or has access via subscription
+            const { isPlatformAdmin } = await import('@/utils/auth-helpers/platform-admin');
+            const { canAccessAdminPage } = await import('@/utils/subscription-access');
+            
+            const isAdmin = isPlatformAdmin(user.email);
+            
+            if (!isAdmin) {
+                // Check subscription access for SaaS users
+                const access = await canAccessAdminPage(supabase, user.email, 'contacts');
+                
+                if (!access.canAccess) {
+                    // Redirect starter tier users to their dashboard with upgrade prompt
+                    router.push('/admin/dashboard-starter');
+                    return;
+                }
             }
 
             setUser(user);

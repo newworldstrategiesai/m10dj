@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { 
   QrCode, 
   Music, 
@@ -22,6 +24,7 @@ import {
   Eye,
   Edit3,
   Printer,
+  XCircle,
   Zap,
   X,
   Settings,
@@ -36,7 +39,9 @@ import {
   ExternalLink,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown
+  ArrowUpDown,
+  Loader2,
+  Gift
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,11 +56,13 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { getCoverPhotoUrl } from '@/utils/cover-photo-helper';
+import UpgradePrompt from '@/components/subscription/UpgradePrompt';
+import { getCurrentOrganization } from '@/utils/organization-context';
 
 interface CrowdRequest {
   id: string;
   event_qr_code: string;
-  request_type: 'song_request' | 'shoutout';
+  request_type: 'song_request' | 'shoutout' | 'tip';
   song_artist: string | null;
   song_title: string | null;
   recipient_name: string | null;
@@ -104,7 +111,7 @@ export default function CrowdRequestsPage() {
   const [showQRGenerator, setShowQRGenerator] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState('payment');
-  const [qrType, setQrType] = useState<'event' | 'public'>('event');
+  const [qrType, setQrType] = useState<'event' | 'public'>('public');
   
   // New feature states
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
@@ -185,12 +192,18 @@ export default function CrowdRequestsPage() {
   const [generatedQR, setGeneratedQR] = useState<string | null>(null);
   const [generatedPublicQR, setGeneratedPublicQR] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showPDFPreview, setShowPDFPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfFilename, setPdfFilename] = useState<string>('');
+  const [pdfArtistName, setPdfArtistName] = useState<string>('');
+  const [showArtistNameInput, setShowArtistNameInput] = useState(false);
+  const [pdfType, setPdfType] = useState<'full-page' | 'table-tent'>('full-page');
+  const [generatingPDF, setGeneratingPDF] = useState(false);
   
   // Settings State
   const [paymentSettings, setPaymentSettings] = useState({
     cashAppTag: '$DJbenmurray',
-    venmoUsername: '@djbenmurray',
-    googleReviewLink: 'https://g.page/r/CSD9ayo7-MivEBE/review'
+    venmoUsername: '@djbenmurray'
   });
   const [requestSettings, setRequestSettings] = useState({
     fastTrackFee: 1000, // in cents ($10.00)
@@ -329,18 +342,6 @@ export default function CrowdRequestsPage() {
 
       // Save Venmo username
       await saveAdminSetting('crowd_request_venmo_username', paymentSettings.venmoUsername);
-
-      // Save Google Review link to organization
-      if (organization?.id && paymentSettings.googleReviewLink) {
-        const { error: reviewLinkError } = await supabase
-          .from('organizations')
-          .update({ google_review_link: paymentSettings.googleReviewLink })
-          .eq('id', organization.id);
-        
-        if (reviewLinkError) {
-          console.error('Error saving Google Review link:', reviewLinkError);
-        }
-      }
 
       // Save fast-track fee
       await saveAdminSetting('crowd_request_fast_track_fee', requestSettings.fastTrackFee.toString());
@@ -615,10 +616,6 @@ export default function CrowdRequestsPage() {
           setCoverPhotoHistory(loadPhotoHistory(refreshedOrg.requests_cover_photo_history));
           setArtistPhotoHistory(loadPhotoHistory(refreshedOrg.requests_artist_photo_history));
           setVenuePhotoHistory(loadPhotoHistory(refreshedOrg.requests_venue_photo_history));
-          // Update Google Review link from refreshed org
-          if (refreshedOrg.google_review_link) {
-            setPaymentSettings(prev => ({ ...prev, googleReviewLink: refreshedOrg.google_review_link }));
-          }
           console.log('✅ Organization data refreshed:', refreshedOrg);
           console.log('🎯 Primary cover source after refresh:', {
             requests_primary_cover_source: refreshedOrg.requests_primary_cover_source,
@@ -762,10 +759,6 @@ export default function CrowdRequestsPage() {
         location: org.requests_header_location || '',
         date: org.requests_header_date || ''
       });
-      // Load Google Review link from organization
-      if (org.google_review_link) {
-        setPaymentSettings(prev => ({ ...prev, googleReviewLink: org.google_review_link }));
-      }
       setCoverPhotoSettings({
         requests_cover_photo_url: org.requests_cover_photo_url || '',
         requests_artist_photo_url: org.requests_artist_photo_url || '',
@@ -1074,6 +1067,714 @@ export default function CrowdRequestsPage() {
     const filename = qrType === 'public' ? 'qr-code-public-requests.png' : `qr-code-${qrEventCode}.png`;
     link.download = filename;
     link.click();
+  };
+
+  const printQRCodeToPDF = async () => {
+    const qrToPrint = qrType === 'public' ? generatedPublicQR : generatedQR;
+    if (!qrToPrint) {
+      toast({
+        title: 'Error',
+        description: 'Please generate a QR code first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Fetch organization name for artist name
+    let artistName = qrEventName || '';
+    if (!artistName) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('owner_id', user.id)
+            .single();
+          if (org?.name) {
+            artistName = org.name;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch organization name:', err);
+      }
+    }
+    
+    // Set initial artist name and show preview dialog
+    setPdfArtistName(artistName);
+    setPdfBlobUrl(null); // Clear any previous PDF
+    setShowPDFPreview(true);
+    
+    toast({
+      title: 'Configure PDF',
+      description: 'Edit artist name and click "Generate PDF"',
+    });
+  };
+
+  const generatePDFWithArtistName = async () => {
+    const qrToPrint = qrType === 'public' ? generatedPublicQR : generatedQR;
+    if (!qrToPrint) {
+      toast({
+        title: 'Error',
+        description: 'Please generate a QR code first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setGeneratingPDF(true);
+      // Clear previous PDF while generating new one
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+        setPdfBlobUrl(null);
+      }
+      
+      toast({
+        title: 'Generating PDF',
+        description: 'Please wait...',
+      });
+
+      // Convert QR code image to data URL to avoid CORS issues
+      // Try fetching as blob first, then fallback to image loading
+      let qrImageDataUrl: string;
+      try {
+        // Try to fetch the image as a blob (works even with CORS restrictions in some cases)
+        const response = await fetch(qrToPrint, { mode: 'cors' });
+        if (response.ok) {
+          const blob = await response.blob();
+          qrImageDataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          throw new Error('Fetch failed');
+        }
+      } catch (fetchError) {
+        // Fallback: try loading as image with canvas
+        qrImageDataUrl = await new Promise<string>((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+              } else {
+                reject(new Error('Could not get canvas context'));
+              }
+            } catch (error) {
+              reject(error);
+            }
+          };
+          img.onerror = () => {
+            // Last resort: use the original URL (might not work in PDF but worth trying)
+            console.warn('Could not convert QR code to data URL, using original URL');
+            resolve(qrToPrint);
+          };
+          img.src = qrToPrint;
+        });
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      let requestUrl: string;
+      
+      if (qrType === 'public') {
+        requestUrl = `${baseUrl}/requests`;
+      } else {
+        requestUrl = `${baseUrl}/crowd-request/${encodeURIComponent(qrEventCode)}`;
+      }
+
+      // Escape HTML in event name and date for safe rendering
+      const escapeHtml = (text: string) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      };
+
+      // Use artist name from preview input, fallback to event name
+      const artistNameToUse = pdfArtistName.trim() || qrEventName || '';
+      const eventNameHtml = artistNameToUse ? escapeHtml(artistNameToUse) : '';
+      const eventDateHtml = qrEventDate 
+        ? escapeHtml(new Date(qrEventDate).toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }))
+        : '';
+
+      // Create container based on PDF type
+      const isTableTent = pdfType === 'table-tent';
+      // Table tent: 11" x 8.5" landscape, folded vertically in half (5.5" x 8.5" panels)
+      // Full page: 8.5" x 11" portrait
+      const containerWidth = isTableTent ? '11in' : '8.5in';
+      const containerHeight = isTableTent ? '8.5in' : '11in';
+      const panelWidth = isTableTent ? '50%' : '100%';
+      
+      const pdfContainer = document.createElement('div');
+      pdfContainer.style.position = 'fixed';
+      pdfContainer.style.left = '-9999px';
+      pdfContainer.style.top = '0';
+      pdfContainer.style.width = containerWidth;
+      pdfContainer.style.height = containerHeight;
+      pdfContainer.style.padding = '0';
+      pdfContainer.style.margin = '0';
+      pdfContainer.style.backgroundColor = '#ffffff';
+      pdfContainer.style.fontFamily = 'Arial, sans-serif';
+      
+      // Panel content template (reusable for both layouts)
+      const createPanelContent = (side: 'left' | 'right' | 'single' = 'single') => {
+        const qrSize = isTableTent ? '180px' : '400px';
+        const titleSize = isTableTent ? '24px' : '32px';
+        const artistSize = isTableTent ? '18px' : '24px';
+        const padding = isTableTent ? '20px' : '40px';
+        
+        // Table tent: each panel gets identical content with horizontal layout
+        const borderStyle = (isTableTent && side === 'left') ? 'border-right: 1px dashed #cccccc;' : '';
+        
+        // For table tent, create a horizontal layout optimized for wide canvas, rotated 90deg for readability when standing
+        // Left panel rotates 90deg clockwise, right panel rotates -90deg (counter-clockwise) so both sides are readable
+        if (isTableTent) {
+          const rotation = side === 'left' ? '90deg' : '-90deg';
+          return `
+            <div style="
+              width: ${panelWidth};
+              height: 100%;
+              padding: 0;
+              box-sizing: border-box;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              ${borderStyle}
+              position: relative;
+            ">
+              <div style="
+                width: 100%;
+                height: 100%;
+                padding: ${padding};
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                transform: rotate(${rotation});
+                transform-origin: center center;
+              ">
+                <div style="
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  flex: 1;
+                  text-align: center;
+                ">
+                <h1 style="
+                  font-size: ${titleSize};
+                  font-weight: bold;
+                  color: #000000;
+                  margin: 0 0 10px 0;
+                ">Song Requests</h1>
+                
+                ${eventNameHtml ? `
+                  <h2 style="
+                    font-size: ${artistSize};
+                    font-weight: bold;
+                    color: #000000;
+                    margin: 0 0 6px 0;
+                  ">${eventNameHtml}</h2>
+                ` : ''}
+                
+                ${eventDateHtml ? `
+                  <p style="
+                    font-size: 16px;
+                    color: #000000;
+                    margin: 0 0 15px 0;
+                  ">${eventDateHtml}</p>
+                ` : ''}
+                
+                <p style="
+                  font-size: 16px;
+                  font-weight: bold;
+                  color: #000000;
+                  margin: 15px 0 10px 0;
+                ">Scan to Request Songs</p>
+                
+                <!-- Payment Methods -->
+                <div style="
+                  margin: 10px 0;
+                  padding: 10px;
+                  background: #f5f5f5;
+                  border: 1px solid #cccccc;
+                  border-radius: 4px;
+                  display: flex;
+                  flex-wrap: wrap;
+                  justify-content: center;
+                  align-items: center;
+                  gap: 8px;
+                ">
+                  <span style="
+                    font-size: 11px;
+                    font-weight: bold;
+                    color: #000000;
+                    margin-right: 6px;
+                  ">We Accept:</span>
+                  
+                  <span style="
+                    font-size: 11px;
+                    font-weight: bold;
+                    color: #00d632;
+                    padding: 4px 8px;
+                    background: #ffffff;
+                    border: 1px solid #00d632;
+                    border-radius: 3px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 4px;
+                    line-height: 1.2;
+                  ">
+                    <svg viewBox="0 0 32 32" style="width: 14px; height: 14px; fill: #00d632; flex-shrink: 0; margin: 0; padding: 0;" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M31.453 4.625c-0.688-1.891-2.177-3.375-4.068-4.063-1.745-0.563-3.333-0.563-6.557-0.563h-9.682c-3.198 0-4.813 0-6.531 0.531-1.896 0.693-3.385 2.188-4.068 4.083-0.547 1.734-0.547 3.333-0.547 6.531v9.693c0 3.214 0 4.802 0.531 6.536 0.688 1.891 2.177 3.375 4.068 4.063 1.734 0.547 3.333 0.547 6.536 0.547h9.703c3.214 0 4.813 0 6.536-0.531 1.896-0.688 3.391-2.182 4.078-4.078 0.547-1.734 0.547-3.333 0.547-6.536v-9.667c0-3.214 0-4.813-0.547-6.547zM23.229 10.802l-1.245 1.24c-0.25 0.229-0.635 0.234-0.891 0.010-1.203-1.010-2.724-1.568-4.292-1.573-1.297 0-2.589 0.427-2.589 1.615 0 1.198 1.385 1.599 2.984 2.198 2.802 0.938 5.12 2.109 5.12 4.854 0 2.99-2.318 5.042-6.104 5.266l-0.349 1.604c-0.063 0.302-0.328 0.516-0.635 0.516h-2.391l-0.12-0.010c-0.354-0.078-0.578-0.432-0.505-0.786l0.375-1.693c-1.438-0.359-2.76-1.083-3.844-2.094v-0.016c-0.25-0.25-0.25-0.656 0-0.906l1.333-1.292c0.255-0.234 0.646-0.234 0.896 0 1.214 1.146 2.839 1.786 4.521 1.76 1.734 0 2.891-0.734 2.891-1.896s-1.172-1.464-3.385-2.292c-2.349-0.839-4.573-2.026-4.573-4.802 0-3.224 2.677-4.797 5.854-4.943l0.333-1.641c0.063-0.302 0.333-0.516 0.641-0.51h2.37l0.135 0.016c0.344 0.078 0.573 0.411 0.495 0.76l-0.359 1.828c1.198 0.396 2.333 1.026 3.302 1.849l0.031 0.031c0.25 0.266 0.25 0.667 0 0.906z"/>
+                    </svg>
+                    <span style="line-height: 1.2;">Cash App</span>
+                  </span>
+                  
+                  <span style="
+                    font-size: 11px;
+                    font-weight: bold;
+                    color: #3d95ce;
+                    padding: 4px 8px;
+                    background: #ffffff;
+                    border: 1px solid #3d95ce;
+                    border-radius: 3px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 4px;
+                    line-height: 1.2;
+                  ">
+                    <svg viewBox="0 0 48 48" style="width: 14px; height: 14px; fill: #3d95ce; stroke: #3d95ce; flex-shrink: 0; margin: 0; padding: 0;" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z"/>
+                    </svg>
+                    <span style="line-height: 1.2;">Venmo</span>
+                  </span>
+                  
+                  <span style="
+                    font-size: 11px;
+                    font-weight: bold;
+                    color: #000000;
+                    padding: 4px 8px;
+                    background: #ffffff;
+                    border: 1px solid #000000;
+                    border-radius: 3px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 4px;
+                    line-height: 1.2;
+                  ">
+                    <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: #000000; flex-shrink: 0; margin: 0; padding: 0;" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                    </svg>
+                    <span style="line-height: 1.2;">Apple Pay</span>
+                  </span>
+                  
+                  <span style="
+                    font-size: 11px;
+                    font-weight: bold;
+                    color: #0066cc;
+                    padding: 4px 8px;
+                    background: #ffffff;
+                    border: 1px solid #0066cc;
+                    border-radius: 3px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 4px;
+                    line-height: 1.2;
+                  ">
+                    <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: none; stroke: #0066cc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; margin: 0; padding: 0;" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                      <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                    <span style="line-height: 1.2;">Card</span>
+                  </span>
+                </div>
+                
+                <p style="
+                  font-size: 10px;
+                  color: #999999;
+                  margin-top: 15px;
+                ">Powered by m10 dj company</p>
+              </div>
+              
+                <!-- QR Code on the right side -->
+                <div style="
+                  margin-left: 20px;
+                  padding: 15px;
+                  background: #ffffff;
+                  border: 2px solid #000000;
+                  flex-shrink: 0;
+                ">
+                  <img 
+                    src="${qrImageDataUrl}" 
+                    alt="QR Code" 
+                    style="
+                      width: ${qrSize};
+                      height: ${qrSize};
+                      display: block;
+                      border: 1px solid #cccccc;
+                    "
+                  />
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        
+        // Full page: vertical layout
+        return `
+          <div style="
+            width: ${panelWidth};
+            height: 100%;
+            padding: ${padding};
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+          ">
+            <h1 style="
+              font-size: ${titleSize};
+              font-weight: bold;
+              color: #000000;
+              margin: 0 0 15px 0;
+            ">Song Requests</h1>
+            
+            ${eventNameHtml ? `
+              <h2 style="
+                font-size: ${artistSize};
+                font-weight: bold;
+                color: #000000;
+                margin: 0 0 8px 0;
+              ">${eventNameHtml}</h2>
+            ` : ''}
+            
+            ${eventDateHtml ? `
+              <p style="
+                font-size: 18px;
+                color: #000000;
+                margin: 0 0 20px 0;
+              ">${eventDateHtml}</p>
+            ` : ''}
+            
+            <!-- QR Code -->
+            <div style="
+              margin: 15px 0;
+              padding: 20px;
+              background: #ffffff;
+              border: 2px solid #000000;
+            ">
+              <img 
+                src="${qrImageDataUrl}" 
+                alt="QR Code" 
+                style="
+                  width: ${qrSize};
+                  height: ${qrSize};
+                  display: block;
+                  border: 1px solid #cccccc;
+                "
+              />
+            </div>
+            
+            <p style="
+              font-size: 18px;
+              font-weight: bold;
+              color: #000000;
+              margin: 15px 0 8px 0;
+            ">Scan to Request Songs</p>
+            
+            <p style="
+              font-size: 12px;
+              color: #666666;
+              margin: 10px 0;
+              word-break: break-all;
+              font-family: monospace;
+            ">${escapeHtml(requestUrl)}</p>
+            
+            <!-- Payment Methods -->
+            <div style="
+              margin: 20px 0;
+              padding: 12px;
+              background: #f5f5f5;
+              border: 1px solid #cccccc;
+              border-radius: 4px;
+              display: flex;
+              flex-wrap: wrap;
+              justify-content: center;
+              align-items: center;
+              gap: 10px;
+            ">
+              <span style="
+                font-size: 11px;
+                font-weight: bold;
+                color: #000000;
+                margin-right: 6px;
+              ">We Accept:</span>
+              
+              <span style="
+                font-size: 11px;
+                font-weight: bold;
+                color: #00d632;
+                padding: 4px 8px;
+                background: #ffffff;
+                border: 1px solid #00d632;
+                border-radius: 3px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                line-height: 1.2;
+              ">
+                <svg viewBox="0 0 32 32" style="width: 14px; height: 14px; fill: #00d632; flex-shrink: 0; margin: 0; padding: 0;" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M31.453 4.625c-0.688-1.891-2.177-3.375-4.068-4.063-1.745-0.563-3.333-0.563-6.557-0.563h-9.682c-3.198 0-4.813 0-6.531 0.531-1.896 0.693-3.385 2.188-4.068 4.083-0.547 1.734-0.547 3.333-0.547 6.531v9.693c0 3.214 0 4.802 0.531 6.536 0.688 1.891 2.177 3.375 4.068 4.063 1.734 0.547 3.333 0.547 6.536 0.547h9.703c3.214 0 4.813 0 6.536-0.531 1.896-0.688 3.391-2.182 4.078-4.078 0.547-1.734 0.547-3.333 0.547-6.536v-9.667c0-3.214 0-4.813-0.547-6.547zM23.229 10.802l-1.245 1.24c-0.25 0.229-0.635 0.234-0.891 0.010-1.203-1.010-2.724-1.568-4.292-1.573-1.297 0-2.589 0.427-2.589 1.615 0 1.198 1.385 1.599 2.984 2.198 2.802 0.938 5.12 2.109 5.12 4.854 0 2.99-2.318 5.042-6.104 5.266l-0.349 1.604c-0.063 0.302-0.328 0.516-0.635 0.516h-2.391l-0.12-0.010c-0.354-0.078-0.578-0.432-0.505-0.786l0.375-1.693c-1.438-0.359-2.76-1.083-3.844-2.094v-0.016c-0.25-0.25-0.25-0.656 0-0.906l1.333-1.292c0.255-0.234 0.646-0.234 0.896 0 1.214 1.146 2.839 1.786 4.521 1.76 1.734 0 2.891-0.734 2.891-1.896s-1.172-1.464-3.385-2.292c-2.349-0.839-4.573-2.026-4.573-4.802 0-3.224 2.677-4.797 5.854-4.943l0.333-1.641c0.063-0.302 0.333-0.516 0.641-0.51h2.37l0.135 0.016c0.344 0.078 0.573 0.411 0.495 0.76l-0.359 1.828c1.198 0.396 2.333 1.026 3.302 1.849l0.031 0.031c0.25 0.266 0.25 0.667 0 0.906z"/>
+                </svg>
+                <span style="line-height: 1.2;">Cash App</span>
+              </span>
+              
+              <span style="
+                font-size: 11px;
+                font-weight: bold;
+                color: #3d95ce;
+                padding: 4px 8px;
+                background: #ffffff;
+                border: 1px solid #3d95ce;
+                border-radius: 3px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                line-height: 1.2;
+              ">
+                <svg viewBox="0 0 48 48" style="width: 14px; height: 14px; fill: #3d95ce; stroke: #3d95ce; flex-shrink: 0; margin: 0; padding: 0;" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z"/>
+                </svg>
+                <span style="line-height: 1.2;">Venmo</span>
+              </span>
+              
+              <span style="
+                font-size: 11px;
+                font-weight: bold;
+                color: #000000;
+                padding: 4px 8px;
+                background: #ffffff;
+                border: 1px solid #000000;
+                border-radius: 3px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                line-height: 1.2;
+              ">
+                <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: #000000; flex-shrink: 0; margin: 0; padding: 0;" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                </svg>
+                <span style="line-height: 1.2;">Apple Pay</span>
+              </span>
+              
+              <span style="
+                font-size: 11px;
+                font-weight: bold;
+                color: #0066cc;
+                padding: 4px 8px;
+                background: #ffffff;
+                border: 1px solid #0066cc;
+                border-radius: 3px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                line-height: 1.2;
+              ">
+                <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: none; stroke: #0066cc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; margin: 0; padding: 0;" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                  <line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+                <span style="line-height: 1.2;">Card</span>
+              </span>
+            </div>
+            
+            ${paymentSettings.cashAppTag ? `
+              <p style="
+                font-size: 10px;
+                color: #666666;
+                margin: 5px 0;
+              ">Cash App: ${escapeHtml(paymentSettings.cashAppTag)}</p>
+            ` : ''}
+            
+            ${paymentSettings.venmoUsername ? `
+              <p style="
+                font-size: 10px;
+                color: #666666;
+                margin: 5px 0;
+              ">Venmo: ${escapeHtml(paymentSettings.venmoUsername)}</p>
+            ` : ''}
+            
+            <p style="
+              font-size: 10px;
+              color: #999999;
+              margin-top: 20px;
+            ">Powered by m10 dj company</p>
+          </div>
+        `;
+      };
+      
+      // Create HTML based on PDF type
+      if (isTableTent) {
+        // Table tent: portrait page with two panels side-by-side for vertical fold
+        // When folded down the middle vertically, creates an A-frame that stands up
+        pdfContainer.innerHTML = `
+          <div style="
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: row;
+            position: relative;
+          ">
+            ${createPanelContent('left')}
+            ${createPanelContent('right')}
+          </div>
+          <!-- Fold line indicator (center of page) -->
+          <div style="
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: repeating-linear-gradient(
+              to bottom,
+              #cccccc 0px,
+              #cccccc 5px,
+              transparent 5px,
+              transparent 10px
+            );
+            pointer-events: none;
+            transform: translateX(-50%);
+          "></div>
+        `;
+      } else {
+        // Full page: single panel
+        pdfContainer.innerHTML = createPanelContent('single');
+      }
+
+      document.body.appendChild(pdfContainer);
+
+      // Wait for the image to load - since it's a data URL, it should load instantly
+      await new Promise((resolve) => {
+        const img = pdfContainer.querySelector('img') as HTMLImageElement;
+        if (img) {
+          // Data URLs load synchronously, so check if already loaded
+          if (img.complete && img.naturalHeight > 0 && img.naturalWidth > 0) {
+            console.log('QR code already loaded:', img.naturalWidth, 'x', img.naturalHeight);
+            resolve(true);
+          } else {
+            const timeout = setTimeout(() => {
+              console.warn('QR code image load timeout after 2 seconds');
+              resolve(true);
+            }, 2000);
+            
+            img.onload = () => {
+              clearTimeout(timeout);
+              console.log('QR code loaded successfully:', img.naturalWidth, 'x', img.naturalHeight);
+              resolve(true);
+            };
+            img.onerror = (error) => {
+              clearTimeout(timeout);
+              console.error('QR code image failed to load:', error);
+              console.error('Data URL length:', qrImageDataUrl?.substring(0, 50) || 'undefined');
+              resolve(true); // Continue anyway
+            };
+          }
+        } else {
+          console.error('QR code img element not found!');
+          resolve(true);
+        }
+      });
+
+      // Give browser time to fully render the layout
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Convert to canvas and then to PDF
+      const canvas = await html2canvas(pdfContainer, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false, // Changed to false since we're using data URLs
+        logging: true, // Enable logging to debug
+        width: pdfContainer.offsetWidth,
+        height: pdfContainer.offsetHeight,
+        backgroundColor: '#ffffff',
+        imageTimeout: 5000,
+      });
+      
+      console.log('Canvas created:', canvas.width, 'x', canvas.height);
+
+      // Remove the temporary container
+      document.body.removeChild(pdfContainer);
+
+      // Create PDF - table tent uses landscape, full page uses portrait
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const pdf = new jsPDF({
+        orientation: isTableTent ? 'landscape' : 'portrait',
+        unit: 'in',
+        format: 'letter',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / (imgWidth / 96), pdfHeight / (imgHeight / 96));
+      const imgX = (pdfWidth - (imgWidth / 96) * ratio) / 2;
+      const imgY = 0;
+
+      pdf.addImage(imgData, 'PNG', imgX, imgY, (imgWidth / 96) * ratio, (imgHeight / 96) * ratio);
+      
+      const typeSuffix = isTableTent ? '-table-tent' : '';
+      const filename = qrType === 'public' 
+        ? `qr-code-public-requests${typeSuffix}.pdf` 
+        : `qr-code-${qrEventCode || 'event'}${typeSuffix}.pdf`;
+      
+      // Generate PDF blob and show preview
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      
+      setPdfBlobUrl(blobUrl);
+      setPdfFilename(filename);
+      setShowPDFPreview(true);
+      setGeneratingPDF(false);
+
+      toast({
+        title: 'PDF Generated',
+        description: 'Preview your PDF before downloading',
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setGeneratingPDF(false);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate PDF. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const updateRequestStatus = async (requestId: string, newStatus: string) => {
@@ -1709,9 +2410,36 @@ export default function CrowdRequestsPage() {
     }
   };
 
+  // Check subscription tier for upgrade prompts
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+  
+  useEffect(() => {
+    async function checkTier() {
+      try {
+        const org = await getCurrentOrganization(supabase);
+        if (org) {
+          setSubscriptionTier(org.subscription_tier);
+        }
+      } catch (error) {
+        console.error('Error checking subscription tier:', error);
+      }
+    }
+    checkTier();
+  }, [supabase]);
+
   return (
     <AdminLayout>
       <div className="space-y-6 px-4 lg:px-6">
+        {/* Upgrade Prompt for Starter Tier */}
+        {subscriptionTier === 'starter' && (
+          <UpgradePrompt 
+            message="Unlock unlimited events, full CRM, invoicing, and advanced analytics with Professional plan."
+            featureName="Full Business Management"
+            tier="professional"
+            className="mb-4"
+          />
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="min-w-0 flex-1">
@@ -1736,6 +2464,15 @@ export default function CrowdRequestsPage() {
               <span className="sm:hidden">Settings</span>
             </Button>
             <Button
+              onClick={() => router.push('/admin/qr-scans')}
+              variant="outline"
+              className="inline-flex items-center gap-2 whitespace-nowrap"
+            >
+              <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">View Scans</span>
+              <span className="sm:hidden">Scans</span>
+            </Button>
+            <Button
               onClick={() => setShowQRGenerator(!showQRGenerator)}
               className="btn-primary inline-flex items-center gap-2 whitespace-nowrap"
             >
@@ -1758,21 +2495,6 @@ export default function CrowdRequestsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setQrType('event');
-                  setGeneratedQR(null);
-                  setGeneratedPublicQR(null);
-                }}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
-                  qrType === 'event'
-                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                Event-Specific
-              </button>
-              <button
-                type="button"
-                onClick={() => {
                   setQrType('public');
                   setGeneratedQR(null);
                   setGeneratedPublicQR(null);
@@ -1784,6 +2506,21 @@ export default function CrowdRequestsPage() {
                 }`}
               >
                 Public Requests Page
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setQrType('event');
+                  setGeneratedQR(null);
+                  setGeneratedPublicQR(null);
+                }}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
+                  qrType === 'event'
+                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                Event-Specific
               </button>
             </div>
 
@@ -1870,12 +2607,12 @@ export default function CrowdRequestsPage() {
                       </Button>
                       
                       <Button
-                        onClick={() => window.print()}
+                        onClick={printQRCodeToPDF}
                         variant="outline"
                         className="inline-flex items-center gap-2"
                       >
                         <Printer className="w-4 h-4" />
-                        Print
+                        Print PDF
                       </Button>
                     </>
                   )}
@@ -1954,16 +2691,17 @@ export default function CrowdRequestsPage() {
                       </Button>
                       
                       <Button
-                        onClick={() => window.print()}
+                        onClick={printQRCodeToPDF}
                         variant="outline"
                         className="inline-flex items-center gap-2"
                       >
                         <Printer className="w-4 h-4" />
-                        Print
+                        Print PDF
                       </Button>
                     </>
                   )}
                 </div>
+
 
                 {generatedPublicQR && (
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -1993,6 +2731,194 @@ export default function CrowdRequestsPage() {
             )}
           </div>
         )}
+
+        {/* PDF Preview Dialog */}
+        <Dialog open={showPDFPreview} onOpenChange={(open) => {
+          setShowPDFPreview(open);
+          if (!open) {
+            if (pdfBlobUrl) {
+              URL.revokeObjectURL(pdfBlobUrl);
+              setPdfBlobUrl(null);
+            }
+            setShowArtistNameInput(false);
+          }
+        }}>
+          <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>PDF Preview</DialogTitle>
+            </DialogHeader>
+            
+            {/* PDF Configuration Section */}
+            <div className="border-b pb-4 mb-4 space-y-4">
+              {/* PDF Type Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                  PDF Type
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPdfType('full-page')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
+                      pdfType === 'full-page'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    Full Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPdfType('table-tent')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
+                      pdfType === 'table-tent'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    Table Tent
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {pdfType === 'table-tent' 
+                    ? '8.5" x 11" portrait - fold vertically down the middle to create A-frame tent'
+                    : 'Standard 8.5" x 11" portrait format'}
+                </p>
+              </div>
+
+              {/* Artist Name Input */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                    Artist Name
+                  </label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowArtistNameInput(!showArtistNameInput)}
+                    className="h-8 px-2"
+                  >
+                    {showArtistNameInput ? (
+                      <>
+                        <X className="w-4 h-4 mr-1" />
+                        Hide
+                      </>
+                    ) : (
+                      <>
+                        <Edit3 className="w-4 h-4 mr-1" />
+                        Edit
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {showArtistNameInput || pdfArtistName ? (
+                  <Input
+                    value={pdfArtistName}
+                    onChange={(e) => setPdfArtistName(e.target.value)}
+                    placeholder="Enter artist/DJ name (leave empty to remove)"
+                    className="w-full"
+                  />
+                ) : (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    (No artist name - click Edit to add)
+                  </p>
+                )}
+                {pdfArtistName && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Leave empty to remove artist name from PDF
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
+              {generatingPDF ? (
+                <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600 dark:text-blue-400" />
+                    <p className="text-lg font-semibold mb-2">Generating PDF...</p>
+                    <p className="text-sm">This may take a few seconds</p>
+                  </div>
+                </div>
+              ) : pdfBlobUrl ? (
+                <iframe
+                  src={pdfBlobUrl}
+                  className="w-full h-full"
+                  title="PDF Preview"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+                  <div className="text-center">
+                    <p className="mb-4">Configure artist name and click "Generate PDF" to preview</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-between items-center gap-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPDFPreview(false);
+                  if (pdfBlobUrl) {
+                    URL.revokeObjectURL(pdfBlobUrl);
+                    setPdfBlobUrl(null);
+                  }
+                  setShowArtistNameInput(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <div className="flex gap-3">
+                <Button
+                  onClick={generatePDFWithArtistName}
+                  disabled={generatingPDF}
+                  className="inline-flex items-center gap-2"
+                >
+                  {generatingPDF ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      {pdfBlobUrl ? 'Regenerate PDF' : 'Generate PDF'}
+                    </>
+                  )}
+                </Button>
+                {pdfBlobUrl && (
+                  <Button
+                    onClick={() => {
+                      if (pdfBlobUrl) {
+                        const link = document.createElement('a');
+                        link.href = pdfBlobUrl;
+                        link.download = pdfFilename;
+                        link.click();
+                        
+                        toast({
+                          title: 'Downloaded',
+                          description: 'PDF saved to your downloads folder',
+                        });
+                        
+                        // Clean up after a delay to allow download to start
+                        setTimeout(() => {
+                          setShowPDFPreview(false);
+                          URL.revokeObjectURL(pdfBlobUrl);
+                          setPdfBlobUrl(null);
+                          setShowArtistNameInput(false);
+                        }, 1000);
+                      }
+                    }}
+                    className="inline-flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download PDF
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Settings - Full Screen Modal */}
         <Dialog open={showSettings} onOpenChange={setShowSettings}>
@@ -2091,23 +3017,6 @@ export default function CrowdRequestsPage() {
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           Your Venmo username for manual payments
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
-                          Google Review Link
-                        </label>
-                        <Input
-                          value={paymentSettings.googleReviewLink}
-                          onChange={(e) => setPaymentSettings(prev => ({ ...prev, googleReviewLink: e.target.value }))}
-                          placeholder="https://g.page/r/CSD9ayo7-MivEBE/review"
-                          className="w-full"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          The Google Review link used in review request emails and SMS messages
                         </p>
                       </div>
                     </div>
@@ -4547,15 +5456,19 @@ export default function CrowdRequestsPage() {
                         <div className="flex items-center gap-3">
                           {request.request_type === 'song_request' ? (
                             <Music className={`w-5 h-5 ${request.is_fast_track ? 'text-orange-500' : 'text-purple-500'}`} />
-                          ) : (
+                          ) : request.request_type === 'shoutout' ? (
                             <Mic className="w-5 h-5 text-pink-500" />
+                          ) : (
+                            <Gift className="w-5 h-5 text-yellow-500" />
                           )}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <p className="font-semibold text-gray-900 dark:text-white">
                                 {request.request_type === 'song_request' 
                                   ? request.song_title || 'Unknown Song'
-                                  : `Shoutout for ${request.recipient_name}`}
+                                  : request.request_type === 'shoutout'
+                                  ? `Shoutout for ${request.recipient_name}`
+                                  : 'Tip'}
                               </p>
                               {request.is_fast_track && (
                                 <Badge className="bg-orange-500 text-white flex items-center gap-1 px-2 py-0.5">
@@ -4584,6 +5497,11 @@ export default function CrowdRequestsPage() {
                             {request.request_type === 'shoutout' && request.recipient_message && (
                               <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs">
                                 {request.recipient_message}
+                              </p>
+                            )}
+                            {request.request_type === 'tip' && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Thank you for your tip!
                               </p>
                             )}
                           </div>
@@ -4809,15 +5727,19 @@ export default function CrowdRequestsPage() {
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     {request.request_type === 'song_request' ? (
                       <Music className={`w-6 h-6 flex-shrink-0 ${request.is_fast_track ? 'text-orange-500' : 'text-purple-500'}`} />
-                    ) : (
+                    ) : request.request_type === 'shoutout' ? (
                       <Mic className="w-6 h-6 flex-shrink-0 text-pink-500" />
+                    ) : (
+                      <Gift className="w-6 h-6 flex-shrink-0 text-yellow-500" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <p className="font-bold text-gray-900 dark:text-white text-base">
                           {request.request_type === 'song_request' 
                             ? request.song_title || 'Unknown Song'
-                            : `Shoutout for ${request.recipient_name}`}
+                            : request.request_type === 'shoutout'
+                            ? `Shoutout for ${request.recipient_name}`
+                            : 'Tip'}
                         </p>
                         {request.is_fast_track && (
                           <Badge className="bg-orange-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs">
@@ -4846,6 +5768,11 @@ export default function CrowdRequestsPage() {
                       {request.request_type === 'shoutout' && request.recipient_message && (
                         <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                           {request.recipient_message}
+                        </p>
+                      )}
+                      {request.request_type === 'tip' && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Thank you for your tip!
                         </p>
                       )}
                     </div>
@@ -5078,11 +6005,13 @@ export default function CrowdRequestsPage() {
                     <div className="flex items-center gap-2">
                       {selectedRequest.request_type === 'song_request' ? (
                         <Music className="w-5 h-5 text-purple-500" />
-                      ) : (
+                      ) : selectedRequest.request_type === 'shoutout' ? (
                         <Mic className="w-5 h-5 text-pink-500" />
+                      ) : (
+                        <Gift className="w-5 h-5 text-yellow-500" />
                       )}
                       <p className="font-semibold text-gray-900 dark:text-white capitalize">
-                        {selectedRequest.request_type.replace('_', ' ')}
+                        {selectedRequest.request_type === 'tip' ? 'Tip' : selectedRequest.request_type.replace('_', ' ')}
                       </p>
                       {selectedRequest.is_fast_track && (
                         <Badge className="bg-orange-500 text-white flex items-center gap-1 px-2 py-0.5">

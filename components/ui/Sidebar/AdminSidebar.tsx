@@ -39,8 +39,49 @@ export default function AdminSidebar({ onSignOut }: AdminSidebarProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
-  const navItems: NavItem[] = [
+  // Check subscription tier on mount
+  useEffect(() => {
+    checkSubscriptionTier();
+  }, []);
+
+  const checkSubscriptionTier = async () => {
+    try {
+      const { createClientComponentClient } = await import('@supabase/auth-helpers-nextjs');
+      const supabase = createClientComponentClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Check if platform admin
+      const adminEmails = [
+        'admin@m10djcompany.com', 
+        'manager@m10djcompany.com',
+        'djbenmurray@gmail.com'
+      ];
+      
+      if (adminEmails.includes(user.email || '')) {
+        setIsPlatformAdmin(true);
+        setSubscriptionTier('enterprise'); // Platform admins see everything
+        return;
+      }
+
+      // Get user's organization
+      const { getCurrentOrganization } = await import('@/utils/organization-context');
+      const org = await getCurrentOrganization(supabase);
+      
+      if (org) {
+        setSubscriptionTier(org.subscription_tier);
+      }
+    } catch (error) {
+      console.error('Error checking subscription tier:', error);
+    }
+  };
+
+  // Base navigation items
+  const allNavItems: NavItem[] = [
     { label: 'Dashboard', href: '/admin/dashboard', icon: <Home className="w-5 h-5" /> },
     { label: 'Projects', href: '/admin/projects', icon: <Briefcase className="w-5 h-5" /> },
     { label: 'Contacts', href: '/admin/contacts', icon: <Users className="w-5 h-5" /> },
@@ -52,8 +93,31 @@ export default function AdminSidebar({ onSignOut }: AdminSidebarProps) {
     { label: 'Email', href: '/admin/email', icon: <Mail className="w-5 h-5" /> },
     { label: 'Messages', href: '/admin/messages', icon: <MessageSquare className="w-5 h-5" /> },
     { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
+    { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
     { label: 'Social Media', href: '/admin/instagram', icon: <Instagram className="w-5 h-5" /> },
   ];
+
+  // Filter navigation based on subscription tier
+  const getNavItems = (): NavItem[] => {
+    // Platform admins and paid tiers see everything
+    if (isPlatformAdmin || subscriptionTier === 'professional' || subscriptionTier === 'enterprise' || subscriptionTier === 'white_label') {
+      return allNavItems;
+    }
+
+    // Starter tier only sees request-related features
+    if (subscriptionTier === 'starter') {
+      return [
+        { label: 'Dashboard', href: '/admin/dashboard-starter', icon: <Home className="w-5 h-5" /> },
+        { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
+        { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
+      ];
+    }
+
+    // Default: show all (for loading state or unknown tier)
+    return allNavItems;
+  };
+
+  const navItems = getNavItems();
 
   const bottomNavItems: NavItem[] = [
     { label: 'Settings', href: '/admin/settings', icon: <Settings className="w-5 h-5" /> },
@@ -84,10 +148,10 @@ export default function AdminSidebar({ onSignOut }: AdminSidebarProps) {
       {/* Mobile Menu Toggle */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-gray-900 text-white rounded-lg shadow-lg hover:bg-gray-800 transition-colors"
+        className="lg:hidden fixed top-2 left-2 z-50 p-2 bg-gray-900 text-white rounded-lg shadow-lg hover:bg-gray-800 transition-colors"
         aria-label="Toggle menu"
       >
-        {isMobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
       {/* Mobile Overlay */}
@@ -103,7 +167,7 @@ export default function AdminSidebar({ onSignOut }: AdminSidebarProps) {
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
         className={`
-          fixed left-0 top-0 h-screen bg-gray-900 text-white z-40
+          fixed left-0 top-0 h-screen bg-gray-900 text-white z-[60]
           transition-all duration-300 ease-in-out
           flex flex-col
           ${isExpanded ? 'w-64' : 'w-20'}
