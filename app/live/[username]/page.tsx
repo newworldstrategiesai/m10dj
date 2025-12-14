@@ -21,14 +21,21 @@ interface LiveStream {
   thumbnail_url: string | null;
   is_live: boolean;
   ppv_price_cents: number | null;
+  require_auth: boolean;
 }
 
 export default function LiveStreamPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  // Decode and clean username parameter
+  // Decode and clean username parameter with sanitization
   const rawUsername = (params?.username as string) || '';
-  const username = decodeURIComponent(rawUsername).replace(/^@/, '');
+  const decodedUsername = decodeURIComponent(rawUsername);
+  // Sanitize: remove @, trim, and remove any potentially dangerous characters
+  const username = decodedUsername
+    .replace(/^@/, '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, '') // Only allow alphanumeric, underscore, hyphen
+    .substring(0, 50); // Limit length
   const ppvToken = searchParams?.get('token') || null;
   
   const [stream, setStream] = useState<LiveStream | null>(null);
@@ -42,6 +49,7 @@ export default function LiveStreamPage() {
   const [paidAccess, setPaidAccess] = useState(false);
   const [showChat, setShowChat] = useState(false); // Hidden by default on mobile
   const viewerCountChannelRef = useRef<RealtimeChannel | null>(null);
+  const streamStatusChannelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -88,6 +96,14 @@ export default function LiveStreamPage() {
         }
 
         const typedStreamData = streamData as LiveStream;
+        
+        // Check if authentication is required
+        if (typedStreamData.require_auth && !user) {
+          setError('This stream requires you to be logged in');
+          setLoading(false);
+          return;
+        }
+        
         setStream(typedStreamData);
 
         // Check if stream is live
@@ -98,9 +114,10 @@ export default function LiveStreamPage() {
         }
 
         // Handle PPV access
+        let hasValidPPVToken = false;
         if (typedStreamData.ppv_price_cents && typedStreamData.ppv_price_cents > 0) {
           if (ppvToken) {
-            // Validate PPV token
+            // Validate PPV token (but don't mark as used yet)
             const { data: tokenData } = await supabase
               .from('ppv_tokens')
               .select('*')
@@ -110,12 +127,8 @@ export default function LiveStreamPage() {
               .single();
 
             if (tokenData) {
+              hasValidPPVToken = true;
               setPaidAccess(true);
-              // Mark token as used
-              await (supabase
-                .from('ppv_tokens') as any)
-                .update({ used: true, used_at: new Date().toISOString() })
-                .eq('id', (tokenData as any).id);
             } else {
               setError('Invalid or expired access token. Please purchase access.');
               setLoading(false);
@@ -128,28 +141,76 @@ export default function LiveStreamPage() {
           }
         }
 
-        // Get LiveKit token
-        const tokenResponse = await fetch('/api/livekit/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            roomName: typedStreamData.room_name,
-            participantName: user?.email?.split('@')[0] || 'Anonymous',
-            participantIdentity: user?.id || `anon-${Date.now()}`,
-            ppvToken: ppvToken || undefined,
-          }),
-        });
+        // Get LiveKit token with retry logic
+        let tokenResponse;
+        let retries = 3;
+        let livekitToken: string | null = null;
+        let livekitUrl: string | null = null;
 
-        if (!tokenResponse.ok) {
-          const errorData = await tokenResponse.json();
-          setError(errorData.error || 'Failed to get access token');
+        while (retries > 0) {
+          try {
+            tokenResponse = await fetch('/api/livekit/token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                roomName: typedStreamData.room_name,
+                participantName: user?.email?.split('@')[0] || 'Anonymous',
+                participantIdentity: user?.id || `anon-${Date.now()}`,
+                ppvToken: ppvToken || undefined,
+              }),
+            });
+
+            if (tokenResponse.ok) {
+              const data = await tokenResponse.json();
+              livekitToken = data.token;
+              livekitUrl = data.url;
+              break;
+            } else if (retries === 1) {
+              // Last retry failed
+              const errorData = await tokenResponse.json();
+              setError(errorData.error || 'Failed to get access token. Please try again.');
+              setLoading(false);
+              return;
+            }
+          } catch (err) {
+            console.error('Error getting token (retry):', err);
+            if (retries === 1) {
+              setError('Connection failed. Please check your internet and try again.');
+              setLoading(false);
+              return;
+            }
+          }
+          retries--;
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+        }
+
+        if (!livekitToken || !livekitUrl) {
+          setError('Failed to connect to stream. Please try again.');
           setLoading(false);
           return;
         }
 
-        const { token: livekitToken, url: livekitUrl } = await tokenResponse.json();
+        // Only mark PPV token as used AFTER successful token generation
+        if (hasValidPPVToken && ppvToken) {
+          const { data: tokenData } = await supabase
+            .from('ppv_tokens')
+            .select('*')
+            .eq('token', ppvToken)
+            .eq('stream_id', typedStreamData.id)
+            .eq('used', false)
+            .single();
+
+          if (tokenData) {
+            await (supabase
+              .from('ppv_tokens') as any)
+              .update({ used: true, used_at: new Date().toISOString() })
+              .eq('id', (tokenData as any).id);
+          }
+        }
+
         setToken(livekitToken);
         setServerUrl(livekitUrl);
 
@@ -167,6 +228,33 @@ export default function LiveStreamPage() {
 
         viewerCountChannelRef.current = viewerChannel;
 
+        // Subscribe to stream status changes (real-time updates when stream ends)
+        const statusChannel = supabase
+          .channel(`stream_status:${typedStreamData.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'live_streams',
+              filter: `id=eq.${typedStreamData.id}`,
+            },
+            (payload) => {
+              const updatedStream = payload.new as LiveStream;
+              if (!updatedStream.is_live) {
+                // Stream ended - show offline message
+                setError('Stream has ended');
+                setStream(null);
+              } else {
+                // Stream status updated
+                setStream(updatedStream);
+              }
+            }
+          )
+          .subscribe();
+
+        streamStatusChannelRef.current = statusChannel;
+
         // Initial viewer count fetch
         fetchViewerCount(typedStreamData.room_name);
 
@@ -183,16 +271,30 @@ export default function LiveStreamPage() {
     }
 
     return () => {
+      // Cleanup all subscriptions
       if (viewerCountChannelRef.current) {
         supabase.removeChannel(viewerCountChannelRef.current);
+        viewerCountChannelRef.current = null;
+      }
+      if (streamStatusChannelRef.current) {
+        supabase.removeChannel(streamStatusChannelRef.current);
+        streamStatusChannelRef.current = null;
       }
     };
-  }, [username, ppvToken, supabase]);
+  }, [username, ppvToken]);
 
   async function fetchViewerCount(roomName: string) {
-    // This would typically come from LiveKit room stats
-    // For now, we'll use a simple counter
-    // In production, you'd query LiveKit API for actual participant count
+    try {
+      // Request initial viewer count from API
+      const response = await fetch(`/api/livekit/viewer-count?roomName=${encodeURIComponent(roomName)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setViewerCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching viewer count:', error);
+      // Don't set error state, just log - viewer count is not critical
+    }
   }
 
   async function handleShare() {
@@ -228,11 +330,32 @@ export default function LiveStreamPage() {
   }
 
   if (error || !stream) {
+    const isAuthRequired = stream?.require_auth && !currentUserId;
+    
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center p-4">
         <div className="text-center text-white max-w-md w-full">
           <h1 className="text-2xl font-bold mb-4">{error || 'Stream not found'}</h1>
-          {stream?.ppv_price_cents && stream.ppv_price_cents > 0 && !paidAccess && (
+          
+          {isAuthRequired && (
+            <div className="space-y-4">
+              <p className="text-gray-400">
+                This stream is only available to logged-in users.
+              </p>
+              <Button
+                onClick={() => {
+                  window.location.href = `/tipjar/signin?redirect=${encodeURIComponent(window.location.pathname)}`;
+                }}
+                size="lg"
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                Sign In to Watch
+              </Button>
+            </div>
+          )}
+          
+          {stream?.ppv_price_cents && stream.ppv_price_cents > 0 && !paidAccess && !isAuthRequired && (
             <div className="space-y-4">
               <p className="text-gray-400">
                 This stream requires a one-time payment of ${(stream.ppv_price_cents / 100).toFixed(2)}
@@ -249,7 +372,7 @@ export default function LiveStreamPage() {
               </Button>
             </div>
           )}
-          {!stream?.is_live && (
+          {!stream?.is_live && !isAuthRequired && (
             <p className="text-gray-400 mt-4">
               Next stream: Check back soon!
             </p>
@@ -323,14 +446,16 @@ export default function LiveStreamPage() {
 
       {/* Main Content - Full Screen */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        {/* Video Player - Full screen on mobile */}
-        <div className={`${showChat ? 'hidden lg:flex' : 'flex'} flex-1 bg-black relative min-h-0`}>
-          <LiveVideoPlayer
-            roomName={stream.room_name}
-            token={token}
-            serverUrl={serverUrl}
-            viewerCount={viewerCount}
-          />
+        {/* Video Player - Full screen on mobile, no placeholder */}
+        <div className={`${showChat ? 'hidden lg:flex' : 'flex'} flex-1 bg-black relative min-h-0 overflow-hidden`}>
+          <div className="absolute inset-0 w-full h-full">
+            <LiveVideoPlayer
+              roomName={stream.room_name}
+              token={token}
+              serverUrl={serverUrl}
+              viewerCount={viewerCount}
+            />
+          </div>
           
           {/* Watermark */}
           <div className="absolute bottom-2 right-2 z-10 pointer-events-none">
@@ -356,9 +481,12 @@ export default function LiveStreamPage() {
           </div>
           <div className="flex-1 min-h-0 overflow-hidden">
             <LiveChat
+              streamId={stream.id}
               roomName={stream.room_name}
-              currentUserId={currentUserId || undefined}
-              currentUsername={currentUsername || undefined}
+              currentUserId={currentUserId}
+              currentUsername={currentUsername}
+              isStreamer={currentUserId === stream.user_id}
+              isModerator={false} // TODO: Add moderator role system
             />
           </div>
         </div>

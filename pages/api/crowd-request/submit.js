@@ -250,7 +250,7 @@ export default async function handler(req, res) {
     
     const paymentCode = generatePaymentCode();
     
-    // Create crowd request record
+    // Create crowd request record with all fields
     const insertData = {
       event_qr_code: uniqueEventCode,
       request_type: requestType,
@@ -283,32 +283,109 @@ export default async function handler(req, res) {
       insertData.organization_id = organizationIdToUse;
     }
     
-    const { data: crowdRequest, error: insertError } = await supabase
-      .from('crowd_requests')
-      .insert(insertData)
-      .select()
-      .single();
+    // Log the data being inserted for debugging
+    console.log('📝 Inserting crowd request with data:', {
+      eventCode: uniqueEventCode,
+      requestType,
+      organizationId: organizationIdToUse,
+      amount,
+      hasAudioFile: !!audioFileUrl,
+      insertDataKeys: Object.keys(insertData)
+    });
+
+    let crowdRequest;
+    let insertError;
+    
+    // Try insert with all fields first
+    try {
+      const result = await supabase
+        .from('crowd_requests')
+        .insert(insertData)
+        .select()
+        .single();
+      
+      crowdRequest = result.data;
+      insertError = result.error;
+    } catch (err) {
+      console.error('❌ Exception during insert:', err);
+      insertError = {
+        message: err.message || 'Unknown error during insert',
+        code: err.code || 'UNKNOWN',
+        details: err.toString()
+      };
+    }
+
+    // If insert failed due to missing columns, retry without optional audio upload fields
+    if (insertError && (insertError.code === 'PGRST204' || insertError.message?.includes('column') || insertError.message?.includes('does not exist'))) {
+      console.warn('⚠️ Insert failed due to missing columns, retrying without optional audio upload fields...');
+      
+      // Create a fallback insert data without optional audio upload columns
+      const fallbackInsertData = { ...insertData };
+      delete fallbackInsertData.artist_rights_confirmed;
+      delete fallbackInsertData.is_artist;
+      // Keep audio_file_url and is_custom_audio as they might exist
+      // Only remove audio_upload_fee if it's causing issues
+      
+      try {
+        const fallbackResult = await supabase
+          .from('crowd_requests')
+          .insert(fallbackInsertData)
+          .select()
+          .single();
+        
+        if (!fallbackResult.error && fallbackResult.data) {
+          console.log('✅ Insert succeeded with fallback data (without optional audio columns)');
+          crowdRequest = fallbackResult.data;
+          insertError = null;
+        } else {
+          // Try one more time without audio_upload_fee
+          delete fallbackInsertData.audio_upload_fee;
+          const finalResult = await supabase
+            .from('crowd_requests')
+            .insert(fallbackInsertData)
+            .select()
+            .single();
+          
+          if (!finalResult.error && finalResult.data) {
+            console.log('✅ Insert succeeded with minimal data (without audio upload fee)');
+            crowdRequest = finalResult.data;
+            insertError = null;
+          } else {
+            insertError = finalResult.error || fallbackResult.error;
+          }
+        }
+      } catch (fallbackErr) {
+        console.error('❌ Fallback insert also failed:', fallbackErr);
+        insertError = {
+          message: fallbackErr.message || insertError.message,
+          code: fallbackErr.code || insertError.code,
+          details: fallbackErr.toString()
+        };
+      }
+    }
 
     if (insertError) {
       console.error('❌ Error creating crowd request:', insertError);
       console.error('Insert error details:', JSON.stringify(insertError, null, 2));
+      console.error('Insert data that failed:', JSON.stringify(insertData, null, 2));
       
       // Provide helpful error message for missing columns
       let helpfulMessage = insertError.message || 'Unknown database error';
-      if (insertError.code === 'PGRST204' && insertError.message?.includes('payment_code')) {
-        helpfulMessage = 'Database migration required: payment_code column missing. Please run the migration in Supabase SQL Editor.';
-      } else if (insertError.code === 'PGRST204' && insertError.message?.includes('is_next')) {
-        helpfulMessage = 'Database migration required: is_next column missing. Please run the migration in Supabase SQL Editor.';
-      } else if (insertError.code === 'PGRST204' && insertError.message?.includes('next_fee')) {
-        helpfulMessage = 'Database migration required: next_fee column missing. Please run the migration in Supabase SQL Editor.';
+      if (insertError.code === 'PGRST204' || insertError.message?.includes('column') || insertError.message?.includes('does not exist')) {
+        helpfulMessage = 'Database migration required: One or more columns may be missing. Please check the database schema and run necessary migrations.';
+      } else if (insertError.code === '23505') {
+        helpfulMessage = 'Duplicate entry: This request may have already been created.';
+      } else if (insertError.code === '23503') {
+        helpfulMessage = 'Foreign key constraint failed: Invalid organization_id or related record missing.';
       }
       
       return res.status(500).json({ 
         error: 'Failed to create request',
         details: helpfulMessage,
         code: insertError.code,
-        hint: insertError.hint || 'Check APPLY_MIGRATIONS.md for instructions',
-        migrationNeeded: insertError.code === 'PGRST204'
+        message: insertError.message,
+        hint: insertError.hint || 'Check server logs for more details',
+        migrationNeeded: insertError.code === 'PGRST204' || insertError.message?.includes('column') || insertError.message?.includes('does not exist')
       });
     }
 

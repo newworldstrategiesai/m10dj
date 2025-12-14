@@ -167,3 +167,4 @@ components/
 - Components are reusable and follow ShadCN UI patterns
 - Design matches the conversion-optimized spec provided
 
+

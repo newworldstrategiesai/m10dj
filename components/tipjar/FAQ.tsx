@@ -63,3 +63,4 @@ export function FAQ({ items, className }: FAQProps) {
   );
 }
 
+

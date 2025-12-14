@@ -9,6 +9,17 @@ import { scrollToContact } from '../../utils/scroll-helpers';
 import ContactFormModal from './ContactFormModal';
 import SocialAccountSelector from '../ui/SocialAccountSelector';
 
+// Helper function to get absolute URL for assets (works across domains)
+const getAssetUrl = (path) => {
+  if (typeof window === 'undefined') {
+    // Server-side: use environment variable or default to main domain
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+    return `${siteUrl}${path}`;
+  }
+  // Client-side: use current origin (works for both m10djcompany.com and tipjar.live)
+  return path;
+};
+
 export default function Header({ customLogoUrl = null, transparent = false, socialLinks = null, isOwner = false, organizationSlug = null, organizationId = null }) {
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -342,7 +353,9 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                 <div className="relative flex-shrink-0 overflow-visible">
                   {shouldBeTransparent && !customLogoUrl ? (
                     <Image
-                      src={isDarkMode || !isScrolled ? "/assets/m10%20dj%20company%20logo%20white.gif" : "/assets/m10%20dj%20company%20logo%20black.gif"}
+                      src={isDarkMode || !isScrolled 
+                        ? getAssetUrl("/assets/m10 dj company logo white.gif")
+                        : getAssetUrl("/assets/m10 dj company logo black.gif")}
                       alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
                       width={150}
                       height={68}
@@ -350,10 +363,19 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       priority
                       unoptimized={true}
                       style={{ objectFit: 'contain', display: 'block' }}
+                      onError={(e) => {
+                        // Fallback if GIF doesn't load, try JPG version
+                        const currentSrc = e.target.src;
+                        if (currentSrc.includes('white.gif')) {
+                          e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
+                        } else if (currentSrc.includes('black.gif')) {
+                          e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
+                        }
+                      }}
                     />
                   ) : (
                     <Image
-                      src={customLogoUrl || "/logo-static.jpg"}
+                      src={customLogoUrl || getAssetUrl("/logo-static.jpg")}
                       alt={customLogoUrl ? "Organization Logo" : "M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"}
                       width={45}
                       height={45}
@@ -971,7 +993,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-semibold font-inter mb-0.5 ${
-                        shouldBeTransparent && !isScrolled ? 'text-white/80' : 'text-gray-700'
+                        shouldBeTransparent && !isScrolled ? 'text-white/80' : 'text-gray-700 dark:text-white'
                       }`}>Call or Text</p>
                       <a href="tel:+19014102020" className={`font-bold font-inter text-lg transition-colors ${
                         shouldBeTransparent && !isScrolled ? 'text-yellow-300 hover:text-yellow-200' : 'text-brand hover:text-amber-700'

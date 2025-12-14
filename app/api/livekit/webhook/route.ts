@@ -42,16 +42,18 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'participant_joined':
-        // Track participant join (optional)
+        // Track participant join and broadcast viewer count
         if (event.room) {
           console.log(`Participant joined: ${event.participant?.identity} to room ${event.room.name}`);
+          await broadcastViewerCount(event.room.name);
         }
         break;
 
       case 'participant_left':
-        // Track participant leave (optional)
+        // Track participant leave and broadcast viewer count
         if (event.room) {
           console.log(`Participant left: ${event.participant?.identity} from room ${event.room.name}`);
+          await broadcastViewerCount(event.room.name);
         }
         break;
 
@@ -79,5 +81,50 @@ async function updateStreamStatus(roomName: string, isLive: boolean) {
     .from('live_streams') as any)
     .update({ is_live: isLive, updated_at: new Date().toISOString() })
     .eq('room_name', roomName);
+}
+
+async function broadcastViewerCount(roomName: string) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  try {
+    // Get current participant count from LiveKit Room API
+    const { RoomServiceClient } = await import('livekit-server-sdk');
+    const roomService = new RoomServiceClient(
+      process.env.LIVEKIT_URL!,
+      process.env.LIVEKIT_API_KEY!,
+      process.env.LIVEKIT_API_SECRET!
+    );
+
+    const participants = await roomService.listParticipants(roomName);
+    // Filter out the streamer (participant with canPublish permission)
+    const viewerCount = participants.filter(
+      (p: any) => !p.permissions?.canPublish
+    ).length;
+
+    // Broadcast viewer count to all subscribers
+    const channel = supabase.channel(`viewer_count:${roomName}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'viewer_count_update',
+      payload: { count: viewerCount, roomName },
+    });
+  } catch (error) {
+    console.error('Error broadcasting viewer count:', error);
+    // Fallback: try to get count from event data if available
+    // Otherwise broadcast 0
+    try {
+      const channel = supabase.channel(`viewer_count:${roomName}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'viewer_count_update',
+        payload: { count: 0, roomName },
+      });
+    } catch (broadcastError) {
+      console.error('Error broadcasting fallback count:', broadcastError);
+    }
+  }
 }
 

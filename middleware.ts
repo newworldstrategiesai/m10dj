@@ -199,6 +199,14 @@ export async function middleware(request: NextRequest) {
   // If this is the main domain, let Pages Router handle it (pages/index.js)
   // Make sure we're not matching tipjar or djdash domains
   if (isMainDomain && !isTipJarDomain && !isDJDashDomain) {
+    // Block go-live page on main domain - redirect to tipjar.live
+    if (url.pathname.startsWith('/dashboard/go-live')) {
+      const tipjarUrl = new URL('https://tipjar.live/dashboard/go-live');
+      // Preserve query params if any
+      tipjarUrl.search = url.search;
+      return NextResponse.redirect(tipjarUrl);
+    }
+    
     const response = await updateSession(request);
     response.headers.set('x-pathname', request.nextUrl.pathname);
     return response;

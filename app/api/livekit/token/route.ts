@@ -1,9 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AccessToken } from 'livekit-server-sdk';
 import { createClient } from '@/utils/supabase/server';
+import { checkRateLimit } from './rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
+               request.headers.get('x-real-ip') || 
+               'unknown';
+    const rateLimit = checkRateLimit(ip);
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'Rate limit exceeded. Please try again later.',
+          resetAt: rateLimit.resetAt 
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': '10',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimit.resetAt.toString(),
+            'Retry-After': Math.ceil((rateLimit.resetAt - Date.now()) / 1000).toString(),
+          }
+        }
+      );
+    }
+
     const body = await request.json();
     const { roomName, participantName, participantIdentity } = body;
 
@@ -115,6 +140,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       token,
       url: process.env.LIVEKIT_URL,
+    }, {
+      headers: {
+        'X-RateLimit-Limit': '10',
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        'X-RateLimit-Reset': rateLimit.resetAt.toString(),
+      }
     });
   } catch (error) {
     console.error('Error generating LiveKit token:', error);

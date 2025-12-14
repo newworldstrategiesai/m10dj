@@ -97,12 +97,54 @@ export function LiveVideoPlayer({
         },
       } as any}
     >
-      <div className="flex flex-col h-full w-full relative">
-        <VideoConference />
+      <div className="flex flex-col h-full w-full relative bg-black">
+        {/* Custom video layout - hide default VideoConference avatar placeholders */}
+        <div className="absolute inset-0 w-full h-full">
+          <VideoConference 
+            style={{
+              '--lk-grid-gap': '0px',
+            } as React.CSSProperties}
+          />
+        </div>
         <RoomAudioRenderer />
         
+        {/* Custom CSS to hide avatar placeholders and make video full screen */}
+        <style dangerouslySetInnerHTML={{__html: `
+          /* Hide large avatar placeholders in LiveKit VideoConference */
+          .lk-grid-layout .lk-participant-tile:not(:has(video)) {
+            display: none !important;
+          }
+          
+          /* Make video tracks fill the container */
+          .lk-participant-tile video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+          }
+          
+          /* Hide empty participant tiles */
+          .lk-participant-tile:empty,
+          .lk-participant-tile:not(:has(video)):not(:has(canvas)) {
+            display: none !important;
+          }
+          
+          /* Ensure grid layout takes full space */
+          .lk-grid-layout {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 100% !important;
+          }
+          
+          /* Make participant tiles fill available space */
+          .lk-participant-tile {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 100% !important;
+          }
+        `}} />
+        
         {/* Viewer Count Badge */}
-        {viewerCount > 0 && (
+        {viewerCount > 0 && !isStreamer && (
           <div className="absolute top-4 left-4 z-10 bg-black/70 text-white px-3 py-1.5 rounded-full flex items-center gap-2">
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
             <span className="text-sm font-semibold">{viewerCount} watching</span>
