@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { requestId, paymentStatus, paymentMethod, amountPaid } = req.body;
+  const { requestId, paymentStatus, paymentMethod, amountPaid, paidAt } = req.body;
 
   if (!requestId || !paymentStatus) {
     return res.status(400).json({ error: 'Request ID and payment status are required' });
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 
     // If marking as paid, update amount_paid and paid_at
     if (paymentStatus === 'paid') {
-      updateData.paid_at = new Date().toISOString();
+      updateData.paid_at = paidAt || new Date().toISOString();
       
       // Update amount_paid if provided, otherwise use amount_requested
       if (amountPaid) {

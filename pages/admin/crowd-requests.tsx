@@ -6474,7 +6474,72 @@ export default function CrowdRequestsPage() {
 
                 {/* Payment Information */}
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Payment Information</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Payment Information</p>
+                    {selectedRequest.payment_intent_id && stripeDetails?.paymentIntent && 
+                     stripeDetails.paymentIntent.status === 'succeeded' && 
+                     (selectedRequest.payment_status !== 'paid' || selectedRequest.amount_paid === 0) && (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            setLoadingStripeDetails(true);
+                            // Sync payment status from Stripe
+                            const response = await fetch('/api/crowd-request/update-payment-status', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                requestId: selectedRequest.id,
+                                paymentStatus: 'paid',
+                                paymentMethod: 'card',
+                                amountPaid: stripeDetails.paymentIntent.amount,
+                                paidAt: stripeDetails.paymentIntent.created 
+                                  ? new Date(stripeDetails.paymentIntent.created * 1000).toISOString()
+                                  : new Date().toISOString(),
+                              }),
+                            });
+                            
+                            if (response.ok) {
+                              toast({
+                                title: 'Payment Synced',
+                                description: 'Payment status updated from Stripe',
+                              });
+                              // Refresh request data
+                              await fetchRequests();
+                              // Update selected request
+                              const updatedRequest = requests.find(r => r.id === selectedRequest.id);
+                              if (updatedRequest) {
+                                setSelectedRequest(updatedRequest);
+                              }
+                            } else {
+                              throw new Error('Failed to update payment status');
+                            }
+                          } catch (error: any) {
+                            toast({
+                              title: 'Sync Failed',
+                              description: error?.message || 'Failed to sync payment status',
+                              variant: 'destructive',
+                            });
+                          } finally {
+                            setLoadingStripeDetails(false);
+                          }
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                        disabled={loadingStripeDetails}
+                      >
+                        <RefreshCw className={`w-3 h-3 mr-1 ${loadingStripeDetails ? 'animate-spin' : ''}`} />
+                        Sync from Stripe
+                      </Button>
+                    )}
+                  </div>
+                  {selectedRequest.payment_intent_id && stripeDetails?.paymentIntent && 
+                   stripeDetails.paymentIntent.status === 'succeeded' && 
+                   (selectedRequest.payment_status !== 'paid' || selectedRequest.amount_paid === 0) && (
+                    <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-800 dark:text-yellow-200">
+                      ⚠️ Payment succeeded in Stripe but not synced to database. Click "Sync from Stripe" to update.
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Amount Requested</p>
@@ -6486,6 +6551,13 @@ export default function CrowdRequestsPage() {
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Amount Paid</p>
                       <p className="text-lg font-bold text-green-600 dark:text-green-400">
                         ${((selectedRequest.amount_paid || 0) / 100).toFixed(2)}
+                        {stripeDetails?.paymentIntent?.status === 'succeeded' && 
+                         stripeDetails.paymentIntent.amount && 
+                         selectedRequest.amount_paid !== stripeDetails.paymentIntent.amount && (
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400 ml-2">
+                            (Stripe: ${(stripeDetails.paymentIntent.amount / 100).toFixed(2)})
+                          </span>
+                        )}
                       </p>
                     </div>
                     {selectedRequest.is_fast_track && selectedRequest.fast_track_fee > 0 && (
@@ -6498,9 +6570,17 @@ export default function CrowdRequestsPage() {
                     )}
                     <div>
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Payment Status</p>
-                      <p className="font-medium text-gray-900 dark:text-white capitalize">
-                        {selectedRequest.payment_status}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900 dark:text-white capitalize">
+                          {selectedRequest.payment_status}
+                        </p>
+                        {stripeDetails?.paymentIntent?.status === 'succeeded' && 
+                         selectedRequest.payment_status !== 'paid' && (
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400">
+                            (Stripe: {stripeDetails.paymentIntent.status})
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {selectedRequest.payment_method && (
                       <div>
