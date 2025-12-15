@@ -33,11 +33,11 @@ export function PricingCard({
   return (
     <Card className={cn(
       "p-8 relative dark:bg-gray-900 dark:border-gray-800",
-      popular && "border-2 border-tipjar-primary-500 shadow-lg",
+      popular && "border-2 border-emerald-500 shadow-lg",
       className
     )}>
       {popular && (
-        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-tipjar-primary-500 text-white">
+        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white">
           Most Popular
         </Badge>
       )}
@@ -50,7 +50,7 @@ export function PricingCard({
       <ul className="space-y-3 mb-8">
         {features.map((feature, index) => (
           <li key={index} className="flex items-start gap-2">
-            <Check className="w-5 h-5 text-tipjar-success-500 flex-shrink-0 mt-0.5" />
+            <Check className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
             <span className="text-gray-700 dark:text-gray-300">{feature}</span>
           </li>
         ))}
@@ -60,7 +60,7 @@ export function PricingCard({
           className={cn(
             "w-full",
             popular 
-              ? "bg-tipjar-primary-500 hover:bg-tipjar-primary-600 text-white" 
+              ? "bg-emerald-500 hover:bg-emerald-600 text-white" 
               : "bg-gray-100 hover:bg-gray-200 text-gray-900 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-white"
           )}
           size="lg"
@@ -71,5 +71,6 @@ export function PricingCard({
     </Card>
   );
 }
+
 
 

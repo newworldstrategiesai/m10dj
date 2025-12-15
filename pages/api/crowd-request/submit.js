@@ -299,10 +299,10 @@ export default async function handler(req, res) {
     // Try insert with all fields first
     try {
       const result = await supabase
-        .from('crowd_requests')
-        .insert(insertData)
-        .select()
-        .single();
+      .from('crowd_requests')
+      .insert(insertData)
+      .select()
+      .single();
       
       crowdRequest = result.data;
       insertError = result.error;

@@ -43,9 +43,9 @@ export function FAQ({ items, className }: FAQProps) {
               {item.question}
             </h3>
             {openItems.has(index) ? (
-              <ChevronUp className="w-5 h-5 text-tipjar-primary-500 flex-shrink-0" />
+              <ChevronUp className="w-5 h-5 text-emerald-500 flex-shrink-0" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-tipjar-primary-500 flex-shrink-0" />
+              <ChevronDown className="w-5 h-5 text-emerald-500 flex-shrink-0" />
             )}
           </button>
           {openItems.has(index) && (
@@ -62,5 +62,6 @@ export function FAQ({ items, className }: FAQProps) {
     </div>
   );
 }
+
 
 

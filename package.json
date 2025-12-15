@@ -23,7 +23,8 @@
     "supabase:generate-seed": "npx supabase db dump --data-only -f supabase/seed.sql",
     "supabase:push": "npx supabase db push",
     "supabase:pull": "npx supabase db pull",
-    "optimize:logo-gif": "node scripts/optimize-logo-gif.js"
+    "optimize:logo-gif": "node scripts/optimize-logo-gif.js",
+    "generate:og-image": "node scripts/generate-og-image.js"
   },
   "dependencies": {
     "@openai/agents": "^0.3.0",

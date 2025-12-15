@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     siteName: 'TipJar Live',
     images: [
       {
-        url: '/assets/tipjar-og-image.png',
+        url: '/assets/tipjar-open-graph-new.png',
         width: 1200,
         height: 630,
         alt: 'TipJar Live - DJ Tip Collection & Song Request App',
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'TipJar Live - DJ Tip Collection & Song Request App',
     description: 'The best tip jar app and song request app for DJs. Easy DJ tip collection with QR codes—no app downloads required.',
-    images: ['/assets/tipjar-og-image.png'],
+    images: ['/assets/tipjar-open-graph-new.png'],
   },
 };
 
@@ -66,7 +66,7 @@ export default function TipJarHomePage() {
       <TipJarHeader />
       
       {/* Hero Section - Redesigned */}
-      <section className="relative bg-gradient-to-br from-purple-600 via-purple-700 to-pink-600 overflow-hidden pt-24 md:pt-32 pb-20 md:pb-32">
+      <section className="relative bg-gradient-to-br from-emerald-600 via-green-600 to-emerald-700 overflow-hidden pt-24 md:pt-32 pb-20 md:pb-32">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -76,8 +76,8 @@ export default function TipJarHomePage() {
         </div>
         
         {/* Floating Elements */}
-        <div className="absolute top-20 right-10 w-72 h-72 bg-pink-500/20 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-20 right-10 w-72 h-72 bg-green-500/20 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-20 left-10 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-6xl mx-auto">
@@ -94,7 +94,7 @@ export default function TipJarHomePage() {
                   Request Songs Easily.
                 </h1>
                 
-                <p className="text-xl md:text-2xl text-purple-100 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                <p className="text-xl md:text-2xl text-emerald-50 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0">
                   The simple way for DJs to collect tips and song requests. No app downloads. No awkward conversations. Just instant tips and organized requests—all from any phone browser.
                 </p>
                 
@@ -102,7 +102,7 @@ export default function TipJarHomePage() {
                   <Link href="/signup">
                     <Button 
                       size="lg" 
-                      className="bg-white text-purple-600 hover:bg-gray-100 font-semibold text-lg px-8 py-6 h-auto shadow-xl hover:shadow-2xl transition-all"
+                      className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-8 py-6 h-auto shadow-xl hover:shadow-2xl transition-all"
                     >
                       Start Free Trial
                       <ArrowRight className="ml-2 w-5 h-5" />
@@ -119,7 +119,7 @@ export default function TipJarHomePage() {
                   </Link>
                 </div>
                 
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-purple-100">
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-emerald-50">
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="w-5 h-5" />
                     <span>No credit card required</span>
@@ -141,7 +141,7 @@ export default function TipJarHomePage() {
                   {/* Phone Mockup */}
                   <div className="bg-gray-900 rounded-[3rem] p-4 shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
                     <div className="bg-white rounded-[2.5rem] overflow-hidden">
-                      <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-6 text-white">
+                      <div className="bg-gradient-to-br from-emerald-500 to-green-500 p-6 text-white">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-2">
                             <Music className="w-6 h-6" />
@@ -150,13 +150,13 @@ export default function TipJarHomePage() {
                           <QrCode className="w-6 h-6" />
                         </div>
                         <h3 className="text-2xl font-bold mb-2">Request a Song</h3>
-                        <p className="text-purple-100">Or send a tip to boost your request!</p>
+                        <p className="text-emerald-50">Or send a tip to boost your request!</p>
                       </div>
                       <div className="p-6 space-y-4">
                         <div className="bg-gray-50 rounded-lg p-4">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                              <Music className="w-5 h-5 text-purple-600" />
+                            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                              <Music className="w-5 h-5 text-emerald-600" />
                             </div>
                             <div className="flex-1">
                               <p className="font-semibold text-gray-900">Search for a song...</p>
@@ -211,7 +211,7 @@ export default function TipJarHomePage() {
               <span className="text-gray-600 dark:text-gray-400">tips collected</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Music className="w-5 h-5 text-purple-600" />
+              <Music className="w-5 h-5 text-emerald-600" />
               <span className="font-semibold text-gray-900 dark:text-white">45K+</span>
               <span className="text-gray-600 dark:text-gray-400">song requests</span>
             </div>
@@ -238,8 +238,8 @@ export default function TipJarHomePage() {
           
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             <div className="relative">
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 border border-purple-100 dark:border-purple-800 hover:shadow-xl transition-shadow">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 text-white rounded-2xl flex items-center justify-center text-3xl font-bold mx-auto mb-6 shadow-lg">
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-2xl p-8 border border-emerald-100 dark:border-emerald-800 hover:shadow-xl transition-shadow">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-green-500 text-white rounded-2xl flex items-center justify-center text-3xl font-bold mx-auto mb-6 shadow-lg">
                   1
                 </div>
                 <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Create Your TipJar</h3>
@@ -248,12 +248,12 @@ export default function TipJarHomePage() {
                 </p>
               </div>
               {/* Connector Line */}
-              <div className="hidden md:block absolute top-1/2 right-0 w-full h-0.5 bg-gradient-to-r from-purple-200 to-transparent transform translate-x-1/2" />
+              <div className="hidden md:block absolute top-1/2 right-0 w-full h-0.5 bg-gradient-to-r from-emerald-200 to-transparent transform translate-x-1/2" />
             </div>
             
             <div className="relative">
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 border border-purple-100 dark:border-purple-800 hover:shadow-xl transition-shadow">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 text-white rounded-2xl flex items-center justify-center text-3xl font-bold mx-auto mb-6 shadow-lg">
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-2xl p-8 border border-emerald-100 dark:border-emerald-800 hover:shadow-xl transition-shadow">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-green-500 text-white rounded-2xl flex items-center justify-center text-3xl font-bold mx-auto mb-6 shadow-lg">
                   2
                 </div>
                 <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Share at Your Event</h3>
@@ -262,12 +262,12 @@ export default function TipJarHomePage() {
                 </p>
               </div>
               {/* Connector Line */}
-              <div className="hidden md:block absolute top-1/2 right-0 w-full h-0.5 bg-gradient-to-r from-purple-200 to-transparent transform translate-x-1/2" />
+              <div className="hidden md:block absolute top-1/2 right-0 w-full h-0.5 bg-gradient-to-r from-emerald-200 to-transparent transform translate-x-1/2" />
             </div>
             
             <div>
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 border border-purple-100 dark:border-purple-800 hover:shadow-xl transition-shadow">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 text-white rounded-2xl flex items-center justify-center text-3xl font-bold mx-auto mb-6 shadow-lg">
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-2xl p-8 border border-emerald-100 dark:border-emerald-800 hover:shadow-xl transition-shadow">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-green-500 text-white rounded-2xl flex items-center justify-center text-3xl font-bold mx-auto mb-6 shadow-lg">
                   3
                 </div>
                 <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Get Paid Instantly</h3>
@@ -374,22 +374,22 @@ export default function TipJarHomePage() {
           
           {/* Stats */}
           <div className="max-w-4xl mx-auto">
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 md:p-12 border border-purple-100 dark:border-purple-800">
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-2xl p-8 md:p-12 border border-emerald-100 dark:border-emerald-800">
               <div className="grid grid-cols-3 gap-8 text-center">
                 <div>
-                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent mb-2">
                     1,200+
                   </div>
                   <div className="text-gray-600 dark:text-gray-400 font-medium">DJs Using TipJar</div>
                 </div>
                 <div>
-                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent mb-2">
                     $250K+
                   </div>
                   <div className="text-gray-600 dark:text-gray-400 font-medium">Tips Collected</div>
                 </div>
                 <div>
-                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent mb-2">
                     45K+
                   </div>
                   <div className="text-gray-600 dark:text-gray-400 font-medium">Song Requests</div>
@@ -408,7 +408,7 @@ export default function TipJarHomePage() {
               Simple, Fair Pricing
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300">
-              Start free, upgrade when you're making money. 3.5% + $0.30 platform fee only when you get paid.
+              Start free, upgrade when you&apos;re making money. 3.5% + $0.30 platform fee only when you get paid.
             </p>
           </div>
           
@@ -442,14 +442,14 @@ export default function TipJarHomePage() {
             </div>
             
             {/* Pro Plan - Featured */}
-            <div className="bg-gradient-to-br from-purple-600 to-pink-600 text-white rounded-2xl p-8 border-4 border-purple-300 relative shadow-2xl transform scale-105">
+            <div className="bg-gradient-to-br from-emerald-600 to-green-500 text-white rounded-2xl p-8 border-4 border-emerald-300 relative shadow-2xl transform scale-105">
               <div className="absolute top-0 right-0 bg-yellow-400 text-gray-900 px-4 py-1 rounded-bl-xl rounded-tr-2xl text-sm font-bold">
                 Most Popular
               </div>
               <div className="text-center mb-6">
                 <h3 className="text-2xl font-bold mb-2">Pro</h3>
-                <div className="text-4xl font-bold mb-1">$29<span className="text-lg text-purple-100">/month</span></div>
-                <p className="text-sm text-purple-100">For active DJs</p>
+                <div className="text-4xl font-bold mb-1">$29<span className="text-lg text-emerald-50">/month</span></div>
+                <p className="text-sm text-emerald-50">For active DJs</p>
               </div>
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start">
@@ -474,7 +474,7 @@ export default function TipJarHomePage() {
                 </li>
               </ul>
               <Link href="/signup" className="block">
-                <Button className="w-full bg-white text-purple-600 hover:bg-gray-100 font-semibold">
+                <Button className="w-full bg-white text-emerald-600 hover:bg-gray-100 font-semibold">
                   Start Free Trial
                 </Button>
               </Link>
@@ -506,7 +506,7 @@ export default function TipJarHomePage() {
                 </li>
               </ul>
               <Link href="/signup" className="block">
-                <Button variant="outline" className="w-full border-2 border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20">
+                <Button variant="outline" className="w-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
                   Start Free Trial
                 </Button>
               </Link>
@@ -514,10 +514,10 @@ export default function TipJarHomePage() {
           </div>
           
           <div className="text-center">
-            <Link href="/tipjar/pricing">
+            <Link href="/pricing">
               <Button 
                 variant="outline"
-                className="border-2 border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-semibold px-8 py-6 text-lg"
+                className="border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 font-semibold px-8 py-6 text-lg"
               >
                 View Full Pricing Details <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
@@ -527,7 +527,7 @@ export default function TipJarHomePage() {
       </section>
 
       {/* Final CTA - Redesigned */}
-      <section className="py-24 bg-gradient-to-br from-purple-600 via-purple-700 to-pink-600 relative overflow-hidden">
+      <section className="py-24 bg-gradient-to-br from-emerald-600 via-green-600 to-emerald-700 relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -541,14 +541,14 @@ export default function TipJarHomePage() {
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
               Ready to Start Making More Money?
             </h2>
-            <p className="text-xl md:text-2xl text-purple-100 mb-10 leading-relaxed">
+            <p className="text-xl md:text-2xl text-emerald-50 mb-10 leading-relaxed">
               Join 1,200+ DJs who are making more money with TipJar. Setup takes 2 minutes. No credit card required.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup">
                 <Button 
                   size="lg" 
-                  className="bg-white text-purple-600 hover:bg-gray-100 font-semibold text-lg px-10 py-7 h-auto shadow-2xl hover:shadow-3xl transition-all"
+                  className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-10 py-7 h-auto shadow-2xl hover:shadow-3xl transition-all"
                 >
                   Start Free Trial
                   <ArrowRight className="ml-2 w-5 h-5" />
@@ -565,7 +565,7 @@ export default function TipJarHomePage() {
               </Link>
             </div>
             
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-purple-100">
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-emerald-50">
               <div className="flex items-center space-x-2">
                 <Shield className="w-5 h-5" />
                 <span>Secure payments via Stripe</span>

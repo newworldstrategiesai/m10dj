@@ -15,7 +15,7 @@ export function FeatureCard({ title, description, icon, className }: FeatureCard
   return (
     <Card className={cn("p-6 h-full hover:shadow-lg transition-shadow dark:bg-gray-900 dark:border-gray-800", className)}>
       {icon && (
-        <div className="mb-4 text-tipjar-primary-500">
+        <div className="mb-4 text-emerald-500">
           {icon}
         </div>
       )}
@@ -24,5 +24,6 @@ export function FeatureCard({ title, description, icon, className }: FeatureCard
     </Card>
   );
 }
+
 
 

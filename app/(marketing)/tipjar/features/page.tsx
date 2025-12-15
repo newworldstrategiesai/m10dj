@@ -46,7 +46,7 @@ export default function FeaturesPage() {
       <TipJarHeader />
       
       {/* Hero Section - Redesigned */}
-      <section className="relative bg-gradient-to-br from-purple-600 via-purple-700 to-pink-600 overflow-hidden pt-32 pb-20">
+      <section className="relative bg-gradient-to-br from-emerald-600 via-green-600 to-emerald-700 overflow-hidden pt-32 pb-20">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -56,8 +56,8 @@ export default function FeaturesPage() {
         </div>
         
         {/* Floating Elements */}
-        <div className="absolute top-20 right-10 w-72 h-72 bg-pink-500/20 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-20 right-10 w-72 h-72 bg-green-500/20 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-20 left-10 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
@@ -71,7 +71,7 @@ export default function FeaturesPage() {
               Built for DJs
             </h1>
             
-            <p className="text-xl md:text-2xl text-purple-100 mb-8 leading-relaxed max-w-3xl mx-auto">
+            <p className="text-xl md:text-2xl text-emerald-50 mb-8 leading-relaxed max-w-3xl mx-auto">
               Everything you need to collect tips and manage song requests. From instant payments to real-time analytics—all in one simple platform.
             </p>
             
@@ -79,13 +79,13 @@ export default function FeaturesPage() {
               <Link href="/signup">
                 <Button 
                   size="lg" 
-                  className="bg-white text-purple-600 hover:bg-gray-100 font-semibold text-lg px-8 py-6 h-auto shadow-xl hover:shadow-2xl transition-all"
+                  className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-8 py-6 h-auto shadow-xl hover:shadow-2xl transition-all"
                 >
                   Start Free Trial
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <Link href="/tipjar/pricing">
+              <Link href="/pricing">
                 <Button 
                   size="lg" 
                   variant="outline"
@@ -139,13 +139,13 @@ export default function FeaturesPage() {
             <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-16 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl">
               <TabsTrigger 
                 value="djs" 
-                className="text-lg font-semibold data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-md dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-purple-400 rounded-lg"
+                className="text-lg font-semibold data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-md dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-emerald-400 rounded-lg"
               >
                 For DJs
               </TabsTrigger>
               <TabsTrigger 
                 value="guests" 
-                className="text-lg font-semibold data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-md dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-purple-400 rounded-lg"
+                className="text-lg font-semibold data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-md dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-emerald-400 rounded-lg"
               >
                 For Guests
               </TabsTrigger>
@@ -254,9 +254,9 @@ export default function FeaturesPage() {
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
             {/* DJ Dashboard Preview */}
             <Card className="p-8 dark:bg-gray-800 dark:border-gray-700 hover:shadow-xl transition-shadow">
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 mb-6 aspect-[9/16] flex items-center justify-center border-2 border-purple-100 dark:border-purple-800">
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 mb-6 aspect-[9/16] flex items-center justify-center border-2 border-emerald-100 dark:border-emerald-800">
                 <div className="text-center">
-                  <BarChart3 className="w-16 h-16 text-purple-600 dark:text-purple-400 mx-auto mb-4" />
+                  <BarChart3 className="w-16 h-16 text-emerald-600 dark:text-emerald-400 mx-auto mb-4" />
                   <p className="text-gray-500 dark:text-gray-400 font-medium">
                     Dashboard Preview
                   </p>
@@ -287,9 +287,9 @@ export default function FeaturesPage() {
             
             {/* Guest Experience Preview */}
             <Card className="p-8 dark:bg-gray-800 dark:border-gray-700 hover:shadow-xl transition-shadow">
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 mb-6 aspect-[9/16] flex items-center justify-center border-2 border-purple-100 dark:border-purple-800">
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 mb-6 aspect-[9/16] flex items-center justify-center border-2 border-emerald-100 dark:border-emerald-800">
                 <div className="text-center">
-                  <Smartphone className="w-16 h-16 text-pink-600 dark:text-pink-400 mx-auto mb-4" />
+                  <Smartphone className="w-16 h-16 text-green-600 dark:text-green-400 mx-auto mb-4" />
                   <p className="text-gray-500 dark:text-gray-400 font-medium">
                     Guest View Preview
                   </p>
@@ -327,7 +327,7 @@ export default function FeaturesPage() {
           <div className="max-w-6xl mx-auto">
             <div className="grid md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <Zap className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4 dark:text-white">Lightning Fast</h3>
@@ -337,7 +337,7 @@ export default function FeaturesPage() {
               </div>
               
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <Shield className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4 dark:text-white">Bank-Level Security</h3>
@@ -347,7 +347,7 @@ export default function FeaturesPage() {
               </div>
               
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <Smartphone className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4 dark:text-white">Works Everywhere</h3>
@@ -361,7 +361,7 @@ export default function FeaturesPage() {
       </section>
 
       {/* Final CTA - Redesigned */}
-      <section className="py-24 bg-gradient-to-br from-purple-600 via-purple-700 to-pink-600 relative overflow-hidden">
+      <section className="py-24 bg-gradient-to-br from-emerald-600 via-green-600 to-emerald-700 relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -375,14 +375,14 @@ export default function FeaturesPage() {
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
               Ready to Try All These Features?
             </h2>
-            <p className="text-xl md:text-2xl text-purple-100 mb-10 leading-relaxed">
+            <p className="text-xl md:text-2xl text-emerald-50 mb-10 leading-relaxed">
               Start your free trial today. No credit card required. Get access to all features in under 2 minutes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup">
                 <Button 
                   size="lg" 
-                  className="bg-white text-purple-600 hover:bg-gray-100 font-semibold text-lg px-10 py-7 h-auto shadow-2xl hover:shadow-3xl transition-all"
+                  className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-10 py-7 h-auto shadow-2xl hover:shadow-3xl transition-all"
                 >
                   Start Free Trial
                   <ArrowRight className="ml-2 w-5 h-5" />

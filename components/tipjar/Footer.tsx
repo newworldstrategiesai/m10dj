@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Music, Mail, Twitter, Facebook, Instagram } from 'lucide-react';
+import Image from 'next/image';
+import { Mail, Twitter, Facebook, Instagram } from 'lucide-react';
 
 export default function TipJarFooter() {
   const currentYear = new Date().getFullYear();
@@ -11,8 +12,14 @@ export default function TipJarFooter() {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
-                <Music className="w-6 h-6 text-white" />
+              <div className="relative w-10 h-10">
+                <Image
+                  src="/assets/TipJar-Logo-Icon.png"
+                  alt="TipJar Logo"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                />
               </div>
               <div>
                 <span className="text-2xl font-bold">TipJar</span>
@@ -21,7 +28,7 @@ export default function TipJarFooter() {
             </div>
             <p className="text-gray-400 mb-6 max-w-md">
               The easiest way for DJs and performers to collect tips and manage song requests. 
-              No app downloads required. Start free, upgrade when you're making money.
+              No app downloads required. Start free, upgrade when you&apos;re making money.
             </p>
             <div className="flex space-x-4">
               <a
@@ -59,22 +66,22 @@ export default function TipJarFooter() {
             <h3 className="font-semibold text-lg mb-4">Product</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/tipjar/features" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/features" className="text-gray-400 hover:text-white transition-colors">
                   Features
                 </Link>
               </li>
               <li>
-                <Link href="/tipjar/pricing" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/pricing" className="text-gray-400 hover:text-white transition-colors">
                   Pricing
                 </Link>
               </li>
               <li>
-                <Link href="/tipjar/how-it-works" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/how-it-works" className="text-gray-400 hover:text-white transition-colors">
                   How It Works
                 </Link>
               </li>
               <li>
-                <Link href="/tipjar/embed" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/embed" className="text-gray-400 hover:text-white transition-colors">
                   Embed Guide
                 </Link>
               </li>

@@ -1409,7 +1409,7 @@ export function GeneralRequestsPage({
                               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                                 Upload your own audio
                               </span>
-                            </div>
+                        </div>
                             <ChevronDown 
                               className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${
                                 audioUploadExpanded 
@@ -1421,108 +1421,108 @@ export function GeneralRequestsPage({
                           
                           <CollapsibleContent className="px-4 pb-4 space-y-3">
                             <p className="text-xs text-gray-600 dark:text-gray-400 pt-2">
-                              {organizationData?.requests_audio_upload_description || 'Upload your own audio file to be played. This is perfect for upcoming artists or custom tracks. ($100 per file)'}
-                            </p>
-                            {!audioFileUrl ? (
-                              <div>
-                                <input
-                                  type="file"
-                                  accept="audio/*"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      setAudioFile(file);
-                                      setAudioUploading(true);
-                                      try {
-                                        const formData = new FormData();
-                                        formData.append('audio', file);
-                                        
-                                        const response = await fetch('/api/crowd-request/upload-audio', {
-                                          method: 'POST',
-                                          body: formData
-                                        });
-                                        
-                                        if (!response.ok) {
-                                          throw new Error('Upload failed');
-                                        }
-                                        
+                          {organizationData?.requests_audio_upload_description || 'Upload your own audio file to be played. This is perfect for upcoming artists or custom tracks. ($100 per file)'}
+                        </p>
+                        {!audioFileUrl ? (
+                          <div>
+                            <input
+                              type="file"
+                              accept="audio/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setAudioFile(file);
+                                  setAudioUploading(true);
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append('audio', file);
+                                    
+                                    const response = await fetch('/api/crowd-request/upload-audio', {
+                                      method: 'POST',
+                                      body: formData
+                                    });
+                                    
+                                    if (!response.ok) {
+                                      throw new Error('Upload failed');
+                                    }
+                                    
                                     const data = await response.json();
                                     setAudioFileUrl(data.url);
                                     // Auto-expand section when file is uploaded
                                     setAudioUploadExpanded(true);
                                   } catch (err) {
-                                        logger.error('Audio upload error', err);
-                                        setError('Failed to upload audio file. Please try again.');
-                                        setAudioFile(null);
-                                      } finally {
-                                        setAudioUploading(false);
-                                      }
-                                    }
-                                  }}
-                                  className="w-full text-sm text-gray-700 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 dark:file:bg-purple-700 dark:hover:file:bg-purple-600"
-                                  disabled={audioUploading}
-                                />
-                                {audioUploading && (
-                                  <div className="mt-2 flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Uploading...
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <Music className="w-5 h-5 text-green-600 dark:text-green-400" />
-                                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                                    {audioFile?.name || 'Audio file uploaded'}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
+                                    logger.error('Audio upload error', err);
+                                    setError('Failed to upload audio file. Please try again.');
                                     setAudioFile(null);
-                                    setAudioFileUrl('');
-                                  }}
-                                  className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                                >
-                                  Remove
-                                </button>
+                                  } finally {
+                                    setAudioUploading(false);
+                                  }
+                                }
+                              }}
+                              className="w-full text-sm text-gray-700 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 dark:file:bg-purple-700 dark:hover:file:bg-purple-600"
+                              disabled={audioUploading}
+                            />
+                            {audioUploading && (
+                              <div className="mt-2 flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Uploading...
                               </div>
                             )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Music className="w-5 h-5 text-green-600 dark:text-green-400" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {audioFile?.name || 'Audio file uploaded'}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAudioFile(null);
+                                setAudioFileUrl('');
+                              }}
+                              className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
 
-                            {/* Artist Rights Checkboxes */}
-                            {audioFileUrl && (
+                        {/* Artist Rights Checkboxes */}
+                        {audioFileUrl && (
                               <div className="space-y-2">
-                                <label className="flex items-start gap-2 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={artistRightsConfirmed}
-                                    onChange={(e) => setArtistRightsConfirmed(e.target.checked)}
-                                    className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"
-                                    required={!!audioFileUrl}
-                                  />
-                                  <span className="text-xs text-gray-700 dark:text-gray-300">
-                                    {organizationData?.requests_artist_rights_text || 'I confirm that I own the rights to this music or have permission to use it'}
-                                  </span>
-                                </label>
-                                <label className="flex items-start gap-2 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={isArtist}
-                                    onChange={(e) => setIsArtist(e.target.checked)}
-                                    className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"
-                                  />
-                                  <span className="text-xs text-gray-700 dark:text-gray-300">
-                                    {organizationData?.requests_is_artist_text || 'I am the artist (this is for promotion, not just a play)'}
-                                  </span>
-                                </label>
-                                <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mt-2">
-                                  {organizationData?.requests_audio_fee_text || '+$100.00 for audio upload'}
-                                </p>
-                              </div>
-                            )}
+                            <label className="flex items-start gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={artistRightsConfirmed}
+                                onChange={(e) => setArtistRightsConfirmed(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"
+                                required={!!audioFileUrl}
+                              />
+                              <span className="text-xs text-gray-700 dark:text-gray-300">
+                                {organizationData?.requests_artist_rights_text || 'I confirm that I own the rights to this music or have permission to use it'}
+                              </span>
+                            </label>
+                            <label className="flex items-start gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isArtist}
+                                onChange={(e) => setIsArtist(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <span className="text-xs text-gray-700 dark:text-gray-300">
+                                {organizationData?.requests_is_artist_text || 'I am the artist (this is for promotion, not just a play)'}
+                              </span>
+                            </label>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mt-2">
+                              {organizationData?.requests_audio_fee_text || '+$100.00 for audio upload'}
+                            </p>
+                          </div>
+                        )}
                           </CollapsibleContent>
-                        </div>
+                      </div>
                       </Collapsible>
                       )}
                     </div>
