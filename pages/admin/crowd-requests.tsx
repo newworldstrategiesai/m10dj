@@ -2233,6 +2233,66 @@ export default function CrowdRequestsPage() {
       if (response.ok) {
         const data = await response.json();
         setStripeDetails(data.stripe);
+        
+        // Auto-sync payment status in background if there's a mismatch
+        const paymentIntent = data.stripe?.paymentIntent;
+        const session = data.stripe?.session;
+        
+        if (paymentIntent || session) {
+          const paymentSucceeded = paymentIntent?.status === 'succeeded' || 
+                                   session?.payment_status === 'paid' ||
+                                   data.stripe?.charge?.paid === true;
+          
+          // Check if sync is needed: payment succeeded in Stripe but not in DB, or amount mismatch
+          const needsSync = paymentSucceeded && (
+            request.payment_status !== 'paid' || 
+            request.amount_paid === 0 ||
+            (paymentIntent && request.amount_paid !== paymentIntent.amount) ||
+            (session && request.amount_paid !== session.amount_total)
+          );
+          
+          if (needsSync) {
+            // Automatically sync in the background (no user notification)
+            const amount = paymentIntent?.amount || session?.amount_total || request.amount_paid || 0;
+            const paidAt = paymentIntent?.created 
+              ? new Date(paymentIntent.created * 1000).toISOString()
+              : session?.created
+              ? new Date(session.created * 1000).toISOString()
+              : new Date().toISOString();
+            
+            try {
+              const syncResponse = await fetch('/api/crowd-request/update-payment-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  requestId: request.id,
+                  paymentStatus: 'paid',
+                  paymentMethod: 'card',
+                  amountPaid: amount,
+                  paidAt: paidAt,
+                }),
+              });
+              
+              if (syncResponse.ok) {
+                // Update the selected request in state
+                setSelectedRequest(prev => prev ? {
+                  ...prev,
+                  payment_status: 'paid',
+                  amount_paid: amount,
+                  paid_at: paidAt,
+                } : null);
+                
+                // Refresh the requests list in the background
+                fetchRequests();
+                
+                console.log(`✅ Auto-synced payment for request ${request.id} from Stripe`);
+              }
+            } catch (syncError) {
+              console.error('Error auto-syncing payment:', syncError);
+              // Silent failure - this is background sync
+            }
+          }
+        }
       } else {
         console.error('Failed to fetch Stripe details');
       }
