@@ -65,6 +65,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.rewrite(url);
     }
     
+    // If path already starts with /tipjar/, let it pass through without rewriting
+    if (path.startsWith('/tipjar/')) {
+      const response = await updateSession(request);
+      response.headers.set('x-pathname', request.nextUrl.pathname);
+      response.headers.set('x-product', 'tipjar');
+      return response;
+    }
+    
     // Rewrite paths to tipjar marketing routes
     if (path === '/' || path === '') {
       rewritePath = '/tipjar';
@@ -76,8 +84,11 @@ export async function middleware(request: NextRequest) {
       rewritePath = '/tipjar/how-it-works';
     } else if (path === '/signup' || path.startsWith('/signup/')) {
       rewritePath = '/tipjar/signup';
-    } else if (path === '/signin' || path.startsWith('/signin/')) {
+    } else if (path === '/signin') {
       rewritePath = '/tipjar/signin';
+    } else if (path.startsWith('/signin/')) {
+      // Preserve the sub-path (e.g., /signin/password_signin -> /tipjar/signin/password_signin)
+      rewritePath = path.replace('/signin', '/tipjar/signin');
     } else if (path === '/embed' || path.startsWith('/embed/')) {
       rewritePath = '/tipjar/embed';
     } else if (path === '/alerts' || path.startsWith('/alerts/')) {
