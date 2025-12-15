@@ -698,7 +698,15 @@ export default function CrowdRequestsPage() {
                                       data.stripe?.charge?.paid === true;
               
               // If payment succeeded in Stripe but status is not 'paid' in DB, update it
-              if (paymentSucceeded && request.payment_status !== 'paid') {
+              // Also check if amount_paid is 0 or doesn't match Stripe amount
+              const needsUpdate = paymentSucceeded && (
+                request.payment_status !== 'paid' || 
+                request.amount_paid === 0 ||
+                (paymentIntent && request.amount_paid !== paymentIntent.amount) ||
+                (session && request.amount_paid !== session.amount_total)
+              );
+              
+              if (needsUpdate) {
                 const amount = paymentIntent?.amount || session?.amount_total || request.amount_paid || 0;
                 const paymentIntentId = paymentIntent?.id || request.payment_intent_id;
                 const paidAt = paymentIntent?.created 
