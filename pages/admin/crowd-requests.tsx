@@ -125,6 +125,7 @@ export default function CrowdRequestsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10000); // Show all requests by default
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [syncingPayments, setSyncingPayments] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [organization, setOrganization] = useState<any>(null);
   const [headerSettings, setHeaderSettings] = useState({
@@ -648,8 +649,19 @@ export default function CrowdRequestsPage() {
   };
 
   // Sync payment status from Stripe for requests that might be out of sync
-  const syncPaymentStatusFromStripe = async (requests: CrowdRequest[]) => {
-    const updates: Array<{ id: string; payment_status: string; amount_paid: number; paid_at: string | null }> = [];
+  const syncPaymentStatusFromStripe = async (requests: CrowdRequest[], showToast = true) => {
+    if (requests.length === 0) {
+      if (showToast) {
+        toast({
+          title: 'No Requests to Sync',
+          description: 'No requests found that need payment status sync',
+        });
+      }
+      return;
+    }
+    
+    setSyncingPayments(true);
+    const updates: Array<{ id: string; payment_status: string; amount_paid: number; paid_at: string | null; payment_intent_id?: string }> = [];
     
     // Check payment status in parallel (limit to 10 at a time to avoid rate limits)
     const batches = [];
@@ -661,23 +673,46 @@ export default function CrowdRequestsPage() {
       await Promise.all(
         batch.map(async (request) => {
           try {
-            if (!request.payment_intent_id) return;
+            if (!request.payment_intent_id && !(request as any).stripe_session_id) return;
             
             const params = new URLSearchParams();
-            params.append('paymentIntentId', request.payment_intent_id);
+            if (request.payment_intent_id) {
+              params.append('paymentIntentId', request.payment_intent_id);
+            }
+            if ((request as any).stripe_session_id) {
+              params.append('sessionId', (request as any).stripe_session_id);
+            }
+            if (request.id) {
+              params.append('requestId', request.id);
+            }
             
             const response = await fetch(`/api/crowd-request/stripe-details?${params.toString()}`);
             if (response.ok) {
               const data = await response.json();
               const paymentIntent = data.stripe?.paymentIntent;
+              const session = data.stripe?.session;
               
-              // If payment succeeded in Stripe but status is pending in DB, update it
-              if (paymentIntent && paymentIntent.status === 'succeeded' && request.payment_status === 'pending') {
+              // Check if payment succeeded in Stripe
+              const paymentSucceeded = paymentIntent?.status === 'succeeded' || 
+                                      session?.payment_status === 'paid' ||
+                                      data.stripe?.charge?.paid === true;
+              
+              // If payment succeeded in Stripe but status is not 'paid' in DB, update it
+              if (paymentSucceeded && request.payment_status !== 'paid') {
+                const amount = paymentIntent?.amount || session?.amount_total || request.amount_paid || 0;
+                const paymentIntentId = paymentIntent?.id || request.payment_intent_id;
+                const paidAt = paymentIntent?.created 
+                  ? new Date(paymentIntent.created * 1000).toISOString() 
+                  : session?.created 
+                  ? new Date(session.created * 1000).toISOString()
+                  : null;
+                
                 updates.push({
                   id: request.id,
                   payment_status: 'paid',
-                  amount_paid: paymentIntent.amount || request.amount_paid || 0,
-                  paid_at: paymentIntent.created ? new Date(paymentIntent.created * 1000).toISOString() : null
+                  amount_paid: amount,
+                  paid_at: paidAt,
+                  payment_intent_id: paymentIntentId
                 });
               }
             }
@@ -692,14 +727,21 @@ export default function CrowdRequestsPage() {
     if (updates.length > 0) {
       try {
         const updatePromises = updates.map(async (update) => {
+          const updateData: any = {
+            payment_status: update.payment_status,
+            amount_paid: update.amount_paid,
+            paid_at: update.paid_at,
+            updated_at: new Date().toISOString()
+          };
+          
+          // Also update payment_intent_id if we found it and it wasn't set
+          if (update.payment_intent_id) {
+            updateData.payment_intent_id = update.payment_intent_id;
+          }
+          
           const { error } = await supabase
             .from('crowd_requests')
-            .update({
-              payment_status: update.payment_status,
-              amount_paid: update.amount_paid,
-              paid_at: update.paid_at,
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', update.id);
           
           if (error) {
@@ -718,18 +760,64 @@ export default function CrowdRequestsPage() {
                 ...req,
                 payment_status: update.payment_status as any,
                 amount_paid: update.amount_paid,
-                paid_at: update.paid_at
+                paid_at: update.paid_at,
+                payment_intent_id: update.payment_intent_id || req.payment_intent_id
               };
             }
             return req;
           })
         );
         
+        if (updates.length > 0 && showToast) {
+          toast({
+            title: 'Payment Status Synced',
+            description: `Updated ${updates.length} request(s) to paid status from Stripe`,
+          });
+        }
         console.log(`✅ Synced payment status for ${updates.length} request(s)`);
       } catch (error) {
         console.error('Error updating payment statuses:', error);
+        if (showToast) {
+          toast({
+            title: 'Sync Error',
+            description: 'Failed to sync payment statuses',
+            variant: 'destructive',
+          });
+        }
       }
+    } else {
+      if (showToast) {
+        toast({
+          title: 'Sync Complete',
+          description: 'All payment statuses are up to date',
+        });
+      }
+      console.log('ℹ️ No payment status updates needed');
     }
+    
+    setSyncingPayments(false);
+  };
+  
+  // Manual sync button handler
+  const handleManualSync = async () => {
+    // Sync all requests that have payment_intent_id or stripe_session_id
+    const requestsToSync = requests.filter(
+      (req: CrowdRequest) => 
+        (req.payment_intent_id || (req as any).stripe_session_id) && 
+        req.payment_status !== 'paid'
+    );
+    
+    if (requestsToSync.length === 0) {
+      toast({
+        title: 'No Requests to Sync',
+        description: 'All requests with payment information are already marked as paid',
+      });
+      return;
+    }
+    
+    await syncPaymentStatusFromStripe(requestsToSync, true);
+    // Refresh the requests list to show updated statuses
+    await fetchRequests();
   };
 
   const fetchRequests = async () => {
@@ -839,11 +927,11 @@ export default function CrowdRequestsPage() {
       }
       
       // Sync payment status from Stripe for requests that might be out of sync
-      // (have payment_intent_id but payment_status is "pending")
+      // Check all requests with payment_intent_id or stripe_session_id that aren't already marked as paid
       const requestsNeedingStatusSync = (data || []).filter(
         (req: CrowdRequest) => 
-          req.payment_intent_id && 
-          req.payment_status === 'pending'
+          (req.payment_intent_id || (req as any).stripe_session_id) && 
+          req.payment_status !== 'paid'
       );
       
       if (requestsNeedingStatusSync.length > 0) {
@@ -2493,6 +2581,17 @@ export default function CrowdRequestsPage() {
               <QrCode className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">{showQRGenerator ? 'Hide' : 'Generate'} QR Code</span>
               <span className="sm:hidden">QR Code</span>
+            </Button>
+            <Button
+              onClick={handleManualSync}
+              disabled={syncingPayments}
+              variant="outline"
+              className="inline-flex items-center gap-2 whitespace-nowrap"
+              title="Sync payment status from Stripe for all requests"
+            >
+              <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${syncingPayments ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{syncingPayments ? 'Syncing...' : 'Sync Payments'}</span>
+              <span className="sm:hidden">{syncingPayments ? 'Syncing...' : 'Sync'}</span>
             </Button>
           </div>
         </div>
