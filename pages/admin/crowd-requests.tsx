@@ -6537,7 +6537,7 @@ export default function CrowdRequestsPage() {
                    stripeDetails.paymentIntent.status === 'succeeded' && 
                    (selectedRequest.payment_status !== 'paid' || selectedRequest.amount_paid === 0) && (
                     <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-800 dark:text-yellow-200">
-                      ⚠️ Payment succeeded in Stripe but not synced to database. Click "Sync from Stripe" to update.
+                      ⚠️ Payment succeeded in Stripe but not synced to database. Click &quot;Sync from Stripe&quot; to update.
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
