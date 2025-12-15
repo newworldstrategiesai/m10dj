@@ -123,7 +123,7 @@ export default function CrowdRequestsPage() {
   const [eventCodeFilter, setEventCodeFilter] = useState<string>('');
   const [audioUploadFilter, setAudioUploadFilter] = useState<string>('all'); // 'all', 'custom', 'standard'
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(10000); // Show all requests by default
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [organization, setOrganization] = useState<any>(null);
@@ -2312,12 +2312,8 @@ export default function CrowdRequestsPage() {
       if (!aPaid && bPaid) return 1;  // Unpaid comes after
     }
 
-    // Handle priority_order first (fast-track requests should appear first when sorting by date)
-    if (sortColumn === 'created_at' || sortColumn === 'date') {
-      // Fast-track requests (priority_order = 0) always come first
-      if (a.is_fast_track && !b.is_fast_track) return -1;
-      if (!a.is_fast_track && b.is_fast_track) return 1;
-    }
+    // Don't prioritize fast-track when sorting by date - sort purely by date
+    // Fast-track priority only applies when NOT sorting by date
 
     let aValue: any;
     let bValue: any;
@@ -2867,7 +2863,7 @@ export default function CrowdRequestsPage() {
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
                   <div className="text-center">
-                    <p className="mb-4">Configure artist name and click "Generate PDF" to preview</p>
+                    <p className="mb-4">Configure artist name and click &quot;Generate PDF&quot; to preview</p>
                   </div>
                 </div>
               )}
@@ -5921,7 +5917,7 @@ export default function CrowdRequestsPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {totalPages > 1 && itemsPerPage < 10000 && (
             <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -5939,6 +5935,7 @@ export default function CrowdRequestsPage() {
                   <option value={25}>25 per page</option>
                   <option value={50}>50 per page</option>
                   <option value={100}>100 per page</option>
+                  <option value={10000}>All</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
