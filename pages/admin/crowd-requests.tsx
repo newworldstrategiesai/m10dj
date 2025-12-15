@@ -2621,12 +2621,12 @@ export default function CrowdRequestsPage() {
                   const data = await response.json();
                   const message = data.status === 'healthy' 
                     ? `✅ Webhooks configured correctly!\n\n${JSON.stringify(data.checks, null, 2)}`
-                    : `⚠️ Issues detected:\n\n${data.recommendations.map(r => `- ${r.issue}: ${r.fix}`).join('\n')}`;
+                    : `⚠️ Issues detected:\n\n${data.recommendations?.map((r: any) => `- ${r.issue}: ${r.fix}`).join('\n') || 'Unknown error'}`;
                   alert(message);
-                } catch (error) {
+                } catch (error: any) {
                   toast({
                     title: 'Test Failed',
-                    description: error.message,
+                    description: error?.message || 'Unknown error',
                     variant: 'destructive',
                   });
                 }
@@ -2663,10 +2663,10 @@ export default function CrowdRequestsPage() {
                       alert(message);
                     }
                   }
-                } catch (error) {
+                } catch (error: any) {
                   toast({
                     title: 'Error',
-                    description: error.message,
+                    description: error?.message || 'Unknown error',
                     variant: 'destructive',
                   });
                 } finally {
