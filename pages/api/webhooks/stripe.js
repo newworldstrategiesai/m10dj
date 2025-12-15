@@ -59,6 +59,14 @@ export default async function handler(req, res) {
   }
 
   console.log(`📥 Received Stripe webhook: ${event.type} (ID: ${event.id})`);
+  console.log(`   Event data:`, JSON.stringify({
+    type: event.type,
+    id: event.id,
+    livemode: event.livemode,
+    created: new Date(event.created * 1000).toISOString(),
+    request_id: event.data?.object?.metadata?.request_id || event.data?.object?.request_id,
+    payment_intent_id: event.data?.object?.payment_intent || event.data?.object?.id,
+  }, null, 2));
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -368,8 +376,15 @@ async function processPaymentSuccess(requestId, paymentIntentId, sessionId, supa
     }
 
     console.log(`✅ Successfully processed payment ${paymentIntentId} for request ${requestId}`);
+    console.log(`   Updated fields: payment_status=${updateData.payment_status}, amount_paid=${updateData.amount_paid}, payment_intent_id=${paymentIntentId}`);
   } catch (error) {
     console.error(`❌ Error processing payment success for request ${requestId}:`, error);
+    console.error(`   Error details:`, {
+      message: error.message,
+      stack: error.stack,
+      paymentIntentId,
+      requestId,
+    });
     throw error;
   }
 }

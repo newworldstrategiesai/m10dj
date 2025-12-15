@@ -2614,6 +2614,31 @@ export default function CrowdRequestsPage() {
               <span className="hidden sm:inline">{syncingPayments ? 'Syncing...' : 'Sync Payments'}</span>
               <span className="sm:hidden">{syncingPayments ? 'Syncing...' : 'Sync'}</span>
             </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/webhooks/stripe/test');
+                  const data = await response.json();
+                  const message = data.status === 'healthy' 
+                    ? `✅ Webhooks configured correctly!\n\n${JSON.stringify(data.checks, null, 2)}`
+                    : `⚠️ Issues detected:\n\n${data.recommendations.map(r => `- ${r.issue}: ${r.fix}`).join('\n')}`;
+                  alert(message);
+                } catch (error) {
+                  toast({
+                    title: 'Test Failed',
+                    description: error.message,
+                    variant: 'destructive',
+                  });
+                }
+              }}
+              variant="outline"
+              className="inline-flex items-center gap-2 whitespace-nowrap"
+              title="Test Stripe webhook configuration"
+            >
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Test Webhooks</span>
+              <span className="sm:hidden">Test</span>
+            </Button>
           </div>
         </div>
 
