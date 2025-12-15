@@ -800,24 +800,45 @@ export default function CrowdRequestsPage() {
   
   // Manual sync button handler
   const handleManualSync = async () => {
-    // Sync all requests that have payment_intent_id or stripe_session_id
-    const requestsToSync = requests.filter(
-      (req: CrowdRequest) => 
-        (req.payment_intent_id || (req as any).stripe_session_id) && 
-        req.payment_status !== 'paid'
-    );
+    setSyncingPayments(true);
     
-    if (requestsToSync.length === 0) {
-      toast({
-        title: 'No Requests to Sync',
-        description: 'All requests with payment information are already marked as paid',
-      });
-      return;
+    try {
+      // First, try to find orphaned payments (payments in Stripe but no payment_intent_id in DB)
+      try {
+        const orphanedResponse = await fetch('/api/crowd-request/sync-orphaned-payments', {
+          method: 'POST',
+        });
+        
+        if (orphanedResponse.ok) {
+          const orphanedData = await orphanedResponse.json();
+          if (orphanedData.synced > 0) {
+            toast({
+              title: 'Orphaned Payments Found',
+              description: `Found and synced ${orphanedData.synced} payment(s) from Stripe`,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error syncing orphaned payments:', error);
+        // Continue with regular sync even if orphaned sync fails
+      }
+      
+      // Then sync all requests that have payment_intent_id or stripe_session_id
+      const requestsToSync = requests.filter(
+        (req: CrowdRequest) => 
+          (req.payment_intent_id || (req as any).stripe_session_id) && 
+          req.payment_status !== 'paid'
+      );
+      
+      if (requestsToSync.length > 0) {
+        await syncPaymentStatusFromStripe(requestsToSync, true);
+      }
+      
+      // Refresh the requests list to show updated statuses
+      await fetchRequests();
+    } finally {
+      setSyncingPayments(false);
     }
-    
-    await syncPaymentStatusFromStripe(requestsToSync, true);
-    // Refresh the requests list to show updated statuses
-    await fetchRequests();
   };
 
   const fetchRequests = async () => {
