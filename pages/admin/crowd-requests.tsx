@@ -2639,6 +2639,49 @@ export default function CrowdRequestsPage() {
               <span className="hidden sm:inline">Test Webhooks</span>
               <span className="sm:hidden">Test</span>
             </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  setSyncingPayments(true);
+                  const response = await fetch('/api/crowd-request/find-orphaned-payments');
+                  const data = await response.json();
+                  
+                  if (data.success) {
+                    const total = data.summary.orphaned_payments + data.summary.orphaned_sessions + data.summary.payments_without_request_id;
+                    if (total === 0) {
+                      toast({
+                        title: 'No Orphaned Payments',
+                        description: 'All payments in Stripe are properly linked!',
+                      });
+                    } else {
+                      const message = `Found ${total} orphaned payment(s):\n\n` +
+                        `- ${data.summary.orphaned_payments} payments with request_id but not linked\n` +
+                        `- ${data.summary.orphaned_sessions} sessions with request_id but not linked\n` +
+                        `- ${data.summary.payments_without_request_id} payments without request_id\n\n` +
+                        `Check console for details.`;
+                      console.log('Orphaned Payments:', data);
+                      alert(message);
+                    }
+                  }
+                } catch (error) {
+                  toast({
+                    title: 'Error',
+                    description: error.message,
+                    variant: 'destructive',
+                  });
+                } finally {
+                  setSyncingPayments(false);
+                }
+              }}
+              disabled={syncingPayments}
+              variant="outline"
+              className="inline-flex items-center gap-2 whitespace-nowrap"
+              title="Find payments in Stripe that aren't in the app"
+            >
+              <Search className={`w-4 h-4 sm:w-5 sm:h-5 ${syncingPayments ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{syncingPayments ? 'Searching...' : 'Find Orphaned'}</span>
+              <span className="sm:hidden">Find</span>
+            </Button>
           </div>
         </div>
 
