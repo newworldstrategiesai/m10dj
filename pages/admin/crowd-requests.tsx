@@ -697,8 +697,7 @@ export default function CrowdRequestsPage() {
                                       session?.payment_status === 'paid' ||
                                       data.stripe?.charge?.paid === true;
               
-              // If payment succeeded in Stripe but status is not 'paid' in DB, update it
-              // Also check if amount_paid is 0 or doesn't match Stripe amount
+              // If payment succeeded in Stripe but status is not 'paid' in DB, or amount mismatch, update it
               const needsUpdate = paymentSucceeded && (
                 request.payment_status !== 'paid' || 
                 request.amount_paid === 0 ||
