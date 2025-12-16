@@ -57,6 +57,7 @@ import { getCoverPhotoUrl } from '@/utils/cover-photo-helper';
 import UpgradePrompt from '@/components/subscription/UpgradePrompt';
 import StripeConnectRequirementBanner from '@/components/subscription/StripeConnectRequirementBanner';
 import { getCurrentOrganization } from '@/utils/organization-context';
+import SongRecognition from '@/components/audio/SongRecognition';
 
 interface CrowdRequest {
   id: string;
@@ -84,6 +85,7 @@ interface CrowdRequest {
   priority_order: number;
   created_at: string;
   paid_at: string | null;
+  played_at: string | null;
   organization_id: string | null;
   // New fields for audio uploads
   audio_file_url: string | null;
@@ -96,6 +98,15 @@ interface CrowdRequest {
   charity_donation_percentage?: number;
   charity_name?: string;
   charity_url?: string;
+  // Audio tracking fields
+  matched_song_detection?: {
+    id: string;
+    song_title: string;
+    song_artist: string;
+    recognition_confidence: number | null;
+    recognition_timestamp: string;
+    auto_marked_as_played: boolean;
+  } | null;
 }
 
 export default function CrowdRequestsPage() {
@@ -127,7 +138,13 @@ export default function CrowdRequestsPage() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [syncingPayments, setSyncingPayments] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showOrphanedDialog, setShowOrphanedDialog] = useState(false);
+  const [orphanedPaymentsData, setOrphanedPaymentsData] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
+  const [showAudioTrackingModal, setShowAudioTrackingModal] = useState(false);
+  const [selectedEventCode, setSelectedEventCode] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [loadingEventId, setLoadingEventId] = useState(false);
   const [headerSettings, setHeaderSettings] = useState({
     artistName: '',
     location: '',
@@ -940,7 +957,35 @@ export default function CrowdRequestsPage() {
         .or(`organization_id.eq.${org.id},organization_id.is.null`); // Include requests for this org OR orphaned requests
 
       if (error) throw error;
-      setRequests(data || []);
+      
+      // Fetch songs_played data for song requests that are marked as played
+      const songRequestIds = (data || [])
+        .filter((req: CrowdRequest) => req.request_type === 'song_request' && req.status === 'played')
+        .map((req: CrowdRequest) => req.id);
+      
+      let songsDetectedMap: Record<string, any> = {};
+      if (songRequestIds.length > 0) {
+        const { data: songsDetected } = await supabase
+          .from('songs_played')
+          .select('id, song_title, song_artist, recognition_confidence, recognition_timestamp, auto_marked_as_played, matched_crowd_request_id')
+          .in('matched_crowd_request_id', songRequestIds);
+        
+        if (songsDetected) {
+          songsDetected.forEach((song: any) => {
+            if (song.matched_crowd_request_id) {
+              songsDetectedMap[song.matched_crowd_request_id] = song;
+            }
+          });
+        }
+      }
+      
+      // Attach detection data to requests
+      const requestsWithDetection = (data || []).map((req: CrowdRequest) => ({
+        ...req,
+        matched_song_detection: songsDetectedMap[req.id] || null
+      }));
+      
+      setRequests(requestsWithDetection);
       
       // Fetch Stripe customer names for requests that need them
       // (have payment_intent_id but requester_name is "Guest" or empty)
@@ -1909,9 +1954,19 @@ export default function CrowdRequestsPage() {
 
   const updateRequestStatus = async (requestId: string, newStatus: string) => {
     try {
+      const updateData: any = { 
+        status: newStatus, 
+        updated_at: new Date().toISOString() 
+      };
+      
+      // Set played_at timestamp when marking as played
+      if (newStatus === 'played') {
+        updateData.played_at = new Date().toISOString();
+      }
+      
       const { error } = await supabase
         .from('crowd_requests')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .update(updateData)
         .eq('id', requestId);
 
       if (error) throw error;
@@ -1930,6 +1985,10 @@ export default function CrowdRequestsPage() {
         variant: 'destructive',
       });
     }
+  };
+
+  const markAsPlayed = async (requestId: string) => {
+    await updateRequestStatus(requestId, 'played');
   };
 
   const updatePaymentStatus = async (requestId: string, paymentStatus: string, paymentMethod?: string) => {
@@ -2590,7 +2649,18 @@ export default function CrowdRequestsPage() {
       case 'playing':
         return <Badge className="bg-orange-500 text-white">Playing</Badge>;
       case 'played':
-        return <Badge className="bg-green-600 text-white">Played</Badge>;
+        // Check if this was auto-detected
+        const isAutoDetected = request?.matched_song_detection?.auto_marked_as_played;
+        return (
+          <Badge className="bg-green-600 text-white flex items-center gap-1">
+            Played
+            {isAutoDetected && (
+              <span title="Auto-detected by audio recognition">
+                <Mic className="w-3 h-3" />
+              </span>
+            )}
+          </Badge>
+        );
       default:
         return <Badge>{status}</Badge>;
     }
@@ -2721,13 +2791,9 @@ export default function CrowdRequestsPage() {
                         description: 'All payments in Stripe are properly linked!',
                       });
                     } else {
-                      const message = `Found ${total} orphaned payment(s):\n\n` +
-                        `- ${data.summary.orphaned_payments} payments with request_id but not linked\n` +
-                        `- ${data.summary.orphaned_sessions} sessions with request_id but not linked\n` +
-                        `- ${data.summary.payments_without_request_id} payments without request_id\n\n` +
-                        `Check console for details.`;
+                      setOrphanedPaymentsData(data);
+                      setShowOrphanedDialog(true);
                       console.log('Orphaned Payments:', data);
-                      alert(message);
                     }
                   }
                 } catch (error: any) {
@@ -3012,13 +3078,13 @@ export default function CrowdRequestsPage() {
             setShowArtistNameInput(false);
           }
         }}>
-          <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col">
-            <DialogHeader>
+          <DialogContent className="max-w-[95vw] sm:max-w-4xl w-full max-h-[95vh] h-[95vh] sm:h-[90vh] flex flex-col p-4 sm:p-6 m-4 sm:m-0 overflow-hidden">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle>PDF Preview</DialogTitle>
             </DialogHeader>
             
             {/* PDF Configuration Section */}
-            <div className="border-b pb-4 mb-4 space-y-4">
+            <div className="border-b pb-4 mb-4 space-y-4 flex-shrink-0 overflow-y-auto">
               {/* PDF Type Selection */}
               <div>
                 <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
@@ -3123,7 +3189,7 @@ export default function CrowdRequestsPage() {
                 </div>
               )}
             </div>
-            <div className="flex justify-between items-center gap-3 pt-4 border-t">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-4 border-t flex-shrink-0">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -3134,14 +3200,15 @@ export default function CrowdRequestsPage() {
                   }
                   setShowArtistNameInput(false);
                 }}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <Button
                   onClick={generatePDFWithArtistName}
                   disabled={generatingPDF}
-                  className="inline-flex items-center gap-2"
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto"
                 >
                   {generatingPDF ? (
                     <>
@@ -3178,7 +3245,7 @@ export default function CrowdRequestsPage() {
                         }, 1000);
                       }
                     }}
-                    className="inline-flex items-center gap-2"
+                    className="inline-flex items-center justify-center gap-2 w-full sm:w-auto"
                   >
                     <Download className="w-4 h-4" />
                     Download PDF
@@ -5834,7 +5901,14 @@ export default function CrowdRequestsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        {getStatusBadge(request.status, request.payment_status, request)}
+                        <div className="flex items-center gap-2">
+                          {getStatusBadge(request.status, request.payment_status, request)}
+                          {request.request_type === 'song_request' && request.status === 'played' && request.matched_song_detection && (
+                            <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1" title="Auto-detected by audio recognition">
+                              <Mic className="w-3 h-3" />
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                         {new Date(request.created_at).toLocaleDateString()}
@@ -5895,6 +5969,54 @@ export default function CrowdRequestsPage() {
                             <option value="played">Played</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
+                          
+                          {/* Live Listen button - Show for song requests */}
+                          {request.request_type === 'song_request' && request.event_qr_code && (
+                            <Button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setSelectedEventCode(request.event_qr_code);
+                                setSelectedEventId(null);
+                                setShowAudioTrackingModal(true);
+                                
+                                // Fetch event ID
+                                if (request.event_qr_code) {
+                                  setLoadingEventId(true);
+                                  const { data: eventData, error } = await supabase
+                                    .from('events')
+                                    .select('id')
+                                    .eq('event_qr_code', request.event_qr_code)
+                                    .single();
+                                  
+                                  if (!error && eventData) {
+                                    setSelectedEventId(eventData.id);
+                                  }
+                                  setLoadingEventId(false);
+                                }
+                              }}
+                              size="sm"
+                              className="text-xs h-7 w-full bg-purple-600 hover:bg-purple-700 text-white"
+                              title="Start live song detection for this event"
+                            >
+                              <Mic className="w-3 h-3 mr-1" />
+                              Live Listen
+                            </Button>
+                          )}
+                          {/* Mark as Played button - Show for song requests that aren't already played */}
+                          {request.request_type === 'song_request' && request.status !== 'played' && (
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAsPlayed(request.id);
+                              }}
+                              size="sm"
+                              className="text-xs h-7 w-full bg-green-600 hover:bg-green-700 text-white"
+                              title="Mark this song request as played"
+                            >
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Mark as Played
+                            </Button>
+                          )}
                           
                           {/* Payment Status Update - Show for pending payments */}
                           {request.payment_status === 'pending' && (
@@ -6126,7 +6248,38 @@ export default function CrowdRequestsPage() {
                       {new Date(request.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    {request.request_type === 'song_request' && request.event_qr_code && (
+                      <Button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setSelectedEventCode(request.event_qr_code);
+                          setSelectedEventId(null);
+                          setShowAudioTrackingModal(true);
+                          
+                          // Fetch event ID
+                          if (request.event_qr_code) {
+                            setLoadingEventId(true);
+                            const { data: eventData, error } = await supabase
+                              .from('events')
+                              .select('id')
+                              .eq('event_qr_code', request.event_qr_code)
+                              .single();
+                            
+                            if (!error && eventData) {
+                              setSelectedEventId(eventData.id);
+                            }
+                            setLoadingEventId(false);
+                          }
+                        }}
+                        size="sm"
+                        className="text-xs h-8 bg-purple-600 hover:bg-purple-700 text-white"
+                        title="Start live song detection for this event"
+                      >
+                        <Mic className="w-3 h-3 mr-1" />
+                        Listen
+                      </Button>
+                    )}
                     {!request.organization_id && (
                       <Button
                         onClick={(e) => {
@@ -6311,6 +6464,30 @@ export default function CrowdRequestsPage() {
                       <p className="text-lg text-gray-700 dark:text-gray-300">
                         by {selectedRequest.song_artist}
                       </p>
+                    )}
+                    {/* Audio Detection Info */}
+                    {selectedRequest.matched_song_detection && (
+                      <div className="mt-3 pt-3 border-t border-purple-300 dark:border-purple-700">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Mic className="w-4 h-4 text-green-600 dark:text-green-400" />
+                          <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                            Auto-detected by Audio Recognition
+                          </p>
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                          <p>
+                            Detected: {new Date(selectedRequest.matched_song_detection.recognition_timestamp).toLocaleString()}
+                          </p>
+                          {selectedRequest.matched_song_detection.recognition_confidence && (
+                            <p>
+                              Confidence: {(selectedRequest.matched_song_detection.recognition_confidence * 100).toFixed(0)}%
+                            </p>
+                          )}
+                          <p>
+                            Detected as: "{selectedRequest.matched_song_detection.song_title}" by {selectedRequest.matched_song_detection.song_artist}
+                          </p>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ) : (
@@ -6715,6 +6892,20 @@ export default function CrowdRequestsPage() {
                         {new Date(selectedRequest.created_at).toLocaleString()}
                       </p>
                     </div>
+                    {selectedRequest.played_at && (
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Played At</p>
+                        <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          {new Date(selectedRequest.played_at).toLocaleString()}
+                          {selectedRequest.matched_song_detection?.auto_marked_as_played && (
+                            <span title="Auto-detected" className="ml-1">
+                              <Mic className="w-3 h-3 text-green-600 dark:text-green-400" />
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
                     {selectedRequest.paid_at && (
                       <div>
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Paid At</p>
@@ -6992,8 +7183,184 @@ export default function CrowdRequestsPage() {
           </div>
         )}
 
+        {/* Audio Tracking Modal */}
+        {showAudioTrackingModal && (
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowAudioTrackingModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-2xl shadow-2xl max-w-4xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
+                <div className="flex-1 min-w-0 pr-2">
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                    Live Song Detection
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1 hidden sm:block">
+                    Listen to music and automatically detect songs being played
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAudioTrackingModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                {/* Event Selection */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                    Select Event <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 sm:mb-3">
+                    Select an event to automatically match detected songs to song requests. An event is required to start detection.
+                  </p>
+                  <select
+                    value={selectedEventCode || ''}
+                    onChange={async (e) => {
+                      const eventCode = e.target.value || null;
+                      setSelectedEventCode(eventCode);
+                      setSelectedEventId(null);
+                      
+                      if (eventCode) {
+                        setLoadingEventId(true);
+                        try {
+                          // Fetch event ID from event_qr_code
+                          const { data: eventData, error } = await supabase
+                            .from('events')
+                            .select('id')
+                            .eq('event_qr_code', eventCode)
+                            .single();
+                          
+                          if (error || !eventData) {
+                            console.error('Error fetching event:', error);
+                            toast({
+                              title: 'Warning',
+                              description: 'Could not find event. Songs will be detected but may not auto-match to requests.',
+                              variant: 'default',
+                            });
+                          } else {
+                            setSelectedEventId(eventData.id);
+                          }
+                        } catch (err) {
+                          console.error('Error:', err);
+                        } finally {
+                          setLoadingEventId(false);
+                        }
+                      }
+                    }}
+                    className="w-full px-3 py-2.5 sm:py-2 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    disabled={loadingEventId}
+                  >
+                    <option value="">No specific event (detect only)</option>
+                    {Array.from(new Set(requests
+                      .filter(r => r.event_qr_code)
+                      .map(r => ({ code: r.event_qr_code, name: r.event_name || r.event_qr_code }))
+                    )).map((event, idx) => (
+                      <option key={idx} value={event.code || ''}>
+                        {event.name} ({event.code})
+                      </option>
+                    ))}
+                  </select>
+                  {loadingEventId && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Loading event details...</p>
+                  )}
+                  {selectedEventCode && selectedEventId && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                      ✓ Event selected - songs will auto-match to requests
+                    </p>
+                  )}
+                </div>
+
+                {/* Song Recognition Component */}
+                {!selectedEventId ? (
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6 sm:p-8 text-center">
+                    <Mic className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                    <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      Select an Event to Start
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      Choose an event from the dropdown above to begin live song detection
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6">
+                    <SongRecognition
+                      eventId={selectedEventId}
+                      organizationId={organization?.id || undefined}
+                      onSongDetected={(song) => {
+                        toast({
+                          title: "Song Detected!",
+                          description: `${song.title} by ${song.artist} - Request marked as played`,
+                        });
+                        // Refresh requests to show updated status
+                        setTimeout(() => {
+                          fetchRequests();
+                        }, 1000);
+                      }}
+                      chunkDuration={5}
+                    />
+                  </div>
+                )}
+
+                {/* Info Section */}
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+                  <h4 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-2">How it works:</h4>
+                  <ul className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                    <li>Place your phone near the speakers</li>
+                    <li>The system will continuously listen and detect songs every 5 seconds</li>
+                    <li>When a song is detected, it will automatically match to song requests if an event is selected</li>
+                    <li>Matching requests will be marked as "played" automatically</li>
+                    <li>Detected songs are saved to the database for tracking</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Audio Tracking Button */}
+        <div className="mb-4 sm:mb-6 flex justify-end">
+          <Button
+            onClick={() => {
+              // Get the most common event code from requests, or leave empty
+              const eventCodes = requests
+                .filter(r => r.event_qr_code)
+                .map(r => r.event_qr_code);
+              const mostCommonEvent = eventCodes.length > 0 
+                ? eventCodes.sort((a, b) => 
+                    eventCodes.filter(v => v === b).length - eventCodes.filter(v => v === a).length
+                  )[0]
+                : null;
+              setSelectedEventCode(mostCommonEvent || null);
+              setSelectedEventId(null);
+              setShowAudioTrackingModal(true);
+              
+              // If there's a most common event, fetch its ID
+              if (mostCommonEvent) {
+                setLoadingEventId(true);
+                supabase
+                  .from('events')
+                  .select('id')
+                  .eq('event_qr_code', mostCommonEvent)
+                  .single()
+                  .then(({ data, error }) => {
+                    if (!error && data) {
+                      setSelectedEventId(data.id);
+                    }
+                    setLoadingEventId(false);
+                  });
+              }
+            }}
+            size="lg"
+            className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 w-full sm:w-auto text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3"
+          >
+            <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Start Live Song Detection</span>
+            <span className="sm:hidden">Live Detection</span>
+          </Button>
+        </div>
+
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Requests</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -7029,6 +7396,136 @@ export default function CrowdRequestsPage() {
           </div>
         </div>
       </div>
+
+      {/* Orphaned Payments Dialog */}
+      <Dialog open={showOrphanedDialog} onOpenChange={setShowOrphanedDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Orphaned Payments Found</DialogTitle>
+          </DialogHeader>
+          {orphanedPaymentsData && (
+            <div className="space-y-4">
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium mb-2">
+                  Found {orphanedPaymentsData.summary.orphaned_payments + 
+                         orphanedPaymentsData.summary.orphaned_sessions + 
+                         orphanedPaymentsData.summary.payments_without_request_id} orphaned payment(s)
+                </p>
+                <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1 list-disc list-inside">
+                  <li>{orphanedPaymentsData.summary.orphaned_payments} payments with request_id but not linked</li>
+                  <li>{orphanedPaymentsData.summary.orphaned_sessions} sessions with request_id but not linked</li>
+                  <li>{orphanedPaymentsData.summary.payments_without_request_id} payments without request_id</li>
+                </ul>
+              </div>
+
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="mb-2">These are payments in Stripe that either:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Have no request_id in metadata</li>
+                  <li>The request_id doesn't exist in the database</li>
+                  <li>The payment isn't properly linked to the request</li>
+                </ul>
+              </div>
+
+              {orphanedPaymentsData.orphaned_payments && orphanedPaymentsData.orphaned_payments.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">Orphaned Payments ({orphanedPaymentsData.orphaned_payments.length}):</h4>
+                  <div className="max-h-40 overflow-y-auto space-y-2">
+                    {orphanedPaymentsData.orphaned_payments.slice(0, 5).map((payment: any, idx: number) => (
+                      <div key={idx} className="text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded border">
+                        <p><strong>Payment Intent:</strong> {payment.payment_intent_id}</p>
+                        <p><strong>Request ID:</strong> {payment.request_id}</p>
+                        <p><strong>Amount:</strong> ${(payment.amount / 100).toFixed(2)} {payment.currency.toUpperCase()}</p>
+                        <p><strong>Reason:</strong> {payment.reason}</p>
+                      </div>
+                    ))}
+                    {orphanedPaymentsData.orphaned_payments.length > 5 && (
+                      <p className="text-xs text-gray-500">... and {orphanedPaymentsData.orphaned_payments.length - 5} more (check console for full list)</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {orphanedPaymentsData.orphaned_sessions && orphanedPaymentsData.orphaned_sessions.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">Orphaned Sessions ({orphanedPaymentsData.orphaned_sessions.length}):</h4>
+                  <div className="max-h-40 overflow-y-auto space-y-2">
+                    {orphanedPaymentsData.orphaned_sessions.slice(0, 5).map((session: any, idx: number) => (
+                      <div key={idx} className="text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded border">
+                        <p><strong>Session ID:</strong> {session.session_id}</p>
+                        <p><strong>Request ID:</strong> {session.request_id}</p>
+                        <p><strong>Amount:</strong> ${(session.amount_total / 100).toFixed(2)} {session.currency.toUpperCase()}</p>
+                        <p><strong>Reason:</strong> {session.reason}</p>
+                      </div>
+                    ))}
+                    {orphanedPaymentsData.orphaned_sessions.length > 5 && (
+                      <p className="text-xs text-gray-500">... and {orphanedPaymentsData.orphaned_sessions.length - 5} more (check console for full list)</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  onClick={async () => {
+                    try {
+                      setSyncingPayments(true);
+                      const response = await fetch('/api/crowd-request/sync-orphaned-payments', {
+                        method: 'POST',
+                      });
+                      const data = await response.json();
+                      
+                      if (data.success) {
+                        toast({
+                          title: 'Sync Complete',
+                          description: `Synced ${data.synced} payment(s)`,
+                        });
+                        setShowOrphanedDialog(false);
+                        // Refresh the requests list
+                        window.location.reload();
+                      } else {
+                        toast({
+                          title: 'Sync Failed',
+                          description: data.error || 'Unknown error',
+                          variant: 'destructive',
+                        });
+                      }
+                    } catch (error: any) {
+                      toast({
+                        title: 'Error',
+                        description: error?.message || 'Unknown error',
+                        variant: 'destructive',
+                      });
+                    } finally {
+                      setSyncingPayments(false);
+                    }
+                  }}
+                  disabled={syncingPayments}
+                  className="flex-1"
+                >
+                  {syncingPayments ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Sync Orphaned Payments
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => setShowOrphanedDialog(false)}
+                  variant="outline"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

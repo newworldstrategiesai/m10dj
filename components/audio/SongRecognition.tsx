@@ -265,46 +265,49 @@ export default function SongRecognition({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Music className="h-5 w-5" />
+    <Card className="border-0 shadow-none">
+      <CardHeader className="p-3 sm:p-6 pb-3 sm:pb-4">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <Music className="h-4 w-4 sm:h-5 sm:w-5" />
           Automatic Song Recognition
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
           Listen to ambient audio and automatically detect songs being played
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6 pt-0">
         {/* Control Button */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <Button
             onClick={toggleListening}
             disabled={isProcessing || !hasPermission}
             variant={isListening ? 'destructive' : 'default'}
             size="lg"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 flex-1 sm:flex-initial text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3"
           >
             {isProcessing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Processing...
+                <span className="hidden sm:inline">Processing...</span>
+                <span className="sm:hidden">Processing</span>
               </>
             ) : isListening ? (
               <>
                 <MicOff className="h-4 w-4" />
-                Stop Listening
+                <span className="hidden sm:inline">Stop Listening</span>
+                <span className="sm:hidden">Stop</span>
               </>
             ) : (
               <>
                 <Mic className="h-4 w-4" />
-                Start Listening
+                <span className="hidden sm:inline">Start Listening</span>
+                <span className="sm:hidden">Start</span>
               </>
             )}
           </Button>
 
           {isListening && (
-            <Badge variant="outline" className="animate-pulse">
+            <Badge variant="outline" className="animate-pulse text-xs sm:text-sm">
               <Mic className="h-3 w-3 mr-1" />
               Active
             </Badge>
@@ -313,7 +316,7 @@ export default function SongRecognition({
 
         {/* Error Display */}
         {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
+          <div className="p-2 sm:p-3 bg-destructive/10 border border-destructive/20 rounded-md text-xs sm:text-sm text-destructive">
             {error}
           </div>
         )}
@@ -321,22 +324,22 @@ export default function SongRecognition({
         {/* Detected Songs List */}
         {detectedSongs.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Recently Detected Songs</h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <h3 className="text-xs sm:text-sm font-semibold">Recently Detected Songs</h3>
+            <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
               {detectedSongs.map((song, index) => (
                 <div
                   key={index}
-                  className="p-3 bg-muted rounded-md border flex items-start justify-between"
+                  className="p-2 sm:p-3 bg-muted rounded-md border flex items-start justify-between gap-2"
                 >
-                  <div className="flex-1">
-                    <div className="font-medium">{song.title}</div>
-                    <div className="text-sm text-muted-foreground">{song.artist}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm sm:text-base truncate">{song.title}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground truncate">{song.artist}</div>
                     {song.album && (
-                      <div className="text-xs text-muted-foreground mt-1">Album: {song.album}</div>
+                      <div className="text-xs text-muted-foreground mt-1 truncate">Album: {song.album}</div>
                     )}
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <Badge variant="secondary" className="text-xs">
-                        {Math.round(song.confidence * 100)}% confidence
+                        {Math.round(song.confidence * 100)}%
                       </Badge>
                       <span className="text-xs text-muted-foreground">
                         {song.timestamp.toLocaleTimeString()}
@@ -348,7 +351,7 @@ export default function SongRecognition({
                       href={song.spotifyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-2 text-primary hover:underline"
+                      className="ml-2 text-primary hover:underline flex-shrink-0"
                     >
                       <Music className="h-4 w-4" />
                     </a>
@@ -360,7 +363,7 @@ export default function SongRecognition({
         )}
 
         {/* Info */}
-        <div className="text-xs text-muted-foreground pt-2 border-t">
+        <div className="text-xs text-muted-foreground pt-2 border-t space-y-0.5">
           <p>• Audio is processed in {chunkDuration}-second chunks</p>
           <p>• Songs are automatically saved to your event</p>
           <p>• Matching song requests are marked as played</p>
