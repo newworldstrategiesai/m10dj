@@ -158,6 +158,20 @@ export async function middleware(request: NextRequest) {
     // Rewrite paths to djdash marketing routes
     if (path === '/' || path === '') {
       rewritePath = '/djdash';
+    } else if (path === '/business' || path.startsWith('/business/')) {
+      rewritePath = '/djdash/business';
+    } else if (path.startsWith('/dj/')) {
+      // Rewrite /dj/[slug] to /djdash/dj/[slug] for DJ profile pages
+      rewritePath = '/djdash' + path;
+    } else if (path.startsWith('/find-dj/')) {
+      // Rewrite /find-dj/* to /djdash/find-dj/*
+      rewritePath = '/djdash' + path;
+    } else if (path.startsWith('/dj-gigs/')) {
+      // Rewrite /dj-gigs/* to /djdash/dj-gigs/*
+      rewritePath = '/djdash' + path;
+    } else if (path.startsWith('/djdash/')) {
+      // If path already starts with /djdash/, let it pass through (no rewrite needed)
+      rewritePath = '';
     } else if (path === '/pricing' || path.startsWith('/pricing/')) {
       rewritePath = '/djdash/pricing';
     } else if (path === '/features' || path.startsWith('/features/')) {
@@ -168,6 +182,15 @@ export async function middleware(request: NextRequest) {
       rewritePath = '/djdash/signup';
     } else if (path === '/use-cases' || path.startsWith('/use-cases/')) {
       rewritePath = '/djdash/use-cases';
+    } else if (path === '/signin' || path.startsWith('/signin/')) {
+      // Signin is in app/signin, let it pass through
+      rewritePath = '';
+    } else if (path === '/privacy-policy' || path.startsWith('/privacy-policy/')) {
+      // Privacy policy is in pages router, let it pass through
+      rewritePath = '';
+    } else if (path === '/terms-of-service' || path.startsWith('/terms-of-service/')) {
+      // Terms of service is in pages router, let it pass through
+      rewritePath = '';
     }
 
     // Update session and add headers
