@@ -23,10 +23,10 @@ export default function DJDashHeader() {
   };
 
   const navLinks = [
-    { name: 'Features', href: '/djdash/features' },
-    { name: 'Pricing', href: '/djdash/pricing' },
-    { name: 'How It Works', href: '/djdash/how-it-works' },
-    { name: 'Use Cases', href: '/djdash/use-cases' },
+    { name: 'Find DJs', href: '/' },
+    { name: 'For DJs', href: '/business' },
+    { name: 'Features', href: '/business' },
+    { name: 'Pricing', href: '/business' },
   ];
 
   return (
@@ -70,6 +70,12 @@ export default function DJDashHeader() {
           {/* CTA Button */}
           <div className="hidden md:flex items-center space-x-4">
             <Link
+              href="/business"
+              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium text-sm transition-colors"
+            >
+              For DJs
+            </Link>
+            <Link
               href="/djdash/signup"
               className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
             >
@@ -108,6 +114,13 @@ export default function DJDashHeader() {
               </Link>
             ))}
             <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
+              <Link
+                href="/business"
+                className="block text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium text-center py-2 transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                For DJs
+              </Link>
               <Link
                 href="/djdash/signup"
                 className="block bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-3 rounded-xl font-semibold text-sm text-center shadow-lg transition-all duration-300"

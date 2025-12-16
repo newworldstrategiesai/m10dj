@@ -66,6 +66,8 @@ export default function App({ Component, pageProps }) {
   const isAdminRoute = router.pathname.startsWith('/admin') || router.pathname.startsWith('/chat');
   const isSignInPage = router.pathname.startsWith('/signin');
   const isRequestsPage = router.pathname === '/requests' || router.pathname.startsWith('/crowd-request');
+  // Check if we're on DJ Dash pages (djdash.net domain or /djdash routes or /dj/ profile routes)
+  const isDJDashPage = router.pathname.startsWith('/djdash') || router.pathname.startsWith('/dj/');
   
   return (
     <ThemeProviderWrapper>
@@ -112,7 +114,8 @@ export default function App({ Component, pageProps }) {
       {isAdminRoute && !isSignInPage && <AdminNavbar />}
       <Component {...pageProps} />
       {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
-      {!isSignInPage && !isRequestsPage && !isAdminRoute && <GlobalChatWidget />}
+      {/* Only show chat widget on m10djcompany.com, not on djdash.net */}
+      {!isSignInPage && !isRequestsPage && !isAdminRoute && !isDJDashPage && <GlobalChatWidget />}
       {/* Toast notifications for Pages Router */}
       <Toaster />
       {/* Temporarily disabled to prevent rate limiting issues */}

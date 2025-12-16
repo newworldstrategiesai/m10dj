@@ -14,7 +14,8 @@ export type PageType =
   | 'event'
   | 'about'
   | 'contact'
-  | 'pricing';
+  | 'pricing'
+  | 'dj_profile';
 
 interface BasePageProps {
   pageType: PageType;
@@ -63,12 +64,37 @@ interface EventPageProps extends BasePageProps {
   offers?: any;
 }
 
+interface DJProfilePageProps extends BasePageProps {
+  pageType: 'dj_profile';
+  djName: string;
+  djSlug: string;
+  bio?: string;
+  tagline?: string;
+  profileImageUrl?: string;
+  coverImageUrl?: string;
+  city?: string;
+  state?: string;
+  serviceRadiusMiles?: number;
+  serviceAreas?: string[];
+  eventTypes?: string[];
+  startingPriceRange?: string;
+  priceRangeMin?: number;
+  priceRangeMax?: number;
+  availabilityStatus?: string;
+  socialLinks?: any;
+  aggregateRating?: {
+    ratingValue: number;
+    reviewCount: number;
+  };
+}
+
 export type StructuredDataProps = 
   | ServicePageProps 
   | LocationPageProps 
   | VenuePageProps 
   | BlogPageProps 
   | EventPageProps
+  | DJProfilePageProps
   | BasePageProps;
 
 export function generateStructuredData(props: StructuredDataProps) {
@@ -83,9 +109,10 @@ export function generateStructuredData(props: StructuredDataProps) {
 
   const schemas: any[] = [];
 
-  // Base Organization schema (included on every page)
-  schemas.push({
-    "@context": "https://schema.org",
+  // Base Organization schema (included on every page except DJ profiles)
+  if (pageType !== 'dj_profile') {
+    schemas.push({
+      "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${businessInfo.url}/#organization`,
     "name": businessInfo.name,
@@ -131,7 +158,8 @@ export function generateStructuredData(props: StructuredDataProps) {
     "priceRange": businessInfo.priceRange,
     "currenciesAccepted": businessInfo.currenciesAccepted,
     "paymentAccepted": businessInfo.paymentAccepted
-  });
+    });
+  }
 
   switch (pageType) {
     case 'homepage':
@@ -596,6 +624,142 @@ export function generateStructuredData(props: StructuredDataProps) {
           "availability": "https://schema.org/InStock"
         }
       });
+      break;
+
+    case 'dj_profile':
+      const djProps = props as DJProfilePageProps;
+      const djBaseUrl = 'https://djdash.net';
+      const djPageUrl = `${djBaseUrl}/dj/${djProps.djSlug}`;
+      const djFullLocation = [djProps.city, djProps.state].filter(Boolean).join(', ');
+
+      // Person schema (DJ as a person)
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "@id": `${djPageUrl}#person`,
+        "name": djProps.djName,
+        "description": djProps.bio || djProps.tagline || `Professional DJ services${djFullLocation ? ` in ${djFullLocation}` : ''}`,
+        "image": djProps.profileImageUrl || djProps.coverImageUrl,
+        "url": djPageUrl,
+        "jobTitle": "Professional DJ",
+        "address": djProps.city && djProps.state ? {
+          "@type": "PostalAddress",
+          "addressLocality": djProps.city,
+          "addressRegion": djProps.state,
+          "addressCountry": "US"
+        } : undefined,
+        ...(djProps.socialLinks && {
+          "sameAs": Object.values(djProps.socialLinks).filter(Boolean)
+        })
+      });
+
+      // LocalBusiness schema (DJ as a business)
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "@id": `${djPageUrl}#local-business`,
+        "name": djProps.djName,
+        "description": djProps.bio || djProps.tagline || `Professional DJ services${djFullLocation ? ` in ${djFullLocation}` : ''}`,
+        "url": djPageUrl,
+        "image": djProps.coverImageUrl || djProps.profileImageUrl,
+        "address": djProps.city && djProps.state ? {
+          "@type": "PostalAddress",
+          "addressLocality": djProps.city,
+          "addressRegion": djProps.state,
+          "addressCountry": "US"
+        } : undefined,
+        "priceRange": djProps.startingPriceRange,
+        "areaServed": djProps.serviceAreas?.map((area) => ({
+          "@type": "City",
+          "name": area
+        })),
+        "serviceArea": djProps.city && djProps.serviceRadiusMiles ? {
+          "@type": "GeoCircle",
+          "geoMidpoint": {
+            "@type": "GeoCoordinates",
+            "latitude": 0, // Would need actual coordinates
+            "longitude": 0
+          },
+          "geoRadius": {
+            "@type": "Distance",
+            "value": djProps.serviceRadiusMiles,
+            "unitCode": "MI"
+          }
+        } : undefined,
+        ...(djProps.aggregateRating && {
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": djProps.aggregateRating.ratingValue.toString(),
+            "reviewCount": djProps.aggregateRating.reviewCount.toString(),
+            "bestRating": "5",
+            "worstRating": "1"
+          }
+        }),
+        ...(djProps.socialLinks && {
+          "sameAs": Object.values(djProps.socialLinks).filter(Boolean)
+        })
+      });
+
+      // Service schemas for each event type
+      if (djProps.eventTypes && djProps.eventTypes.length > 0) {
+        djProps.eventTypes.forEach((eventType, index) => {
+          const serviceName = eventType.split('_').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+          
+          schemas.push({
+            "@context": "https://schema.org",
+            "@type": "Service",
+            "@id": `${djPageUrl}#service-${index}`,
+            "name": `${serviceName} DJ Services`,
+            "description": `Professional ${serviceName.toLowerCase()} DJ services by ${djProps.djName}${djFullLocation ? ` in ${djFullLocation}` : ''}`,
+            "serviceType": "DJ Services",
+            "provider": {
+              "@id": `${djPageUrl}#local-business`
+            },
+            "offers": {
+              "@type": "Offer",
+              "priceRange": djProps.startingPriceRange,
+              "priceCurrency": "USD",
+              "availability": djProps.availabilityStatus === 'available' 
+                ? "https://schema.org/InStock" 
+                : "https://schema.org/PreOrder"
+            },
+            "areaServed": djProps.serviceAreas?.map((area) => ({
+              "@type": "City",
+              "name": area
+            }))
+          });
+        });
+      }
+
+      // BreadcrumbList schema
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "@id": `${djPageUrl}#breadcrumb`,
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": djBaseUrl
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "DJs",
+            "item": `${djBaseUrl}/djs`
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": djProps.djName,
+            "item": djPageUrl
+          }
+        ]
+      });
+
       break;
 
     default:

@@ -16,14 +16,26 @@ export default function GlobalChatWidget() {
   const [isMicro, setIsMicro] = useState(false);
   const [chatData, setChatData] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [isDJDashDomain, setIsDJDashDomain] = useState(false);
 
   // Check if we're on a quote page - use micro view there
   const isQuotePage = router.pathname?.includes('/quote/');
-
+  
+  // Don't show chat widget on DJ Dash pages (djdash.net)
+  const isDJDashPage = router.pathname?.startsWith('/djdash') || router.pathname?.startsWith('/dj/');
+  
   // Only render on client to avoid hydration mismatch
   useEffect(() => {
     setIsMounted(true);
+    if (typeof window !== 'undefined') {
+      setIsDJDashDomain(window.location.hostname.includes('djdash.net'));
+    }
   }, []);
+  
+  // Don't render if on DJ Dash pages (check after mount to avoid hydration issues)
+  if (!isMounted || isDJDashPage || isDJDashDomain) {
+    return null;
+  }
 
   // Restore chat data from sessionStorage
   useEffect(() => {
