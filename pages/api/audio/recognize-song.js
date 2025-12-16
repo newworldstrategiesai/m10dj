@@ -25,8 +25,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Audio data is required' });
     }
 
-    if (!eventId && !contactId) {
-      return res.status(400).json({ error: 'Either eventId or contactId is required' });
+    // Allow detection without eventId/contactId if organizationId is provided
+    if (!eventId && !contactId && !organizationId) {
+      return res.status(400).json({ error: 'Either eventId, contactId, or organizationId is required' });
     }
 
     // Check if audio tracking is enabled for this event

@@ -2687,6 +2687,52 @@ export default function CrowdRequestsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6 px-4 lg:px-6">
+        {/* Prominent Live Listen Button */}
+        <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 -mx-4 lg:-mx-6 px-4 lg:px-6 py-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Crowd Requests</h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage song requests and shoutouts from events</p>
+            </div>
+            <Button
+              onClick={() => {
+                // Get the most common event code from requests, or leave empty
+                const eventCodes = requests
+                  .filter(r => r.event_qr_code)
+                  .map(r => r.event_qr_code);
+                const mostCommonEvent = eventCodes.length > 0 
+                  ? eventCodes.sort((a, b) => 
+                      eventCodes.filter(v => v === b).length - eventCodes.filter(v => v === a).length
+                    )[0]
+                  : null;
+                setSelectedEventCode(mostCommonEvent || null);
+                setSelectedEventId(null);
+                setShowAudioTrackingModal(true);
+                
+                // If there's a most common event, fetch its ID
+                if (mostCommonEvent) {
+                  setLoadingEventId(true);
+                  supabase
+                    .from('events')
+                    .select('id')
+                    .eq('event_qr_code', mostCommonEvent)
+                    .single()
+                    .then(({ data, error }) => {
+                      if (!error && data) {
+                        setSelectedEventId(data.id);
+                      }
+                      setLoadingEventId(false);
+                    });
+                }
+              }}
+              size="lg"
+              className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 shadow-lg hover:shadow-xl transition-all"
+            >
+              <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span>Start Live Song Detection</span>
+            </Button>
+          </div>
+        </div>
         {/* Stripe Connect Requirement Banner */}
         <StripeConnectRequirementBanner organization={organization} />
         
@@ -7208,10 +7254,10 @@ export default function CrowdRequestsPage() {
                 {/* Event Selection */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800">
                   <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                    Select Event <span className="text-red-500">*</span>
+                    Select Event <span className="text-gray-500 text-xs">(Optional)</span>
                   </label>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 sm:mb-3">
-                    Select an event to automatically match detected songs to song requests. An event is required to start detection.
+                    Select an event to automatically match detected songs to song requests. You can start listening without selecting an event - songs will still be detected and saved.
                   </p>
                   <select
                     value={selectedEventCode || ''}
@@ -7271,35 +7317,25 @@ export default function CrowdRequestsPage() {
                 </div>
 
                 {/* Song Recognition Component */}
-                {!selectedEventId ? (
-                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6 sm:p-8 text-center">
-                    <Mic className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                    <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      Select an Event to Start
-                    </p>
-                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                      Choose an event from the dropdown above to begin live song detection
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6">
-                    <SongRecognition
-                      eventId={selectedEventId}
-                      organizationId={organization?.id || undefined}
-                      onSongDetected={(song) => {
-                        toast({
-                          title: "Song Detected!",
-                          description: `${song.title} by ${song.artist} - Request marked as played`,
-                        });
-                        // Refresh requests to show updated status
-                        setTimeout(() => {
-                          fetchRequests();
-                        }, 1000);
-                      }}
-                      chunkDuration={5}
-                    />
-                  </div>
-                )}
+                <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6">
+                  <SongRecognition
+                    eventId={selectedEventId || undefined}
+                    organizationId={organization?.id || undefined}
+                    onSongDetected={(song) => {
+                      toast({
+                        title: "Song Detected!",
+                        description: selectedEventId 
+                          ? `${song.title} by ${song.artist} - Request marked as played`
+                          : `${song.title} by ${song.artist} - Detected and saved`,
+                      });
+                      // Refresh requests to show updated status
+                      setTimeout(() => {
+                        fetchRequests();
+                      }, 1000);
+                    }}
+                    chunkDuration={5}
+                  />
+                </div>
 
                 {/* Info Section */}
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
@@ -7317,47 +7353,6 @@ export default function CrowdRequestsPage() {
           </div>
         )}
 
-        {/* Audio Tracking Button */}
-        <div className="mb-4 sm:mb-6 flex justify-end">
-          <Button
-            onClick={() => {
-              // Get the most common event code from requests, or leave empty
-              const eventCodes = requests
-                .filter(r => r.event_qr_code)
-                .map(r => r.event_qr_code);
-              const mostCommonEvent = eventCodes.length > 0 
-                ? eventCodes.sort((a, b) => 
-                    eventCodes.filter(v => v === b).length - eventCodes.filter(v => v === a).length
-                  )[0]
-                : null;
-              setSelectedEventCode(mostCommonEvent || null);
-              setSelectedEventId(null);
-              setShowAudioTrackingModal(true);
-              
-              // If there's a most common event, fetch its ID
-              if (mostCommonEvent) {
-                setLoadingEventId(true);
-                supabase
-                  .from('events')
-                  .select('id')
-                  .eq('event_qr_code', mostCommonEvent)
-                  .single()
-                  .then(({ data, error }) => {
-                    if (!error && data) {
-                      setSelectedEventId(data.id);
-                    }
-                    setLoadingEventId(false);
-                  });
-              }
-            }}
-            size="lg"
-            className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 w-full sm:w-auto text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3"
-          >
-            <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden sm:inline">Start Live Song Detection</span>
-            <span className="sm:hidden">Live Detection</span>
-          </Button>
-        </div>
 
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
