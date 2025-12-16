@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, Mic, MicOff } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import Link from 'next/link';
 import { syncVenueFromProjectToContact } from '@/utils/sync-venue-data';
+import SongRecognition from '@/components/audio/SongRecognition';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { getCurrentOrganization } from '@/utils/organization-context';
 
 interface Project {
   id: string;
@@ -34,6 +38,8 @@ interface Project {
   playlist_notes: string | null;
   timeline_notes: string | null;
   status: string;
+  audio_tracking_enabled: boolean | null;
+  organization_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +58,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClientComponentClient();
   const { toast } = useToast();
@@ -89,6 +96,12 @@ export default function ProjectDetailPage() {
       }
 
       setUser(user);
+      
+      // Get organization ID for audio tracking
+      const org = await getCurrentOrganization(supabase);
+      if (org) {
+        setOrganizationId(org.id);
+      }
     } catch (error) {
       console.error('Error fetching user data:', error);
       router.push('/signin');
@@ -150,6 +163,7 @@ export default function ProjectDetailPage() {
           playlist_notes: project.playlist_notes,
           timeline_notes: project.timeline_notes,
           status: project.status,
+          audio_tracking_enabled: project.audio_tracking_enabled ?? false,
           updated_at: new Date().toISOString()
         })
         .eq('id', project.id);
@@ -191,6 +205,46 @@ export default function ProjectDetailPage() {
   const handleInputChange = (field: keyof Project, value: any) => {
     if (!project) return;
     setProject({ ...project, [field]: value });
+  };
+
+  const handleToggleAudioTracking = async (enabled: boolean) => {
+    if (!project) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({
+          audio_tracking_enabled: enabled,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', project.id);
+
+      if (error) {
+        console.error('Error updating audio tracking:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update audio tracking setting",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setProject({ ...project, audio_tracking_enabled: enabled });
+      toast({
+        title: "Success",
+        description: enabled ? "Audio tracking enabled" : "Audio tracking disabled",
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update audio tracking setting",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formatDate = (dateString: string | null) => {
@@ -267,6 +321,7 @@ export default function ProjectDetailPage() {
             <TabsTrigger value="details">Project Details</TabsTrigger>
             <TabsTrigger value="client">Client Information</TabsTrigger>
             <TabsTrigger value="notes">Notes & Communication</TabsTrigger>
+            <TabsTrigger value="audio">Audio Tracking</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details">
@@ -501,6 +556,71 @@ export default function ProjectDetailPage() {
                   <p><strong>Last Updated:</strong> {new Date(project.updated_at).toLocaleString()}</p>
                 </div>
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="audio">
+            <div className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Automatic Song Recognition</h3>
+                  <p className="text-sm text-gray-600">
+                    Enable automatic song detection using your phone's microphone. Detected songs will automatically match to song requests and mark them as played.
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle Switch */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                <div className="flex items-center space-x-3">
+                  {project.audio_tracking_enabled ? (
+                    <Mic className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <MicOff className="h-5 w-5 text-gray-400" />
+                  )}
+                  <div>
+                    <Label htmlFor="audio-tracking" className="text-base font-medium cursor-pointer">
+                      Enable Audio Tracking
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      {project.audio_tracking_enabled 
+                        ? 'Audio recognition is active for this event'
+                        : 'Turn on to automatically detect and track songs'}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="audio-tracking"
+                  checked={project.audio_tracking_enabled ?? false}
+                  onCheckedChange={handleToggleAudioTracking}
+                  disabled={saving}
+                />
+              </div>
+
+              {/* Song Recognition Component */}
+              {project.audio_tracking_enabled && (
+                <div className="mt-6">
+                  <SongRecognition
+                    eventId={project.id}
+                    organizationId={organizationId || project.organization_id || undefined}
+                    onSongDetected={(song) => {
+                      toast({
+                        title: "Song Detected!",
+                        description: `${song.title} by ${song.artist} - Request marked as played`,
+                      });
+                    }}
+                    chunkDuration={5}
+                  />
+                </div>
+              )}
+
+              {!project.audio_tracking_enabled && (
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>How it works:</strong> When enabled, place your phone near the speakers and the system will automatically detect songs being played. Matching song requests will be marked as "played" automatically.
+                  </p>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

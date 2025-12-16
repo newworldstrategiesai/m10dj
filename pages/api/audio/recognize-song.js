@@ -29,6 +29,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Either eventId or contactId is required' });
     }
 
+    // Check if audio tracking is enabled for this event
+    if (eventId) {
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .select('audio_tracking_enabled')
+        .eq('id', eventId)
+        .single();
+
+      if (eventError) {
+        console.error('Error checking event:', eventError);
+        // Continue anyway - don't block if we can't check
+      } else if (event && event.audio_tracking_enabled === false) {
+        return res.status(403).json({ 
+          error: 'Audio tracking is disabled for this event',
+          message: 'Please enable audio tracking in the event settings to use this feature'
+        });
+      }
+    }
+
     // AudD API configuration
     const AUDD_API_URL = 'https://api.audd.io/';
     const AUDD_API_TOKEN = process.env.AUDD_API_TOKEN;
