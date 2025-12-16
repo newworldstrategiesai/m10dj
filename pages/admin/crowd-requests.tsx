@@ -29,6 +29,7 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   FileText,
   MoreVertical,
   Clock,
@@ -145,6 +146,10 @@ export default function CrowdRequestsPage() {
   const [selectedEventCode, setSelectedEventCode] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [loadingEventId, setLoadingEventId] = useState(false);
+  const [availableEvents, setAvailableEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
+  const [showEventDropdown, setShowEventDropdown] = useState(false);
   const [headerSettings, setHeaderSettings] = useState({
     artistName: '',
     location: '',
@@ -238,6 +243,56 @@ export default function CrowdRequestsPage() {
     fetchPaymentSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch available events for audio tracking
+  const fetchAvailableEvents = async () => {
+    if (!organization?.id) return;
+    
+    setLoadingEvents(true);
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, event_name, event_date, event_qr_code, client_name, venue_name, organization_id')
+        .eq('organization_id', organization.id)
+        .order('event_date', { ascending: false })
+        .limit(100); // Limit to most recent 100 events
+      
+      if (error) throw error;
+      
+      setAvailableEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load events',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
+
+  // Fetch events when modal opens
+  useEffect(() => {
+    if (showAudioTrackingModal && organization?.id) {
+      fetchAvailableEvents();
+    }
+  }, [showAudioTrackingModal, organization?.id]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!showEventDropdown) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.event-dropdown-container')) {
+        setShowEventDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEventDropdown]);
 
   // Auto-refresh functionality
   useEffect(() => {
@@ -7254,65 +7309,164 @@ export default function CrowdRequestsPage() {
                 {/* Event Selection */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800">
                   <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                    Select Event <span className="text-gray-500 text-xs">(Optional)</span>
+                    Select Event <span className="text-gray-500 text-xs font-normal">(Optional)</span>
                   </label>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 sm:mb-3">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                     Select an event to automatically match detected songs to song requests. You can start listening without selecting an event - songs will still be detected and saved.
                   </p>
-                  <select
-                    value={selectedEventCode || ''}
-                    onChange={async (e) => {
-                      const eventCode = e.target.value || null;
-                      setSelectedEventCode(eventCode);
-                      setSelectedEventId(null);
-                      
-                      if (eventCode) {
-                        setLoadingEventId(true);
-                        try {
-                          // Fetch event ID from event_qr_code
-                          const { data: eventData, error } = await supabase
-                            .from('events')
-                            .select('id')
-                            .eq('event_qr_code', eventCode)
-                            .single();
-                          
-                          if (error || !eventData) {
-                            console.error('Error fetching event:', error);
-                            toast({
-                              title: 'Warning',
-                              description: 'Could not find event. Songs will be detected but may not auto-match to requests.',
-                              variant: 'default',
-                            });
-                          } else {
-                            setSelectedEventId(eventData.id);
-                          }
-                        } catch (err) {
-                          console.error('Error:', err);
-                        } finally {
-                          setLoadingEventId(false);
-                        }
-                      }
-                    }}
-                    className="w-full px-3 py-2.5 sm:py-2 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    disabled={loadingEventId}
-                  >
-                    <option value="">No specific event (detect only)</option>
-                    {Array.from(new Set(requests
-                      .filter(r => r.event_qr_code)
-                      .map(r => ({ code: r.event_qr_code, name: r.event_name || r.event_qr_code }))
-                    )).map((event, idx) => (
-                      <option key={idx} value={event.code || ''}>
-                        {event.name} ({event.code})
-                      </option>
-                    ))}
-                  </select>
-                  {loadingEventId && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Loading event details...</p>
-                  )}
+                  
+                  {/* Search Input */}
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search events by name, client, or venue..."
+                      value={eventSearchQuery}
+                      onChange={(e) => setEventSearchQuery(e.target.value)}
+                      onFocus={() => setShowEventDropdown(true)}
+                      className="pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                    />
+                  </div>
+
+                  {/* Event Dropdown */}
+                  <div className="relative event-dropdown-container">
+                    <div
+                      className="w-full px-3 py-2.5 sm:py-2 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer flex items-center justify-between"
+                      onClick={() => setShowEventDropdown(!showEventDropdown)}
+                    >
+                      <span className="truncate">
+                        {selectedEventId 
+                          ? availableEvents.find(e => e.id === selectedEventId)?.event_name || 'Event selected'
+                          : 'No event selected (detect only)'}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showEventDropdown ? 'rotate-180' : ''}`} />
+                    </div>
+
+                    {showEventDropdown && (
+                      <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                        <button
+                          onClick={() => {
+                            setSelectedEventCode(null);
+                            setSelectedEventId(null);
+                            setShowEventDropdown(false);
+                            setEventSearchQuery('');
+                          }}
+                          className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                            !selectedEventId ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">No event selected</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Detect songs only (no auto-matching)</p>
+                            </div>
+                            {!selectedEventId && (
+                              <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                            )}
+                          </div>
+                        </button>
+
+                        {loadingEvents ? (
+                          <div className="px-4 py-8 text-center">
+                            <Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Loading events...</p>
+                          </div>
+                        ) : (
+                          <>
+                            {availableEvents
+                              .filter(event => {
+                                if (!eventSearchQuery) return true;
+                                const query = eventSearchQuery.toLowerCase();
+                                return (
+                                  event.event_name?.toLowerCase().includes(query) ||
+                                  event.client_name?.toLowerCase().includes(query) ||
+                                  event.venue_name?.toLowerCase().includes(query) ||
+                                  event.event_qr_code?.toLowerCase().includes(query)
+                                );
+                              })
+                              .map((event) => {
+                                const eventDate = event.event_date ? new Date(event.event_date) : null;
+                                const isSelected = selectedEventId === event.id;
+                                
+                                return (
+                                  <button
+                                    key={event.id}
+                                    onClick={async () => {
+                                      setSelectedEventCode(event.event_qr_code);
+                                      setSelectedEventId(event.id);
+                                      setShowEventDropdown(false);
+                                      setEventSearchQuery('');
+                                    }}
+                                    className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-t border-gray-200 dark:border-gray-700 ${
+                                      isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                          {event.event_name || 'Unnamed Event'}
+                                        </p>
+                                        <div className="mt-1 space-y-0.5">
+                                          {eventDate && (
+                                            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                              <Calendar className="w-3 h-3" />
+                                              {format(eventDate, 'MMM d, yyyy')}
+                                            </p>
+                                          )}
+                                          {event.client_name && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1">
+                                              <User className="w-3 h-3" />
+                                              {event.client_name}
+                                            </p>
+                                          )}
+                                          {event.venue_name && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-500 truncate">
+                                              📍 {event.venue_name}
+                                            </p>
+                                          )}
+                                          {event.event_qr_code && (
+                                            <p className="text-xs text-gray-400 dark:text-gray-600 font-mono">
+                                              Code: {event.event_qr_code}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {isSelected && (
+                                        <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            
+                            {availableEvents.filter(event => {
+                              if (!eventSearchQuery) return true;
+                              const query = eventSearchQuery.toLowerCase();
+                              return (
+                                event.event_name?.toLowerCase().includes(query) ||
+                                event.client_name?.toLowerCase().includes(query) ||
+                                event.venue_name?.toLowerCase().includes(query) ||
+                                event.event_qr_code?.toLowerCase().includes(query)
+                              );
+                            }).length === 0 && (
+                              <div className="px-4 py-8 text-center">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">No events found</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try a different search term</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {selectedEventCode && selectedEventId && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                      ✓ Event selected - songs will auto-match to requests
-                    </p>
+                    <div className="mt-3 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-1.5">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Event selected - songs will auto-match to requests
+                      </p>
+                    </div>
                   )}
                 </div>
 
