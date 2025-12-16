@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 import { getURL } from '@/utils/helpers';
 import { createClient } from '@supabase/supabase-js';
 
@@ -6,8 +7,33 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 3600; // Revalidate every hour
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Detect domain from request headers
+  const headersList = await headers();
+  const hostname = headersList.get('host') || headersList.get('x-forwarded-host') || '';
+  const hostnameLower = hostname.toLowerCase();
+  
+  // Determine base URL based on domain
+  const isTipJarDomain = hostnameLower.includes('tipjar.live');
+  const isDJDashDomain = hostnameLower.includes('djdash.net');
+  
   // Force www subdomain for sitemap URLs to avoid redirect errors in Google Search Console
-  const baseUrl = 'https://www.m10djcompany.com';
+  const baseUrl = isTipJarDomain 
+    ? 'https://www.tipjar.live'
+    : isDJDashDomain
+    ? 'https://www.djdash.net'
+    : 'https://www.m10djcompany.com';
+  
+  // If TipJar domain, return TipJar sitemap
+  if (isTipJarDomain) {
+    return generateTipJarSitemap(baseUrl);
+  }
+  
+  // If DJ Dash domain, return DJ Dash sitemap
+  if (isDJDashDomain) {
+    return generateDJDashSitemap(baseUrl);
+  }
+  
+  // Default to M10 DJ Company sitemap
   
   // Static pages
   const staticPages = [
@@ -179,4 +205,158 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   return [...staticPages, ...locationPages, ...venuePages, ...blogPages];
+}
+
+/**
+ * Generate TipJar sitemap
+ */
+function generateTipJarSitemap(baseUrl: string): MetadataRoute.Sitemap {
+  const staticPages: MetadataRoute.Sitemap = [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/features`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/pricing`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/how-it-works`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/signup`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/signin`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/embed`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+  ];
+
+  return staticPages;
+}
+
+/**
+ * Generate DJ Dash sitemap with city pages
+ */
+async function generateDJDashSitemap(baseUrl: string): Promise<MetadataRoute.Sitemap> {
+  const staticPages: MetadataRoute.Sitemap = [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/djdash`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/djdash/pricing`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/djdash/features`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/djdash/how-it-works`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/djdash/signup`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+  ];
+
+  // Fetch city pages from database
+  let cityPages: MetadataRoute.Sitemap = [];
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: cities, error } = await supabase
+      .from('city_pages')
+      .select('city_slug, updated_at, is_featured, priority')
+      .eq('is_published', true)
+      .eq('product_context', 'djdash')
+      .order('is_featured', { ascending: false })
+      .order('priority', { ascending: false });
+
+    if (!error && cities) {
+      cityPages = cities.map((city) => ({
+        url: `${baseUrl}/djdash/cities/${city.city_slug}`,
+        lastModified: new Date(city.updated_at || new Date()),
+        changeFrequency: 'weekly' as const,
+        priority: city.is_featured ? 0.9 : city.priority ? city.priority / 100 : 0.7,
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching city pages for sitemap:', error);
+  }
+
+  // Fetch DJ profiles for sitemap
+  let djProfilePages: MetadataRoute.Sitemap = [];
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: profiles, error } = await supabase
+      .from('dj_profiles')
+      .select('dj_slug, updated_at, is_featured, organizations!inner(product_context)')
+      .eq('is_published', true)
+      .eq('organizations.product_context', 'djdash')
+      .order('is_featured', { ascending: false })
+      .limit(1000); // Limit to prevent sitemap from being too large
+
+    if (!error && profiles) {
+      djProfilePages = profiles.map((profile) => ({
+        url: `${baseUrl}/dj/${profile.dj_slug}`,
+        lastModified: new Date(profile.updated_at || new Date()),
+        changeFrequency: 'weekly' as const,
+        priority: profile.is_featured ? 0.8 : 0.7,
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching DJ profiles for sitemap:', error);
+  }
+
+  return [...staticPages, ...cityPages, ...djProfilePages];
 } 

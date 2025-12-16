@@ -1,9 +1,23 @@
 import { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 import { getURL } from '@/utils/helpers';
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  // Detect domain from request headers
+  const headersList = await headers();
+  const hostname = headersList.get('host') || headersList.get('x-forwarded-host') || '';
+  const hostnameLower = hostname.toLowerCase();
+  
+  // Determine base URL based on domain
+  const isTipJarDomain = hostnameLower.includes('tipjar.live');
+  const isDJDashDomain = hostnameLower.includes('djdash.net');
+  
   // Force www subdomain for consistency with sitemap
-  const baseUrl = 'https://www.m10djcompany.com';
+  const baseUrl = isTipJarDomain 
+    ? 'https://www.tipjar.live'
+    : isDJDashDomain
+    ? 'https://www.djdash.net'
+    : 'https://www.m10djcompany.com';
   
   return {
     rules: [

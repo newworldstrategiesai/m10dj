@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import { getErrorRedirect, getStatusRedirect } from '@/utils/helpers';
 import { getRoleBasedRedirectUrl } from '@/utils/auth-helpers/role-redirect';
+import { getProductBasedRedirectUrl } from '@/utils/auth-helpers/product-redirect';
 
 export async function GET(request: NextRequest) {
   // The `/auth/callback` route is required for the server-side auth flow implemented
@@ -85,8 +86,8 @@ export async function GET(request: NextRequest) {
     // Fall through to default redirect
   }
 
-  // Get role-based redirect URL
-  const redirectUrl = await getRoleBasedRedirectUrl(requestUrl.origin);
+  // Get product-based redirect URL (checks product context, falls back to role-based)
+  const redirectUrl = await getProductBasedRedirectUrl(requestUrl.origin);
   
   // URL to redirect to after sign in process completes
   return NextResponse.redirect(

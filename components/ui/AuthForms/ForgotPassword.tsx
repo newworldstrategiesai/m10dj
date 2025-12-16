@@ -12,12 +12,14 @@ interface ForgotPasswordProps {
   allowEmail: boolean;
   redirectMethod: string;
   disableButton?: boolean;
+  productContext?: string; // Add product context prop
 }
 
 export default function ForgotPassword({
   allowEmail,
   redirectMethod,
-  disableButton
+  disableButton,
+  productContext
 }: ForgotPasswordProps) {
   const router = redirectMethod === 'client' ? useRouter() : null;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +38,10 @@ export default function ForgotPassword({
         onSubmit={(e) => handleSubmit(e)}
       >
         <div className="grid gap-2">
+          {/* Hidden field to pass product context */}
+          {productContext && (
+            <input type="hidden" name="productContext" value={productContext} />
+          )}
           <div className="grid gap-1">
             <label htmlFor="email" className="block text-sm font-semibold text-white mb-2">Email</label>
             <input

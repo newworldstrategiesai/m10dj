@@ -13,12 +13,16 @@ interface PasswordSignInProps {
   allowEmail: boolean;
   redirectMethod: string;
   redirectTo?: string;
+  initialEmail?: string;
+  message?: string;
 }
 
 export default function PasswordSignIn({
   allowEmail,
   redirectMethod,
-  redirectTo
+  redirectTo,
+  initialEmail,
+  message
 }: PasswordSignInProps) {
   const router = redirectMethod === 'client' ? useRouter() : null;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,6 +36,11 @@ export default function PasswordSignIn({
 
   return (
     <div>
+      {message && (
+        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-sm text-blue-600 dark:text-blue-400">{message}</p>
+        </div>
+      )}
       <form
         noValidate={true}
         className="mb-6"
@@ -51,6 +60,7 @@ export default function PasswordSignIn({
                 placeholder="your.email@example.com"
                 type="email"
                 name="email"
+                defaultValue={initialEmail || ''}
                 autoCapitalize="none"
                 autoComplete="email"
                 autoCorrect="off"

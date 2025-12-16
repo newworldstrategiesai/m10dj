@@ -92,38 +92,63 @@ export async function requestPasswordUpdate(formData: FormData) {
 
   // Get form data
   const email = String(formData.get('email')).trim();
+  const productContext = String(formData.get('productContext') || '').trim();
   let redirectPath: string;
 
+  // Determine if this is a TipJar request
+  const supabase = createClient();
+  let isTipJar = productContext === 'tipjar';
+  
+  // If product context not provided, try to determine from user's account
+  if (!isTipJar) {
+    try {
+      // Try to look up user by email to check their product context
+      // Note: We can't directly query by email, but we can check if current user has tipjar context
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.user_metadata?.product_context === 'tipjar') {
+        isTipJar = true;
+      }
+    } catch (error) {
+      // User not logged in, continue with default behavior
+    }
+  }
+
   if (!isValidEmail(email)) {
+    const forgotPasswordPath = isTipJar 
+      ? '/tipjar/signin/forgot_password'
+      : '/signin/forgot_password';
     redirectPath = getErrorRedirect(
-      '/signin/forgot_password',
+      forgotPasswordPath,
       'Invalid email address.',
       'Please try again.'
     );
+    return redirectPath;
   }
-
-  const supabase = createClient();
 
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: callbackURL
   });
 
+  const forgotPasswordPath = isTipJar 
+    ? '/tipjar/signin/forgot_password'
+    : '/signin/forgot_password';
+
   if (error) {
     redirectPath = getErrorRedirect(
-      '/signin/forgot_password',
+      forgotPasswordPath,
       error.message,
       'Please try again.'
     );
   } else if (data) {
     redirectPath = getStatusRedirect(
-      '/signin/forgot_password',
+      forgotPasswordPath,
       'Success!',
       'Please check your email for a password reset link. You may now close this tab.',
       true
     );
   } else {
     redirectPath = getErrorRedirect(
-      '/signin/forgot_password',
+      forgotPasswordPath,
       'Hmm... Something went wrong.',
       'Password reset email could not be sent.'
     );
@@ -186,7 +211,7 @@ export async function signUp(formData: FormData) {
   const supabase = createClient();
   const businessName = String(formData.get('businessName') || '').trim();
   
-  // Pass business name in metadata for organization creation
+  // Pass business name and product context in metadata for organization creation
   const { error, data } = await supabase.auth.signUp({
     email,
     password,
@@ -194,16 +219,34 @@ export async function signUp(formData: FormData) {
       emailRedirectTo: callbackURL,
       data: {
         organization_name: businessName || undefined, // Only include if provided
+        product_context: 'm10dj', // Mark user as M10 DJ Company signup
       }
     }
   });
 
   if (error) {
-    redirectPath = getErrorRedirect(
-      '/signin/signup',
-      'Sign up failed.',
-      error.message
-    );
+    // Check if user already exists
+    const isExistingUser = 
+      error.message?.toLowerCase().includes('user already registered') ||
+      error.message?.toLowerCase().includes('email already registered') ||
+      error.message?.toLowerCase().includes('already been registered') ||
+      error.code === 'signup_disabled' ||
+      error.message?.toLowerCase().includes('user already exists');
+    
+    if (isExistingUser) {
+      // Redirect to sign in with helpful message
+      redirectPath = getStatusRedirect(
+        `/signin/password_signin?email=${encodeURIComponent(email)}`,
+        'Account Already Exists',
+        'An account with this email already exists. Please sign in instead.'
+      );
+    } else {
+      redirectPath = getErrorRedirect(
+        '/signin/signup',
+        'Sign up failed.',
+        error.message
+      );
+    }
   } else if (data.session) {
     // User is signed in immediately - redirect to onboarding for SaaS customers
     // The role-based redirect will handle sending them to the right place
@@ -214,10 +257,11 @@ export async function signUp(formData: FormData) {
     data.user.identities &&
     data.user.identities.length == 0
   ) {
-    redirectPath = getErrorRedirect(
-      '/signin/signup',
-      'Sign up failed.',
-      'There is already an account associated with this email address. Try resetting your password.'
+    // User exists but has no identities - account already exists
+    redirectPath = getStatusRedirect(
+      `/signin/password_signin?email=${encodeURIComponent(email)}`,
+      'Account Already Exists',
+      'An account with this email already exists. Please sign in instead.'
     );
   } else if (data.user) {
     // User created but no session (email confirmation required)
@@ -245,35 +289,71 @@ export async function updatePassword(formData: FormData) {
   const passwordConfirm = String(formData.get('passwordConfirm')).trim();
   let redirectPath: string;
 
+  const supabase = createClient();
+  
   // Check that the password and confirmation match
   if (password !== passwordConfirm) {
+    // Get user to determine product context for error redirect
+    const { data: { user } } = await supabase.auth.getUser();
+    const productContext = user?.user_metadata?.product_context;
+    const updatePasswordPath = productContext === 'tipjar' 
+      ? '/tipjar/signin/update_password'
+      : '/signin/update_password';
+    
     redirectPath = getErrorRedirect(
-      '/signin/update_password',
+      updatePasswordPath,
       'Your password could not be updated.',
       'Passwords do not match.'
     );
+    return redirectPath;
   }
 
-  const supabase = createClient();
   const { error, data } = await supabase.auth.updateUser({
     password
   });
 
   if (error) {
+    // Get user to determine product context for error redirect
+    const { data: { user } } = await supabase.auth.getUser();
+    const productContext = user?.user_metadata?.product_context;
+    const updatePasswordPath = productContext === 'tipjar' 
+      ? '/tipjar/signin/update_password'
+      : '/signin/update_password';
+    
     redirectPath = getErrorRedirect(
-      '/signin/update_password',
+      updatePasswordPath,
       'Your password could not be updated.',
       error.message
     );
   } else if (data.user) {
-    redirectPath = getStatusRedirect(
-      '/',
-      'Success!',
-      'Your password has been updated.'
-    );
+    // Get user's product context to redirect to correct dashboard
+    const productContext = data.user.user_metadata?.product_context;
+    
+    if (productContext === 'tipjar') {
+      redirectPath = getStatusRedirect(
+        '/tipjar/dashboard',
+        'Success!',
+        'Your password has been updated.'
+      );
+    } else {
+      // Use product-based redirect for M10 DJ users
+      const redirectUrl = await getRoleBasedRedirectUrl();
+      redirectPath = getStatusRedirect(
+        redirectUrl,
+        'Success!',
+        'Your password has been updated.'
+      );
+    }
   } else {
+    // Get user to determine product context for error redirect
+    const { data: { user } } = await supabase.auth.getUser();
+    const productContext = user?.user_metadata?.product_context;
+    const updatePasswordPath = productContext === 'tipjar' 
+      ? '/tipjar/signin/update_password'
+      : '/signin/update_password';
+    
     redirectPath = getErrorRedirect(
-      '/signin/update_password',
+      updatePasswordPath,
       'Hmm... Something went wrong.',
       'Your password could not be updated.'
     );

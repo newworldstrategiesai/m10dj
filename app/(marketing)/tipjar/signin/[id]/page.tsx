@@ -15,6 +15,7 @@ import ForgotPassword from '@/components/ui/AuthForms/ForgotPassword';
 import UpdatePassword from '@/components/ui/AuthForms/UpdatePassword';
 import SignUp from '@/components/ui/AuthForms/Signup';
 import { getRoleBasedRedirectUrl } from '@/utils/auth-helpers/role-redirect';
+import { getProductBasedRedirectUrl } from '@/utils/auth-helpers/product-redirect';
 import TipJarHeader from '@/components/tipjar/Header';
 import TipJarFooter from '@/components/tipjar/Footer';
 import { Music } from 'lucide-react';
@@ -24,7 +25,7 @@ export default async function TipJarSignIn({
   searchParams
 }: {
   params: { id: string };
-  searchParams: { disable_button?: boolean; redirect?: string };
+  searchParams: { disable_button?: boolean; redirect?: string; email?: string; message?: string };
 }) {
   const { allowOauth, allowEmail, allowPassword } = getAuthTypes();
   const viewTypes = getViewTypes();
@@ -109,9 +110,10 @@ export default async function TipJarSignIn({
         redirectUrl = decodeURIComponent(searchParams.redirect);
       } else {
         // Add timeout and error handling to prevent hanging
-        const redirectPromise = getRoleBasedRedirectUrl().catch((error) => {
-          console.error('Error getting role-based redirect URL:', error);
-          return '/account'; // Fallback to account page
+        // Use product-based redirect for TipJar (will route to /tipjar/dashboard)
+        const redirectPromise = getProductBasedRedirectUrl().catch((error) => {
+          console.error('Error getting product-based redirect URL:', error);
+          return '/tipjar/dashboard'; // Fallback to TipJar dashboard
         });
         
         const timeoutPromise = new Promise<string>((resolve) => 
@@ -180,6 +182,8 @@ export default async function TipJarSignIn({
                 allowEmail={allowEmail}
                 redirectMethod={redirectMethod}
                 redirectTo={searchParams?.redirect ? decodeURIComponent(searchParams.redirect) : ''}
+                initialEmail={searchParams?.email || undefined}
+                message={searchParams?.message || undefined}
               />
             )}
             {viewProp === 'email_signin' && (
@@ -194,6 +198,7 @@ export default async function TipJarSignIn({
                 allowEmail={allowEmail}
                 redirectMethod={redirectMethod}
                 disableButton={searchParams.disable_button}
+                productContext="tipjar"
               />
             )}
             {viewProp === 'update_password' && (

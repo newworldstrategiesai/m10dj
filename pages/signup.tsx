@@ -134,6 +134,34 @@ export default function SignupPage() {
           content="Start your free 14-day trial. No credit card required. Manage your DJ business in one place." 
         />
         <link rel="canonical" href="/signup" />
+        <style dangerouslySetInnerHTML={{__html: `
+          input#businessName,
+          input#email,
+          input#password {
+            color: #111827 !important;
+          }
+          .dark input#businessName,
+          .dark input#email,
+          .dark input#password,
+          html.dark input#businessName,
+          html.dark input#email,
+          html.dark input#password {
+            color: #f3f4f6 !important;
+          }
+          input#businessName::placeholder,
+          input#email::placeholder,
+          input#password::placeholder {
+            color: #9ca3af !important;
+          }
+          .dark input#businessName::placeholder,
+          .dark input#email::placeholder,
+          .dark input#password::placeholder,
+          html.dark input#businessName::placeholder,
+          html.dark input#email::placeholder,
+          html.dark input#password::placeholder {
+            color: #6b7280 !important;
+          }
+        `}} />
       </Head>
 
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
@@ -220,7 +248,7 @@ export default function SignupPage() {
                       type="text"
                       placeholder="e.g., DJ John's Events"
                       autoComplete="organization"
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
                     />
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       We'll use your email if you don't provide a name
@@ -243,7 +271,7 @@ export default function SignupPage() {
                       autoComplete="email"
                       autoCorrect="off"
                       placeholder="name@example.com"
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
                     />
                   </div>
 
@@ -261,7 +289,7 @@ export default function SignupPage() {
                       required
                       placeholder="Create a secure password"
                       minLength={6}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
                     />
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       Must be at least 6 characters

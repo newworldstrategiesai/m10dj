@@ -71,7 +71,57 @@ WHERE email IN (
 )
 ON CONFLICT (email) DO NOTHING;
 
+-- Create or replace function to check if current user is platform admin (no parameters)
+-- This version is used by RLS policies
+-- Handles case where admin_roles table doesn't exist yet (falls back to hardcoded emails)
+CREATE OR REPLACE FUNCTION public.is_platform_admin()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  user_email text;
+  table_exists boolean;
+BEGIN
+  -- Get current user's email
+  SELECT email INTO user_email
+  FROM auth.users
+  WHERE id = auth.uid();
+  
+  -- If no user email found, return false
+  IF user_email IS NULL THEN
+    RETURN false;
+  END IF;
+  
+  -- Check if admin_roles table exists
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+    AND table_name = 'admin_roles'
+  ) INTO table_exists;
+  
+  -- If admin_roles table exists, use it
+  IF table_exists THEN
+    RETURN EXISTS (
+      SELECT 1
+      FROM public.admin_roles
+      WHERE email = user_email
+      AND is_active = true
+    );
+  END IF;
+  
+  -- Fallback to hardcoded admin emails (for backward compatibility)
+  RETURN user_email IN (
+    'admin@m10djcompany.com',
+    'manager@m10djcompany.com',
+    'djbenmurray@gmail.com'
+  );
+END;
+$$;
+
 -- Create or replace function to check if user is platform admin (by email)
+-- This version is used by application code
 CREATE OR REPLACE FUNCTION public.is_platform_admin(user_email text)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -121,6 +171,9 @@ $$;
 -- Grant permissions
 GRANT SELECT ON public.admin_roles TO authenticated;
 GRANT SELECT ON public.admin_roles TO anon;
+-- Grant execute on both versions of is_platform_admin
+GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO anon;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin(text) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_admin_role(text) TO authenticated;
@@ -128,6 +181,7 @@ GRANT EXECUTE ON FUNCTION public.get_admin_role(text) TO anon;
 
 -- Add helpful comments
 COMMENT ON TABLE public.admin_roles IS 'Centralized table for managing platform admin users. Replaces hardcoded email arrays.';
+COMMENT ON FUNCTION public.is_platform_admin() IS 'Checks if the current authenticated user is a platform admin by looking up the admin_roles table. Used by RLS policies.';
 COMMENT ON FUNCTION public.is_platform_admin(text) IS 'Checks if a user email is a platform admin by looking up the admin_roles table. Accepts user_email as parameter.';
 COMMENT ON FUNCTION public.get_admin_role(text) IS 'Returns admin role details for a given user email.';
 

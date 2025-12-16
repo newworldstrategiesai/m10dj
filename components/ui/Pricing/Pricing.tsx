@@ -301,10 +301,10 @@ export default function Pricing({ user, products, subscription }: Props) {
           <h1 className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl">
             DJ Service Packages
           </h1>
-          <p className="max-w-2xl m-auto mt-5 text-xl text-zinc-200 sm:text-center sm:text-2xl">
+          <p className="max-w-2xl m-auto mt-5 text-xl text-zinc-100 sm:text-center sm:text-2xl">
             Professional DJ services for weddings and events in the Greater Memphis area
           </p>
-          <p className="max-w-2xl m-auto mt-3 text-sm text-zinc-400 sm:text-center">
+          <p className="max-w-2xl m-auto mt-3 text-sm text-zinc-200 sm:text-center">
             Get a personalized quote based on your event details
           </p>
         </div>
@@ -315,20 +315,20 @@ export default function Pricing({ user, products, subscription }: Props) {
             <div key={pkg.id} className="bg-zinc-900 rounded-lg border border-zinc-800 p-6">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-white">{pkg.name}</h2>
-                <p className="text-zinc-400 text-sm uppercase tracking-wide">{pkg.subtitle}</p>
+                <p className="text-zinc-200 text-sm uppercase tracking-wide">{pkg.subtitle}</p>
                 <div className="mt-4">
                   <p className="text-3xl font-extrabold text-[#fcba00]">{pkg.priceRange}</p>
                   {'priceDisplay' in pkg && pkg.priceDisplay && (
-                    <p className="text-sm text-zinc-400 mt-1">{pkg.priceDisplay}</p>
+                    <p className="text-sm text-zinc-200 mt-1">{pkg.priceDisplay}</p>
                   )}
                 </div>
-                <div className="mt-2 flex items-center justify-center gap-1 text-xs text-zinc-500">
+                <div className="mt-2 flex items-center justify-center gap-1 text-xs text-zinc-300">
                   <Lock className="w-3 h-3" />
                   <span>Exact pricing after inquiry</span>
                 </div>
               </div>
               
-              <div className="space-y-3 text-zinc-300">
+              <div className="space-y-3 text-zinc-100">
                 {pkg.includes.map((item, index) => (
                   <p key={index} className={index === pkg.includes.length - 1 && pkg.options ? "font-semibold" : ""}>
                     {item}
@@ -345,7 +345,7 @@ export default function Pricing({ user, products, subscription }: Props) {
               </div>
               
               <div className="mt-6 pt-4 border-t border-zinc-700">
-                <p className="text-sm text-zinc-400">{pkg.addOn}</p>
+                <p className="text-sm text-zinc-200">{pkg.addOn}</p>
               </div>
               
               <Button
@@ -364,20 +364,20 @@ export default function Pricing({ user, products, subscription }: Props) {
           <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-8 max-w-2xl mx-auto">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-white">{ceremonyAudio.name}</h2>
-              <p className="text-zinc-400 text-sm uppercase tracking-wide">{ceremonyAudio.subtitle}</p>
+              <p className="text-zinc-200 text-sm uppercase tracking-wide">{ceremonyAudio.subtitle}</p>
               <div className="mt-4">
                 <p className="text-3xl font-extrabold text-[#fcba00]">{ceremonyAudio.priceRange}</p>
                 {'priceDisplay' in ceremonyAudio && ceremonyAudio.priceDisplay && (
-                  <p className="text-sm text-zinc-400 mt-1">{ceremonyAudio.priceDisplay}</p>
+                  <p className="text-sm text-zinc-200 mt-1">{ceremonyAudio.priceDisplay}</p>
                 )}
               </div>
-              <div className="mt-2 flex items-center justify-center gap-1 text-xs text-zinc-500">
+              <div className="mt-2 flex items-center justify-center gap-1 text-xs text-zinc-300">
                 <Lock className="w-3 h-3" />
                 <span>Exact pricing after inquiry</span>
               </div>
             </div>
             
-            <div className="space-y-3 text-zinc-300">
+            <div className="space-y-3 text-zinc-100">
               {ceremonyAudio.features.map((feature, index) => (
                 <p key={index} className={feature.includes("Contact for pricing") ? "text-blue-300" : ""}>
                   {feature}
@@ -400,7 +400,7 @@ export default function Pricing({ user, products, subscription }: Props) {
           <h2 className="text-3xl font-bold text-white text-center mb-4">
             ADDITIONAL SERVICES & A LA CARTE OPTIONS
           </h2>
-          <p className="text-center text-zinc-400 mb-8 text-sm">
+          <p className="text-center text-zinc-200 mb-8 text-sm">
             Contact us for pricing on additional services and custom packages
           </p>
           
@@ -408,7 +408,7 @@ export default function Pricing({ user, products, subscription }: Props) {
             {additionalServices.map((item, index) => (
               <div key={index} className="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-300 text-sm flex-1">{item.service}</span>
+                  <span className="text-zinc-100 text-sm flex-1">{item.service}</span>
                   <span className="text-[#fcba00] font-semibold text-sm ml-2 flex items-center gap-1">
                     <Lock className="w-3 h-3" />
                     <span>Inquire</span>
@@ -420,7 +420,7 @@ export default function Pricing({ user, products, subscription }: Props) {
         </div>
 
         <div className="mt-16 text-center">
-          <p className="text-zinc-300 mb-6 max-w-2xl mx-auto">
+          <p className="text-zinc-100 mb-6 max-w-2xl mx-auto">
             All pricing is customized based on your event details, date, location, and specific needs. 
             Get a personalized quote with exact pricing by contacting us.
           </p>

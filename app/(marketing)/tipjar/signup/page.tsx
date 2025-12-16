@@ -8,7 +8,8 @@ import {
   Music,
   QrCode,
   CreditCard,
-  Smartphone
+  Smartphone,
+  AlertCircle
 } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -16,7 +17,11 @@ export const metadata: Metadata = {
   description: 'Start your free account. No credit card required. Get instant access to tip collection and song request features for your events.',
 };
 
-export default function SignupPage() {
+export default function SignupPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string; success?: string };
+}) {
   const benefits = [
     {
       icon: Music,
@@ -42,6 +47,34 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
+      <style dangerouslySetInnerHTML={{__html: `
+        input#businessName,
+        input#email,
+        input#password {
+          color: #111827 !important;
+        }
+        .dark input#businessName,
+        .dark input#email,
+        .dark input#password,
+        html.dark input#businessName,
+        html.dark input#email,
+        html.dark input#password {
+          color: #f3f4f6 !important;
+        }
+        input#businessName::placeholder,
+        input#email::placeholder,
+        input#password::placeholder {
+          color: #9ca3af !important;
+        }
+        .dark input#businessName::placeholder,
+        .dark input#email::placeholder,
+        .dark input#password::placeholder,
+        html.dark input#businessName::placeholder,
+        html.dark input#email::placeholder,
+        html.dark input#password::placeholder {
+          color: #6b7280 !important;
+        }
+      `}} />
       <TipJarHeader />
       
       {/* Hero */}
@@ -65,17 +98,34 @@ export default function SignupPage() {
                 No credit card required. Start free, upgrade when you&apos;re making money.
               </p>
               
+              {searchParams?.error && (
+                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="flex items-start">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-600 dark:text-red-400">{searchParams.error}</p>
+                  </div>
+                </div>
+              )}
+              
+              {searchParams?.success && (
+                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex items-start">
+                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-green-600 dark:text-green-400">{searchParams.success}</p>
+                  </div>
+                </div>
+              )}
+              
               <form action="/api/auth/signup" method="POST" className="space-y-6">
                 <div>
                   <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Business Name
+                    Business Name <span className="text-gray-400 text-xs">(optional)</span>
                   </label>
                   <input
                     type="text"
                     id="businessName"
                     name="businessName"
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="Your DJ or Performer Name"
                   />
                 </div>
@@ -89,7 +139,7 @@ export default function SignupPage() {
                     id="email"
                     name="email"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="your@email.com"
                   />
                 </div>
@@ -104,7 +154,7 @@ export default function SignupPage() {
                     name="password"
                     required
                     minLength={8}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="At least 8 characters"
                   />
                 </div>

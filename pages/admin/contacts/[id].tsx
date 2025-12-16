@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock } from 'lucide-react';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock, Sparkles, Link2, Unlink } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -132,6 +132,32 @@ export default function ContactDetailPage() {
 
   useEffect(() => {
     checkUser();
+    
+    // Check for Gmail OAuth callback messages
+    const urlParams = new URLSearchParams(window.location.search);
+    const gmailSuccess = urlParams.get('gmail_success');
+    const gmailError = urlParams.get('gmail_error');
+    
+    if (gmailSuccess === 'connected') {
+      toast({
+        title: "Gmail Connected",
+        description: "Your Gmail account has been connected successfully!",
+      });
+      // Clean up URL
+      router.replace(`/admin/contacts/${id}`, undefined, { shallow: true });
+    }
+    
+    if (gmailError) {
+      toast({
+        title: "Gmail Connection Failed",
+        description: gmailError === 'gmail_not_configured' 
+          ? "Gmail OAuth is not configured. Please set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET environment variables."
+          : `Failed to connect Gmail: ${gmailError}`,
+        variant: "destructive"
+      });
+      // Clean up URL
+      router.replace(`/admin/contacts/${id}`, undefined, { shallow: true });
+    }
   }, []);
 
   useEffect(() => {
@@ -1802,8 +1828,17 @@ function EmailComposeModal({
   onSuccess: () => void;
 }) {
   const { toast } = useToast();
+  const supabase = createClientComponentClient();
   const [sending, setSending] = useState(false);
+  const [improving, setImproving] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>(initialTemplate || 'custom');
+  const [googleReviewLink, setGoogleReviewLink] = useState<string>('https://g.page/r/CSD9ayo7-MivEBE/review');
+  const [gmailStatus, setGmailStatus] = useState<{connected: boolean; email: string | null; loading: boolean}>({
+    connected: false,
+    email: null,
+    loading: true
+  });
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     subject: `Re: ${contact.event_type || 'Event'} Inquiry - ${contact.first_name || 'Contact'}`,
     body: ''
@@ -2049,27 +2084,22 @@ djbenmurray@gmail.com`
     request_review: {
       name: 'Request Review',
       subject: `How was your ${contact.event_type?.replace('_', ' ') || 'event'}? - We'd love your feedback!`,
-      body: `Hi ${contact.first_name || 'there'},
+      body: `Hey ${contact.first_name || 'there'}!
 
-I hope you had an amazing ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}! 
+Hope you had an amazing time at your ${contact.event_type?.toLowerCase() || 'event'}${contact.event_date ? ` on ${new Date(contact.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}! 
 
-It was such a pleasure working with you and your guests. I hope the music and entertainment helped make your special day unforgettable!
+I had such a great time working with you and your guests. The energy was incredible and I hope the music helped make your day even more special!
 
-If you have a moment, I would be incredibly grateful if you could share your experience. Your feedback helps me continue to improve and also helps other couples and event planners who are looking for a great DJ experience.
+If you have a quick minute, I'd love it if you could share your experience with a review. It really helps other couples and event planners find us, and honestly means the world to me and my team.
 
 You can leave a review here:
-• Google: https://g.page/r/[your-google-review-link]
-• Facebook: [your-facebook-page-link]
+• Google: [GOOGLE_REVIEW_LINK]
 
-If you have any specific feedback or suggestions, please feel free to reply to this email. I always appreciate hearing from my clients!
+Thanks so much for choosing M10 DJ Company - it was a pleasure being part of your special day!
 
-Thank you again for choosing M10 DJ Company. I hope we can work together again in the future!
-
-Warm regards,
-Ben Murray
+Ben
 M10 DJ Company
-(901) 410-2020
-djbenmurray@gmail.com`
+(901) 410-2020`
     },
     payment_reminder: {
       name: 'Payment Reminder',
@@ -2121,6 +2151,52 @@ djbenmurray@gmail.com`
     }
   };
 
+  // Fetch Google Review link and Gmail status from organization
+  useEffect(() => {
+    const fetchOrganizationData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) return;
+
+        // Get user's organization
+        const { data: orgMember } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (orgMember?.organization_id) {
+          setOrganizationId(orgMember.organization_id);
+          
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('google_review_link, email_provider, gmail_email_address')
+            .eq('id', orgMember.organization_id)
+            .single();
+
+          if (org) {
+            if (org.google_review_link) {
+              setGoogleReviewLink(org.google_review_link);
+            }
+            
+            // Check Gmail status
+            setGmailStatus({
+              connected: org.email_provider === 'gmail' && !!org.gmail_email_address,
+              email: org.gmail_email_address || null,
+              loading: false
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching organization data:', error);
+        setGmailStatus(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchOrganizationData();
+  }, [supabase]);
+
   useEffect(() => {
     if (initialTemplate && initialTemplate !== 'custom') {
       setSelectedTemplate(initialTemplate);
@@ -2154,6 +2230,9 @@ djbenmurray@gmail.com`
           } else if (selectedTemplate === 'payment_reminder') {
             const invoiceLink = `${baseUrl}/quote/${contact.id}/invoice`;
             body = body.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${invoiceLink}\n\n`);
+          } else if (selectedTemplate === 'request_review') {
+            // Replace Google Review link placeholder with actual link
+            body = body.replace(/\[GOOGLE_REVIEW_LINK\]/g, googleReviewLink);
           }
         }
         
@@ -2164,7 +2243,7 @@ djbenmurray@gmail.com`
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTemplate, contact]);
+  }, [selectedTemplate, contact, googleReviewLink]);
 
   const handleSendTestEmail = async () => {
     if (!formData.body.trim()) {
@@ -2203,6 +2282,9 @@ djbenmurray@gmail.com`
       } else if (selectedTemplate === 'questionnaire') {
         // Replace "Here's the link:" placeholder with questionnaire link (handle newlines properly)
         emailContent = emailContent.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${questionnaireLink}\n\n`);
+      } else if (selectedTemplate === 'request_review') {
+        // Ensure Google Review link is in the test email
+        emailContent = emailContent.replace(/\[GOOGLE_REVIEW_LINK\]/g, googleReviewLink);
       }
 
       // Send test email to admin
@@ -2236,6 +2318,124 @@ djbenmurray@gmail.com`
       });
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleConnectGmail = async () => {
+    if (!organizationId) {
+      toast({
+        title: "Error",
+        description: "Organization not found",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/gmail/auth?organizationId=${organizationId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get Gmail auth URL');
+      }
+
+      // Redirect to Gmail OAuth
+      window.location.href = data.authUrl;
+    } catch (error: any) {
+      console.error('Error connecting Gmail:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to connect Gmail",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDisconnectGmail = async () => {
+    if (!organizationId) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/gmail/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to disconnect Gmail');
+      }
+
+      setGmailStatus({
+        connected: false,
+        email: null,
+        loading: false
+      });
+
+      toast({
+        title: "Gmail Disconnected",
+        description: "Gmail has been disconnected. Emails will now be sent via Resend."
+      });
+    } catch (error: any) {
+      console.error('Error disconnecting Gmail:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to disconnect Gmail",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleImproveMessage = async () => {
+    if (!formData.body.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a message to improve",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setImproving(true);
+    try {
+      const response = await fetch('/api/admin/communications/improve-email-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: formData.body,
+          contactName: contact.first_name,
+          eventType: contact.event_type,
+          eventDate: contact.event_date
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to improve message');
+      }
+
+      setFormData({
+        ...formData,
+        body: data.improvedMessage
+      });
+
+      toast({
+        title: "Message Improved",
+        description: "Your message has been improved using AI"
+      });
+    } catch (error: any) {
+      console.error('Error improving message:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to improve message",
+        variant: "destructive"
+      });
+    } finally {
+      setImproving(false);
     }
   };
 
@@ -2284,6 +2484,11 @@ djbenmurray@gmail.com`
         const invoiceLink = `${baseUrl}/quote/${contact.id}/invoice`;
         if (!emailContent.includes(invoiceLink)) {
           emailContent = emailContent.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${invoiceLink}\n\n`);
+        }
+      } else if (selectedTemplate === 'request_review') {
+        // Ensure Google Review link is in the email content
+        if (!emailContent.includes(googleReviewLink)) {
+          emailContent = emailContent.replace(/\[GOOGLE_REVIEW_LINK\]/g, googleReviewLink);
         }
       }
 
@@ -2352,7 +2557,40 @@ djbenmurray@gmail.com`
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">To</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium">To</label>
+                {gmailStatus.loading ? (
+                  <div className="text-xs text-gray-500">Loading...</div>
+                ) : gmailStatus.connected ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Sending from {gmailStatus.email}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDisconnectGmail}
+                      className="text-xs h-7 px-2"
+                    >
+                      <Unlink className="w-3 h-3 mr-1" />
+                      Disconnect
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleConnectGmail}
+                    className="text-xs h-7 px-2"
+                  >
+                    <Link2 className="w-3 h-3 mr-1" />
+                    Connect Gmail
+                  </Button>
+                )}
+              </div>
               <Input value={contact.email_address || ''} disabled />
             </div>
 
@@ -2365,7 +2603,20 @@ djbenmurray@gmail.com`
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Message</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium">Message</label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleImproveMessage}
+                  disabled={improving || !formData.body.trim()}
+                  className="flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {improving ? 'Improving...' : 'Improve with AI'}
+                </Button>
+              </div>
               <Textarea
                 value={formData.body}
                 onChange={(e) => setFormData({ ...formData, body: e.target.value })}

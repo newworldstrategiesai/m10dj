@@ -79,6 +79,25 @@ export default function OnboardingWizard() {
 
   useEffect(() => {
     async function checkExisting() {
+      // Check product context first - redirect TipJar/DJ Dash users away
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.product_context) {
+          const productContext = user.user_metadata.product_context;
+          
+          if (productContext === 'tipjar') {
+            router.push('/tipjar/dashboard');
+            return;
+          } else if (productContext === 'djdash') {
+            router.push('/djdash/dashboard');
+            return;
+          }
+          // m10dj users continue with onboarding
+        }
+      } catch (error) {
+        console.error('Error checking product context:', error);
+      }
+      
       const org = await getCurrentOrganization(supabase);
       if (org) {
         setOrganization(org);
@@ -88,7 +107,7 @@ export default function OnboardingWizard() {
       setLoading(false);
     }
     checkExisting();
-  }, [supabase]);
+  }, [supabase, router]);
 
   const updateFormData = (updates: Partial<typeof formData>) => {
     setFormData(prev => ({ ...prev, ...updates }));

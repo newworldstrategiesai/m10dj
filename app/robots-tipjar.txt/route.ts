@@ -29,7 +29,7 @@ Disallow: /client/
 Disallow: /auth/
 Disallow: /dashboard/
 
-Sitemap: ${baseUrl}/sitemap-tipjar.xml
+Sitemap: ${baseUrl}/sitemap.xml
 Host: ${baseUrl}`;
 
   return new NextResponse(robots, {

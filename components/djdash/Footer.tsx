@@ -31,23 +31,23 @@ export default function DJDashFooter() {
             <h4 className="font-semibold text-white mb-4">Product</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/djdash/features" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/" className="text-gray-400 hover:text-white text-sm transition-colors">
+                  Find DJs
+                </Link>
+              </li>
+              <li>
+                <Link href="/business" className="text-gray-400 hover:text-white text-sm transition-colors">
+                  For DJs
+                </Link>
+              </li>
+              <li>
+                <Link href="/business" className="text-gray-400 hover:text-white text-sm transition-colors">
                   Features
                 </Link>
               </li>
               <li>
-                <Link href="/djdash/pricing" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/business" className="text-gray-400 hover:text-white text-sm transition-colors">
                   Pricing
-                </Link>
-              </li>
-              <li>
-                <Link href="/djdash/how-it-works" className="text-gray-400 hover:text-white text-sm transition-colors">
-                  How It Works
-                </Link>
-              </li>
-              <li>
-                <Link href="/djdash/use-cases" className="text-gray-400 hover:text-white text-sm transition-colors">
-                  Use Cases
                 </Link>
               </li>
             </ul>

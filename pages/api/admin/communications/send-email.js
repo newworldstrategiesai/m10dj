@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 const { createClient } = require('@supabase/supabase-js');
+const { sendEmailViaGmail } = require('../../../../utils/gmail-sender');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -61,15 +62,48 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!resend) {
-    console.error('❌ RESEND_API_KEY is not configured');
-    return res.status(500).json({ error: 'Email service not configured. Please set RESEND_API_KEY environment variable.' });
+  // Get organization ID from contact
+  let organizationId = null;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  
+  if (recordId) {
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('organization_id')
+      .eq('id', recordId)
+      .single();
+    
+    if (contact?.organization_id) {
+      organizationId = contact.organization_id;
+    }
   }
 
-  console.log('📧 Attempting to send email via Resend...');
+  // Check if Gmail is connected for this organization
+  let useGmail = false;
+  if (organizationId) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('email_provider, gmail_email_address')
+      .eq('id', organizationId)
+      .single();
+    
+    if (org?.email_provider === 'gmail' && org.gmail_email_address) {
+      useGmail = true;
+    }
+  }
+
+  // Validate email service availability
+  if (!useGmail && !resend) {
+    console.error('❌ No email service configured');
+    return res.status(500).json({ 
+      error: 'Email service not configured. Please connect Gmail or set RESEND_API_KEY environment variable.' 
+    });
+  }
+
+  console.log(`📧 Attempting to send email via ${useGmail ? 'Gmail' : 'Resend'}...`);
   console.log(`   To: ${emailTo}`);
   console.log(`   Subject: ${emailSubject}`);
-  console.log(`   From: M10 DJ Company <hello@m10djcompany.com>`);
+  console.log(`   From: ${useGmail ? 'Gmail Account' : 'M10 DJ Company <hello@m10djcompany.com>'}`);
 
   try {
     // Convert plain text to HTML, converting quote links to buttons
@@ -117,22 +151,45 @@ ${htmlEmailContent}
       </div>
     `;
 
-    // Send email via Resend
-    const emailResult = await resend.emails.send({
-      from: 'M10 DJ Company <hello@m10djcompany.com>', // Using verified custom domain
-      to: [emailTo],
-      subject: emailSubject,
-      html: htmlContent,
-      text: emailContent // Plain text fallback
-    });
-
-    console.log('✅ Email sent via Resend successfully');
-    console.log(`   Email ID: ${emailResult.data?.id}`);
-    console.log(`   Status: ${emailResult.error ? 'ERROR' : 'SUCCESS'}`);
+    // Send email via Gmail or Resend
+    let emailResult;
+    let emailId;
     
-    if (emailResult.error) {
-      console.error('❌ Resend API Error:', emailResult.error);
-      throw new Error(`Resend API error: ${JSON.stringify(emailResult.error)}`);
+    if (useGmail) {
+      // Send via Gmail
+      const gmailResult = await sendEmailViaGmail({
+        organizationId,
+        to: emailTo,
+        subject: emailSubject,
+        htmlContent: htmlContent,
+        textContent: emailContent
+      });
+      
+      emailId = gmailResult.messageId;
+      emailResult = { data: { id: gmailResult.messageId }, error: null };
+      
+      console.log('✅ Email sent via Gmail successfully');
+      console.log(`   Message ID: ${gmailResult.messageId}`);
+    } else {
+      // Send via Resend
+      emailResult = await resend.emails.send({
+        from: 'M10 DJ Company <hello@m10djcompany.com>', // Using verified custom domain
+        to: [emailTo],
+        subject: emailSubject,
+        html: htmlContent,
+        text: emailContent // Plain text fallback
+      });
+
+      console.log('✅ Email sent via Resend successfully');
+      console.log(`   Email ID: ${emailResult.data?.id}`);
+      console.log(`   Status: ${emailResult.error ? 'ERROR' : 'SUCCESS'}`);
+      
+      if (emailResult.error) {
+        console.error('❌ Resend API Error:', emailResult.error);
+        throw new Error(`Resend API error: ${JSON.stringify(emailResult.error)}`);
+      }
+      
+      emailId = emailResult.data?.id;
     }
 
     // Log the communication in database (if recordId provided)
@@ -175,7 +232,8 @@ ${htmlEmailContent}
           status: 'sent',
           organization_id: organizationId, // Set organization_id for multi-tenant isolation
           metadata: {
-            resend_id: emailResult.data?.id,
+            email_id: emailId,
+            provider: useGmail ? 'gmail' : 'resend',
             template_used: originalTemplate || null
           }
         }]);
@@ -201,8 +259,8 @@ ${htmlEmailContent}
 
     return res.status(200).json({ 
       success: true, 
-      emailId: emailResult.data?.id,
-      message: 'Email sent successfully'
+      emailId: emailId,
+      message: `Email sent successfully via ${useGmail ? 'Gmail' : 'Resend'}`
     });
 
   } catch (error) {
