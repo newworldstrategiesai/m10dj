@@ -7,6 +7,13 @@
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types_db';
+
+// Generic type for Supabase client that accepts any schema
+// This allows both client-side and server-side Supabase clients
+type AnySupabaseClient = 
+  | SupabaseClient<any, any, any, any, any>
+  | SupabaseClient<Database, any, any, any, any>;
 
 export interface Organization {
   id: string;
@@ -38,7 +45,7 @@ export interface Organization {
  * Now supports team members - checks both owner_id and organization_members table
  */
 export async function getCurrentOrganization(
-  supabase: SupabaseClient
+  supabase: AnySupabaseClient
 ): Promise<Organization | null> {
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -97,7 +104,7 @@ export async function getCurrentOrganization(
  * This function is kept for backwards compatibility but may not work in all contexts.
  */
 export async function getCurrentOrganizationServer(
-  supabase: SupabaseClient
+  supabase: AnySupabaseClient
 ): Promise<Organization | null> {
   // Delegate to the client-side function since it works the same way
   return getCurrentOrganization(supabase);
@@ -108,7 +115,7 @@ export async function getCurrentOrganizationServer(
  * Platform owners (M10 DJ Company) bypass subscription restrictions
  */
 export async function requireActiveOrganization(
-  supabase: SupabaseClient
+  supabase: AnySupabaseClient
 ): Promise<Organization> {
   const org = await getCurrentOrganization(supabase);
   
@@ -166,7 +173,7 @@ export function hasFeatureAccess(
  * Get organization by slug (for subdomain routing)
  */
 export async function getOrganizationBySlug(
-  supabase: SupabaseClient,
+  supabase: AnySupabaseClient,
   slug: string
 ): Promise<Organization | null> {
   try {
@@ -198,7 +205,7 @@ export async function getOrganizationBySlug(
  * Create a new organization for a user
  */
 export async function createOrganization(
-  supabase: SupabaseClient,
+  supabase: AnySupabaseClient,
   name: string,
   ownerId: string
 ): Promise<Organization | null> {
@@ -245,7 +252,7 @@ export async function createOrganization(
  * Create organization with specific slug
  */
 async function createOrganizationWithSlug(
-  supabase: SupabaseClient,
+  supabase: AnySupabaseClient,
   name: string,
   slug: string,
   ownerId: string
@@ -285,7 +292,7 @@ async function createOrganizationWithSlug(
  * Check subscription limits (e.g., events per month for starter tier)
  */
 export async function checkSubscriptionLimits(
-  supabase: SupabaseClient,
+  supabase: AnySupabaseClient,
   org: Organization,
   limitType: 'events_per_month'
 ): Promise<{ allowed: boolean; limit: number; current: number; message?: string }> {

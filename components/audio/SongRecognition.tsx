@@ -1,0 +1,372 @@
+'use client';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Mic, MicOff, Loader2, CheckCircle, XCircle, Music } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/Toasts/use-toast';
+
+interface SongRecognitionProps {
+  eventId?: string;
+  contactId?: string;
+  organizationId?: string;
+  onSongDetected?: (song: { title: string; artist: string; confidence: number }) => void;
+  autoStart?: boolean;
+  chunkDuration?: number; // Duration in seconds for each audio chunk (default: 5)
+}
+
+interface DetectedSong {
+  title: string;
+  artist: string;
+  confidence: number;
+  timestamp: Date;
+  album?: string;
+  spotifyUrl?: string;
+}
+
+export default function SongRecognition({
+  eventId,
+  contactId,
+  organizationId,
+  onSongDetected,
+  autoStart = false,
+  chunkDuration = 5
+}: SongRecognitionProps) {
+  const [isListening, setIsListening] = useState(autoStart);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [detectedSongs, setDetectedSongs] = useState<DetectedSong[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { toast } = useToast();
+
+  // Check microphone permission on mount
+  useEffect(() => {
+    checkMicrophonePermission();
+    return () => {
+      stopListening();
+    };
+  }, []);
+
+  const checkMicrophonePermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop()); // Stop immediately after checking
+      setHasPermission(true);
+    } catch (err) {
+      setHasPermission(false);
+      setError('Microphone permission denied. Please enable microphone access.');
+    }
+  };
+
+  const startListening = async () => {
+    try {
+      setError(null);
+      
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        } 
+      });
+      
+      streamRef.current = stream;
+
+      // Create MediaRecorder
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        // Process the recorded audio chunk
+        if (audioChunksRef.current.length > 0) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          await processAudioChunk(audioBlob);
+          audioChunksRef.current = [];
+        }
+
+        // Continue listening if still active
+        if (isListening) {
+          startRecordingChunk();
+        }
+      };
+
+      setIsListening(true);
+      startRecordingChunk();
+
+      toast({
+        title: 'Listening started',
+        description: 'Audio recognition is now active',
+      });
+
+    } catch (err: any) {
+      console.error('Error starting audio capture:', err);
+      setError(err.message || 'Failed to access microphone');
+      setHasPermission(false);
+      toast({
+        title: 'Error',
+        description: 'Failed to access microphone. Please check permissions.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const startRecordingChunk = () => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'recording') {
+      return;
+    }
+
+    // Start recording
+    mediaRecorderRef.current.start();
+
+    // Stop after chunkDuration seconds
+    setTimeout(() => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+    }, chunkDuration * 1000);
+  };
+
+  const processAudioChunk = async (audioBlob: Blob) => {
+    setIsProcessing(true);
+
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      
+      reader.onloadend = async () => {
+        const base64Audio = reader.result as string;
+
+        // Call our API endpoint
+        const response = await fetch('/api/audio/recognize-song', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            audioData: base64Audio,
+            eventId,
+            contactId,
+            organizationId,
+            audioFormat: 'webm'
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.song) {
+          const detectedSong: DetectedSong = {
+            title: result.song.title,
+            artist: result.song.artist,
+            confidence: result.song.confidence || 0,
+            timestamp: new Date(),
+            album: result.song.album,
+            spotifyUrl: result.song.spotifyUrl,
+          };
+
+          setDetectedSongs(prev => [detectedSong, ...prev].slice(0, 10)); // Keep last 10
+
+          toast({
+            title: 'Song detected!',
+            description: `${detectedSong.title} by ${detectedSong.artist}`,
+          });
+
+          // Callback for parent component
+          if (onSongDetected) {
+            onSongDetected({
+              title: detectedSong.title,
+              artist: detectedSong.artist,
+              confidence: detectedSong.confidence,
+            });
+          }
+        } else {
+          // No song detected - this is normal, don't show error
+          console.log('No song detected in this chunk');
+        }
+      };
+    } catch (err: any) {
+      console.error('Error processing audio:', err);
+      setError(err.message || 'Failed to process audio');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const stopListening = () => {
+    setIsListening(false);
+
+    // Stop MediaRecorder
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+
+    // Stop all tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
+    // Clear interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    toast({
+      title: 'Listening stopped',
+      description: 'Audio recognition has been disabled',
+    });
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
+  if (hasPermission === false) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MicOff className="h-5 w-5" />
+            Microphone Access Required
+          </CardTitle>
+          <CardDescription>
+            Please enable microphone access to use audio recognition
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={checkMicrophonePermission}>
+            Request Permission
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Music className="h-5 w-5" />
+          Automatic Song Recognition
+        </CardTitle>
+        <CardDescription>
+          Listen to ambient audio and automatically detect songs being played
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Control Button */}
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={toggleListening}
+            disabled={isProcessing || !hasPermission}
+            variant={isListening ? 'destructive' : 'default'}
+            size="lg"
+            className="flex items-center gap-2"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : isListening ? (
+              <>
+                <MicOff className="h-4 w-4" />
+                Stop Listening
+              </>
+            ) : (
+              <>
+                <Mic className="h-4 w-4" />
+                Start Listening
+              </>
+            )}
+          </Button>
+
+          {isListening && (
+            <Badge variant="outline" className="animate-pulse">
+              <Mic className="h-3 w-3 mr-1" />
+              Active
+            </Badge>
+          )}
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        {/* Detected Songs List */}
+        {detectedSongs.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Recently Detected Songs</h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {detectedSongs.map((song, index) => (
+                <div
+                  key={index}
+                  className="p-3 bg-muted rounded-md border flex items-start justify-between"
+                >
+                  <div className="flex-1">
+                    <div className="font-medium">{song.title}</div>
+                    <div className="text-sm text-muted-foreground">{song.artist}</div>
+                    {song.album && (
+                      <div className="text-xs text-muted-foreground mt-1">Album: {song.album}</div>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {Math.round(song.confidence * 100)}% confidence
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {song.timestamp.toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>
+                  {song.spotifyUrl && (
+                    <a
+                      href={song.spotifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 text-primary hover:underline"
+                    >
+                      <Music className="h-4 w-4" />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Info */}
+        <div className="text-xs text-muted-foreground pt-2 border-t">
+          <p>• Audio is processed in {chunkDuration}-second chunks</p>
+          <p>• Songs are automatically saved to your event</p>
+          <p>• Matching song requests are marked as played</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
