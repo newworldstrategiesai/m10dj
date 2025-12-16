@@ -11,6 +11,33 @@
  *   npx tsx scripts/generate-city-page-content.ts --batch
  */
 
+// Load environment variables from .env.local FIRST (before any imports that need them)
+import * as path from 'path';
+import * as fs from 'fs';
+
+const envPath = path.join(__dirname, '..', '.env.local');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  envContent.split('\n').forEach((line) => {
+    const trimmedLine = line.trim();
+    if (trimmedLine && !trimmedLine.startsWith('#')) {
+      const match = trimmedLine.match(/^([^=]+)=(.*)$/);
+      if (match) {
+        const key = match[1].trim();
+        const value = match[2].trim().replace(/^["']|["']$/g, '');
+        // Only set if not already in process.env (system env takes precedence)
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+  console.log('✅ Loaded environment variables from .env.local');
+} else {
+  console.warn('⚠️  .env.local not found. Using system environment variables.');
+}
+
+// Now import modules that need environment variables
 import { createClient } from '@supabase/supabase-js';
 import { generateCityContent } from '../utils/ai/city-content-generator';
 

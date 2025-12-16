@@ -170,7 +170,12 @@ export default async function HomePage() {
             '@type': 'Organization',
             name: 'DJ Dash',
             url: 'https://www.djdash.net',
-            logo: 'https://www.djdash.net/assets/DJ-Dash-Logo-Black-1.PNG',
+            logo: {
+              '@type': 'ImageObject',
+              url: 'https://www.djdash.net/assets/DJ-Dash-Logo-Black-1.PNG',
+              width: 300,
+              height: 300
+            },
             description: 'The #1 DJ directory and booking software. Find 1,200+ verified professional DJs for weddings, parties, and events nationwide.',
             sameAs: [
               'https://www.facebook.com/djdash',

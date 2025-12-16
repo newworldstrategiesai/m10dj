@@ -375,15 +375,6 @@ export default function DJHostedPage({ profile, badges, aggregateRating, error }
                   </div>
                 </Card>
               )}
-
-              {/* Reviews Section */}
-              <div id="reviews">
-                <DJReviews
-                  djProfileId={profile.id}
-                  djName={profile.dj_name}
-                  djUrl={pageUrl}
-                />
-              </div>
             </div>
 
             {/* Sidebar - Sticky on Desktop */}
@@ -494,6 +485,15 @@ export default function DJHostedPage({ profile, badges, aggregateRating, error }
                 </Card>
               )}
             </div>
+          </div>
+
+          {/* Reviews Section - Full Width on Desktop */}
+          <div id="reviews" className="w-full -mx-4 sm:-mx-6 lg:-mx-8 mt-12 sm:mt-16">
+            <DJReviews
+              djProfileId={profile.id}
+              djName={profile.dj_name}
+              djUrl={pageUrl}
+            />
           </div>
 
           {/* Inquiry Form Section */}

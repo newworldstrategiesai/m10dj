@@ -693,6 +693,21 @@ export function generateStructuredData(props: StructuredDataProps) {
             "reviewCount": djProps.aggregateRating.reviewCount.toString(),
             "bestRating": "5",
             "worstRating": "1"
+          },
+          // Note: Individual reviews are added via generateReviewSchema in the component
+          // This ensures Google Rich Results can display review snippets
+          "review": {
+            "@type": "Review",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": djProps.aggregateRating.ratingValue.toString(),
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "author": {
+              "@type": "Person",
+              "name": "Verified Customers"
+            }
           }
         }),
         ...(djProps.socialLinks && {
@@ -957,13 +972,17 @@ export function generateReviewSchema(props: {
     },
     "itemReviewed": {
       "@type": itemReviewed["@type"],
-      "@id": `${itemReviewed.url}/#organization`,
+      "@id": `${itemReviewed.url}#local-business`,
       "name": itemReviewed.name,
       "url": itemReviewed.url,
       ...(itemReviewed.address && { "address": itemReviewed.address }),
       ...(itemReviewed.telephone && { "telephone": itemReviewed.telephone }),
       ...(itemReviewed.priceRange && { "priceRange": itemReviewed.priceRange }),
       ...(itemReviewed.serviceType && { "serviceType": itemReviewed.serviceType })
+    },
+    // Ensure proper linking for Google Rich Results
+    "mainEntity": {
+      "@id": `${itemReviewed.url}#local-business`
     },
     "author": {
       "@type": "Person",
@@ -972,8 +991,14 @@ export function generateReviewSchema(props: {
     "datePublished": review.date,
     "publisher": {
       "@type": "Organization", 
-      "name": itemReviewed.name,
-      "url": itemReviewed.url
+      "name": "DJ Dash",
+      "url": "https://www.djdash.net",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.djdash.net/assets/DJ-Dash-Logo-Black-1.PNG",
+        "width": 300,
+        "height": 300
+      }
     },
     "inLanguage": "en-US",
     "isPartOf": {

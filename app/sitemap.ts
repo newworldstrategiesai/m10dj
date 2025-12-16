@@ -300,10 +300,32 @@ async function generateDJDashSitemap(baseUrl: string): Promise<MetadataRoute.Sit
       changeFrequency: 'monthly',
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/djdash/business`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.75,
+    },
+    {
+      url: `${baseUrl}/djdash/use-cases`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.75,
+    },
+    {
+      url: `${baseUrl}/djdash/dj-gigs-memphis-tn`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
   ];
 
   // Fetch city pages from database
   let cityPages: MetadataRoute.Sitemap = [];
+  let cityFindDJPages: MetadataRoute.Sitemap = [];
+  let cityWeddingDJPages: MetadataRoute.Sitemap = [];
+  let cityDJGigsPages: MetadataRoute.Sitemap = [];
+  
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -319,15 +341,68 @@ async function generateDJDashSitemap(baseUrl: string): Promise<MetadataRoute.Sit
       .order('priority', { ascending: false });
 
     if (!error && cities) {
+      // City pages: /djdash/cities/[city]
       cityPages = cities.map((city) => ({
         url: `${baseUrl}/djdash/cities/${city.city_slug}`,
         lastModified: new Date(city.updated_at || new Date()),
         changeFrequency: 'weekly' as const,
         priority: city.is_featured ? 0.9 : city.priority ? city.priority / 100 : 0.7,
       }));
+
+      // City find-dj pages: /djdash/find-dj/[city]
+      cityFindDJPages = cities.map((city) => ({
+        url: `${baseUrl}/djdash/find-dj/${city.city_slug}`,
+        lastModified: new Date(city.updated_at || new Date()),
+        changeFrequency: 'weekly' as const,
+        priority: city.is_featured ? 0.85 : city.priority ? city.priority / 100 : 0.72,
+      }));
+
+      // City wedding DJs pages: /djdash/find-dj/[city]/wedding-djs
+      cityWeddingDJPages = cities.map((city) => ({
+        url: `${baseUrl}/djdash/find-dj/${city.city_slug}/wedding-djs`,
+        lastModified: new Date(city.updated_at || new Date()),
+        changeFrequency: 'weekly' as const,
+        priority: city.is_featured ? 0.88 : city.priority ? city.priority / 100 : 0.74,
+      }));
+
+      // City DJ gigs pages: /djdash/dj-gigs/[city]
+      cityDJGigsPages = cities.map((city) => ({
+        url: `${baseUrl}/djdash/dj-gigs/${city.city_slug}`,
+        lastModified: new Date(city.updated_at || new Date()),
+        changeFrequency: 'weekly' as const,
+        priority: city.is_featured ? 0.8 : city.priority ? city.priority / 100 : 0.7,
+      }));
     }
   } catch (error) {
     console.error('Error fetching city pages for sitemap:', error);
+  }
+
+  // Fetch city + event type pages from database
+  let cityEventPages: MetadataRoute.Sitemap = [];
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: eventPages, error } = await supabase
+      .from('city_event_pages')
+      .select('city_slug, event_type_slug, updated_at, is_published')
+      .eq('is_published', true)
+      .eq('product_context', 'djdash')
+      .order('updated_at', { ascending: false })
+      .limit(5000); // Limit to prevent sitemap from being too large
+
+    if (!error && eventPages) {
+      cityEventPages = eventPages.map((page) => ({
+        url: `${baseUrl}/djdash/find-dj/${page.city_slug}/${page.event_type_slug}`,
+        lastModified: new Date(page.updated_at || new Date()),
+        changeFrequency: 'weekly' as const,
+        priority: 0.75, // High priority for SEO-rich event pages
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching city event pages for sitemap:', error);
   }
 
   // Fetch DJ profiles for sitemap
@@ -358,5 +433,13 @@ async function generateDJDashSitemap(baseUrl: string): Promise<MetadataRoute.Sit
     console.error('Error fetching DJ profiles for sitemap:', error);
   }
 
-  return [...staticPages, ...cityPages, ...djProfilePages];
+  return [
+    ...staticPages,
+    ...cityPages,
+    ...cityFindDJPages,
+    ...cityWeddingDJPages,
+    ...cityDJGigsPages,
+    ...cityEventPages,
+    ...djProfilePages
+  ];
 } 
