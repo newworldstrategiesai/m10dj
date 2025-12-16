@@ -43,6 +43,10 @@ export default function SongRecognition({
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { toast } = useToast();
 
   // Check microphone permission on mount
@@ -52,6 +56,31 @@ export default function SongRecognition({
       stopListening();
     };
   }, []);
+
+  // Set canvas size on mount and resize
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      if (canvasRef.current) {
+        const canvas = canvasRef.current;
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.scale(dpr, dpr);
+        }
+      }
+    };
+
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    
+    return () => {
+      window.removeEventListener('resize', updateCanvasSize);
+    };
+  }, [isListening]);
 
   const checkMicrophonePermission = async () => {
     try {
@@ -78,6 +107,21 @@ export default function SongRecognition({
       });
       
       streamRef.current = stream;
+
+      // Set up Web Audio API for visualization
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+      source.connect(analyser);
+      
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+
+      // Start waveform visualization
+      startWaveformVisualization();
 
       // Create MediaRecorder
       const mediaRecorder = new MediaRecorder(stream, {
@@ -125,6 +169,63 @@ export default function SongRecognition({
         variant: 'destructive',
       });
     }
+  };
+
+  const startWaveformVisualization = () => {
+    if (!canvasRef.current || !analyserRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const analyser = analyserRef.current;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const draw = () => {
+      if (!isListening || !analyserRef.current || !canvasRef.current) {
+        animationFrameRef.current = null;
+        return;
+      }
+
+      animationFrameRef.current = requestAnimationFrame(draw);
+
+      analyser.getByteFrequencyData(dataArray);
+
+      const width = rect.width;
+      const height = rect.height;
+
+      // Clear canvas
+      ctx.fillStyle = 'transparent';
+      ctx.clearRect(0, 0, width, height);
+
+      // Draw waveform
+      const barCount = Math.min(bufferLength, 64); // Limit bars for better performance
+      const barWidth = width / barCount;
+      let barHeight;
+      let x = 0;
+
+      ctx.fillStyle = '#8b5cf6'; // Purple color
+
+      for (let i = 0; i < barCount; i++) {
+        const dataIndex = Math.floor((i / barCount) * bufferLength);
+        barHeight = (dataArray[dataIndex] / 255) * height * 0.7; // Scale to 70% of height
+
+        // Draw bar with rounded top
+        ctx.fillRect(x, height - barHeight, barWidth - 2, barHeight);
+
+        x += barWidth;
+      }
+    };
+
+    draw();
   };
 
   const startRecordingChunk = () => {
@@ -212,9 +313,21 @@ export default function SongRecognition({
   const stopListening = () => {
     setIsListening(false);
 
+    // Stop animation frame
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
     // Stop MediaRecorder
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
+    }
+
+    // Stop audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(console.error);
+      audioContextRef.current = null;
     }
 
     // Stop all tracks
@@ -227,6 +340,14 @@ export default function SongRecognition({
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+    }
+
+    // Clear waveform canvas
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
     }
 
     toast({
@@ -276,6 +397,21 @@ export default function SongRecognition({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6 pt-0">
+        {/* Waveform Visualization */}
+        {isListening && (
+          <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-2 sm:p-3 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Mic className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Audio Input</span>
+            </div>
+            <canvas
+              ref={canvasRef}
+              className="w-full h-16 sm:h-20 rounded bg-gray-900 dark:bg-gray-950"
+              style={{ display: 'block' }}
+            />
+          </div>
+        )}
+
         {/* Control Button */}
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <Button

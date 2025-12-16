@@ -40,7 +40,9 @@ import {
   ArrowDown,
   ArrowUpDown,
   Loader2,
-  Gift
+  Gift,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -143,6 +145,7 @@ export default function CrowdRequestsPage() {
   const [orphanedPaymentsData, setOrphanedPaymentsData] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
   const [showAudioTrackingModal, setShowAudioTrackingModal] = useState(false);
+  const [isAudioModalMinimized, setIsAudioModalMinimized] = useState(false);
   const [selectedEventCode, setSelectedEventCode] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [loadingEventId, setLoadingEventId] = useState(false);
@@ -7284,9 +7287,59 @@ export default function CrowdRequestsPage() {
           </div>
         )}
 
-        {/* Audio Tracking Modal */}
-        {showAudioTrackingModal && (
-          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowAudioTrackingModal(false)}>
+        {/* Audio Tracking Modal - Minimized Floating View */}
+        {showAudioTrackingModal && isAudioModalMinimized && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 p-3 min-w-[280px] max-w-[320px]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Live Detection</h4>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsAudioModalMinimized(false);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="Maximize"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAudioTrackingModal(false);
+                      setIsAudioModalMinimized(false);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="Close"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div 
+                className="text-xs text-gray-600 dark:text-gray-400 mb-2 cursor-pointer hover:text-gray-900 dark:hover:text-gray-200"
+                onClick={() => setIsAudioModalMinimized(false)}
+                title="Click to maximize"
+              >
+                {selectedEventId 
+                  ? availableEvents.find(e => e.id === selectedEventId)?.event_name || 'Event selected'
+                  : 'No event selected'}
+              </div>
+              <Badge variant="outline" className="animate-pulse text-xs">
+                <Mic className="h-3 w-3 mr-1" />
+                Listening...
+              </Badge>
+            </div>
+          </div>
+        )}
+
+        {/* Audio Tracking Modal - Full View */}
+        {showAudioTrackingModal && !isAudioModalMinimized && (
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-0 sm:p-4" onClick={() => {}}>
             <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-2xl shadow-2xl max-w-4xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
                 <div className="flex-1 min-w-0 pr-2">
@@ -7297,12 +7350,25 @@ export default function CrowdRequestsPage() {
                     Listen to music and automatically detect songs being played
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowAudioTrackingModal(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsAudioModalMinimized(true)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="Minimize"
+                  >
+                    <Minimize2 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAudioTrackingModal(false);
+                      setIsAudioModalMinimized(false);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               
               <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
