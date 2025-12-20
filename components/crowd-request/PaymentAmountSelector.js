@@ -18,7 +18,8 @@ function PaymentAmountSelector({
   fastTrackFee,
   nextFee,
   getBaseAmount,
-  getPaymentAmount
+  getPaymentAmount,
+  hidePriorityOptions = false // Hide fast track and next options (for bidding mode)
 }) {
   return (
     <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
@@ -99,42 +100,52 @@ function PaymentAmountSelector({
                     setCustomAmount('');
                     return;
                   }
-                  // Get minimum preset amount (first option)
-                  const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100;
+                  // Get minimum amount - use minimumAmount prop if provided, otherwise use first preset
+                  // This ensures bidding mode uses the winning bid + $5 minimum
+                  const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
                   const numValue = parseFloat(value);
-                  // Only update if value is valid and >= minimum preset
-                  if (!isNaN(numValue) && numValue >= minPresetAmount) {
+                  // Only update if value is valid and >= minimum
+                  if (!isNaN(numValue) && numValue >= minAmount) {
                     setCustomAmount(value);
-                  } else if (numValue < minPresetAmount && numValue >= 0) {
+                  } else if (numValue < minAmount && numValue >= 0) {
                     // Show the value but it will be invalid
                     setCustomAmount(value);
                   }
                 }}
-                min={presetAmounts.length > 0 ? (presetAmounts[0].value / 100).toFixed(2) : (minimumAmount / 100).toFixed(2)}
+                min={minimumAmount > 0 ? (minimumAmount / 100).toFixed(2) : (presetAmounts.length > 0 ? (presetAmounts[0].value / 100).toFixed(2) : '0.01')}
                 step="0.01"
                 inputMode="decimal"
                 className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
-                  customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100)
+                  (() => {
+                    const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
+                    return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
+                  })()
                     ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
                     : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
                 } text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent touch-manipulation`}
-                placeholder={(presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100).toFixed(2)}
+                placeholder={(() => {
+                  const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
+                  return minAmount.toFixed(2);
+                })()}
               />
             </div>
-            {customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100) ? (
-              <p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
-                Minimum amount is ${(presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100).toFixed(2)}
-              </p>
-            ) : (
-              <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Minimum: ${(presetAmounts.length > 0 ? presetAmounts[0].value / 100 : minimumAmount / 100).toFixed(2)}
-              </p>
-            )}
+            {(() => {
+              const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
+              return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount ? (
+                <p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                  Minimum amount is ${minAmount.toFixed(2)}
+                </p>
+              ) : (
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Minimum: ${minAmount.toFixed(2)}
+                </p>
+              );
+            })()}
           </div>
         )}
 
         {/* Fast-Track and Next Options (only for song requests) - Compact Radio Style */}
-        {requestType === 'song_request' && (
+        {requestType === 'song_request' && !hidePriorityOptions && (
           <div className="border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-3 sm:pt-4 mt-3 sm:mt-4 space-y-2 sm:space-y-3">
             {/* Fast-Track Option - More Compact */}
             <label 

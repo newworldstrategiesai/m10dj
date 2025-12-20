@@ -104,6 +104,8 @@ export default function BidPageWrapper() {
         fontFamily: organization.font_family
       } : null}
       forceBiddingMode={true} // Force bidding mode for /bid route - overrides organization setting
+      allowedRequestTypes={['song_request']} // Only allow song requests on /bid page
+      minimalHeader={true} // Use minimal header for bid page
     />
   );
 }

@@ -74,7 +74,23 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Request not found or not part of this bidding round' });
     }
 
-    // 3. Get minimum bid amount (current bid + minimum increment, or organization minimum)
+    // 3. Get all requests in this round to find the current winning bid
+    const { data: allRequests, error: requestsError } = await supabase
+      .from('crowd_requests')
+      .select('current_bid_amount')
+      .eq('bidding_round_id', biddingRoundId)
+      .eq('bidding_enabled', true);
+
+    if (requestsError) {
+      return res.status(500).json({ error: 'Failed to fetch requests' });
+    }
+
+    // Find the current winning bid (highest bid across all requests in the round)
+    const currentWinningBid = allRequests && allRequests.length > 0
+      ? Math.max(...allRequests.map(r => r.current_bid_amount || 0))
+      : 0;
+
+    // 4. Get organization minimum bid setting
     const { data: org } = await supabase
       .from('organizations')
       .select('requests_bidding_minimum_bid')
@@ -84,17 +100,30 @@ export default async function handler(req, res) {
     const minimumBidIncrement = 100; // $1.00 minimum increment
     const currentBid = request.current_bid_amount || 0;
     const orgMinimumBid = org?.requests_bidding_minimum_bid || 500; // $5.00 default
-    const minimumBid = Math.max(
-      currentBid + minimumBidIncrement,
-      orgMinimumBid
-    );
+    
+    // Calculate minimum bid:
+    // - If bidding on the current winning request, must be at least $1 more than its current bid
+    // - If bidding on a different request, must beat the winning bid
+    const isBiddingOnWinningRequest = currentBid === currentWinningBid && currentWinningBid > 0;
+    const minimumBid = isBiddingOnWinningRequest
+      ? currentBid + minimumBidIncrement // Must be at least $1 more than current bid on this request
+      : Math.max(currentWinningBid + minimumBidIncrement, orgMinimumBid); // Must beat the winning bid, minimum $5
 
     if (bidAmount < minimumBid) {
-      return res.status(400).json({ 
-        error: `Bid must be at least $${(minimumBid / 100).toFixed(2)}`,
-        minimumBid,
-        currentBid
-      });
+      if (currentWinningBid > 0) {
+        return res.status(400).json({ 
+          error: `Your bid must be higher than the current winning bid of $${(currentWinningBid / 100).toFixed(2)}. Minimum bid: $${(minimumBid / 100).toFixed(2)}`,
+          minimumBid,
+          currentWinningBid,
+          currentBid
+        });
+      } else {
+        return res.status(400).json({ 
+          error: `Bid must be at least $${(minimumBid / 100).toFixed(2)}`,
+          minimumBid,
+          currentBid
+        });
+      }
     }
 
     // 4. Create Stripe Payment Intent (authorize but don't charge yet)

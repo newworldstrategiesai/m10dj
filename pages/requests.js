@@ -138,7 +138,9 @@ export function GeneralRequestsPage({
   organizationCoverPhoto = null,
   organizationData = null,
   isOwner = false,
-  forceBiddingMode = false // Force bidding mode regardless of organization setting
+  forceBiddingMode = false, // Force bidding mode regardless of organization setting
+  allowedRequestTypes = null, // Array of allowed request types (e.g., ['song_request']). If null, all types allowed.
+  minimalHeader = false // Use minimal header (for bid page)
 } = {}) {
   // Log when organizationData changes
   useEffect(() => {
@@ -168,7 +170,26 @@ export function GeneralRequestsPage({
       venueUrl: organizationData?.requests_venue_photo_url
     });
   }, [organizationCoverPhoto, coverPhoto, organizationData]);
-  const [requestType, setRequestType] = useState(organizationData?.requests_default_request_type || 'song_request'); // 'song_request', 'shoutout', or 'tip'
+  // Determine default request type - if allowedRequestTypes is set, use first allowed type
+  const defaultRequestType = allowedRequestTypes && allowedRequestTypes.length > 0
+    ? allowedRequestTypes[0]
+    : (organizationData?.requests_default_request_type || 'song_request');
+  
+  const [requestType, setRequestType] = useState(defaultRequestType); // 'song_request', 'shoutout', or 'tip'
+  
+  // Lock request type if only one type is allowed (e.g., on /bid page)
+  useEffect(() => {
+    if (allowedRequestTypes && allowedRequestTypes.length === 1) {
+      setRequestType(allowedRequestTypes[0]);
+    }
+  }, [allowedRequestTypes]);
+  
+  // Wrapper for setRequestType that respects allowedRequestTypes
+  const handleRequestTypeChange = (newType) => {
+    if (!allowedRequestTypes || allowedRequestTypes.includes(newType)) {
+      setRequestType(newType);
+    }
+  };
   const [formData, setFormData] = useState({
     songArtist: '',
     songTitle: '',
@@ -211,6 +232,7 @@ export function GeneralRequestsPage({
   const [biddingEnabled, setBiddingEnabled] = useState(false); // Whether bidding is enabled for this org
   const [biddingRequestId, setBiddingRequestId] = useState(null); // Request ID if added to bidding round
   const [showBiddingInterface, setShowBiddingInterface] = useState(false); // Show bidding UI
+  const [currentWinningBid, setCurrentWinningBid] = useState(0); // Current winning bid amount in cents
 
   // Helper function to get social URL with user preference
   const getSocialUrl = (platform, defaultUrl) => {
@@ -274,6 +296,37 @@ export function GeneralRequestsPage({
       setBiddingEnabled(organizationData?.requests_bidding_enabled || false);
     }
   }, [organizationData, forceBiddingMode]);
+
+  // Fetch current winning bid for dynamic preset amounts (only in bidding mode)
+  useEffect(() => {
+    // Calculate bidding mode inline to avoid dependency on shouldUseBidding
+    const isBiddingMode = (forceBiddingMode || biddingEnabled) && requestType === 'song_request';
+    if (!isBiddingMode || !organizationId) return;
+
+    const fetchCurrentWinningBid = async () => {
+      try {
+        const response = await fetch(`/api/bidding/current-round?organizationId=${organizationId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.active && data.requests && data.requests.length > 0) {
+            // Find the highest bid across all requests
+            const highestBid = Math.max(...data.requests.map(r => r.current_bid_amount || 0));
+            setCurrentWinningBid(highestBid);
+          } else {
+            setCurrentWinningBid(0);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching current winning bid:', error);
+        setCurrentWinningBid(0);
+      }
+    };
+
+    fetchCurrentWinningBid();
+    // Poll every 5 seconds to keep winning bid updated
+    const interval = setInterval(fetchCurrentWinningBid, 5000);
+    return () => clearInterval(interval);
+  }, [forceBiddingMode, biddingEnabled, requestType, organizationId]);
 
   // Apply dark mode only on requests page - ensure it overrides any theme settings
   useEffect(() => {
@@ -345,6 +398,37 @@ export function GeneralRequestsPage({
     audioUploadFee: 10000 // $100.00 in cents
   });
 
+  // Check if bidding mode is enabled - use useMemo to make it reactive to state changes
+  const shouldUseBidding = useMemo(() => {
+    return (forceBiddingMode || biddingEnabled) && requestType === 'song_request';
+  }, [forceBiddingMode, biddingEnabled, requestType]);
+
+  // Calculate minimum bid amount based on current winning bid (only for bidding mode)
+  const dynamicMinimumAmount = useMemo(() => {
+    if (!shouldUseBidding) return null;
+    // Minimum bid must be at least $5 above winning bid (or $5 if no bids yet)
+    // Always add $5 to the winning bid, even if it's 0
+    const minAmount = currentWinningBid > 0 ? currentWinningBid + 500 : 500;
+    return minAmount;
+  }, [shouldUseBidding, currentWinningBid]);
+
+  // Generate dynamic preset amounts based on current winning bid (only for bidding mode)
+  const dynamicBidPresets = useMemo(() => {
+    if (!shouldUseBidding) return null;
+    
+    // Use the dynamic minimum amount
+    const minBid = dynamicMinimumAmount || 500;
+    const presets = [
+      { value: minBid, label: `$${(minBid / 100).toFixed(2)}` },
+      { value: minBid + 500, label: `$${((minBid + 500) / 100).toFixed(2)}` }, // +$5
+      { value: minBid + 1000, label: `$${((minBid + 1000) / 100).toFixed(2)}` }, // +$10
+      { value: minBid + 2000, label: `$${((minBid + 2000) / 100).toFixed(2)}` }, // +$20
+      { value: minBid + 5000, label: `$${((minBid + 5000) / 100).toFixed(2)}` } // +$50
+    ];
+    // Filter out any amounts that are less than or equal to the winning bid (safety check)
+    return presets.filter(preset => preset.value > currentWinningBid);
+  }, [shouldUseBidding, currentWinningBid, dynamicMinimumAmount]);
+  
   // Use validation hook - pass isExtractedFromLink to make artist optional when extracted
   const { isSongSelectionComplete, validateForm: validateFormHook } = useCrowdRequestValidation({
     requestType,
@@ -352,7 +436,8 @@ export function GeneralRequestsPage({
     getPaymentAmount,
     presetAmounts,
     minimumAmount,
-    isExtractedFromLink // Pass flag to validation hook
+    isExtractedFromLink, // Pass flag to validation hook
+    skipPaymentValidation: shouldUseBidding // Skip payment validation in bidding mode
   });
 
   const handleInputChange = async (e) => {
@@ -526,12 +611,19 @@ export function GeneralRequestsPage({
     setSubmitting(true);
 
     try {
-      const amount = getPaymentAmount();
+      // shouldUseBidding is already defined at component level via useMemo
+      // In bidding mode, payment happens when placing a bid, not at submission
+      let amount = 0; // Default to 0 for bidding mode
       
-      // Validate amount before submission - must be at least minimum preset amount
-      const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-      if (!amount || amount < minPresetAmount) {
-        throw new Error(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
+      // Only validate and get payment amount if NOT in bidding mode
+      if (!shouldUseBidding) {
+        amount = getPaymentAmount();
+        
+        // Validate amount before submission - must be at least minimum preset amount
+        const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+        if (!amount || amount < minPresetAmount) {
+          throw new Error(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
+        }
       }
 
       // Note: We allow payment even if additional songs don't have titles yet
@@ -566,7 +658,7 @@ export function GeneralRequestsPage({
         requesterEmail: formData?.requesterEmail?.trim() || null,
         requesterPhone: formData?.requesterPhone?.trim() || null,
         message: (requestType === 'tip' ? 'Tip' : messageWithUrl) || null,
-        amount: amount, // Total amount for all songs
+        amount: amount, // Total amount for all songs (0 in bidding mode)
         isFastTrack: (requestType === 'song_request' && isFastTrack) || false,
         isNext: (requestType === 'song_request' && isNext) || false,
         fastTrackFee: (requestType === 'song_request' && isFastTrack) ? fastTrackFee : 0,
@@ -585,7 +677,6 @@ export function GeneralRequestsPage({
       // If bidding is enabled, add request to bidding round instead of processing payment
       // Only for song requests (not tips or shoutouts in bidding mode)
       // On /bid page, force bidding mode even if organization setting is disabled
-      const shouldUseBidding = (forceBiddingMode || biddingEnabled) && requestType === 'song_request';
       if (shouldUseBidding && mainData?.requestId && organizationId) {
         try {
           const biddingResponse = await fetch('/api/bidding/add-request-to-round', {
@@ -1004,7 +1095,11 @@ export function GeneralRequestsPage({
         {/* Hero Section with Text Fallback */}
         {!embedMode && !showPaymentMethods && (
           <div 
-            className="relative w-full h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px] overflow-hidden top-0 bg-gradient-to-b from-gray-900 via-black to-black" 
+            className={`relative w-full overflow-hidden top-0 bg-gradient-to-b from-gray-900 via-black to-black ${
+              minimalHeader 
+                ? 'h-[120px] sm:h-[140px] min-h-[100px] sm:min-h-[120px]' 
+                : 'h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px]'
+            }`}
             style={{ 
               zIndex: 0,
               backgroundImage: coverPhoto ? `url(${coverPhoto})` : undefined,
@@ -1016,12 +1111,18 @@ export function GeneralRequestsPage({
             {/* Gradient overlay for text readability - dark at top, darker at bottom */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black/70 z-10"></div>
             {/* Content overlay */}
-            <div className="relative z-20 h-full flex flex-col justify-between items-center text-center px-4" style={{ paddingTop: '80px', paddingBottom: '20px' }}>
+            <div className={`relative z-20 h-full flex flex-col justify-between items-center text-center px-4 ${
+              minimalHeader ? 'justify-center' : ''
+            }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '20px' }}>
               {/* Top content section */}
-              <div className="flex flex-col items-center justify-center flex-1">
+              <div className={`flex flex-col items-center justify-center ${minimalHeader ? '' : 'flex-1'}`}>
                 {/* Artist Name */}
                 <h1 
-                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white mb-4 sm:mb-6 drop-shadow-2xl uppercase tracking-tight"
+                  className={`font-black text-white drop-shadow-2xl uppercase tracking-tight ${
+                    minimalHeader
+                      ? 'text-xl sm:text-2xl mb-1'
+                      : 'text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-4 sm:mb-6'
+                  }`}
                   style={{
                     fontFamily: 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
                     letterSpacing: '0.05em',
@@ -1038,22 +1139,22 @@ export function GeneralRequestsPage({
                   })()}
                 </h1>
                 
-                {/* Location - Only show if value exists */}
-                {organizationData?.requests_header_location && (
+                {/* Location - Only show if value exists and not minimal header */}
+                {!minimalHeader && organizationData?.requests_header_location && (
                   <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl text-white/90 mb-3 sm:mb-4 drop-shadow-lg">
                     {organizationData.requests_header_location}
                   </p>
                 )}
                 
-                {/* Date - Only show if value exists */}
-                {organizationData?.requests_header_date && (
+                {/* Date - Only show if value exists and not minimal header */}
+                {!minimalHeader && organizationData?.requests_header_date && (
                   <p className="text-lg sm:text-xl md:text-2xl text-white/80 drop-shadow-md">
                     {organizationData.requests_header_date}
                   </p>
                 )}
                 
-                {/* Charity Donation Info */}
-                {organizationData?.charity_donation_enabled && organizationData?.charity_name && (
+                {/* Charity Donation Info - Hide on minimal header */}
+                {!minimalHeader && organizationData?.charity_donation_enabled && organizationData?.charity_name && (
                   <div className="mt-4 sm:mt-6 px-4 py-2 sm:py-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
                     <p className="text-sm sm:text-base md:text-lg text-white/90 font-semibold mb-1">
                       💝 Supporting {organizationData.charity_name}
@@ -1081,7 +1182,8 @@ export function GeneralRequestsPage({
                 )}
               </div>
               
-              {/* Bottom section with social icons */}
+              {/* Bottom section with social icons - Hide on minimal header */}
+              {!minimalHeader && (
               <div className="w-full flex flex-col items-center gap-4 mt-4 sm:mt-6">
                 {/* Social Links - Positioned at bottom */}
                 {organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0 ? (
@@ -1172,6 +1274,7 @@ export function GeneralRequestsPage({
                   </div>
                 )}
               </div>
+              )}
             </div>
           </div>
         )}
@@ -1234,17 +1337,213 @@ export function GeneralRequestsPage({
               </div>
             )}
 
-            {showBiddingInterface && biddingRequestId ? (
-              <div data-bidding-interface>
-                <BiddingInterface
-                  organizationId={organizationId}
-                  requestId={biddingRequestId}
-                  requestType={requestType}
-                  songTitle={formData.songTitle}
-                  songArtist={formData.songArtist}
-                  recipientName={formData.recipientName}
-                  recipientMessage={formData.recipientMessage}
-                />
+            {/* On /bid page, always show form first, then bidding interface below */}
+            {forceBiddingMode && biddingEnabled ? (
+              <div className="space-y-6">
+                {/* Song Request Form - Always show on bid page (unless user already submitted) */}
+                {!biddingRequestId && (
+                  <form onSubmit={handleSubmit} noValidate className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
+                    {/* Request Type Selection - Hidden on bid page since only song_request is allowed */}
+                    
+                    {/* Song Request Fields */}
+                    {requestType === 'song_request' && (
+                      <div className="bg-white/70 dark:bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0 space-y-2 sm:space-y-3 md:space-y-4">
+                        <h2 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4 flex items-center gap-2 sm:gap-3">
+                          <div className="w-1 h-5 sm:h-6 md:h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full hidden sm:block"></div>
+                          <span className="leading-tight">Submit Your Song Request</span>
+                        </h2>
+                        
+                        {/* Music Link Input */}
+                        {showLinkField ? (
+                          <>
+                            <div>
+                              <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                                <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                                {organizationData?.requests_music_link_label || 'Paste Music Link (Optional)'}
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="url"
+                                  value={songUrl}
+                                  onChange={handleSongUrlChange}
+                                  className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation ${
+                                    extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : 'pr-3 sm:pr-4'
+                                  }`}
+                                  placeholder={organizationData?.requests_music_link_placeholder || "Paste YouTube, Spotify, SoundCloud, Tidal, or Apple Music link"}
+                                  autoComplete="off"
+                                />
+                                {extractingSong && (
+                                  <div className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2 pointer-events-none">
+                                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-500 flex-shrink-0" />
+                                    <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline whitespace-nowrap">Extracting...</span>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {organizationData?.requests_music_link_help_text || "We'll automatically fill in the song title and artist name"}
+                              </p>
+                            </div>
+
+                            <div className="relative my-2 sm:my-3">
+                              <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-gray-300 dark:border-gray-800"></div>
+                              </div>
+                              <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
+                                <span className="bg-white dark:bg-black px-2 text-gray-500 dark:text-gray-400">
+                                  {organizationData?.requests_manual_entry_divider || 'Or enter manually'}
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="mb-2 sm:mb-3">
+                            <button
+                              type="button"
+                              onClick={handleShareAnotherSong}
+                              className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                            >
+                              <Music className="w-3 h-3 sm:w-4 sm:h-4" />
+                              {organizationData?.requests_start_over_text || 'Start over'}
+                            </button>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                            {organizationData?.requests_song_title_label || 'Song Title'} <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            ref={songTitleInputRef}
+                            type="text"
+                            name="songTitle"
+                            value={formData.songTitle}
+                            onChange={handleInputChange}
+                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation"
+                            placeholder={organizationData?.requests_song_title_placeholder || "Enter song title"}
+                            required
+                            autoComplete="off"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                            {organizationData?.requests_artist_name_label || 'Artist Name'}
+                            {!isExtractedFromLink && <span className="text-red-500">*</span>}
+                          </label>
+                          <input
+                            type="text"
+                            name="songArtist"
+                            value={formData.songArtist}
+                            onChange={handleInputChange}
+                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200"
+                            placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
+                            required={!isExtractedFromLink}
+                            autoComplete="off"
+                          />
+                        </div>
+
+                        {/* Bid Amount Selector - Always show on bid page with dynamic amounts based on winning bid */}
+                        <div data-payment-section className="mt-4">
+                          <PaymentAmountSelector
+                            amountType={amountType}
+                            setAmountType={setAmountType}
+                            presetAmount={presetAmount}
+                            setPresetAmount={setPresetAmount}
+                            customAmount={customAmount}
+                            setCustomAmount={setCustomAmount}
+                            presetAmounts={dynamicBidPresets || presetAmounts}
+                            minimumAmount={dynamicMinimumAmount || minimumAmount}
+                            requestType={requestType}
+                            isFastTrack={false}
+                            setIsFastTrack={() => {}}
+                            isNext={false}
+                            setIsNext={() => {}}
+                            fastTrackFee={0}
+                            nextFee={0}
+                            getBaseAmount={getBaseAmount}
+                            getPaymentAmount={getPaymentAmount}
+                            hidePriorityOptions={true} // Hide fast track and next options on bid page
+                          />
+                        </div>
+
+                        {/* Bid Amount Required Notification - Show when bid amount is missing */}
+                        {shouldUseBidding && (() => {
+                          const bidAmount = getPaymentAmount();
+                          const minBid = dynamicMinimumAmount || 500;
+                          if (!bidAmount || bidAmount < minBid) {
+                            return (
+                              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg p-3 mb-3">
+                                <div className="flex items-start gap-2">
+                                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
+                                      Bid Amount Required
+                                    </p>
+                                    <p className="text-xs text-yellow-800 dark:text-yellow-300">
+                                      Please select a bid amount above. Minimum bid is <span className="font-bold">${((minBid || 500) / 100).toFixed(2)}</span>
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+
+                        {/* Submit Button */}
+                        <button
+                          type="submit"
+                          disabled={(() => {
+                            if (submitting) return true;
+                            if (!formData.songTitle.trim()) return true;
+                            // In bidding mode, also check if a bid amount is selected
+                            if (shouldUseBidding) {
+                              const bidAmount = getPaymentAmount();
+                              const minBid = dynamicMinimumAmount || 500;
+                              if (!bidAmount || bidAmount < minBid) return true;
+                            }
+                            return false;
+                          })()}
+                          className="w-full py-3 sm:py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg sm:rounded-xl hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                          title={(() => {
+                            if (!formData.songTitle.trim()) return 'Please enter a song title';
+                            if (shouldUseBidding) {
+                              const bidAmount = getPaymentAmount();
+                              const minBid = dynamicMinimumAmount || 500;
+                              if (!bidAmount || bidAmount < minBid) {
+                                return `Please select a bid amount. Minimum bid is $${((minBid || 500) / 100).toFixed(2)}`;
+                              }
+                            }
+                            return '';
+                          })()}
+                        >
+                          {submitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                              <span>Submitting...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Music className="w-4 h-4 sm:w-5 sm:h-5" />
+                              <span>Submit Song Request</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                )}
+                <div data-bidding-interface>
+                  <BiddingInterface
+                    organizationId={organizationId}
+                    requestId={biddingRequestId} // Can be null on /bid page initially
+                    requestType={requestType}
+                    songTitle={formData.songTitle}
+                    songArtist={formData.songArtist}
+                    recipientName={formData.recipientName}
+                    recipientMessage={formData.recipientMessage}
+                  />
+                </div>
               </div>
             ) : success ? (
               <PaymentSuccessScreen 
@@ -1287,85 +1586,94 @@ export function GeneralRequestsPage({
                     <span className="leading-tight">{organizationData?.requests_main_heading || 'What would you like to request?'}</span>
                   </h2>
                   
-                  <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
-                    <button
-                      type="button"
-                      onClick={() => setRequestType('song_request')}
-                      className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
-                        requestType === 'song_request'
-                          ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/30 dark:to-purple-800/20 shadow-lg shadow-purple-500/20 scale-105'
-                          : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-md'
-                      }`}
-                    >
-                      {requestType === 'song_request' && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-400/10 to-transparent"></div>
+                  {/* Request Type Selection - Hide if only one type is allowed */}
+                  {(!allowedRequestTypes || allowedRequestTypes.length > 1) && (
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
+                      {(!allowedRequestTypes || allowedRequestTypes.includes('song_request')) && (
+                        <button
+                          type="button"
+                          onClick={() => handleRequestTypeChange('song_request')}
+                          className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                            requestType === 'song_request'
+                              ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/30 dark:to-purple-800/20 shadow-lg shadow-purple-500/20 scale-105'
+                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-md'
+                          }`}
+                        >
+                          {requestType === 'song_request' && (
+                            <div className="absolute inset-0 bg-gradient-to-br from-purple-400/10 to-transparent"></div>
+                          )}
+                          <div className="relative flex flex-col items-center justify-center">
+                            <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
+                              requestType === 'song_request'
+                                ? 'bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/50'
+                                : 'bg-gray-100 dark:bg-black/50 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30'
+                            }`}>
+                              <Music className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
+                                requestType === 'song_request' ? 'text-white' : 'text-gray-400 group-hover:text-purple-500'
+                              }`} />
+                            </div>
+                            <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_song_request_label || 'Song Request'}</h3>
+                          </div>
+                        </button>
                       )}
-                      <div className="relative flex flex-col items-center justify-center">
-                        <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
-                          requestType === 'song_request'
-                            ? 'bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/50'
-                            : 'bg-gray-100 dark:bg-black/50 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30'
-                        }`}>
-                          <Music className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
-                            requestType === 'song_request' ? 'text-white' : 'text-gray-400 group-hover:text-purple-500'
-                          }`} />
-                        </div>
-                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_song_request_label || 'Song Request'}</h3>
-                      </div>
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => setRequestType('shoutout')}
-                      className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
-                        requestType === 'shoutout'
-                          ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-pink-100/50 dark:from-pink-900/30 dark:to-pink-800/20 shadow-lg shadow-pink-500/20 scale-105'
-                          : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-pink-300 hover:scale-[1.02] hover:shadow-md'
-                      }`}
-                    >
-                      {requestType === 'shoutout' && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-pink-400/10 to-transparent"></div>
+                      
+                      {(!allowedRequestTypes || allowedRequestTypes.includes('shoutout')) && (
+                        <button
+                          type="button"
+                          onClick={() => handleRequestTypeChange('shoutout')}
+                          className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                            requestType === 'shoutout'
+                              ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-pink-100/50 dark:from-pink-900/30 dark:to-pink-800/20 shadow-lg shadow-pink-500/20 scale-105'
+                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-pink-300 hover:scale-[1.02] hover:shadow-md'
+                          }`}
+                        >
+                          {requestType === 'shoutout' && (
+                            <div className="absolute inset-0 bg-gradient-to-br from-pink-400/10 to-transparent"></div>
+                          )}
+                          <div className="relative flex flex-col items-center justify-center">
+                            <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
+                              requestType === 'shoutout'
+                                ? 'bg-gradient-to-br from-pink-500 to-pink-600 shadow-lg shadow-pink-500/50'
+                                : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-pink-100 dark:group-hover:bg-pink-900/30'
+                            }`}>
+                              <Mic className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
+                                requestType === 'shoutout' ? 'text-white' : 'text-gray-400 group-hover:text-pink-500'
+                              }`} />
+                            </div>
+                            <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_shoutout_label || 'Shoutout'}</h3>
+                          </div>
+                        </button>
                       )}
-                      <div className="relative flex flex-col items-center justify-center">
-                        <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
-                          requestType === 'shoutout'
-                            ? 'bg-gradient-to-br from-pink-500 to-pink-600 shadow-lg shadow-pink-500/50'
-                            : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-pink-100 dark:group-hover:bg-pink-900/30'
-                        }`}>
-                          <Mic className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
-                            requestType === 'shoutout' ? 'text-white' : 'text-gray-400 group-hover:text-pink-500'
-                          }`} />
-                        </div>
-                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_shoutout_label || 'Shoutout'}</h3>
-                      </div>
-                    </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setRequestType('tip')}
-                      className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
-                        requestType === 'tip'
-                          ? 'border-yellow-500 bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-900/30 dark:to-yellow-800/20 shadow-lg shadow-yellow-500/20 scale-105'
-                          : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-yellow-300 hover:scale-[1.02] hover:shadow-md'
-                      }`}
-                    >
-                      {requestType === 'tip' && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-transparent"></div>
+                      {(!allowedRequestTypes || allowedRequestTypes.includes('tip')) && (
+                        <button
+                          type="button"
+                          onClick={() => handleRequestTypeChange('tip')}
+                          className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                            requestType === 'tip'
+                              ? 'border-yellow-500 bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-900/30 dark:to-yellow-800/20 shadow-lg shadow-yellow-500/20 scale-105'
+                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-yellow-300 hover:scale-[1.02] hover:shadow-md'
+                          }`}
+                        >
+                          {requestType === 'tip' && (
+                            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-transparent"></div>
+                          )}
+                          <div className="relative flex flex-col items-center justify-center">
+                            <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
+                              requestType === 'tip'
+                                ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/50'
+                                : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-yellow-100 dark:group-hover:bg-yellow-900/30'
+                            }`}>
+                              <Gift className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
+                                requestType === 'tip' ? 'text-white' : 'text-gray-400 group-hover:text-yellow-500'
+                              }`} />
+                            </div>
+                            <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">Tip Me</h3>
+                          </div>
+                        </button>
                       )}
-                      <div className="relative flex flex-col items-center justify-center">
-                        <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
-                          requestType === 'tip'
-                            ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/50'
-                            : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-yellow-100 dark:group-hover:bg-yellow-900/30'
-                        }`}>
-                          <Gift className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
-                            requestType === 'tip' ? 'text-white' : 'text-gray-400 group-hover:text-yellow-500'
-                          }`} />
-                        </div>
-                        <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">Tip Me</h3>
-                      </div>
-                    </button>
-                  </div>
+                    </div>
+                  )}
 
                   {/* Song Request Fields */}
                   {requestType === 'song_request' && (
@@ -1685,32 +1993,69 @@ export function GeneralRequestsPage({
                 </div>
 
                 {/* Payment Amount - Show when fields are visible (step 1 for song requests, immediately for shoutouts) or after song selection is complete (not for tip, which shows inline) */}
-                {requestType !== 'tip' && (
-                  requestType === 'shoutout' || 
-                  (requestType === 'song_request' && (currentStep === 1 || (isSongSelectionComplete() && currentStep >= 2)))
-                ) && (
-                  <div data-payment-section>
-                    <PaymentAmountSelector
-                    amountType={amountType}
-                    setAmountType={setAmountType}
-                    presetAmount={presetAmount}
-                    setPresetAmount={setPresetAmount}
-                    customAmount={customAmount}
-                    setCustomAmount={setCustomAmount}
-                    presetAmounts={presetAmounts}
-                    minimumAmount={minimumAmount}
-                    requestType={requestType}
-                    isFastTrack={organizationData?.requests_show_fast_track !== false ? isFastTrack : false}
-                    setIsFastTrack={organizationData?.requests_show_fast_track !== false ? setIsFastTrack : () => {}}
-                    isNext={organizationData?.requests_show_next_song !== false ? isNext : false}
-                    setIsNext={organizationData?.requests_show_next_song !== false ? setIsNext : () => {}}
-                    fastTrackFee={fastTrackFee}
-                    nextFee={nextFee}
-                    getBaseAmount={getBaseAmount}
-                    getPaymentAmount={getPaymentAmount}
-                  />
-                  </div>
-                )}
+                {/* In bidding mode, show payment selector for song requests as soon as title is filled (for initial bid) */}
+                {requestType !== 'tip' && (() => {
+                  // Calculate bidding mode status inline to ensure it's always available
+                  const isBiddingMode = (forceBiddingMode || biddingEnabled) && requestType === 'song_request';
+                  const hasSongTitle = formData?.songTitle?.trim();
+                  
+                  // In bidding mode, show as soon as title is filled
+                  if (isBiddingMode && hasSongTitle) {
+                    return (
+                      <div data-payment-section className="mt-4">
+                        <PaymentAmountSelector
+                          amountType={amountType}
+                          setAmountType={setAmountType}
+                          presetAmount={presetAmount}
+                          setPresetAmount={setPresetAmount}
+                          customAmount={customAmount}
+                          setCustomAmount={setCustomAmount}
+                          presetAmounts={presetAmounts}
+                          minimumAmount={minimumAmount}
+                          requestType={requestType}
+                          isFastTrack={false}
+                          setIsFastTrack={() => {}}
+                          isNext={false}
+                          setIsNext={() => {}}
+                          fastTrackFee={0}
+                          nextFee={0}
+                          getBaseAmount={getBaseAmount}
+                          getPaymentAmount={getPaymentAmount}
+                        />
+                      </div>
+                    );
+                  }
+                  
+                  // Regular mode - show when appropriate
+                  if (!isBiddingMode && (requestType === 'shoutout' || 
+                    (requestType === 'song_request' && (currentStep === 1 || (isSongSelectionComplete() && currentStep >= 2))))) {
+                    return (
+                      <div data-payment-section>
+                        <PaymentAmountSelector
+                          amountType={amountType}
+                          setAmountType={setAmountType}
+                          presetAmount={presetAmount}
+                          setPresetAmount={setPresetAmount}
+                          customAmount={customAmount}
+                          setCustomAmount={setCustomAmount}
+                          presetAmounts={presetAmounts}
+                          minimumAmount={minimumAmount}
+                          requestType={requestType}
+                          isFastTrack={organizationData?.requests_show_fast_track !== false ? isFastTrack : false}
+                          setIsFastTrack={organizationData?.requests_show_fast_track !== false ? setIsFastTrack : () => {}}
+                          isNext={organizationData?.requests_show_next_song !== false ? isNext : false}
+                          setIsNext={organizationData?.requests_show_next_song !== false ? setIsNext : () => {}}
+                          fastTrackFee={fastTrackFee}
+                          nextFee={nextFee}
+                          getBaseAmount={getBaseAmount}
+                          getPaymentAmount={getPaymentAmount}
+                        />
+                      </div>
+                    );
+                  }
+                  
+                  return null;
+                })()}
 
 
                 {/* Submit Button - Sticky at bottom, appears when selection is complete */}

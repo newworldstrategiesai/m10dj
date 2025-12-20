@@ -8,7 +8,8 @@ export function useCrowdRequestValidation({
   getPaymentAmount,
   presetAmounts,
   minimumAmount,
-  isExtractedFromLink = false // If true, artist is optional (extracted from link)
+  isExtractedFromLink = false, // If true, artist is optional (extracted from link)
+  skipPaymentValidation = false // If true, skip payment amount validation (for bidding mode)
 }) {
   const isSongSelectionComplete = () => {
     try {
@@ -58,11 +59,24 @@ export function useCrowdRequestValidation({
         // For tips, we only validate the amount (no form fields required)
       }
 
-      const amount = getPaymentAmount();
-      const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-      if (!amount || amount < minPresetAmount) {
-        setError(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
-        return false;
+      // In bidding mode, we still need to validate that a bid amount is selected
+      // The amount will be used as the initial bid when submitting the request
+      if (skipPaymentValidation) {
+        // In bidding mode, validate that a bid amount is selected
+        const amount = getPaymentAmount();
+        const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+        if (!amount || amount < minPresetAmount) {
+          setError(`Please select a bid amount. Minimum bid is $${(minPresetAmount / 100).toFixed(2)}`);
+          return false;
+        }
+      } else {
+        // Regular mode - validate payment amount
+        const amount = getPaymentAmount();
+        const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+        if (!amount || amount < minPresetAmount) {
+          setError(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
+          return false;
+        }
       }
 
       return true;

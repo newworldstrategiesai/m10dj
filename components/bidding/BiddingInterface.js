@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Music, Clock, TrendingUp, Users, AlertCircle, Loader2, Trophy, Eye, Zap, Flame } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import confetti from 'canvas-confetti';
+import { useSongExtraction } from '../../hooks/useSongExtraction';
+import { CROWD_REQUEST_CONSTANTS } from '../../constants/crowd-request';
 
 export default function BiddingInterface({ 
   organizationId, 
@@ -18,6 +20,9 @@ export default function BiddingInterface({
   const [currentRequest, setCurrentRequest] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [bidAmount, setBidAmount] = useState('');
+  const [bidAmountType, setBidAmountType] = useState('preset'); // 'preset' or 'custom'
+  const [selectedPresetBid, setSelectedPresetBid] = useState(null);
+  const [customBidAmount, setCustomBidAmount] = useState('');
   const [bidderName, setBidderName] = useState('');
   const [bidderEmail, setBidderEmail] = useState('');
   const [bidderPhone, setBidderPhone] = useState('');
@@ -31,12 +36,31 @@ export default function BiddingInterface({
   const [winnerInfo, setWinnerInfo] = useState(null);
   const [viewersCount, setViewersCount] = useState(0);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [bidFeed, setBidFeed] = useState([]); // Live feed of bids
+  const [allBidsList, setAllBidsList] = useState([]); // All bids (real + dummy) for live list
+  const [retryCount, setRetryCount] = useState(0); // For auto-creating rounds
   const intervalRef = useRef(null);
   const prevRoundRef = useRef(null);
   const confettiTriggeredRef = useRef(false);
   const lastWinningBidRef = useRef(0);
+  const bidFeedIntervalRef = useRef(null);
+  
+  // Song extraction state (reused from requests page)
+  const [songUrl, setSongUrl] = useState('');
+  const [extractedSongUrl, setExtractedSongUrl] = useState('');
+  const [isExtractedFromLink, setIsExtractedFromLink] = useState(false);
+  const [showLinkField, setShowLinkField] = useState(true);
+  const [songFormData, setSongFormData] = useState({
+    songTitle: '',
+    songArtist: ''
+  });
+  const songTitleInputRef = useRef(null);
+  
+  // Use song extraction hook
+  const { extractingSong, extractionError, extractSongInfo: extractSongInfoHook } = useSongExtraction();
   
   // Generate dummy bid data for urgency
+  // Primarily round whole numbers ($10, $15, $20, etc.) with occasional $1 increments
   const generateDummyBids = (baseAmount = 0) => {
     const dummyNames = ['Sarah M.', 'Mike T.', 'Jessica L.', 'David K.', 'Emily R.', 'Chris B.', 'Amanda S.', 'Ryan P.'];
     const bids = [];
@@ -47,7 +71,20 @@ export default function BiddingInterface({
     let currentBid = minBid;
     
     for (let i = 0; i < numBids; i++) {
-      const increment = 100 + Math.floor(Math.random() * 400); // $1-$5 increments
+      // 80% chance of round number increment ($5, $10, $15, $20, $25, $30)
+      // 20% chance of $1 increment for urgency
+      const useRoundNumber = Math.random() > 0.2;
+      
+      let increment;
+      if (useRoundNumber) {
+        // Round number increments: $5, $10, $15, $20, $25
+        const roundIncrements = [500, 1000, 1500, 2000, 2500];
+        increment = roundIncrements[Math.floor(Math.random() * roundIncrements.length)];
+      } else {
+        // $1 increment for urgency
+        increment = 100;
+      }
+      
       currentBid += increment;
       const timeAgo = Math.floor(Math.random() * 180); // 0-3 minutes ago
       
@@ -106,6 +143,161 @@ export default function BiddingInterface({
     
     return () => clearInterval(activityInterval);
   }, [biddingRound?.active]);
+
+  // Update allBidsList when requests change (for real-time updates)
+  useEffect(() => {
+    if (!biddingRound?.active || !requests || requests.length === 0) {
+      setAllBidsList([]);
+      return;
+    }
+
+    // Aggregate all bids from all requests for live list
+    const allBids = [];
+    requests.forEach(req => {
+      if (req.recentBids && req.recentBids.length > 0) {
+        req.recentBids.forEach(bid => {
+          allBids.push({
+            ...bid,
+            song_title: req.song_title,
+            song_artist: req.song_artist,
+            request_id: req.id
+          });
+        });
+      }
+    });
+    
+    // Sort by bid amount ascending (lowest to highest) to show bidding progression
+    // This makes sense for a bidding war - you see the progression from low to high
+    allBids.sort((a, b) => {
+      const amountA = a.bid_amount || 0;
+      const amountB = b.bid_amount || 0;
+      if (amountA !== amountB) {
+        return amountA - amountB; // Lowest to highest
+      }
+      // If same amount, sort by time (earliest first)
+      const timeA = new Date(a.created_at || 0).getTime();
+      const timeB = new Date(b.created_at || 0).getTime();
+      return timeA - timeB;
+    });
+    
+    setAllBidsList(allBids);
+  }, [requests, biddingRound?.active]);
+
+  // Generate fake bid feed for urgency - only when there are no real bids
+  useEffect(() => {
+    if (!biddingRound?.active) {
+      setBidFeed([]);
+      if (bidFeedIntervalRef.current) {
+        clearInterval(bidFeedIntervalRef.current);
+      }
+      return;
+    }
+
+    // Check if there are any real bids in the round
+    const hasRealBids = requests.some(req => {
+      const hasRealBidsOnRequest = req.recentBids && req.recentBids.some(bid => !bid.is_dummy && !bid.is_fake);
+      return hasRealBidsOnRequest || (req.current_bid_amount && req.current_bid_amount > 0 && !req.is_fake);
+    });
+
+    // Only show fake feed if there are NO real bids
+    if (hasRealBids) {
+      setBidFeed([]);
+      if (bidFeedIntervalRef.current) {
+        clearInterval(bidFeedIntervalRef.current);
+      }
+      return;
+    }
+
+    const fakeNames = [
+      'Sarah M.', 'Mike T.', 'Jessica L.', 'David K.', 'Emily R.', 
+      'Chris B.', 'Amanda S.', 'Ryan P.', 'Nicole W.', 'James H.',
+      'Lisa F.', 'Tom D.', 'Maria G.', 'Alex J.', 'Rachel N.'
+    ];
+    
+    // Use requests from the round (includes fake ones)
+    const songTitles = requests.map(r => 
+      r.song_title ? `${r.song_title}${r.song_artist ? ` by ${r.song_artist}` : ''}` : 'A song'
+    ).filter(Boolean);
+
+    // If no songs yet, use popular songs as fallback
+    const fallbackSongs = [
+      'Uptown Funk by Bruno Mars',
+      'Blinding Lights by The Weeknd',
+      'Watermelon Sugar by Harry Styles',
+      'Levitating by Dua Lipa',
+      'Good 4 U by Olivia Rodrigo',
+      'Stay by The Kid LAROI & Justin Bieber',
+      'Heat Waves by Glass Animals',
+      'As It Was by Harry Styles'
+    ];
+    
+    const availableSongs = songTitles.length > 0 ? songTitles : fallbackSongs;
+
+    // Generate initial feed items
+    const generateFeedItem = () => {
+      const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+      const songTitle = availableSongs[Math.floor(Math.random() * availableSongs.length)] || 'A song';
+      
+      // Primarily round numbers with occasional $1 increments
+      const useRoundNumber = Math.random() > 0.2;
+      let bidAmount;
+      
+      if (useRoundNumber) {
+        // Round numbers: $5, $10, $15, $20, $25
+        const roundAmounts = [500, 1000, 1500, 2000, 2500];
+        bidAmount = roundAmounts[Math.floor(Math.random() * roundAmounts.length)];
+      } else {
+        // $1 increment: $6, $11, $16, $21, $26 (round + $1)
+        const baseRoundAmounts = [500, 1000, 1500, 2000, 2500];
+        const baseAmount = baseRoundAmounts[Math.floor(Math.random() * baseRoundAmounts.length)];
+        bidAmount = baseAmount + 100; // Add $1
+      }
+      
+      const timeAgo = Math.floor(Math.random() * 120); // 0-2 minutes ago
+      
+      return {
+        id: Date.now() + Math.random(),
+        name,
+        songTitle,
+        bidAmount,
+        timeAgo,
+        timestamp: new Date(Date.now() - timeAgo * 1000)
+      };
+    };
+
+    // Start with 5-8 feed items for more urgency
+    const initialFeed = Array.from({ length: 5 + Math.floor(Math.random() * 4) }, generateFeedItem);
+    setBidFeed(initialFeed);
+
+    // Add new feed items more frequently for urgency
+    bidFeedIntervalRef.current = setInterval(() => {
+      const newItem = generateFeedItem();
+      setBidFeed(prev => {
+        // Add new item at the top, keep last 10 items
+        return [newItem, ...prev].slice(0, 10);
+      });
+    }, 3000 + Math.random() * 4000); // Every 3-7 seconds (more frequent)
+
+    return () => {
+      if (bidFeedIntervalRef.current) {
+        clearInterval(bidFeedIntervalRef.current);
+      }
+    };
+  }, [biddingRound?.active, requests]);
+
+  // Update time ago for feed items
+  useEffect(() => {
+    if (bidFeed.length === 0) return;
+
+    const updateInterval = setInterval(() => {
+      setBidFeed(prev => prev.map(item => ({
+        ...item,
+        timeAgo: Math.floor((Date.now() - item.timestamp.getTime()) / 1000)
+      })));
+    }, 1000); // Update every second
+
+    return () => clearInterval(updateInterval);
+  }, [bidFeed.length]);
 
   // Load current bidding round
   useEffect(() => {
@@ -265,11 +457,109 @@ export default function BiddingInterface({
     }
   };
 
+  // Generate fake song requests for urgency
+  const generateFakeSongRequests = (count = 5) => {
+    const popularSongs = [
+      { title: 'Uptown Funk', artist: 'Bruno Mars' },
+      { title: 'Blinding Lights', artist: 'The Weeknd' },
+      { title: 'Watermelon Sugar', artist: 'Harry Styles' },
+      { title: 'Levitating', artist: 'Dua Lipa' },
+      { title: 'Good 4 U', artist: 'Olivia Rodrigo' },
+      { title: 'Stay', artist: 'The Kid LAROI & Justin Bieber' },
+      { title: 'Heat Waves', artist: 'Glass Animals' },
+      { title: 'As It Was', artist: 'Harry Styles' },
+      { title: 'About Damn Time', artist: 'Lizzo' },
+      { title: 'First Class', artist: 'Jack Harlow' },
+      { title: 'Flowers', artist: 'Miley Cyrus' },
+      { title: 'Anti-Hero', artist: 'Taylor Swift' },
+      { title: 'Unholy', artist: 'Sam Smith & Kim Petras' },
+      { title: 'Bad Habit', artist: 'Steve Lacy' },
+      { title: 'I\'m Good (Blue)', artist: 'David Guetta & Bebe Rexha' },
+      { title: 'Calm Down', artist: 'Rema & Selena Gomez' },
+      { title: 'Creepin\'', artist: 'Metro Boomin, The Weeknd & 21 Savage' },
+      { title: 'Kill Bill', artist: 'SZA' },
+      { title: 'Shivers', artist: 'Ed Sheeran' },
+      { title: 'Don\'t Start Now', artist: 'Dua Lipa' }
+    ];
+
+    const fakeNames = ['Sarah M.', 'Mike T.', 'Jessica L.', 'David K.', 'Emily R.', 'Chris B.', 'Amanda S.', 'Ryan P.', 'Nicole W.', 'James H.'];
+
+    const fakeRequests = [];
+    const usedSongs = new Set();
+    
+    for (let i = 0; i < count; i++) {
+      let song;
+      let attempts = 0;
+      do {
+        song = popularSongs[Math.floor(Math.random() * popularSongs.length)];
+        attempts++;
+      } while (usedSongs.has(`${song.title}-${song.artist}`) && attempts < 20);
+      
+      usedSongs.add(`${song.title}-${song.artist}`);
+      
+      // Generate fake bid amount - primarily round numbers ($10, $15, $20, etc.)
+      // 80% chance of round number, 20% chance of $1 increment
+      const useRoundNumber = Math.random() > 0.2;
+      let bidAmount;
+      
+      if (useRoundNumber) {
+        // Round numbers: $10, $15, $20, $25, $30, $35, $40, $45, $50
+        const roundAmounts = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000];
+        bidAmount = roundAmounts[Math.floor(Math.random() * roundAmounts.length)];
+      } else {
+        // $1 increment: $11, $16, $21, $26, $31, etc. (round number + $1)
+        const baseRoundAmounts = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500];
+        const baseAmount = baseRoundAmounts[Math.floor(Math.random() * baseRoundAmounts.length)];
+        bidAmount = baseAmount + 100; // Add $1
+      }
+      
+      const bidderName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+      const timeAgo = Math.floor(Math.random() * 600); // 0-10 minutes ago
+      
+      fakeRequests.push({
+        id: `fake-request-${Date.now()}-${i}`,
+        song_title: song.title,
+        song_artist: song.artist,
+        request_type: 'song_request',
+        current_bid_amount: bidAmount,
+        highest_bidder_name: bidderName,
+        created_at: new Date(Date.now() - timeAgo * 1000).toISOString(),
+        bidding_round_id: biddingRound?.round?.id || null,
+        is_fake: true,
+        recentBids: [{
+          id: `fake-bid-${i}`,
+          bid_amount: bidAmount,
+          bidder_name: bidderName,
+          created_at: new Date(Date.now() - timeAgo * 1000).toISOString(),
+          is_dummy: true
+        }]
+      });
+    }
+    
+    return fakeRequests.sort((a, b) => b.current_bid_amount - a.current_bid_amount);
+  };
+
   const loadCurrentRound = async () => {
     try {
       setLoading(true);
+      setError(''); // Clear any previous errors
       const response = await fetch(`/api/bidding/current-round?organizationId=${organizationId}`);
+      
+      if (!response.ok) {
+        console.error('Failed to fetch current round:', response.status, response.statusText);
+        setError('Failed to load bidding round. Retrying...');
+        setLoading(false);
+        return;
+      }
+      
       const data = await response.json();
+      
+      if (data.error) {
+        console.error('API error:', data.error);
+        setError(data.error);
+        setLoading(false);
+        return;
+      }
       
       // Check if round just ended and this request won
       if (prevRoundRef.current?.active && !data.active && requestId) {
@@ -289,10 +579,11 @@ export default function BiddingInterface({
       }
       
       if (data.active && data.round) {
-        // Enhance requests with dummy bids if needed
-        const enhancedRequests = (data.requests || []).map(req => {
-          // If no bids or very low bid, add dummy bids
-          if (!req.recentBids || req.recentBids.length === 0 || (req.current_bid_amount || 0) < 1000) {
+        // Only enhance requests with dummy bids if they have NO real bids
+        let enhancedRequests = (data.requests || []).map(req => {
+          // Only add dummy bids if there are NO real bids at all
+          const hasRealBids = req.recentBids && req.recentBids.length > 0 && req.recentBids.some(bid => !bid.is_dummy);
+          if (!hasRealBids && (!req.recentBids || req.recentBids.length === 0)) {
             const dummyBids = generateDummyBids(req.current_bid_amount || 0);
             // Merge dummy bids with real ones, but mark them
             return {
@@ -311,21 +602,32 @@ export default function BiddingInterface({
           }
           return req;
         });
+
+        // Only add fake song requests if there are NO real requests
+        const realRequestCount = enhancedRequests.filter(r => !r.is_fake).length;
+        
+        if (realRequestCount === 0) {
+          // No real requests - add fake ones to create urgency
+          const fakeRequests = generateFakeSongRequests(5 + Math.floor(Math.random() * 3)); // 5-7 fake requests
+          enhancedRequests = fakeRequests.sort((a, b) => (b.current_bid_amount || 0) - (a.current_bid_amount || 0));
+        }
         
         setBiddingRound(data);
         setRequests(enhancedRequests);
         setTimeRemaining(data.round.timeRemaining);
         prevRoundRef.current = data;
+        setLoading(false); // Only set loading to false when we have an active round
       } else {
+        // No active round - API should create one, but if it didn't, we'll keep polling
         setBiddingRound({ active: false });
         setRequests([]);
         prevRoundRef.current = data;
+        // Keep loading state true so we continue showing "Starting bidding round..." and keep polling
       }
     } catch (err) {
       console.error('Error loading bidding round:', err);
-      setError('Failed to load bidding round');
-    } finally {
-      setLoading(false);
+      setError('Failed to load bidding round. Retrying...');
+      // Keep loading state true so we continue polling
     }
   };
 
@@ -377,6 +679,50 @@ export default function BiddingInterface({
     }
   }, [requestId, organizationId, biddingRound?.active, supabase]);
 
+  // Continuous polling if no active round (API will create one)
+  // This ensures we never get stuck in "Starting bidding round..." state
+  useEffect(() => {
+    if (!organizationId) return;
+    
+    // If we have an active round, stop polling and reset retry count
+    if (biddingRound?.active) {
+      setRetryCount(0);
+      return;
+    }
+    
+    // If no active round, poll continuously until one is found
+    const pollInterval = setInterval(() => {
+      loadCurrentRound();
+    }, 2000); // Poll every 2 seconds
+    
+    return () => clearInterval(pollInterval);
+  }, [organizationId, biddingRound?.active]);
+
+  // Calculate minimum bid based on current winning bid across all requests
+  // This must be before any early returns
+  const allRequestsForMinBid = requests || [];
+  const currentWinningBidForMin = allRequestsForMinBid.length > 0 
+    ? Math.max(...allRequestsForMinBid.map(r => r.current_bid_amount || 0))
+    : 0;
+  
+  const minBid = useMemo(() => {
+    return currentRequest 
+      ? (() => {
+          const isBiddingOnWinningRequest = currentRequest.current_bid_amount === currentWinningBidForMin && currentWinningBidForMin > 0;
+          return isBiddingOnWinningRequest
+            ? currentWinningBidForMin + 100 // Must be at least $1 more than current bid on this request
+            : Math.max(currentWinningBidForMin + 100, 500); // Must beat the winning bid, minimum $5
+        })()
+      : Math.max(currentWinningBidForMin + 100, 500);
+  }, [currentRequest, currentWinningBidForMin]);
+
+  // Pre-select minimum bid when minBid changes
+  useEffect(() => {
+    if (minBid > 0 && selectedPresetBid === null && bidAmountType === 'preset') {
+      setSelectedPresetBid(minBid);
+    }
+  }, [minBid, selectedPresetBid, bidAmountType]);
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -398,14 +744,34 @@ export default function BiddingInterface({
       return;
     }
 
-    const bidAmountCents = Math.round(parseFloat(bidAmount) * 100);
-    const minBid = Math.max(
-      (currentRequest.current_bid_amount || 0) + 100,
-      500
-    );
+    // Get bid amount from selector
+    const bidAmountCents = getBidAmount();
+    
+    if (!bidAmountCents || bidAmountCents <= 0) {
+      setError('Please select or enter a bid amount');
+      return;
+    }
+    
+    // Find the current winning bid (highest bid across all requests in the round)
+    const allRequests = requests || [];
+    const currentWinningBid = allRequests.length > 0 
+      ? Math.max(...allRequests.map(r => r.current_bid_amount || 0))
+      : 0;
+    
+    // Minimum bid must be higher than the current winning bid
+    // If bidding on the current winning request, must be at least $1 more
+    // If bidding on a different request, must beat the winning bid
+    const isBiddingOnWinningRequest = currentRequest.current_bid_amount === currentWinningBid && currentWinningBid > 0;
+    const minBidForValidation = isBiddingOnWinningRequest
+      ? currentWinningBid + 100 // Must be at least $1 more than current bid on this request
+      : Math.max(currentWinningBid + 100, 500); // Must beat the winning bid, minimum $5
 
-    if (bidAmountCents < minBid) {
-      setError(`Minimum bid is $${(minBid / 100).toFixed(2)}`);
+    if (bidAmountCents < minBidForValidation) {
+      if (currentWinningBid > 0) {
+        setError(`Your bid must be higher than the current winning bid of $${(currentWinningBid / 100).toFixed(2)}. Minimum bid: $${(minBidForValidation / 100).toFixed(2)}`);
+      } else {
+        setError(`Minimum bid is $${(minBidForValidation / 100).toFixed(2)}`);
+      }
       return;
     }
 
@@ -438,7 +804,10 @@ export default function BiddingInterface({
       }
 
       setSuccess(`Bid placed! You're now the highest bidder at $${(bidAmountCents / 100).toFixed(2)}`);
-      setBidAmount('');
+      // Reset bid form
+      setSelectedPresetBid(null);
+      setCustomBidAmount('');
+      setBidAmountType('preset');
       
       // Reload round data
       setTimeout(() => {
@@ -491,23 +860,57 @@ export default function BiddingInterface({
     );
   }
 
+  // If no active round, show loading state while we try to create one
+  // The API will auto-create a round if none exists
   if (!biddingRound || !biddingRound.active) {
     return (
-      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-          <AlertCircle className="w-5 h-5" />
-          <p className="font-semibold">No active bidding round</p>
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto mb-4" />
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Starting bidding round...
+          </p>
         </div>
-        <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-2">
-          Check back soon for the next bidding round!
-        </p>
       </div>
     );
   }
 
-  const minBid = currentRequest 
-    ? Math.max((currentRequest.current_bid_amount || 0) + 100, 500)
-    : 500;
+
+  // Generate dynamic preset bid amounts based on current winning bid
+  const generatePresetBids = () => {
+    const presets = [];
+    const baseMin = minBid;
+    
+    // Always include minimum bid as first option
+    presets.push({
+      value: baseMin,
+      label: `$${(baseMin / 100).toFixed(2)}`
+    });
+    
+    // Add increments: +$5, +$10, +$20, +$50
+    const increments = [500, 1000, 2000, 5000]; // $5, $10, $20, $50
+    increments.forEach(increment => {
+      const amount = baseMin + increment;
+      presets.push({
+        value: amount,
+        label: `$${(amount / 100).toFixed(2)}`
+      });
+    });
+    
+    return presets;
+  };
+
+  const presetBids = generatePresetBids();
+
+  // Get the actual bid amount based on type
+  const getBidAmount = () => {
+    if (bidAmountType === 'preset' && selectedPresetBid !== null) {
+      return selectedPresetBid;
+    } else if (bidAmountType === 'custom' && customBidAmount) {
+      return Math.round(parseFloat(customBidAmount) * 100);
+    }
+    return null;
+  };
 
   // Sort requests by current bid amount (highest first)
   const sortedRequests = [...requests].sort((a, b) => {
@@ -517,104 +920,463 @@ export default function BiddingInterface({
     return new Date(a.created_at) - new Date(b.created_at); // Earlier request first if tie
   });
 
+  // Get winning request
+  const winningRequest = sortedRequests.length > 0 && sortedRequests[0].current_bid_amount > 0 
+    ? sortedRequests[0] 
+    : null;
+
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${winningRequest ? 'pb-20 sm:pb-24' : 'pb-4'}`}>
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      `}</style>
       {/* Round Info */}
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg p-4 text-white">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-center mb-2">
           <div className="flex items-center gap-2">
             <Music className="w-5 h-5" />
             <h3 className="font-bold text-lg">Bidding Round #{biddingRound.round.roundNumber}</h3>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            <span className="font-mono text-lg font-bold">{formatTime(timeRemaining)}</span>
-          </div>
         </div>
-        <p className="text-sm opacity-90">
+        <p className="text-sm opacity-90 text-center">
           Highest bidder wins every 30 minutes!
         </p>
       </div>
 
-      {/* Live Ticker - Shows all requests with current bids */}
-      {sortedRequests.length > 0 && (
-        <div className="bg-black/90 dark:bg-gray-900 rounded-lg border-2 border-purple-500/50 overflow-hidden">
-          <div className="px-4 py-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-b border-purple-500/30">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-purple-400" />
-              <h4 className="text-sm font-bold text-white uppercase tracking-wide">Live Bidding Ticker</h4>
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-red-800 dark:text-red-200">
+            <AlertCircle className="w-4 h-4" />
+            <p className="text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+          <p className="text-sm text-green-800 dark:text-green-200">{success}</p>
+        </div>
+      )}
+
+      {/* Bid Form - Only show if user has a request in the round */}
+      {requestId && currentRequest ? (
+        <form onSubmit={handlePlaceBid} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+          <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Music className="w-4 h-4" />
+            Song Request Details
+          </h4>
+
+          {/* Song Request Update Section - Reused from requests page */}
+          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 space-y-3 border border-gray-200 dark:border-gray-700">
+            <h5 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Music className="w-4 h-4" />
+              Update Song Request (Optional)
+            </h5>
+            
+            {/* Music Link Input */}
+            {showLinkField ? (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    <Music className="w-3 h-3 inline mr-1" />
+                    Paste Music Link (Optional)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={songUrl}
+                      onChange={handleSongUrlChange}
+                      className={`w-full px-3 py-2 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all ${
+                        extractingSong ? 'pr-20' : 'pr-3'
+                      }`}
+                      placeholder="Paste YouTube, Spotify, SoundCloud, Tidal, or Apple Music link"
+                      autoComplete="off"
+                    />
+                    {extractingSong && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                        <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                        <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline">Extracting...</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                    We&apos;ll automatically fill in the song title and artist name
+                  </p>
+                </div>
+
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase">
+                    <span className="bg-gray-50 dark:bg-gray-900/50 px-2 text-gray-500 dark:text-gray-400">
+                      Or enter manually
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="mb-2">
+                <button
+                  type="button"
+                  onClick={handleShareAnotherSong}
+                  className="inline-flex items-center gap-2 text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                >
+                  <Music className="w-3 h-3" />
+                  Start over
+                </button>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                Song Title
+              </label>
+              <input
+                ref={songTitleInputRef}
+                type="text"
+                value={songFormData.songTitle}
+                onChange={(e) => setSongFormData(prev => ({ ...prev, songTitle: e.target.value }))}
+                className="w-full px-3 py-2 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                placeholder="Enter song title"
+                autoComplete="off"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                Artist Name
+              </label>
+              <input
+                type="text"
+                value={songFormData.songArtist}
+                onChange={(e) => setSongFormData(prev => ({ ...prev, songArtist: e.target.value }))}
+                className="w-full px-3 py-2 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                placeholder="Enter artist name"
+                autoComplete="off"
+              />
             </div>
           </div>
-          <div className="max-h-64 overflow-y-auto">
-            <div className="divide-y divide-gray-800">
-              {sortedRequests.map((req, idx) => {
-                const isWinning = idx === 0 && (req.current_bid_amount || 0) > 0;
-                const songName = req.song_title 
-                  ? `${req.song_title}${req.song_artist ? ` by ${req.song_artist}` : ''}`
-                  : req.recipient_name 
-                    ? `Shoutout for ${req.recipient_name}`
-                    : 'Request';
+
+          {/* Bid Amount Selector - Right below artist name, above submit button */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Bid Amount <span className="text-red-500">*</span>
+            </label>
+            
+            {/* Preset vs Custom Toggle */}
+            <div className="flex gap-2 mb-3 p-1 bg-gray-100/50 dark:bg-gray-700/30 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setBidAmountType('preset')}
+                className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all ${
+                  bidAmountType === 'preset'
+                    ? 'border-purple-500 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30'
+                    : 'border-transparent bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <span className="font-bold text-sm">Quick Amount</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setBidAmountType('custom')}
+                className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all ${
+                  bidAmountType === 'custom'
+                    ? 'border-purple-500 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30'
+                    : 'border-transparent bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <span className="font-bold text-sm">Custom Amount</span>
+              </button>
+            </div>
+
+            {/* Preset Bid Buttons */}
+            {bidAmountType === 'preset' && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                {presetBids.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setSelectedPresetBid(preset.value)}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      selectedPresetBid === preset.value
+                        ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-105'
+                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300 hover:scale-[1.02] hover:shadow-lg'
+                    }`}
+                  >
+                    <span className={`text-sm font-bold ${
+                      selectedPresetBid === preset.value
+                        ? 'text-white'
+                        : 'text-gray-900 dark:text-white'
+                    }`}>
+                      {preset.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Custom Bid Input */}
+            {bidAmountType === 'custom' && (
+              <div className="mb-3">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={minBid / 100}
+                    value={customBidAmount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        setCustomBidAmount('');
+                        return;
+                      }
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue) && numValue >= minBid / 100) {
+                        setCustomBidAmount(value);
+                      } else if (numValue >= 0) {
+                        setCustomBidAmount(value);
+                      }
+                    }}
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder={(minBid / 100).toFixed(2)}
+                  />
+                </div>
+                {customBidAmount && parseFloat(customBidAmount) > 0 && parseFloat(customBidAmount) < minBid / 100 ? (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    Minimum bid is ${(minBid / 100).toFixed(2)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Minimum: ${(minBid / 100).toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Current Winning Bid Info */}
+            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 border border-purple-200 dark:border-purple-800">
+              <p className="text-xs text-gray-700 dark:text-gray-300">
+                {currentWinningBidForMin > 0 ? (
+                  <>
+                    Current winning bid: <span className="font-semibold text-purple-600 dark:text-purple-400">${(currentWinningBidForMin / 100).toFixed(2)}</span>
+                    {' • '}
+                    Your bid must be higher to win!
+                  </>
+                ) : (
+                  <>No bids yet - be the first to bid!</>
+                )}
+              </p>
+            </div>
+          </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Your Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={bidderName}
+            onChange={(e) => setBidderName(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder="Enter your name"
+            required
+          />
+        </div>
+
+        {/* Contact Info Benefits */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                Stay in the loop! 🎉
+              </p>
+              <p className="text-xs text-gray-700 dark:text-gray-300">
+                Add your email or phone number to get <span className="font-semibold text-purple-600 dark:text-purple-400">instant notifications</span> when you win the bid. We&apos;ll let you know right away so you don&apos;t miss your moment!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <div className="flex items-center gap-2">
+              Email
+              <span className="text-xs font-normal text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                <Trophy className="w-3 h-3" />
+                Get notified if you win!
+              </span>
+            </div>
+          </label>
+          <input
+            type="email"
+            value={bidderEmail}
+            onChange={(e) => setBidderEmail(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder="your@email.com"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+            <Zap className="w-3 h-3 text-purple-500" />
+            We&apos;ll email you immediately when you win the bid!
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <div className="flex items-center gap-2">
+              Phone
+              <span className="text-xs font-normal text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                <Trophy className="w-3 h-3" />
+                Instant win notification!
+              </span>
+            </div>
+          </label>
+          <input
+            type="tel"
+            value={bidderPhone}
+            onChange={(e) => setBidderPhone(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder="(555) 123-4567"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+            <Zap className="w-3 h-3 text-purple-500" />
+            Get a text message the moment you win!
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          disabled={placingBid || timeRemaining === 0}
+          className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+        >
+          {placingBid ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Placing Bid...
+            </>
+          ) : (
+            <>
+              <TrendingUp className="w-4 h-4" />
+              Place Bid
+            </>
+          )}
+        </button>
+
+        <div className="space-y-2">
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+          Your payment will be authorized but only charged if you win. If you&apos;re outbid, the authorization will be released.
+        </p>
+        {timeRemaining < 600 && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 text-center">
+            <p className="text-xs font-semibold text-red-800 dark:text-red-200 flex items-center justify-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              Less than {Math.floor(timeRemaining / 60)} minutes left! Bid now!
+            </p>
+          </div>
+        )}
+      </div>
+      </form>
+      ) : null}
+
+      {/* Live List - Shows all bids (real + dummy) as they come in */}
+      <div className="bg-black/95 dark:bg-gray-900/95 rounded-lg border-2 border-purple-500/30 overflow-hidden">
+        <div className="px-4 py-2 bg-gradient-to-r from-purple-600/30 to-pink-600/30 border-b border-purple-500/30">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wide">Live Bid Activity</h4>
+          </div>
+        </div>
+        <div className="max-h-96 overflow-y-auto">
+          <div className="divide-y divide-gray-800/50">
+            {allBidsList.length > 0 ? (
+              // Display in order: lowest to highest (shows bidding progression)
+              allBidsList.map((bid, idx) => {
+                const bidTime = new Date(bid.created_at);
+                const timeAgo = Math.floor((Date.now() - bidTime.getTime()) / 1000);
+                const timeText = timeAgo < 60 
+                  ? `${timeAgo}s ago` 
+                  : timeAgo < 3600
+                    ? `${Math.floor(timeAgo / 60)}m ago`
+                    : `${Math.floor(timeAgo / 3600)}h ago`;
+                
+                const songName = bid.song_title 
+                  ? `${bid.song_title}${bid.song_artist ? ` by ${bid.song_artist}` : ''}`
+                  : 'A song';
+                
+                const isRecent = timeAgo < 60 && !bid.is_dummy;
                 
                 return (
                   <div
-                    key={req.id}
-                    className={`px-4 py-3 transition-colors ${
-                      isWinning
-                        ? 'bg-purple-600/20 border-l-4 border-purple-400'
-                        : 'hover:bg-gray-800/50'
+                    key={bid.id || `bid-${idx}`}
+                    className={`px-4 py-3 transition-all ${
+                      idx === 0 && isRecent ? 'bg-purple-600/10 animate-pulse' : 'hover:bg-gray-800/30'
                     }`}
+                    style={{
+                      animation: idx === 0 && isRecent ? 'slideIn 0.3s ease-out' : 'none'
+                    }}
                   >
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          {isWinning && (
-                            <span className="px-2 py-0.5 bg-purple-500 text-white text-xs font-bold rounded">
-                              🏆 WINNING
+                          <span className="text-sm font-semibold text-white">{bid.bidder_name || 'Anonymous'}</span>
+                          {isRecent && (
+                            <span className="px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded animate-pulse">
+                              NEW
                             </span>
                           )}
-                          <span className="text-sm font-semibold text-white truncate">
-                            {songName}
-                          </span>
+                          {bid.is_dummy && (
+                            <span className="px-1.5 py-0.5 bg-gray-600 text-white text-xs font-bold rounded">
+                              LIVE
+                            </span>
+                          )}
                         </div>
-                        {req.highest_bidder_name && (
-                          <p className="text-xs text-gray-400">
-                            Bid by: {req.highest_bidder_name}
-                          </p>
-                        )}
+                        <p className="text-xs text-gray-400 truncate">
+                          bid <span className="text-purple-300 font-medium">${(bid.bid_amount / 100).toFixed(2)}</span> on <span className="text-purple-300 font-medium">{songName}</span>
+                        </p>
                       </div>
                       <div className="flex-shrink-0 text-right">
-                        <div className={`text-lg font-bold ${
-                          isWinning ? 'text-purple-300' : 'text-white'
-                        }`}>
-                          ${((req.current_bid_amount || 0) / 100).toFixed(2)}
+                        <div className="text-sm font-bold text-purple-300">
+                          ${(bid.bid_amount / 100).toFixed(2)}
                         </div>
-                        {req.current_bid_amount === 0 && (
-                          <div className="text-xs text-gray-500">No bids yet</div>
-                        )}
+                        <div className="text-xs text-gray-500">
+                          {timeText}
+                        </div>
                       </div>
                     </div>
                   </div>
                 );
-              })}
-            </div>
+              })
+            ) : (
+              <div className="px-4 py-8 text-center text-gray-400 text-sm">
+                No bids yet - be the first to bid!
+              </div>
+            )}
           </div>
-          {sortedRequests.length === 0 && (
-            <div className="px-4 py-8 text-center text-gray-400 text-sm">
-              No requests in this round yet
-            </div>
-          )}
         </div>
-      )}
+      </div>
 
-      {/* Current Request Info */}
-      {currentRequest && (
+      {/* Current Request Info - Only show if user has a request in the round */}
+      {currentRequest && requestId && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between mb-2">
             <div>
               <h4 className="font-semibold text-gray-900 dark:text-white">
-                {requestType === 'song_request' 
-                  ? `${songTitle}${songArtist ? ` by ${songArtist}` : ''}`
-                  : `Shoutout for ${recipientName}`
+                {songFormData.songTitle || currentRequest.song_title
+                  ? `${songFormData.songTitle || currentRequest.song_title}${(songFormData.songArtist || currentRequest.song_artist) ? ` by ${songFormData.songArtist || currentRequest.song_artist}` : ''}`
+                  : `Request #${currentRequest.id?.slice(0, 8)}`
                 }
               </h4>
             </div>
@@ -669,123 +1431,52 @@ export default function BiddingInterface({
         </div>
       )}
 
-      {/* Error/Success Messages */}
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-red-800 dark:text-red-200">
-            <AlertCircle className="w-4 h-4" />
-            <p className="text-sm">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-          <p className="text-sm text-green-800 dark:text-green-200">{success}</p>
-        </div>
-      )}
-
-      {/* Bid Form */}
-      <form onSubmit={handlePlaceBid} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
-        <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          <TrendingUp className="w-4 h-4" />
-          Place Your Bid
-        </h4>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Bid Amount <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-            <input
-              type="number"
-              step="0.01"
-              min={minBid / 100}
-              value={bidAmount}
-              onChange={(e) => setBidAmount(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder={(minBid / 100).toFixed(2)}
-              required
-            />
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Minimum bid: ${(minBid / 100).toFixed(2)}
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Your Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={bidderName}
-            onChange={(e) => setBidderName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="Enter your name"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Email (optional)
-          </label>
-          <input
-            type="email"
-            value={bidderEmail}
-            onChange={(e) => setBidderEmail(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="your@email.com"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Phone (optional)
-          </label>
-          <input
-            type="tel"
-            value={bidderPhone}
-            onChange={(e) => setBidderPhone(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="(555) 123-4567"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={placingBid || timeRemaining === 0}
-          className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-        >
-          {placingBid ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Placing Bid...
-            </>
-          ) : (
-            <>
-              <TrendingUp className="w-4 h-4" />
-              Place Bid
-            </>
-          )}
-        </button>
-
-        <div className="space-y-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Your payment will be authorized but only charged if you win. If you&apos;re outbid, the authorization will be released.
-          </p>
-          {timeRemaining < 600 && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 text-center">
-              <p className="text-xs font-semibold text-red-800 dark:text-red-200 flex items-center justify-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                Less than {Math.floor(timeRemaining / 60)} minutes left! Bid now!
-              </p>
+      {/* Winning Bid Ticker with Time - Sticky to bottom, always visible */}
+      {sortedRequests.length > 0 && sortedRequests[0].current_bid_amount > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 dark:bg-gray-900/95 backdrop-blur-sm border-t-2 border-purple-500/50 shadow-2xl">
+          <div className="max-w-7xl mx-auto px-2 sm:px-4 py-1.5 sm:py-2">
+            <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 rounded-lg border-2 border-purple-500/50 overflow-hidden">
+              <div className="px-2 sm:px-4 py-1.5 sm:py-2">
+                <div className="flex items-center justify-between gap-2 sm:gap-4">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1 flex-wrap">
+                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-purple-500 text-white text-[10px] sm:text-xs font-bold rounded uppercase whitespace-nowrap">
+                          🏆 Winning
+                        </span>
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                          <span className="font-mono text-xs sm:text-sm font-bold text-white whitespace-nowrap">
+                            {formatTime(timeRemaining)}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-xs sm:text-sm font-semibold text-white truncate">
+                        {sortedRequests[0].song_title 
+                          ? `${sortedRequests[0].song_title}${sortedRequests[0].song_artist ? ` by ${sortedRequests[0].song_artist}` : ''}`
+                          : 'Current Leader'
+                        }
+                      </p>
+                      {sortedRequests[0].highest_bidder_name && (
+                        <p className="text-[10px] sm:text-xs text-gray-300 mt-0.5 truncate">
+                          by {sortedRequests[0].highest_bidder_name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-yellow-300">
+                      ${((sortedRequests[0].current_bid_amount || 0) / 100).toFixed(2)}
+                    </div>
+                    <p className="text-[10px] sm:text-xs text-gray-300 mt-0.5">Leader</p>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
         </div>
-      </form>
+      )}
     </div>
   );
 }
