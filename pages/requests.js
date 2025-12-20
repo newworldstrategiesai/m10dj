@@ -19,6 +19,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCoverPhotoUrl } from '../utils/cover-photo-helper';
 import { useQRScanTracking } from '../hooks/useQRScanTracking';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import BiddingInterface from '../components/bidding/BiddingInterface';
 
 const logger = createLogger('GeneralRequestsPage');
 
@@ -123,6 +124,7 @@ export default function RequestsPageWrapper() {
         textColor: organization.text_color,
         fontFamily: organization.font_family
       } : null}
+      forceBiddingMode={false} // /requests page uses normal mode by default (respects organization setting)
     />
   );
 }
@@ -135,7 +137,8 @@ export function GeneralRequestsPage({
   customBranding = null,
   organizationCoverPhoto = null,
   organizationData = null,
-  isOwner = false
+  isOwner = false,
+  forceBiddingMode = false // Force bidding mode regardless of organization setting
 } = {}) {
   // Log when organizationData changes
   useEffect(() => {
@@ -205,6 +208,9 @@ export function GeneralRequestsPage({
   const [artistRightsConfirmed, setArtistRightsConfirmed] = useState(false); // Artist rights checkbox
   const [isArtist, setIsArtist] = useState(false); // Is the requester the artist
   const [audioUploadExpanded, setAudioUploadExpanded] = useState(false); // Audio upload section expanded state
+  const [biddingEnabled, setBiddingEnabled] = useState(false); // Whether bidding is enabled for this org
+  const [biddingRequestId, setBiddingRequestId] = useState(null); // Request ID if added to bidding round
+  const [showBiddingInterface, setShowBiddingInterface] = useState(false); // Show bidding UI
 
   // Helper function to get social URL with user preference
   const getSocialUrl = (platform, defaultUrl) => {
@@ -255,6 +261,19 @@ export function GeneralRequestsPage({
 
   // Track QR code scan for public requests page
   useQRScanTracking('public', organizationId);
+
+  // Check if bidding is enabled for this organization
+  // /requests page: Only enable if organization setting is true
+  // /bid page: Always enabled via forceBiddingMode prop
+  useEffect(() => {
+    if (forceBiddingMode) {
+      // /bid page - always enable bidding
+      setBiddingEnabled(true);
+    } else {
+      // /requests page - only enable if organization setting is true
+      setBiddingEnabled(organizationData?.requests_bidding_enabled || false);
+    }
+  }, [organizationData, forceBiddingMode]);
 
   // Apply dark mode only on requests page - ensure it overrides any theme settings
   useEffect(() => {
@@ -562,6 +581,47 @@ export function GeneralRequestsPage({
       };
       
       const mainData = await crowdRequestAPI.submitRequest(mainRequestBody);
+
+      // If bidding is enabled, add request to bidding round instead of processing payment
+      // Only for song requests (not tips or shoutouts in bidding mode)
+      // On /bid page, force bidding mode even if organization setting is disabled
+      const shouldUseBidding = (forceBiddingMode || biddingEnabled) && requestType === 'song_request';
+      if (shouldUseBidding && mainData?.requestId && organizationId) {
+        try {
+          const biddingResponse = await fetch('/api/bidding/add-request-to-round', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              requestId: mainData.requestId,
+              organizationId: organizationId,
+              forceBiddingMode: forceBiddingMode || false
+            })
+          });
+
+          const biddingData = await biddingResponse.json();
+          
+          if (biddingResponse.ok && biddingData.success) {
+            // Successfully added to bidding round - show bidding interface
+            setBiddingRequestId(mainData.requestId);
+            setShowBiddingInterface(true);
+            setSubmitting(false);
+            // Scroll to bidding interface
+            setTimeout(() => {
+              const biddingElement = document.querySelector('[data-bidding-interface]');
+              if (biddingElement) {
+                biddingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 100);
+            return; // Exit early - don't process payment
+          } else {
+            // Failed to add to bidding round - fall back to regular payment
+            console.warn('Failed to add request to bidding round, falling back to regular payment:', biddingData.error);
+          }
+        } catch (biddingError) {
+          console.error('Error adding request to bidding round:', biddingError);
+          // Fall back to regular payment flow
+        }
+      }
 
       // Create additional song requests if any (only for song requests, not tips or shoutouts)
       // Count the number of additional songs (based on array length, not whether they have titles)
@@ -1174,7 +1234,19 @@ export function GeneralRequestsPage({
               </div>
             )}
 
-            {success ? (
+            {showBiddingInterface && biddingRequestId ? (
+              <div data-bidding-interface>
+                <BiddingInterface
+                  organizationId={organizationId}
+                  requestId={biddingRequestId}
+                  requestType={requestType}
+                  songTitle={formData.songTitle}
+                  songArtist={formData.songArtist}
+                  recipientName={formData.recipientName}
+                  recipientMessage={formData.recipientMessage}
+                />
+              </div>
+            ) : success ? (
               <PaymentSuccessScreen 
                 requestId={requestId} 
                 amount={getPaymentAmount()} 

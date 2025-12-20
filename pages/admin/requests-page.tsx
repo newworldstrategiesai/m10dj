@@ -52,7 +52,9 @@ export default function RequestsPageSettings() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'cover' | 'social'>('cover');
+  const [activeTab, setActiveTab] = useState<'cover' | 'social' | 'bidding'>('cover');
+  const [biddingEnabled, setBiddingEnabled] = useState(false);
+  const [minimumBid, setMinimumBid] = useState(500); // In cents
   
   const [coverPhotos, setCoverPhotos] = useState({
     requests_cover_photo_url: '',
@@ -75,7 +77,7 @@ export default function RequestsPageSettings() {
   // Handle tab from URL query parameter
   useEffect(() => {
     const { tab } = router.query;
-    if (tab === 'social' || tab === 'cover') {
+    if (tab === 'social' || tab === 'cover' || tab === 'bidding') {
       setActiveTab(tab);
     }
   }, [router.query]);
@@ -125,6 +127,10 @@ export default function RequestsPageSettings() {
           ? org.social_links as SocialLink[]
           : [];
         setSocialLinks(links.sort((a, b) => (a.order || 0) - (b.order || 0)));
+        
+        // Set bidding settings
+        setBiddingEnabled(org.requests_bidding_enabled || false);
+        setMinimumBid(org.requests_bidding_minimum_bid || 500);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -167,6 +173,8 @@ export default function RequestsPageSettings() {
           requests_artist_photo_url: coverPhotos.requests_artist_photo_url || null,
           requests_venue_photo_url: coverPhotos.requests_venue_photo_url || null,
           social_links: validSocialLinks,
+          requests_bidding_enabled: biddingEnabled,
+          requests_bidding_minimum_bid: minimumBid,
         })
         .eq('id', organization.id);
 
@@ -339,6 +347,19 @@ export default function RequestsPageSettings() {
                     Social Links
                   </div>
                 </button>
+                <button
+                  onClick={() => setActiveTab('bidding')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'bidding'
+                      ? 'border-[#fcba00] text-[#fcba00]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Bidding Mode
+                  </div>
+                </button>
               </nav>
             </div>
           </div>
@@ -468,7 +489,7 @@ export default function RequestsPageSettings() {
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : activeTab === 'social' ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -598,7 +619,112 @@ export default function RequestsPageSettings() {
                     </div>
                   )}
                 </div>
-              )}
+              ) : activeTab === 'bidding' ? (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                    Bidding War Mode
+                  </h2>
+                  
+                  <div className="space-y-6">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">
+                        How Bidding Mode Works
+                      </h3>
+                      <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-disc list-inside">
+                        <li>Users submit requests and place bids</li>
+                        <li>Every 30 minutes, the highest bidder wins</li>
+                        <li>Winner is charged, others&apos; authorizations are released</li>
+                        <li>Winning request is played by the DJ</li>
+                      </ul>
+                    </div>
+
+                    {/* Enable Bidding Toggle */}
+                    <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                          Enable Bidding War Mode
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          When enabled, requests go to bidding rounds instead of direct payment
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={biddingEnabled}
+                          onChange={(e) => {
+                            setBiddingEnabled(e.target.checked);
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#fcba00]/20 dark:peer-focus:ring-[#fcba00]/40 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#fcba00]"></div>
+                      </label>
+                    </div>
+
+                    {/* Minimum Bid Amount */}
+                    {biddingEnabled && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Minimum Bid Amount
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                          The minimum amount users must bid (in dollars)
+                        </p>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="1"
+                            value={(minimumBid / 100).toFixed(2)}
+                            onChange={(e) => {
+                              const value = Math.round(parseFloat(e.target.value) * 100) || 100;
+                              setMinimumBid(Math.max(100, value)); // Minimum $1.00
+                              setError(null);
+                              setSuccess(false);
+                            }}
+                            className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                            placeholder="5.00"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Current minimum: ${(minimumBid / 100).toFixed(2)} (stored as {minimumBid} cents)
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Info when disabled */}
+                    {!biddingEnabled && (
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Bidding mode is currently <strong>disabled</strong>. Requests will use the normal payment flow.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Link to bidding rounds admin */}
+                    {biddingEnabled && (
+                      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                        <h3 className="font-semibold text-purple-900 dark:text-purple-200 mb-2">
+                          Manage Bidding Rounds
+                        </h3>
+                        <p className="text-sm text-purple-800 dark:text-purple-300 mb-3">
+                          View active rounds, winners, and statistics
+                        </p>
+                        <Link
+                          href="/admin/bidding-rounds"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+                        >
+                          <Settings className="w-4 h-4" />
+                          View Bidding Rounds
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {/* Sidebar */}
