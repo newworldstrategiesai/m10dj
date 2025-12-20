@@ -32,11 +32,6 @@ export default function GlobalChatWidget() {
     }
   }, []);
   
-  // Don't render if on DJ Dash pages (check after mount to avoid hydration issues)
-  if (!isMounted || isDJDashPage || isDJDashDomain) {
-    return null;
-  }
-
   // Restore chat data from sessionStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -66,6 +61,12 @@ export default function GlobalChatWidget() {
       setIsMicro(isQuotePage);
     }
   }, [isQuotePage, isOpen, isMinimized]);
+
+  // Don't render if on DJ Dash pages (check after mount to avoid hydration issues)
+  // IMPORTANT: This check must come AFTER all hooks to comply with Rules of Hooks
+  if (!isMounted || typeof document === 'undefined' || isDJDashPage || isDJDashDomain) {
+    return null;
+  }
 
   const handleOpenChat = (e) => {
     e?.preventDefault();
@@ -124,9 +125,6 @@ export default function GlobalChatWidget() {
     setIsMicro(false);
     // Don't clear sessionStorage - keep chat data for next time
   };
-
-  // Don't render until mounted on client to avoid hydration mismatch
-  if (!isMounted || typeof document === 'undefined') return null;
 
   return (
     <>
