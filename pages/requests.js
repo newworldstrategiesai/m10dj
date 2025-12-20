@@ -1420,7 +1420,6 @@ export function GeneralRequestsPage({
                             onChange={handleInputChange}
                             className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation"
                             placeholder={organizationData?.requests_song_title_placeholder || "Enter song title"}
-                            required
                             autoComplete="off"
                           />
                         </div>
@@ -1437,7 +1436,6 @@ export function GeneralRequestsPage({
                             onChange={handleInputChange}
                             className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200"
                             placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
-                            required={!isExtractedFromLink}
                             autoComplete="off"
                           />
                         </div>
