@@ -15,11 +15,19 @@ import {
   DollarSign,
   Users,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { aggregateCityEventData, checkCityDataRequirements } from '@/utils/data/city-data-aggregator';
+import { 
+  generateDirectAnswerBlock, 
+  generateMarketSnapshot, 
+  generateLocalInsights, 
+  generateFAQs 
+} from '@/utils/content/city-content-assembler';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -92,9 +100,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .single();
 
   if (pageContent) {
+    // Check data requirements for NOINDEX
+    const requirements = await checkCityDataRequirements(pageContent.city_name, pageContent.state_abbr);
+    const robots = requirements.meetsRequirements 
+      ? undefined 
+      : { index: false, follow: true };
+    
     return {
       title: pageContent.seo_title || `${eventType.display} in ${pageContent.city_name || params.city}`,
       description: pageContent.seo_description || pageContent.meta_og_description || `Find the best ${eventType.display.toLowerCase()} in ${pageContent.city_name || params.city}`,
+      robots,
       keywords: pageContent.seo_keywords || [],
       openGraph: {
         title: pageContent.meta_og_title || pageContent.seo_title || `${eventType.display} in ${pageContent.city_name || params.city}`,
@@ -145,6 +160,19 @@ export default async function CityEventTypePage({ params }: PageProps) {
     notFound();
   }
 
+  // Aggregate real data for data-driven content
+  const cityEventStats = await aggregateCityEventData(
+    pageContent.city_name, 
+    eventType.type,
+    pageContent.state_abbr
+  );
+  
+  // Generate data-driven content blocks
+  const directAnswer = generateDirectAnswerBlock(cityEventStats, pageContent.city_name, eventType.type);
+  const marketSnapshot = generateMarketSnapshot(cityEventStats);
+  const localInsights = generateLocalInsights(cityEventStats, pageContent.city_name, pageContent.state_abbr);
+  const faqs = generateFAQs(cityEventStats, pageContent.city_name, eventType.type);
+
   // Fetch ALL DJs for this city and event type (for the selection form)
   const { data: featuredDJs } = await supabase
     .from('dj_profiles')
@@ -186,21 +214,44 @@ export default async function CityEventTypePage({ params }: PageProps) {
     seasonal_trends,
     popular_songs,
     venue_recommendations,
-    faqs,
+    faqs: pageContentFaqs,
     structured_data,
     dj_count,
     average_rating,
     review_count,
     average_price_range
-  } = pageContent;
+  } = pageContent || {};
+
+  // Generate structured data if not present
+  const finalStructuredData = structured_data || null;
 
   return (
     <>
       {/* Structured Data (JSON-LD) */}
-      {structured_data && (
+      {finalStructuredData && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structured_data) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(finalStructuredData) }}
+        />
+      )}
+      {/* FAQ Structured Data */}
+      {faqs.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: faqs.map(faq => ({
+                '@type': 'Question',
+                name: faq.question,
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: faq.answer,
+                },
+              })),
+            }),
+          }}
         />
       )}
 
@@ -270,6 +321,114 @@ export default async function CityEventTypePage({ params }: PageProps) {
                   <CheckCircle className="w-5 h-5 text-green-500" />
                   <span>Free Quotes</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 1: Direct Answer Block (Above the Fold) */}
+        <section className="py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              {directAnswer.question}
+            </h2>
+            <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
+              {directAnswer.answer}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+              Source: {directAnswer.dataSource}
+            </p>
+          </div>
+        </section>
+
+        {/* Data Requirements Notice (if not met) */}
+        {!cityEventStats.meetsMinimumRequirements && (
+          <section className="py-8 px-4 sm:px-6 lg:px-8 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    Market Still Growing
+                  </p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                    The {event_type_display.toLowerCase()} market in {city_name} is still developing. We're actively adding more DJs and collecting data to provide comprehensive insights.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* SECTION 2: Market Snapshot (Data Table) */}
+        <section className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-800">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+              {event_type_display} Market Snapshot in {city_name}
+            </h2>
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden">
+              <table className="w-full">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Average DJ Price</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.averagePrice}</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Peak Booking Months</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.peakBookingMonths}</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Typical Event Length</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.typicalEventLength}</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Most Requested Genres</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.mostRequestedGenres}</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Average Response Time</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.averageResponseTime}</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Booking Lead Time</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.bookingLeadTime}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 3: What Locals Should Know (City-Specific) */}
+        <section className="py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-8">
+              What Locals Should Know About {event_type_display} in {city_name}
+            </h2>
+            <div className="space-y-6">
+              {localInsights.venueTypes.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Popular Venue Types</h3>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    Popular venues in {city_name} include {localInsights.venueTypes.slice(0, 3).join(', ')}.
+                  </p>
+                </div>
+              )}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Noise Ordinances</h3>
+                <p className="text-gray-700 dark:text-gray-300">{localInsights.noiseOrdinances}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Weather Considerations</h3>
+                <p className="text-gray-700 dark:text-gray-300">{localInsights.weatherConsiderations}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Crowd Expectations</h3>
+                <p className="text-gray-700 dark:text-gray-300">{localInsights.crowdExpectations}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Parking & Load-In</h3>
+                <p className="text-gray-700 dark:text-gray-300">{localInsights.parkingLoadIn}</p>
               </div>
             </div>
           </div>
@@ -548,8 +707,8 @@ export default async function CityEventTypePage({ params }: PageProps) {
           </section>
         )}
 
-        {/* FAQ Section (Critical for LLM Search) */}
-        {faqs && Array.isArray(faqs) && faqs.length > 0 && (
+        {/* SECTION 6: FAQ (LLM-Optimized) */}
+        {faqs && faqs.length > 0 && (
           <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
             <div className="max-w-4xl mx-auto">
               <div className="text-center mb-12">
@@ -562,7 +721,7 @@ export default async function CityEventTypePage({ params }: PageProps) {
               </div>
               
               <div className="space-y-6">
-                {faqs.map((faq: any, idx: number) => (
+                {faqs.map((faq, idx: number) => (
                   <details
                     key={idx}
                     className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700"

@@ -18,6 +18,13 @@ import {
   Award,
   Clock
 } from 'lucide-react';
+import { aggregateCityData, checkCityDataRequirements } from '@/utils/data/city-data-aggregator';
+import { 
+  generateDirectAnswerBlock, 
+  generateMarketSnapshot, 
+  generateLocalInsights, 
+  generateFAQs 
+} from '@/utils/content/city-content-assembler';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -81,12 +88,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
   
+  // Check data requirements for NOINDEX
+  const requirements = await checkCityDataRequirements(cityPage.city_name, cityPage.state_abbr);
+  const robots = requirements.meetsRequirements 
+    ? undefined 
+    : { index: false, follow: true };
+  
   const title = cityPage.meta_title || `Best DJs in ${cityPage.city_name} – Book Local DJs | DJ Dash`;
   const description = cityPage.meta_description || `Discover top-rated DJs in ${cityPage.city_name}. Verified reviews, availability, pricing, and online booking.`;
   
   return {
     title,
     description,
+    robots,
     keywords: [
       `DJs in ${cityPage.city_name}`,
       `${cityPage.city_name} DJ`,
@@ -249,7 +263,16 @@ export default async function CityPage({ params }: PageProps) {
   
   const { cityPage, featuredDJs, venues, reviews, analytics } = cityData;
   
-  // Generate structured data
+  // Aggregate real data for data-driven content
+  const cityStats = await aggregateCityData(cityPage.city_name, cityPage.state_abbr);
+  
+  // Generate data-driven content blocks
+  const directAnswer = generateDirectAnswerBlock(cityStats, cityPage.city_name);
+  const marketSnapshot = generateMarketSnapshot(cityStats);
+  const localInsights = generateLocalInsights(cityStats, cityPage.city_name, cityPage.state_abbr);
+  const faqs = generateFAQs(cityStats, cityPage.city_name);
+  
+  // Generate comprehensive structured data
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
@@ -265,15 +288,36 @@ export default async function CityPage({ params }: PageProps) {
       '@type': 'City',
       name: cityPage.city_name,
     },
-    aggregateRating: cityPage.avg_rating ? {
+    aggregateRating: cityStats.averageRating ? {
+      '@type': 'AggregateRating',
+      ratingValue: cityStats.averageRating.toString(),
+      ratingCount: cityStats.totalReviews.toString(),
+    } : cityPage.avg_rating ? {
       '@type': 'AggregateRating',
       ratingValue: cityPage.avg_rating.toString(),
       ratingCount: cityPage.total_reviews?.toString() || '0',
     } : undefined,
     numberOfEmployees: {
       '@type': 'QuantitativeValue',
-      value: cityPage.total_djs || 0,
+      value: cityStats.totalDJs || cityPage.total_djs || 0,
     },
+    priceRange: cityStats.priceRange ? 
+      `$${cityStats.priceRange.min}-$${cityStats.priceRange.max}` : 
+      undefined,
+  };
+  
+  // FAQ structured data
+  const faqStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(faq => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
   };
   
   return (
@@ -284,6 +328,12 @@ export default async function CityPage({ params }: PageProps) {
           __html: JSON.stringify(structuredData),
         }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqStructuredData),
+        }}
+      />
       <div className="min-h-screen bg-white dark:bg-gray-900">
         <DJDashHeader />
         <CityPageClient
@@ -292,6 +342,11 @@ export default async function CityPage({ params }: PageProps) {
           venues={venues}
           reviews={reviews}
           analytics={analytics}
+          cityStats={cityStats}
+          directAnswer={directAnswer}
+          marketSnapshot={marketSnapshot}
+          localInsights={localInsights}
+          faqs={faqs}
         />
         <DJDashFooter />
       </div>

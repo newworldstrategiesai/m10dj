@@ -15,6 +15,8 @@ module.exports = {
     // Skip type checking during build (faster, but less safe)
     // You can run `tsc --noEmit` separately for type checking
     ignoreBuildErrors: false,
+    // Exclude Supabase Edge Functions from type checking
+    tsconfigPath: './tsconfig.json',
   },
   eslint: {
     // Only run ESLint on changed files during dev (faster)
@@ -80,6 +82,15 @@ module.exports = {
     // Exclude backup files and markdown files from build
     config.module.rules.push({
       test: /\.(bak|copy|md)$/,
+      use: 'ignore-loader',
+    });
+    
+    // Exclude Supabase Edge Functions (Deno code) from Next.js build
+    config.resolve.alias = {
+      ...config.resolve.alias,
+    };
+    config.module.rules.push({
+      test: /supabase\/functions\/.*\.ts$/,
       use: 'ignore-loader',
     });
     

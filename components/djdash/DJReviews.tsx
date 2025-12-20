@@ -114,9 +114,12 @@ export default function DJReviews({
   }
 
   // Generate comprehensive schema markup optimized for Google Rich Results and LLM retrieval
-  let reviewSchema = null;
-  if (showSchema && reviews.length > 0) {
-    reviewSchema = generateReviewSchema({
+  const reviewSchema = React.useMemo(() => {
+    if (!showSchema || reviews.length === 0) {
+      return null;
+    }
+    
+    return generateReviewSchema({
       reviews: reviews.map((review) => ({
         author: review.reviewer_name,
         rating: review.rating,
@@ -141,7 +144,7 @@ export default function DJReviews({
       } : undefined,
       pageUrl: djUrl
     });
-  }
+  }, [showSchema, reviews, djName, djUrl, aggregateRating]);
 
   return (
     <>

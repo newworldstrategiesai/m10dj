@@ -29,6 +29,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import CityInquiryForm from '@/components/djdash/city/CityInquiryForm';
 import DJPhoneNumber from '@/components/djdash/DJPhoneNumber';
+import { CityDataSnapshot } from '@/utils/data/city-data-aggregator';
+import { DirectAnswerBlock, MarketSnapshot, LocalInsights } from '@/utils/content/city-content-assembler';
 
 interface CityPage {
   id: string;
@@ -92,6 +94,11 @@ interface CityPageClientProps {
   venues: VenueSpotlight[];
   reviews: Review[];
   analytics: any;
+  cityStats: CityDataSnapshot;
+  directAnswer: DirectAnswerBlock;
+  marketSnapshot: MarketSnapshot;
+  localInsights: LocalInsights;
+  faqs: Array<{ question: string; answer: string }>;
 }
 
 const eventTypeIcons: Record<string, any> = {
@@ -109,6 +116,11 @@ export default function CityPageClient({
   venues,
   reviews,
   analytics,
+  cityStats,
+  directAnswer,
+  marketSnapshot,
+  localInsights,
+  faqs,
 }: CityPageClientProps) {
   const [selectedEventType, setSelectedEventType] = useState<string | null>(null);
   
@@ -120,11 +132,6 @@ export default function CityPageClient({
     { slug: 'holiday_party', name: 'Holiday Parties', icon: Sparkles },
     { slug: 'private_party', name: 'Private Parties', icon: PartyPopper },
   ];
-  
-  const aiContent = cityPage.ai_generated_content || {};
-  const faqs = aiContent.faqs || [];
-  const guides = aiContent.guides || [];
-  const tips = cityPage.local_tips || [];
   
   return (
     <>
@@ -175,19 +182,92 @@ export default function CityPageClient({
             <div className="flex items-center justify-center gap-8 pt-8 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-green-500" />
-                <span>{cityPage.total_djs || 0} Verified DJs</span>
+                <span>{cityStats.totalDJs || cityPage.total_djs || 0} Verified DJs</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-green-500" />
-                <span>{cityPage.total_reviews || 0} Reviews</span>
+                <span>{cityStats.totalReviews || cityPage.total_reviews || 0} Reviews</span>
               </div>
-              {cityPage.avg_rating && (
+              {(cityStats.averageRating || cityPage.avg_rating) && (
                 <div className="flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                  <span>{cityPage.avg_rating.toFixed(1)}★ Average</span>
+                  <span>{(cityStats.averageRating || cityPage.avg_rating)?.toFixed(1)}★ Average</span>
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 1: Direct Answer Block (Above the Fold) */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            {directAnswer.question}
+          </h2>
+          <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
+            {directAnswer.answer}
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+            Source: {directAnswer.dataSource}
+          </p>
+        </div>
+      </section>
+
+      {/* Data Requirements Notice (if not met) */}
+      {!cityStats.meetsMinimumRequirements && (
+        <section className="py-8 px-4 sm:px-6 lg:px-8 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-start gap-3">
+              <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                  Market Still Growing
+                </p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                  The DJ market in {cityPage.city_name} is still developing. We're actively adding more DJs and collecting data to provide comprehensive insights.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 2: Market Snapshot (Data Table) */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-800">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+            {cityPage.city_name} DJ Market Snapshot
+          </h2>
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden">
+            <table className="w-full">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Average DJ Price</td>
+                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.averagePrice}</td>
+                </tr>
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Peak Booking Months</td>
+                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.peakBookingMonths}</td>
+                </tr>
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Typical Event Length</td>
+                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.typicalEventLength}</td>
+                </tr>
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Most Requested Genres</td>
+                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.mostRequestedGenres}</td>
+                </tr>
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Average Response Time</td>
+                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.averageResponseTime}</td>
+                </tr>
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">Booking Lead Time</td>
+                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{marketSnapshot.bookingLeadTime}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -224,16 +304,51 @@ export default function CityPageClient({
         </div>
       </section>
 
-      {/* Top DJs Section */}
+      {/* SECTION 3: What Locals Should Know (City-Specific) */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-8">
+            What Locals Should Know About Hiring a DJ in {cityPage.city_name}
+          </h2>
+          <div className="space-y-6">
+            {localInsights.venueTypes.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Popular Venue Types</h3>
+                <p className="text-gray-700 dark:text-gray-300">
+                  Popular venues in {cityPage.city_name} include {localInsights.venueTypes.slice(0, 3).join(', ')}.
+                </p>
+              </div>
+            )}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Noise Ordinances</h3>
+              <p className="text-gray-700 dark:text-gray-300">{localInsights.noiseOrdinances}</p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Weather Considerations</h3>
+              <p className="text-gray-700 dark:text-gray-300">{localInsights.weatherConsiderations}</p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Crowd Expectations</h3>
+              <p className="text-gray-700 dark:text-gray-300">{localInsights.crowdExpectations}</p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Parking & Load-In</h3>
+              <p className="text-gray-700 dark:text-gray-300">{localInsights.parkingLoadIn}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 4: Featured DJs in [City] */}
       {featuredDJs.length > 0 && (
         <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-                Top DJs in {cityPage.city_name}
+                Featured DJs in {cityPage.city_name}
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                Featured professional DJs available for your event
+                Verified DJs with high response rates and positive reviews
               </p>
             </div>
             
@@ -445,6 +560,26 @@ export default function CityPageClient({
         </section>
       )}
 
+      {/* SECTION 5: How DJ Dash Works (Short) */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-800">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
+            How DJ Dash Works
+          </h2>
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 space-y-4">
+            <p className="text-gray-700 dark:text-gray-300">
+              DJ Dash is a marketplace that connects event planners with verified DJs. Submit one inquiry form and receive responses from multiple available DJs in {cityPage.city_name}. All DJs are availability-aware, meaning you'll only hear from DJs who are free on your event date. Pricing is transparent, and you won't receive spam calls—DJs respond through the platform.
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+              <li>One inquiry form sends your event details to multiple DJs</li>
+              <li>DJs respond directly through the platform (no spam calls)</li>
+              <li>Compare pricing, reviews, and portfolios in one place</li>
+              <li>Book directly with your chosen DJ</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       {/* Lead Capture Form */}
       <section id="find-dj-form" className="py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
         <div className="max-w-2xl mx-auto">
@@ -467,33 +602,7 @@ export default function CityPageClient({
         </div>
       </section>
 
-      {/* Local Tips / AI Content */}
-      {tips.length > 0 && (
-        <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-                Tips for Hiring a DJ in {cityPage.city_name}
-              </h2>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              {tips.map((tip, index) => (
-                <Card key={index} className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <p className="text-gray-700 dark:text-gray-300">{tip}</p>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* FAQ Section */}
+      {/* SECTION 6: FAQ (LLM-Optimized) */}
       {faqs.length > 0 && (
         <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
           <div className="max-w-4xl mx-auto">
@@ -507,7 +616,7 @@ export default function CityPageClient({
             </div>
             
             <div className="space-y-4">
-              {faqs.map((faq: any, index: number) => (
+              {faqs.map((faq, index: number) => (
                 <Card key={index} className="p-6">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
                     {faq.question}
