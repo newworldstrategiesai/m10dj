@@ -1182,7 +1182,7 @@ export function GeneralRequestsPage({
           </div>
         )}
         
-        {!embedMode && !showPaymentMethods && <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} isOwner={isOwner} organizationSlug={organizationData?.slug} organizationId={organizationId} />}
+        {!embedMode && !showPaymentMethods && !minimalHeader && <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} isOwner={isOwner} organizationSlug={organizationData?.slug} organizationId={organizationId} />}
         
         {/* Hero Section with Text Fallback */}
         {!embedMode && !showPaymentMethods && (

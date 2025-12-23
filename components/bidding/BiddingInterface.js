@@ -302,7 +302,7 @@ export default function BiddingInterface({
   // Load current bidding round
   useEffect(() => {
     if (!organizationId) return;
-    loadCurrentRound();
+    loadCurrentRound(true); // Initial load
     
     // Set up real-time subscription
     const channel = supabase
@@ -346,7 +346,7 @@ export default function BiddingInterface({
 
     // Also set up polling as a fallback (every 3 seconds)
     const pollInterval = setInterval(() => {
-      loadCurrentRound();
+      loadCurrentRound(false); // Updates, not initial load
     }, 3000);
 
     return () => {
@@ -545,16 +545,21 @@ export default function BiddingInterface({
     return fakeRequests.sort((a, b) => b.current_bid_amount - a.current_bid_amount);
   };
 
-  const loadCurrentRound = async () => {
+  const loadCurrentRound = async (isInitialLoad = false) => {
     try {
-      setLoading(true);
+      // Only show loading spinner on initial load, not on updates
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       setError(''); // Clear any previous errors
       const response = await fetch(`/api/bidding/current-round?organizationId=${organizationId}`);
       
       if (!response.ok) {
         console.error('Failed to fetch current round:', response.status, response.statusText);
         setError('Failed to load bidding round. Retrying...');
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
         return;
       }
       
@@ -563,7 +568,9 @@ export default function BiddingInterface({
       if (data.error) {
         console.error('API error:', data.error);
         setError(data.error);
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
         return;
       }
       
@@ -618,11 +625,49 @@ export default function BiddingInterface({
           enhancedRequests = fakeRequests.sort((a, b) => (b.current_bid_amount || 0) - (a.current_bid_amount || 0));
         }
         
-        setBiddingRound(data);
-        setRequests(enhancedRequests);
+        // Batch state updates to prevent multiple re-renders
+        setBiddingRound(prev => {
+          // Only update if data actually changed to prevent unnecessary re-renders
+          if (prev?.round?.id === data.round.id && 
+              prev?.round?.roundNumber === data.round.roundNumber &&
+              JSON.stringify(prev.requests) === JSON.stringify(data.requests)) {
+            return prev; // No change, return previous state
+          }
+          return data;
+        });
+        
+        // Use functional update to merge requests smoothly
+        setRequests(prevRequests => {
+          // Create a map of existing requests for smooth updates
+          const existingMap = new Map(prevRequests.map(r => [r.id, r]));
+          const newMap = new Map(enhancedRequests.map(r => [r.id, r]));
+          
+          // Merge: keep existing if IDs match and data is similar, otherwise use new
+          const merged = enhancedRequests.map(newReq => {
+            const existing = existingMap.get(newReq.id);
+            if (existing && 
+                existing.current_bid_amount === newReq.current_bid_amount &&
+                existing.highest_bidder_name === newReq.highest_bidder_name) {
+              return existing; // No change, keep existing to prevent re-render
+            }
+            return newReq;
+          });
+          
+          // Add any new requests
+          enhancedRequests.forEach(req => {
+            if (!existingMap.has(req.id)) {
+              merged.push(req);
+            }
+          });
+          
+          return merged;
+        });
+        
         setTimeRemaining(data.round.timeRemaining);
         prevRoundRef.current = data;
-        setLoading(false); // Only set loading to false when we have an active round
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       } else {
         // No active round - API should create one, but if it didn't, we'll keep polling
         setBiddingRound({ active: false });
@@ -698,7 +743,7 @@ export default function BiddingInterface({
     
     // If no active round, poll continuously until one is found
     const pollInterval = setInterval(() => {
-      loadCurrentRound();
+      loadCurrentRound(false); // Updates, not initial load
     }, 2000); // Poll every 2 seconds
     
     return () => clearInterval(pollInterval);
@@ -880,9 +925,9 @@ export default function BiddingInterface({
       setBidAmountType('preset');
       
       // Reload round data immediately and again after short delay to ensure sync
-      loadCurrentRound();
+      loadCurrentRound(false); // Update, not initial load
       setTimeout(() => {
-        loadCurrentRound();
+        loadCurrentRound(false);
       }, 500);
 
     } catch (err) {
@@ -1404,7 +1449,8 @@ export default function BiddingInterface({
                 
                 return (
                   <div
-                    key={bid.id || `bid-${idx}`}
+                    key={bid.id || `bid-${bid.request_id || 'unknown'}-${bid.bid_amount}-${idx}`}
+                    className="bid-item"
                     className={`px-4 py-3 transition-all ${
                       idx === 0 && isRecent ? 'bg-purple-600/10 animate-pulse' : 'hover:bg-gray-800/30'
                     }`}
@@ -1650,7 +1696,8 @@ export default function BiddingInterface({
                   const isRecent = !bid.is_dummy && new Date(bid.created_at) > new Date(Date.now() - 60000);
                   return (
                     <div 
-                      key={bid.id || idx} 
+                      key={bid.id || `recent-bid-${currentRequest.id}-${bid.bid_amount}-${idx}`}
+                      className="bid-item" 
                       className={`flex items-center justify-between text-sm ${
                         isRecent ? 'bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded' : ''
                       }`}
