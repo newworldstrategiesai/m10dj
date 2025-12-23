@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Clock, Trophy, DollarSign, Users, AlertCircle, Loader2 } from 'lucide-react';
+import { Clock, Trophy, DollarSign, Users, AlertCircle, Loader2, Plus } from 'lucide-react';
 
 interface BiddingRoundWithStats {
   id: string;
@@ -166,12 +166,23 @@ export default function BiddingRoundsAdmin() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Bidding Rounds
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            View and manage bidding rounds for song requests
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Bidding Rounds
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                View and manage bidding rounds for song requests
+              </p>
+            </div>
+            <a
+              href="/admin/bidding/dummy-data"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Manage Dummy Data
+            </a>
+          </div>
         </div>
 
         {error && (
