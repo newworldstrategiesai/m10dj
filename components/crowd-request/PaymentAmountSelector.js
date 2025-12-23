@@ -71,7 +71,7 @@ function PaymentAmountSelector({
               
               return (
                 <button
-                  key={preset.value}
+                  key={`preset-${preset.value}-${currentWinningBid}`} // Include winning bid in key to force re-render
                   type="button"
                   onClick={() => !isBelowMinimum && setPresetAmount(preset.value)}
                   disabled={isBelowMinimum}

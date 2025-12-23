@@ -344,8 +344,14 @@ export default function BiddingInterface({
       )
       .subscribe();
 
+    // Also set up polling as a fallback (every 3 seconds)
+    const pollInterval = setInterval(() => {
+      loadCurrentRound();
+    }, 3000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
@@ -698,23 +704,47 @@ export default function BiddingInterface({
     return () => clearInterval(pollInterval);
   }, [organizationId, biddingRound?.active]);
 
-  // Calculate minimum bid based on current winning bid across all requests
-  // This must be before any early returns
-  const allRequestsForMinBid = requests || [];
-  const currentWinningBidForMin = allRequestsForMinBid.length > 0 
-    ? Math.max(...allRequestsForMinBid.map(r => r.current_bid_amount || 0))
-    : 0;
-  
+  // Sort requests by current bid amount (highest first) - memoized for reactivity
+  const sortedRequests = useMemo(() => {
+    return [...requests].sort((a, b) => {
+      const bidA = a.current_bid_amount || 0;
+      const bidB = b.current_bid_amount || 0;
+      if (bidB !== bidA) return bidB - bidA; // Higher bid first
+      return new Date(a.created_at) - new Date(b.created_at); // Earlier request first if tie
+    });
+  }, [requests]);
+
+  // Calculate current winning bid - memoized and reactive
+  const currentWinningBidAmount = useMemo(() => {
+    if (requests.length === 0) return 0;
+    const winningBid = Math.max(...requests.map(r => r.current_bid_amount || 0));
+    // Debug log to verify updates
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('[BiddingInterface] Current winning bid updated:', {
+        winningBid: winningBid / 100,
+        requestCount: requests.length,
+        requestBids: requests.map(r => ({ id: r.id?.slice(0, 8), bid: (r.current_bid_amount || 0) / 100 }))
+      });
+    }
+    return winningBid;
+  }, [requests]);
+
+  // Get winning request
+  const winningRequest = sortedRequests.length > 0 && currentWinningBidAmount > 0 
+    ? sortedRequests.find(r => (r.current_bid_amount || 0) === currentWinningBidAmount) || sortedRequests[0]
+    : null;
+
+  // Calculate minimum bid based on current winning bid - use memoized value
   const minBid = useMemo(() => {
     return currentRequest 
       ? (() => {
-          const isBiddingOnWinningRequest = currentRequest.current_bid_amount === currentWinningBidForMin && currentWinningBidForMin > 0;
+          const isBiddingOnWinningRequest = currentRequest.current_bid_amount === currentWinningBidAmount && currentWinningBidAmount > 0;
           return isBiddingOnWinningRequest
-            ? currentWinningBidForMin + 100 // Must be at least $1 more than current bid on this request
-            : Math.max(currentWinningBidForMin + 100, 500); // Must beat the winning bid, minimum $5
+            ? currentWinningBidAmount + 100 // Must be at least $1 more than current bid on this request
+            : Math.max(currentWinningBidAmount + 100, 500); // Must beat the winning bid, minimum $5
         })()
-      : Math.max(currentWinningBidForMin + 100, 500);
-  }, [currentRequest, currentWinningBidForMin]);
+      : Math.max(currentWinningBidAmount + 100, 500);
+  }, [currentRequest, currentWinningBidAmount]);
 
   // Pre-select minimum bid when minBid changes
   useEffect(() => {
@@ -752,11 +782,8 @@ export default function BiddingInterface({
       return;
     }
     
-    // Find the current winning bid (highest bid across all requests in the round)
-    const allRequests = requests || [];
-    const currentWinningBid = allRequests.length > 0 
-      ? Math.max(...allRequests.map(r => r.current_bid_amount || 0))
-      : 0;
+    // Use memoized current winning bid amount
+    const currentWinningBid = currentWinningBidAmount;
     
     // Minimum bid must be higher than the current winning bid
     // If bidding on the current winning request, must be at least $1 more
@@ -809,10 +836,11 @@ export default function BiddingInterface({
       setCustomBidAmount('');
       setBidAmountType('preset');
       
-      // Reload round data
+      // Reload round data immediately and again after short delay to ensure sync
+      loadCurrentRound();
       setTimeout(() => {
         loadCurrentRound();
-      }, 1000);
+      }, 500);
 
     } catch (err) {
       setError(err.message || 'Failed to place bid');
@@ -876,8 +904,8 @@ export default function BiddingInterface({
   }
 
 
-  // Generate dynamic preset bid amounts based on current winning bid
-  const generatePresetBids = () => {
+  // Generate dynamic preset bid amounts based on current winning bid - memoized for reactivity
+  const presetBids = useMemo(() => {
     const presets = [];
     const baseMin = minBid;
     
@@ -898,9 +926,7 @@ export default function BiddingInterface({
     });
     
     return presets;
-  };
-
-  const presetBids = generatePresetBids();
+  }, [minBid]);
 
   // Get the actual bid amount based on type
   const getBidAmount = () => {
@@ -912,18 +938,9 @@ export default function BiddingInterface({
     return null;
   };
 
-  // Sort requests by current bid amount (highest first)
-  const sortedRequests = [...requests].sort((a, b) => {
-    const bidA = a.current_bid_amount || 0;
-    const bidB = b.current_bid_amount || 0;
-    if (bidB !== bidA) return bidB - bidA; // Higher bid first
-    return new Date(a.created_at) - new Date(b.created_at); // Earlier request first if tie
-  });
-
-  // Get winning request
-  const winningRequest = sortedRequests.length > 0 && sortedRequests[0].current_bid_amount > 0 
-    ? sortedRequests[0] 
-    : null;
+  // Check if current selected bid beats the winning bid
+  const selectedBidAmount = getBidAmount();
+  const beatsWinningBid = selectedBidAmount && currentWinningBidAmount > 0 && selectedBidAmount > currentWinningBidAmount;
 
   return (
     <div className={`space-y-4 ${winningRequest ? 'pb-20 sm:pb-24' : 'pb-4'}`}>
@@ -1104,26 +1121,46 @@ export default function BiddingInterface({
             {/* Preset Bid Buttons */}
             {bidAmountType === 'preset' && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
-                {presetBids.map((preset) => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    onClick={() => setSelectedPresetBid(preset.value)}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      selectedPresetBid === preset.value
-                        ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-105'
-                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300 hover:scale-[1.02] hover:shadow-lg'
-                    }`}
-                  >
-                    <span className={`text-sm font-bold ${
-                      selectedPresetBid === preset.value
-                        ? 'text-white'
-                        : 'text-gray-900 dark:text-white'
-                    }`}>
-                      {preset.label}
-                    </span>
-                  </button>
-                ))}
+                {presetBids.map((preset) => {
+                  const beatsCurrentBid = currentWinningBidAmount > 0 && preset.value > currentWinningBidAmount;
+                  const isMinimum = preset.value === minBid;
+                  
+                  return (
+                    <button
+                      key={`preset-${preset.value}-${currentWinningBidAmount}`} // Include winning bid in key to force re-render
+                      type="button"
+                      onClick={() => setSelectedPresetBid(preset.value)}
+                      className={`p-3 rounded-lg border-2 transition-all relative ${
+                        selectedPresetBid === preset.value
+                          ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-105'
+                          : beatsCurrentBid
+                          ? 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-900/20 hover:border-green-500 hover:scale-[1.02] hover:shadow-lg'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300 hover:scale-[1.02] hover:shadow-lg'
+                      }`}
+                      title={beatsCurrentBid ? `This bid beats the current winning bid of $${(currentWinningBidAmount / 100).toFixed(2)}` : undefined}
+                    >
+                      {beatsCurrentBid && selectedPresetBid !== preset.value && (
+                        <div className="absolute top-1 right-1">
+                          <span className="text-[10px] font-bold text-green-600 dark:text-green-400 bg-white dark:bg-gray-800 px-1 rounded">✓</span>
+                        </div>
+                      )}
+                      {isMinimum && (
+                        <div className="absolute -top-1 -left-1 bg-yellow-400 text-yellow-900 text-[8px] font-bold px-1 rounded-full">
+                          MIN
+                        </div>
+                      )}
+                      <span className={`text-sm font-bold ${
+                        selectedPresetBid === preset.value
+                          ? 'text-white'
+                          : beatsCurrentBid
+                          ? 'text-green-700 dark:text-green-300'
+                          : 'text-gray-900 dark:text-white'
+                      }`}>
+                        {preset.label}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -1150,33 +1187,58 @@ export default function BiddingInterface({
                         setCustomBidAmount(value);
                       }
                     }}
-                    className="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className={`w-full pl-8 pr-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                      customBidAmount && parseFloat(customBidAmount) > 0 && parseFloat(customBidAmount) * 100 > currentWinningBidAmount && currentWinningBidAmount > 0
+                        ? 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-900/20'
+                        : customBidAmount && parseFloat(customBidAmount) > 0 && parseFloat(customBidAmount) < minBid / 100
+                        ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     placeholder={(minBid / 100).toFixed(2)}
                   />
+                  {customBidAmount && parseFloat(customBidAmount) > 0 && parseFloat(customBidAmount) * 100 > currentWinningBidAmount && currentWinningBidAmount > 0 && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded">✓ Beats ${(currentWinningBidAmount / 100).toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
                 {customBidAmount && parseFloat(customBidAmount) > 0 && parseFloat(customBidAmount) < minBid / 100 ? (
                   <p className="text-xs text-red-600 dark:text-red-400 mt-1">
                     Minimum bid is ${(minBid / 100).toFixed(2)}
                   </p>
+                ) : customBidAmount && parseFloat(customBidAmount) > 0 && parseFloat(customBidAmount) * 100 > currentWinningBidAmount && currentWinningBidAmount > 0 ? (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-semibold">
+                    ✓ This bid beats the current winning bid of ${(currentWinningBidAmount / 100).toFixed(2)}!
+                  </p>
                 ) : (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Minimum: ${(minBid / 100).toFixed(2)}
+                    Minimum: ${(minBid / 100).toFixed(2)} {currentWinningBidAmount > 0 && `(current winning: $${(currentWinningBidAmount / 100).toFixed(2)})`}
                   </p>
                 )}
               </div>
             )}
 
             {/* Current Winning Bid Info */}
-            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 border border-purple-200 dark:border-purple-800">
-              <p className="text-xs text-gray-700 dark:text-gray-300">
-                {currentWinningBidForMin > 0 ? (
+            <div className={`rounded-lg p-2 border transition-all ${
+              currentWinningBidAmount > 0
+                ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
+                : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+            }`}>
+              <p className="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                {currentWinningBidAmount > 0 ? (
                   <>
-                    Current winning bid: <span className="font-semibold text-purple-600 dark:text-purple-400">${(currentWinningBidForMin / 100).toFixed(2)}</span>
-                    {' • '}
-                    Your bid must be higher to win!
+                    <Trophy className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <span>
+                      Current winning bid: <span className="font-semibold text-purple-600 dark:text-purple-400">${(currentWinningBidAmount / 100).toFixed(2)}</span>
+                      {' • '}
+                      Your bid must be higher to win!
+                    </span>
                   </>
                 ) : (
-                  <>No bids yet - be the first to bid!</>
+                  <>
+                    <Zap className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <span>No bids yet - be the first to bid!</span>
+                  </>
                 )}
               </p>
             </div>
@@ -1259,21 +1321,39 @@ export default function BiddingInterface({
 
         <button
           type="submit"
-          disabled={placingBid || timeRemaining === 0}
-          className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          disabled={placingBid || timeRemaining === 0 || !selectedBidAmount}
+          className={`w-full py-3 font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 ${
+            beatsWinningBid
+              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-400 hover:to-emerald-400 shadow-lg shadow-green-500/30'
+              : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500'
+          }`}
         >
           {placingBid ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               Placing Bid...
             </>
+          ) : beatsWinningBid ? (
+            <>
+              <Trophy className="w-4 h-4" />
+              Place Winning Bid! ${(selectedBidAmount / 100).toFixed(2)}
+            </>
           ) : (
             <>
               <TrendingUp className="w-4 h-4" />
-              Place Bid
+              {selectedBidAmount ? `Place $${(selectedBidAmount / 100).toFixed(2)} Bid` : 'Place Bid'}
             </>
           )}
         </button>
+        
+        {beatsWinningBid && (
+          <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-500 rounded-lg p-2 text-center animate-pulse">
+            <p className="text-xs font-semibold text-green-800 dark:text-green-200 flex items-center justify-center gap-1">
+              <Trophy className="w-3 h-3" />
+              This bid will beat the current winning bid of ${(currentWinningBidAmount / 100).toFixed(2)}!
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
         <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
@@ -1368,46 +1448,56 @@ export default function BiddingInterface({
         </div>
       </div>
 
-      {/* Floating Quick Bid Increase Button - Show when user is outbid */}
+      {/* Floating Quick Bid Increase Button - Show when user is outbid - Reactive to winning bid */}
       {currentRequest && requestId && (() => {
         const userBid = currentRequest.current_bid_amount || 0;
-        const highestBid = sortedRequests.length > 0 ? sortedRequests[0].current_bid_amount : 0;
+        const highestBid = currentWinningBidAmount; // Use memoized winning bid - updates automatically
         const isOutbid = highestBid > userBid && userBid > 0;
         
-        if (isOutbid) {
-          const minBidToWin = highestBid + 100; // $1 increment
-          return (
-            <div className="fixed bottom-20 sm:bottom-24 right-4 z-50">
-              <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full shadow-2xl border-2 border-white/20 p-4 animate-bounce">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="text-center">
-                    <p className="text-xs font-semibold mb-1">You've been outbid!</p>
-                    <p className="text-sm font-bold">Current: ${(highestBid / 100).toFixed(2)}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      // Quick bid increase - set to minimum to win
-                      setBidAmountType('custom');
-                      setCustomBidAmount((minBidToWin / 100).toFixed(2));
-                      setSelectedPresetBid(null);
-                      // Scroll to bid form
-                      setTimeout(() => {
-                        const bidForm = document.querySelector('[data-bid-form]');
-                        if (bidForm) {
-                          bidForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                      }, 100);
-                    }}
-                    className="px-4 py-2 bg-white text-red-600 font-bold rounded-full hover:bg-gray-100 transition-all text-sm shadow-lg"
-                  >
-                    Bid ${(minBidToWin / 100).toFixed(2)} to Win
-                  </button>
+        if (!isOutbid) return null;
+        
+        const minBidToWin = highestBid + 100; // $1 increment
+        
+        // Debug log
+        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+          console.log('[BiddingInterface] Floating button updated:', {
+            userBid: userBid / 100,
+            highestBid: highestBid / 100,
+            minBidToWin: minBidToWin / 100
+          });
+        }
+        
+        return (
+          <div key={`floating-bid-${highestBid}`} className="fixed bottom-20 sm:bottom-24 right-4 z-50">
+            <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full shadow-2xl border-2 border-white/20 p-4 animate-bounce">
+              <div className="flex flex-col items-center gap-2">
+                <div className="text-center">
+                  <p className="text-xs font-semibold mb-1">You've been outbid!</p>
+                  <p className="text-sm font-bold">Current Winning: ${(highestBid / 100).toFixed(2)}</p>
+                  <p className="text-xs opacity-90 mt-1">Your bid: ${(userBid / 100).toFixed(2)}</p>
                 </div>
+                <button
+                  onClick={() => {
+                    // Quick bid increase - set to minimum to win
+                    setBidAmountType('custom');
+                    setCustomBidAmount((minBidToWin / 100).toFixed(2));
+                    setSelectedPresetBid(null);
+                    // Scroll to bid form
+                    setTimeout(() => {
+                      const bidForm = document.querySelector('[data-bid-form]');
+                      if (bidForm) {
+                        bidForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }, 100);
+                  }}
+                  className="px-4 py-2 bg-white text-red-600 font-bold rounded-full hover:bg-gray-100 transition-all text-sm shadow-lg"
+                >
+                  Bid ${(minBidToWin / 100).toFixed(2)} to Win
+                </button>
               </div>
             </div>
-          );
-        }
-        return null;
+          </div>
+        );
       })()}
 
       {/* Current Request Info - Only show if user has a request in the round */}
@@ -1434,31 +1524,51 @@ export default function BiddingInterface({
             </div>
           </div>
           
-          {/* Quick Bid Increase Buttons */}
+          {/* Quick Bid Increase Buttons - Reactive to winning bid changes */}
           {(() => {
+            if (!currentRequest) return null;
+            
             const userBid = currentRequest.current_bid_amount || 0;
-            const highestBid = sortedRequests.length > 0 ? sortedRequests[0].current_bid_amount : 0;
+            const highestBid = currentWinningBidAmount; // Use memoized winning bid - will update when requests change
             const isOutbid = highestBid > userBid && userBid > 0;
             
-            if (isOutbid) {
-              const minBidToWin = highestBid + 100;
-              const quickIncrements = [
-                { amount: minBidToWin, label: `$${(minBidToWin / 100).toFixed(2)} (Win)` },
-                { amount: highestBid + 500, label: `$${((highestBid + 500) / 100).toFixed(2)}` },
-                { amount: highestBid + 1000, label: `$${((highestBid + 1000) / 100).toFixed(2)}` },
-                { amount: highestBid + 2000, label: `$${((highestBid + 2000) / 100).toFixed(2)}` }
-              ];
-              
-              return (
-                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    You've been outbid! Increase your bid:
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            if (!isOutbid) {
+              return null;
+            }
+            
+            const minBidToWin = highestBid + 100;
+            const quickIncrements = [
+              { amount: minBidToWin, label: `$${(minBidToWin / 100).toFixed(2)} (Win)` },
+              { amount: highestBid + 500, label: `$${((highestBid + 500) / 100).toFixed(2)}` },
+              { amount: highestBid + 1000, label: `$${((highestBid + 1000) / 100).toFixed(2)}` },
+              { amount: highestBid + 2000, label: `$${((highestBid + 2000) / 100).toFixed(2)}` }
+            ];
+            
+            // Debug log to verify button amounts are correct
+            if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+              console.log('[BiddingInterface] Quick bid buttons updated:', {
+                userBid: userBid / 100,
+                highestBid: highestBid / 100,
+                minBidToWin: minBidToWin / 100,
+                increments: quickIncrements.map(inc => ({ amount: inc.amount / 100, label: inc.label }))
+              });
+            }
+            
+            return (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      You've been outbid! Increase your bid:
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Current winning: <span className="font-bold text-red-600 dark:text-red-400">${(highestBid / 100).toFixed(2)}</span>
+                    </p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {quickIncrements.map((inc, idx) => (
                       <button
-                        key={idx}
+                        key={`quick-bid-${highestBid}-${idx}`} // Include winning bid in key to force re-render
                         onClick={async () => {
                           setBidAmountType('custom');
                           setCustomBidAmount((inc.amount / 100).toFixed(2));
@@ -1489,9 +1599,12 @@ export default function BiddingInterface({
                               setSelectedPresetBid(null);
                               setCustomBidAmount('');
                               setBidAmountType('preset');
+                              // Refresh immediately to update buttons with new winning bid
+                              loadCurrentRound();
+                              // Also refresh after a short delay to ensure data is synced
                               setTimeout(() => {
                                 loadCurrentRound();
-                              }, 1000);
+                              }, 500);
                             } catch (err) {
                               setError(err.message || 'Failed to place bid');
                             } finally {
@@ -1499,20 +1612,24 @@ export default function BiddingInterface({
                             }
                           }
                         }}
-                        className={`py-2 px-2 rounded-lg font-semibold text-xs sm:text-sm transition-all ${
+                        className={`py-2 px-2 rounded-lg font-semibold text-xs sm:text-sm transition-all relative ${
                           idx === 0
                             ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-400 hover:to-emerald-400 shadow-lg'
                             : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50'
                         }`}
+                        title={`Current winning bid: $${(highestBid / 100).toFixed(2)}. This bid: $${(inc.amount / 100).toFixed(2)}`}
                       >
                         {inc.label}
+                        {idx === 0 && (
+                          <span className="absolute -top-1 -right-1 bg-yellow-400 text-yellow-900 text-[8px] font-bold px-1 rounded-full animate-pulse">
+                            WIN
+                          </span>
+                        )}
                       </button>
                     ))}
-                  </div>
                 </div>
-              );
-            }
-            return null;
+              </div>
+            );
           })()}
 
           {/* Recent Bids */}
@@ -1555,7 +1672,7 @@ export default function BiddingInterface({
       )}
 
       {/* Winning Bid Ticker with Time - Sticky to bottom, always visible */}
-      {sortedRequests.length > 0 && sortedRequests[0].current_bid_amount > 0 && (
+      {sortedRequests.length > 0 && currentWinningBidAmount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 dark:bg-gray-900/95 backdrop-blur-sm border-t-2 border-purple-500/50 shadow-2xl">
           <div className="max-w-7xl mx-auto px-2 sm:px-4 py-1.5 sm:py-2">
             <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 rounded-lg border-2 border-purple-500/50 overflow-hidden">
@@ -1576,21 +1693,21 @@ export default function BiddingInterface({
                         </div>
                       </div>
                       <p className="text-xs sm:text-sm font-semibold text-white truncate">
-                        {sortedRequests[0].song_title 
-                          ? `${sortedRequests[0].song_title}${sortedRequests[0].song_artist ? ` by ${sortedRequests[0].song_artist}` : ''}`
+                        {winningRequest?.song_title 
+                          ? `${winningRequest.song_title}${winningRequest.song_artist ? ` by ${winningRequest.song_artist}` : ''}`
                           : 'Current Leader'
                         }
                       </p>
-                      {sortedRequests[0].highest_bidder_name && (
+                      {winningRequest?.highest_bidder_name && (
                         <p className="text-[10px] sm:text-xs text-gray-300 mt-0.5 truncate">
-                          by {sortedRequests[0].highest_bidder_name}
+                          by {winningRequest.highest_bidder_name}
                         </p>
                       )}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-yellow-300">
-                      ${((sortedRequests[0].current_bid_amount || 0) / 100).toFixed(2)}
+                      ${(currentWinningBidAmount / 100).toFixed(2)}
                     </div>
                     <p className="text-[10px] sm:text-xs text-gray-300 mt-0.5">Leader</p>
                   </div>

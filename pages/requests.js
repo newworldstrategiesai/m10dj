@@ -355,8 +355,8 @@ export function GeneralRequestsPage({
     };
 
     fetchRoundInfo();
-    // Poll every 5 seconds to keep winning bid and timer updated
-    const interval = setInterval(fetchRoundInfo, 5000);
+    // Poll every 3 seconds to keep winning bid and timer updated (more frequent for better UX)
+    const interval = setInterval(fetchRoundInfo, 3000);
     
     // Update timer every second
     const timerInterval = setInterval(() => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Clock, TrendingUp, Share2, QrCode, Bell, X, Trophy, Users, Zap } from 'lucide-react';
+import { CheckCircle, Clock, TrendingUp, Share2, QrCode, Bell, X, Trophy, Users, Zap, Music } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
