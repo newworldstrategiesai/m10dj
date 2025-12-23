@@ -1450,8 +1450,7 @@ export default function BiddingInterface({
                 return (
                   <div
                     key={bid.id || `bid-${bid.request_id || 'unknown'}-${bid.bid_amount}-${idx}`}
-                    className="bid-item"
-                    className={`px-4 py-3 transition-all ${
+                    className={`bid-item px-4 py-3 transition-all ${
                       idx === 0 && isRecent ? 'bg-purple-600/10 animate-pulse' : 'hover:bg-gray-800/30'
                     }`}
                     style={{
