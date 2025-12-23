@@ -65,7 +65,15 @@ function PaymentAmountSelector({
 
         {amountType === 'preset' && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-            {presetAmounts.map((preset, idx) => {
+            {presetAmounts
+              .filter(preset => {
+                // CRITICAL: In bidding mode, hide buttons that are <= winning bid
+                if (isBiddingMode && currentWinningBid > 0 && preset.value <= currentWinningBid) {
+                  return false; // Don't show this button
+                }
+                return true; // Show this button
+              })
+              .map((preset, idx) => {
               const beatsCurrentBid = isBiddingMode && currentWinningBid > 0 && preset.value > currentWinningBid;
               const isBelowMinimum = isBiddingMode && preset.value < minimumAmount;
               

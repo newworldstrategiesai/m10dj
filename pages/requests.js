@@ -457,24 +457,39 @@ export function GeneralRequestsPage({
   const dynamicBidPresets = useMemo(() => {
     if (!shouldUseBidding) return null;
     
-    // Use the dynamic minimum amount
-    const minBid = dynamicMinimumAmount || 500;
+    // CRITICAL: Ensure minBid is always >= currentWinningBid + $5
+    // This prevents buttons from showing amounts lower than the winning bid
+    const safeMinBid = Math.max(
+      dynamicMinimumAmount || 500,
+      currentWinningBid > 0 ? currentWinningBid + 500 : 500
+    );
+    
     const presets = [
-      { value: minBid, label: `$${(minBid / 100).toFixed(2)}` },
-      { value: minBid + 500, label: `$${((minBid + 500) / 100).toFixed(2)}` }, // +$5
-      { value: minBid + 1000, label: `$${((minBid + 1000) / 100).toFixed(2)}` }, // +$10
-      { value: minBid + 2000, label: `$${((minBid + 2000) / 100).toFixed(2)}` }, // +$20
-      { value: minBid + 5000, label: `$${((minBid + 5000) / 100).toFixed(2)}` } // +$50
+      { value: safeMinBid, label: `$${(safeMinBid / 100).toFixed(2)}` },
+      { value: safeMinBid + 500, label: `$${((safeMinBid + 500) / 100).toFixed(2)}` }, // +$5
+      { value: safeMinBid + 1000, label: `$${((safeMinBid + 1000) / 100).toFixed(2)}` }, // +$10
+      { value: safeMinBid + 2000, label: `$${((safeMinBid + 2000) / 100).toFixed(2)}` }, // +$20
+      { value: safeMinBid + 5000, label: `$${((safeMinBid + 5000) / 100).toFixed(2)}` } // +$50
     ];
-    // Filter out any amounts that are less than or equal to the winning bid (safety check)
+    
+    // CRITICAL: Filter out any amounts that are less than or equal to the winning bid
+    // This is a double-check to ensure no buttons show amounts <= winning bid
     const filtered = presets.filter(preset => preset.value > currentWinningBid);
+    
+    // Ensure we always have at least one preset option
+    if (filtered.length === 0 && currentWinningBid > 0) {
+      // If all presets were filtered out, add one that's definitely above the winning bid
+      const minValidBid = currentWinningBid + 100; // At least $1 above
+      filtered.push({ value: minValidBid, label: `$${(minValidBid / 100).toFixed(2)}` });
+    }
     
     // Debug log to verify preset amounts update
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       console.log('[requests.js] dynamicBidPresets updated:', {
         currentWinningBid: currentWinningBid / 100,
-        minBid: minBid / 100,
-        presets: filtered.map(p => ({ value: p.value / 100, label: p.label }))
+        safeMinBid: safeMinBid / 100,
+        dynamicMinimumAmount: dynamicMinimumAmount ? dynamicMinimumAmount / 100 : null,
+        filteredPresets: filtered.map(p => ({ value: p.value / 100, label: p.label }))
       });
     }
     
@@ -1648,8 +1663,10 @@ export function GeneralRequestsPage({
                             setPresetAmount={setPresetAmount}
                             customAmount={customAmount}
                             setCustomAmount={setCustomAmount}
-                            presetAmounts={dynamicBidPresets || presetAmounts}
-                            minimumAmount={dynamicMinimumAmount || minimumAmount}
+                            presetAmounts={shouldUseBidding && dynamicBidPresets ? dynamicBidPresets : (shouldUseBidding ? [] : presetAmounts)}
+                            minimumAmount={shouldUseBidding && dynamicMinimumAmount ? dynamicMinimumAmount : minimumAmount}
+                            isBiddingMode={shouldUseBidding}
+                            currentWinningBid={currentWinningBid}
                             requestType={requestType}
                             isFastTrack={false}
                             setIsFastTrack={() => {}}
