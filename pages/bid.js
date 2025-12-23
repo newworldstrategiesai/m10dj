@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Header from '../components/company/Header';
@@ -11,7 +11,7 @@ const DEFAULT_COVER_PHOTO = '/assets/DJ-Ben-Murray-Dodge-Poster.png';
 // Dedicated bidding page at /bid - always shows bidding mode
 export default function BidPageWrapper() {
   const router = useRouter();
-  const supabase = useMemo(() => createClientComponentClient(), []);
+  const supabase = createClientComponentClient(); // Don't use useMemo for client component
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
