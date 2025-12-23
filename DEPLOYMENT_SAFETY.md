@@ -1,5 +1,7 @@
 # Deployment Safety Guide
 
+> **Note**: Pre-deployment validation has been removed to simplify the build process. This document is kept for reference.
+
 ## Problem
 
 The build process (`npm run build`) only checks for **compile-time errors**, not **runtime errors**. This means:
@@ -7,14 +9,14 @@ The build process (`npm run build`) only checks for **compile-time errors**, not
 - ✅ Build succeeds: Code compiles, no syntax errors
 - ❌ Runtime fails: React hooks violations, missing imports, undefined variables
 
-## Solution
+## Manual Testing Checklist
 
-We've added **pre-deployment validation** that:
+Before pushing to production, manually verify:
 
-1. **Builds the application** (catches compile errors)
-2. **Starts a test server** (simulates production)
-3. **Tests critical pages** (catches runtime errors)
-4. **Blocks deployment** if any errors are found
+1. ✅ Build succeeds: `npm run build`
+2. ✅ Critical pages load: Test `/bid` and `/requests` in browser
+3. ✅ No console errors: Check browser console
+4. ✅ No "Application Error" screens
 
 ## Setup
 

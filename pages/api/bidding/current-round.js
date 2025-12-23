@@ -130,7 +130,20 @@ export default async function handler(req, res) {
       })
     );
 
-    // 4. Calculate time remaining
+    // 4. Get organization bidding dummy data settings
+    const { data: org, error: orgError } = await supabase
+      .from('organizations')
+      .select(`
+        bidding_dummy_data_enabled,
+        bidding_dummy_data_aggressiveness,
+        bidding_dummy_data_max_bid_multiplier,
+        bidding_dummy_data_frequency_multiplier,
+        bidding_dummy_data_scale_with_real_activity
+      `)
+      .eq('id', organizationId)
+      .single();
+
+    // 5. Calculate time remaining
     const now = new Date();
     const endsAt = new Date(round.ends_at);
     const timeRemaining = Math.max(0, Math.floor((endsAt - now) / 1000));
@@ -145,7 +158,14 @@ export default async function handler(req, res) {
         timeRemaining,
         status: round.status
       },
-      requests: requestsWithBids
+      requests: requestsWithBids,
+      dummyDataSettings: org ? {
+        enabled: org.bidding_dummy_data_enabled ?? true,
+        aggressiveness: org.bidding_dummy_data_aggressiveness ?? 'medium',
+        maxBidMultiplier: parseFloat(org.bidding_dummy_data_max_bid_multiplier ?? 1.5),
+        frequencyMultiplier: parseFloat(org.bidding_dummy_data_frequency_multiplier ?? 1.0),
+        scaleWithRealActivity: org.bidding_dummy_data_scale_with_real_activity ?? true
+      } : null
     });
 
   } catch (error) {

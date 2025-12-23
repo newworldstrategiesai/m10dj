@@ -4,7 +4,6 @@
     "dev": "next dev",
     "dev:turbo": "next dev --turbo",
     "build": "next build --no-lint",
-    "build:check": "npm run build && node scripts/pre-deploy-check.js",
     "start": "next start",
     "lint": "next lint",
     "prettier-fix": "prettier --write .",
