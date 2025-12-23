@@ -927,7 +927,7 @@ export default function BiddingInterface({
       // Reload round data immediately and again after short delay to ensure sync
       loadCurrentRound(false); // Update, not initial load
       setTimeout(() => {
-        loadCurrentRound(false);
+        loadCurrentRound(false); // Update, not initial load
       }, 500);
 
     } catch (err) {
@@ -1650,10 +1650,10 @@ export default function BiddingInterface({
                               setCustomBidAmount('');
                               setBidAmountType('preset');
                               // Refresh immediately to update buttons with new winning bid
-                              loadCurrentRound();
+                              loadCurrentRound(false); // Update, not initial load
                               // Also refresh after a short delay to ensure data is synced
                               setTimeout(() => {
-                                loadCurrentRound();
+                                loadCurrentRound(false); // Update, not initial load
                               }, 500);
                             } catch (err) {
                               setError(err.message || 'Failed to place bid');
