@@ -1696,8 +1696,7 @@ export default function BiddingInterface({
                   return (
                     <div 
                       key={bid.id || `recent-bid-${currentRequest.id}-${bid.bid_amount}-${idx}`}
-                      className="bid-item" 
-                      className={`flex items-center justify-between text-sm ${
+                      className={`bid-item flex items-center justify-between text-sm ${
                         isRecent ? 'bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded' : ''
                       }`}
                     >
