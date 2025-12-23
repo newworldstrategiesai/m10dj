@@ -464,7 +464,9 @@ export default function BiddingInterface({
   };
 
   // Generate fake song requests for urgency
-  const generateFakeSongRequests = (count = 5) => {
+  // Generate fake song requests for urgency when there are no real requests
+  // minBidAmount ensures fake bids never decrease the winning bid
+  const generateFakeSongRequests = (count = 5, minBidAmount = 0) => {
     const popularSongs = [
       { title: 'Uptown Funk', artist: 'Bruno Mars' },
       { title: 'Blinding Lights', artist: 'The Weeknd' },
@@ -503,21 +505,35 @@ export default function BiddingInterface({
       
       usedSongs.add(`${song.title}-${song.artist}`);
       
-      // Generate fake bid amount - primarily round numbers ($10, $15, $20, etc.)
-      // 80% chance of round number, 20% chance of $1 increment
-      const useRoundNumber = Math.random() > 0.2;
+      // Generate fake bid amount that is ALWAYS >= minBidAmount
+      // This ensures the winning bid never decreases when fake requests are regenerated
+      const baseMinBid = Math.max(minBidAmount, 500); // Ensure minimum $5
       let bidAmount;
       
-      if (useRoundNumber) {
-        // Round numbers: $10, $15, $20, $25, $30, $35, $40, $45, $50
+      if (baseMinBid === 0 || baseMinBid < 1000) {
+        // Starting bids: $10, $15, $20, $25, $30, $35, $40, $45, $50
         const roundAmounts = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000];
         bidAmount = roundAmounts[Math.floor(Math.random() * roundAmounts.length)];
       } else {
-        // $1 increment: $11, $16, $21, $26, $31, etc. (round number + $1)
-        const baseRoundAmounts = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500];
-        const baseAmount = baseRoundAmounts[Math.floor(Math.random() * baseRoundAmounts.length)];
-        bidAmount = baseAmount + 100; // Add $1
+        // Progressive bids: start from minBidAmount and add increments
+        // Generate bids that are higher than the current winning bid to show progression
+        const increments = [100, 200, 300, 500, 1000, 1500, 2000]; // $1, $2, $3, $5, $10, $15, $20
+        const increment = increments[Math.floor(Math.random() * increments.length)];
+        bidAmount = baseMinBid + increment;
+        
+        // Cap at reasonable maximum ($100 = 10000 cents)
+        if (bidAmount > 10000) {
+          bidAmount = 10000;
+        }
+        
+        // Round to nearest $5 for cleaner numbers (70% chance)
+        if (Math.random() > 0.3) {
+          bidAmount = Math.round(bidAmount / 500) * 500; // Round to nearest $5
+        }
       }
+      
+      // CRITICAL: Ensure bid is never less than minBidAmount
+      bidAmount = Math.max(bidAmount, baseMinBid);
       
       const bidderName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
       const timeAgo = Math.floor(Math.random() * 600); // 0-10 minutes ago
@@ -619,12 +635,6 @@ export default function BiddingInterface({
         // Only add fake song requests if there are NO real requests
         const realRequestCount = enhancedRequests.filter(r => !r.is_fake).length;
         
-        if (realRequestCount === 0) {
-          // No real requests - add fake ones to create urgency
-          const fakeRequests = generateFakeSongRequests(5 + Math.floor(Math.random() * 3)); // 5-7 fake requests
-          enhancedRequests = fakeRequests.sort((a, b) => (b.current_bid_amount || 0) - (a.current_bid_amount || 0));
-        }
-        
         // Batch state updates to prevent multiple re-renders
         setBiddingRound(prev => {
           // Only update if data actually changed to prevent unnecessary re-renders
@@ -638,17 +648,54 @@ export default function BiddingInterface({
         
         // Use functional update to merge requests smoothly
         setRequests(prevRequests => {
+          // Calculate previous winning bid to ensure it never decreases
+          const prevWinningBid = prevRequests.length > 0
+            ? Math.max(...prevRequests.map(r => r.current_bid_amount || 0))
+            : 0;
+          
+          // If no real requests, generate fake ones with minBidAmount to prevent winning bid from decreasing
+          if (realRequestCount === 0) {
+            // Calculate current winning bid from enhanced requests
+            const currentWinningBid = enhancedRequests.length > 0
+              ? Math.max(...enhancedRequests.map(r => r.current_bid_amount || 0))
+              : 0;
+            
+            // Use the higher of current or previous winning bid to ensure it never decreases
+            const minBidAmount = Math.max(currentWinningBid, prevWinningBid);
+            
+            const fakeRequests = generateFakeSongRequests(5 + Math.floor(Math.random() * 3), minBidAmount); // 5-7 fake requests
+            enhancedRequests = fakeRequests.sort((a, b) => (b.current_bid_amount || 0) - (a.current_bid_amount || 0));
+          }
+          
           // Create a map of existing requests for smooth updates
           const existingMap = new Map(prevRequests.map(r => [r.id, r]));
           const newMap = new Map(enhancedRequests.map(r => [r.id, r]));
           
           // Merge: keep existing if IDs match and data is similar, otherwise use new
+          // CRITICAL: For fake requests, preserve the higher bid amount to prevent winning bid from decreasing
           const merged = enhancedRequests.map(newReq => {
             const existing = existingMap.get(newReq.id);
-            if (existing && 
-                existing.current_bid_amount === newReq.current_bid_amount &&
-                existing.highest_bidder_name === newReq.highest_bidder_name) {
-              return existing; // No change, keep existing to prevent re-render
+            if (existing) {
+              // If it's a fake request, ensure bid amount never decreases
+              if (existing.is_fake && newReq.is_fake) {
+                const maxBid = Math.max(existing.current_bid_amount || 0, newReq.current_bid_amount || 0);
+                if (maxBid > (newReq.current_bid_amount || 0)) {
+                  // Preserve the higher bid from existing request
+                  return {
+                    ...newReq,
+                    current_bid_amount: maxBid,
+                    highest_bidder_name: existing.current_bid_amount >= newReq.current_bid_amount
+                      ? existing.highest_bidder_name
+                      : newReq.highest_bidder_name
+                  };
+                }
+              }
+              
+              // For real requests or when data is identical, keep existing to prevent re-render
+              if (existing.current_bid_amount === newReq.current_bid_amount &&
+                  existing.highest_bidder_name === newReq.highest_bidder_name) {
+                return existing; // No change, keep existing to prevent re-render
+              }
             }
             return newReq;
           });
