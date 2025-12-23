@@ -89,7 +89,7 @@ export default function BiddingInterface({
       const timeAgo = Math.floor(Math.random() * 180); // 0-3 minutes ago
       
       bids.push({
-        id: `dummy-${i}`,
+        id: `dummy-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
         bid_amount: currentBid,
         bidder_name: dummyNames[Math.floor(Math.random() * dummyNames.length)],
         created_at: new Date(Date.now() - timeAgo * 1000).toISOString(),
@@ -549,7 +549,7 @@ export default function BiddingInterface({
         bidding_round_id: biddingRound?.round?.id || null,
         is_fake: true,
         recentBids: [{
-          id: `fake-bid-${i}`,
+          id: `fake-bid-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
           bid_amount: bidAmount,
           bidder_name: bidderName,
           created_at: new Date(Date.now() - timeAgo * 1000).toISOString(),

@@ -225,6 +225,7 @@ async function extractYouTubeInfo(url) {
     const data = await response.json();
     const title = data.title || '';
     const authorName = data.author_name || ''; // Channel/uploader name
+    const thumbnailUrl = data.thumbnail_url || ''; // YouTube thumbnail/album art
 
     // Try to parse "Artist - Song" or "Song by Artist" format
     let artist = '';
@@ -295,7 +296,8 @@ async function extractYouTubeInfo(url) {
       title: songTitle || title,
       artist: artist || '',
       source: 'youtube',
-      url: url
+      url: url,
+      albumArt: thumbnailUrl || null
     };
   } catch (error) {
     console.error('YouTube extraction error:', error);
@@ -326,6 +328,7 @@ async function extractSpotifyInfo(url) {
     
     let title = '';
     let artist = '';
+    let albumArt = null;
     
     try {
       const response = await fetch(oEmbedUrl, {
@@ -335,6 +338,7 @@ async function extractSpotifyInfo(url) {
       
       if (response.ok) {
         const data = await response.json();
+        albumArt = data.thumbnail_url || null; // Spotify oEmbed thumbnail
         
         // oEmbed title format can be:
         // - "Song Title by Artist Name" (most common)
@@ -440,6 +444,14 @@ async function extractSpotifyInfo(url) {
         
         if (pageResponse.ok) {
           const html = await pageResponse.text();
+          
+          // Extract album art from og:image if not already found
+          if (!albumArt) {
+            const ogImageMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
+            if (ogImageMatch) {
+              albumArt = ogImageMatch[1];
+            }
+          }
           
           // Extract from JSON-LD structured data
           const jsonLdMatch = html.match(/<script type="application\/ld\+json">([^<]+)<\/script>/i);
@@ -569,11 +581,13 @@ async function extractSpotifyInfo(url) {
       artist = formatArtistName(artist);
     }
 
+
     return {
       title: title || '',
       artist: artist || '',
       source: 'spotify',
-      url: url
+      url: url,
+      albumArt: albumArt
     };
   } catch (error) {
     console.error('Spotify extraction error:', error);
@@ -610,6 +624,7 @@ async function extractSoundCloudInfo(url) {
 
     const data = await response.json();
     const title = data.title || '';
+    const albumArt = data.thumbnail_url || null; // SoundCloud oEmbed thumbnail
 
     // SoundCloud format can be:
     // 1. "Song Title by Artist" (most common)
@@ -641,7 +656,8 @@ async function extractSoundCloudInfo(url) {
       title: songTitle || title,
       artist: artist || '',
       source: 'soundcloud',
-      url: url
+      url: url,
+      albumArt: albumArt
     };
   } catch (error) {
     console.error('SoundCloud extraction error:', error);
@@ -708,6 +724,13 @@ async function extractTidalInfo(url) {
 
     const html = await response.text();
     
+    // Extract album art from og:image
+    let albumArt = null;
+    const ogImageMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
+    if (ogImageMatch) {
+      albumArt = ogImageMatch[1];
+    }
+    
     // Tidal stores track info in JSON-LD structured data or in meta tags
     // Look for JSON-LD script tag with track information
     const jsonLdMatch = html.match(/<script type="application\/ld\+json">([^<]+)<\/script>/i);
@@ -719,7 +742,8 @@ async function extractTidalInfo(url) {
             title: jsonLd.name,
             artist: jsonLd.byArtist.name || jsonLd.byArtist,
             source: 'tidal',
-            url: url
+            url: url,
+            albumArt: albumArt || jsonLd.image || null
           };
         }
       } catch (e) {
@@ -787,7 +811,8 @@ async function extractTidalInfo(url) {
         title: title || '',
         artist: artist || '',
         source: 'tidal',
-        url: url
+        url: url,
+        albumArt: albumArt
       };
     }
     
@@ -855,6 +880,13 @@ async function extractAppleMusicInfo(url) {
 
     const html = await response.text();
     
+    // Extract album art from og:image
+    let albumArt = null;
+    const ogImageMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
+    if (ogImageMatch) {
+      albumArt = ogImageMatch[1];
+    }
+    
     // Apple Music stores track info in JSON-LD structured data
     const jsonLdMatch = html.match(/<script type="application\/ld\+json">([^<]+)<\/script>/i);
     if (jsonLdMatch) {
@@ -874,7 +906,8 @@ async function extractAppleMusicInfo(url) {
                 title: title || '',
                 artist: artist || '',
                 source: 'apple_music',
-                url: url
+                url: url,
+                albumArt: albumArt || track.image || null
               };
             }
           }
@@ -887,7 +920,8 @@ async function extractAppleMusicInfo(url) {
               title: title || '',
               artist: artist || '',
               source: 'apple_music',
-              url: url
+              url: url,
+              albumArt: albumArt || jsonLd.image || null
             };
           }
         }
@@ -965,7 +999,8 @@ async function extractAppleMusicInfo(url) {
       title: title || '',
       artist: artist || '',
       source: 'apple_music',
-      url: url
+      url: url,
+      albumArt: albumArt
     };
   } catch (error) {
     console.error('Apple Music extraction error:', error);

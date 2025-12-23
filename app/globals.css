@@ -176,3 +176,21 @@
     background: linear-gradient(135deg, #10B981 0%, #059669 100%);
   }
 }
+
+/* Hide spinner arrows on number inputs for better mobile experience */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Ensure number input shows native keyboard on mobile without zoom */
+@media (max-width: 768px) {
+  input[type="number"] {
+    font-size: 16px; /* Prevents zoom on iOS when focusing */
+  }
+}

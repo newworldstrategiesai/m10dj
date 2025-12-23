@@ -159,3 +159,5 @@ Think like a platform engineer protecting:
 - Multi-brand integrity
 
 Assume every mistake has real-world financial consequences.
+
+Always try to reuse components when possible

@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Header from '../components/company/Header';
-import { Music, Mic, Loader2, AlertCircle, Gift, Zap, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2, DollarSign, ChevronDown, Clock } from 'lucide-react';
+import { Music, Mic, Loader2, AlertCircle, Gift, Zap, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2, DollarSign, ChevronDown, Clock, X, CheckCircle } from 'lucide-react';
 import SocialAccountSelector from '../components/ui/SocialAccountSelector';
 import PaymentMethodSelection from '../components/crowd-request/PaymentMethodSelection';
 import PaymentSuccessScreen from '../components/crowd-request/PaymentSuccessScreen';
 import PaymentAmountSelector from '../components/crowd-request/PaymentAmountSelector';
+import BiddingAmountSelector from '../components/bidding/BiddingAmountSelector';
 import { usePaymentSettings } from '../hooks/usePaymentSettings';
 import { useSongExtraction } from '../hooks/useSongExtraction';
 import { useCrowdRequestPayment } from '../hooks/useCrowdRequestPayment';
@@ -205,15 +206,16 @@ export function GeneralRequestsPage({
   const [amountType, setAmountType] = useState('preset'); // 'preset' or 'custom'
   const [presetAmount, setPresetAmount] = useState(500); // $5.00 in cents
   const [customAmount, setCustomAmount] = useState('');
+  const [biddingSelectedAmount, setBiddingSelectedAmount] = useState(null); // Amount selected via BiddingAmountSelector (in cents)
   const [isFastTrack, setIsFastTrack] = useState(false);
   const [isNext, setIsNext] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [songUrl, setSongUrl] = useState('');
+  const [songUrl, setSongUrl] = useState(''); // Keep for submission payload
   const [extractedSongUrl, setExtractedSongUrl] = useState(''); // Store the URL that was used for extraction
   const [isExtractedFromLink, setIsExtractedFromLink] = useState(false); // Track if song was extracted from link
-  const [showLinkField, setShowLinkField] = useState(true); // Track if link field should be shown
+  const [albumArtUrl, setAlbumArtUrl] = useState(null); // Store album art URL from extraction
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
   const songTitleInputRef = useRef(null); // Ref for scrolling to song title field
   const [requestId, setRequestId] = useState(null);
@@ -339,9 +341,30 @@ export function GeneralRequestsPage({
             if (data.requests && data.requests.length > 0) {
               // Find the highest bid across all requests
               const highestBid = Math.max(...data.requests.map(r => r.current_bid_amount || 0));
-              setCurrentWinningBid(highestBid);
+              setCurrentWinningBid(prev => {
+                // Only update if the value actually changed to prevent unnecessary re-renders
+                if (prev !== highestBid) {
+                  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+                    console.log('[requests.js] currentWinningBid updated:', {
+                      previous: prev / 100,
+                      new: highestBid / 100,
+                      change: (highestBid - prev) / 100
+                    });
+                  }
+                  return highestBid;
+                }
+                return prev;
+              });
             } else {
-              setCurrentWinningBid(0);
+              setCurrentWinningBid(prev => {
+                if (prev !== 0) {
+                  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+                    console.log('[requests.js] currentWinningBid reset to 0');
+                  }
+                  return 0;
+                }
+                return prev;
+              });
             }
           } else {
             setCurrentWinningBid(0);
@@ -355,8 +378,8 @@ export function GeneralRequestsPage({
     };
 
     fetchRoundInfo();
-    // Poll every 3 seconds to keep winning bid and timer updated (more frequent for better UX)
-    const interval = setInterval(fetchRoundInfo, 3000);
+    // Poll every 2 seconds to keep winning bid and timer updated (more frequent for better UX)
+    const interval = setInterval(fetchRoundInfo, 2000);
     
     // Update timer every second
     const timerInterval = setInterval(() => {
@@ -419,10 +442,28 @@ export function GeneralRequestsPage({
   }, [presetAmounts, presetAmount]);
 
   // Use song extraction hook
-  const { extractingSong, extractionError, extractSongInfo: extractSongInfoHook } = useSongExtraction();
+  const { extractingSong, extractionError, extractedData, extractSongInfo: extractSongInfoHook } = useSongExtraction();
+
+  // Check if bidding mode is enabled - use useMemo to make it reactive to state changes
+  // MUST be defined before getBaseAmount/getPaymentAmount callbacks that use it
+  const shouldUseBidding = useMemo(() => {
+    return (forceBiddingMode || biddingEnabled) && requestType === 'song_request';
+  }, [forceBiddingMode, biddingEnabled, requestType]);
+
+  // Debug: Log when bidding mode state changes
+  useEffect(() => {
+    console.log('[requests.js] Bidding mode state:', {
+      shouldUseBidding,
+      forceBiddingMode,
+      biddingEnabled,
+      requestType,
+      organizationId,
+      willUseBiddingSelector: shouldUseBidding && organizationId
+    });
+  }, [shouldUseBidding, forceBiddingMode, biddingEnabled, requestType, organizationId]);
 
   // Use payment calculation hook
-  const { getBaseAmount, getPaymentAmount } = useCrowdRequestPayment({
+  const { getBaseAmount: getBaseAmountHook, getPaymentAmount: getPaymentAmountHook } = useCrowdRequestPayment({
     amountType,
     presetAmount,
     customAmount,
@@ -439,10 +480,20 @@ export function GeneralRequestsPage({
     audioUploadFee: 10000 // $100.00 in cents
   });
 
-  // Check if bidding mode is enabled - use useMemo to make it reactive to state changes
-  const shouldUseBidding = useMemo(() => {
-    return (forceBiddingMode || biddingEnabled) && requestType === 'song_request';
-  }, [forceBiddingMode, biddingEnabled, requestType]);
+  // Wrapper functions that use bidding amount when in bidding mode
+  const getBaseAmount = useCallback(() => {
+    if (shouldUseBidding && biddingSelectedAmount !== null) {
+      return biddingSelectedAmount;
+    }
+    return getBaseAmountHook();
+  }, [shouldUseBidding, biddingSelectedAmount, getBaseAmountHook]);
+
+  const getPaymentAmount = useCallback(() => {
+    if (shouldUseBidding && biddingSelectedAmount !== null) {
+      return biddingSelectedAmount; // In bidding mode, amount is just the bid amount (no fees)
+    }
+    return getPaymentAmountHook();
+  }, [shouldUseBidding, biddingSelectedAmount, getPaymentAmountHook]);
 
   // Calculate minimum bid amount based on current winning bid (only for bidding mode)
   const dynamicMinimumAmount = useMemo(() => {
@@ -450,8 +501,27 @@ export function GeneralRequestsPage({
     // Minimum bid must be at least $5 above winning bid (or $5 if no bids yet)
     // Always add $5 to the winning bid, even if it's 0
     const minAmount = currentWinningBid > 0 ? currentWinningBid + 500 : 500;
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('[requests.js] dynamicMinimumAmount calculated:', {
+        shouldUseBidding,
+        currentWinningBid: currentWinningBid / 100,
+        minAmount: minAmount / 100
+      });
+    }
     return minAmount;
   }, [shouldUseBidding, currentWinningBid]);
+
+  // Debug log when values change for BiddingAmountSelector
+  useEffect(() => {
+    if (shouldUseBidding && organizationId && typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('[requests.js] BiddingAmountSelector props:', {
+        organizationId,
+        currentWinningBid: currentWinningBid / 100,
+        dynamicMinimumAmount: dynamicMinimumAmount ? dynamicMinimumAmount / 100 : null,
+        biddingSelectedAmount: biddingSelectedAmount ? biddingSelectedAmount / 100 : null
+      });
+    }
+  }, [shouldUseBidding, organizationId, currentWinningBid, dynamicMinimumAmount, biddingSelectedAmount]);
 
   // Generate dynamic preset amounts based on current winning bid (only for bidding mode)
   const dynamicBidPresets = useMemo(() => {
@@ -486,10 +556,12 @@ export function GeneralRequestsPage({
     // Debug log to verify preset amounts update
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       console.log('[requests.js] dynamicBidPresets updated:', {
+        shouldUseBidding,
         currentWinningBid: currentWinningBid / 100,
         safeMinBid: safeMinBid / 100,
         dynamicMinimumAmount: dynamicMinimumAmount ? dynamicMinimumAmount / 100 : null,
-        filteredPresets: filtered.map(p => ({ value: p.value / 100, label: p.label }))
+        filteredPresets: filtered.map(p => ({ value: p.value / 100, label: p.label })),
+        filteredCount: filtered.length
       });
     }
     
@@ -507,59 +579,114 @@ export function GeneralRequestsPage({
     skipPaymentValidation: shouldUseBidding // Skip payment validation in bidding mode
   });
 
+  // Helper function to detect if input is a URL
+  const detectUrl = (value) => {
+    if (!value || typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    // Check if it starts with http:// or https://
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      const urlPattern = /^(https?:\/\/)?([\w-]+\.)?(youtube\.com|youtu\.be|spotify\.com|soundcloud\.com|tidal\.com|music\.apple\.com|itunes\.apple\.com)/i;
+      return urlPattern.test(trimmed);
+    }
+    // Also check for URLs without protocol (user might paste without http://)
+    const urlPattern = /^(https?:\/\/)?([\w-]+\.)?(youtube\.com|youtu\.be|spotify\.com|soundcloud\.com|tidal\.com|music\.apple\.com|itunes\.apple\.com)/i;
+    return urlPattern.test(trimmed);
+  };
+
   const handleInputChange = async (e) => {
     const { name, value } = e.target;
     
-    // Detect if a URL was pasted into song title or artist field
-    if ((name === 'songTitle' || name === 'songArtist') && value) {
-      const urlPattern = /(youtube\.com|youtu\.be|spotify\.com|soundcloud\.com|tidal\.com|music\.apple\.com|itunes\.apple\.com)/i;
-      if (urlPattern.test(value)) {
-        // Move the URL to the link field and extract from there
-        setSongUrl(value);
-        // Extract song info from the URL (this will populate songTitle and songArtist)
-        await extractSongInfo(value);
-        // Clear the field that had the URL (don't set it as the field value)
+    // For unified song title field, detect URLs and extract
+    if (name === 'songTitle' && value) {
+      const isUrl = detectUrl(value);
+      
+      if (isUrl) {
+        // URL detected - trigger extraction
+        const url = value.trim();
+        setSongUrl(url); // Store for submission
+        setExtractedSongUrl(url);
+        
+        // Clear the input field immediately (don't show the URL)
+        setFormData(prev => ({ ...prev, songTitle: '' }));
+        
+        // Extract song info (this will populate songTitle and songArtist)
+        const extractedData = await extractSongInfo(url);
+        
+        // Store album art if available
+        if (extractedData?.albumArt) {
+          setAlbumArtUrl(extractedData.albumArt);
+        }
+        
+        // Don't set the URL as the field value - extraction will populate the title
         return;
       }
     }
     
     // Normal input change - set the field value
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear album art if user manually edits after extraction
+    if (name === 'songTitle' && albumArtUrl) {
+      setAlbumArtUrl(null);
+      setIsExtractedFromLink(false);
+      setExtractedSongUrl('');
+    }
   };
 
-  const handleSongUrlChange = async (e) => {
-    const url = e.target.value;
-    setSongUrl(url);
-
-    // Auto-extract when URL is pasted and looks complete
-    if (url && (url.includes('youtube.com') || url.includes('youtu.be') || 
-        url.includes('spotify.com') || url.includes('soundcloud.com') || 
-        url.includes('tidal.com') || url.includes('music.apple.com') || 
-        url.includes('itunes.apple.com'))) {
-      await extractSongInfo(url);
+  // Handle blur event for URL detection (when user finishes typing)
+  const handleSongTitleBlur = async (e) => {
+    const value = e.target.value;
+    if (!value || extractingSong) return;
+    
+    // Check if it's a URL that wasn't detected on change
+    const isUrl = detectUrl(value);
+    if (isUrl && !isExtractedFromLink) {
+      const url = value.trim();
+      setSongUrl(url);
+      setExtractedSongUrl(url);
+      
+      // Clear the input field immediately (don't show the URL)
+      setFormData(prev => ({ ...prev, songTitle: '' }));
+      
+      const extractedData = await extractSongInfo(url);
+      if (extractedData?.albumArt) {
+        setAlbumArtUrl(extractedData.albumArt);
+      }
     }
   };
 
   const extractSongInfo = async (url) => {
-    await extractSongInfoHook(url, setFormData);
-    // Store the URL that was used for extraction and mark as extracted
-    setExtractedSongUrl(url);
-    setIsExtractedFromLink(true);
-    // Keep URL visible in the link field for a moment, then clear it
-    // The useEffect will handle hiding the field when song info is populated
-    setTimeout(() => {
-      setSongUrl('');
-    }, CROWD_REQUEST_CONSTANTS.SONG_EXTRACTION_DELAY);
+    const extractedData = await extractSongInfoHook(url, setFormData);
+    
+    if (extractedData) {
+      // Store the URL that was used for extraction and mark as extracted
+      setExtractedSongUrl(url);
+      setIsExtractedFromLink(true);
+      setSongUrl(url); // Keep for submission
+      
+      // Store album art
+      if (extractedData.albumArt) {
+        setAlbumArtUrl(extractedData.albumArt);
+      }
+      
+      return extractedData;
+    } else {
+      // Extraction failed - clear states
+      setIsExtractedFromLink(false);
+      setAlbumArtUrl(null);
+      return null;
+    }
   };
 
-  // Hide link field when song is manually entered
-  useEffect(() => {
-    if (formData.songTitle && formData.songArtist && showLinkField && !extractingSong) {
-      // Song is populated manually or from extraction, hide link field
-      setShowLinkField(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.songTitle, formData.songArtist, extractingSong]);
+  // Clear extraction state
+  const handleClearExtraction = () => {
+    setFormData(prev => ({ ...prev, songTitle: '', songArtist: '' }));
+    setSongUrl('');
+    setExtractedSongUrl('');
+    setIsExtractedFromLink(false);
+    setAlbumArtUrl(null);
+  };
+
 
   // Auto-expand audio upload section if file is already uploaded
   useEffect(() => {
@@ -570,15 +697,7 @@ export function GeneralRequestsPage({
 
   // Reset form to clean slate when "Share another song" is clicked
   const handleShareAnotherSong = () => {
-    setFormData(prev => ({
-      ...prev,
-      songTitle: '',
-      songArtist: ''
-    }));
-    setSongUrl('');
-    setExtractedSongUrl('');
-    setIsExtractedFromLink(false);
-    setShowLinkField(true);
+    handleClearExtraction();
     setError('');
     // Reset step if we're on payment step
     if (currentStep >= 2) {
@@ -1544,75 +1663,55 @@ export function GeneralRequestsPage({
                           <span className="leading-tight">Submit Your Song Request</span>
                         </h2>
                         
-                        {/* Music Link Input */}
-                        {showLinkField ? (
-                          <>
-                            <div>
-                              <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                                <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                                {organizationData?.requests_music_link_label || 'Paste Music Link (Optional)'}
-                              </label>
-                              <div className="relative">
-                                <input
-                                  type="url"
-                                  value={songUrl}
-                                  onChange={handleSongUrlChange}
-                                  className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation ${
-                                    extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : 'pr-3 sm:pr-4'
-                                  }`}
-                                  placeholder={organizationData?.requests_music_link_placeholder || "Paste YouTube, Spotify, SoundCloud, Tidal, or Apple Music link"}
-                                  autoComplete="off"
-                                />
-                                {extractingSong && (
-                                  <div className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2 pointer-events-none">
-                                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-500 flex-shrink-0" />
-                                    <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline whitespace-nowrap">Extracting...</span>
-                                  </div>
-                                )}
-                              </div>
-                              <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {organizationData?.requests_music_link_help_text || "We'll automatically fill in the song title and artist name"}
-                              </p>
-                            </div>
-
-                            <div className="relative my-2 sm:my-3">
-                              <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-300 dark:border-gray-800"></div>
-                              </div>
-                              <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
-                                <span className="bg-white dark:bg-black px-2 text-gray-500 dark:text-gray-400">
-                                  {organizationData?.requests_manual_entry_divider || 'Or enter manually'}
-                                </span>
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="mb-2 sm:mb-3">
-                            <button
-                              type="button"
-                              onClick={handleShareAnotherSong}
-                              className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
-                            >
-                              <Music className="w-3 h-3 sm:w-4 sm:h-4" />
-                              {organizationData?.requests_start_over_text || 'Start over'}
-                            </button>
-                          </div>
-                        )}
-
+                        {/* Unified Song Name/URL Input */}
                         <div>
                           <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                            {organizationData?.requests_song_title_label || 'Song Title'} <span className="text-red-500">*</span>
+                            <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                            {organizationData?.requests_song_title_label || 'Song Name or Link'} <span className="text-red-500">*</span>
                           </label>
-                          <input
-                            ref={songTitleInputRef}
-                            type="text"
-                            name="songTitle"
-                            value={formData.songTitle}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation"
-                            placeholder={organizationData?.requests_song_title_placeholder || "Enter song title"}
-                            autoComplete="off"
-                          />
+                          <div className="relative">
+                            <input
+                              ref={songTitleInputRef}
+                              type="text"
+                              name="songTitle"
+                              value={formData.songTitle}
+                              onChange={handleInputChange}
+                              onBlur={handleSongTitleBlur}
+                              className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation ${
+                                extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3 sm:pr-4'
+                              }`}
+                              placeholder={organizationData?.requests_song_title_placeholder || "Enter song name or paste a link (YouTube, Spotify, SoundCloud, etc.)"}
+                              autoComplete="off"
+                            />
+                            {extractingSong && (
+                              <div className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2 pointer-events-none">
+                                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-500 flex-shrink-0" />
+                                <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline whitespace-nowrap">Extracting...</span>
+                              </div>
+                            )}
+                            {isExtractedFromLink && !extractingSong && (
+                              <button
+                                type="button"
+                                onClick={handleClearExtraction}
+                                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                title="Clear and start over"
+                              >
+                                <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400" />
+                              </button>
+                            )}
+                          </div>
+                          {extractionError && (
+                            <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                              {extractionError}
+                            </p>
+                          )}
+                          {isExtractedFromLink && !extractionError && (
+                            <p className="mt-1 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                              Song info extracted successfully
+                            </p>
+                          )}
                         </div>
                         
                         <div>
@@ -1630,6 +1729,29 @@ export function GeneralRequestsPage({
                             autoComplete="off"
                           />
                         </div>
+
+                        {/* Album Art Display */}
+                        {albumArtUrl && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
+                            <img
+                              src={albumArtUrl}
+                              alt="Album art"
+                              className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover flex-shrink-0"
+                              onError={(e) => {
+                                // Hide image if it fails to load
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Album Art</p>
+                              <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
+                                {formData.songTitle && formData.songArtist 
+                                  ? `${formData.songTitle} by ${formData.songArtist}`
+                                  : 'Song information'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Current Winning Bid Display - Show prominently above amount selector */}
                         {shouldUseBidding && currentWinningBid > 0 && (
@@ -1654,32 +1776,52 @@ export function GeneralRequestsPage({
                           </div>
                         )}
 
-                        {/* Bid Amount Selector - Always show on bid page with dynamic amounts based on winning bid */}
-                        <div data-payment-section className="mt-4" key={`bid-selector-${currentWinningBid}`}>
-                          <PaymentAmountSelector
-                            amountType={amountType}
-                            setAmountType={setAmountType}
-                            presetAmount={presetAmount}
-                            setPresetAmount={setPresetAmount}
-                            customAmount={customAmount}
-                            setCustomAmount={setCustomAmount}
-                            presetAmounts={shouldUseBidding && dynamicBidPresets && dynamicBidPresets.length > 0 ? dynamicBidPresets : (shouldUseBidding ? [] : presetAmounts)}
-                            minimumAmount={shouldUseBidding && dynamicMinimumAmount ? dynamicMinimumAmount : minimumAmount}
-                            isBiddingMode={shouldUseBidding}
-                            currentWinningBid={currentWinningBid}
-                            requestType={requestType}
-                            isFastTrack={false}
-                            setIsFastTrack={() => {}}
-                            isNext={false}
-                            setIsNext={() => {}}
-                            fastTrackFee={0}
-                            nextFee={0}
-                            getBaseAmount={getBaseAmount}
-                            getPaymentAmount={getPaymentAmount}
-                            hidePriorityOptions={true} // Hide fast track and next options on bid page
-                            isBiddingMode={shouldUseBidding} // Pass bidding mode flag
-                            currentWinningBid={currentWinningBid} // Pass current winning bid for display
-                          />
+                        {/* Bid Amount Selector - Use dedicated BiddingAmountSelector in bidding mode */}
+                        <div data-payment-section className="mt-4" key={`bid-selector-${shouldUseBidding ? 'bidding' : 'normal'}-${organizationId || 'no-org'}`}>
+                          {shouldUseBidding ? (
+                            organizationId ? (
+                              <BiddingAmountSelector
+                                key={`bidding-selector-${organizationId}`}
+                                organizationId={organizationId}
+                                selectedAmount={biddingSelectedAmount}
+                                onAmountChange={setBiddingSelectedAmount}
+                                amountType={amountType}
+                                setAmountType={setAmountType}
+                                currentWinningBid={currentWinningBid}
+                                minimumBid={dynamicMinimumAmount || 500}
+                              />
+                            ) : (
+                              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-center">
+                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                  Loading bidding options...
+                                </p>
+                              </div>
+                            )
+                          ) : (
+                            <PaymentAmountSelector
+                              key={`payment-selector-${shouldUseBidding ? 'bidding' : 'normal'}-${presetAmounts.length}`}
+                              amountType={amountType}
+                              setAmountType={setAmountType}
+                              presetAmount={presetAmount}
+                              setPresetAmount={setPresetAmount}
+                              customAmount={customAmount}
+                              setCustomAmount={setCustomAmount}
+                              presetAmounts={presetAmounts}
+                              minimumAmount={minimumAmount}
+                              requestType={requestType}
+                              isFastTrack={isFastTrack}
+                              setIsFastTrack={setIsFastTrack}
+                              isNext={isNext}
+                              setIsNext={setIsNext}
+                              fastTrackFee={fastTrackFee}
+                              nextFee={nextFee}
+                              getBaseAmount={getBaseAmount}
+                              getPaymentAmount={getPaymentAmount}
+                              hidePriorityOptions={false}
+                              isBiddingMode={false}
+                              currentWinningBid={0}
+                            />
+                          )}
                         </div>
 
                         {/* Bid Amount Required Notification - Show when bid amount is missing */}
@@ -1712,11 +1854,23 @@ export function GeneralRequestsPage({
                           disabled={(() => {
                             if (submitting) return true;
                             if (!formData.songTitle.trim()) return true;
-                            // In bidding mode, also check if a bid amount is selected
+                            // In bidding mode, also check if a bid amount is selected and greater than winning bid
                             if (shouldUseBidding) {
                               const bidAmount = getPaymentAmount();
                               const minBid = dynamicMinimumAmount || 500;
-                              if (!bidAmount || bidAmount < minBid) return true;
+                              const winningBid = currentWinningBid || 0;
+                              console.log('[requests.js] Submit button check:', {
+                                bidAmount: bidAmount ? bidAmount / 100 : null,
+                                minBid: minBid / 100,
+                                winningBid: winningBid / 100,
+                                biddingSelectedAmount: biddingSelectedAmount ? biddingSelectedAmount / 100 : null,
+                                shouldUseBidding,
+                                meetsMinimum: bidAmount >= minBid,
+                                beatsWinning: bidAmount > winningBid,
+                                disabled: !bidAmount || bidAmount < minBid || bidAmount <= winningBid
+                              });
+                              // Must have a bid amount, meet minimum, AND be greater than current winning bid
+                              if (!bidAmount || bidAmount < minBid || bidAmount <= winningBid) return true;
                             }
                             return false;
                           })()}
@@ -1726,8 +1880,13 @@ export function GeneralRequestsPage({
                             if (shouldUseBidding) {
                               const bidAmount = getPaymentAmount();
                               const minBid = dynamicMinimumAmount || 500;
-                              if (!bidAmount || bidAmount < minBid) {
-                                return `Please select a bid amount. Minimum bid is $${((minBid || 500) / 100).toFixed(2)}`;
+                              const winningBid = currentWinningBid || 0;
+                              if (!bidAmount || bidAmount < minBid || bidAmount <= winningBid) {
+                                if (winningBid > 0) {
+                                  return `Your bid must be greater than $${(winningBid / 100).toFixed(2)}. Minimum bid is $${((minBid || 500) / 100).toFixed(2)}`;
+                                } else {
+                                  return `Please select a bid amount. Minimum bid is $${((minBid || 500) / 100).toFixed(2)}`;
+                                }
                               }
                             }
                             return '';
@@ -1980,77 +2139,56 @@ export function GeneralRequestsPage({
                   {/* Song Request Fields */}
                   {requestType === 'song_request' && (
                     <div className="space-y-2 sm:space-y-3 md:space-y-4">
-                      {/* Music Link Input - Show only when showLinkField is true */}
-                      {showLinkField ? (
-                        <>
-                          <div>
-                            <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                              <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                              {organizationData?.requests_music_link_label || 'Paste Music Link (Optional)'}
-                            </label>
-                            <div className="relative">
-                              <input
-                                type="url"
-                                value={songUrl}
-                                onChange={handleSongUrlChange}
-                                className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation ${
-                                  extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : 'pr-3 sm:pr-4'
-                                }`}
-                                placeholder={organizationData?.requests_music_link_placeholder || "Paste YouTube, Spotify, SoundCloud, Tidal, or Apple Music link"}
-                                autoComplete="off"
-                              />
-                              {extractingSong && (
-                                <div className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2 pointer-events-none">
-                                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-500 flex-shrink-0" />
-                                  <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline whitespace-nowrap">Extracting...</span>
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {organizationData?.requests_music_link_help_text || "We'll automatically fill in the song title and artist name"}
-                            </p>
-                          </div>
-
-                          <div className="relative my-2 sm:my-3">
-                            <div className="absolute inset-0 flex items-center">
-                              <div className="w-full border-t border-gray-300 dark:border-gray-800"></div>
-                            </div>
-                            <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
-                              <span className="bg-white dark:bg-black px-2 text-gray-500 dark:text-gray-400">
-                                {organizationData?.requests_manual_entry_divider || 'Or enter manually'}
-                              </span>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        /* Show "Start over" button when link field is hidden */
-                        <div className="mb-2 sm:mb-3">
-                          <button
-                            type="button"
-                            onClick={handleShareAnotherSong}
-                            className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
-                          >
-                            <Music className="w-3 h-3 sm:w-4 sm:h-4" />
-                            {organizationData?.requests_start_over_text || 'Start over'}
-                          </button>
-                        </div>
-                      )}
-
+                      {/* Unified Song Name/URL Input */}
                       <div>
                         <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                          {organizationData?.requests_song_title_label || 'Song Title'} <span className="text-red-500">*</span>
+                          <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                          {organizationData?.requests_song_title_label || 'Song Name or Link'} <span className="text-red-500">*</span>
                         </label>
-                        <input
-                          ref={songTitleInputRef}
-                          type="text"
-                          name="songTitle"
-                          value={formData.songTitle}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation"
-                          placeholder={organizationData?.requests_song_title_placeholder || "Enter song title"}
-                          required
-                          autoComplete="off"
-                        />
+                        <div className="relative">
+                          <input
+                            ref={songTitleInputRef}
+                            type="text"
+                            name="songTitle"
+                            value={formData.songTitle}
+                            onChange={handleInputChange}
+                            onBlur={handleSongTitleBlur}
+                            className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation ${
+                              extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3 sm:pr-4'
+                            }`}
+                            placeholder={organizationData?.requests_song_title_placeholder || "Enter song name or paste a link (YouTube, Spotify, SoundCloud, etc.)"}
+                            required
+                            autoComplete="off"
+                          />
+                          {extractingSong && (
+                            <div className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2 pointer-events-none">
+                              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-500 flex-shrink-0" />
+                              <span className="text-xs text-purple-600 dark:text-purple-400 hidden sm:inline whitespace-nowrap">Extracting...</span>
+                            </div>
+                          )}
+                          {isExtractedFromLink && !extractingSong && (
+                            <button
+                              type="button"
+                              onClick={handleClearExtraction}
+                              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              title="Clear and start over"
+                            >
+                              <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400" />
+                            </button>
+                          )}
+                        </div>
+                        {extractionError && (
+                          <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                            {extractionError}
+                          </p>
+                        )}
+                        {isExtractedFromLink && !extractionError && (
+                          <p className="mt-1 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                            Song info extracted successfully
+                          </p>
+                        )}
                       </div>
                       
                       <div>
@@ -2068,6 +2206,29 @@ export function GeneralRequestsPage({
                           autoComplete="off"
                         />
                       </div>
+
+                      {/* Album Art Display */}
+                      {albumArtUrl && (
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
+                          <img
+                            src={albumArtUrl}
+                            alt="Album art"
+                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover flex-shrink-0"
+                            onError={(e) => {
+                              // Hide image if it fails to load
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Album Art</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
+                              {formData.songTitle && formData.songArtist 
+                                ? `${formData.songTitle} by ${formData.songArtist}`
+                                : 'Song information'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Audio File Upload Section - Collapsible */}
                       {organizationData?.requests_show_audio_upload !== false && (
@@ -2373,7 +2534,28 @@ export function GeneralRequestsPage({
                 >
                   <button
                     type={currentStep === 1 ? "button" : "submit"}
-                    disabled={submitting || (currentStep >= 2 && getPaymentAmount() < (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount))}
+                    disabled={(() => {
+                      if (submitting) return true;
+                      if (currentStep >= 2) {
+                        const amount = getPaymentAmount();
+                        // In bidding mode, check against dynamic minimum bid
+                        if (shouldUseBidding) {
+                          const minBid = dynamicMinimumAmount || 500;
+                          const isDisabled = !amount || amount < minBid;
+                          console.log('[requests.js] Continue button check (bidding):', {
+                            amount: amount ? amount / 100 : null,
+                            minBid: minBid / 100,
+                            biddingSelectedAmount: biddingSelectedAmount ? biddingSelectedAmount / 100 : null,
+                            disabled: isDisabled
+                          });
+                          return isDisabled;
+                        }
+                        // Regular payment mode
+                        const minAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+                        return !amount || amount < minAmount;
+                      }
+                      return false;
+                    })()}
                     className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-500 hover:via-pink-500 hover:to-purple-500 text-white shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
                     onClick={(e) => {
                       if (currentStep === 1) {
