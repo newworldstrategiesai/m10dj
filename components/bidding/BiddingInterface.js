@@ -705,6 +705,7 @@ export default function BiddingInterface({
   }, [organizationId, biddingRound?.active]);
 
   // Sort requests by current bid amount (highest first) - memoized for reactivity
+  // MUST be before any early returns to follow Rules of Hooks
   const sortedRequests = useMemo(() => {
     return [...requests].sort((a, b) => {
       const bidA = a.current_bid_amount || 0;
@@ -715,6 +716,7 @@ export default function BiddingInterface({
   }, [requests]);
 
   // Calculate current winning bid - memoized and reactive
+  // MUST be before any early returns to follow Rules of Hooks
   const currentWinningBidAmount = useMemo(() => {
     if (requests.length === 0) return 0;
     const winningBid = Math.max(...requests.map(r => r.current_bid_amount || 0));
@@ -735,6 +737,7 @@ export default function BiddingInterface({
     : null;
 
   // Calculate minimum bid based on current winning bid - use memoized value
+  // MUST be before any early returns to follow Rules of Hooks
   const minBid = useMemo(() => {
     return currentRequest 
       ? (() => {
@@ -747,11 +750,51 @@ export default function BiddingInterface({
   }, [currentRequest, currentWinningBidAmount]);
 
   // Pre-select minimum bid when minBid changes
+  // MUST be before any early returns to follow Rules of Hooks
   useEffect(() => {
     if (minBid > 0 && selectedPresetBid === null && bidAmountType === 'preset') {
       setSelectedPresetBid(minBid);
     }
   }, [minBid, selectedPresetBid, bidAmountType]);
+
+  // Generate dynamic preset bid amounts based on current winning bid - memoized for reactivity
+  // MUST be before any early returns to follow Rules of Hooks
+  const presetBids = useMemo(() => {
+    const presets = [];
+    const baseMin = minBid;
+    
+    // Always include minimum bid as first option
+    presets.push({
+      value: baseMin,
+      label: `$${(baseMin / 100).toFixed(2)}`
+    });
+    
+    // Add increments: +$5, +$10, +$20, +$50
+    const increments = [500, 1000, 2000, 5000]; // $5, $10, $20, $50
+    increments.forEach(increment => {
+      const amount = baseMin + increment;
+      presets.push({
+        value: amount,
+        label: `$${(amount / 100).toFixed(2)}`
+      });
+    });
+    
+    return presets;
+  }, [minBid]);
+
+  // Get the actual bid amount based on type
+  const getBidAmount = () => {
+    if (bidAmountType === 'preset' && selectedPresetBid !== null) {
+      return selectedPresetBid;
+    } else if (bidAmountType === 'custom' && customBidAmount) {
+      return Math.round(parseFloat(customBidAmount) * 100);
+    }
+    return null;
+  };
+
+  // Check if current selected bid beats the winning bid
+  const selectedBidAmount = getBidAmount();
+  const beatsWinningBid = selectedBidAmount && currentWinningBidAmount > 0 && selectedBidAmount > currentWinningBidAmount;
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -902,45 +945,6 @@ export default function BiddingInterface({
       </div>
     );
   }
-
-
-  // Generate dynamic preset bid amounts based on current winning bid - memoized for reactivity
-  const presetBids = useMemo(() => {
-    const presets = [];
-    const baseMin = minBid;
-    
-    // Always include minimum bid as first option
-    presets.push({
-      value: baseMin,
-      label: `$${(baseMin / 100).toFixed(2)}`
-    });
-    
-    // Add increments: +$5, +$10, +$20, +$50
-    const increments = [500, 1000, 2000, 5000]; // $5, $10, $20, $50
-    increments.forEach(increment => {
-      const amount = baseMin + increment;
-      presets.push({
-        value: amount,
-        label: `$${(amount / 100).toFixed(2)}`
-      });
-    });
-    
-    return presets;
-  }, [minBid]);
-
-  // Get the actual bid amount based on type
-  const getBidAmount = () => {
-    if (bidAmountType === 'preset' && selectedPresetBid !== null) {
-      return selectedPresetBid;
-    } else if (bidAmountType === 'custom' && customBidAmount) {
-      return Math.round(parseFloat(customBidAmount) * 100);
-    }
-    return null;
-  };
-
-  // Check if current selected bid beats the winning bid
-  const selectedBidAmount = getBidAmount();
-  const beatsWinningBid = selectedBidAmount && currentWinningBidAmount > 0 && selectedBidAmount > currentWinningBidAmount;
 
   return (
     <div className={`space-y-4 ${winningRequest ? 'pb-20 sm:pb-24' : 'pb-4'}`}>
