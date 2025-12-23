@@ -27,3 +27,5 @@ export function TestimonialCard({ quote, author, location, className }: Testimon
 
 
 
+
+

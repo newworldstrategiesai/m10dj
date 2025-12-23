@@ -970,7 +970,7 @@ export default function BiddingInterface({
 
       {/* Bid Form - Only show if user has a request in the round */}
       {requestId && currentRequest ? (
-        <form onSubmit={handlePlaceBid} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+        <form onSubmit={handlePlaceBid} data-bid-form className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
           <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Music className="w-4 h-4" />
             Song Request Details
@@ -1368,6 +1368,48 @@ export default function BiddingInterface({
         </div>
       </div>
 
+      {/* Floating Quick Bid Increase Button - Show when user is outbid */}
+      {currentRequest && requestId && (() => {
+        const userBid = currentRequest.current_bid_amount || 0;
+        const highestBid = sortedRequests.length > 0 ? sortedRequests[0].current_bid_amount : 0;
+        const isOutbid = highestBid > userBid && userBid > 0;
+        
+        if (isOutbid) {
+          const minBidToWin = highestBid + 100; // $1 increment
+          return (
+            <div className="fixed bottom-20 sm:bottom-24 right-4 z-50">
+              <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full shadow-2xl border-2 border-white/20 p-4 animate-bounce">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="text-center">
+                    <p className="text-xs font-semibold mb-1">You've been outbid!</p>
+                    <p className="text-sm font-bold">Current: ${(highestBid / 100).toFixed(2)}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      // Quick bid increase - set to minimum to win
+                      setBidAmountType('custom');
+                      setCustomBidAmount((minBidToWin / 100).toFixed(2));
+                      setSelectedPresetBid(null);
+                      // Scroll to bid form
+                      setTimeout(() => {
+                        const bidForm = document.querySelector('[data-bid-form]');
+                        if (bidForm) {
+                          bidForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 100);
+                    }}
+                    className="px-4 py-2 bg-white text-red-600 font-bold rounded-full hover:bg-gray-100 transition-all text-sm shadow-lg"
+                  >
+                    Bid ${(minBidToWin / 100).toFixed(2)} to Win
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       {/* Current Request Info - Only show if user has a request in the round */}
       {currentRequest && requestId && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -1391,6 +1433,87 @@ export default function BiddingInterface({
               )}
             </div>
           </div>
+          
+          {/* Quick Bid Increase Buttons */}
+          {(() => {
+            const userBid = currentRequest.current_bid_amount || 0;
+            const highestBid = sortedRequests.length > 0 ? sortedRequests[0].current_bid_amount : 0;
+            const isOutbid = highestBid > userBid && userBid > 0;
+            
+            if (isOutbid) {
+              const minBidToWin = highestBid + 100;
+              const quickIncrements = [
+                { amount: minBidToWin, label: `$${(minBidToWin / 100).toFixed(2)} (Win)` },
+                { amount: highestBid + 500, label: `$${((highestBid + 500) / 100).toFixed(2)}` },
+                { amount: highestBid + 1000, label: `$${((highestBid + 1000) / 100).toFixed(2)}` },
+                { amount: highestBid + 2000, label: `$${((highestBid + 2000) / 100).toFixed(2)}` }
+              ];
+              
+              return (
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    You've been outbid! Increase your bid:
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {quickIncrements.map((inc, idx) => (
+                      <button
+                        key={idx}
+                        onClick={async () => {
+                          setBidAmountType('custom');
+                          setCustomBidAmount((inc.amount / 100).toFixed(2));
+                          setSelectedPresetBid(null);
+                          // Auto-submit if it's the minimum to win
+                          if (idx === 0 && biddingRound?.round?.id) {
+                            setPlacingBid(true);
+                            try {
+                              const bidAmountCents = inc.amount;
+                              const response = await fetch('/api/bidding/place-bid', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  requestId: requestId,
+                                  biddingRoundId: biddingRound.round.id,
+                                  bidAmount: bidAmountCents,
+                                  bidderName: bidderName.trim() || 'Anonymous',
+                                  bidderEmail: bidderEmail.trim() || null,
+                                  bidderPhone: bidderPhone.trim() || null,
+                                  organizationId: organizationId
+                                })
+                              });
+                              const data = await response.json();
+                              if (!response.ok) {
+                                throw new Error(data.error || 'Failed to place bid');
+                              }
+                              setSuccess(`Bid placed! You're now the highest bidder at $${(bidAmountCents / 100).toFixed(2)}`);
+                              setSelectedPresetBid(null);
+                              setCustomBidAmount('');
+                              setBidAmountType('preset');
+                              setTimeout(() => {
+                                loadCurrentRound();
+                              }, 1000);
+                            } catch (err) {
+                              setError(err.message || 'Failed to place bid');
+                            } finally {
+                              setPlacingBid(false);
+                            }
+                          }
+                        }}
+                        className={`py-2 px-2 rounded-lg font-semibold text-xs sm:text-sm transition-all ${
+                          idx === 0
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-400 hover:to-emerald-400 shadow-lg'
+                            : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50'
+                        }`}
+                      >
+                        {inc.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           {/* Recent Bids */}
           {currentRequest.recentBids && currentRequest.recentBids.length > 0 && (

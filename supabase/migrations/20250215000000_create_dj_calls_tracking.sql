@@ -144,3 +144,5 @@ CREATE POLICY "System can manage virtual numbers"
 COMMENT ON TABLE dj_calls IS 'Tracks all incoming phone calls from DJ Dash hosted pages for revenue capture and analytics';
 COMMENT ON TABLE dj_virtual_numbers IS 'Maps virtual phone numbers to DJ profiles for call tracking';
 
+
+

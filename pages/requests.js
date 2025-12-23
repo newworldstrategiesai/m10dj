@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Header from '../components/company/Header';
-import { Music, Mic, Loader2, AlertCircle, Gift, Zap, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2, DollarSign, ChevronDown } from 'lucide-react';
+import { Music, Mic, Loader2, AlertCircle, Gift, Zap, Facebook, Instagram, Twitter, Youtube, Linkedin, Link2, DollarSign, ChevronDown, Clock } from 'lucide-react';
 import SocialAccountSelector from '../components/ui/SocialAccountSelector';
 import PaymentMethodSelection from '../components/crowd-request/PaymentMethodSelection';
 import PaymentSuccessScreen from '../components/crowd-request/PaymentSuccessScreen';
@@ -20,6 +20,7 @@ import { getCoverPhotoUrl } from '../utils/cover-photo-helper';
 import { useQRScanTracking } from '../hooks/useQRScanTracking';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import BiddingInterface from '../components/bidding/BiddingInterface';
+import BidSuccessModal from '../components/bidding/BidSuccessModal';
 
 const logger = createLogger('GeneralRequestsPage');
 
@@ -233,6 +234,10 @@ export function GeneralRequestsPage({
   const [biddingRequestId, setBiddingRequestId] = useState(null); // Request ID if added to bidding round
   const [showBiddingInterface, setShowBiddingInterface] = useState(false); // Show bidding UI
   const [currentWinningBid, setCurrentWinningBid] = useState(0); // Current winning bid amount in cents
+  const [showBidSuccessModal, setShowBidSuccessModal] = useState(false); // Show success modal after bid submission
+  const [submittedBidAmount, setSubmittedBidAmount] = useState(0); // Amount of submitted bid
+  const [roundNumber, setRoundNumber] = useState(null); // Current round number
+  const [roundTimeRemaining, setRoundTimeRemaining] = useState(0); // Time remaining in round
 
   // Helper function to get social URL with user preference
   const getSocialUrl = (platform, defaultUrl) => {
@@ -322,10 +327,46 @@ export function GeneralRequestsPage({
       }
     };
 
-    fetchCurrentWinningBid();
-    // Poll every 5 seconds to keep winning bid updated
-    const interval = setInterval(fetchCurrentWinningBid, 5000);
-    return () => clearInterval(interval);
+    const fetchRoundInfo = async () => {
+      try {
+        const response = await fetch(`/api/bidding/current-round?organizationId=${organizationId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.active && data.round) {
+            setRoundNumber(data.round.roundNumber);
+            setRoundTimeRemaining(data.round.timeRemaining);
+            
+            if (data.requests && data.requests.length > 0) {
+              // Find the highest bid across all requests
+              const highestBid = Math.max(...data.requests.map(r => r.current_bid_amount || 0));
+              setCurrentWinningBid(highestBid);
+            } else {
+              setCurrentWinningBid(0);
+            }
+          } else {
+            setCurrentWinningBid(0);
+            setRoundTimeRemaining(0);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching round info:', error);
+        setCurrentWinningBid(0);
+      }
+    };
+
+    fetchRoundInfo();
+    // Poll every 5 seconds to keep winning bid and timer updated
+    const interval = setInterval(fetchRoundInfo, 5000);
+    
+    // Update timer every second
+    const timerInterval = setInterval(() => {
+      setRoundTimeRemaining(prev => Math.max(0, prev - 1));
+    }, 1000);
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(timerInterval);
+    };
   }, [forceBiddingMode, biddingEnabled, requestType, organizationId]);
 
   // Apply dark mode only on requests page - ensure it overrides any theme settings
@@ -692,17 +733,68 @@ export function GeneralRequestsPage({
           const biddingData = await biddingResponse.json();
           
           if (biddingResponse.ok && biddingData.success) {
-            // Successfully added to bidding round - show bidding interface
+            // Successfully added to bidding round - now place the actual bid
+            const bidAmount = getPaymentAmount();
             setBiddingRequestId(mainData.requestId);
+            
+            // Place the bid immediately with the selected amount
+            try {
+              const placeBidResponse = await fetch('/api/bidding/place-bid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  requestId: mainData.requestId,
+                  biddingRoundId: biddingData.biddingRoundId,
+                  bidAmount: bidAmount,
+                  bidderName: formData.requesterName?.trim() || 'Guest',
+                  bidderEmail: formData.requesterEmail?.trim() || null,
+                  bidderPhone: formData.requesterPhone?.trim() || null,
+                  organizationId: organizationId
+                })
+              });
+              
+              const placeBidData = await placeBidResponse.json();
+              
+              if (!placeBidResponse.ok) {
+                console.warn('Failed to place initial bid:', placeBidData.error);
+                // Continue anyway - user can place bid manually later
+              }
+              
+              // Update current winning bid if bid was placed successfully
+              if (placeBidResponse.ok && placeBidData.success) {
+                // Fetch updated round info to get accurate winning bid
+                const roundInfoResponse = await fetch(`/api/bidding/current-round?organizationId=${organizationId}`);
+                if (roundInfoResponse.ok) {
+                  const roundInfo = await roundInfoResponse.json();
+                  if (roundInfo.active && roundInfo.requests && roundInfo.requests.length > 0) {
+                    const highestBid = Math.max(...roundInfo.requests.map(r => r.current_bid_amount || 0));
+                    setCurrentWinningBid(highestBid);
+                  }
+                }
+              }
+            } catch (bidError) {
+              console.error('Error placing initial bid:', bidError);
+              // Continue anyway - user can place bid manually later
+            }
+            
+            // Show success modal
+            setSubmittedBidAmount(bidAmount);
             setShowBiddingInterface(true);
             setSubmitting(false);
-            // Scroll to bidding interface
-            setTimeout(() => {
-              const biddingElement = document.querySelector('[data-bidding-interface]');
-              if (biddingElement) {
-                biddingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }, 100);
+            
+            // Get round info for success modal
+            if (biddingData.round) {
+              setRoundNumber(biddingData.round.roundNumber);
+              const now = new Date();
+              const endsAt = new Date(biddingData.round.endsAt);
+              const remaining = Math.max(0, Math.floor((endsAt - now) / 1000));
+              setRoundTimeRemaining(remaining);
+            }
+            
+            // Show success modal
+            setShowBidSuccessModal(true);
+            
+            // Scroll to bidding interface after modal closes
             return; // Exit early - don't process payment
           } else {
             // Failed to add to bidding round - fall back to regular payment
@@ -1338,8 +1430,81 @@ export function GeneralRequestsPage({
             )}
 
             {/* On /bid page, always show form first, then bidding interface below */}
-            {forceBiddingMode && biddingEnabled ? (
+            {(forceBiddingMode || biddingEnabled) && requestType === 'song_request' ? (
               <div className="space-y-6">
+                {/* Bidding Context Banner - Explain the bidding system */}
+                {!biddingRequestId && (
+                  <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 shadow-lg">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <div className="flex-shrink-0">
+                        <Gift className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <span>🎯 Bidding System Active</span>
+                        </h3>
+                        <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300">
+                          Your song request will enter the current bidding round. The highest bidder's song plays first. You can increase your bid later if someone outbids you.
+                        </p>
+                        {currentWinningBid > 0 ? (
+                          <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-300 dark:border-blue-700">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                                Current Winning Bid:
+                              </p>
+                              <p className="text-lg font-bold text-blue-900 dark:text-blue-100">
+                                ${(currentWinningBid / 100).toFixed(2)}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-blue-700 dark:text-blue-300">
+                                Minimum to win:
+                              </p>
+                              <p className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                                ${((currentWinningBid + 500) / 100).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-300 dark:border-green-700">
+                            <p className="text-sm font-semibold text-green-900 dark:text-green-100">
+                              🎉 No bids yet! Be the first with a minimum bid of $5.00
+                            </p>
+                          </div>
+                        )}
+                        {roundTimeRemaining > 0 && (
+                          <div className="mt-3 p-3 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg border border-purple-300 dark:border-purple-700">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Clock className={`w-4 h-4 ${
+                                  roundTimeRemaining > 600 ? 'text-green-600 dark:text-green-400' :
+                                  roundTimeRemaining > 300 ? 'text-yellow-600 dark:text-yellow-400' :
+                                  roundTimeRemaining > 60 ? 'text-orange-600 dark:text-orange-400' :
+                                  'text-red-600 dark:text-red-400 animate-pulse'
+                                }`} />
+                                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Round Ends In</span>
+                              </div>
+                              <span className={`text-lg font-bold font-mono ${
+                                roundTimeRemaining > 600 ? 'text-green-700 dark:text-green-300' :
+                                roundTimeRemaining > 300 ? 'text-yellow-700 dark:text-yellow-300' :
+                                roundTimeRemaining > 60 ? 'text-orange-700 dark:text-orange-300' :
+                                'text-red-700 dark:text-red-300'
+                              }`}>
+                                {Math.floor(roundTimeRemaining / 60)}:{(roundTimeRemaining % 60).toString().padStart(2, '0')}
+                              </span>
+                            </div>
+                            {roundTimeRemaining < 300 && (
+                              <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                                ⚠️ Round ending soon! Place your bid now!
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Song Request Form - Always show on bid page (unless user already submitted) */}
                 {!biddingRequestId && (
                   <form onSubmit={handleSubmit} noValidate className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
@@ -1440,6 +1605,29 @@ export function GeneralRequestsPage({
                           />
                         </div>
 
+                        {/* Current Winning Bid Display - Show prominently above amount selector */}
+                        {shouldUseBidding && currentWinningBid > 0 && (
+                          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div>
+                                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Current Winning Bid</p>
+                                <p className="text-xl sm:text-2xl font-bold text-blue-700 dark:text-blue-300">
+                                  ${(currentWinningBid / 100).toFixed(2)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Minimum to Win</p>
+                                <p className="text-xl sm:text-2xl font-bold text-purple-700 dark:text-purple-300">
+                                  ${((currentWinningBid + 500) / 100).toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+                              💡 Bid at least ${((currentWinningBid + 500) / 100).toFixed(2)} to take the lead
+                            </p>
+                          </div>
+                        )}
+
                         {/* Bid Amount Selector - Always show on bid page with dynamic amounts based on winning bid */}
                         <div data-payment-section className="mt-4">
                           <PaymentAmountSelector
@@ -1461,6 +1649,8 @@ export function GeneralRequestsPage({
                             getBaseAmount={getBaseAmount}
                             getPaymentAmount={getPaymentAmount}
                             hidePriorityOptions={true} // Hide fast track and next options on bid page
+                            isBiddingMode={shouldUseBidding} // Pass bidding mode flag
+                            currentWinningBid={currentWinningBid} // Pass current winning bid for display
                           />
                         </div>
 
@@ -1523,7 +1713,17 @@ export function GeneralRequestsPage({
                           ) : (
                             <>
                               <Music className="w-4 h-4 sm:w-5 sm:h-5" />
-                              <span>Submit Song Request</span>
+                              <span>
+                                {shouldUseBidding 
+                                  ? (() => {
+                                      const bidAmount = getPaymentAmount();
+                                      return bidAmount > 0 
+                                        ? `Place $${(bidAmount / 100).toFixed(2)} Bid & Enter Round`
+                                        : 'Place Bid & Enter Round';
+                                    })()
+                                  : 'Submit Song Request'
+                                }
+                              </span>
                             </>
                           )}
                         </button>
@@ -1531,6 +1731,82 @@ export function GeneralRequestsPage({
                     )}
                   </form>
                 )}
+                {/* Bid Success Modal */}
+                {showBidSuccessModal && (
+                  <BidSuccessModal
+                    isOpen={showBidSuccessModal}
+                    onClose={() => {
+                      setShowBidSuccessModal(false);
+                      // Scroll to bidding interface after closing
+                      setTimeout(() => {
+                        const biddingElement = document.querySelector('[data-bidding-interface]');
+                        if (biddingElement) {
+                          biddingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 100);
+                    }}
+                    bidAmount={submittedBidAmount}
+                    songTitle={formData.songTitle}
+                    songArtist={formData.songArtist}
+                    isWinning={(() => {
+                      // User is winning if:
+                      // 1. No bids exist yet (currentWinningBid === 0), OR
+                      // 2. Their submitted bid is higher than the previous winning bid
+                      // Note: After submission, their bid becomes the new currentWinningBid, but we check against the previous value
+                      const previousWinningBid = currentWinningBid;
+                      return previousWinningBid === 0 || submittedBidAmount > previousWinningBid;
+                    })()}
+                    currentWinningBid={currentWinningBid}
+                    timeRemaining={roundTimeRemaining}
+                    roundNumber={roundNumber}
+                    onIncreaseBid={() => {
+                      setShowBidSuccessModal(false);
+                      // Scroll to bidding interface to increase bid
+                      setTimeout(() => {
+                        const biddingElement = document.querySelector('[data-bidding-interface]');
+                        if (biddingElement) {
+                          biddingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 100);
+                    }}
+                    onViewAllBids={() => {
+                      setShowBidSuccessModal(false);
+                      // Scroll to bidding interface
+                      setTimeout(() => {
+                        const biddingElement = document.querySelector('[data-bidding-interface]');
+                        if (biddingElement) {
+                          biddingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 100);
+                    }}
+                    onShare={() => {
+                      // Share functionality
+                      const shareUrl = typeof window !== 'undefined' 
+                        ? `${window.location.origin}/bid`
+                        : '';
+                      if (navigator.share) {
+                        navigator.share({
+                          title: `I just bid $${(submittedBidAmount / 100).toFixed(2)} on ${formData.songTitle}!`,
+                          text: `Beat my bid and get your song played first!`,
+                          url: shareUrl
+                        }).catch(() => {});
+                      } else if (navigator.clipboard) {
+                        navigator.clipboard.writeText(shareUrl);
+                        alert('Link copied to clipboard!');
+                      }
+                    }}
+                    onGetNotifications={async () => {
+                      // Request notification permission
+                      if ('Notification' in window && Notification.permission === 'default') {
+                        await Notification.requestPermission();
+                      }
+                      // Could also collect email/phone here
+                      alert('Notifications enabled! You\'ll be notified if you\'re outbid.');
+                    }}
+                    organizationId={organizationId}
+                  />
+                )}
+
                 <div data-bidding-interface>
                   <BiddingInterface
                     organizationId={organizationId}

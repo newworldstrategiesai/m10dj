@@ -19,14 +19,22 @@ function PaymentAmountSelector({
   nextFee,
   getBaseAmount,
   getPaymentAmount,
-  hidePriorityOptions = false // Hide fast track and next options (for bidding mode)
+  hidePriorityOptions = false, // Hide fast track and next options (for bidding mode)
+  isBiddingMode = false, // Indicates if this is in bidding mode
+  currentWinningBid = 0 // Current winning bid amount in cents (for bidding mode)
 }) {
   return (
     <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
       <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2">
         <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-        Payment Amount
+        {isBiddingMode ? 'Your Bid Amount' : 'Payment Amount'}
       </h2>
+      
+      {isBiddingMode && (
+        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 italic">
+          💡 This is your starting bid. You can increase it later if someone outbids you.
+        </p>
+      )}
       
       <div className="space-y-2 sm:space-y-3 md:space-y-4">
         <div className="flex gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6 p-1 bg-gray-100/50 dark:bg-gray-700/30 rounded-xl sm:rounded-2xl">
@@ -57,29 +65,48 @@ function PaymentAmountSelector({
 
         {amountType === 'preset' && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-            {presetAmounts.map((preset) => (
-              <button
-                key={preset.value}
-                type="button"
-                onClick={() => setPresetAmount(preset.value)}
-                className={`group relative p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl md:rounded-2xl border-2 transition-all duration-300 touch-manipulation min-h-[56px] sm:min-h-[64px] md:min-h-[72px] overflow-hidden ${
-                  presetAmount === preset.value
-                    ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-105'
-                    : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-lg'
-                }`}
-              >
-                {presetAmount === preset.value && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                )}
-                <span className={`relative text-sm sm:text-base md:text-lg lg:text-xl font-bold transition-colors ${
-                  presetAmount === preset.value
-                    ? 'text-white'
-                    : 'text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400'
-                }`}>
-                  {preset.label}
-                </span>
-              </button>
-            ))}
+            {presetAmounts.map((preset) => {
+              const beatsCurrentBid = isBiddingMode && currentWinningBid > 0 && preset.value > currentWinningBid;
+              const isBelowMinimum = isBiddingMode && preset.value < minimumAmount;
+              
+              return (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => !isBelowMinimum && setPresetAmount(preset.value)}
+                  disabled={isBelowMinimum}
+                  className={`group relative p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl md:rounded-2xl border-2 transition-all duration-300 touch-manipulation min-h-[56px] sm:min-h-[64px] md:min-h-[72px] overflow-hidden ${
+                    isBelowMinimum
+                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/50 opacity-50 cursor-not-allowed'
+                      : presetAmount === preset.value
+                      ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-105'
+                      : beatsCurrentBid
+                      ? 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-900/20 hover:border-green-500 hover:scale-[1.02] hover:shadow-lg'
+                      : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-lg'
+                  }`}
+                >
+                  {presetAmount === preset.value && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
+                  )}
+                  {beatsCurrentBid && !isBelowMinimum && (
+                    <div className="absolute top-1 right-1">
+                      <span className="text-[10px] font-bold text-green-600 dark:text-green-400 bg-white dark:bg-gray-800 px-1 rounded">✓</span>
+                    </div>
+                  )}
+                  <span className={`relative text-sm sm:text-base md:text-lg lg:text-xl font-bold transition-colors ${
+                    presetAmount === preset.value
+                      ? 'text-white'
+                      : isBelowMinimum
+                      ? 'text-gray-400 dark:text-gray-600'
+                      : beatsCurrentBid
+                      ? 'text-green-700 dark:text-green-300'
+                      : 'text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400'
+                  }`}>
+                    {preset.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -131,13 +158,22 @@ function PaymentAmountSelector({
             </div>
             {(() => {
               const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
+              const beatsCurrentBid = isBiddingMode && currentWinningBid > 0 && customAmount && parseFloat(customAmount) * 100 > currentWinningBid;
+              
               return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount ? (
                 <p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
                   Minimum amount is ${minAmount.toFixed(2)}
                 </p>
+              ) : beatsCurrentBid ? (
+                <p className="text-[10px] sm:text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
+                  ✓ This bid beats the current winning bid of ${(currentWinningBid / 100).toFixed(2)}
+                </p>
               ) : (
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Minimum: ${minAmount.toFixed(2)}
+                  {isBiddingMode && currentWinningBid > 0 
+                    ? `Minimum to win: $${minAmount.toFixed(2)} (current winning: $${(currentWinningBid / 100).toFixed(2)})`
+                    : `Minimum: $${minAmount.toFixed(2)}`
+                  }
                 </p>
               );
             })()}

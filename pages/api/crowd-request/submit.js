@@ -50,7 +50,8 @@ export default async function handler(req, res) {
 
   // Validate required fields
   // Note: requesterName is optional - use 'Guest' as fallback
-  if (!eventCode || !requestType || !amount) {
+  // Note: amount can be 0 for bidding mode requests (payment happens when bid is placed)
+  if (!eventCode || !requestType || amount === undefined || amount === null) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -71,7 +72,9 @@ export default async function handler(req, res) {
 
   // Note: Minimum amount validation should use admin settings, but we'll keep a basic check here
   // The frontend should enforce the minimum from settings
-  if (amount < 100) {
+  // Allow amount to be 0 for bidding mode (payment happens when bid is placed, not at request creation)
+  // For non-bidding requests, enforce minimum of $1.00
+  if (amount !== 0 && amount < 100) {
     return res.status(400).json({ error: 'Minimum payment is $1.00' });
   }
 

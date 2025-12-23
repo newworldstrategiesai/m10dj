@@ -118,3 +118,5 @@ COMMENT ON COLUMN dj_calls.transcription_text IS 'Full transcription of the call
 COMMENT ON COLUMN dj_calls.extracted_metadata IS 'JSON object with extracted metadata (event_type, event_date, budget, guest_count)';
 COMMENT ON COLUMN dj_calls.consent_recorded IS 'Whether caller consent was recorded for call recording';
 
+
+
