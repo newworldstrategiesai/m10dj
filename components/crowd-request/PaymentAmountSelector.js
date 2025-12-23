@@ -65,13 +65,13 @@ function PaymentAmountSelector({
 
         {amountType === 'preset' && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-            {presetAmounts.map((preset) => {
+            {presetAmounts.map((preset, idx) => {
               const beatsCurrentBid = isBiddingMode && currentWinningBid > 0 && preset.value > currentWinningBid;
               const isBelowMinimum = isBiddingMode && preset.value < minimumAmount;
               
               return (
                 <button
-                  key={`preset-${preset.value}-${currentWinningBid}`} // Include winning bid in key to force re-render
+                  key={`preset-${preset.value}-${currentWinningBid}-${idx}-${presetAmounts.length}`} // Include winning bid, index, and array length in key to force re-render
                   type="button"
                   onClick={() => !isBelowMinimum && setPresetAmount(preset.value)}
                   disabled={isBelowMinimum}

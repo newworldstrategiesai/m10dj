@@ -467,7 +467,18 @@ export function GeneralRequestsPage({
       { value: minBid + 5000, label: `$${((minBid + 5000) / 100).toFixed(2)}` } // +$50
     ];
     // Filter out any amounts that are less than or equal to the winning bid (safety check)
-    return presets.filter(preset => preset.value > currentWinningBid);
+    const filtered = presets.filter(preset => preset.value > currentWinningBid);
+    
+    // Debug log to verify preset amounts update
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('[requests.js] dynamicBidPresets updated:', {
+        currentWinningBid: currentWinningBid / 100,
+        minBid: minBid / 100,
+        presets: filtered.map(p => ({ value: p.value / 100, label: p.label }))
+      });
+    }
+    
+    return filtered;
   }, [shouldUseBidding, currentWinningBid, dynamicMinimumAmount]);
   
   // Use validation hook - pass isExtractedFromLink to make artist optional when extracted
