@@ -800,6 +800,11 @@ export default function BiddingInterface({
     if (minBid > 0 && selectedPresetBid === null && bidAmountType === 'preset') {
       setSelectedPresetBid(minBid);
     }
+    
+    // Clear selected preset if it's no longer valid (below new minimum)
+    if (selectedPresetBid !== null && selectedPresetBid < minBid) {
+      setSelectedPresetBid(null);
+    }
   }, [minBid, selectedPresetBid, bidAmountType]);
 
   // Generate dynamic preset bid amounts based on current winning bid - memoized for reactivity
@@ -824,8 +829,17 @@ export default function BiddingInterface({
       });
     });
     
+    // Debug log to verify presetBids updates
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('[BiddingInterface] presetBids updated:', {
+        minBid: baseMin / 100,
+        currentWinningBid: currentWinningBidAmount / 100,
+        presets: presets.map(p => ({ value: p.value / 100, label: p.label }))
+      });
+    }
+    
     return presets;
-  }, [minBid]);
+  }, [minBid, currentWinningBidAmount]); // Add currentWinningBidAmount to dependencies to ensure updates
 
   // Get the actual bid amount based on type
   const getBidAmount = () => {
@@ -1170,13 +1184,13 @@ export default function BiddingInterface({
             {/* Preset Bid Buttons */}
             {bidAmountType === 'preset' && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
-                {presetBids.map((preset) => {
+                {presetBids.map((preset, idx) => {
                   const beatsCurrentBid = currentWinningBidAmount > 0 && preset.value > currentWinningBidAmount;
                   const isMinimum = preset.value === minBid;
                   
                   return (
                     <button
-                      key={`preset-${preset.value}-${currentWinningBidAmount}`} // Include winning bid in key to force re-render
+                      key={`preset-${preset.value}-${currentWinningBidAmount}-${idx}`} // Include winning bid and index in key to force re-render
                       type="button"
                       onClick={() => setSelectedPresetBid(preset.value)}
                       className={`p-3 rounded-lg border-2 transition-all relative ${
@@ -1585,6 +1599,7 @@ export default function BiddingInterface({
               return null;
             }
             
+            // Calculate quick increments - this will update when highestBid changes
             const minBidToWin = highestBid + 100;
             const quickIncrements = [
               { amount: minBidToWin, label: `$${(minBidToWin / 100).toFixed(2)} (Win)` },
@@ -1617,7 +1632,7 @@ export default function BiddingInterface({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {quickIncrements.map((inc, idx) => (
                       <button
-                        key={`quick-bid-${highestBid}-${idx}`} // Include winning bid in key to force re-render
+                        key={`quick-bid-${highestBid}-${inc.amount}-${idx}`} // Include winning bid and amount in key to force re-render
                         onClick={async () => {
                           setBidAmountType('custom');
                           setCustomBidAmount((inc.amount / 100).toFixed(2));
