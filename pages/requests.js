@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -29,8 +29,8 @@ const DEFAULT_COVER_PHOTO = '/assets/DJ-Ben-Murray-Dodge-Poster.png';
 // Wrapper component for /requests route that loads organization data
 export default function RequestsPageWrapper() {
   const router = useRouter();
-  // Memoize the Supabase client to avoid creating multiple instances
-  const supabase = useMemo(() => createClientComponentClient(), []);
+  // Don't use useMemo for client component - causes hooks violation
+  const supabase = createClientComponentClient();
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
