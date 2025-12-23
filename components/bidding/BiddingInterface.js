@@ -269,14 +269,14 @@ export default function BiddingInterface({
     const initialFeed = Array.from({ length: 5 + Math.floor(Math.random() * 4) }, generateFeedItem);
     setBidFeed(initialFeed);
 
-    // Add new feed items more frequently for urgency
+    // Add new feed items at a reasonable pace for urgency (not too fast)
     bidFeedIntervalRef.current = setInterval(() => {
       const newItem = generateFeedItem();
       setBidFeed(prev => {
         // Add new item at the top, keep last 10 items
         return [newItem, ...prev].slice(0, 10);
       });
-    }, 3000 + Math.random() * 4000); // Every 3-7 seconds (more frequent)
+    }, 10000 + Math.random() * 5000); // Every 10-15 seconds (more natural pace)
 
     return () => {
       if (bidFeedIntervalRef.current) {
@@ -344,10 +344,10 @@ export default function BiddingInterface({
       )
       .subscribe();
 
-    // Also set up polling as a fallback (every 3 seconds)
+    // Also set up polling as a fallback (every 8-10 seconds - less frequent to reduce simulation churn)
     const pollInterval = setInterval(() => {
       loadCurrentRound(false); // Updates, not initial load
-    }, 3000);
+    }, 8000 + Math.random() * 2000); // Every 8-10 seconds (slower to reduce rapid changes)
 
     return () => {
       supabase.removeChannel(channel);
