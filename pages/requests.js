@@ -477,9 +477,9 @@ export function GeneralRequestsPage({
     const filtered = presets.filter(preset => preset.value > currentWinningBid);
     
     // Ensure we always have at least one preset option
-    if (filtered.length === 0 && currentWinningBid > 0) {
+    if (filtered.length === 0) {
       // If all presets were filtered out, add one that's definitely above the winning bid
-      const minValidBid = currentWinningBid + 100; // At least $1 above
+      const minValidBid = currentWinningBid > 0 ? currentWinningBid + 100 : 500; // At least $1 above winning bid, or $5 if no bids yet
       filtered.push({ value: minValidBid, label: `$${(minValidBid / 100).toFixed(2)}` });
     }
     
@@ -1655,7 +1655,7 @@ export function GeneralRequestsPage({
                         )}
 
                         {/* Bid Amount Selector - Always show on bid page with dynamic amounts based on winning bid */}
-                        <div data-payment-section className="mt-4">
+                        <div data-payment-section className="mt-4" key={`bid-selector-${currentWinningBid}`}>
                           <PaymentAmountSelector
                             amountType={amountType}
                             setAmountType={setAmountType}
@@ -1663,7 +1663,7 @@ export function GeneralRequestsPage({
                             setPresetAmount={setPresetAmount}
                             customAmount={customAmount}
                             setCustomAmount={setCustomAmount}
-                            presetAmounts={shouldUseBidding && dynamicBidPresets ? dynamicBidPresets : (shouldUseBidding ? [] : presetAmounts)}
+                            presetAmounts={shouldUseBidding && dynamicBidPresets && dynamicBidPresets.length > 0 ? dynamicBidPresets : (shouldUseBidding ? [] : presetAmounts)}
                             minimumAmount={shouldUseBidding && dynamicMinimumAmount ? dynamicMinimumAmount : minimumAmount}
                             isBiddingMode={shouldUseBidding}
                             currentWinningBid={currentWinningBid}
