@@ -1,12 +1,9 @@
 services:
   - type: web
     name: youtube-download-server
-    env: node
-    buildCommand: |
-      npm install
-      chmod +x install-dependencies.sh || true
-      ./install-dependencies.sh || echo "Dependency install script failed, continuing..."
-    startCommand: node server.js
+    env: docker
+    dockerfilePath: download-server-example/Dockerfile
+    dockerContext: download-server-example
     envVars:
       - key: NODE_ENV
         value: production
