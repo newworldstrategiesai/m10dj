@@ -19,6 +19,18 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+// Pre-initialize yt-dlp on startup (non-blocking)
+const { getYtDlpWrap } = require('./youtube-downloader');
+(async () => {
+  try {
+    await getYtDlpWrap();
+    console.log('✅ yt-dlp initialized successfully');
+  } catch (error) {
+    console.warn('⚠️  yt-dlp initialization warning:', error.message);
+    console.warn('   Downloads will still be attempted, but may fail if yt-dlp is not available');
+  }
+})();
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 

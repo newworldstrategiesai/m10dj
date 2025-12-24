@@ -17,12 +17,33 @@ async function getYtDlpWrap() {
   ytDlpWrap = new YTDlpWrap();
   
   try {
+    // Check if binary exists
     const binaryPath = ytDlpWrap.getBinaryPath();
-    console.log('yt-dlp binary found at:', binaryPath);
+    if (fs.existsSync(binaryPath)) {
+      console.log('yt-dlp binary found at:', binaryPath);
+    } else {
+      throw new Error('Binary not found');
+    }
   } catch (error) {
     console.log('yt-dlp binary not found, downloading...');
-    await ytDlpWrap.downloadBinary();
-    console.log('yt-dlp binary downloaded successfully');
+    try {
+      await ytDlpWrap.downloadBinary();
+      console.log('yt-dlp binary downloaded successfully');
+      
+      // Verify it exists after download
+      const binaryPath = ytDlpWrap.getBinaryPath();
+      if (!fs.existsSync(binaryPath)) {
+        throw new Error('Binary download completed but file not found');
+      }
+      
+      // Make it executable (Unix systems)
+      if (process.platform !== 'win32') {
+        fs.chmodSync(binaryPath, '755');
+      }
+    } catch (downloadError) {
+      console.error('Failed to download yt-dlp binary:', downloadError);
+      throw new Error(`Failed to setup yt-dlp: ${downloadError.message}. Make sure Python and FFmpeg are available.`);
+    }
   }
 
   return ytDlpWrap;
@@ -209,5 +230,5 @@ async function downloadYouTubeAudio(youtubeUrl, requestId, songTitle, songArtist
   }
 }
 
-module.exports = { downloadYouTubeAudio };
+module.exports = { downloadYouTubeAudio, getYtDlpWrap };
 

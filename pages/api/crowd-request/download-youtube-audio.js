@@ -83,10 +83,12 @@ export default async function handler(req, res) {
 
     // Use dedicated server if configured, otherwise try local download
     if (downloadServerUrl) {
-      console.log('Using dedicated download server:', downloadServerUrl);
+      // Normalize URL (remove trailing slash to avoid double slashes)
+      const normalizedUrl = downloadServerUrl.replace(/\/+$/, '');
+      console.log('Using dedicated download server:', normalizedUrl);
       
       try {
-        const serverResponse = await fetch(`${downloadServerUrl}/api/download-youtube-audio`, {
+        const serverResponse = await fetch(`${normalizedUrl}/api/download-youtube-audio`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
