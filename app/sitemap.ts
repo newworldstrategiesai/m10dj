@@ -54,16 +54,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/services',
     '/memphis-wedding-dj',
     '/wedding-dj-memphis-tn',
+    '/wedding-dj-packages-memphis',
     '/memphis-dj-services',
     '/best-wedding-dj-memphis',
     '/memphis-wedding-dj-prices-2025',
     '/corporate-events',
+    '/dj-uplighting-memphis',
+    '/photo-booth-rental-memphis',
+    '/cold-sparks-memphis',
     '/private-parties',
     '/school-dances',
     '/holiday-parties',
     '/vendors',
     '/venues',
-    '/blog'
+    '/blog',
+    '/events/live/dj-ben-murray-silky-osullivans-2026-12-27'
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
@@ -73,7 +78,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
              route === '/memphis-wedding-dj' ? 0.98 : // Main wedding authority page
              route === '/dj-near-me-memphis' ? 0.97 : // High-intent local search
              route === '/wedding-dj-memphis-tn' ? 0.95 : // TN-focused page
+             route === '/wedding-dj-packages-memphis' ? 0.96 : // High-intent packages page
              route === '/best-wedding-dj-memphis' ? 0.94 : // Reviews/social proof
+             route === '/dj-uplighting-memphis' ? 0.93 : // High-ROI upsell
+             route === '/photo-booth-rental-memphis' ? 0.93 : // High-ROI upsell
+             route === '/cold-sparks-memphis' ? 0.92 : // Premium upsell
              // Service pages (good conversion potential)
              route === '/memphis-dj-services' ? 0.93 :
              route === '/dj-germantown-tn' ? 0.92 :
@@ -88,6 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
              route === '/contact' ? 0.89 :
              route === '/pricing' ? 0.88 :
              route === '/dj-ben-murray' ? 0.87 :
+             route === '/events/live/dj-ben-murray-silky-osullivans-2026-12-27' ? 0.90 : // Live event page
              // Specialty services
              route === '/multicultural-dj-memphis' ? 0.85 :
              route === '/dj-rentals-memphis' ? 0.84 : 0.8,
