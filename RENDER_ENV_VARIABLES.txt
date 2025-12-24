@@ -1,0 +1,23 @@
+# Render.com Environment Variables
+# Copy and paste these into Render dashboard → Environment Variables
+
+PORT=10000
+
+NODE_ENV=production
+
+# Supabase Configuration
+# Get these values from your Vercel dashboard → Settings → Environment Variables
+SUPABASE_URL=https://bwayphqnxgcyjpoaautn.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY_HERE
+
+# API Key for securing the download server
+DOWNLOAD_SERVER_API_KEY=63e12a3429b1b879dc7e51139048eaeaea34d8873608f3311bee0672b1c2b5c2
+
+# ============================================
+# INSTRUCTIONS:
+# ============================================
+# 1. Replace SUPABASE_SERVICE_ROLE_KEY with your actual key from Vercel
+# 2. Copy each line (one at a time) into Render's "Add Environment Variable" form
+# 3. Or copy all at once and Render should parse them
+# ============================================
+

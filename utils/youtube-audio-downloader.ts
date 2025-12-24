@@ -30,12 +30,16 @@ let ytDlpWrap: any | null = null;
  * Check if we're in a serverless environment
  */
 function isServerless(): boolean {
+  // Don't treat local development as serverless
+  if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'development') {
+    return false;
+  }
+  
   return !!(
     process.env.VERCEL ||
     process.env.AWS_LAMBDA_FUNCTION_NAME ||
     process.env.GOOGLE_CLOUD_FUNCTION ||
-    process.env.AZURE_FUNCTIONS_ENVIRONMENT ||
-    process.env.NEXT_RUNTIME === 'nodejs'
+    process.env.AZURE_FUNCTIONS_ENVIRONMENT
   );
 }
 
@@ -58,12 +62,14 @@ async function getYtDlpWrap(): Promise<any> {
   
   // Check if binary exists, if not, download it
   try {
-    await ytDlpWrap.getBinaryPath();
+    const binaryPath = ytDlpWrap.getBinaryPath();
+    console.log('yt-dlp binary found at:', binaryPath);
   } catch (error) {
-    console.log('Downloading yt-dlp binary...');
+    console.log('yt-dlp binary not found, downloading...');
     try {
       // The library will auto-download on first use, but we can also explicitly download
       await ytDlpWrap.downloadBinary();
+      console.log('yt-dlp binary downloaded successfully');
     } catch (downloadError: any) {
       throw new Error(`Failed to download yt-dlp binary: ${downloadError.message}. This feature requires Python and write access to download the binary.`);
     }

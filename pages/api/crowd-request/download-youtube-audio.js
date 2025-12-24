@@ -1,4 +1,7 @@
 // API endpoint to download audio from YouTube links (SUPER ADMIN ONLY)
+// This endpoint can either:
+// 1. Use dedicated download server (if DOWNLOAD_SERVER_URL is set)
+// 2. Fall back to local download (if in non-serverless environment)
 import { requireSuperAdmin } from '@/utils/auth-helpers/api-auth';
 import { createClient } from '@supabase/supabase-js';
 import { getEnv } from '@/utils/env-validator';
@@ -63,6 +66,10 @@ export default async function handler(req, res) {
       });
     }
 
+    // Check if dedicated download server is configured
+    const downloadServerUrl = process.env.DOWNLOAD_SERVER_URL;
+    const downloadServerApiKey = process.env.DOWNLOAD_SERVER_API_KEY;
+
     // Update status to processing
     await supabase
       .from('crowd_requests')
@@ -72,13 +79,58 @@ export default async function handler(req, res) {
       })
       .eq('id', requestId);
 
-    // Download audio
-    const result = await downloadYouTubeAudio(
-      youtubeUrl,
-      requestId,
-      request.song_title || undefined,
-      request.song_artist || undefined
-    );
+    let result;
+
+    // Use dedicated server if configured, otherwise try local download
+    if (downloadServerUrl) {
+      console.log('Using dedicated download server:', downloadServerUrl);
+      
+      try {
+        const serverResponse = await fetch(`${downloadServerUrl}/api/download-youtube-audio`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': downloadServerApiKey || '',
+          },
+          body: JSON.stringify({
+            requestId,
+            youtubeUrl,
+            songTitle: request.song_title || undefined,
+            songArtist: request.song_artist || undefined,
+          }),
+        });
+
+        const serverData = await serverResponse.json();
+
+        if (!serverResponse.ok) {
+          result = {
+            success: false,
+            error: serverData.error || 'Download server error',
+          };
+        } else {
+          result = {
+            success: true,
+            url: serverData.url,
+            path: serverData.path,
+          };
+        }
+      } catch (fetchError) {
+        console.error('Error calling download server:', fetchError);
+        result = {
+          success: false,
+          error: `Failed to connect to download server: ${fetchError.message}`,
+        };
+      }
+    } else {
+      // Fall back to local download (only works in non-serverless environments)
+      console.log('Using local download (dedicated server not configured)');
+      result = await downloadYouTubeAudio(
+        youtubeUrl,
+        requestId,
+        request.song_title || undefined,
+        request.song_artist || undefined
+      );
+    }
 
     if (!result.success) {
       // Update status to failed
