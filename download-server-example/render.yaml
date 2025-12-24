@@ -1,0 +1,13 @@
+# Render configuration file (optional but helpful)
+services:
+  - type: web
+    name: youtube-download-server
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
