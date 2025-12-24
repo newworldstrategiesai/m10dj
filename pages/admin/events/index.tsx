@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -23,12 +23,38 @@ import {
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import AdminLayout from '@/components/layouts/AdminLayout';
 
+interface CaseStudy {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  content: string;
+  event_date?: string;
+  event_type?: string;
+  venue_name?: string;
+  venue_address?: string;
+  number_of_guests?: number;
+  featured_image_url?: string;
+  gallery_images?: string[];
+  highlights?: string[];
+  testimonial?: any;
+  is_published: boolean;
+  is_featured: boolean;
+  display_order: number;
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string[];
+  created_at: string;
+  updated_at: string;
+  published_at?: string | null;
+}
+
 export default function EventsManagement() {
   const router = useRouter();
   const supabase = createClientComponentClient();
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<CaseStudy[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterEventType, setFilterEventType] = useState('all');
@@ -36,11 +62,11 @@ export default function EventsManagement() {
   useEffect(() => {
     loadEvents();
     
-    // Check for success message
-    if (router.query.created === 'true') {
+    // Check for success messages
+    if (router.query.created === 'true' || router.query.updated === 'true') {
       setTimeout(() => {
         router.replace('/admin/events', undefined, { shallow: true });
-      }, 3000);
+      }, 5000);
     }
   }, [router.query]);
 
@@ -65,7 +91,7 @@ export default function EventsManagement() {
     }
   };
 
-  const togglePublishStatus = async (eventId, currentStatus) => {
+  const togglePublishStatus = async (eventId: string, currentStatus: boolean) => {
     try {
       const { error: updateError } = await supabase
         .from('case_studies')
@@ -97,7 +123,7 @@ export default function EventsManagement() {
     }
   };
 
-  const toggleFeaturedStatus = async (eventId, currentStatus) => {
+  const toggleFeaturedStatus = async (eventId: string, currentStatus: boolean) => {
     try {
       const { error: updateError } = await supabase
         .from('case_studies')
@@ -123,27 +149,29 @@ export default function EventsManagement() {
     }
   };
 
-  const deleteEvent = async (eventId) => {
+  const deleteEvent = async (eventId: string) => {
     if (!confirm('Are you sure you want to delete this event page? This action cannot be undone.')) {
       return;
     }
 
     try {
-      const { error: deleteError } = await supabase
-        .from('case_studies')
-        .delete()
-        .eq('id', eventId);
-      
-      if (deleteError) throw deleteError;
+      const response = await fetch(`/api/admin/event/${eventId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to delete event page');
+      }
       
       setEvents(prev => prev.filter(event => event.id !== eventId));
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting event:', err);
-      alert('Failed to delete event page. Please try again.');
+      alert(`Failed to delete event page: ${err.message}`);
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'Not set';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -152,7 +180,7 @@ export default function EventsManagement() {
     });
   };
 
-  const getStatusColor = (isPublished) => {
+  const getStatusColor = (isPublished: boolean) => {
     return isPublished 
       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
       : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
@@ -173,7 +201,7 @@ export default function EventsManagement() {
     return matchesSearch && matchesStatus && matchesEventType;
   });
 
-  const eventTypes = [...new Set(events.map(event => event.event_type).filter(Boolean))];
+  const eventTypes = Array.from(new Set(events.map(event => event.event_type).filter((type): type is string => Boolean(type))));
 
   if (loading) {
     return (
@@ -254,12 +282,30 @@ export default function EventsManagement() {
           </div>
         </header>
 
-        {/* Success Message */}
+        {/* Success Messages */}
         {router.query.created === 'true' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
             <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 rounded-lg p-4">
               <p className="text-green-800 dark:text-green-200">
                 ✅ Event page created successfully! 
+                {router.query.slug && (
+                  <Link 
+                    href={`/events/${router.query.slug}`} 
+                    className="underline ml-2"
+                    target="_blank"
+                  >
+                    View page →
+                  </Link>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+        {router.query.updated === 'true' && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+            <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <p className="text-green-800 dark:text-green-200">
+                ✅ Event page updated successfully! 
                 {router.query.slug && (
                   <Link 
                     href={`/events/${router.query.slug}`} 
@@ -370,8 +416,8 @@ export default function EventsManagement() {
                                 src={event.featured_image_url}
                                 alt={event.title}
                                 className="w-12 h-12 rounded-lg object-cover mr-3"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
+                                onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                                  e.currentTarget.style.display = 'none';
                                 }}
                               />
                             )}
@@ -428,6 +474,13 @@ export default function EventsManagement() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
+                            <Link
+                              href={`/admin/events/edit/${event.id}`}
+                              className="text-gray-600 dark:text-gray-400 hover:text-[#fcba00]"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Link>
                             <button
                               onClick={() => togglePublishStatus(event.id, event.is_published)}
                               className="text-gray-600 dark:text-gray-400 hover:text-[#fcba00]"

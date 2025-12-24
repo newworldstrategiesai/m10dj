@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   ArrowLeft,
   Save,
@@ -14,13 +15,18 @@ import {
   Users,
   Music,
   Star,
-  FileText
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 
-export default function NewEventPage() {
+export default function EditEventPage() {
   const router = useRouter();
+  const { id } = router.query;
+  const supabase = createClientComponentClient();
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -46,6 +52,76 @@ export default function NewEventPage() {
     display_order: '0'
   });
 
+  useEffect(() => {
+    if (id) {
+      loadEvent();
+    }
+  }, [id]);
+
+  const loadEvent = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('case_studies')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      
+      if (!data) {
+        setError('Event page not found');
+        return;
+      }
+
+      // Extract testimonial data if it exists
+      const testimonial = data.testimonial || {};
+      
+      // Convert arrays to strings
+      const highlights = Array.isArray(data.highlights) 
+        ? data.highlights.join('\n') 
+        : '';
+      const galleryImages = Array.isArray(data.gallery_images) 
+        ? data.gallery_images.join('\n') 
+        : '';
+      const seoKeywords = Array.isArray(data.seo_keywords) 
+        ? data.seo_keywords.join(', ') 
+        : '';
+
+      setFormData({
+        title: data.title || '',
+        slug: data.slug || '',
+        excerpt: data.excerpt || '',
+        content: data.content || '',
+        event_date: data.event_date || '',
+        event_type: data.event_type || '',
+        venue_name: data.venue_name || '',
+        venue_address: data.venue_address || '',
+        number_of_guests: data.number_of_guests?.toString() || '',
+        featured_image_url: data.featured_image_url || '',
+        gallery_images: galleryImages,
+        highlights: highlights,
+        testimonial_text: testimonial.testimonial_text || '',
+        testimonial_client_name: testimonial.client_name || '',
+        testimonial_rating: testimonial.rating?.toString() || '5',
+        testimonial_event_date: testimonial.event_date || '',
+        seo_title: data.seo_title || '',
+        seo_description: data.seo_description || '',
+        seo_keywords: seoKeywords,
+        is_published: data.is_published || false,
+        is_featured: data.is_featured || false,
+        display_order: data.display_order?.toString() || '0'
+      });
+    } catch (err: any) {
+      console.error('Error loading event page:', err);
+      setError('Failed to load event page. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const target = e.target;
     const { name, value, type } = target;
@@ -55,7 +131,7 @@ export default function NewEventPage() {
       [name]: type === 'checkbox' ? checked : value
     }));
 
-    // Auto-generate slug from title
+    // Auto-generate slug from title if slug is empty (only when editing title)
     if (name === 'title' && !formData.slug) {
       const slug = value
         .toLowerCase()
@@ -64,7 +140,7 @@ export default function NewEventPage() {
       setFormData(prev => ({ ...prev, slug }));
     }
 
-    // Auto-generate SEO title from title
+    // Auto-generate SEO title from title if SEO title is empty
     if (name === 'title' && !formData.seo_title) {
       setFormData(prev => ({ 
         ...prev, 
@@ -73,7 +149,7 @@ export default function NewEventPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setSaving(true);
 
@@ -85,8 +161,8 @@ export default function NewEventPage() {
         testimonial_rating: formData.testimonial_rating ? parseInt(formData.testimonial_rating) : 5
       };
 
-      const response = await fetch('/api/admin/event-create', {
-        method: 'POST',
+      const response = await fetch(`/api/admin/event/${id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -96,15 +172,15 @@ export default function NewEventPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create event page');
+        throw new Error(result.error || 'Failed to update event page');
       }
       
-      // Redirect to events management or view the new page
-      router.push(`/admin/events?created=true&slug=${result.eventPage.slug}`);
+      // Redirect to events management with success message
+      router.push(`/admin/events?updated=true&slug=${result.eventPage.slug}`);
     } catch (error) {
-      console.error('Error creating event page:', error);
+      console.error('Error updating event page:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Failed to create event page: ${errorMessage}`);
+      alert(`Failed to update event page: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
@@ -131,10 +207,43 @@ export default function NewEventPage() {
     { value: 'Other', label: 'Other' }
   ];
 
+  if (loading) {
+    return (
+      <AdminLayout title="Edit Event Page" description="Edit event case study page">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#fcba00] mx-auto"></div>
+            <p className="text-gray-600 dark:text-gray-400 mt-4">Loading event page...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayout title="Edit Event Page" description="Edit event case study page">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Error</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+            <Link
+              href="/admin/events"
+              className="bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-medium inline-block"
+            >
+              Back to Events
+            </Link>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
-    <AdminLayout title="New Event Page" description="Create a new event case study page">
+    <AdminLayout title="Edit Event Page" description="Edit event case study page">
       <Head>
-        <title>New Event Page - M10 DJ Company Admin</title>
+        <title>Edit Event Page - M10 DJ Company Admin</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
 
@@ -154,15 +263,23 @@ export default function NewEventPage() {
                 
                 <div>
                   <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                    New Event Page
+                    Edit Event Page
                   </h1>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Create a new case study page for a past event
+                    Update event case study page
                   </p>
                 </div>
               </div>
               
               <div className="flex items-center space-x-3">
+                <Link
+                  href={`/events/${formData.slug}`}
+                  target="_blank"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Page
+                </Link>
                 <button
                   onClick={handleSaveDraft}
                   disabled={saving}
@@ -182,12 +299,12 @@ export default function NewEventPage() {
                   {saving ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
-                      Publishing...
+                      Saving...
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      Publish
+                      Save Changes
                     </>
                   )}
                 </button>
@@ -198,7 +315,7 @@ export default function NewEventPage() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <form id="event-form" onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
+            {/* Main Content - Same as new.tsx */}
             <div className="lg:col-span-2 space-y-6">
               {/* Title */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -439,7 +556,7 @@ export default function NewEventPage() {
               </div>
             </div>
 
-            {/* Sidebar */}
+            {/* Sidebar - Same as new.tsx */}
             <div className="space-y-6">
               {/* Publish Settings */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
