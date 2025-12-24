@@ -15,6 +15,7 @@ import {
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import { PersonSchema, BreadcrumbListSchema, EnhancedOrganizationSchema } from '../components/StandardSchema';
+import AuthorByline from '../components/AuthorByline';
 
 export default function About() {
   const stats = [
@@ -93,10 +94,10 @@ export default function About() {
   return (
     <>
       <Head>
-        <title>About M10 DJ Company | Memphis Wedding & Event DJs</title>
+        <title>About M10 DJ Company | Memphis Wedding DJ</title>
         <meta 
           name="description" 
-          content="Learn about M10 DJ Company, Memphis's premier wedding and event DJ service. Our story, values, and commitment to creating unforgettable celebrations since 2014." 
+          content="About M10 DJ Company - Memphis's premier wedding & event DJ service since 2009. Our story, values & commitment to unforgettable celebrations. 500+ events." 
         />
         <meta name="keywords" content="about M10 DJ Company, Memphis DJ company history, wedding DJ Memphis story, professional DJ services Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -162,6 +163,16 @@ export default function About() {
                 ))}
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Author Byline */}
+        <section className="py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+          <div className="section-container">
+            <AuthorByline 
+              lastUpdated="December 2025"
+              showDate={true}
+            />
           </div>
         </section>
 

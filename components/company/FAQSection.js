@@ -106,8 +106,7 @@ export default function FAQSection({ className = '', showSchema = true, useDatab
       "answerCount": 1,
       "datePublished": "2024-01-05T10:00:00-06:00",
       "author": {
-        "@type": "Person",
-        "name": "Event Planner"
+        "@id": "https://www.m10djcompany.com/#organization"
       },
       "acceptedAnswer": {
         "@type": "Answer",
@@ -116,9 +115,7 @@ export default function FAQSection({ className = '', showSchema = true, useDatab
         "url": "https://www.m10djcompany.com/#booking-timeline",
         "upvoteCount": 35,
         "author": {
-          "@type": "Organization",
-          "name": "M10 DJ Company",
-          "url": "https://www.m10djcompany.com"
+          "@id": "https://www.m10djcompany.com/#organization"
         }
       }
     }

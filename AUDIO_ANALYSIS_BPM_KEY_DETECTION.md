@@ -547,3 +547,4 @@ Start with **librosa for BPM** (it's very accurate) and **simple key detection**
 
 Want me to help implement this? I can create the full integration!
 
+

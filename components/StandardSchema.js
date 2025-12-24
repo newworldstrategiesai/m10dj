@@ -78,8 +78,8 @@ export const OrganizationSchema = () => (
           "reviewCount": "150",
           "bestRating": "5",
           "worstRating": "5"
-        },
-        "priceRange": "$799-$1899"
+        }
+        // Removed priceRange - not valid for Organization type (only valid for LocalBusiness)
       })
     }}
   />
@@ -257,23 +257,42 @@ export const ServiceSchema = ({
   />
 );
 
-export const BreadcrumbSchema = ({ items }) => (
-  <script
-    type="application/ld+json"
-    dangerouslySetInnerHTML={{
-      __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        "itemListElement": items.map((item, index) => ({
-          "@type": "ListItem",
-          "position": index + 1,
-          "name": item.name,
-          "item": `https://www.m10djcompany.com${item.url}`
-        }))
-      })
-    }}
-  />
-);
+export const BreadcrumbSchema = ({ items = [] }) => {
+  if (!items || items.length === 0) return null;
+  
+  const baseUrl = 'https://www.m10djcompany.com';
+  const normalizedItems = items.map((item, index) => {
+    let url = item.url || item.item;
+    // Ensure URL is absolute
+    if (url && !url.startsWith('http')) {
+      url = url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`;
+    }
+    // Normalize www vs non-www
+    if (url && url.includes('m10djcompany.com') && !url.includes('www.')) {
+      url = url.replace('m10djcompany.com', 'www.m10djcompany.com');
+    }
+    return {
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": item.name || item.label || 'Page',
+      "item": url || `${baseUrl}/`
+    };
+  });
+  
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "@id": `${normalizedItems[normalizedItems.length - 1]?.item || baseUrl}#breadcrumb`,
+          "itemListElement": normalizedItems
+        })
+      }}
+    />
+  );
+};
 
 // Review Schema Component
 export const ReviewSchema = ({ reviews = [] }) => (
@@ -296,9 +315,7 @@ export const ReviewSchema = ({ reviews = [] }) => (
           "worstRating": "1"
         },
         "itemReviewed": {
-          "@type": "LocalBusiness",
-          "name": "M10 DJ Company",
-          "url": "https://www.m10djcompany.com"
+          "@id": "https://www.m10djcompany.com/#organization"
         }
       })))
     }}
@@ -306,23 +323,47 @@ export const ReviewSchema = ({ reviews = [] }) => (
 );
 
 // BreadcrumbList Schema Component
-export const BreadcrumbListSchema = ({ breadcrumbs = [] }) => (
-  <script
-    type="application/ld+json"
-    dangerouslySetInnerHTML={{
-      __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        "itemListElement": breadcrumbs.map((crumb, index) => ({
-          "@type": "ListItem",
-          "position": index + 1,
-          "name": crumb.name,
-          "item": crumb.url
-        }))
-      })
-    }}
-  />
-);
+// Supports both 'breadcrumbs' and 'items' props for backward compatibility
+export const BreadcrumbListSchema = ({ breadcrumbs = [], items = [] }) => {
+  // Support both prop names for backward compatibility
+  const breadcrumbItems = breadcrumbs.length > 0 ? breadcrumbs : items;
+  
+  if (!breadcrumbItems || breadcrumbItems.length === 0) return null;
+  
+  // Ensure all URLs are absolute
+  const baseUrl = 'https://www.m10djcompany.com';
+  const normalizedItems = breadcrumbItems.map((crumb, index) => {
+    let url = crumb.url || crumb.item;
+    // Ensure URL is absolute
+    if (url && !url.startsWith('http')) {
+      url = url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`;
+    }
+    // Normalize www vs non-www
+    if (url && url.includes('m10djcompany.com') && !url.includes('www.')) {
+      url = url.replace('m10djcompany.com', 'www.m10djcompany.com');
+    }
+    return {
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": crumb.name || crumb.label || 'Page',
+      "item": url || `${baseUrl}/`
+    };
+  });
+  
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "@id": `${normalizedItems[normalizedItems.length - 1]?.item || baseUrl}#breadcrumb`,
+          "itemListElement": normalizedItems
+        })
+      }}
+    />
+  );
+};
 
 // Person Schema Component for DJ Bio
 export const PersonSchema = ({ 
@@ -435,9 +476,9 @@ export const EnhancedOrganizationSchema = () => (
             "@type": "Place",
             "name": "Collierville"
           }
-        ],
-        "serviceType": ["Wedding DJ Services", "Event Entertainment", "Corporate DJ", "MC Services"],
-        "priceRange": "$799-$1899"
+        ]
+        // Removed serviceType and priceRange - not valid for Organization type
+        // serviceType is valid for Service, priceRange is valid for LocalBusiness
       })
     }}
   />
@@ -623,9 +664,7 @@ export const QAPageSchema = ({ questions = [] }) => {
             "datePublished": mainQuestion.datePublished || "2024-01-15T09:00:00-06:00",
             "url": mainQuestion.questionUrl || "https://www.m10djcompany.com/#question",
             "author": mainQuestion.author || {
-              "@type": "Person",
-              "name": "Event Organizer",
-              "url": "https://www.m10djcompany.com/contact"
+              "@id": "https://www.m10djcompany.com/#organization"
             },
             "acceptedAnswer": {
               "@type": "Answer",
@@ -634,9 +673,7 @@ export const QAPageSchema = ({ questions = [] }) => {
               "url": mainQuestion.answerUrl || "https://www.m10djcompany.com/#accepted-answer",
               "upvoteCount": mainQuestion.answerUpvotes || 45,
               "author": {
-                "@type": "Organization",
-                "name": "M10 DJ Company",
-                "url": "https://www.m10djcompany.com"
+                "@id": "https://www.m10djcompany.com/#organization"
               }
             },
             // Add suggested answers if multiple perspectives exist
@@ -648,9 +685,7 @@ export const QAPageSchema = ({ questions = [] }) => {
                 "url": q.answerUrl || `https://www.m10djcompany.com/#suggested-answer-${index + 1}`,
                 "datePublished": q.answerDate || "2024-01-15T10:00:00-06:00",
                 "author": {
-                  "@type": "Organization",
-                  "name": "M10 DJ Company",
-                  "url": "https://www.m10djcompany.com"
+                  "@id": "https://www.m10djcompany.com/#organization"
                 }
               }))
             })

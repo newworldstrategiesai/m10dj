@@ -82,15 +82,15 @@ export default function CorporateEvents() {
   return (
     <>
       <Head>
-        <title>Corporate Event DJ Services Memphis | M10 DJ Company | Professional Business Entertainment</title>
-        <meta name="description" content="Professional corporate event DJ services in Memphis. Expert entertainment for company parties, product launches, conferences, and business celebrations." />
-        <meta name="keywords" content="Memphis corporate DJ, business event entertainment Memphis, company party DJ, corporate event services Memphis TN" />
+        <title>Corporate DJ Memphis | Professional Corporate Event DJ Services | M10 DJ Company</title>
+        <meta name="description" content="Corporate DJ Memphis - Professional corporate event DJ services for Memphis businesses. Company parties, galas, conferences & business celebrations. Call (901) 410-2020!" />
+        <meta name="keywords" content="corporate dj memphis, corporate event dj memphis, Memphis corporate DJ, business event entertainment Memphis, company party DJ Memphis, corporate DJ services Memphis TN" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
         
         {/* Open Graph */}
-        <meta property="og:title" content="Corporate Event DJ Services Memphis | M10 DJ Company" />
-        <meta property="og:description" content="Professional corporate event DJ services in Memphis for all your business entertainment needs." />
+        <meta property="og:title" content="Corporate DJ Memphis | Professional Corporate Event DJ Services" />
+        <meta property="og:description" content="Corporate DJ Memphis - Professional corporate event DJ services for Memphis businesses. Company parties, galas, conferences & business celebrations." />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         <meta property="og:url" content="https://m10djcompany.com/corporate-events" />
         
@@ -138,12 +138,12 @@ export default function CorporateEvents() {
               <div className="flex items-center justify-center mb-8">
                 <Building className="w-16 h-16 text-blue-600 mr-4" />
                 <h1 className="text-5xl md:text-7xl font-bold text-gray-900 font-sans">
-                  Corporate Events
+                  Corporate DJ Services in Memphis, TN
                 </h1>
               </div>
               
               <p className="text-2xl md:text-3xl text-blue-600 font-semibold font-inter mb-6">
-                Professional Entertainment for Memphis Businesses
+                  Corporate DJ Memphis | Professional Business Entertainment
               </p>
               
               <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed font-inter">

@@ -615,5 +615,110 @@ export const db = {
     }
 
     return data;
+  },
+
+  // Case Studies (for showcasing past events)
+  async getCaseStudies(venue = null, eventType = null, limit = null) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return [];
+    }
+
+    let query = supabase
+      .from('case_studies')
+      .select('*')
+      .eq('is_published', true)
+      .order('event_date', { ascending: false });
+
+    if (venue) {
+      query = query.eq('venue_name', venue);
+    }
+
+    if (eventType) {
+      query = query.eq('event_type', eventType);
+    }
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching case studies:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
+  async getCaseStudyBySlug(slug) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('case_studies')
+      .select('*')
+      .eq('slug', slug)
+      .eq('is_published', true)
+      .single();
+
+    if (error) {
+      console.error('Error fetching case study:', error);
+      return null;
+    }
+
+    return data;
+  },
+
+  async getRelatedCaseStudies(excludeId, venueName, eventType, limit = 3) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return [];
+    }
+
+    // Try to find related by venue first, then event type
+    let query = supabase
+      .from('case_studies')
+      .select('*')
+      .eq('is_published', true)
+      .neq('id', excludeId);
+
+    if (venueName) {
+      query = query.eq('venue_name', venueName);
+    } else if (eventType) {
+      query = query.eq('event_type', eventType);
+    }
+
+    query = query.order('event_date', { ascending: false }).limit(limit);
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching related case studies:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
+  async getFeaturedCaseStudies(limit = 3) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('case_studies')
+      .select('*')
+      .eq('is_published', true)
+      .eq('is_featured', true)
+      .order('event_date', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching featured case studies:', error);
+      return [];
+    }
+
+    return data || [];
   }
 }; 

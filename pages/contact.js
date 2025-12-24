@@ -67,8 +67,8 @@ export default function Contact() {
   return (
     <>
       <Head>
-        <title>Contact M10 DJ Company | Memphis Wedding & Event DJ | (901) 410-2020</title>
-        <meta name="description" content="Contact M10 DJ Company for Memphis wedding DJ services, corporate events, and private parties. Call (901) 410-2020 or email info@m10djcompany.com. Free consultations available." />
+        <title>Contact M10 DJ Company | Memphis Wedding DJ</title>
+        <meta name="description" content="Contact M10 DJ Company for Memphis wedding DJ services, corporate events & private parties. Call (901) 410-2020 or email info@m10djcompany.com. Free consultations!" />
         <meta name="keywords" content="contact Memphis DJ, wedding DJ contact, event DJ Memphis, DJ booking Memphis, Memphis DJ company contact" />
         <link rel="canonical" href="https://m10djcompany.com/contact" />
       </Head>

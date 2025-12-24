@@ -56,7 +56,7 @@ export function PublicVoiceAssistant({
   const [isProcessing, setIsProcessing] = useState(false);
   const [useBrowserRecognition, setUseBrowserRecognition] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const { transcription, clearTranscription } = useLiveKitTranscription();
+  const [transcription, setTranscription] = useState<string>('');
 
   // Get or generate session ID
   useEffect(() => {
@@ -70,108 +70,7 @@ export function PublicVoiceAssistant({
     }
   }, [sessionId]);
 
-  // Get token and connect to room
-  const connectRoom = useCallback(async () => {
-    if (isConnecting || isConnected) return;
-    
-    setIsConnecting(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/livekit/public-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: sessionId || localStorage.getItem('voice_session_id'),
-          participantName: 'Guest',
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get token');
-      }
-
-      const data = await response.json();
-      setToken(data.token);
-      setServerUrl(data.url);
-      setRoomName(data.roomName);
-      setIsConnecting(false);
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to connect');
-      setError(error.message);
-      setIsConnecting(false);
-      onError?.(error);
-    }
-  }, [sessionId, isConnecting, isConnected, onError]);
-
-  // Handle room connection
-  const handleConnected = useCallback(() => {
-    // Room is available via LiveKitRoom context
-    setIsConnected(true);
-    setIsListening(true);
-    
-    // Check if browser Speech Recognition is available
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      setUseBrowserRecognition(true);
-      startBrowserRecognition();
-    }
-  }, []);
-
-  // Browser Speech Recognition fallback
-  const startBrowserRecognition = useCallback(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    let interimTranscript = '';
-    let finalTranscript = '';
-
-    recognition.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript + ' ';
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      if (finalTranscript.trim() && onTranscription) {
-        onTranscription(finalTranscript.trim());
-        finalTranscript = '';
-        sendMessageToAssistant(finalTranscript.trim());
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      if (event.error === 'no-speech') {
-        // Restart recognition
-        setTimeout(() => {
-          if (isListening) {
-            recognition.start();
-          }
-        }, 1000);
-      }
-    };
-
-    recognition.onend = () => {
-      if (isListening) {
-        recognition.start();
-      }
-    };
-
-    recognition.start();
-    recognitionRef.current = recognition;
-  }, [isListening, onTranscription]);
-
-  // Send message to assistant API
+  // Send message to assistant API (defined early for use in other callbacks)
   const sendMessageToAssistant = useCallback(async (message: string) => {
     if (!message.trim() || isProcessing) return;
 
@@ -221,34 +120,205 @@ export function PublicVoiceAssistant({
     }
   }, [sessionId, contactId, phoneNumber, context, isProcessing, onResponse, onError]);
 
-  // Handle LiveKit transcription
-  useEffect(() => {
-    if (transcription && transcription.trim() && onTranscription && !useBrowserRecognition) {
-      const shouldSend = transcription.length > 10 || 
-                        transcription.endsWith('.') || 
-                        transcription.endsWith('?') ||
-                        transcription.endsWith('!');
+  // Browser Speech Recognition fallback
+  const startBrowserRecognition = useCallback(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError('Speech recognition not available in this browser');
+      return;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    let finalTranscript = '';
+
+    recognition.onresult = (event: any) => {
+      let interimTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      // Update transcription display with interim results
+      if (interimTranscript) {
+        setTranscription(interimTranscript);
+      }
+
+      // Send final transcript when complete
+      if (finalTranscript.trim()) {
+        const finalText = finalTranscript.trim();
+        if (onTranscription) {
+          onTranscription(finalText);
+        }
+        sendMessageToAssistant(finalText);
+        finalTranscript = '';
+        setTranscription('');
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'no-speech') {
+        // Restart recognition after a delay
+        setTimeout(() => {
+          if (isListening && recognitionRef.current) {
+            try {
+              recognitionRef.current.start();
+            } catch (e) {
+              console.error('Error restarting recognition:', e);
+            }
+          }
+        }, 1000);
+      } else if (event.error === 'not-allowed') {
+        setError('Microphone permission denied. Please allow microphone access.');
+      } else if (event.error === 'aborted') {
+        // Recognition was stopped, don't show error
+      } else {
+        setError(`Speech recognition error: ${event.error}`);
+      }
+    };
+
+    recognition.onend = () => {
+      if (isListening && recognitionRef.current === recognition) {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error('Error restarting recognition on end:', e);
+        }
+      }
+    };
+
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      setIsListening(true);
+      setError(null);
+    } catch (e) {
+      console.error('Error starting recognition:', e);
+      setError('Failed to start speech recognition');
+    }
+  }, [isListening, onTranscription, sendMessageToAssistant]);
+
+  // Get token and connect to room
+  const connectRoom = useCallback(async () => {
+    if (isConnecting || isConnected) return;
+    
+    setIsConnecting(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/livekit/public-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionId || localStorage.getItem('voice_session_id'),
+          participantName: 'Guest',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `Failed to get token (${response.status})`;
+        console.error('LiveKit token error:', errorMessage);
+        
+        // If LiveKit is not configured, fall back to browser speech recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+          console.log('LiveKit not available, falling back to browser speech recognition');
+          setUseBrowserRecognition(true);
+          setError(null);
+          setIsConnecting(false);
+          setIsConnected(true); // Mark as "connected" to browser recognition
+          startBrowserRecognition();
+          return;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      setToken(data.token);
+      setServerUrl(data.url);
+      setRoomName(data.roomName);
+      setIsConnecting(false);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to connect');
+      console.error('Connection error:', error);
+      
+      // Try browser speech recognition as fallback
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition && !useBrowserRecognition) {
+        console.log('Falling back to browser speech recognition');
+        setUseBrowserRecognition(true);
+        setError(null);
+        setIsConnecting(false);
+        setIsConnected(true);
+        startBrowserRecognition();
+        return;
+      }
+      
+      setError(error.message);
+      setIsConnecting(false);
+      onError?.(error);
+    }
+  }, [sessionId, isConnecting, isConnected, onError, useBrowserRecognition, startBrowserRecognition]);
+
+  // Handle room connection
+  const handleConnected = useCallback(() => {
+    // Room is available via LiveKitRoom context
+    setIsConnected(true);
+    setIsListening(true);
+    
+    // Check if browser Speech Recognition is available
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setUseBrowserRecognition(true);
+      startBrowserRecognition();
+    }
+  }, [startBrowserRecognition]);
+
+  // Handle transcription updates from inner component
+  const handleTranscriptionUpdate = useCallback((text: string) => {
+    setTranscription(text);
+    
+    if (text && text.trim() && onTranscription && !useBrowserRecognition) {
+      const shouldSend = text.length > 10 || 
+                        text.endsWith('.') || 
+                        text.endsWith('?') ||
+                        text.endsWith('!');
 
       if (shouldSend) {
-        onTranscription(transcription);
-        sendMessageToAssistant(transcription);
-        clearTranscription();
+        onTranscription(text);
+        sendMessageToAssistant(text);
+        setTranscription(''); // Clear after sending
       }
     }
-  }, [transcription, onTranscription, useBrowserRecognition, sendMessageToAssistant, clearTranscription]);
+  }, [onTranscription, useBrowserRecognition, sendMessageToAssistant]);
 
   // Handle disconnection
   const handleDisconnected = useCallback(() => {
     setIsConnected(false);
     setIsListening(false);
     setRoom(null);
-    clearTranscription();
+    setTranscription('');
     
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
-  }, [clearTranscription]);
+  }, []);
 
   // Toggle listening - will be handled by inner component with room access
   const toggleListening = useCallback(() => {
@@ -270,6 +340,40 @@ export function PublicVoiceAssistant({
     }
   }, [isConnected, isListening, useBrowserRecognition, connectRoom]);
 
+  // If using browser recognition, show controls directly
+  if (useBrowserRecognition && isConnected) {
+    return (
+      <div className={cn("flex flex-col items-center gap-2", className)}>
+        <Button
+          onClick={toggleListening}
+          disabled={isProcessing}
+          className={cn(
+            "rounded-full w-16 h-16 p-0 transition-all",
+            isListening && "bg-red-500 hover:bg-red-600 animate-pulse",
+            isProcessing && "opacity-50"
+          )}
+        >
+          {isProcessing ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : isListening ? (
+            <MicOff className="w-6 h-6" />
+          ) : (
+            <Mic className="w-6 h-6" />
+          )}
+        </Button>
+        {transcription && (
+          <div className="text-xs text-gray-600 text-center max-w-xs">
+            {transcription}
+          </div>
+        )}
+        {error && (
+          <p className="text-xs text-red-500 text-center max-w-xs">{error}</p>
+        )}
+      </div>
+    );
+  }
+
+  // If no token/serverUrl, show connect button
   if (!token || !serverUrl) {
     return (
       <div className={cn("flex flex-col items-center gap-2", className)}>
@@ -285,7 +389,12 @@ export function PublicVoiceAssistant({
           )}
         </Button>
         {error && (
-          <p className="text-xs text-red-500 text-center">{error}</p>
+          <p className="text-xs text-red-500 text-center max-w-xs">{error}</p>
+        )}
+        {!error && !isConnecting && (
+          <p className="text-xs text-gray-500 text-center max-w-xs">
+            Click to start voice assistant
+          </p>
         )}
       </div>
     );
@@ -308,6 +417,7 @@ export function PublicVoiceAssistant({
         transcription={transcription}
         error={error}
         onToggleListening={toggleListening}
+        onTranscriptionUpdate={handleTranscriptionUpdate}
         onClose={onClose}
       />
     </LiveKitRoom>
@@ -323,6 +433,7 @@ function VoiceAssistantControls({
   transcription,
   error,
   onToggleListening,
+  onTranscriptionUpdate,
   onClose,
 }: {
   isListening: boolean;
@@ -330,9 +441,18 @@ function VoiceAssistantControls({
   transcription: string;
   error: string | null;
   onToggleListening: () => void;
+  onTranscriptionUpdate: (text: string) => void;
   onClose?: () => void;
 }) {
   const { localParticipant } = useLocalParticipant();
+  const { transcription: liveKitTranscription, clearTranscription } = useLiveKitTranscription();
+
+  // Update parent when LiveKit transcription changes
+  useEffect(() => {
+    if (liveKitTranscription && liveKitTranscription !== transcription) {
+      onTranscriptionUpdate(liveKitTranscription);
+    }
+  }, [liveKitTranscription, transcription, onTranscriptionUpdate]);
 
   // Sync microphone with listening state
   useEffect(() => {
@@ -361,9 +481,9 @@ function VoiceAssistantControls({
         )}
       </Button>
       
-      {transcription && (
+      {(liveKitTranscription || transcription) && (
         <div className="text-xs text-gray-600 text-center max-w-xs">
-          {transcription}
+          {liveKitTranscription || transcription}
         </div>
       )}
       

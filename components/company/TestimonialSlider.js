@@ -159,19 +159,22 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
   };
 
   // Generate Review Schema markup
+  // Use @id reference to avoid duplicating the main Organization/LocalBusiness schema
   const reviewSchema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
+    "@id": "https://www.m10djcompany.com/#organization",
     "name": "M10 DJ Company",
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": "5",
       "reviewCount": testimonials.length,
       "bestRating": "5",
-      "worstRating": "5"
+      "worstRating": "1"
     },
-    "review": testimonials.map(testimonial => ({
+    "review": testimonials.map((testimonial, index) => ({
       "@type": "Review",
+      "@id": `https://www.m10djcompany.com/#review-${index}`,
       "author": {
         "@type": "Person",
         "name": testimonial.client_name
@@ -179,10 +182,14 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
       "reviewRating": {
         "@type": "Rating",
         "ratingValue": testimonial.rating,
-        "bestRating": "5"
+        "bestRating": "5",
+        "worstRating": "1"
       },
       "reviewBody": testimonial.testimonial_text,
-      "datePublished": testimonial.event_date
+      "datePublished": testimonial.event_date ? new Date(testimonial.event_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      "itemReviewed": {
+        "@id": "https://www.m10djcompany.com/#organization"
+      }
     }))
   };
 
@@ -197,7 +204,7 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
 
   if (loading) {
     return (
-      <section className={`py-16 bg-white dark:bg-gray-900 ${className}`}>
+      <section className={`py-16 bg-white dark:bg-black ${className}`}>
         <div className="section-container">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold mx-auto"></div>
@@ -217,7 +224,7 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
         />
       )}
       
-      <section className={`py-16 bg-white dark:bg-gray-900 ${className}`}>
+      <section className={`py-16 bg-white dark:bg-black ${className}`}>
         <div className="section-container">
           <div className="text-center mb-12">
             <h2 className="heading-2 text-gray-900 dark:text-white mb-4">
@@ -230,7 +237,7 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
 
           <div className="relative max-w-4xl mx-auto">
             {/* Main testimonial display */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-8 md:p-12 shadow-lg">
+            <div className="bg-gray-50 dark:bg-black rounded-2xl p-8 md:p-12 shadow-lg">
               <Quote className="w-12 h-12 text-brand-gold mb-6 mx-auto" />
               
               <div className="text-center">
@@ -242,7 +249,7 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
                   "{testimonials[currentIndex].testimonial_text}"
                 </blockquote>
                 
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <div className="border-t border-gray-200 dark:border-gray-800 pt-6">
                   <div className="font-semibold text-gray-900 dark:text-white text-lg mb-1">
                     {testimonials[currentIndex].client_name}
                   </div>
@@ -259,7 +266,7 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
             {/* Navigation arrows */}
             <button
               onClick={goToPrevious}
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-brand-gold/30"
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white dark:bg-black p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-black/80 transition-all transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-brand-gold/30"
               aria-label="Previous testimonial"
             >
               <ChevronLeft className="w-6 h-6 text-gray-600 dark:text-gray-300" />
@@ -267,7 +274,7 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
             
             <button
               onClick={goToNext}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-brand-gold/30"
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white dark:bg-black p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-black/80 transition-all transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-brand-gold/30"
               aria-label="Next testimonial"
             >
               <ChevronRight className="w-6 h-6 text-gray-600 dark:text-gray-300" />
@@ -282,7 +289,7 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
                   className={`w-3 h-3 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-brand-gold/50 ${
                     index === currentIndex 
                       ? 'bg-brand-gold scale-125' 
-                      : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                      : 'bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700'
                   }`}
                   aria-label={`Go to testimonial ${index + 1}`}
                 />

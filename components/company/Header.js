@@ -8,6 +8,11 @@ import { Phone, Mail, Menu, X, ChevronDown, MapPin, FileText, Calendar, CreditCa
 import { scrollToContact } from '../../utils/scroll-helpers';
 import ContactFormModal from './ContactFormModal';
 import SocialAccountSelector from '../ui/SocialAccountSelector';
+import dynamic from 'next/dynamic';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+// Dynamically import ThemeToggle to avoid SSR issues
+const ThemeToggle = dynamic(() => import('./ThemeToggle'), { ssr: false });
 
 // Helper function to get absolute URL for assets (works across domains)
 const getAssetUrl = (path) => {
@@ -33,6 +38,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
   const [socialSelectorOpen, setSocialSelectorOpen] = useState(false);
   const [selectedSocialPlatform, setSelectedSocialPlatform] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   
   // Check if we're on a quote page and extract quote ID
   const isQuotePage = router.pathname?.includes('/quote/') && router.query?.id;
@@ -54,6 +60,25 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
     : 'border-gray-200 dark:border-gray-700';
 
   useEffect(() => {
+    // Check if user is logged in
+    const supabase = createClientComponentClient();
+    
+    const checkUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsLoggedIn(!!session);
+      } catch (error) {
+        setIsLoggedIn(false);
+      }
+    };
+    
+    checkUser();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsLoggedIn(!!session);
+    });
+    
     // Initialize as not scrolled
     setIsScrolled(false);
     
@@ -104,6 +129,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('load', checkInitialScroll);
       observer.disconnect();
+      subscription?.unsubscribe();
     };
   }, []);
 
@@ -352,17 +378,17 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
               <div className="flex items-center space-x-2.5">
                 <div className="relative flex-shrink-0 overflow-visible">
                   {shouldBeTransparent && !customLogoUrl ? (
-                    <Image
-                      src={isDarkMode || !isScrolled 
+                    <img
+                      key={`transparent-logo-${isDarkMode ? 'dark' : 'light'}`}
+                      src={isDarkMode 
                         ? getAssetUrl("/assets/m10 dj company logo white.gif")
                         : getAssetUrl("/assets/m10 dj company logo black.gif")}
                       alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
-                      width={150}
-                      height={68}
-                      className="h-[54px] sm:h-[68px] w-auto rounded-lg transition-transform group-hover:scale-105"
-                      priority
-                      unoptimized={true}
-                      style={{ objectFit: 'contain', display: 'block' }}
+                      className="max-h-[54px] sm:max-h-[68px] w-auto h-auto rounded-lg transition-transform group-hover:scale-105"
+                      style={{ 
+                        display: 'block',
+                        objectFit: 'contain'
+                      }}
                       onError={(e) => {
                         // Fallback if GIF doesn't load, try JPG version
                         const currentSrc = e.target.src;
@@ -375,13 +401,25 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     />
                   ) : (
                     <Image
-                      src={customLogoUrl || getAssetUrl("/logo-static.jpg")}
+                      key={`logo-${isDarkMode ? 'dark' : 'light'}`}
+                      src={customLogoUrl || (isDarkMode 
+                        ? getAssetUrl("/assets/m10 dj company logo white.gif")
+                        : getAssetUrl("/assets/m10 dj company logo black.gif"))}
                       alt={customLogoUrl ? "Organization Logo" : "M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"}
                       width={45}
                       height={45}
                       className="w-9 h-9 sm:w-[45px] sm:h-[45px] rounded-lg transition-transform group-hover:scale-105"
                       priority
                       unoptimized={customLogoUrl ? true : false}
+                      onError={(e) => {
+                        // Fallback if GIF doesn't load, try static JPG version
+                        const currentSrc = e.target.src;
+                        if (currentSrc.includes('white.gif')) {
+                          e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
+                        } else if (currentSrc.includes('black.gif')) {
+                          e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
+                        }
+                      }}
                     />
                   )}
                 </div>
@@ -581,6 +619,20 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                   <span className="xl:hidden">(901) 410-2020</span>
                 </a>
                 
+                {/* Theme Toggle - Only show for logged in users */}
+                {isLoggedIn && (
+                  <>
+                    <div className={`h-6 w-px ${shouldBeTransparent && !isScrolled ? 'bg-white/30' : 'bg-gray-300 dark:bg-gray-800'}`}></div>
+                    <ThemeToggle 
+                      className={
+                        shouldBeTransparent && !isScrolled
+                          ? 'text-white hover:text-yellow-300 hover:bg-white/10'
+                          : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-gray-50 dark:hover:bg-black/50'
+                      }
+                    />
+                  </>
+                )}
+                
                 {/* Divider - Only show if admin link is visible */}
                 {!isRequestsPage && (
                   <>
@@ -640,22 +692,40 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className={`lg:hidden border-t shadow-2xl animate-fade-in max-h-[calc(100vh-80px)] overflow-y-auto ${
+          <div className={`lg:hidden fixed top-0 left-0 right-0 bottom-0 z-50 shadow-2xl animate-fade-in overflow-y-auto ${
             shouldBeTransparent && !isScrolled
-              ? 'bg-black/80 backdrop-blur-md border-white/20'
-              : 'bg-gradient-to-b from-white dark:from-black via-gray-50/50 dark:via-black/50 to-white dark:to-black border-gray-200 dark:border-gray-800'
+              ? 'bg-black/90 backdrop-blur-lg border-white/20'
+              : 'bg-gradient-to-b from-white/95 dark:from-black/95 via-gray-50/95 dark:via-black/95 to-white/95 dark:to-black/95 border-gray-200 dark:border-gray-800'
           }`}
-          style={
-            shouldBeTransparent && !isScrolled
+          style={{
+            height: '100vh',
+            maxHeight: '100vh',
+            ...(shouldBeTransparent && !isScrolled
               ? {
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
                 }
-              : undefined
-          }>
-            <div className="section-container py-6">
-              <nav className="space-y-2">
+              : {
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                })
+          }          }>
+            {/* Close Button - Fixed at top right */}
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="absolute top-4 right-4 z-50 p-2 transition-colors rounded-lg bg-white/90 dark:bg-black/90 backdrop-blur-sm text-gray-900 dark:text-white hover:text-brand dark:hover:text-brand hover:bg-white dark:hover:bg-black/80 shadow-lg border border-gray-200 dark:border-gray-800"
+              aria-label="Close menu"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            {/* Flex container for scrollable content and sticky footer */}
+            <div className="flex flex-col h-full">
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="section-container py-6 pt-24 pb-32">
+                  <nav className="space-y-2">
                 {/* Owner Navigation - Show on requests page if user is owner */}
                 {isRequestsPage && isOwner && (
                   <div className="space-y-1">
@@ -865,6 +935,17 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                         Admin Sign In
                       </a>
                     )}
+                    
+                    {/* Theme Toggle - Mobile - Only show for logged in users */}
+                    {isLoggedIn && (
+                      <>
+                        <div className="border-t border-gray-200 dark:border-gray-800 my-2"></div>
+                        <ThemeToggle 
+                          variant="mobile"
+                          className={mobileMenuTextClass + ' ' + mobileMenuBgClass}
+                        />
+                      </>
+                    )}
                   </>
                 )}
                 
@@ -1029,7 +1110,13 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     </div>
                   </div>
                 </div>
+              </div>
+              )}
+              </div>
+              </div>
 
+              {/* Sticky Footer with Buttons */}
+              <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-white/95 dark:from-black/95 via-white/95 dark:via-black/95 to-transparent backdrop-blur-lg border-t border-gray-200 dark:border-gray-800 p-4 space-y-3 z-40">
                 <Link
                   href="/requests"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -1054,7 +1141,6 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                   Get Your Free Quote
                 </button>
               </div>
-              )}
             </div>
           </div>
         )}
@@ -1065,9 +1151,13 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
         <div 
           className={`fixed inset-0 z-40 lg:hidden ${
             shouldBeTransparent && !isScrolled
-              ? 'bg-black/40 backdrop-blur-sm'
-              : 'bg-black bg-opacity-25'
+              ? 'bg-black/50 backdrop-blur-md'
+              : 'bg-black/30 backdrop-blur-md'
           }`}
+          style={{
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

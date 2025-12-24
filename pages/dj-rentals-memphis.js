@@ -88,10 +88,10 @@ export default function DJRentalsMemphis() {
   return (
     <>
       <Head>
-        <title>DJ Rentals Memphis | Sound System Rental | Professional Audio Equipment</title>
+        <title>DJ Rentals Memphis | Sound System Rental</title>
         <meta 
           name="description" 
-          content="DJ rentals Memphis - Professional sound system rental, microphones, lighting & DJ equipment. Perfect for weddings, corporate events & parties. Same-day delivery available!" 
+          content="DJ rentals Memphis - Professional sound system rental, microphones, lighting & DJ equipment. Perfect for weddings, corporate events & parties. Call (901) 410-2020!" 
         />
         <meta name="keywords" content="DJ rentals Memphis, sound system rental Memphis, audio equipment rental, microphone rental Memphis, DJ equipment rental, party equipment rental Memphis, wedding sound rental" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

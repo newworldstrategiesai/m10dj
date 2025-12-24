@@ -65,7 +65,7 @@ export default function ClientLogoCarousel({
   const duplicatedLogos = [...clientLogos, ...clientLogos];
 
   return (
-    <section className={`py-16 bg-gray-50 dark:bg-gray-900 overflow-hidden ${className}`}>
+    <section className={`py-16 bg-gray-50 dark:bg-black overflow-hidden ${className}`}>
       <div className="section-container">
         {/* Header */}
         {title && (
@@ -84,8 +84,8 @@ export default function ClientLogoCarousel({
         {/* Infinite Scrolling Logo Container */}
         <div className="relative">
           {/* Gradient overlays for fade effect */}
-          <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent z-10 pointer-events-none"></div>
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-gray-50 dark:from-black to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-gray-50 dark:from-black to-transparent z-10 pointer-events-none"></div>
 
           {/* Scrolling logos wrapper */}
           <div className="logo-carousel-track flex items-center gap-12 md:gap-16">
@@ -95,7 +95,7 @@ export default function ClientLogoCarousel({
                 className="flex-shrink-0 w-40 h-20 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-90 hover:opacity-100"
               >
                 {/* Placeholder logo box */}
-                <div className="w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                <div className="w-full h-full bg-white dark:bg-black rounded-lg shadow-md border border-gray-300 dark:border-gray-800 flex items-center justify-center">
                   <span className="text-xs text-gray-700 dark:text-gray-300 font-bold">
                     {logo.name}
                   </span>

@@ -177,10 +177,10 @@ export default function Services() {
   return (
     <>
       <Head>
-        <title>Professional DJ Services & Pricing in Memphis | M10 DJ Company</title>
+        <title>Memphis DJ Services & Pricing | M10 DJ</title>
         <meta 
           name="description" 
-          content="Complete DJ services for Memphis weddings, corporate events & parties. Professional sound, lighting, and MC services with transparent pricing. Get your free quote today!" 
+          content="Memphis DJ services for weddings, corporate events & parties. Professional sound, lighting & MC services with transparent pricing. Free quotes. Call (901) 410-2020!" 
         />
         <meta name="keywords" content="professional DJ Memphis, pro DJ Memphis, DJ services Memphis, professional DJ services Memphis, wedding DJ pricing Memphis, corporate DJ services, sound system rental Memphis, uplighting Memphis, MC services Memphis TN" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

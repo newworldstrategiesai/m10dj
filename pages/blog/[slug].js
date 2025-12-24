@@ -188,7 +188,9 @@ export default function BlogPost({ post: initialPost, relatedPosts: initialRelat
               
               <div className="flex items-center text-gray-600 dark:text-gray-400 text-sm">
                 <User className="w-4 h-4 mr-1" />
-                {post.author}
+                <Link href="/about/ben-murray" className="hover:text-brand-gold transition-colors font-semibold">
+                  {post.author || "Ben Murray"}
+                </Link>
               </div>
               
               <div className="flex items-center text-gray-600 dark:text-gray-400 text-sm">
@@ -393,9 +395,18 @@ export default function BlogPost({ post: initialPost, relatedPosts: initialRelat
             "datePublished": post.published_at,
             "dateModified": post.updated_at,
             "author": {
-              "@type": "Organization",
-              "name": post.author,
-              "url": "https://m10djcompany.com"
+              "@type": "Person",
+              "@id": "https://www.m10djcompany.com/about/ben-murray#person",
+              "name": "Ben Murray",
+              "alternateName": "DJ Ben Murray",
+              "jobTitle": "Founder & Lead DJ",
+              "url": "https://www.m10djcompany.com/about/ben-murray",
+              "sameAs": [
+                "https://www.instagram.com/djbenmurray/",
+                "https://soundcloud.com/thebenmurray",
+                "https://www.facebook.com/djbenmurray/",
+                "https://x.com/djbenmurray"
+              ]
             },
             "publisher": {
               "@type": "Organization",

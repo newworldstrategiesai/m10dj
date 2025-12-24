@@ -226,7 +226,7 @@ export default function MemphisEventDJServices() {
   return (
     <>
       <Head>
-        <title>Memphis Event DJ Services | Corporate Event Entertainment | M10 DJ Company</title>
+        <title>Event DJ Memphis | Professional Event DJ Services | M10 DJ Company</title>
         <meta 
           name="description" 
           content="Professional Memphis event DJ services for corporate events, business galas, networking events & company celebrations. Experienced corporate DJs with professional equipment. Call (901) 410-2020!" 
@@ -255,7 +255,7 @@ export default function MemphisEventDJServices() {
               "@context": "https://schema.org",
               "@type": "LocalBusiness",
               "name": "M10 DJ Company - Event DJ Services",
-              "description": "Professional corporate event DJ services in Memphis, TN",
+              "description": "Corporate event DJ services in Memphis for business galas, networking events, and company celebrations. Professional equipment, corporate expertise, and reliable service. Call (901) 410-2020!",
               "url": "https://m10djcompany.com/memphis-event-dj-services",
               "telephone": "+19014102020",
               "email": "booking@m10djcompany.com",

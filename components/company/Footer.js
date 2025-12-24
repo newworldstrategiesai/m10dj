@@ -1,9 +1,13 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Phone, Mail, MapPin, Clock, Facebook, Instagram, Music } from 'lucide-react';
+import ContactFormModal from './ContactFormModal';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   return (
     <footer className="bg-black text-white relative overflow-hidden">
@@ -296,9 +300,12 @@ export default function Footer() {
               Get your free consultation and quote today. Let's create an amazing experience for your special event.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
-              <Link href="/contact" className="btn-primary min-h-[44px]">
+              <button 
+                onClick={() => setIsContactModalOpen(true)}
+                className="btn-primary min-h-[44px]"
+              >
                 Get Free Quote
-              </Link>
+              </button>
               <a href="tel:+19014102020" className="btn-secondary min-h-[44px]">
                 Call Now
               </a>
@@ -306,6 +313,12 @@ export default function Footer() {
           </div>
         </div>
       </div>
+
+      {/* Contact Form Modal */}
+      <ContactFormModal 
+        isOpen={isContactModalOpen} 
+        onClose={() => setIsContactModalOpen(false)} 
+      />
     </footer>
   );
 } 

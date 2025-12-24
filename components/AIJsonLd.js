@@ -81,9 +81,7 @@ export default function AIJsonLd({ loc }) {
             "url": `https://www.m10djcompany.com/${loc.name.toLowerCase().replace(/\s+/g, '-')}#services-answer`,
             "upvoteCount": 73,
             "author": {
-              "@type": "Organization",
-              "name": "M10 DJ Company",
-              "url": "https://www.m10djcompany.com"
+              "@id": "https://www.m10djcompany.com/#organization"
             }
           }
         }

@@ -107,6 +107,11 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   
   const hideNavbar = isSignInPage || isChatPage || isMarketingSite || isLivePage;
   const hideFooter = isSignInPage || isChatPage || isMarketingSite || isLivePage;
+  
+  // Homepage uses generateStructuredData which includes LocalBusiness schema
+  // Only show layout schema on non-homepage pages to avoid duplication
+  const isHomepage = pathname === '/' || pathname === '';
+  const showLayoutSchema = !isHomepage && !isMarketingSite;
 
   return (
     <html lang="en">
@@ -114,145 +119,153 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         {/* Performance Optimizations */}
         <meta name="theme-color" content="#F59E0B" />
         <meta name="color-scheme" content="light dark" />
+        
+        {/* DNS Prefetch for faster connections */}
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+        
+        {/* Preconnect to critical third-party domains */}
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
-        {/* Critical Resource Hints */}
-        <link rel="preload" href="/logo-static.jpg" as="image" type="image/jpeg" />
-        <link rel="modulepreload" href="/_next/static/chunks/main.js" />
+        {/* Critical Resource Hints - Preload above-the-fold assets */}
+        <link rel="preload" href="/logo-static.jpg" as="image" type="image/jpeg" fetchPriority="high" />
         
         {/* Structured Data for Local Business */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "LocalBusiness",
-              "name": "M10 DJ Company",
-              "description": "Professional DJ and entertainment services in Memphis, TN",
-              "url": getURL(),
-              "telephone": "+19014102020",
-              "address": {
-                "@type": "PostalAddress",
-                "streetAddress": "65 Stewart Rd",
-                "addressLocality": "Eads",
-                "addressRegion": "TN",
-                "postalCode": "38028",
-                "addressCountry": "US"
-              },
-              "geo": {
-                "@type": "GeoCoordinates",
-                "latitude": 35.1495,
-                "longitude": -90.0490
-              },
-              "openingHours": "Mo-Su 09:00-21:00",
-              "priceRange": "$$",
-              "image": `${getURL()}/logo-static.jpg`,
-              "sameAs": [
-                "https://www.facebook.com/m10djcompany",
-                "https://www.instagram.com/m10djcompany"
-              ],
-              "serviceArea": {
-                "@type": "GeoCircle",
-                "geoMidpoint": {
+        {/* Only show on non-homepage pages to avoid duplication with generateStructuredData */}
+        {showLayoutSchema && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "LocalBusiness",
+                "@id": `${getURL()}/#organization`,
+                "name": "M10 DJ Company",
+                "description": "Professional DJ and entertainment services in Memphis, TN",
+                "url": getURL(),
+                "telephone": "+19014102020",
+                "address": {
+                  "@type": "PostalAddress",
+                  "streetAddress": "65 Stewart Rd",
+                  "addressLocality": "Eads",
+                  "addressRegion": "TN",
+                  "postalCode": "38028",
+                  "addressCountry": "US"
+                },
+                "geo": {
                   "@type": "GeoCoordinates",
                   "latitude": 35.1495,
                   "longitude": -90.0490
                 },
-                "geoRadius": "50000"
-              },
-              "areaServed": [
-                {
-                  "@type": "City",
-                  "name": "Memphis",
-                  "containedInPlace": {
-                    "@type": "State",
-                    "name": "Tennessee"
-                  }
+                "openingHours": "Mo-Su 09:00-21:00",
+                "priceRange": "$$",
+                "image": `${getURL()}/logo-static.jpg`,
+                "sameAs": [
+                  "https://www.facebook.com/m10djcompany",
+                  "https://www.instagram.com/m10djcompany"
+                ],
+                "serviceArea": {
+                  "@type": "GeoCircle",
+                  "geoMidpoint": {
+                    "@type": "GeoCoordinates",
+                    "latitude": 35.1495,
+                    "longitude": -90.0490
+                  },
+                  "geoRadius": "50000"
                 },
-                {
-                  "@type": "Place",
-                  "name": "East Memphis",
-                  "containedInPlace": {
+                "areaServed": [
+                  {
                     "@type": "City",
-                    "name": "Memphis"
-                  }
-                },
-                {
-                  "@type": "City",
-                  "name": "Germantown",
-                  "containedInPlace": {
-                    "@type": "State",
-                    "name": "Tennessee"
-                  }
-                },
-                {
-                  "@type": "City",
-                  "name": "Collierville",
-                  "containedInPlace": {
-                    "@type": "State",
-                    "name": "Tennessee"
-                  }
-                },
-                {
-                  "@type": "City",
-                  "name": "Bartlett",
-                  "containedInPlace": {
-                    "@type": "State",
-                    "name": "Tennessee"
-                  }
-                },
-                {
-                  "@type": "Place",
-                  "name": "Midtown Memphis",
-                  "containedInPlace": {
+                    "name": "Memphis",
+                    "containedInPlace": {
+                      "@type": "State",
+                      "name": "Tennessee"
+                    }
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "East Memphis",
+                    "containedInPlace": {
+                      "@type": "City",
+                      "name": "Memphis"
+                    }
+                  },
+                  {
                     "@type": "City",
-                    "name": "Memphis"
-                  }
-                },
-                {
-                  "@type": "Place",
-                  "name": "Downtown Memphis",
-                  "containedInPlace": {
+                    "name": "Germantown",
+                    "containedInPlace": {
+                      "@type": "State",
+                      "name": "Tennessee"
+                    }
+                  },
+                  {
                     "@type": "City",
-                    "name": "Memphis"
+                    "name": "Collierville",
+                    "containedInPlace": {
+                      "@type": "State",
+                      "name": "Tennessee"
+                    }
+                  },
+                  {
+                    "@type": "City",
+                    "name": "Bartlett",
+                    "containedInPlace": {
+                      "@type": "State",
+                      "name": "Tennessee"
+                    }
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Midtown Memphis",
+                    "containedInPlace": {
+                      "@type": "City",
+                      "name": "Memphis"
+                    }
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Downtown Memphis",
+                    "containedInPlace": {
+                      "@type": "City",
+                      "name": "Memphis"
+                    }
                   }
+                ],
+                "hasOfferCatalog": {
+                  "@type": "OfferCatalog",
+                  "name": "DJ Services",
+                  "itemListElement": [
+                    {
+                      "@type": "Offer",
+                      "itemOffered": {
+                        "@type": "Service",
+                        "name": "Wedding DJ Services",
+                        "description": "Professional wedding DJ and MC services"
+                      }
+                    },
+                    {
+                      "@type": "Offer",
+                      "itemOffered": {
+                        "@type": "Service",
+                        "name": "Corporate Event DJ",
+                        "description": "Professional corporate event entertainment"
+                      }
+                    },
+                    {
+                      "@type": "Offer",
+                      "itemOffered": {
+                        "@type": "Service",
+                        "name": "Birthday Party DJ",
+                        "description": "Birthday party and special event DJ services"
+                      }
+                    }
+                  ]
                 }
-              ],
-              "hasOfferCatalog": {
-                "@type": "OfferCatalog",
-                "name": "DJ Services",
-                "itemListElement": [
-                  {
-                    "@type": "Offer",
-                    "itemOffered": {
-                      "@type": "Service",
-                      "name": "Wedding DJ Services",
-                      "description": "Professional wedding DJ and MC services"
-                    }
-                  },
-                  {
-                    "@type": "Offer",
-                    "itemOffered": {
-                      "@type": "Service",
-                      "name": "Corporate Event DJ",
-                      "description": "Professional corporate event entertainment"
-                    }
-                  },
-                  {
-                    "@type": "Offer",
-                    "itemOffered": {
-                      "@type": "Service",
-                      "name": "Birthday Party DJ",
-                      "description": "Birthday party and special event DJ services"
-                    }
-                  }
-                ]
-              }
-            })
-          }}
-        />
+              })
+            }}
+          />
+        )}
         
         {/* Tracking scripts removed from layout.tsx to prevent conflicts with _document.js */}
         {/* All tracking now handled in _document.js with proper defer loading */}
