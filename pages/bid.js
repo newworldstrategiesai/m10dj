@@ -1,20 +1,10 @@
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Header from '../components/company/Header';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCoverPhotoUrl } from '../utils/cover-photo-helper';
 import { GeneralRequestsPage } from './requests';
-
-// Dynamically import FloatingVoiceWidget to avoid SSR issues
-const FloatingVoiceWidget = dynamic(
-  () => import('../components/public/FloatingVoiceWidget').then(mod => ({ default: mod.FloatingVoiceWidget })),
-  { 
-    ssr: false,
-    loading: () => null // Don't show loading state for floating widget
-  }
-);
 
 const DEFAULT_COVER_PHOTO = '/assets/DJ-Ben-Murray-Dodge-Poster.png';
 
@@ -97,31 +87,26 @@ export default function BidPageWrapper() {
   // Don't modify organization data - just pass forceBiddingMode prop
   // This ensures /bid always uses bidding mode regardless of organization setting
   return (
-    <>
-      <GeneralRequestsPage
-        key={`${organization?.id || 'default'}-bid-mode`}
-        organizationId={organization?.id || null}
-        organizationName={organization?.name || null}
-        organizationCoverPhoto={getCoverPhotoUrl(organization, DEFAULT_COVER_PHOTO)}
-        organizationData={organization} // Pass original organization data (don't modify)
-        isOwner={isOwner}
-        customBranding={organization?.white_label_enabled ? {
-          whiteLabelEnabled: organization.white_label_enabled,
-          customLogoUrl: organization.custom_logo_url,
-          primaryColor: organization.primary_color,
-          secondaryColor: organization.secondary_color,
-          backgroundColor: organization.background_color,
-          textColor: organization.text_color,
-          fontFamily: organization.font_family
-        } : null}
-        forceBiddingMode={true} // Force bidding mode for /bid route - overrides organization setting
-        allowedRequestTypes={['song_request']} // Only allow song requests on /bid page
-        minimalHeader={true} // Use minimal header for bid page
-      />
-      
-      {/* Floating Voice Assistant Widget */}
-      <FloatingVoiceWidget />
-    </>
+    <GeneralRequestsPage
+      key={`${organization?.id || 'default'}-bid-mode`}
+      organizationId={organization?.id || null}
+      organizationName={organization?.name || null}
+      organizationCoverPhoto={getCoverPhotoUrl(organization, DEFAULT_COVER_PHOTO)}
+      organizationData={organization} // Pass original organization data (don't modify)
+      isOwner={isOwner}
+      customBranding={organization?.white_label_enabled ? {
+        whiteLabelEnabled: organization.white_label_enabled,
+        customLogoUrl: organization.custom_logo_url,
+        primaryColor: organization.primary_color,
+        secondaryColor: organization.secondary_color,
+        backgroundColor: organization.background_color,
+        textColor: organization.text_color,
+        fontFamily: organization.font_family
+      } : null}
+      forceBiddingMode={true} // Force bidding mode for /bid route - overrides organization setting
+      allowedRequestTypes={['song_request']} // Only allow song requests on /bid page
+      minimalHeader={true} // Use minimal header for bid page
+    />
   );
 }
 
