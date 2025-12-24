@@ -178,8 +178,29 @@ export default function SchedulePage() {
 
       if (error) throw error;
 
-      // Send confirmation email (this will be implemented)
-      // await sendBookingConfirmation(data);
+      // Send confirmation emails
+      const meetingType = meetingTypes.find(mt => mt.id === selectedMeetingType);
+      if (data && meetingType) {
+        // Send emails in background (don't wait for them)
+        fetch('/api/schedule/send-confirmation-emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: data.id,
+            clientName: formData.name,
+            clientEmail: formData.email,
+            clientPhone: formData.phone,
+            meetingType: meetingType.name,
+            meetingDate: meetingDate,
+            meetingTime: selectedTime,
+            durationMinutes: meetingType.duration_minutes,
+            eventType: formData.eventType || null,
+            eventDate: formData.eventDate || null,
+            notes: formData.notes || null,
+            meetingDescription: meetingType.description
+          })
+        }).catch(err => console.error('Failed to send confirmation emails:', err));
+      }
 
       toast({
         title: 'Booking Confirmed!',

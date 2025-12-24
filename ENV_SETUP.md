@@ -22,6 +22,11 @@ ADMIN_PHONE_NUMBER=your-admin-phone-number
 # Email Configuration (Resend)
 RESEND_API_KEY=your-resend-api-key
 
+# Google Places API (for venue image scraping)
+# Get your API key from: https://console.cloud.google.com/google/maps-apis
+# Enable "Places API" and "Maps JavaScript API" in your Google Cloud project
+GOOGLE_PLACES_API_KEY=your-google-places-api-key
+
 # Site Configuration
 NEXT_PUBLIC_SITE_URL=https://m10djcompany.com
 ```
@@ -44,3 +49,12 @@ The **DEFAULT_ADMIN_USER_ID** is essential for:
 - Never commit `.env.local` to version control
 - Keep your Supabase service role key secure
 - Use environment-specific URLs for production
+- Restrict Google Places API key to specific domains/IPs in Google Cloud Console
+
+## 📸 Venue Image Scraping
+
+The venue image feature uses Google Places API to automatically fetch venue photos:
+- **Setup**: Get a Google Places API key from [Google Cloud Console](https://console.cloud.google.com/google/maps-apis)
+- **Enable APIs**: Enable "Places API" and "Maps JavaScript API" in your project
+- **Usage**: Click "Fetch Venue Image" button in form submissions to get venue photos
+- **Fallback**: If API key is not configured, the feature will show an error message

@@ -10,10 +10,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { contactId, to, message } = req.body;
+  // Accept both parameter names for flexibility
+  const { contactId, submissionId, to, message } = req.body;
 
-  if (!contactId || !to || !message) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  const recordId = contactId || submissionId;
+
+  if (!recordId || !to || !message) {
+    return res.status(400).json({ error: 'Missing required fields: contactId/submissionId, to, and message are required' });
   }
 
   // Check if Twilio is configured
@@ -47,12 +50,12 @@ export default async function handler(req, res) {
     // Log the communication in database
     const supabase = createClient();
     
-    // Get organization_id from contact
+    // Get organization_id from contact or submission
     let organizationId = null;
     const { data: contact } = await supabase
       .from('contacts')
       .select('organization_id')
-      .eq('id', contactId)
+      .eq('id', recordId)
       .single();
     
     if (contact?.organization_id) {
@@ -62,7 +65,7 @@ export default async function handler(req, res) {
       const { data: submission } = await supabase
         .from('contact_submissions')
         .select('organization_id')
-        .eq('id', contactId)
+        .eq('id', recordId)
         .single();
       
       if (submission?.organization_id) {
@@ -73,7 +76,7 @@ export default async function handler(req, res) {
     const { error: logError } = await supabase
       .from('communication_log')
       .insert([{
-        contact_submission_id: contactId,
+        contact_submission_id: recordId,
         communication_type: 'sms',
         direction: 'outbound',
         subject: null,
@@ -93,14 +96,14 @@ export default async function handler(req, res) {
       // Don't fail the request if logging fails
     }
 
-    // Update last contact date on the submission
+    // Update last contact date on the submission (if it's a submission)
     const { error: updateError } = await supabase
       .from('contact_submissions')
       .update({ 
         last_contact_date: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('id', contactId);
+      .eq('id', recordId);
 
     if (updateError) {
       console.error('Error updating last contact date:', updateError);
@@ -121,12 +124,12 @@ export default async function handler(req, res) {
     try {
       const supabase = createClient();
       
-      // Get organization_id from contact
+      // Get organization_id from contact or submission
       let organizationId = null;
       const { data: contact } = await supabase
         .from('contacts')
         .select('organization_id')
-        .eq('id', contactId)
+        .eq('id', recordId)
         .single();
       
       if (contact?.organization_id) {
@@ -136,7 +139,7 @@ export default async function handler(req, res) {
         const { data: submission } = await supabase
           .from('contact_submissions')
           .select('organization_id')
-          .eq('id', contactId)
+          .eq('id', recordId)
           .single();
         
         if (submission?.organization_id) {
@@ -147,7 +150,7 @@ export default async function handler(req, res) {
       await supabase
         .from('communication_log')
         .insert([{
-          contact_submission_id: contactId,
+          contact_submission_id: recordId,
           communication_type: 'sms',
           direction: 'outbound',
           subject: null,

@@ -79,10 +79,34 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
               link: `/quote/${quoteId}`,
               linkText: linkText
             });
+
+            // For wedding submissions, add questionnaire link right after service selection
+            if (isWedding) {
+              initialMessages.push({
+                id: 3,
+                type: 'bot',
+                text: 'Want to get started on your music planning right away? Complete our wedding music questionnaire to help us understand your preferences, special songs, and the vibe you\'re going for. This will help us create the perfect playlist for your big day!',
+                timestamp: new Date(),
+                hasLink: true,
+                link: `/quote/${quoteId}/questionnaire`,
+                linkText: 'Start Wedding Music Questionnaire →'
+              });
+            }
           } else {
             console.error('❌ Invalid quote ID:', quoteId, '(original:', submissionId, ')');
           }
         }
+
+        // Add schedule consultation link to thank you screen
+        initialMessages.push({
+          id: initialMessages.length + 1,
+          type: 'bot',
+          text: 'Would you like to schedule a free consultation to discuss your event in detail?',
+          timestamp: new Date(),
+          hasLink: true,
+          link: '/schedule',
+          linkText: 'Schedule a Free Consultation →'
+        });
 
         setMessages(initialMessages);
 

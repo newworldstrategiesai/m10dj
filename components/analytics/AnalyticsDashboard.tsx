@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCurrentOrganization } from '@/utils/organization-context';
 import { 
@@ -19,7 +20,10 @@ import {
   PieChart,
   ArrowUp,
   ArrowDown,
-  RefreshCw
+  RefreshCw,
+  Clock,
+  ExternalLink,
+  ArrowRight
 } from 'lucide-react';
 
 interface RevenueStats {
@@ -28,6 +32,19 @@ interface RevenueStats {
   total: number;
   growth: number;
   averagePerEvent: number;
+}
+
+interface RecentRequest {
+  id: string;
+  request_type: 'song_request' | 'shoutout' | 'tip';
+  requester_name: string;
+  song_title: string | null;
+  song_artist: string | null;
+  recipient_name: string | null;
+  amount_paid: number;
+  payment_status: string;
+  created_at: string;
+  event_name: string | null;
 }
 
 interface RequestStats {
@@ -40,6 +57,7 @@ interface RequestStats {
   };
   paid: number;
   pending: number;
+  recentRequests: RecentRequest[];
 }
 
 interface EventStats {
@@ -167,6 +185,15 @@ export default function AnalyticsDashboard() {
         .neq('request_type', 'event')
         .gte('created_at', startOfMonth.toISOString());
 
+      // Get recent requests (last 5)
+      const { data: recentRequestsData } = await supabase
+        .from('crowd_requests')
+        .select('id, request_type, requester_name, song_title, song_artist, recipient_name, amount_paid, payment_status, created_at, event_name')
+        .eq('organization_id', orgId)
+        .neq('request_type', 'event')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
       const byType = {
         song_request: 0,
         shoutout: 0,
@@ -187,7 +214,8 @@ export default function AnalyticsDashboard() {
         thisMonth: thisMonthRequests?.length || 0,
         byType,
         paid,
-        pending
+        pending,
+        recentRequests: (recentRequestsData || []) as RecentRequest[]
       });
     } catch (error) {
       console.error('Error loading request stats:', error);
@@ -260,13 +288,14 @@ export default function AnalyticsDashboard() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6">
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="h-32 bg-gray-200 rounded"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="h-5 sm:h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-3 sm:mb-4"></div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+            <div className="h-24 sm:h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-24 sm:h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-24 sm:h-32 bg-gray-200 dark:bg-gray-700 rounded hidden lg:block"></div>
+            <div className="h-24 sm:h-32 bg-gray-200 dark:bg-gray-700 rounded hidden lg:block"></div>
           </div>
         </div>
       </div>
@@ -274,18 +303,18 @@ export default function AnalyticsDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
-          <p className="text-gray-600 mt-1">Revenue, requests, and business insights</p>
+    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+      {/* Header - Compact on Mobile */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h2>
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 hidden sm:block">Revenue, requests, and business insights</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as any)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+            className="flex-1 sm:flex-none px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
           >
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
@@ -294,142 +323,267 @@ export default function AnalyticsDashboard() {
           </select>
           <button
             onClick={loadData}
-            className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors flex-shrink-0"
             title="Refresh data"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
       </div>
 
-      {/* Revenue Stats */}
+      {/* Revenue Stats - Compact Grid */}
       {revenueStats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">This Month</span>
-              <DollarSign className="w-5 h-5 text-green-500" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 border-l-2 sm:border-l-4 border-green-500">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">This Month</span>
+              <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(revenueStats.thisMonth)}</p>
-            <div className="flex items-center mt-2">
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white leading-tight">{formatCurrency(revenueStats.thisMonth)}</p>
+            <div className="flex items-center mt-1.5 sm:mt-2">
               {revenueStats.growth >= 0 ? (
-                <ArrowUp className="w-4 h-4 text-green-500 mr-1" />
+                <ArrowUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 mr-0.5 sm:mr-1 flex-shrink-0" />
               ) : (
-                <ArrowDown className="w-4 h-4 text-red-500 mr-1" />
+                <ArrowDown className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 mr-0.5 sm:mr-1 flex-shrink-0" />
               )}
-              <span className={`text-sm font-medium ${
+              <span className={`text-xs sm:text-sm font-medium ${
                 revenueStats.growth >= 0 ? 'text-green-500' : 'text-red-500'
               }`}>
-                {Math.abs(revenueStats.growth).toFixed(1)}% vs last month
+                <span className="hidden sm:inline">{Math.abs(revenueStats.growth).toFixed(1)}% vs last month</span>
+                <span className="sm:hidden">{Math.abs(revenueStats.growth).toFixed(0)}%</span>
               </span>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Total Revenue</span>
-              <TrendingUp className="w-5 h-5 text-blue-500" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 border-l-2 sm:border-l-4 border-blue-500">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</span>
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(revenueStats.total)}</p>
-            <p className="text-sm text-gray-500 mt-2">All time</p>
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white leading-tight">{formatCurrency(revenueStats.total)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">All time</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Avg per Event</span>
-              <BarChart3 className="w-5 h-5 text-purple-500" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 border-l-2 sm:border-l-4 border-purple-500">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Avg per Event</span>
+              <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 flex-shrink-0" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(revenueStats.averagePerEvent)}</p>
-            <p className="text-sm text-gray-500 mt-2">This month</p>
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white leading-tight">{formatCurrency(revenueStats.averagePerEvent)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">This month</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Last Month</span>
-              <Calendar className="w-5 h-5 text-yellow-500" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 border-l-2 sm:border-l-4 border-yellow-500">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Last Month</span>
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 flex-shrink-0" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(revenueStats.lastMonth)}</p>
-            <p className="text-sm text-gray-500 mt-2">For comparison</p>
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white leading-tight">{formatCurrency(revenueStats.lastMonth)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">For comparison</p>
           </div>
         </div>
       )}
 
-      {/* Request Stats */}
+      {/* Request Stats - Compact */}
       {requestStats && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-            <Music className="w-6 h-6 text-brand-gold mr-2" />
-            Request Analytics
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6">
+            <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-white flex items-center">
+              <Music className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-[#fcba00] mr-2 flex-shrink-0" />
+              <span className="truncate">Request Analytics</span>
+            </h3>
+            <Link 
+              href="/admin/crowd-requests"
+              className="text-xs sm:text-sm text-[#fcba00] hover:text-[#e6a800] dark:text-[#fcba00] dark:hover:text-[#ffd633] font-medium flex items-center gap-1 flex-shrink-0"
+            >
+              View All
+              <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Total Requests</p>
-              <p className="text-3xl font-bold text-gray-900">{requestStats.total}</p>
-              <p className="text-sm text-gray-500 mt-1">{requestStats.thisMonth} this month</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Total Requests</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{requestStats.total}</p>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1">{requestStats.thisMonth} this month</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Song Requests</p>
-              <p className="text-3xl font-bold text-gray-900">{requestStats.byType.song_request}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Song Requests</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{requestStats.byType.song_request}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Shoutouts</p>
-              <p className="text-3xl font-bold text-gray-900">{requestStats.byType.shoutout}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Shoutouts</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{requestStats.byType.shoutout}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Tips</p>
-              <p className="text-3xl font-bold text-gray-900">{requestStats.byType.tip}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Tips</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{requestStats.byType.tip}</p>
             </div>
           </div>
-          <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-2 gap-6">
+          <div className="mb-4 sm:mb-6 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Paid Requests</p>
-              <p className="text-2xl font-bold text-green-600">{requestStats.paid}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Paid Requests</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{requestStats.paid}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Pending Requests</p>
-              <p className="text-2xl font-bold text-yellow-600">{requestStats.pending}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Pending Requests</p>
+              <p className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">{requestStats.pending}</p>
             </div>
           </div>
+
+          {/* Recent Requests List */}
+          {requestStats.recentRequests && requestStats.recentRequests.length > 0 && (
+            <div className="pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
+                Recent Requests
+              </h4>
+              <div className="space-y-2 sm:space-y-3">
+                {requestStats.recentRequests.map((request) => {
+                  const getRequestTypeLabel = (type: string) => {
+                    switch (type) {
+                      case 'song_request': return 'Song Request';
+                      case 'shoutout': return 'Shoutout';
+                      case 'tip': return 'Tip';
+                      default: return type;
+                    }
+                  };
+
+                  const getRequestTypeColor = (type: string) => {
+                    switch (type) {
+                      case 'song_request': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+                      case 'shoutout': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
+                      case 'tip': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+                      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+                    }
+                  };
+
+                  const formatTimeAgo = (dateString: string) => {
+                    const date = new Date(dateString);
+                    const now = new Date();
+                    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+                    
+                    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+                    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+                    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+                    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+                  };
+
+                  return (
+                    <Link
+                      key={request.id}
+                      href="/admin/crowd-requests"
+                      className="block p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-[#fcba00] dark:hover:border-[#fcba00] hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all group cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-2 sm:gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 sm:mb-1.5 flex-wrap">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${getRequestTypeColor(request.request_type)}`}>
+                              {getRequestTypeLabel(request.request_type)}
+                            </span>
+                            {request.payment_status === 'paid' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 flex-shrink-0">
+                                Paid
+                              </span>
+                            )}
+                            {request.payment_status === 'pending' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 flex-shrink-0">
+                                Pending
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-0.5 sm:space-y-1">
+                            {request.request_type === 'song_request' && (
+                              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {request.song_title && request.song_artist 
+                                  ? `${request.song_title} - ${request.song_artist}`
+                                  : request.song_title || request.song_artist || 'Song Request'}
+                              </p>
+                            )}
+                            {request.request_type === 'shoutout' && (
+                              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {request.recipient_name ? `Shoutout for ${request.recipient_name}` : 'Shoutout Request'}
+                              </p>
+                            )}
+                            {request.request_type === 'tip' && (
+                              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
+                                Tip from {request.requester_name}
+                              </p>
+                            )}
+                            
+                            <div className="flex items-center gap-2 sm:gap-3 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                              <span className="truncate">By {request.requester_name}</span>
+                              {request.amount_paid > 0 && (
+                                <>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="font-medium text-green-600 dark:text-green-400 flex-shrink-0">
+                                    {formatCurrency(request.amount_paid / 100)}
+                                  </span>
+                                </>
+                              )}
+                              {request.event_name && (
+                                <>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="truncate">{request.event_name}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-1 sm:gap-2 flex-shrink-0">
+                          <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                            {formatTimeAgo(request.created_at)}
+                          </span>
+                          <ArrowRight className="w-4 h-4 text-gray-400 dark:text-gray-500 group-hover:text-[#fcba00] dark:group-hover:text-[#fcba00] transition-colors" />
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Event Stats */}
+      {/* Event Stats - Compact */}
       {eventStats && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-            <Calendar className="w-6 h-6 text-brand-gold mr-2" />
-            Event Analytics
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6">
+          <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 lg:mb-6 flex items-center">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-[#fcba00] mr-2 flex-shrink-0" />
+            <span className="truncate">Event Analytics</span>
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Total Events</p>
-              <p className="text-3xl font-bold text-gray-900">{eventStats.total}</p>
-              <p className="text-sm text-gray-500 mt-1">{eventStats.thisMonth} this month</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Total Events</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{eventStats.total}</p>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1">{eventStats.thisMonth} this month</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Upcoming</p>
-              <p className="text-3xl font-bold text-blue-600">{eventStats.upcoming}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Upcoming</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 dark:text-blue-400">{eventStats.upcoming}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Completed</p>
-              <p className="text-3xl font-bold text-green-600">{eventStats.completed}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Completed</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 dark:text-green-400">{eventStats.completed}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Conversion Rate</p>
-              <p className="text-3xl font-bold text-purple-600">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Conversion Rate</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 dark:text-purple-400">
                 {eventStats.total > 0 ? ((eventStats.completed / eventStats.total) * 100).toFixed(1) : 0}%
               </p>
             </div>
           </div>
           
-          {/* Event Type Breakdown */}
-          <div className="pt-6 border-t border-gray-200">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Events by Type</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Event Type Breakdown - Compact */}
+          <div className="pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">Events by Type</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
               {Object.entries(eventStats.byType).map(([type, count]) => (
-                <div key={type} className="text-center p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1 capitalize">{type}</p>
-                  <p className="text-2xl font-bold text-gray-900">{count}</p>
+                <div key={type} className="text-center p-2 sm:p-3 lg:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1 capitalize truncate">{type}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{count}</p>
                 </div>
               ))}
             </div>
@@ -437,14 +591,14 @@ export default function AnalyticsDashboard() {
         </div>
       )}
 
-      {/* Charts Placeholder */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-          <PieChart className="w-6 h-6 text-brand-gold mr-2" />
-          Revenue Trends
+      {/* Charts Placeholder - Compact */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6">
+        <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 lg:mb-6 flex items-center">
+          <PieChart className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-[#fcba00] mr-2 flex-shrink-0" />
+          <span className="truncate">Revenue Trends</span>
         </h3>
-        <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-          <p className="text-gray-500">Chart visualization coming soon</p>
+        <div className="h-32 sm:h-48 lg:h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Chart visualization coming soon</p>
         </div>
       </div>
     </div>

@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import AdminLayout from '@/components/layouts/AdminLayout';
 import Link from 'next/link';
 
 interface Project {
@@ -137,10 +138,18 @@ export default function ProjectsDashboard() {
 
   const calculateStats = (projectsData: Project[]) => {
     const now = new Date();
+    now.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     
-    const upcoming = projectsData.filter(p => new Date(p.event_date) >= now);
+    // Only include events that are tomorrow or later (exclude today and past)
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const upcoming = projectsData.filter(p => {
+      const eventDate = new Date(p.event_date);
+      eventDate.setHours(0, 0, 0, 0);
+      return eventDate >= tomorrow;
+    });
     const confirmed = projectsData.filter(p => p.status === 'confirmed');
     const pending = projectsData.filter(p => p.status === 'pending');
     const thisMonth = projectsData.filter(p => {
@@ -184,10 +193,24 @@ export default function ProjectsDashboard() {
     
     // Date filter
     const now = new Date();
+    now.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
     if (dateFilter === 'upcoming') {
-      filtered = filtered.filter(p => new Date(p.event_date) >= now);
+      // Only include events that are tomorrow or later (exclude today and past)
+      filtered = filtered.filter(p => {
+        const eventDate = new Date(p.event_date);
+        eventDate.setHours(0, 0, 0, 0);
+        return eventDate >= tomorrow;
+      });
     } else if (dateFilter === 'past') {
-      filtered = filtered.filter(p => new Date(p.event_date) < now);
+      // Include events from today and earlier
+      filtered = filtered.filter(p => {
+        const eventDate = new Date(p.event_date);
+        eventDate.setHours(0, 0, 0, 0);
+        return eventDate < tomorrow;
+      });
     } else if (dateFilter === 'this-month') {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -270,32 +293,41 @@ export default function ProjectsDashboard() {
   };
 
   const isUpcoming = (dateString: string) => {
-    return new Date(dateString) >= new Date();
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const eventDate = new Date(dateString);
+    eventDate.setHours(0, 0, 0, 0);
+    return eventDate >= tomorrow;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading projects...</p>
+      <AdminLayout title="Projects" description="Projects Dashboard">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading projects...</p>
+          </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <AdminLayout title="Projects" description="Projects Dashboard - M10 DJ Admin">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Projects Dashboard</h1>
-            <p className="text-gray-600">Manage all your events and bookings</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Projects Dashboard</h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Manage all your events and bookings</p>
           </div>
           <Button
             onClick={() => router.push('/admin/projects/new')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full sm:w-auto"
+            size="sm"
           >
             <Plus className="h-4 w-4" />
             New Project
@@ -303,52 +335,52 @@ export default function ProjectsDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
               <FileText className="h-8 w-8 text-blue-600" />
               <TrendingUp className="h-5 w-5 text-green-500" />
             </div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Total Projects</h3>
-            <p className="text-3xl font-bold text-gray-900">{stats.totalProjects}</p>
+            <h3 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Total Projects</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{stats.totalProjects}</p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
-              <Calendar className="h-8 w-8 text-purple-600" />
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400" />
             </div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Upcoming Events</h3>
-            <p className="text-3xl font-bold text-gray-900">{stats.upcomingEvents}</p>
-            <p className="text-xs text-gray-500 mt-1">Future bookings</p>
+            <h3 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Upcoming Events</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{stats.upcomingEvents}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden sm:block">Future bookings</p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 dark:text-green-400" />
             </div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Confirmed</h3>
-            <p className="text-3xl font-bold text-gray-900">{stats.confirmedBookings}</p>
-            <p className="text-xs text-gray-500 mt-1">Locked in</p>
+            <h3 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Confirmed</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{stats.confirmedBookings}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden sm:block">Locked in</p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
               <Clock className="h-8 w-8 text-yellow-600" />
             </div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Pending</h3>
-            <p className="text-3xl font-bold text-gray-900">{stats.pendingProjects}</p>
-            <p className="text-xs text-gray-500 mt-1">Need follow-up</p>
+            <h3 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Pending</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{stats.pendingProjects}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden sm:block">Need follow-up</p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-5 w-5 text-gray-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-400" />
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Filters</h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -405,8 +437,8 @@ export default function ProjectsDashboard() {
             </Select>
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
+          <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
               Showing <span className="font-semibold">{filteredProjects.length}</span> of{' '}
               <span className="font-semibold">{projects.length}</span> projects
             </p>
@@ -418,8 +450,9 @@ export default function ProjectsDashboard() {
                   setEventTypeFilter('all');
                   setDateFilter('all');
                 }}
-                variant="slim"
-                className="text-sm"
+                variant="outline"
+                size="sm"
+                className="text-xs sm:text-sm w-full sm:w-auto"
               >
                 Clear Filters
               </Button>
@@ -428,9 +461,9 @@ export default function ProjectsDashboard() {
         </div>
 
         {/* Projects List */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Projects</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Projects</h2>
           </div>
           
           {filteredProjects.length === 0 ? (
@@ -448,65 +481,76 @@ export default function ProjectsDashboard() {
               </Button>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="p-6 hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
                   onClick={() => router.push(`/admin/projects/${project.id}`)}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {project.event_name}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+                    <div className="flex-1 min-w-0">
+                      {/* Title and Badges - Stack on mobile */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
+                          {project.event_name || 'Untitled Event'}
                         </h3>
-                        <Badge className={`${getStatusColor(project.status)} border`}>
-                          <span className="flex items-center gap-1">
-                            {getStatusIcon(project.status)}
-                            {project.status}
-                          </span>
-                        </Badge>
-                        <Badge className={getEventTypeColor(project.event_type)}>
-                          {project.event_type.replace('_', ' ')}
-                        </Badge>
-                        {isUpcoming(project.event_date) && (
-                          <Badge className="bg-blue-100 text-blue-800">
-                            Upcoming
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className={`${getStatusColor(project.status)} border text-xs`}>
+                            <span className="flex items-center gap-1">
+                              {getStatusIcon(project.status)}
+                              <span className="hidden sm:inline">{project.status}</span>
+                              <span className="sm:hidden">{project.status.charAt(0).toUpperCase()}</span>
+                            </span>
                           </Badge>
-                        )}
+                          <Badge className={`${getEventTypeColor(project.event_type)} text-xs`}>
+                            <span className="truncate max-w-[100px] sm:max-w-none">
+                              {project.event_type.replace('_', ' ')}
+                            </span>
+                          </Badge>
+                          {isUpcoming(project.event_date) && (
+                            <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs">
+                              Upcoming
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-gray-600 mb-3">{project.client_name}</p>
+                      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-2 sm:mb-3 truncate">
+                        {project.client_name}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span className="font-medium">{formatDate(project.event_date)}</span>
+                  {/* Event Details - Stack on mobile */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 min-w-0">
+                      <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                      <span className="font-medium truncate">{formatDate(project.event_date)}</span>
                       {project.start_time && (
-                        <span className="text-gray-500">at {formatTime(project.start_time)}</span>
+                        <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                          {formatTime(project.start_time)}
+                        </span>
                       )}
                     </div>
                     
                     {project.venue_name && (
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <MapPin className="h-4 w-4 text-gray-400" />
-                        <span>{project.venue_name}</span>
+                      <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 min-w-0">
+                        <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                        <span className="truncate">{project.venue_name}</span>
                       </div>
                     )}
                     
                     {project.number_of_guests && (
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Users className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                        <Users className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                         <span>{project.number_of_guests} guests</span>
                       </div>
                     )}
                   </div>
 
                   {project.special_requests && (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-600">
+                    <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                         <span className="font-medium">Special Requests:</span> {project.special_requests}
                       </p>
                     </div>
@@ -517,7 +561,7 @@ export default function ProjectsDashboard() {
           )}
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }
 

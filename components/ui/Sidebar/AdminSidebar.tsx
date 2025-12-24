@@ -18,8 +18,6 @@ import {
   Music,
   LogOut,
   ChevronRight,
-  Menu,
-  X,
   ClipboardList,
   QrCode
 } from 'lucide-react';
@@ -33,14 +31,26 @@ interface NavItem {
 
 interface AdminSidebarProps {
   onSignOut?: () => void;
+  isMobileOpen?: boolean;
+  onMobileToggle?: (open: boolean) => void;
 }
 
-export default function AdminSidebar({ onSignOut }: AdminSidebarProps) {
+export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobileOpen, onMobileToggle }: AdminSidebarProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [internalIsMobileOpen, setInternalIsMobileOpen] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  
+  // Use external state if provided, otherwise use internal state
+  const isMobileOpen = externalIsMobileOpen !== undefined ? externalIsMobileOpen : internalIsMobileOpen;
+  const setIsMobileOpen = (open: boolean) => {
+    if (onMobileToggle) {
+      onMobileToggle(open);
+    } else {
+      setInternalIsMobileOpen(open);
+    }
+  };
 
   // Check subscription tier on mount
   useEffect(() => {
@@ -141,20 +151,15 @@ export default function AdminSidebar({ onSignOut }: AdminSidebarProps) {
 
   // Close mobile menu on route change
   useEffect(() => {
-    setIsMobileOpen(false);
-  }, [router.pathname]);
+    if (onMobileToggle) {
+      onMobileToggle(false);
+    } else {
+      setInternalIsMobileOpen(false);
+    }
+  }, [router.pathname, onMobileToggle]);
 
   return (
     <>
-      {/* Mobile Menu Toggle */}
-      <button
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-2 left-2 z-50 p-2 bg-gray-900 text-white rounded-lg shadow-lg hover:bg-gray-800 transition-colors"
-        aria-label="Toggle menu"
-      >
-        {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
-
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div

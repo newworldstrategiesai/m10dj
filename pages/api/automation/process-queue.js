@@ -113,7 +113,7 @@ export default async function handler(req, res) {
           event_type: automation.events?.event_type || automation.metadata?.event_type || 'event',
           event_date: automation.events?.event_date || automation.metadata?.event_date,
           review_link: reviewLink,
-          calendar_link: process.env.NEXT_PUBLIC_CALENDAR_LINK || 'https://calendly.com/m10djcompany',
+          calendar_link: process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL}/schedule` : 'https://m10djcompany.com/schedule',
           owner_name: process.env.OWNER_NAME || 'M10 DJ Company'
         };
 

@@ -940,6 +940,60 @@ export default async function handler(req, res) {
 
     // Only send emails if Resend API key is configured
     if (resend && process.env.RESEND_API_KEY) {
+      // Check if this is a wedding submission
+      const isWedding = eventType && eventType.toLowerCase().includes('wedding');
+      const contactId = criticalOperations.contactRecord?.id;
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
+      
+      // Build wedding-specific links section
+      let weddingLinksSection = '';
+      if (isWedding && contactId) {
+        const questionnaireLink = `${baseUrl}/quote/${contactId}/questionnaire`;
+        const scheduleLink = `${baseUrl}/schedule`;
+        
+        weddingLinksSection = `
+          <div style="background: #f0f9ff; border: 2px solid #3b82f6; padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center;">
+            <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 15px; font-size: 20px;">🎵 Get Started on Your Wedding Planning</h3>
+            <p style="color: #1e3a8a; margin-bottom: 20px; line-height: 1.6;">
+              Want to get started right away? Here are two ways to move forward:
+            </p>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;">
+              <a href="${questionnaireLink}" 
+                 style="display: block; background: #fcba00; color: #000; padding: 15px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; text-align: center; transition: background 0.3s;">
+                📋 Start Wedding Music Questionnaire
+              </a>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.5;">
+                Help us understand your music preferences, special songs, and the vibe you're going for. This will help us create the perfect playlist for your big day!
+              </p>
+              
+              <a href="${scheduleLink}" 
+                 style="display: block; background: #3b82f6; color: #fff; padding: 15px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; text-align: center; transition: background 0.3s; margin-top: 10px;">
+                📅 Schedule a Free Consultation
+              </a>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.5;">
+                Book a time to discuss your wedding in detail. We'll go over your vision, answer questions, and make sure everything is perfect for your special day.
+              </p>
+            </div>
+          </div>
+        `;
+      } else if (!isWedding) {
+        // For non-wedding events, still offer consultation
+        const scheduleLink = `${baseUrl}/schedule`;
+        weddingLinksSection = `
+          <div style="background: #f0f9ff; border: 2px solid #3b82f6; padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center;">
+            <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 15px; font-size: 20px;">📅 Schedule a Free Consultation</h3>
+            <p style="color: #1e3a8a; margin-bottom: 20px; line-height: 1.6;">
+              Want to discuss your event in detail? Book a time that works for you:
+            </p>
+            <a href="${scheduleLink}" 
+               style="display: inline-block; background: #3b82f6; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+              Schedule Your Consultation →
+            </a>
+          </div>
+        `;
+      }
+      
       // Format the customer email content
       const customerEmailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -964,6 +1018,8 @@ export default async function handler(req, res) {
               ${eventDate ? `<p style="margin: 5px 0;"><strong>Date:</strong> ${new Date(eventDate).toLocaleDateString()}</p>` : ''}
               ${location ? `<p style="margin: 5px 0;"><strong>Location:</strong> ${location}</p>` : ''}
             </div>
+            
+            ${weddingLinksSection}
             
             <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin: 20px 0;">
               <p style="color: #856404; margin: 0; font-weight: 600; text-align: center;">

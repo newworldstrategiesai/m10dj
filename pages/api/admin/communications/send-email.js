@@ -19,7 +19,8 @@ export default async function handler(req, res) {
     subject, 
     content, 
     body,
-    originalTemplate 
+    originalTemplate,
+    draftId // ID of draft to update when sending
   } = req.body;
 
   const emailTo = to;
@@ -219,24 +220,58 @@ ${htmlEmailContent}
         }
       }
       
-      const { error: logError } = await supabase
-        .from('communication_log')
-        .insert([{
-          contact_submission_id: recordId,
-          communication_type: 'email',
-          direction: 'outbound',
-          subject: emailSubject,
-          content: emailContent,
-          sent_by: 'Admin',
-          sent_to: emailTo,
-          status: 'sent',
-          organization_id: organizationId, // Set organization_id for multi-tenant isolation
-          metadata: {
-            email_id: emailId,
-            provider: useGmail ? 'gmail' : 'resend',
-            template_used: originalTemplate || null
-          }
-        }]);
+      // If draftId provided, try to update the draft instead of creating new entry
+      let draftUpdated = false;
+      if (draftId) {
+        const { error: updateError } = await supabase
+          .from('communication_log')
+          .update({
+            status: 'sent',
+            metadata: {
+              email_id: emailId,
+              provider: useGmail ? 'gmail' : 'resend',
+              template_used: originalTemplate || null,
+              sent_at: new Date().toISOString()
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', draftId)
+          .eq('status', 'pending'); // Only update if still a draft
+        
+        if (!updateError) {
+          draftUpdated = true;
+          console.log('✅ Draft updated to sent status');
+        } else {
+          console.error('Error updating draft:', updateError);
+        }
+      }
+      
+      // If no draftId or update failed, insert new entry
+      if (!draftUpdated) {
+        const { error: logError } = await supabase
+          .from('communication_log')
+          .insert([{
+            contact_submission_id: recordId,
+            communication_type: 'email',
+            direction: 'outbound',
+            subject: emailSubject,
+            content: emailContent,
+            sent_by: 'Admin',
+            sent_to: emailTo,
+            status: 'sent',
+            organization_id: organizationId, // Set organization_id for multi-tenant isolation
+            metadata: {
+              email_id: emailId,
+              provider: useGmail ? 'gmail' : 'resend',
+              template_used: originalTemplate || null
+            }
+          }]);
+
+        if (logError) {
+          console.error('Error logging email communication:', logError);
+          // Don't fail the request if logging fails
+        }
+      }
 
       if (logError) {
         console.error('Error logging email communication:', logError);

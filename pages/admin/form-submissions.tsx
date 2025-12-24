@@ -42,6 +42,8 @@ interface FormSubmission {
   location: string | null;
   message: string | null;
   status: 'new' | 'contacted' | 'quoted' | 'booked' | 'completed' | 'cancelled' | 'spam';
+  venue_image_url: string | null;
+  venue_image_fetched_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +72,7 @@ export default function FormSubmissionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [lookingUpContact, setLookingUpContact] = useState<string | null>(null);
+  const [fetchingVenueImage, setFetchingVenueImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSubmissions();
@@ -624,14 +627,101 @@ export default function FormSubmissionsPage() {
                   </div>
 
                   {selectedSubmission.location && (
-                    <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
-                      <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-                        <MapPin className="w-5 h-5 text-red-600" />
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
+                        <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+                          <MapPin className="w-5 h-5 text-red-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs font-medium text-gray-500 uppercase">Location</p>
+                          <p className="text-sm font-semibold text-gray-900">{selectedSubmission.location}</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase">Location</p>
-                        <p className="text-sm font-semibold text-gray-900">{selectedSubmission.location}</p>
-                      </div>
+                      
+                      {/* Venue Image */}
+                      {selectedSubmission.venue_image_url ? (
+                        <div className="relative group">
+                          <div className="relative w-full h-48 rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                            <img
+                              src={selectedSubmission.venue_image_url}
+                              alt={`${selectedSubmission.location} venue`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Hide image on error
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                            <span>Venue image from Google Places</span>
+                            {selectedSubmission.venue_image_fetched_at && (
+                              <span>Fetched {new Date(selectedSubmission.venue_image_fetched_at).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="flex-1">
+                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Venue Image</p>
+                            <p className="text-sm text-gray-600 mb-2">No venue image available</p>
+                            <button
+                              onClick={async () => {
+                                if (!selectedSubmission.location) return;
+                                
+                                setFetchingVenueImage(selectedSubmission.id);
+                                try {
+                                  const response = await fetch('/api/admin/fetch-venue-image', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      location: selectedSubmission.location,
+                                      submissionId: selectedSubmission.id
+                                    })
+                                  });
+
+                                  const data = await response.json();
+
+                                  if (!response.ok) {
+                                    throw new Error(data.message || data.error || 'Failed to fetch venue image');
+                                  }
+
+                                  // Refresh submissions to get updated image
+                                  await fetchSubmissions();
+                                  
+                                  // Update selected submission
+                                  setSelectedSubmission(prev => prev ? {
+                                    ...prev,
+                                    venue_image_url: data.imageUrl,
+                                    venue_image_fetched_at: new Date().toISOString()
+                                  } : null);
+
+                                  alert('✅ Venue image fetched successfully!');
+                                } catch (error) {
+                                  console.error('Error fetching venue image:', error);
+                                  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                                  alert(`Failed to fetch venue image: ${errorMessage}\n\nNote: This requires a Google Places API key to be configured.`);
+                                } finally {
+                                  setFetchingVenueImage(null);
+                                }
+                              }}
+                              disabled={fetchingVenueImage === selectedSubmission.id}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {fetchingVenueImage === selectedSubmission.id ? (
+                                <>
+                                  <Loader className="w-3 h-3 animate-spin" />
+                                  <span>Fetching...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <MapPin className="w-3 h-3" />
+                                  <span>Fetch Venue Image</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -908,15 +998,55 @@ Ben Murray
 M10 DJ Company
 (901) 410-2020
 djbenmurray@gmail.com`
+    },
+    schedule_consultation: {
+      name: 'Schedule Consultation',
+      subject: `Let's Schedule a Consultation - ${submission.event_type}`,
+      body: `Hi ${submission.name.split(' ')[0]},
+
+Thank you for your interest in M10 DJ Company for your ${submission.event_type.toLowerCase()}${submission.event_date ? ` on ${new Date(submission.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}!
+
+I'd love to schedule a free consultation to discuss your event in detail. During our call, we can:
+• Review your vision and preferences
+• Discuss package options that fit your needs
+• Answer any questions you have
+• Check availability for your date
+• Plan the perfect entertainment experience
+
+The easiest way to book a time that works for you is through my online scheduling system. Just click the link below to see available times:
+
+📅 Schedule Your Free Consultation:
+{{SCHEDULE_LINK}}
+
+You can also call me directly at (901) 410-2020 if you prefer to schedule over the phone.
+
+I look forward to speaking with you soon!
+
+Best regards,
+Ben Murray
+M10 DJ Company
+(901) 410-2020
+djbenmurray@gmail.com`
     }
   };
 
   useEffect(() => {
     if (selectedTemplate !== 'custom') {
       const template = emailTemplates[selectedTemplate as keyof typeof emailTemplates];
+      let body = template.body;
+      
+      // Replace schedule link placeholder if this is the consultation template
+      if (selectedTemplate === 'schedule_consultation') {
+        const baseUrl = typeof window !== 'undefined' 
+          ? window.location.origin 
+          : (process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com');
+        const scheduleLink = `${baseUrl}/schedule`;
+        body = body.replace('{{SCHEDULE_LINK}}', scheduleLink);
+      }
+      
       setFormData({
         subject: template.subject,
-        body: template.body
+        body: body
       });
     }
   }, [selectedTemplate]);
@@ -1091,6 +1221,7 @@ djbenmurray@gmail.com`
             >
               <option value="custom">Custom Email</option>
               <option value="initial_response">Initial Response</option>
+              <option value="schedule_consultation">Schedule Consultation</option>
               <option value="quote_ready">Quote Ready</option>
               <option value="follow_up">Follow Up</option>
               <option value="booking_confirmation">Booking Confirmation</option>

@@ -41,7 +41,7 @@ export default function Contact() {
       title: "Book Consultation",
       description: "Free 30-minute planning session",
       value: "Schedule Online",
-      link: "#contact-form",
+      link: "/schedule",
       color: "bg-brand"
     }
   ];

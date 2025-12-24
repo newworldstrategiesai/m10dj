@@ -189,15 +189,18 @@ export default function PersonalizedQuote() {
             const isHolidayLocal = eventTypeLower.includes('holiday');
             const isSchoolLocal = eventTypeLower.includes('school');
             const isCorporateLocal = eventTypeLower.includes('corporate') || eventTypeLower.includes('business');
-            const isPrivatePartyLocal = eventTypeLower.includes('private') || eventTypeLower.includes('party');
+            const isWeddingLocal = eventTypeLower.includes('wedding');
+            const isPrivatePartyLocal = (eventTypeLower.includes('private') || eventTypeLower.includes('party') || eventTypeLower.includes('birthday') || eventTypeLower === 'private_party') && !isHolidayLocal && !isSchoolLocal && !isWeddingLocal;
             
-            let packagesToSearch = weddingPackages; // default
+            let packagesToSearch = weddingPackages; // default to wedding
             if (isHolidayLocal) {
               packagesToSearch = holidayPackages;
             } else if (isSchoolLocal) {
               packagesToSearch = schoolPackages;
             } else if (isCorporateLocal || isPrivatePartyLocal) {
               packagesToSearch = corporatePackages;
+            } else if (isWeddingLocal) {
+              packagesToSearch = weddingPackages;
             }
             
             const foundPackage = packagesToSearch.find(pkg => pkg.id === quoteData.package_id);
@@ -648,8 +651,10 @@ export default function PersonalizedQuote() {
   const isCorporate = eventTypeLower.includes('corporate') || eventTypeLower.includes('business');
   const isSchool = eventTypeLower.includes('school') || eventTypeLower.includes('dance') || eventTypeLower.includes('prom') || eventTypeLower.includes('homecoming');
   const isHoliday = eventTypeLower.includes('holiday') || eventTypeLower.includes('christmas') || eventTypeLower.includes('new year') || eventTypeLower.includes('thanksgiving') || eventTypeLower.includes('halloween');
-  const isWedding = eventTypeLower.includes('wedding') || (!isHoliday && !isCorporate && !isSchool && !eventTypeLower.includes('private') && !eventTypeLower.includes('party'));
-  const isPrivateParty = (eventTypeLower.includes('private') || eventTypeLower.includes('party')) && !isHoliday && !isSchool && !isWedding;
+  // Only consider it a wedding if it explicitly contains 'wedding' - no default fallback
+  const isWedding = eventTypeLower.includes('wedding');
+  // Private party includes birthday parties, private parties, and other party types (but not holidays, school events, or weddings)
+  const isPrivateParty = (eventTypeLower.includes('private') || eventTypeLower.includes('party') || eventTypeLower.includes('birthday') || eventTypeLower === 'private_party') && !isHoliday && !isSchool && !isWedding;
 
   // Determine holiday theme based on event date
   const getHolidayTheme = useCallback(() => {
