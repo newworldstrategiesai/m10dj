@@ -100,10 +100,10 @@ export default function Home() {
                   </h3>
                   <div className="prose prose-lg text-gray-800 dark:text-gray-200 leading-relaxed max-w-none">
                     <p className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-gray-900 dark:text-white">
-                      M10 DJ Company is Memphis's premier wedding and event entertainment service with 15+ years of experience and 500+ successful celebrations.
+                      M10 DJ Company has been serving Memphis weddings and events for 15+ years, with 500+ celebrations under our belt.
                     </p>
                     <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
-                      We specialize in weddings, corporate events, and celebrations throughout Memphis with expert venue knowledge at The Peabody Hotel, Memphis Botanic Garden, Graceland, and 27+ premier locations. Our professional-grade sound systems, elegant uplighting, and experienced MC services ensure flawless entertainment from ceremony to reception.
+                      We know Memphis venues inside and out – from The Peabody's ballroom acoustics to Graceland's outdoor ceremony spaces. Our sound systems handle everything from intimate ceremonies to 300-guest receptions. We bring backup equipment to every event (because Memphis weather can be unpredictable), and our MC services keep your timeline on track without feeling scripted.
                     </p>
                   </div>
                 </div>
@@ -294,7 +294,7 @@ export default function Home() {
               </div>
               
               {/* Enhanced Contact Form */}
-              <div id="contact-form" className="modern-card bg-white dark:bg-slate-800 shadow-2xl relative overflow-hidden mx-4 lg:mx-0">
+              <div id="contact-form" className="modern-card bg-white dark:bg-slate-800 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand via-amber-400 to-brand"></div>
                 <div className="p-6 md:p-8">
                   <div className="mb-6">
