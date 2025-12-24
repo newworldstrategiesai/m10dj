@@ -11,7 +11,12 @@ import {
   Search,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  TestTube,
+  Eye,
+  CheckCircle2,
+  Circle,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/Toasts/use-toast';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 interface Communication {
   id: string;
@@ -67,6 +73,8 @@ export default function LeadCommunicationHub({
   const [composeSubject, setComposeSubject] = useState(initialEmailSubject || '');
   const [composeContent, setComposeContent] = useState(initialEmailBody || '');
   const [sending, setSending] = useState(false);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
 
   // Update compose fields when initial values change (from parent)
@@ -85,10 +93,23 @@ export default function LeadCommunicationHub({
   }, [initialEmailSubject, initialEmailBody, onEmailGenerated]);
 
   const { toast } = useToast();
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
     fetchCommunications();
+    fetchAdminEmail();
   }, [submissionId]);
+
+  const fetchAdminEmail = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setAdminEmail(user.email);
+      }
+    } catch (error) {
+      console.error('Error fetching admin email:', error);
+    }
+  };
 
   useEffect(() => {
     filterCommunications();
@@ -234,6 +255,70 @@ export default function LeadCommunicationHub({
     }
   };
 
+  const handleSendTestEmail = async () => {
+    if (!adminEmail) {
+      toast({
+        title: "Error",
+        description: "Admin email not found. Please ensure you're logged in.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!composeSubject.trim() || !composeContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in both subject and message before sending a test email.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSendingTestEmail(true);
+    try {
+      const response = await fetch('/api/admin/communications/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId,
+          to: adminEmail,
+          subject: `[TEST] ${composeSubject}`,
+          content: `This is a test email. The actual email would be sent to: ${submissionEmail || 'N/A'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TEST EMAIL PREVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Subject: ${composeSubject}
+
+${composeContent}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This test was sent to your email (${adminEmail}) to preview how the email will look when sent to the lead.`
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `Test email sent to ${adminEmail}`
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send test email');
+      }
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test email",
+        variant: "destructive"
+      });
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'email': return <Mail className="w-4 h-4" />;
@@ -254,17 +339,60 @@ export default function LeadCommunicationHub({
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
+  const getStatusBadge = (status: string) => {
+    const statusLower = status?.toLowerCase() || 'unknown';
+    
+    switch (statusLower) {
+      case 'opened':
       case 'read':
+        return (
+          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700 flex items-center gap-1.5 px-2 py-0.5">
+            <Eye className="w-3 h-3" />
+            <span className="font-medium">Opened</span>
+          </Badge>
+        );
       case 'delivered':
-        return <CheckCircle className="w-3 h-3 text-green-600" />;
+        return (
+          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300 dark:border-blue-700 flex items-center gap-1.5 px-2 py-0.5">
+            <CheckCircle2 className="w-3 h-3" />
+            <span className="font-medium">Delivered</span>
+          </Badge>
+        );
       case 'sent':
-        return <Clock className="w-3 h-3 text-yellow-600" />;
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700 flex items-center gap-1.5 px-2 py-0.5">
+            <Send className="w-3 h-3" />
+            <span className="font-medium">Sent</span>
+          </Badge>
+        );
+      case 'draft':
+        return (
+          <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 flex items-center gap-1.5 px-2 py-0.5">
+            <FileText className="w-3 h-3" />
+            <span className="font-medium">Draft</span>
+          </Badge>
+        );
       case 'failed':
-        return <XCircle className="w-3 h-3 text-red-600" />;
+        return (
+          <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300 dark:border-red-700 flex items-center gap-1.5 px-2 py-0.5">
+            <XCircle className="w-3 h-3" />
+            <span className="font-medium">Failed</span>
+          </Badge>
+        );
+      case 'pending':
+        return (
+          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-300 dark:border-orange-700 flex items-center gap-1.5 px-2 py-0.5">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span className="font-medium">Pending</span>
+          </Badge>
+        );
       default:
-        return <AlertCircle className="w-3 h-3 text-gray-600" />;
+        return (
+          <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border-gray-300 dark:border-gray-600 flex items-center gap-1.5 px-2 py-0.5">
+            <Circle className="w-3 h-3" />
+            <span className="font-medium capitalize">{status || 'Unknown'}</span>
+          </Badge>
+        );
     }
   };
 
@@ -365,8 +493,8 @@ export default function LeadCommunicationHub({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-semibold text-gray-900 dark:text-white">
                             {comm.sent_by}
                           </span>
@@ -378,6 +506,8 @@ export default function LeadCommunicationHub({
                               Inbound
                             </Badge>
                           )}
+                          {/* Status badge - more prominent */}
+                          {comm.type === 'email' && getStatusBadge(comm.status)}
                         </div>
                         {comm.subject && (
                           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -388,11 +518,24 @@ export default function LeadCommunicationHub({
                           {comm.content}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                        {getStatusIcon(comm.status)}
-                        <span className="text-xs text-gray-500">
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-4">
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
                           {formatDate(comm.created_at)}
                         </span>
+                        {/* Show status icon for non-email types or as additional indicator */}
+                        {comm.type !== 'email' && (
+                          <div className="flex items-center">
+                            {comm.status === 'read' || comm.status === 'delivered' ? (
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                            ) : comm.status === 'sent' ? (
+                              <Clock className="w-4 h-4 text-yellow-600" />
+                            ) : comm.status === 'failed' ? (
+                              <XCircle className="w-4 h-4 text-red-600" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-gray-400" />
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {comm.sent_to && (
@@ -475,23 +618,45 @@ export default function LeadCommunicationHub({
             </div>
           )}
 
-          <Button
-            onClick={handleSend}
-            disabled={sending || !composeContent.trim() || (composeType === 'email' && !composeSubject.trim())}
-            className="w-full"
-          >
-            {sending ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4 mr-2" />
-                Send {composeType.toUpperCase()}
-              </>
+          <div className="flex gap-2">
+            {composeType === 'email' && (
+              <Button
+                onClick={handleSendTestEmail}
+                disabled={sendingTestEmail || !adminEmail || !composeSubject.trim() || !composeContent.trim()}
+                variant="outline"
+                className="flex-1"
+              >
+                {sendingTestEmail ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <TestTube className="w-4 h-4 mr-2" />
+                    Send Test Email
+                  </>
+                )}
+              </Button>
             )}
-          </Button>
+            <Button
+              onClick={handleSend}
+              disabled={sending || !composeContent.trim() || (composeType === 'email' && !composeSubject.trim())}
+              className={composeType === 'email' ? 'flex-1' : 'w-full'}
+            >
+              {sending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send {composeType.toUpperCase()}
+                </>
+              )}
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
     </Card>

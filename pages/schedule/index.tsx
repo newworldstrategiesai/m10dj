@@ -31,6 +31,8 @@ interface BookingFormData {
   notes: string;
   eventType: string;
   eventDate: string;
+  venueName?: string;
+  venueAddress?: string;
 }
 
 export default function SchedulePage() {
@@ -51,7 +53,9 @@ export default function SchedulePage() {
     phone: '',
     notes: '',
     eventType: '',
-    eventDate: ''
+    eventDate: '',
+    venueName: '',
+    venueAddress: ''
   });
 
   // Fetch meeting types
@@ -59,17 +63,44 @@ export default function SchedulePage() {
     fetchMeetingTypes();
   }, []);
 
-  // Pre-fill form from URL query parameters
+  // Pre-fill form from URL query parameters or sessionStorage
   useEffect(() => {
     if (router.isReady) {
-      const { name, email, phone } = router.query;
-      if (name || email || phone) {
-        setFormData(prev => ({
-          ...prev,
-          name: typeof name === 'string' ? name : prev.name,
-          email: typeof email === 'string' ? email : prev.email,
-          phone: typeof phone === 'string' ? phone : prev.phone
-        }));
+      const { name, email, phone, eventType, eventDate, venueName, venueAddress, notes } = router.query;
+      
+      // Check sessionStorage first (from contact form submission)
+      let contactFormData = null;
+      if (typeof window !== 'undefined') {
+        try {
+          const saved = sessionStorage.getItem('contact_form_data');
+          if (saved) {
+            contactFormData = JSON.parse(saved);
+          }
+        } catch (e) {
+          console.debug('Could not read contact form data from sessionStorage:', e);
+        }
+      }
+      
+      // Prefer URL params, fallback to sessionStorage, then to existing form data
+      setFormData(prev => ({
+        ...prev,
+        name: typeof name === 'string' ? decodeURIComponent(name) : (contactFormData?.name || prev.name),
+        email: typeof email === 'string' ? decodeURIComponent(email) : (contactFormData?.email || prev.email),
+        phone: typeof phone === 'string' ? decodeURIComponent(phone) : (contactFormData?.phone || prev.phone),
+        eventType: typeof eventType === 'string' ? decodeURIComponent(eventType) : (contactFormData?.eventType || prev.eventType),
+        eventDate: typeof eventDate === 'string' ? eventDate : (contactFormData?.eventDate || prev.eventDate),
+        venueName: typeof venueName === 'string' ? decodeURIComponent(venueName) : (contactFormData?.venueName || prev.venueName || ''),
+        venueAddress: typeof venueAddress === 'string' ? decodeURIComponent(venueAddress) : (contactFormData?.venueAddress || prev.venueAddress || ''),
+        notes: typeof notes === 'string' ? decodeURIComponent(notes) : (contactFormData?.message || prev.notes)
+      }));
+      
+      // Clear sessionStorage after using it (one-time use)
+      if (contactFormData && typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('contact_form_data');
+        } catch (e) {
+          // Ignore errors
+        }
       }
     }
   }, [router.isReady, router.query]);
@@ -418,6 +449,33 @@ export default function SchedulePage() {
                     onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
                   />
                 </div>
+
+                {(formData.venueName || formData.venueAddress) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Venue Information
+                    </label>
+                    <div className="space-y-2">
+                      {formData.venueName && (
+                        <Input
+                          value={formData.venueName}
+                          disabled
+                          className="bg-gray-50 text-gray-600"
+                          placeholder="Venue name"
+                        />
+                      )}
+                      {formData.venueAddress && (
+                        <Input
+                          value={formData.venueAddress}
+                          disabled
+                          className="bg-gray-50 text-gray-600"
+                          placeholder="Venue address"
+                        />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Pre-filled from your contact form</p>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -98,13 +98,26 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
         }
 
         // Add schedule consultation link to thank you screen
+        // Build schedule link with pre-filled data from contact form
+        const scheduleParams = new URLSearchParams();
+        if (formData.name) scheduleParams.set('name', formData.name);
+        if (formData.email) scheduleParams.set('email', formData.email);
+        if (formData.phone) scheduleParams.set('phone', formData.phone);
+        if (formData.eventType) scheduleParams.set('eventType', formData.eventType);
+        if (formData.eventDate) scheduleParams.set('eventDate', formData.eventDate);
+        if (formData.venueName) scheduleParams.set('venueName', formData.venueName);
+        if (formData.venueAddress) scheduleParams.set('venueAddress', formData.venueAddress);
+        if (formData.message) scheduleParams.set('notes', formData.message);
+        
+        const scheduleLink = `/schedule${scheduleParams.toString() ? `?${scheduleParams.toString()}` : ''}`;
+        
         initialMessages.push({
           id: initialMessages.length + 1,
           type: 'bot',
           text: 'Would you like to schedule a free consultation to discuss your event in detail?',
           timestamp: new Date(),
           hasLink: true,
-          link: '/schedule',
+          link: scheduleLink,
           linkText: 'Schedule a Free Consultation →'
         });
 

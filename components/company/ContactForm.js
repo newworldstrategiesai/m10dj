@@ -457,6 +457,23 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
           }
         }
         
+        // Also store contact form data for schedule page pre-population
+        try {
+          sessionStorage.setItem('contact_form_data', JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            eventType: formData.eventType,
+            eventDate: formData.eventDate,
+            venueName: formData.venueName,
+            venueAddress: formData.venueAddress,
+            message: formData.message
+          }));
+          console.log('✅ Saved contact form data for schedule page pre-population');
+        } catch (e) {
+          console.warn('⚠️ Could not save contact form data to sessionStorage:', e);
+        }
+        
         if (quoteId) {
           console.log('📋 Setting quote ID:', quoteId, '(type:', typeof quoteId, ')');
           setSubmissionId(String(quoteId)); // Ensure it's a string
