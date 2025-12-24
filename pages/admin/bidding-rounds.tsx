@@ -36,6 +36,8 @@ export default function BiddingRoundsAdmin() {
   const [loading, setLoading] = useState(true);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [reprocessingRoundId, setReprocessingRoundId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadOrganization();
