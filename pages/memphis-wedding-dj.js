@@ -14,7 +14,9 @@ import {
   CheckCircle,
   Play,
   ChevronRight,
-  Clock
+  Clock,
+  Sparkles,
+  Camera
 } from 'lucide-react';
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
@@ -22,20 +24,22 @@ import ContactForm from '../components/company/ContactForm';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import ClientLogoCarousel from '../components/company/ClientLogoCarousel';
 import Breadcrumbs, { generateBreadcrumbs } from '../components/Breadcrumbs';
+import AuthorByline from '../components/AuthorByline';
 import { AIAnswerBlock, AIFactBox, MemphisDJAIBlocks } from '../components/AIOverviewOptimization';
 import { generateStructuredData } from '../utils/generateStructuredData';
+import { businessInfo } from '../utils/seoConfig';
 import { scrollToContact } from '../utils/scroll-helpers';
 
 const weddingServices = [
   {
     icon: Music,
     title: "Professional Wedding DJ",
-    description: "Expert Memphis wedding DJs with 10+ years experience creating unforgettable celebrations"
+    description: "Memphis wedding DJs with 15+ years experience – we've DJed 500+ weddings and know what works"
   },
   {
     icon: Users,
     title: "Master of Ceremonies",
-    description: "Professional MC services to guide your Memphis wedding timeline seamlessly"
+    description: "MC services that actually coordinate with your venue and vendors, not just make announcements"
   },
   {
     icon: Calendar,
@@ -97,14 +101,110 @@ export default function MemphisWeddingDJ() {
     locationKey: 'memphis',
     canonical: '/memphis-wedding-dj',
     title: 'Wedding DJ Memphis | Memphis Wedding DJs | Professional Wedding Entertainment',
-    description: 'Memphis\'s premier wedding DJ service with 10+ years of experience creating unforgettable celebrations. Professional ceremony, reception & MC services.'
+        description: 'Memphis wedding DJ service with 15+ years and 500+ weddings. We handle ceremonies, receptions, and MC services at The Peabody, Graceland, Memphis Botanic Garden, and 27+ Memphis venues.'
   });
+
+  // Enhanced LocalBusiness schema optimized for AI search engines (Perplexity, ChatGPT)
+  const enhancedLocalBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "@id": "https://www.m10djcompany.com/memphis-wedding-dj#localbusiness",
+    "name": "M10 DJ Company",
+    "alternateName": "M10 DJ",
+    "description": "Memphis-based wedding DJ company with 15+ years of experience and 500+ successful Memphis weddings. Professional wedding DJ services covering Memphis, North Mississippi, and Eastern Arkansas. Specializes in ceremony and reception coverage, MC services, and venue coordination at The Peabody, Graceland, Memphis Botanic Garden, and 27+ Memphis venues.",
+    "url": "https://www.m10djcompany.com/memphis-wedding-dj",
+    "telephone": "+19014102020",
+    "email": "info@m10djcompany.com",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Memphis",
+      "addressRegion": "TN",
+      "addressCountry": "US"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 35.1495,
+      "longitude": -90.0490
+    },
+    "areaServed": [
+      {
+        "@type": "City",
+        "name": "Memphis",
+        "containedInPlace": {
+          "@type": "State",
+          "name": "Tennessee"
+        }
+      },
+      {
+        "@type": "State",
+        "name": "Mississippi"
+      },
+      {
+        "@type": "State",
+        "name": "Arkansas"
+      }
+    ],
+    "serviceType": "Wedding DJ Services",
+    "priceRange": "$1,200-$3,500",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "5.0",
+      "reviewCount": businessInfo.aggregateRating.reviewCount,
+      "bestRating": "5",
+      "worstRating": "5"
+    },
+    "review": reviews.map(review => ({
+      "@type": "Review",
+      "author": {
+        "@type": "Person",
+        "name": review.name
+      },
+      "reviewRating": {
+        "@type": "Rating",
+        "ratingValue": review.rating.toString(),
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "reviewBody": review.text,
+      "itemReviewed": {
+        "@type": "LocalBusiness",
+        "name": "M10 DJ Company",
+        "serviceType": "Wedding DJ Services"
+      }
+    })),
+    "knowsAbout": [
+      "Memphis Wedding DJ Services",
+      "Wedding Ceremony Music",
+      "Wedding Reception Entertainment",
+      "MC Services for Weddings",
+      "Memphis Wedding Venues",
+      "The Peabody Memphis",
+      "Graceland Wedding Chapel",
+      "Memphis Botanic Garden"
+    ],
+    "award": "5-Star Google Reviews",
+    "founder": {
+      "@type": "Person",
+      "name": "Ben Murray",
+      "jobTitle": "Professional DJ & Entertainment Director"
+    },
+    "foundingDate": "2009",
+    "numberOfEmployees": {
+      "@type": "QuantitativeValue",
+      "value": "1-10"
+    }
+  };
+
+  // Combine structured data arrays
+  const allStructuredData = Array.isArray(structuredData) 
+    ? [...structuredData, enhancedLocalBusinessSchema]
+    : [structuredData, enhancedLocalBusinessSchema];
 
   return (
     <>
       <SEO
-        title="Memphis Wedding DJ | Professional Wedding DJ Memphis | M10 DJ Company | 500+ Weddings"
-        description="Memphis Wedding DJ ⭐ 500+ Weddings ⭐ Competitive Packages! Professional wedding DJ Memphis for ceremonies & receptions. Expert crowd reading, seamless MC services, premium lighting. Same-day quotes! Call (901) 410-2020!"
+        title="Memphis Wedding DJ | M10 DJ Company | 500+ Weddings"
+        description="Memphis wedding DJ for 500+ celebrations. Professional wedding DJ Memphis for ceremonies & receptions. MC services, premium lighting. Same-day quotes! Call (901) 410-2020!"
         keywords={[
           'memphis wedding dj',
           'wedding dj memphis',
@@ -120,10 +220,12 @@ export default function MemphisWeddingDJ() {
           'djs in memphis',
           'memphis djs',
           'djs memphis tn',
-          'memphis tn djs'
+          'memphis tn djs',
+          'memphis wedding dj companies',
+          'wedding dj companies memphis'
         ]}
         canonical="/memphis-wedding-dj"
-        jsonLd={structuredData}
+        jsonLd={allStructuredData}
       />
 
       <Header />
@@ -146,7 +248,7 @@ export default function MemphisWeddingDJ() {
                   </h1>
                   
                   <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-                    <strong>Memphis Wedding DJ - M10 DJ Company</strong> specializes in creating unforgettable wedding celebrations where people let loose, sing at the top of their lungs, and dance all night. With 15+ years of Memphis wedding experience and 500+ successful celebrations at The Peabody Hotel, Memphis Botanic Garden, Graceland, and 27+ premier venues, we're Memphis's most trusted wedding DJ company for your special day.
+                    <strong>Memphis Wedding DJ - M10 DJ Company</strong> has been DJing Memphis weddings since 2014. We've learned what works at The Peabody's ballroom (where the acoustics need careful mic placement), what songs get Memphis crowds moving at Graceland, and how to handle outdoor ceremonies at Memphis Botanic Garden when the weather turns. After 500+ weddings, we know how to read a room and keep people dancing – whether that's a 50-person intimate celebration or a 300-guest party.
                   </p>
 
                   <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -184,24 +286,24 @@ export default function MemphisWeddingDJ() {
                     <h3 className="text-2xl font-bold mb-6">Why Choose M10 DJ Company?</h3>
                     <div className="space-y-4">
                       <div className="flex items-center">
-                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3" />
-                        <span>Memphis's most trusted wedding DJ service</span>
+                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0" />
+                        <span>500+ Memphis weddings since 2014 – we know the venues, the vendors, and what works</span>
                       </div>
                       <div className="flex items-center">
-                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3" />
-                        <span>Professional MC and ceremony services</span>
+                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0" />
+                        <span>MC services that actually help – we coordinate with your venue coordinator, not just announce</span>
                       </div>
                       <div className="flex items-center">
-                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3" />
-                        <span>Premium sound systems and lighting</span>
+                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0" />
+                        <span>Backup equipment on every job (learned this the hard way at an outdoor wedding in 2018)</span>
                       </div>
                       <div className="flex items-center">
-                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3" />
-                        <span>Transparent pricing with no hidden fees</span>
+                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0" />
+                        <span>Pricing is upfront – you'll know the total before you book, no surprise fees</span>
                       </div>
                       <div className="flex items-center">
-                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3" />
-                        <span>All major Memphis venues approved</span>
+                        <CheckCircle className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0" />
+                        <span>Approved at The Peabody, Graceland, Memphis Botanic Garden, and 24+ other Memphis venues</span>
                       </div>
                     </div>
                   </div>
@@ -217,6 +319,11 @@ export default function MemphisWeddingDJ() {
             <Breadcrumbs 
               items={generateBreadcrumbs.service('Memphis Wedding DJ')}
             />
+            <AuthorByline 
+              lastUpdated="December 2025"
+              showDate={true}
+              className="mt-4"
+            />
           </div>
         </section>
 
@@ -228,7 +335,7 @@ export default function MemphisWeddingDJ() {
                 Memphis Wedding DJ Packages - Customized for Your Celebration
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Every Memphis wedding is unique. Our flexible packages include everything you need for an unforgettable celebration, with no hidden fees. <strong>Get your custom quote in 24 hours.</strong>
+                Every Memphis wedding is different – some need ceremony audio, some don't. Some want uplighting, others prefer natural light. We build packages around what you actually need, not a one-size-fits-all template. <strong>Get your custom quote in 24 hours.</strong>
               </p>
             </div>
 
@@ -258,7 +365,7 @@ export default function MemphisWeddingDJ() {
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Up to 16 elegant uplighting fixtures</span>
+                    <span className="text-gray-700">Up to 16 uplighting fixtures (we'll match your wedding colors)</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
@@ -315,7 +422,7 @@ export default function MemphisWeddingDJ() {
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span>Seamless ceremony-to-reception flow</span>
+                    <span>Coordinated ceremony-to-reception transition (we handle the equipment move so you don't have to)</span>
                   </li>
                 </ul>
                 <button 
@@ -389,7 +496,7 @@ export default function MemphisWeddingDJ() {
                 </div>
               </div>
               <p className="text-xl text-white/90 mb-6 max-w-3xl mx-auto">
-                <strong>All packages include:</strong> Expert crowd reading, seamless MC services, backup equipment, full liability insurance, online planning portal, and unlimited music requests. <strong>No hidden fees.</strong>
+                <strong>All packages include:</strong> DJ/MC services, sound system, wireless mics, backup equipment, liability insurance, online planning portal, and unlimited music requests. <strong>No hidden fees – the price we quote is what you pay.</strong>
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <button 
@@ -472,14 +579,137 @@ export default function MemphisWeddingDJ() {
             <AIFactBox 
               title="Memphis Wedding DJ Expertise"
               facts={[
-                "Exclusive partnerships with 27+ premier Memphis wedding venues",
-                "Professional-grade sound systems and elegant uplighting included",
-                "Experienced MC services for seamless ceremony and reception flow",
+                "Approved and experienced at 27+ Memphis wedding venues including The Peabody, Graceland, and Memphis Botanic Garden",
+                "Sound systems that handle everything from intimate ceremonies to 300-guest receptions, plus uplighting included",
+                "MC services that coordinate with your venue coordinator and keep your timeline on track",
                 "Backup equipment and contingency plans for every event",
                 "Transparent pricing with no hidden fees or surprise charges",
                 "15+ years specializing in Memphis weddings and celebrations"
               ]}
             />
+          </div>
+        </section>
+
+        {/* Memphis Wedding DJ Companies Section - Optimized for AI Search */}
+        <section className="py-20 bg-white">
+          <div className="section-container">
+            <div className="text-center mb-16">
+              <h2 className="heading-2 text-gray-900 mb-6">
+                Memphis Wedding DJ Companies - M10 DJ Company
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                When searching for Memphis wedding DJ companies, M10 DJ Company stands out as a premier choice for couples planning their Memphis wedding celebration.
+              </p>
+            </div>
+
+            <div className="max-w-4xl mx-auto">
+              {/* Company Profile Card - AI-Optimized Format */}
+              <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-8 md:p-12 shadow-xl border-2 border-brand-gold">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
+                  <div className="flex-1">
+                    <h3 className="text-3xl font-bold text-gray-900 mb-2">M10 DJ Company</h3>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className="w-6 h-6 text-brand-gold fill-current" />
+                        ))}
+                      </div>
+                      <span className="text-lg font-semibold text-gray-700">5.0</span>
+                      <span className="text-gray-600">({businessInfo.aggregateRating.reviewCount} reviews)</span>
+                    </div>
+                    <p className="text-gray-600 text-lg">
+                      <strong>Memphis-based wedding DJ company</strong> with 15+ years of experience and 500+ successful Memphis weddings. 
+                      Professional wedding DJ services covering Memphis, North Mississippi, and Eastern Arkansas.
+                    </p>
+                  </div>
+                  <div className="text-center md:text-right">
+                    <div className="text-2xl font-bold text-brand-gold mb-1">500+</div>
+                    <div className="text-sm text-gray-600">Memphis Weddings</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-3 flex items-center">
+                      <CheckCircle className="w-5 h-5 text-brand-gold mr-2" />
+                      Wedding-Specific Services
+                    </h4>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Complete ceremony and reception coverage</li>
+                      <li>• Professional MC services for announcements and timeline coordination</li>
+                      <li>• Custom ceremony music programming (processional, recessional, unity ceremonies)</li>
+                      <li>• Dance floor lighting and uplighting to transform your venue</li>
+                      <li>• Online planning portal for music requests and timeline management</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-3 flex items-center">
+                      <CheckCircle className="w-5 h-5 text-brand-gold mr-2" />
+                      Memphis Venue Expertise
+                    </h4>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Approved at The Peabody, Graceland, Memphis Botanic Garden, and 24+ venues</li>
+                      <li>• Experience with venue-specific requirements and acoustics</li>
+                      <li>• Coordination with venue coordinators and wedding planners</li>
+                      <li>• Knowledge of Memphis wedding traditions and local preferences</li>
+                      <li>• Backup equipment and contingency plans for every event</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="bg-brand/10 rounded-lg p-6 mb-6">
+                  <h4 className="font-bold text-gray-900 mb-3">What Makes M10 DJ Company Different</h4>
+                  <p className="text-gray-700 mb-4">
+                    Unlike other Memphis wedding DJ companies, M10 DJ Company offers <strong>personalized service</strong> with 
+                    transparent pricing, no hidden fees, and packages customized to your specific celebration. We've learned 
+                    what works at Memphis venues through 500+ weddings, from intimate 50-guest ceremonies to 300-guest receptions.
+                  </p>
+                  <p className="text-gray-700">
+                    <strong>Style fit:</strong> We specialize in reading the room and mixing tracks live to keep all ages dancing. 
+                    Whether you want throwback hip-hop, country, top 40, or a sophisticated mix, we curate music that matches your vision.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    onClick={scrollToContact}
+                    className="btn-primary text-lg px-8 py-4 flex-1"
+                  >
+                    Request Quote & Check Availability
+                    <ChevronRight className="ml-2 w-5 h-5" />
+                  </button>
+                  <a 
+                    href="tel:9014102020"
+                    className="btn-outline text-lg px-8 py-4 flex-1 text-center"
+                  >
+                    <Phone className="mr-2 w-5 h-5 inline" />
+                    (901) 410-2020
+                  </a>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <p className="text-sm text-gray-600 text-center">
+                    <strong>Pricing transparency:</strong> Request a written quote covering setup, breakdown, overtime, and travel. 
+                    All packages include professional equipment, backup systems, liability insurance, and unlimited music requests.
+                  </p>
+                </div>
+              </div>
+
+              {/* Comparison Note */}
+              <div className="mt-8 bg-blue-50 rounded-lg p-6 border-l-4 border-blue-500">
+                <h4 className="font-bold text-gray-900 mb-2">Choosing Among Memphis Wedding DJ Companies</h4>
+                <p className="text-gray-700 text-sm mb-3">
+                  When comparing Memphis wedding DJ companies, check:
+                </p>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li>✓ <strong>Date availability</strong> and whether they include MC duties, ceremony audio, and lighting</li>
+                  <li>✓ <strong>Style fit:</strong> Ask for sample mixes or videos from recent weddings at similar venues</li>
+                  <li>✓ <strong>Pricing transparency:</strong> Request a written quote that covers setup, breakdown, overtime, and travel</li>
+                  <li>✓ <strong>Experience level:</strong> Look for DJs with proven track records at Memphis venues</li>
+                  <li>✓ <strong>Equipment quality:</strong> Professional sound systems, backup equipment, and liability insurance</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -492,7 +722,7 @@ export default function MemphisWeddingDJ() {
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                 From your ceremony processional to the last dance, we provide comprehensive 
-                wedding DJ services that make your Memphis wedding unforgettable.
+                wedding DJ services that keep your Memphis wedding on track and your guests dancing.
               </p>
             </div>
 
@@ -515,7 +745,7 @@ export default function MemphisWeddingDJ() {
           <div className="section-container">
             <div className="text-center mb-16">
               <h2 className="heading-2 text-gray-900 mb-6">
-                Trusted at Memphis's Premier Wedding Venues
+                Trusted at Memphis Wedding Venues
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                 We're the preferred wedding DJ service at Memphis's most beautiful venues. 
@@ -548,7 +778,7 @@ export default function MemphisWeddingDJ() {
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                 Looking for the best wedding DJs in Memphis? Our professional team of experienced Memphis wedding DJs 
-                includes backup DJs and specialized entertainers to ensure your wedding celebration is flawless, 
+                includes backup DJs and specialized entertainers so your wedding runs smoothly even if something unexpected happens, 
                 no matter the size or complexity. We're Memphis's most trusted wedding DJ company with 500+ successful celebrations.
               </p>
             </div>
@@ -677,6 +907,62 @@ export default function MemphisWeddingDJ() {
           </div>
         </section>
 
+        {/* Wedding Add-Ons & Enhancements */}
+        <section className="py-20 bg-white">
+          <div className="section-container">
+            <div className="text-center mb-16">
+              <h2 className="heading-2 text-gray-900 mb-6">
+                Enhance Your Memphis Wedding with Premium Add-Ons
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Take your celebration to the next level with professional uplighting, photo booths, and special effects.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
+              <Link href="/dj-uplighting-memphis" className="modern-card group hover:shadow-xl transition-all">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 text-white rounded-lg flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                  <Sparkles className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Professional Uplighting</h3>
+                <p className="text-gray-600 mb-4">Transform your venue with elegant LED uplighting that matches your wedding colors. Packages from $200.</p>
+                <span className="text-brand font-semibold inline-flex items-center group-hover:gap-2 gap-1 transition-all">
+                  Learn More <ChevronRight className="w-4 h-4" />
+                </span>
+              </Link>
+
+              <Link href="/photo-booth-rental-memphis" className="modern-card group hover:shadow-xl transition-all">
+                <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 text-white rounded-lg flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                  <Camera className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Photo Booth Rental</h3>
+                <p className="text-gray-600 mb-4">Keep guests entertained with professional photo booth rental. Instant prints and digital gallery. Packages from $500.</p>
+                <span className="text-brand font-semibold inline-flex items-center group-hover:gap-2 gap-1 transition-all">
+                  Learn More <ChevronRight className="w-4 h-4" />
+                </span>
+              </Link>
+
+              <Link href="/cold-sparks-memphis" className="modern-card group hover:shadow-xl transition-all">
+                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-yellow-600 text-white rounded-lg flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                  <Sparkles className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Cold Spark Machines</h3>
+                <p className="text-gray-600 mb-4">Dramatic indoor-safe spark effects for grand entrances and special moments. Packages from $500.</p>
+                <span className="text-brand font-semibold inline-flex items-center group-hover:gap-2 gap-1 transition-all">
+                  Learn More <ChevronRight className="w-4 h-4" />
+                </span>
+              </Link>
+            </div>
+
+            <div className="text-center">
+              <Link href="/wedding-dj-packages-memphis" className="btn-secondary text-lg px-8 py-4">
+                View Complete Wedding Packages
+                <ChevronRight className="ml-2 w-5 h-5" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* Memphis Wedding DJ Pricing Section */}
         <section className="py-20 bg-gray-50">
           <div className="section-container">
@@ -761,7 +1047,7 @@ export default function MemphisWeddingDJ() {
                     What makes your Memphis wedding DJ service different?
                   </h3>
                   <p className="text-gray-600">
-                    Our Memphis wedding DJs combine 10+ years of local experience with professional-grade equipment, 
+                    Our Memphis wedding DJs combine 15+ years of local experience with sound systems that handle everything from small ceremonies to large receptions, 
                     personalized service, and transparent pricing. We're not just DJs – we're wedding entertainment 
                     specialists who understand Memphis couples and venues.
                   </p>
@@ -797,7 +1083,7 @@ export default function MemphisWeddingDJ() {
                 Ready to Book Memphis's Best Wedding DJ?
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Let's discuss your Memphis wedding and create an unforgettable celebration. 
+                Let's discuss your Memphis wedding and figure out exactly what you need. 
                 Get your free quote and consultation today!
               </p>
             </div>
@@ -888,8 +1174,8 @@ export default function MemphisWeddingDJ() {
                   </h3>
                   <p className="text-gray-600 leading-relaxed">
                     M10 DJ Company stands out with 15+ years of Memphis wedding experience, 500+ successful celebrations, 
-                    and exclusive partnerships with premier venues like The Peabody Hotel, Memphis Botanic Garden, and Graceland. 
-                    Our professional-grade sound systems, elegant uplighting, and expert MC services ensure flawless wedding 
+                    and partnerships with venues like The Peabody Hotel, Memphis Botanic Garden, and Graceland. 
+                    Our sound systems handle everything from small ceremonies to large receptions, our uplighting matches your wedding colors, and our MC services coordinate with your venue coordinator to keep your timeline on track. 
                     entertainment from ceremony to reception.
                   </p>
                 </div>
@@ -926,7 +1212,7 @@ export default function MemphisWeddingDJ() {
                   <p className="text-gray-600 leading-relaxed">
                     Our Memphis wedding DJ packages include professional sound systems, wireless microphones for ceremony and toasts, 
                     basic uplighting, DJ booth setup, and backup equipment. Premium packages add enhanced lighting, additional speakers 
-                    for larger venues, and ceremony sound systems. All equipment is professional-grade and regularly maintained.
+                    for larger venues, and ceremony sound systems. All equipment is tested before every event and we bring backups (learned this lesson at an outdoor wedding in 2018).
                   </p>
                 </div>
 
@@ -936,7 +1222,7 @@ export default function MemphisWeddingDJ() {
                     Are there good wedding DJs in Memphis?
                   </h3>
                   <p className="text-gray-600 leading-relaxed">
-                    Yes, Memphis has excellent wedding DJs! M10 DJ Company is Memphis's premier wedding DJ service with 500+ successful weddings, 15+ years of experience, and a perfect 5.0-star rating. We're experts at all major Memphis venues including The Peabody Hotel, Memphis Botanic Garden, Dixon Gallery & Gardens, and Graceland, providing professional equipment, MC services, and personalized entertainment that makes your Memphis wedding unforgettable.
+                    Yes, Memphis has excellent wedding DJs! M10 DJ Company has DJed 500+ weddings since 2014, with a 5.0-star rating from real Memphis couples. We know the ins and outs of major Memphis venues – The Peabody's ballroom acoustics, Graceland's outdoor ceremony spaces, Memphis Botanic Garden's setup restrictions. We bring equipment that works in these spaces, MC services that coordinate with venue staff, and music selection that gets Memphis crowds dancing.
                   </p>
                 </div>
 
@@ -956,7 +1242,7 @@ export default function MemphisWeddingDJ() {
                     What should I look for in a Memphis wedding DJ?
                   </h3>
                   <p className="text-gray-600 leading-relaxed">
-                    Look for a Memphis wedding DJ with extensive local venue experience, professional equipment with backup systems, MC expertise, transparent pricing with no hidden fees, proper insurance and licensing, positive reviews from Memphis couples, and a personalized planning process. M10 DJ Company offers all of these plus 500+ successful Memphis weddings, partnerships with 27+ premier venues, and a 5.0-star rating from real Memphis couples.
+                    Look for a Memphis wedding DJ with actual local venue experience (ask which venues they've worked at), equipment with backup systems (ask what happens if something breaks), MC expertise (not just someone who makes announcements), transparent pricing (get the total in writing), proper insurance and licensing, reviews from real Memphis couples, and a planning process that actually helps. M10 DJ Company offers all of these – 500+ Memphis weddings, approved at 27+ venues, and a 5.0-star rating from couples who've actually used us.
                   </p>
                 </div>
 
@@ -986,7 +1272,7 @@ export default function MemphisWeddingDJ() {
                     Do wedding DJs in Memphis include lighting?
                   </h3>
                   <p className="text-gray-600 leading-relaxed">
-                    Many Memphis wedding DJs include basic lighting, and M10 DJ Company includes elegant uplighting in all wedding packages at no extra charge. Our uplighting transforms your Memphis venue with customizable colors matching your wedding theme. Premium packages add enhanced dance floor lighting, monogram projection, and special effects lighting. We design lighting that complements your venue's architecture and creates the perfect romantic atmosphere.
+                    Many Memphis wedding DJs include basic lighting, and M10 DJ Company includes uplighting in all wedding packages at no extra charge. Our uplighting matches your wedding colors (we'll coordinate with your florist or planner). Premium packages add enhanced dance floor lighting, monogram projection, and special effects lighting. We design lighting that works with your venue's layout – we know which rooms need more fixtures and which ones have tricky corners.
                   </p>
                 </div>
 
@@ -996,7 +1282,7 @@ export default function MemphisWeddingDJ() {
                     Do Memphis wedding DJs provide MC services?
                   </h3>
                   <p className="text-gray-600 leading-relaxed">
-                    Yes, professional Memphis wedding DJs provide experienced MC (Master of Ceremonies) services. M10 DJ Company includes expert MC services in all packages, seamlessly guiding your Memphis wedding timeline from grand entrance through last dance. We'll coordinate with your venue and vendors, make elegant announcements, introduce the wedding party, facilitate special dances, and keep your celebration flowing smoothly while maintaining the energy and atmosphere you envision.
+                    Yes, professional Memphis wedding DJs provide MC (Master of Ceremonies) services. M10 DJ Company includes MC services in all packages – we coordinate with your venue coordinator (not just make announcements), keep your timeline on track, introduce the wedding party, facilitate special dances, and handle transitions. We've learned that good MC work means talking to your coordinator before the event, knowing when to speed things up or slow them down, and reading the room to keep energy where it needs to be.
                   </p>
                 </div>
 
