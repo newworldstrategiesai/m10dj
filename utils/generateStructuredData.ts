@@ -109,55 +109,57 @@ export function generateStructuredData(props: StructuredDataProps) {
 
   const schemas: any[] = [];
 
-  // Base Organization schema (included on every page except DJ profiles)
-  if (pageType !== 'dj_profile') {
+  // Base Organization schema (included on every page except DJ profiles, homepage, and service pages)
+  // Homepage and service pages use combined LocalBusiness + Organization schemas instead
+  // Note: Organization schema should NOT include LocalBusiness-only properties like
+  // priceRange, currenciesAccepted, paymentAccepted - these cause validation errors
+  if (pageType !== 'dj_profile' && pageType !== 'homepage' && pageType !== 'service') {
     schemas.push({
       "@context": "https://schema.org",
-    "@type": "Organization",
-    "@id": `${businessInfo.url}/#organization`,
-    "name": businessInfo.name,
-    "alternateName": businessInfo.alternateName,
-    "description": businessInfo.description,
-    "url": businessInfo.url,
-    "logo": {
-      "@type": "ImageObject",
-      "url": businessInfo.logo.url,
-      "width": businessInfo.logo.width,
-      "height": businessInfo.logo.height
-    },
-    "image": businessInfo.image,
-    "telephone": businessInfo.telephone,
-    "email": businessInfo.email,
-    "address": {
-      "@type": "PostalAddress",
-      "streetAddress": businessInfo.address.streetAddress,
-      "addressLocality": businessInfo.address.addressLocality,
-      "addressRegion": businessInfo.address.addressRegion,
-      "postalCode": businessInfo.address.postalCode,
-      "addressCountry": businessInfo.address.addressCountry
-    },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": businessInfo.geo.latitude,
-      "longitude": businessInfo.geo.longitude
-    },
-    "foundingDate": businessInfo.foundingDate,
-    "founder": {
-      "@type": "Person",
-      "name": businessInfo.founder.name,
-      "jobTitle": businessInfo.founder.jobTitle
-    },
-    "sameAs": businessInfo.socialMedia,
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": businessInfo.aggregateRating.ratingValue,
-      "reviewCount": businessInfo.aggregateRating.reviewCount,
-      "bestRating": businessInfo.aggregateRating.bestRating,
-      "worstRating": businessInfo.aggregateRating.worstRating
-    },
-    "priceRange": businessInfo.priceRange,
-    "currenciesAccepted": businessInfo.currenciesAccepted,
-    "paymentAccepted": businessInfo.paymentAccepted
+      "@type": "Organization",
+      "@id": `${businessInfo.url}/#organization`,
+      "name": businessInfo.name,
+      "alternateName": businessInfo.alternateName,
+      "description": businessInfo.description,
+      "url": businessInfo.url,
+      "logo": {
+        "@type": "ImageObject",
+        "url": businessInfo.logo.url,
+        "width": businessInfo.logo.width,
+        "height": businessInfo.logo.height
+      },
+      "image": businessInfo.image,
+      "telephone": businessInfo.telephone,
+      "email": businessInfo.email,
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": businessInfo.address.streetAddress,
+        "addressLocality": businessInfo.address.addressLocality,
+        "addressRegion": businessInfo.address.addressRegion,
+        "postalCode": businessInfo.address.postalCode,
+        "addressCountry": businessInfo.address.addressCountry
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": businessInfo.geo.latitude,
+        "longitude": businessInfo.geo.longitude
+      },
+      "foundingDate": businessInfo.foundingDate,
+      "founder": {
+        "@type": "Person",
+        "name": businessInfo.founder.name,
+        "jobTitle": businessInfo.founder.jobTitle
+      },
+      "sameAs": businessInfo.socialMedia,
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": businessInfo.aggregateRating.ratingValue,
+        "reviewCount": businessInfo.aggregateRating.reviewCount,
+        "bestRating": businessInfo.aggregateRating.bestRating,
+        "worstRating": businessInfo.aggregateRating.worstRating
+      }
+      // Removed LocalBusiness-only properties: priceRange, currenciesAccepted, paymentAccepted
+      // These are only valid for LocalBusiness type, not Organization
     });
   }
 
@@ -165,7 +167,8 @@ export function generateStructuredData(props: StructuredDataProps) {
     case 'homepage':
       // Enhanced LocalBusiness schema with Organization properties for homepage
       // This consolidates both LocalBusiness and Organization into one comprehensive schema
-      schemas[0] = {
+      // Using combined type to avoid duplicate Organization schemas
+      schemas.push({
         "@context": "https://schema.org",
         "@type": ["LocalBusiness", "Organization"],
         "@id": `${businessInfo.url}/#organization`,
@@ -235,7 +238,7 @@ export function generateStructuredData(props: StructuredDataProps) {
         "priceRange": businessInfo.priceRange,
         "currenciesAccepted": businessInfo.currenciesAccepted,
         "paymentAccepted": businessInfo.paymentAccepted
-      };
+      });
 
       // WebSite schema with search action
       schemas.push({
@@ -308,8 +311,8 @@ export function generateStructuredData(props: StructuredDataProps) {
       });
 
       // Consolidated LocalBusiness + Organization schema for service pages
-      // This replaces the base Organization schema to avoid duplication
-      schemas[0] = {
+      // This avoids duplication by using a combined schema instead of separate ones
+      schemas.push({
         "@context": "https://schema.org",
         "@type": ["LocalBusiness", "Organization"],
         "@id": `${businessInfo.url}/#organization`,
@@ -366,7 +369,7 @@ export function generateStructuredData(props: StructuredDataProps) {
         },
         "currenciesAccepted": businessInfo.currenciesAccepted,
         "paymentAccepted": businessInfo.paymentAccepted
-      };
+      });
       break;
 
     case 'location':
@@ -526,9 +529,18 @@ export function generateStructuredData(props: StructuredDataProps) {
         "headline": blogProps.headline || title || "Memphis DJ Tips & Insights",
         "description": description || "Expert DJ tips and insights from Memphis's premier wedding and event DJ company.",
         "author": {
-          "@type": "Organization",
-          "name": blogProps.author || businessInfo.name,
-          "url": businessInfo.url
+          "@type": "Person",
+          "@id": `${businessInfo.url}/about/ben-murray#person`,
+          "name": "Ben Murray",
+          "alternateName": "DJ Ben Murray",
+          "jobTitle": "Founder & Lead DJ",
+          "url": `${businessInfo.url}/about/ben-murray`,
+          "sameAs": [
+            "https://www.instagram.com/djbenmurray/",
+            "https://soundcloud.com/thebenmurray",
+            "https://www.facebook.com/djbenmurray/",
+            "https://x.com/djbenmurray"
+          ]
         },
         "publisher": {
           "@type": "Organization",
@@ -571,8 +583,12 @@ export function generateStructuredData(props: StructuredDataProps) {
         "headline": blogProps.headline || title || "Memphis DJ Tips & Insights",
         "description": description || "Expert DJ tips and insights from Memphis's premier wedding and event DJ company.",
         "author": {
-          "@type": "Organization",
-          "name": blogProps.author || businessInfo.name
+          "@type": "Person",
+          "@id": `${businessInfo.url}/about/ben-murray#person`,
+          "name": "Ben Murray",
+          "alternateName": "DJ Ben Murray",
+          "jobTitle": "Founder & Lead DJ",
+          "url": `${businessInfo.url}/about/ben-murray`
         },
         "publisher": {
           "@type": "Organization",
@@ -847,21 +863,7 @@ export function generateStructuredData(props: StructuredDataProps) {
           "reviewAspect": review.reviewAspect || review.event
         },
         "itemReviewed": {
-          "@type": "LocalBusiness",
-          "@id": `${businessInfo.url}/#organization`,
-          "name": businessInfo.name,
-          "url": businessInfo.url,
-          "address": {
-            "@type": "PostalAddress",
-            "streetAddress": businessInfo.address.streetAddress,
-            "addressLocality": businessInfo.address.addressLocality,
-            "addressRegion": businessInfo.address.addressRegion,
-            "postalCode": businessInfo.address.postalCode,
-            "addressCountry": businessInfo.address.addressCountry
-          },
-          "telephone": businessInfo.telephone,
-          "priceRange": businessInfo.priceRange,
-          "serviceType": "DJ Services"
+          "@id": `${businessInfo.url}/#organization`
         },
         "author": {
           "@type": "Person",
