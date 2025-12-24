@@ -186,17 +186,17 @@ export default function DJNearMemphis() {
   return (
     <>
       <Head>
-        <title>DJ Near Me Memphis | Local DJs Near Me | Wedding DJ Near Me Memphis</title>
+        <title>DJ Near Me Memphis, TN | Local DJ Services | All Neighborhoods</title>
         <meta 
           name="description" 
-          content="Looking for DJ near me? Local Memphis DJs available for weddings & events. Professional DJs near you with 15+ years experience. Same-day quotes. Call (901) 410-2020!"
+          content="Find local DJs near you in Memphis. Serving all Memphis neighborhoods with same-day quotes. Professional DJ services for events, parties, and celebrations. Call (901) 410-2020!"
         />
-        <meta name="keywords" content="DJ near me, wedding DJ near me, DJ near me Memphis, Memphis DJ near me, local DJ Memphis, event DJ near me, find DJ near me, Memphis area DJ" />
+        <meta name="keywords" content="DJ near me Memphis, Memphis DJ near me, local DJ Memphis, DJ near me, find DJ near me, Memphis area DJ, nearby DJ Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://m10djcompany.com/dj-near-me-memphis" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="DJ Near Me Memphis | Local Wedding & Event DJs" />
+        <meta property="og:title" content="DJ Near Me Memphis, TN | Local Wedding & Event DJs" />
         <meta property="og:description" content="Professional DJ services near you in Memphis. Wedding, corporate, and party entertainment with 15+ years experience and 5-star ratings." />
         <meta property="og:url" content="https://m10djcompany.com/dj-near-me-memphis" />
         <meta property="og:type" content="website" />
@@ -215,7 +215,7 @@ export default function DJNearMemphis() {
               "@context": "https://schema.org",
               "@type": "LocalBusiness",
               "name": "M10 DJ Company",
-              "description": "Professional DJ services near you in Memphis and surrounding areas",
+              "description": "Find local Memphis DJs near you for weddings, corporate events, and parties. Same-day quotes available. Serving all Memphis neighborhoods with 15+ years experience.",
               "url": "https://m10djcompany.com/dj-near-me-memphis",
               "telephone": "+19014102020",
               "email": "booking@m10djcompany.com",
@@ -332,8 +332,8 @@ export default function DJNearMemphis() {
                 </div>
                 
                 <h1 className="text-4xl md:text-6xl font-bold mb-8 leading-tight">
-                  <span className="block">DJ Near Me</span>
-                  <span className="block text-brand-gold">Memphis, TN</span>
+                  <span className="block">Memphis Wedding DJ</span>
+                  <span className="block text-brand-gold">DJ Near Me Memphis, TN</span>
                 </h1>
                 
                 <p className="text-xl md:text-2xl text-gray-200 mb-12 max-w-3xl mx-auto leading-relaxed">

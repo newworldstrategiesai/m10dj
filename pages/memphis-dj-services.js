@@ -30,7 +30,7 @@ const djServices = [
   {
     icon: Heart,
     title: "Wedding DJ Services",
-    description: "Professional Memphis wedding DJ services with ceremony, cocktail hour, and reception entertainment",
+    description: "Professional Memphis DJ services for all event types including corporate events, private parties, school dances, and special celebrations",
     features: ["Ceremony music", "Reception DJ", "MC services", "Uplighting", "Dance floor lighting"],
     price: "Starting at $799"
   },
@@ -142,12 +142,12 @@ export default function MemphisDJServices() {
   return (
     <>
       <Head>
-        <title>DJ Memphis | Memphis DJ Services | Professional Event DJ</title>
+        <title>Memphis DJ Services | All Event Types | Professional DJ</title>
         <meta 
           name="description" 
-          content="DJ Memphis for all events! 🎵 Professional Memphis DJ services - weddings, corporate events, parties. Premium equipment included. Same-day quotes. Call (901) 410-2020!" 
+          content="Complete Memphis DJ services for all event types: corporate events, private parties, school dances, and celebrations. Professional equipment, experienced DJs. Call (901) 410-2020!" 
         />
-        <meta name="keywords" content="Memphis DJ services, DJ services Memphis, anniversary DJ Memphis, professional DJ Memphis, Memphis event DJ, Memphis party DJ, anniversary DJ, corporate DJ Memphis, wedding DJ Memphis" />
+        <meta name="keywords" content="Memphis DJ services, DJ services Memphis, event DJ Memphis, corporate DJ Memphis, Memphis event DJ, Memphis party DJ, professional DJ Memphis, anniversary DJ Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://m10djcompany.com/memphis-dj-services" />
         
@@ -171,7 +171,7 @@ export default function MemphisDJServices() {
               "@context": "https://schema.org",
               "@type": "LocalBusiness",
               "name": "M10 DJ Company",
-              "description": "Professional Memphis DJ services for weddings, corporate events, private parties and special celebrations",
+              "description": "Complete Memphis DJ services for weddings, corporate events, private parties, and special celebrations. Professional equipment, experienced DJs, transparent pricing. Call (901) 410-2020!",
               "url": "https://m10djcompany.com/memphis-dj-services",
               "telephone": "+19014102020",
               "address": {
@@ -212,12 +212,12 @@ export default function MemphisDJServices() {
             <div className="max-w-6xl mx-auto text-center">
               <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight">
                 <span className="block text-white">Memphis DJ Services</span>
-                <span className="block text-gradient">For Every Occasion</span>
+                <span className="block text-gradient">Complete Entertainment for Every Event Type</span>
               </h1>
               
               <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-4xl mx-auto leading-relaxed">
-                Professional Memphis DJ services for weddings, corporate events, private parties, and special celebrations. 
-                Premium sound systems, experienced entertainers, and personalized service for every event.
+                Comprehensive Memphis DJ services covering weddings, corporate events, private parties, school dances, and special celebrations. 
+                From intimate gatherings to large-scale corporate galas, we provide professional entertainment tailored to your event type.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">

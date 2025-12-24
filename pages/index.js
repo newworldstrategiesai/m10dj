@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import Head from 'next/head';
 import { Star, Users, Calendar, Music, Headphones, Mic, Volume2, Award, Phone, Mail, MapPin, ChevronRight, Sparkles, Radio, Zap } from 'lucide-react';
 // Temporarily simplified imports to isolate infinite reload issue
 import Header from '../components/company/Header';
@@ -32,34 +33,25 @@ export default function Home() {
   const structuredData = generateStructuredData({
     pageType: 'homepage',
     canonical: '/',
-    title: 'Memphis DJ Services | Professional DJ Memphis | M10 DJ Company',
+    title: 'Memphis DJ Company | Professional DJ Services | M10 DJ Company',
     description: 'Memphis DJ • 500+ Events • Same-Day Quotes Available! Professional DJ services for weddings, corporate events & parties. #1 rated Memphis DJ company. Call (901) 410-2020 now!'
   });
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+  const ampUrl = `${siteUrl}/amp`;
 
   return (
     <>
       <SEO
-        title="Best Wedding DJs in Memphis TN | M10 DJ Company | 500+ Weddings | Same-Day Quotes"
-        description="Memphis's #1 Wedding DJ Company ⭐ 500+ Successful Weddings ⭐ Same-Day Quotes Available! Professional Memphis wedding DJs for ceremonies & receptions. Call (901) 410-2020 now!"
+        title="Memphis DJ Company | Professional DJ Services | M10 DJ Company"
+        description="Memphis premier DJ and entertainment company serving all event types. Professional sound, lighting, and MC services with transparent pricing. Call (901) 410-2020!"
         keywords={[
-          'wedding djs in memphis',
-          'djs near me',
-          'wedding dj memphis',
-          'djs in memphis',
-          'memphis wedding dj',
-          'best wedding DJ Memphis',
+          'memphis dj company',
+          'm10 dj company',
+          'professional dj memphis',
           'Memphis DJs',
           'DJ Memphis',
-          'professional DJ Memphis',
-          'Memphis event DJ',
           'DJ in Memphis',
-          'Memphis DJ services',
-          'DJ services Memphis',
-          'wedding DJ Memphis TN',
-          'party DJ Memphis',
-          'DJ for hire Memphis',
-          'Memphis wedding entertainment',
-          'best DJs in Memphis',
           'memphis djs',
           'djs memphis tn',
           'memphis tn djs'
@@ -67,12 +59,15 @@ export default function Home() {
         canonical="/"
         jsonLd={structuredData}
       />
+      <Head>
+        <link rel="amphtml" href={ampUrl} />
+      </Head>
 
       <Header />
 
       <main id="main-content">
         {/* Hero Section */}
-        <section id="home" className={`relative min-h-[90vh] md:min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-amber-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 text-gray-900 dark:text-white overflow-hidden ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
+        <section id="home" className={`relative min-h-[90vh] md:min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-amber-50/30 dark:from-black dark:via-black dark:to-black text-gray-900 dark:text-white overflow-hidden ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
           {/* Enhanced Background Elements */}
           <div className="absolute inset-0">
             <div className="absolute top-20 right-10 w-64 h-64 md:w-96 md:h-96 bg-brand/10 dark:bg-brand/5 rounded-full blur-3xl animate-pulse"></div>
@@ -84,12 +79,12 @@ export default function Home() {
             <div className="max-w-5xl mx-auto">
               {/* Main Headline - SEO Optimized H1 */}
               <h1 className="heading-1 mb-6 md:mb-8 animate-fade-in-up px-4">
-                <span className="block text-gray-900 dark:text-white">Memphis DJ Services</span>
-                <span className="block text-gradient bg-gradient-to-r from-brand via-amber-400 to-brand bg-clip-text">Professional Wedding & Event Entertainment</span>
+                <span className="block text-gray-900 dark:text-white">Professional DJ Services in Memphis, TN</span>
+                <span className="block text-gradient bg-gradient-to-r from-brand via-amber-400 to-brand bg-clip-text">Weddings, Corporate Events & Celebrations | 500+ Events</span>
               </h1>
               
               {/* Enhanced Content Block with Better Shadows */}
-              <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl md:rounded-3xl p-6 md:p-10 mb-8 md:mb-12 shadow-2xl border border-brand/20 dark:border-brand/10 max-w-4xl mx-auto relative overflow-hidden">
+              <div className="bg-white/95 dark:bg-black/95 backdrop-blur-md rounded-2xl md:rounded-3xl p-6 md:p-10 mb-8 md:mb-12 shadow-2xl border border-brand/20 dark:border-brand/10 max-w-4xl mx-auto relative overflow-hidden">
                 {/* Decorative Top Border */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-brand to-transparent"></div>
                 
@@ -102,28 +97,34 @@ export default function Home() {
                     <p className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-gray-900 dark:text-white">
                       M10 DJ Company has been serving Memphis weddings and events for 15+ years, with 500+ celebrations under our belt.
                     </p>
-                    <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+                    <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
                       We know Memphis venues inside and out – from The Peabody's ballroom acoustics to Graceland's outdoor ceremony spaces. Our sound systems handle everything from intimate ceremonies to 300-guest receptions. We bring backup equipment to every event (because Memphis weather can be unpredictable), and our MC services keep your timeline on track without feeling scripted.
+                    </p>
+                    <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                      As Memphis's premier wedding DJ company, we specialize in creating unforgettable experiences for couples throughout the Mid-South. Whether you're planning an elegant downtown Memphis wedding at The Peabody or an intimate celebration in Germantown, our professional Memphis DJ services ensure your special day flows seamlessly from ceremony to last dance.
+                    </p>
+                    <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+                      Our Memphis wedding DJ team brings over 15 years of local expertise, serving venues across Memphis, Germantown, Collierville, Cordova, and East Memphis. We understand the unique acoustics of Memphis event spaces and tailor our sound systems accordingly. From wireless microphones for outdoor ceremonies to powerful sound systems for large receptions, we have the equipment and experience to make your Memphis wedding or corporate event unforgettable.
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-gray-200 dark:border-gray-800">
                   <div className="grid grid-cols-3 gap-3 md:gap-6">
-                    <div className="text-center p-3 md:p-4 rounded-lg md:rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-700 dark:to-slate-600 border border-amber-100 dark:border-slate-600">
+                    <div className="text-center p-3 md:p-4 rounded-lg md:rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-black dark:to-black border border-amber-100 dark:border-gray-800">
                       <div className="text-2xl md:text-4xl font-bold text-brand mb-1 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2">
                         <Award className="w-5 h-5 md:w-8 md:h-8" />
                         <span>15+</span>
                       </div>
                       <div className="text-xs md:text-sm text-gray-700 dark:text-gray-300 font-semibold">Years Experience</div>
                     </div>
-                    <div className="text-center p-3 md:p-4 rounded-lg md:rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-700 dark:to-slate-600 border border-amber-100 dark:border-slate-600">
+                    <div className="text-center p-3 md:p-4 rounded-lg md:rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-black dark:to-black border border-amber-100 dark:border-gray-800">
                       <div className="text-2xl md:text-4xl font-bold text-brand mb-1 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2">
                         <Sparkles className="w-5 h-5 md:w-8 md:h-8" />
                         <span>500+</span>
                       </div>
                       <div className="text-xs md:text-sm text-gray-700 dark:text-gray-300 font-semibold">Celebrations</div>
                     </div>
-                    <div className="text-center p-3 md:p-4 rounded-lg md:rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-700 dark:to-slate-600 border border-amber-100 dark:border-slate-600">
+                    <div className="text-center p-3 md:p-4 rounded-lg md:rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-black dark:to-black border border-amber-100 dark:border-gray-800">
                       <div className="text-2xl md:text-4xl font-bold text-brand mb-1 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2">
                         <MapPin className="w-5 h-5 md:w-8 md:h-8" />
                         <span>27+</span>
@@ -184,8 +185,8 @@ export default function Home() {
                   <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg">
                     <Zap className="w-8 h-8 md:w-10 md:h-10" />
                   </div>
-                  <h3 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4 text-gray-900 dark:text-white">Your Perfect Wedding</h3>
-                  <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 font-inter leading-relaxed mb-3 md:mb-4">Custom playlists, seamless timeline coordination, and MC services tailored to your love story and wedding vision.</p>
+                  <h3 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4 text-gray-900 dark:text-white">Customized Entertainment</h3>
+                  <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 font-inter leading-relaxed mb-3 md:mb-4">Custom playlists, seamless timeline coordination, and MC services tailored to your event vision and guest preferences.</p>
                   <Link href="/dj-near-me-memphis" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold mt-2 md:mt-4 inline-flex items-center group-hover:gap-2 gap-1 transition-all text-sm md:text-base">
                     Find DJs Near You <ChevronRight className="w-4 h-4" />
                   </Link>
@@ -195,8 +196,99 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Detailed Memphis DJ Services Content Section */}
+        <section className="py-12 md:py-16 bg-white dark:bg-black">
+          <div className="section-container">
+            <div className="max-w-4xl mx-auto px-4">
+              <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900 dark:text-white text-center">
+                Why Choose M10 DJ Company for Your Memphis Wedding DJ Needs?
+              </h2>
+              
+              <div className="prose prose-lg max-w-none text-gray-700 dark:text-gray-300 space-y-6">
+                <p className="text-lg leading-relaxed">
+                  When searching for <strong>professional DJ services in Memphis</strong> or a <strong>Memphis DJ company</strong>, you want a team that understands both the technical aspects of professional sound and the importance of creating the perfect atmosphere for your event. M10 DJ Company has been the trusted choice for <strong>Memphis DJ services</strong> since 2009, with over 500 successful celebrations across the Mid-South region.
+                </p>
+                
+                <p className="text-lg leading-relaxed">
+                  Our <strong>professional Memphis DJ</strong> team serves all areas of Memphis, including East Memphis, Germantown, Collierville, Cordova, and downtown Memphis. We're familiar with the unique requirements of Memphis venues like The Peabody, Graceland, Memphis Botanic Garden, Memphis Cook Convention Center, and dozens of other premier event spaces. This local expertise means we know how to handle everything from the acoustics of historic ballrooms to outdoor event setups that require weather-resistant equipment.
+                </p>
+                
+                <p className="text-lg leading-relaxed">
+                  As a <strong>Memphis DJ company</strong>, we offer comprehensive services beyond just playing music. Our <strong>Memphis DJ</strong> packages include professional MC services to keep your timeline on track, wireless microphones for ceremonies, presentations, and toasts, elegant uplighting to transform your venue, and backup equipment to ensure your event continues smoothly even if technical issues arise. We understand that Memphis weather can be unpredictable, so we always come prepared with weather-resistant equipment for outdoor events.
+                </p>
+                
+                <p className="text-lg leading-relaxed">
+                  Whether you're planning a <Link href="/memphis-wedding-dj" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 font-semibold">Memphis wedding</Link>, a <Link href="/corporate-events" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 font-semibold">corporate event</Link> in downtown Memphis, or a <Link href="/private-parties" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 font-semibold">private celebration</Link>, our <strong>DJ Memphis</strong> services are tailored to your specific needs. We work closely with clients and event planners to create custom playlists that reflect your musical taste while ensuring your guests stay engaged throughout your celebration.
+                </p>
+                
+                <p className="text-lg leading-relaxed">
+                  Looking for a <strong>DJ near me Memphis</strong>? M10 DJ Company offers same-day quotes and flexible booking options to accommodate your timeline. We understand that planning an event can be stressful, so we make the booking process as simple as possible. Contact us today to discuss your <strong>Memphis DJ</strong> needs and receive a personalized quote for your upcoming celebration.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Internal Linking Hub - SEO Optimization */}
+        <section className="py-12 md:py-16 bg-gradient-to-b from-white to-gray-50 dark:from-black dark:to-gray-900">
+          <div className="section-container">
+            <div className="max-w-6xl mx-auto px-4">
+              <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center text-gray-900 dark:text-white">
+                Memphis DJ Services Throughout the Mid-South
+              </h2>
+              <p className="text-lg text-center text-gray-600 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
+                Professional DJ services for weddings, corporate events, and celebrations across Memphis and surrounding communities.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                {/* Primary Service Pages */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                  <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Wedding DJ Services</h3>
+                  <ul className="space-y-2">
+                    <li><Link href="/memphis-wedding-dj" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Memphis Wedding DJ</Link></li>
+                    <li><Link href="/wedding-dj-memphis-tn" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Wedding DJ Memphis TN</Link></li>
+                    <li><Link href="/best-wedding-dj-memphis" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Best Wedding DJ Memphis</Link></li>
+                    <li><Link href="/memphis-wedding-dj-prices-2025" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Wedding DJ Prices</Link></li>
+                  </ul>
+                </div>
+                
+                {/* Location Pages */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                  <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">DJ Services by Location</h3>
+                  <ul className="space-y-2">
+                    <li><Link href="/dj-near-me-memphis" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">DJ Near Me Memphis</Link></li>
+                    <li><Link href="/dj-germantown-tn" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">DJ Germantown TN</Link></li>
+                    <li><Link href="/dj-collierville-tn" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">DJ Collierville TN</Link></li>
+                    <li><Link href="/dj-east-memphis-tn" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">DJ East Memphis TN</Link></li>
+                  </ul>
+                </div>
+                
+                {/* Service Type Pages */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                  <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Event Services</h3>
+                  <ul className="space-y-2">
+                    <li><Link href="/memphis-dj-services" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Memphis DJ Services</Link></li>
+                    <li><Link href="/memphis-event-dj-services" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Event DJ Services</Link></li>
+                    <li><Link href="/corporate-events" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Corporate Events</Link></li>
+                    <li><Link href="/dj-rentals-memphis" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">DJ Rentals Memphis</Link></li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <Link 
+                  href="/services" 
+                  className="inline-flex items-center gap-2 text-brand hover:text-amber-600 dark:hover:text-amber-400 font-semibold text-lg transition-colors"
+                >
+                  View All Services <ChevronRight className="w-5 h-5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Client Logo Carousel - Enhanced */}
-        <section className="py-section bg-white dark:bg-slate-900">
+        <section className="py-section bg-white dark:bg-black">
         <ClientLogoCarousel 
           logoSet="general"
           title="Trusted by Memphis's Premier Organizations"
@@ -205,10 +297,10 @@ export default function Home() {
         </section>
 
         {/* Testimonials Section */}
-        <TestimonialSlider className="bg-gradient-to-b from-gray-50 to-white dark:from-slate-800 dark:to-slate-900" />
+        <TestimonialSlider className="bg-gradient-to-b from-gray-50 to-white dark:from-black dark:to-black" />
 
         {/* Enhanced Contact Section */}
-        <section id="contact" className="py-12 md:py-16 lg:py-20 bg-gradient-to-br from-slate-50 via-amber-50/20 to-white dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative overflow-hidden">
+        <section id="contact" className="py-12 md:py-16 lg:py-20 bg-gradient-to-br from-slate-50 via-amber-50/20 to-white dark:from-black dark:via-black dark:to-black relative overflow-hidden">
           {/* Background Decoration */}
           <div className="absolute inset-0 opacity-30">
             <div className="absolute top-10 right-10 w-48 h-48 md:w-72 md:h-72 bg-brand/10 dark:bg-brand/5 rounded-full blur-3xl"></div>
@@ -221,16 +313,16 @@ export default function Home() {
                 <Star className="w-3 h-3 md:w-4 md:h-4 fill-current" />
                 Same-Day Quotes Available
               </div>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 text-gray-900 dark:text-white">Ready for Your Perfect Wedding Day?</h2>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 text-gray-900 dark:text-white">Ready to Plan Your Perfect Event?</h2>
               <p className="text-base md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto font-inter leading-relaxed">
-                Let's discuss your Memphis wedding and create an unforgettable celebration. Get your free wedding consultation and quote today.
+                Let's discuss your Memphis event and create an unforgettable celebration. Get your free consultation and quote today.
               </p>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start max-w-6xl mx-auto">
               {/* Enhanced Contact Info */}
               <div className="space-y-4 md:space-y-6 px-4 lg:px-0">
-                <div className="modern-card bg-white dark:bg-slate-800 hover:shadow-xl transition-shadow">
+                <div className="modern-card bg-white dark:bg-black hover:shadow-xl transition-shadow">
                   <div className="flex items-start space-x-3 md:space-x-4">
                     <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-brand to-amber-500 text-white rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                       <Phone className="w-6 h-6 md:w-7 md:h-7" />
@@ -246,7 +338,7 @@ export default function Home() {
                   </div>
                 </div>
                 
-                <div className="modern-card bg-white dark:bg-slate-800 hover:shadow-xl transition-shadow">
+                <div className="modern-card bg-white dark:bg-black hover:shadow-xl transition-shadow">
                   <div className="flex items-start space-x-3 md:space-x-4">
                     <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                       <Mail className="w-6 h-6 md:w-7 md:h-7" />
@@ -262,7 +354,7 @@ export default function Home() {
                   </div>
                 </div>
                 
-                <div className="modern-card bg-white dark:bg-slate-800 hover:shadow-xl transition-shadow">
+                <div className="modern-card bg-white dark:bg-black hover:shadow-xl transition-shadow">
                   <div className="flex items-start space-x-3 md:space-x-4">
                     <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                       <MapPin className="w-6 h-6 md:w-7 md:h-7" />
@@ -276,17 +368,17 @@ export default function Home() {
 
                 {/* Trust Badges */}
                 <div className="grid grid-cols-3 gap-2 md:gap-4 pt-4 md:pt-6">
-                  <div className="text-center p-3 md:p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="text-center p-3 md:p-4 bg-white/80 dark:bg-black/80 backdrop-blur-sm rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-800">
                     <div className="text-xl md:text-2xl font-bold text-brand mb-1">500+</div>
                     <div className="text-xs text-gray-600 dark:text-gray-400 font-semibold">Events</div>
                   </div>
-                  <div className="text-center p-3 md:p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="text-center p-3 md:p-4 bg-white/80 dark:bg-black/80 backdrop-blur-sm rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-800">
                     <div className="text-xl md:text-2xl font-bold text-brand mb-1 flex flex-col md:flex-row items-center justify-center gap-1">
                       <span>5</span><Star className="w-3 h-3 md:w-4 md:h-4 fill-current" />
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400 font-semibold">Rating</div>
                   </div>
-                  <div className="text-center p-3 md:p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="text-center p-3 md:p-4 bg-white/80 dark:bg-black/80 backdrop-blur-sm rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-800">
                     <div className="text-xl md:text-2xl font-bold text-brand mb-1">15+</div>
                     <div className="text-xs text-gray-600 dark:text-gray-400 font-semibold">Years</div>
                   </div>
@@ -294,7 +386,7 @@ export default function Home() {
               </div>
               
               {/* Enhanced Contact Form */}
-              <div id="contact-form" className="modern-card bg-white dark:bg-slate-800 shadow-2xl relative overflow-hidden">
+              <div id="contact-form" className="modern-card bg-white dark:bg-black shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand via-amber-400 to-brand"></div>
                 <div className="p-6 md:p-8">
                   <div className="mb-6">

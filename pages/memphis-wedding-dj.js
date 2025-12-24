@@ -100,7 +100,7 @@ export default function MemphisWeddingDJ() {
     serviceKey: 'wedding',
     locationKey: 'memphis',
     canonical: '/memphis-wedding-dj',
-    title: 'Wedding DJ Memphis | Memphis Wedding DJs | Professional Wedding Entertainment',
+    title: 'Memphis Wedding DJ | Wedding DJ Memphis | Professional Wedding Entertainment',
         description: 'Memphis wedding DJ service with 15+ years and 500+ weddings. We handle ceremonies, receptions, and MC services at The Peabody, Graceland, Memphis Botanic Garden, and 27+ Memphis venues.'
   });
 
@@ -209,18 +209,10 @@ export default function MemphisWeddingDJ() {
           'memphis wedding dj',
           'wedding dj memphis',
           'wedding djs in memphis',
-          'memphis wedding dj',
-          'wedding dj memphis',
           'memphis wedding djs',
-          'best wedding DJ Memphis',
           'professional wedding DJ Memphis',
           'Memphis wedding entertainment',
           'wedding DJ services Memphis',
-          'wedding DJ Memphis TN',
-          'djs in memphis',
-          'memphis djs',
-          'djs memphis tn',
-          'memphis tn djs',
           'memphis wedding dj companies',
           'wedding dj companies memphis'
         ]}

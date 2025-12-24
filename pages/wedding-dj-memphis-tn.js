@@ -149,10 +149,10 @@ export default function WeddingDJMemphisTN() {
   return (
     <>
       <Head>
-        <title>Tennessee Wedding DJ Services | Memphis TN Wedding Entertainment | M10 DJ Company</title>
+        <title>Tennessee Wedding DJ | Statewide Coverage | Memphis to Nashville</title>
         <meta 
           name="description" 
-          content="Professional Tennessee wedding DJ services. Serving couples across TN with premium wedding entertainment, from Memphis to Nashville. Experienced DJs, state-wide coverage. Call (901) 410-2020!" 
+          content="Tennessee wedding DJ services with statewide coverage from Memphis to Nashville. Professional TN wedding DJs serving venues across Tennessee. Call (901) 410-2020!" 
         />
         <meta name="keywords" content="Tennessee wedding DJ, wedding DJ Tennessee, TN wedding entertainment, Memphis TN wedding DJ, Tennessee wedding entertainment, wedding DJ services TN" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -178,7 +178,7 @@ export default function WeddingDJMemphisTN() {
               "@context": "https://schema.org",
               "@type": "LocalBusiness",
               "name": "M10 DJ Company",
-              "description": "Premier wedding DJ Memphis TN services with professional ceremony and reception entertainment",
+              "description": "Tennessee wedding DJ services with statewide coverage from Memphis to Nashville. Professional TN wedding DJs serving venues across Tennessee with regional expertise and travel capabilities.",
               "url": "https://m10djcompany.com/wedding-dj-memphis-tn",
               "telephone": "+19014102020",
               "address": {

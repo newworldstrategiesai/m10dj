@@ -176,12 +176,12 @@ export default function BestWeddingDJMemphis() {
   return (
     <>
       <Head>
-        <title>Best Wedding DJ Memphis | Top Memphis Wedding DJs | 5-Star Reviews</title>
+        <title>Best Wedding DJ Memphis | 500+ 5-Star Reviews</title>
         <meta 
           name="description" 
-          content="Best wedding DJ Memphis with 500+ 5-star reviews. Top-rated Memphis wedding DJs for your special day. See why couples choose us as their wedding DJ Memphis. Call now!" 
+          content="Best wedding DJ Memphis with 500+ 5-star reviews. Top-rated Memphis wedding DJs for your special day. See why couples choose us. Call (901) 410-2020!" 
         />
-        <meta name="keywords" content="Memphis wedding DJ reviews, wedding DJ reviews Memphis, Memphis DJ testimonials, wedding DJ ratings Memphis, Memphis wedding DJ testimonials, wedding DJ success stories Memphis" />
+        <meta name="keywords" content="best wedding DJ Memphis, top wedding DJ Memphis, best Memphis wedding DJ, top Memphis wedding DJ, Memphis wedding DJ reviews, wedding DJ reviews Memphis, Memphis DJ testimonials, wedding DJ ratings Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://m10djcompany.com/best-wedding-dj-memphis" />
         
