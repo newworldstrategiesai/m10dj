@@ -40,7 +40,6 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  Loader2,
   Gift,
   Minimize2,
   Maximize2
