@@ -118,9 +118,20 @@ export default function InvoiceDetailPage() {
   const [downloading, setDownloading] = useState(false);
 
       const fetchInvoiceDetails = useCallback(async () => {
+        // Prevent fetching if id is invalid or "new"
+        if (!id || id === 'new' || typeof id !== 'string') {
+          return;
+        }
+        
         setLoading(true);
         try {
           console.log('🔍 Fetching invoice details for:', id);
+          
+          // Validate id is a valid UUID format
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(id)) {
+            throw new Error('Invalid invoice ID format');
+          }
           
           // Fetch invoice summary
           const { data: invoiceData, error: invoiceError } = await supabase
@@ -129,7 +140,14 @@ export default function InvoiceDetailPage() {
             .eq('id', id)
             .single();
           
-          if (invoiceError) throw invoiceError;
+          if (invoiceError) {
+            console.error('Error fetching invoice:', invoiceError);
+            throw invoiceError;
+          }
+          
+          if (!invoiceData) {
+            throw new Error('Invoice not found');
+          }
           
           console.log('📄 Invoice data loaded:', {
             id: invoiceData.id,
@@ -149,7 +167,10 @@ export default function InvoiceDetailPage() {
         .order('created_at', { ascending: true });
       
       if (lineItemsError) {
-        console.warn('Error fetching invoice line items:', lineItemsError);
+        // 404 is OK - invoice might not have line items yet
+        if (lineItemsError.code !== 'PGRST116') {
+          console.warn('Error fetching invoice line items:', lineItemsError);
+        }
       }
       setLineItems(lineItemsData || []);
       console.log('📦 Invoice line items:', lineItemsData?.length || 0);
@@ -325,10 +346,18 @@ export default function InvoiceDetailPage() {
   }, [id, supabase]);
 
   useEffect(() => {
-    if (id) {
+    // Handle "new" route - redirect to create invoice page or show create form
+    if (id === 'new') {
+      // For now, redirect back to invoices list
+      // TODO: Implement invoice creation page
+      router.push('/admin/invoices');
+      return;
+    }
+    
+    if (id && typeof id === 'string' && id !== 'new') {
       fetchInvoiceDetails();
     }
-  }, [id, fetchInvoiceDetails]);
+  }, [id, fetchInvoiceDetails, router]);
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {

@@ -208,14 +208,19 @@ export default async function handler(req, res) {
     console.error('Twilio API error:', error);
     
     // Log credential info when authentication fails (without exposing actual values)
+    // Note: twilioSid, twilioAuthToken, and apiKeys might not be defined if error occurred early
+    const hasTwilioSid = typeof twilioSid !== 'undefined';
+    const hasTwilioAuthToken = typeof twilioAuthToken !== 'undefined';
+    const hasApiKeys = typeof apiKeys !== 'undefined';
+    
     if (error.code === 20003) {
       console.error('Twilio Authentication Failed - Debug Info:', {
-        hasSid: !!twilioSid,
-        sidLength: twilioSid?.length || 0,
-        sidStartsWith: twilioSid?.substring(0, 3) || 'N/A',
-        hasToken: !!twilioAuthToken,
-        tokenLength: twilioAuthToken?.length || 0,
-        usingDatabaseCredentials: apiKeys?.twilio_sid ? true : false,
+        hasSid: hasTwilioSid && !!twilioSid,
+        sidLength: hasTwilioSid && twilioSid ? twilioSid.length : 0,
+        sidStartsWith: hasTwilioSid && twilioSid ? twilioSid.substring(0, 3) : 'N/A',
+        hasToken: hasTwilioAuthToken && !!twilioAuthToken,
+        tokenLength: hasTwilioAuthToken && twilioAuthToken ? twilioAuthToken.length : 0,
+        usingDatabaseCredentials: hasApiKeys && apiKeys?.twilio_sid ? true : false,
         errorCode: error.code,
         errorMessage: error.message
       });

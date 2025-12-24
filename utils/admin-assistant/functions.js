@@ -654,6 +654,31 @@ export function getFunctionDefinitions() {
       }
     },
     {
+      name: 'get_upcoming_events',
+      description: 'Get upcoming events/booked events within a specific date range. Use this when user asks "What events are coming up this week?", "Show me upcoming events", "What\'s happening this month?", etc. Filters by event_date within the specified date range.',
+      parameters: {
+        type: 'object',
+        properties: {
+          days: {
+            type: 'number',
+            description: 'Number of days to look ahead (default: 7 for "this week")',
+            default: 7
+          },
+          lead_status: {
+            type: 'string',
+            description: 'Filter by lead status (default: "Booked" for confirmed events)',
+            enum: ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Negotiating', 'Booked', 'Lost', 'Completed', 'Spam'],
+            default: 'Booked'
+          },
+          limit: {
+            type: 'number',
+            description: 'Maximum number of results (default: 50)',
+            default: 50
+          }
+        }
+      }
+    },
+    {
       name: 'get_revenue_stats',
       description: 'Get revenue statistics including total revenue, payment counts, and breakdown by date period. Use this when user asks about revenue, money made, income, earnings, or payments received. Supports filtering by month, year, or date range. Can aggregate from all paid payments or filter by specific periods like "November", "this month", "2024", etc.',
       parameters: {

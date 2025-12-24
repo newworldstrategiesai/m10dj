@@ -7,32 +7,128 @@
 
 import { requireAdmin } from '@/utils/auth-helpers/api-auth';
 import { getEnv } from '@/utils/env-validator';
-import { logger } from '@/utils/logger';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
-import { getFunctionDefinitions } from '../../../utils/admin-assistant/functions';
-import { executeFunction } from '../../../utils/admin-assistant/function-executor';
-import { formatResponseWithUI } from '../../../utils/admin-assistant/format-response';
+
+// Logger - use console directly for now to avoid import issues
+const logger = {
+  error: (msg, context) => {
+    console.error('[ERROR]', msg, context || '');
+  },
+  warn: (msg, context) => {
+    console.warn('[WARN]', msg, context || '');
+  },
+  info: (msg, context) => {
+    console.info('[INFO]', msg, context || '');
+  },
+  debug: (msg, context) => {
+    console.log('[DEBUG]', msg, context || '');
+  }
+};
+
+// Functions will be imported dynamically to avoid issues with ES modules
 
 export default async function handler(req, res) {
+  console.log('[ADMIN-ASSISTANT] Request received:', {
+    method: req.method,
+    url: req.url,
+    hasBody: !!req.body,
+    bodyKeys: req.body ? Object.keys(req.body) : []
+  });
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    console.log('[ADMIN-ASSISTANT] Starting handler execution');
     // Use centralized admin authentication
-    const user = await requireAdmin(req, res);
-    // User is guaranteed to be authenticated and admin here
+    let user;
+    try {
+      console.log('[ADMIN-ASSISTANT] Calling requireAdmin...');
+      user = await requireAdmin(req, res);
+      console.log('[ADMIN-ASSISTANT] requireAdmin completed:', {
+        hasUser: !!user,
+        userId: user?.id,
+        email: user?.email,
+        headersSent: res.headersSent
+      });
+      
+      if (!user) {
+        console.error('[ADMIN-ASSISTANT] requireAdmin returned null user');
+        logger.error('requireAdmin returned null user');
+        if (!res.headersSent) {
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
+        return;
+      }
+    } catch (authError) {
+      console.error('[ADMIN-ASSISTANT] requireAdmin threw error:', {
+        error: authError.message,
+        stack: authError.stack,
+        name: authError.name,
+        headersSent: res.headersSent
+      });
+      logger.error('requireAdmin error:', {
+        error: authError.message,
+        stack: authError.stack,
+        headersSent: res.headersSent
+      });
+      // requireAdmin throws errors, so if we catch here, auth failed
+      // The error response was already sent by requireAdmin if headers not sent
+      if (!res.headersSent) {
+        return res.status(401).json({ error: 'Unauthorized', message: authError.message });
+      }
+      return;
+    }
     
-    const env = getEnv();
+    console.log('[ADMIN-ASSISTANT] Getting environment variables...');
+    let env;
+    try {
+      env = getEnv();
+      console.log('[ADMIN-ASSISTANT] Environment loaded:', {
+        hasOpenAIKey: !!env.OPENAI_API_KEY,
+        hasSupabaseUrl: !!env.NEXT_PUBLIC_SUPABASE_URL
+      });
+    } catch (envError) {
+      console.error('[ADMIN-ASSISTANT] Error getting environment:', {
+        error: envError.message,
+        stack: envError.stack
+      });
+      logger.error('Error getting environment:', {
+        error: envError.message,
+        stack: envError.stack
+      });
+      return res.status(500).json({ 
+        error: 'Configuration error',
+        message: 'Failed to load environment variables'
+      });
+    }
+    
     const openaiApiKey = env.OPENAI_API_KEY;
     
-    const supabase = createServerSupabaseClient({ req, res });
-
-    // 2. Validate OpenAI API key
     if (!openaiApiKey) {
+      console.error('[ADMIN-ASSISTANT] OPENAI_API_KEY is not configured');
       logger.error('OPENAI_API_KEY is not configured');
       return res.status(500).json({ error: 'AI service not configured' });
+    }
+    
+    let supabase;
+    try {
+      supabase = createServerSupabaseClient({ req, res });
+      if (!supabase) {
+        logger.error('createServerSupabaseClient returned null');
+        return res.status(500).json({ error: 'Database connection failed' });
+      }
+    } catch (supabaseError) {
+      logger.error('Failed to create Supabase client:', {
+        error: supabaseError.message,
+        stack: supabaseError.stack
+      });
+      return res.status(500).json({ 
+        error: 'Database connection failed',
+        message: supabaseError.message 
+      });
     }
 
     // 3. Parse request
@@ -44,12 +140,58 @@ export default async function handler(req, res) {
 
     console.log('🤖 Admin Assistant Request:', {
       user: user.email,
+      userId: user.id,
       message: message.substring(0, 100) + '...',
       historyLength: conversationHistory.length
     });
+    
+    // Log environment check
+    console.log('🔧 Environment check:', {
+      hasOpenAIKey: !!openaiApiKey,
+      hasSupabase: !!supabase,
+      nodeEnv: process.env.NODE_ENV
+    });
 
     // 4. Get function definitions
-    const functionDefinitions = getFunctionDefinitions();
+    let functionDefinitions;
+    try {
+      console.log('[ADMIN-ASSISTANT] Loading function definitions...');
+      // Use dynamic import for ES modules compatibility
+      const functionsModule = await import('../../../utils/admin-assistant/functions.js');
+      console.log('[ADMIN-ASSISTANT] Functions module loaded:', {
+        hasGetFunctionDefinitions: typeof functionsModule.getFunctionDefinitions === 'function',
+        moduleKeys: Object.keys(functionsModule)
+      });
+      
+      if (typeof functionsModule.getFunctionDefinitions !== 'function') {
+        throw new Error('getFunctionDefinitions is not a function in the imported module');
+      }
+      
+      functionDefinitions = functionsModule.getFunctionDefinitions();
+      console.log('[ADMIN-ASSISTANT] Function definitions loaded:', {
+        count: functionDefinitions?.length || 0,
+        isArray: Array.isArray(functionDefinitions)
+      });
+      
+      if (!functionDefinitions || !Array.isArray(functionDefinitions)) {
+        logger.error('getFunctionDefinitions returned invalid result:', functionDefinitions);
+        return res.status(500).json({ error: 'Failed to load function definitions' });
+      }
+    } catch (funcDefError) {
+      console.error('[ADMIN-ASSISTANT] Error getting function definitions:', {
+        error: funcDefError.message,
+        stack: funcDefError.stack,
+        name: funcDefError.name
+      });
+      logger.error('Error getting function definitions:', {
+        error: funcDefError.message,
+        stack: funcDefError.stack
+      });
+      return res.status(500).json({ 
+        error: 'Failed to load function definitions',
+        message: funcDefError.message 
+      });
+    }
 
     // 5. Build conversation messages
     const systemPrompt = `You are an AI assistant for M10 DJ Company's admin dashboard. You help admins manage contacts, quotes, invoices, contracts, and other business operations through natural language commands.
@@ -69,6 +211,13 @@ When user asks about revenue, money made, income, earnings, or payments received
 - If user mentions a specific month (e.g., "November", "November 2024"), use month and year parameters
 - If user says "this month" or "current month", use date_range="month"
 - get_revenue_stats aggregates ALL paid payments and provides total revenue - it's the correct function for revenue questions
+
+When user asks about upcoming events, events this week, events next week, or upcoming bookings:
+- ALWAYS use get_upcoming_events function - do NOT use search_contacts
+- If user says "this week", use days=7
+- If user says "next week", use days=14 (to cover next 7 days)
+- If user says "this month", use days=30 (or calculate days remaining in current month)
+- get_upcoming_events filters by event_date within the specified date range - it's the correct function for upcoming event questions
 
 Guidelines:
 - Be concise and helpful
@@ -177,7 +326,7 @@ When user wants to send an SMS or email:
      - Wait for user's response (SMS or email)
      - Once user specifies SMS or email, generate the message using this EXACT format:
        For EMAIL:
-       "Here's a suggested email for Send Scheduling Link to [contact name]:\n\n**Subject:** Schedule a Meeting - Let's Discuss Your [Event Type]\n\n**Message:**\n\nHi [First Name],\n\nI'd love to schedule a time to discuss your [event type]${contact.event_date ? ` on ${formatDate(contact.event_date)}` : ''} and answer any questions you might have.\n\nYou can book a convenient time that works for you using my online calendar: [scheduling_url from get_scheduling_link result]\n\nJust select a date and time that works best for you. If none of the available times work, feel free to reply and let me know what times work better for you!\n\nLooking forward to connecting!\n\nBest regards,\nBen"
+       "Here's a suggested email for Send Scheduling Link to [contact name]:\n\n**Subject:** Schedule a Meeting - Let's Discuss Your [Event Type]\n\n**Message:**\n\nHi [First Name],\n\nI'd love to schedule a time to discuss your [event type] (if event_date is available, include ' on [event date]' after event type) and answer any questions you might have.\n\nYou can book a convenient time that works for you using my online calendar: [scheduling_url from get_scheduling_link result]\n\nJust select a date and time that works best for you. If none of the available times work, feel free to reply and let me know what times work better for you!\n\nLooking forward to connecting!\n\nBest regards,\nBen"
        For SMS:
        "Here's a suggested SMS for Send Scheduling Link to [contact name]:\n\nHi [First Name]! Let's schedule a time to discuss your [event type]. Book a meeting here: [scheduling_url from get_scheduling_link result]"
      - The system will automatically show "Copy Subject" and "Copy Message" buttons
@@ -315,13 +464,10 @@ Current time: ${new Date().toLocaleString()}`;
     ];
 
     // 6. Call OpenAI with function calling
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`
-      },
-      body: JSON.stringify({
+    console.log('[ADMIN-ASSISTANT] Calling OpenAI API...');
+    let response;
+    try {
+      const requestBody = {
         model: 'gpt-4o', // Use GPT-4o for better function calling
         messages: messages,
         tools: functionDefinitions.map(def => ({
@@ -331,19 +477,92 @@ Current time: ${new Date().toLocaleString()}`;
         tool_choice: 'auto', // Let the model decide when to use functions
         temperature: 0.7,
         max_tokens: 2000
-      })
-    });
+      };
+      
+      console.log('[ADMIN-ASSISTANT] OpenAI request:', {
+        model: requestBody.model,
+        messageCount: requestBody.messages.length,
+        toolCount: requestBody.tools.length,
+        hasOpenAIKey: !!openaiApiKey
+      });
+      
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiApiKey}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('[ADMIN-ASSISTANT] OpenAI response status:', response.status, response.statusText);
+    } catch (fetchError) {
+      console.error('[ADMIN-ASSISTANT] OpenAI API fetch error:', {
+        error: fetchError.message,
+        stack: fetchError.stack,
+        name: fetchError.name
+      });
+      logger.error('OpenAI API fetch error:', {
+        error: fetchError.message,
+        stack: fetchError.stack
+      });
+      return res.status(500).json({
+        error: 'AI service error',
+        message: 'Failed to connect to AI service. Please try again.'
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ OpenAI API Error:', errorText);
+      console.error('[ADMIN-ASSISTANT] OpenAI API error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText.substring(0, 500)
+      });
+      logger.error('❌ OpenAI API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorText: errorText
+      });
       return res.status(500).json({
         error: 'AI service error',
         message: 'Failed to process your request. Please try again.'
       });
     }
 
-    const data = await response.json();
+    console.log('[ADMIN-ASSISTANT] Parsing OpenAI response...');
+    let data;
+    try {
+      data = await response.json();
+      console.log('[ADMIN-ASSISTANT] OpenAI response parsed:', {
+        hasChoices: !!data.choices,
+        choiceCount: data.choices?.length || 0,
+        hasToolCalls: !!data.choices?.[0]?.message?.tool_calls,
+        toolCallCount: data.choices?.[0]?.message?.tool_calls?.length || 0
+      });
+    } catch (parseError) {
+      console.error('[ADMIN-ASSISTANT] Error parsing OpenAI response:', {
+        error: parseError.message,
+        stack: parseError.stack
+      });
+      logger.error('Error parsing OpenAI response:', {
+        error: parseError.message,
+        stack: parseError.stack
+      });
+      return res.status(500).json({
+        error: 'AI service error',
+        message: 'Invalid response from AI service.'
+      });
+    }
+
+    if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
+      logger.error('Invalid OpenAI response structure:', data);
+      return res.status(500).json({
+        error: 'AI service error',
+        message: 'Invalid response from AI service.'
+      });
+    }
+
     const assistantMessage = data.choices[0].message;
 
     // 7. Handle function calls if any
@@ -374,32 +593,52 @@ Current time: ${new Date().toLocaleString()}`;
         console.log(`  📞 Calling: ${functionName}`, functionArgs);
 
         try {
-          // Execute the function
-          const result = await executeFunction(
+          // Execute the function using dynamic import
+          console.log(`  🔄 Importing executor for ${functionName}...`);
+          const executorModule = await import('../../../utils/admin-assistant/function-executor.js');
+          
+          if (!executorModule || !executorModule.executeFunction) {
+            throw new Error('executeFunction not found in executor module');
+          }
+          
+          console.log(`  ⚡ Executing ${functionName}...`);
+          const result = await executorModule.executeFunction(
             functionName,
             functionArgs,
             supabase,
             user.id
           );
 
+          if (!result) {
+            console.warn(`  ⚠️ ${functionName} returned null/undefined`);
+          }
+
           functionResults.push({
             tool_call_id: toolCall.id,
             role: 'tool',
             name: functionName,
-            content: JSON.stringify(result)
+            content: JSON.stringify(result || { success: false, error: 'Function returned no result' })
           });
 
           console.log(`  ✅ ${functionName} completed successfully`);
         } catch (functionError) {
-          console.error(`  ❌ ${functionName} failed:`, functionError);
+          console.error(`  ❌ ${functionName} failed:`, {
+            error: functionError.message,
+            stack: functionError.stack,
+            name: functionError.name
+          });
+          
+          const errorContent = {
+            error: functionError.message || 'Function execution failed',
+            success: false,
+            details: process.env.NODE_ENV === 'development' ? functionError.stack : undefined
+          };
+          
           functionResults.push({
             tool_call_id: toolCall.id,
             role: 'tool',
             name: functionName,
-            content: JSON.stringify({
-              error: functionError.message || 'Function execution failed',
-              success: false
-            })
+            content: JSON.stringify(errorContent)
           });
         }
       }
@@ -411,23 +650,40 @@ Current time: ${new Date().toLocaleString()}`;
         ...functionResults
       ];
 
-      const finalResponseData = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiApiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: finalMessages,
-          temperature: 0.7,
-          max_tokens: 2000
-        })
-      });
+      try {
+        const finalResponseData = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiApiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: finalMessages,
+            temperature: 0.7,
+            max_tokens: 2000
+          })
+        });
 
-      if (finalResponseData.ok) {
-        const finalData = await finalResponseData.json();
-        finalResponse = finalData.choices[0].message.content;
+        if (finalResponseData.ok) {
+          const finalData = await finalResponseData.json();
+          if (finalData && finalData.choices && finalData.choices[0] && finalData.choices[0].message) {
+            finalResponse = finalData.choices[0].message.content || '';
+          }
+        } else {
+          const errorText = await finalResponseData.text();
+          logger.error('OpenAI final response error:', {
+            status: finalResponseData.status,
+            errorText: errorText
+          });
+          // Continue with the initial response even if final response fails
+        }
+      } catch (finalResponseError) {
+        logger.error('Error getting final response from OpenAI:', {
+          error: finalResponseError.message,
+          stack: finalResponseError.stack
+        });
+        // Continue with the initial response even if final response fails
       }
     }
 
@@ -441,7 +697,9 @@ Current time: ${new Date().toLocaleString()}`;
       if (firstResult) {
         try {
           const resultData = JSON.parse(firstResult.content);
-          structuredContent = formatResponseWithUI(
+          // Use dynamic import for format function
+          const formatModule = await import('../../../utils/admin-assistant/format-response.js');
+          structuredContent = formatModule.formatResponseWithUI(
             firstToolCall.function.name,
             resultData,
             JSON.parse(firstToolCall.function.arguments)
@@ -481,21 +739,70 @@ Current time: ${new Date().toLocaleString()}`;
     }
 
     // 10. Return response
-    return res.status(200).json({
-      message: finalResponse,
-      functions_called: assistantMessage.tool_calls?.map(tc => ({
-        name: tc.function.name,
-        arguments: JSON.parse(tc.function.arguments)
-      })) || [],
-      usage: data.usage
-    });
+    try {
+      // Parse functions_called safely
+      const functionsCalled = (assistantMessage.tool_calls || []).map(tc => {
+        try {
+          return {
+            name: tc.function.name,
+            arguments: JSON.parse(tc.function.arguments)
+          };
+        } catch (parseError) {
+          console.warn('Failed to parse function arguments:', parseError);
+          return {
+            name: tc.function.name,
+            arguments: {}
+          };
+        }
+      });
+
+      return res.status(200).json({
+        message: finalResponse,
+        functions_called: functionsCalled,
+        usage: data.usage
+      });
+    } catch (jsonError) {
+      logger.error('Error serializing response:', {
+        error: jsonError.message,
+        stack: jsonError.stack
+      });
+      // Try to return at least the message
+      return res.status(200).json({
+        message: typeof finalResponse === 'string' ? finalResponse : JSON.stringify(finalResponse),
+        functions_called: [],
+        usage: null
+      });
+    }
 
   } catch (error) {
-    console.error('❌ Admin assistant error:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
-    });
+    // Log detailed error information
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      user: (typeof user !== 'undefined' && user?.email) || 'unknown',
+      body: req.body ? { 
+        message: req.body.message?.substring(0, 50),
+        historyLength: req.body.conversationHistory?.length 
+      } : 'no body',
+      headersSent: res.headersSent
+    };
+    
+    console.error('❌ Admin assistant error:', errorDetails);
+    logger.error('Admin assistant error:', errorDetails);
+    
+    // Don't expose internal error details in production, but be more helpful in dev
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    // Ensure response hasn't been sent
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: 'Internal server error',
+        message: isDevelopment 
+          ? `${error.message} (Check server logs for details)` 
+          : 'An error occurred processing your request. Please try again.'
+      });
+    }
   }
 }
 

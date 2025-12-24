@@ -25,7 +25,9 @@ import {
   DollarSign,
   Activity,
   Calendar as CalendarIcon,
-  Sparkles
+  Sparkles,
+  TestTube,
+  ChevronDown
 } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
@@ -36,6 +38,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/Toasts/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import LeadCommunicationHub from '@/components/admin/LeadCommunicationHub';
 import { getPhoneLocation } from '@/utils/area-code-lookup';
 
@@ -56,6 +59,10 @@ export default function LeadDetailsPage() {
   const [timeSinceSubmission, setTimeSinceSubmission] = useState(null);
   const [isEquipmentOnly, setIsEquipmentOnly] = useState(false);
   const [creatingQuote, setCreatingQuote] = useState(false);
+  const [adminEmail, setAdminEmail] = useState(null);
+  const [adminPhone, setAdminPhone] = useState(null);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [sendingTestSMS, setSendingTestSMS] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const { id } = router.query;
@@ -65,8 +72,37 @@ export default function LeadDetailsPage() {
     if (id) {
       fetchSubmission();
       fetchRelatedData();
+      fetchAdminInfo();
     }
   }, [id]);
+
+  const fetchAdminInfo = async () => {
+    try {
+      // Get admin email from session
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (!userError && user?.email) {
+        setAdminEmail(user.email);
+      }
+
+      if (user?.id) {
+        // Get admin phone from admin_settings
+        const { data: phoneSetting } = await supabase
+          .from('admin_settings')
+          .select('setting_value')
+          .eq('setting_key', 'admin_phone_number')
+          .eq('user_id', user.id)
+          .single();
+
+        if (phoneSetting?.setting_value) {
+          // Remove +1 prefix if present for display/storage
+          setAdminPhone(phoneSetting.setting_value.replace(/^\+1/, ''));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching admin info:', err);
+      // If phone setting doesn't exist, that's okay - we'll just show error when trying to send
+    }
+  };
 
   const fetchSubmission = async () => {
     try {
@@ -515,6 +551,115 @@ export default function LeadDetailsPage() {
     return days;
   };
 
+  const sendTestEmail = async () => {
+    if (!adminEmail) {
+      toast({
+        title: "Error",
+        description: "Admin email not found. Please ensure you're logged in.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSendingTestEmail(true);
+    try {
+      const response = await fetch('/api/admin/communications/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: id,
+          to: adminEmail,
+          subject: 'Test Email - M10 DJ Company Lead Management',
+          content: `This is a test email sent from the lead management system.
+
+Lead Information:
+- Name: ${submission.name}
+- Email: ${submission.email}
+- Phone: ${submission.phone || 'N/A'}
+- Event Type: ${submission.event_type || 'N/A'}
+- Event Date: ${submission.event_date ? formatDate(submission.event_date) : 'N/A'}
+
+If you received this email, your email system is working correctly!`
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `Test email sent to ${adminEmail}`
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send test email');
+      }
+    } catch (error) {
+      console.error('Error sending test email:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test email",
+        variant: "destructive"
+      });
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
+  const sendTestSMS = async () => {
+    if (!adminPhone) {
+      toast({
+        title: "Error",
+        description: "Admin phone number not found. Please configure in settings.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSendingTestSMS(true);
+    try {
+      // Format phone number (ensure it has country code if needed)
+      // Remove any spaces, dashes, parentheses
+      let formattedPhone = adminPhone.replace(/[\s\-\(\)]/g, '');
+      // If it doesn't start with +, add +1 for US numbers
+      if (!formattedPhone.startsWith('+')) {
+        // If it's 10 digits, add +1
+        if (/^\d{10}$/.test(formattedPhone)) {
+          formattedPhone = `+1${formattedPhone}`;
+        } else if (/^1\d{10}$/.test(formattedPhone)) {
+          formattedPhone = `+${formattedPhone}`;
+        }
+      }
+
+      const response = await fetch('/api/admin/communications/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: id,
+          to: formattedPhone,
+          message: `Test SMS from M10 DJ Lead Management. Lead: ${submission.name} (${submission.event_type || 'N/A'}). System is working!`
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `Test SMS sent to ${adminPhone}`
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send test SMS');
+      }
+    } catch (error) {
+      console.error('Error sending test SMS:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test SMS",
+        variant: "destructive"
+      });
+    } finally {
+      setSendingTestSMS(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -648,6 +793,35 @@ export default function LeadDetailsPage() {
                 View Location
               </Button>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={sendingTestEmail || sendingTestSMS}
+                >
+                  <TestTube className="h-4 w-4 mr-2" />
+                  Send Test
+                  <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={sendTestEmail}
+                  disabled={!adminEmail || sendingTestEmail}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  {sendingTestEmail ? 'Sending...' : 'Test Email'}
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={sendTestSMS}
+                  disabled={!adminPhone || sendingTestSMS}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  {sendingTestSMS ? 'Sending...' : 'Test SMS'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </Card>
 

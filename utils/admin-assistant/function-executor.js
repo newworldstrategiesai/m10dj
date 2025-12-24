@@ -103,6 +103,9 @@ export async function executeFunction(functionName, args, supabaseClient, userId
       case 'get_recent_leads':
         return await getRecentLeads(args, supabase);
 
+      case 'get_upcoming_events':
+        return await getUpcomingEvents(args, supabase);
+
       case 'get_revenue_stats':
         return await getRevenueStats(args, supabase);
 
@@ -2071,6 +2074,49 @@ async function getRecentLeads(args, supabase) {
     success: true,
     count: data?.length || 0,
     leads: data || []
+  };
+}
+
+async function getUpcomingEvents(args, supabase) {
+  const { days = 7, lead_status = 'Booked', limit = 50 } = args;
+
+  // Calculate date range - today to X days in the future
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + days);
+  endDate.setHours(23, 59, 59, 999);
+
+  const startDateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+  const endDateStr = endDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+  let dbQuery = supabase
+    .from('contacts')
+    .select('id, first_name, last_name, email_address, phone, event_type, event_date, venue_name, lead_status, created_at')
+    .is('deleted_at', null)
+    .eq('lead_status', lead_status)
+    .not('event_date', 'is', null)
+    .gte('event_date', startDateStr)
+    .lte('event_date', endDateStr)
+    .order('event_date', { ascending: true })
+    .limit(Math.min(limit, 100));
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    throw new Error(`Failed to get upcoming events: ${error.message}`);
+  }
+
+  return {
+    success: true,
+    count: data?.length || 0,
+    events: data || [],
+    date_range: {
+      start: startDateStr,
+      end: endDateStr,
+      days: days
+    }
   };
 }
 

@@ -315,13 +315,28 @@ export default function InvoicesDashboard() {
       console.log(`🔍 Fetching quote data for ${contactIds.length} invoices...`);
       
       // Fetch all quote_selections for these contacts in one query
-      const { data: quotes, error: quotesError } = await supabase
-        .from('quote_selections')
-        .select('lead_id, total_price, package_price, discount_type, discount_value, addons, custom_addons, speaker_rental')
-        .in('lead_id', contactIds);
+      // Only query if we have valid contact IDs
+      let quotes = null;
+      let quotesError = null;
       
-      if (quotesError) {
-        console.warn('Error fetching quotes:', quotesError);
+      if (contactIds.length > 0) {
+        // Validate that all contact IDs are valid UUIDs
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const validContactIds = contactIds.filter(id => id && uuidRegex.test(id));
+        
+        if (validContactIds.length > 0) {
+          const { data, error } = await supabase
+            .from('quote_selections')
+            .select('lead_id, total_price, package_price, discount_type, discount_value, addons, custom_addons, speaker_rental')
+            .in('lead_id', validContactIds);
+          
+          quotes = data;
+          quotesError = error;
+          
+          if (quotesError) {
+            console.warn('Error fetching quotes:', quotesError);
+          }
+        }
       }
       
       // Fetch all payments for these invoices to get accurate amount_paid

@@ -562,8 +562,29 @@ export default function FloatingAdminAssistant() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get response');
+        // Try to parse JSON error response
+        let errorMessage = `Server error: ${response.status}`;
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          } else {
+            // If not JSON, read as text to see if there's useful info
+            const text = await response.text();
+            // Try to extract error message from HTML error page if possible
+            const jsonMatch = text.match(/"message":"([^"]+)"/);
+            if (jsonMatch) {
+              errorMessage = jsonMatch[1];
+            } else {
+              errorMessage = `Server error: ${response.status} ${response.statusText}`;
+            }
+          }
+        } catch (parseError) {
+          // If parsing fails, use status text
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
