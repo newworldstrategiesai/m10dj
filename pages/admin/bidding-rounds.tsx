@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Clock, Trophy, DollarSign, Users, AlertCircle, Loader2, Plus } from 'lucide-react';
+import { Clock, Trophy, DollarSign, Users, AlertCircle, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/Toasts/use-toast';
 
 interface BiddingRoundWithStats {
   id: string;
@@ -304,6 +306,71 @@ export default function BiddingRoundsAdmin() {
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
                     No bids were placed in this round.
                   </p>
+                </div>
+              )}
+
+              {/* Show reprocess button for failed/stuck rounds */}
+              {round.status === 'active' && new Date(round.ends_at) < new Date() && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+                      <AlertCircle className="w-5 h-5" />
+                      <span className="text-sm font-medium">Round ended but not processed</span>
+                    </div>
+                    <Button
+                      onClick={async () => {
+                        if (!confirm('Reprocess this round? This will attempt to charge the winning bid and complete the round.')) {
+                          return;
+                        }
+                        setReprocessingRoundId(round.id);
+                        try {
+                          const response = await fetch('/api/bidding/reprocess-round', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ roundId: round.id })
+                          });
+                          const data = await response.json();
+                          
+                          if (!response.ok) {
+                            throw new Error(data.error || 'Failed to reprocess round');
+                          }
+                          
+                          toast({
+                            title: 'Success',
+                            description: 'Round reprocessed successfully'
+                          });
+                          
+                          // Reload rounds
+                          loadRounds();
+                        } catch (error: any) {
+                          console.error('Error reprocessing round:', error);
+                          toast({
+                            title: 'Error',
+                            description: error.message || 'Failed to reprocess round',
+                            variant: 'destructive'
+                          });
+                        } finally {
+                          setReprocessingRoundId(null);
+                        }
+                      }}
+                      disabled={reprocessingRoundId === round.id}
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                    >
+                      {reprocessingRoundId === round.id ? (
+                        <>
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Reprocess Round
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

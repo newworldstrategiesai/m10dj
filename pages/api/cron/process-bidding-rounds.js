@@ -1,10 +1,24 @@
 // Cron job to process bidding rounds every minute
 // Checks for rounds that ended in the last minute and processes them
-// NOTE: Set up external cron (cron-job.org, etc.) to call this every minute
-// or use Vercel Cron: vercel.json with "crons" configuration
+// 
+// ⚠️ IMPORTANT: Vercel free tier only allows 2 cron jobs and max once per day
+// We need this to run EVERY MINUTE, so use external cron service:
+// 
+// RECOMMENDED: cron-job.org (free, reliable)
+// 1. Sign up at https://cron-job.org
+// 2. Create cron job pointing to: https://yourdomain.com/api/cron/process-bidding-rounds
+// 3. Schedule: Every minute (* * * * *)
+// 4. Add header: Authorization: Bearer YOUR_CRON_SECRET
+// 
+// See EXTERNAL_CRON_SETUP.md for detailed instructions
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
+const { 
+  notifyBidWinner, 
+  notifyBidLoser, 
+  notifyAdminBiddingFailure 
+} = require('../../../utils/bidding-notifications');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -58,6 +72,19 @@ export default async function handler(req, res) {
       } catch (error) {
         console.error(`❌ Error processing round ${round.id}:`, error);
         errors++;
+        
+        // Notify admin of failure
+        await notifyAdminBiddingFailure(
+          round.id,
+          round.organization_id,
+          error.message,
+          {
+            roundNumber: round.round_number,
+            endsAt: round.ends_at,
+            error: error.message,
+            stack: error.stack
+          }
+        );
         
         // Mark round as having processing error (but don't mark as completed)
         await supabase
@@ -212,6 +239,11 @@ async function processBiddingRound(supabase, stripe, round) {
           
           await processWinner(supabase, stripe, round, candidate, candidateBid.data, requests);
           return;
+        } else if (paymentIntent.status === 'canceled' || paymentIntent.status === 'requires_payment_method') {
+          // Payment intent was canceled or expired - skip this bidder
+          console.warn(`⚠️ Payment intent ${candidateBid.data.payment_intent_id} is ${paymentIntent.status}, skipping`);
+          attempts++;
+          continue;
         } else {
           throw new Error(`Payment intent status: ${paymentIntent.status}`);
         }
@@ -226,7 +258,21 @@ async function processBiddingRound(supabase, stripe, round) {
   }
 
   // If we get here, all attempts failed
-  throw new Error(`Failed to charge any bidder after ${attempts} attempts. Manual intervention required.`);
+  const errorMsg = `Failed to charge any bidder after ${attempts} attempts. Manual intervention required.`;
+  
+  // Notify admin immediately
+  await notifyAdminBiddingFailure(
+    round.id,
+    round.organization_id,
+    errorMsg,
+    {
+      roundNumber: round.round_number,
+      attempts: attempts,
+      requestsCount: requests.length
+    }
+  );
+  
+  throw new Error(errorMsg);
 }
 
 // Helper function to process winner
@@ -290,9 +336,45 @@ async function processRefundsAndUpdateRound(supabase, stripe, round, winner, win
       auction_won_at: new Date().toISOString(),
       status: 'acknowledged', // Move to acknowledged/playing status
       payment_status: 'paid',
-      amount_paid: winningBid.bid_amount
+      amount_paid: winningBid.bid_amount,
+      paid_at: new Date().toISOString(),
+      payment_intent_id: winningBid.payment_intent_id
     })
     .eq('id', winner.id);
+
+  // 8. Send notifications
+  try {
+    // Notify winner
+    if (winningBid.bidder_email) {
+      await notifyBidWinner(
+        winningBid.bidder_email,
+        winningBid.bidder_name,
+        winner.song_title || 'Your Song Request',
+        winner.song_artist || 'Unknown Artist',
+        winningBid.bid_amount,
+        round.round_number
+      );
+    }
+
+    // Notify all losing bidders
+    if (allBids && allBids.length > 0) {
+      for (const losingBid of allBids) {
+        if (losingBid.bidder_email && losingBid.bidder_email !== winningBid.bidder_email) {
+          await notifyBidLoser(
+            losingBid.bidder_email,
+            losingBid.bidder_name,
+            winner.song_title || 'Song Request',
+            winner.song_artist || 'Unknown Artist',
+            losingBid.bid_amount,
+            winningBid.bid_amount
+          );
+        }
+      }
+    }
+  } catch (notifError) {
+    console.error('⚠️ Error sending notifications (non-critical):', notifError);
+    // Don't fail the round processing if notifications fail
+  }
 
   console.log(`✅ Round ${round.id} processed successfully`);
 }
@@ -357,5 +439,10 @@ async function createNewBiddingRound(supabase, organizationId) {
 
   console.log(`✅ Created new bidding round ${newRound.id} for org ${organizationId}`);
   return newRound;
+}
+
+// Export processBiddingRound for manual reprocessing (CommonJS for require)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports.processBiddingRound = processBiddingRound;
 }
 

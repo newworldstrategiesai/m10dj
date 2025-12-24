@@ -11,6 +11,7 @@ import PaymentAmountSelector from '../components/crowd-request/PaymentAmountSele
 import BiddingAmountSelector from '../components/bidding/BiddingAmountSelector';
 import { usePaymentSettings } from '../hooks/usePaymentSettings';
 import { useSongExtraction } from '../hooks/useSongExtraction';
+import { useSongSearch } from '../hooks/useSongSearch';
 import { useCrowdRequestPayment } from '../hooks/useCrowdRequestPayment';
 import { useCrowdRequestValidation } from '../hooks/useCrowdRequestValidation';
 import { crowdRequestAPI } from '../utils/crowd-request-api';
@@ -217,6 +218,8 @@ export function GeneralRequestsPage({
   const [isExtractedFromLink, setIsExtractedFromLink] = useState(false); // Track if song was extracted from link
   const [albumArtUrl, setAlbumArtUrl] = useState(null); // Store album art URL from extraction
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
+  const [showAutocomplete, setShowAutocomplete] = useState(false); // Show/hide autocomplete suggestions
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1); // Keyboard navigation
   const songTitleInputRef = useRef(null); // Ref for scrolling to song title field
   const [requestId, setRequestId] = useState(null);
   const [paymentCode, setPaymentCode] = useState(null);
@@ -593,6 +596,22 @@ export function GeneralRequestsPage({
     return urlPattern.test(trimmed);
   };
 
+  // Use song search hook for autocomplete (only when not a URL and not extracted from link)
+  // Must be after detectUrl is defined
+  const shouldSearch = formData.songTitle && 
+                       !detectUrl(formData.songTitle) && 
+                       !isExtractedFromLink && 
+                       formData.songTitle.trim().length >= 2;
+  const { suggestions, loading: searchingSongs } = useSongSearch(
+    shouldSearch ? formData.songTitle : '', 
+    organizationId
+  );
+  
+  // Reset selected suggestion index when suggestions change
+  useEffect(() => {
+    setSelectedSuggestionIndex(-1);
+  }, [suggestions]);
+
   const handleInputChange = async (e) => {
     const { name, value } = e.target;
     
@@ -625,11 +644,57 @@ export function GeneralRequestsPage({
     // Normal input change - set the field value
     setFormData(prev => ({ ...prev, [name]: value }));
     
+    // Show autocomplete when typing (not URLs, not extracted)
+    if (name === 'songTitle') {
+      const isUrl = detectUrl(value);
+      if (!isUrl && !isExtractedFromLink && value.trim().length >= 2) {
+        setShowAutocomplete(true);
+      } else {
+        setShowAutocomplete(false);
+      }
+    }
+    
     // Clear album art if user manually edits after extraction
     if (name === 'songTitle' && albumArtUrl) {
       setAlbumArtUrl(null);
       setIsExtractedFromLink(false);
       setExtractedSongUrl('');
+    }
+  };
+
+  // Handle autocomplete suggestion selection
+  const handleSuggestionSelect = (suggestion) => {
+    setFormData(prev => ({
+      ...prev,
+      songTitle: suggestion.title,
+      songArtist: suggestion.artist
+    }));
+    if (suggestion.albumArt) {
+      setAlbumArtUrl(suggestion.albumArt);
+    }
+    setShowAutocomplete(false);
+    setSelectedSuggestionIndex(-1);
+    setIsExtractedFromLink(false); // Not from link, but from search
+  };
+
+  // Handle keyboard navigation in autocomplete
+  const handleSongTitleKeyDown = (e) => {
+    if (!showAutocomplete || suggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => 
+        prev < suggestions.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+    } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+      e.preventDefault();
+      handleSuggestionSelect(suggestions[selectedSuggestionIndex]);
+    } else if (e.key === 'Escape') {
+      setShowAutocomplete(false);
+      setSelectedSuggestionIndex(-1);
     }
   };
 
@@ -1676,11 +1741,24 @@ export function GeneralRequestsPage({
                               name="songTitle"
                               value={formData.songTitle}
                               onChange={handleInputChange}
-                              onBlur={handleSongTitleBlur}
+                              onFocus={() => {
+                                if (formData.songTitle && !detectUrl(formData.songTitle) && !isExtractedFromLink && formData.songTitle.trim().length >= 2) {
+                                  setShowAutocomplete(true);
+                                }
+                              }}
+                              onKeyDown={handleSongTitleKeyDown}
+                              onBlur={(e) => {
+                                // Delay hiding autocomplete to allow click events
+                                setTimeout(() => {
+                                  setShowAutocomplete(false);
+                                  setSelectedSuggestionIndex(-1);
+                                }, 200);
+                                handleSongTitleBlur(e);
+                              }}
                               className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation ${
                                 extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3 sm:pr-4'
                               }`}
-                              placeholder={organizationData?.requests_song_title_placeholder || "Enter song name or paste a link (YouTube, Spotify, SoundCloud, etc.)"}
+                              placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
                               autoComplete="off"
                             />
                             {extractingSong && (
@@ -1711,6 +1789,50 @@ export function GeneralRequestsPage({
                               <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                               Song info extracted successfully
                             </p>
+                          )}
+                          {/* Subtle hint always visible when empty */}
+                          {!formData.songTitle && !isExtractedFromLink && !extractingSong && (
+                            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                              <Link2 className="w-3 h-3 flex-shrink-0" />
+                              <span>Type a song name or paste a music link</span>
+                            </p>
+                          )}
+                          {/* Autocomplete suggestions */}
+                          {showAutocomplete && suggestions.length > 0 && (
+                            <div className="mt-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                              {suggestions.map((suggestion, index) => (
+                                <button
+                                  key={suggestion.id}
+                                  type="button"
+                                  onClick={() => handleSuggestionSelect(suggestion)}
+                                  className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-3 ${
+                                    index === selectedSuggestionIndex ? 'bg-gray-100 dark:bg-gray-800' : ''
+                                  }`}
+                                >
+                                  {suggestion.albumArt && (
+                                    <img
+                                      src={suggestion.albumArt}
+                                      alt=""
+                                      className="w-10 h-10 rounded flex-shrink-0 object-cover"
+                                    />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                      {suggestion.title}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                      {suggestion.artist}
+                                    </p>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {showAutocomplete && searchingSongs && suggestions.length === 0 && (
+                            <div className="mt-2 p-3 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                              <span className="text-sm text-gray-600 dark:text-gray-400">Searching...</span>
+                            </div>
                           )}
                         </div>
                         
@@ -2152,11 +2274,24 @@ export function GeneralRequestsPage({
                             name="songTitle"
                             value={formData.songTitle}
                             onChange={handleInputChange}
-                            onBlur={handleSongTitleBlur}
+                            onFocus={() => {
+                              if (formData.songTitle && !detectUrl(formData.songTitle) && !isExtractedFromLink && formData.songTitle.trim().length >= 2) {
+                                setShowAutocomplete(true);
+                              }
+                            }}
+                            onKeyDown={handleSongTitleKeyDown}
+                            onBlur={(e) => {
+                              // Delay hiding autocomplete to allow click events
+                              setTimeout(() => {
+                                setShowAutocomplete(false);
+                                setSelectedSuggestionIndex(-1);
+                              }, 200);
+                              handleSongTitleBlur(e);
+                            }}
                             className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:shadow-lg focus:shadow-purple-500/20 transition-all duration-200 touch-manipulation ${
                               extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3 sm:pr-4'
                             }`}
-                            placeholder={organizationData?.requests_song_title_placeholder || "Enter song name or paste a link (YouTube, Spotify, SoundCloud, etc.)"}
+                            placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
                             required
                             autoComplete="off"
                           />
@@ -2189,7 +2324,51 @@ export function GeneralRequestsPage({
                             Song info extracted successfully
                           </p>
                         )}
-                      </div>
+                         {/* Subtle hint always visible when empty */}
+                         {!formData.songTitle && !isExtractedFromLink && !extractingSong && (
+                           <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                             <Link2 className="w-3 h-3 flex-shrink-0" />
+                             <span>Type a song name or paste a music link</span>
+                           </p>
+                         )}
+                         {/* Autocomplete suggestions */}
+                         {showAutocomplete && suggestions.length > 0 && (
+                           <div className="mt-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                             {suggestions.map((suggestion, index) => (
+                               <button
+                                 key={suggestion.id}
+                                 type="button"
+                                 onClick={() => handleSuggestionSelect(suggestion)}
+                                 className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-3 ${
+                                   index === selectedSuggestionIndex ? 'bg-gray-100 dark:bg-gray-800' : ''
+                                 }`}
+                               >
+                                 {suggestion.albumArt && (
+                                   <img
+                                     src={suggestion.albumArt}
+                                     alt=""
+                                     className="w-10 h-10 rounded flex-shrink-0 object-cover"
+                                   />
+                                 )}
+                                 <div className="flex-1 min-w-0">
+                                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                     {suggestion.title}
+                                   </p>
+                                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                     {suggestion.artist}
+                                   </p>
+                                 </div>
+                               </button>
+                             ))}
+                           </div>
+                         )}
+                         {showAutocomplete && searchingSongs && suggestions.length === 0 && (
+                           <div className="mt-2 p-3 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
+                             <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                             <span className="text-sm text-gray-600 dark:text-gray-400">Searching...</span>
+                           </div>
+                         )}
+                       </div>
                       
                       <div>
                         <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">

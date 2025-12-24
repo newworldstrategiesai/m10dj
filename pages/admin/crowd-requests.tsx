@@ -13,6 +13,7 @@ import {
   AlertCircle, 
   Plus,
   RefreshCw,
+  Loader2,
   Search,
   Filter,
   DollarSign,
@@ -61,6 +62,7 @@ import UpgradePrompt from '@/components/subscription/UpgradePrompt';
 import StripeConnectRequirementBanner from '@/components/subscription/StripeConnectRequirementBanner';
 import { getCurrentOrganization } from '@/utils/organization-context';
 import SongRecognition from '@/components/audio/SongRecognition';
+import MusicServiceLinks from '@/components/admin/MusicServiceLinks';
 
 interface CrowdRequest {
   id: string;
@@ -110,6 +112,22 @@ interface CrowdRequest {
     recognition_timestamp: string;
     auto_marked_as_played: boolean;
   } | null;
+  // Music service links
+  music_service_links?: {
+    spotify: string | null;
+    youtube: string | null;
+    tidal: string | null;
+    found_at: string | null;
+    search_method: string;
+  } | null;
+  // Bidding fields
+  bidding_enabled?: boolean;
+  bidding_round_id?: string | null;
+  current_bid_amount?: number;
+  highest_bidder_name?: string | null;
+  highest_bidder_email?: string | null;
+  is_auction_winner?: boolean;
+  auction_won_at?: string | null;
 }
 
 export default function CrowdRequestsPage() {
@@ -136,6 +154,7 @@ export default function CrowdRequestsPage() {
   const [requestTypeFilter, setRequestTypeFilter] = useState<string>('all');
   const [eventCodeFilter, setEventCodeFilter] = useState<string>('');
   const [audioUploadFilter, setAudioUploadFilter] = useState<string>('all'); // 'all', 'custom', 'standard'
+  const [viewMode, setViewMode] = useState<'all' | 'requests' | 'bids'>('all'); // 'all', 'requests', 'bids'
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10000); // Show all requests by default
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -240,6 +259,12 @@ export default function CrowdRequestsPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundRequest, setRefundRequest] = useState<CrowdRequest | null>(null);
+  // Bidding state
+  const [showBidHistoryModal, setShowBidHistoryModal] = useState(false);
+  const [bidHistory, setBidHistory] = useState<any[]>([]);
+  const [biddingRound, setBiddingRound] = useState<any>(null);
+  const [loadingBidHistory, setLoadingBidHistory] = useState(false);
+  const [selectedRequestForBids, setSelectedRequestForBids] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRequests();
@@ -2049,6 +2074,145 @@ export default function CrowdRequestsPage() {
     await updateRequestStatus(requestId, 'played');
   };
 
+  // Bidding handlers
+  const handleViewBidHistory = async (requestId: string, biddingRoundId: string) => {
+    setSelectedRequestForBids(requestId);
+    setLoadingBidHistory(true);
+    setShowBidHistoryModal(true);
+    
+    try {
+      const response = await fetch(`/api/bidding/bid-history?requestId=${requestId}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch bid history');
+      }
+      
+      setBidHistory(data.bids || []);
+      setBiddingRound(data.round || null);
+    } catch (error: any) {
+      console.error('Error fetching bid history:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to fetch bid history',
+        variant: 'destructive'
+      });
+      setBidHistory([]);
+      setBiddingRound(null);
+    } finally {
+      setLoadingBidHistory(false);
+    }
+  };
+
+  const handleChargeWinningBid = async (requestId: string) => {
+    try {
+      // First get the winning bid for this request
+      const bidHistoryResponse = await fetch(`/api/bidding/bid-history?requestId=${requestId}`);
+      const bidData = await bidHistoryResponse.json();
+      
+      if (!bidHistoryResponse.ok || !bidData.bids || bidData.bids.length === 0) {
+        throw new Error('No bids found for this request');
+      }
+      
+      // Find the highest bid (winning bid)
+      const winningBid = bidData.bids.reduce((highest: any, bid: any) => 
+        bid.bid_amount > (highest?.bid_amount || 0) ? bid : highest
+      );
+      
+      if (!winningBid || winningBid.payment_status === 'charged') {
+        toast({
+          title: 'Error',
+          description: 'Winning bid has already been charged or not found',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      const response = await fetch('/api/bidding/charge-winning-bid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bidId: winningBid.id,
+          requestId: requestId
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to charge bid');
+      }
+      
+      toast({
+        title: 'Success',
+        description: `Bid of $${(winningBid.bid_amount / 100).toFixed(2)} charged successfully`
+      });
+      
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error charging bid:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to charge bid',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleCancelBidAuthorization = async (requestId: string) => {
+    try {
+      // Get the current highest bid for this request
+      const bidHistoryResponse = await fetch(`/api/bidding/bid-history?requestId=${requestId}`);
+      const bidData = await bidHistoryResponse.json();
+      
+      if (!bidHistoryResponse.ok || !bidData.bids || bidData.bids.length === 0) {
+        throw new Error('No bids found for this request');
+      }
+      
+      // Find the highest bid
+      const highestBid = bidData.bids.reduce((highest: any, bid: any) => 
+        bid.bid_amount > (highest?.bid_amount || 0) ? bid : highest
+      );
+      
+      if (!highestBid || highestBid.payment_status !== 'pending') {
+        toast({
+          title: 'Error',
+          description: 'No pending bid authorization found',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      const response = await fetch('/api/bidding/cancel-bid-authorization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bidId: highestBid.id
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to cancel authorization');
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Bid authorization cancelled successfully'
+      });
+      
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error cancelling authorization:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to cancel authorization',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const updatePaymentStatus = async (requestId: string, paymentStatus: string, paymentMethod?: string) => {
     try {
       const response = await fetch('/api/crowd-request/update-payment-status', {
@@ -2586,7 +2750,12 @@ export default function CrowdRequestsPage() {
       (audioUploadFilter === 'custom' && request.is_custom_audio) ||
       (audioUploadFilter === 'standard' && !request.is_custom_audio);
     
-    return matchesSearch && matchesStatus && matchesDateRange && matchesPaymentMethod && matchesRequestType && matchesEventCode && matchesAudioUpload;
+    // View mode filter: 'all', 'requests' (non-bidding), or 'bids' (bidding only)
+    const matchesViewMode = viewMode === 'all' || 
+      (viewMode === 'requests' && !request.bidding_enabled) ||
+      (viewMode === 'bids' && request.bidding_enabled);
+    
+    return matchesSearch && matchesStatus && matchesDateRange && matchesPaymentMethod && matchesRequestType && matchesEventCode && matchesAudioUpload && matchesViewMode;
   });
 
   // Helper function to determine if a request is paid
@@ -2675,9 +2844,20 @@ export default function CrowdRequestsPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, dateRangeStart, dateRangeEnd, paymentMethodFilter, requestTypeFilter, eventCodeFilter, audioUploadFilter]);
+  }, [searchTerm, statusFilter, dateRangeStart, dateRangeEnd, paymentMethodFilter, requestTypeFilter, eventCodeFilter, audioUploadFilter, viewMode]);
 
   const getStatusBadge = (status: string, paymentStatus: string, request?: CrowdRequest) => {
+    // Handle bidding requests with authorized payments
+    if (request?.bidding_enabled && request.current_bid_amount) {
+      if (paymentStatus === 'pending' && !request.amount_paid) {
+        return <Badge className="bg-yellow-600 text-white">Authorized</Badge>;
+      } else if (paymentStatus === 'paid' || request.amount_paid > 0) {
+        return <Badge className="bg-green-500 text-white">Charged</Badge>;
+      } else if (paymentStatus === 'refunded') {
+        return <Badge className="bg-gray-500 text-white">Cancelled</Badge>;
+      }
+    }
+    
     // If we have a request object, check if payment is actually completed
     // (has payment_intent_id and amount_paid > 0) even if payment_status says pending
     if (request) {
@@ -5522,7 +5702,7 @@ export default function CrowdRequestsPage() {
               <span className="flex items-center gap-2">
                 <Filter className="w-4 h-4" />
                 Filters
-                {(statusFilter !== 'all' || paymentMethodFilter !== 'all' || requestTypeFilter !== 'all' || dateRangeStart || dateRangeEnd || eventCodeFilter || audioUploadFilter !== 'all') && (
+                {(statusFilter !== 'all' || paymentMethodFilter !== 'all' || requestTypeFilter !== 'all' || dateRangeStart || dateRangeEnd || eventCodeFilter || audioUploadFilter !== 'all' || viewMode !== 'all') && (
                   <Badge className="ml-2 bg-purple-500 text-white">Active</Badge>
                 )}
               </span>
@@ -5531,6 +5711,43 @@ export default function CrowdRequestsPage() {
           </div>
           
           <div className={`flex flex-col gap-4 ${showMobileFilters ? 'block' : 'hidden lg:flex'}`}>
+            {/* View Mode Toggle - Requests vs Bids */}
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">View:</span>
+              <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('all')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    viewMode === 'all'
+                      ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-purple-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setViewMode('requests')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    viewMode === 'requests'
+                      ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-purple-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  Requests
+                </button>
+                <button
+                  onClick={() => setViewMode('bids')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    viewMode === 'bids'
+                      ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-purple-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  Bids
+                </button>
+              </div>
+            </div>
+
             {/* First Row: Search and Quick Filters */}
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1 relative">
@@ -5636,6 +5853,7 @@ export default function CrowdRequestsPage() {
                     setStatusFilter('all');
                     setPaymentMethodFilter('all');
                     setRequestTypeFilter('all');
+                    setViewMode('all');
                   }}
                   variant="outline"
                   size="sm"
@@ -5928,11 +6146,41 @@ export default function CrowdRequestsPage() {
                                   Artist
                                 </Badge>
                               )}
+                              {request.bidding_enabled && (
+                                <Badge className="bg-purple-600 text-white flex items-center gap-1 px-2 py-0.5">
+                                  <DollarSign className="w-3 h-3" />
+                                  Bidding
+                                </Badge>
+                              )}
                             </div>
                             {request.request_type === 'song_request' && request.song_artist && (
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                by {request.song_artist}
-                              </p>
+                              <>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  by {request.song_artist}
+                                </p>
+                                {request.bidding_enabled && request.current_bid_amount && (
+                                  <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mt-1">
+                                    Current Bid: ${(request.current_bid_amount / 100).toFixed(2)}
+                                    {request.highest_bidder_name && ` by ${request.highest_bidder_name}`}
+                                  </p>
+                                )}
+                                <div className="mt-2">
+                                  <MusicServiceLinks
+                                    requestId={request.id}
+                                    songTitle={request.song_title}
+                                    songArtist={request.song_artist}
+                                    links={request.music_service_links || null}
+                                    onLinksUpdated={(newLinks) => {
+                                      // Update the request in local state
+                                      setRequests(prev => prev.map(r => 
+                                        r.id === request.id 
+                                          ? { ...r, music_service_links: newLinks }
+                                          : r
+                                      ));
+                                    }}
+                                  />
+                                </div>
+                              </>
                             )}
                             {request.request_type === 'shoutout' && request.recipient_message && (
                               <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs">
@@ -5986,21 +6234,40 @@ export default function CrowdRequestsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="w-4 h-4 text-gray-400" />
-                            <span className="font-semibold text-gray-900 dark:text-white">
-                              ${((request.amount_paid || request.amount_requested) / 100).toFixed(2)}
-                            </span>
-                          </div>
-                          {request.is_fast_track && request.fast_track_fee > 0 && (
-                            <span className="text-xs text-orange-600 dark:text-orange-400">
-                              +${(request.fast_track_fee / 100).toFixed(2)} fast-track
-                            </span>
-                          )}
-                          {request.is_custom_audio && request.audio_upload_fee > 0 && (
-                            <span className="text-xs text-blue-600 dark:text-blue-400">
-                              +${(request.audio_upload_fee / 100).toFixed(2)} audio upload
-                            </span>
+                          {request.bidding_enabled && request.current_bid_amount ? (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="w-4 h-4 text-purple-500" />
+                                <span className="font-semibold text-purple-600 dark:text-purple-400">
+                                  ${(request.current_bid_amount / 100).toFixed(2)}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">(bid)</span>
+                              </div>
+                              {request.payment_status === 'pending' && (
+                                <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                                  ⚠️ Authorized (not charged)
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="w-4 h-4 text-gray-400" />
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  ${((request.amount_paid || request.amount_requested) / 100).toFixed(2)}
+                                </span>
+                              </div>
+                              {request.is_fast_track && request.fast_track_fee > 0 && (
+                                <span className="text-xs text-orange-600 dark:text-orange-400">
+                                  +${(request.fast_track_fee / 100).toFixed(2)} fast-track
+                                </span>
+                              )}
+                              {request.is_custom_audio && request.audio_upload_fee > 0 && (
+                                <span className="text-xs text-blue-600 dark:text-blue-400">
+                                  +${(request.audio_upload_fee / 100).toFixed(2)} audio upload
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>
@@ -6122,8 +6389,57 @@ export default function CrowdRequestsPage() {
                             </Button>
                           )}
                           
-                          {/* Payment Status Update - Show for pending payments */}
-                          {request.payment_status === 'pending' && (
+                          {/* Bidding-specific actions */}
+                          {request.bidding_enabled && request.bidding_round_id && (
+                            <>
+                              <Button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await handleViewBidHistory(request.id, request.bidding_round_id!);
+                                }}
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7 w-full border-purple-500 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                              >
+                                <DollarSign className="w-3 h-3 mr-1" />
+                                View Bid History
+                              </Button>
+                              {request.payment_status === 'pending' && request.current_bid_amount && (
+                                <>
+                                  <Button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (confirm(`Charge the winning bid of $${(request.current_bid_amount! / 100).toFixed(2)}?`)) {
+                                        await handleChargeWinningBid(request.id);
+                                      }
+                                    }}
+                                    size="sm"
+                                    className="text-xs h-7 w-full bg-green-600 hover:bg-green-700 text-white"
+                                  >
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Charge Winning Bid
+                                  </Button>
+                                  <Button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (confirm('Cancel this bid authorization? The payment hold will be released.')) {
+                                        await handleCancelBidAuthorization(request.id);
+                                      }
+                                    }}
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs h-7 w-full border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  >
+                                    <X className="w-3 h-3 mr-1" />
+                                    Cancel Authorization
+                                  </Button>
+                                </>
+                              )}
+                            </>
+                          )}
+                          
+                          {/* Payment Status Update - Show for pending payments (non-bidding) */}
+                          {!request.bidding_enabled && request.payment_status === 'pending' && (
                             <Button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -7739,6 +8055,123 @@ export default function CrowdRequestsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bid History Modal */}
+      <Dialog open={showBidHistoryModal} onOpenChange={setShowBidHistoryModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bid History</DialogTitle>
+            <DialogDescription>
+              View all bids placed for this request
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingBidHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {biddingRound && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+                  <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-2">Bidding Round Info</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Round Number:</span>
+                      <span className="ml-2 font-medium">{biddingRound.round_number}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Status:</span>
+                      <span className={`ml-2 font-medium ${
+                        biddingRound.status === 'active' ? 'text-green-600' : 'text-gray-600'
+                      }`}>
+                        {biddingRound.status}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Started:</span>
+                      <span className="ml-2 font-medium">
+                        {new Date(biddingRound.started_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Ends:</span>
+                      <span className="ml-2 font-medium">
+                        {new Date(biddingRound.ends_at).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {bidHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  No bids found for this request
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">All Bids ({bidHistory.length})</h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {bidHistory.map((bid: any) => (
+                      <div
+                        key={bid.id}
+                        className={`p-4 rounded-lg border ${
+                          bid.is_winning_bid || bid.payment_status === 'charged'
+                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                            : bid.payment_status === 'refunded'
+                            ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-lg text-gray-900 dark:text-white">
+                                ${(bid.bid_amount / 100).toFixed(2)}
+                              </span>
+                              {bid.is_winning_bid && (
+                                <Badge className="bg-green-600 text-white text-xs">Winning</Badge>
+                              )}
+                              <Badge className={
+                                bid.payment_status === 'charged' ? 'bg-green-500 text-white' :
+                                bid.payment_status === 'pending' ? 'bg-yellow-500 text-white' :
+                                bid.payment_status === 'refunded' ? 'bg-gray-500 text-white' :
+                                'bg-red-500 text-white'
+                              }>
+                                {bid.payment_status}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                              <p><strong>Bidder:</strong> {bid.bidder_name}</p>
+                              {bid.bidder_email && <p><strong>Email:</strong> {bid.bidder_email}</p>}
+                              {bid.bidder_phone && <p><strong>Phone:</strong> {bid.bidder_phone}</p>}
+                              <p><strong>Placed:</strong> {new Date(bid.created_at).toLocaleString()}</p>
+                              {bid.payment_intent_id && (
+                                <p className="text-xs text-gray-500 dark:text-gray-500">
+                                  <strong>Payment Intent:</strong> {bid.payment_intent_id}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              onClick={() => setShowBidHistoryModal(false)}
+              variant="outline"
+            >
+              Close
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </AdminLayout>

@@ -78,41 +78,41 @@ function PaymentAmountSelector({
               const isBelowMinimum = isBiddingMode && preset.value < minimumAmount;
               
               return (
-                <button
+              <button
                   key={`preset-${preset.value}-${currentWinningBid}-${idx}-${presetAmounts.length}`} // Include winning bid, index, and array length in key to force re-render
-                  type="button"
+                type="button"
                   onClick={() => !isBelowMinimum && setPresetAmount(preset.value)}
                   disabled={isBelowMinimum}
-                  className={`group relative p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl md:rounded-2xl border-2 transition-all duration-300 touch-manipulation min-h-[56px] sm:min-h-[64px] md:min-h-[72px] overflow-hidden ${
+                className={`group relative p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl md:rounded-2xl border-2 transition-all duration-300 touch-manipulation min-h-[56px] sm:min-h-[64px] md:min-h-[72px] overflow-hidden ${
                     isBelowMinimum
                       ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/50 opacity-50 cursor-not-allowed'
                       : presetAmount === preset.value
-                      ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-105'
+                    ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-105'
                       : beatsCurrentBid
                       ? 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-900/20 hover:border-green-500 hover:scale-[1.02] hover:shadow-lg'
-                      : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-lg'
-                  }`}
-                >
-                  {presetAmount === preset.value && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                  )}
+                    : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-lg'
+                }`}
+              >
+                {presetAmount === preset.value && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
+                )}
                   {beatsCurrentBid && !isBelowMinimum && (
                     <div className="absolute top-1 right-1">
                       <span className="text-[10px] font-bold text-green-600 dark:text-green-400 bg-white dark:bg-gray-800 px-1 rounded">✓</span>
                     </div>
                   )}
-                  <span className={`relative text-sm sm:text-base md:text-lg lg:text-xl font-bold transition-colors ${
-                    presetAmount === preset.value
-                      ? 'text-white'
+                <span className={`relative text-sm sm:text-base md:text-lg lg:text-xl font-bold transition-colors ${
+                  presetAmount === preset.value
+                    ? 'text-white'
                       : isBelowMinimum
                       ? 'text-gray-400 dark:text-gray-600'
                       : beatsCurrentBid
                       ? 'text-green-700 dark:text-green-300'
-                      : 'text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400'
-                  }`}>
-                    {preset.label}
-                  </span>
-                </button>
+                    : 'text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400'
+                }`}>
+                  {preset.label}
+                </span>
+              </button>
               );
             })}
           </div>
