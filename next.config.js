@@ -94,6 +94,14 @@ module.exports = {
       use: 'ignore-loader',
     });
     
+    // Exclude Puppeteer from client-side bundle (server-only)
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'puppeteer': 'commonjs puppeteer',
+      });
+    }
+    
     return config;
   },
 }; 

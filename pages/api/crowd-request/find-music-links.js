@@ -14,14 +14,15 @@ export default async function handler(req, res) {
     // Require admin authentication
     await requireAdmin(req, res);
 
-    const { requestId, songTitle, songArtist } = req.body;
+    const { requestId, songTitle, songArtist, youtubeUrl } = req.body;
 
     if (!requestId) {
       return res.status(400).json({ error: 'Request ID is required' });
     }
 
-    if (!songTitle || !songArtist) {
-      return res.status(400).json({ error: 'Song title and artist are required' });
+    // Allow either songTitle/songArtist OR youtubeUrl
+    if (!songTitle && !songArtist && !youtubeUrl) {
+      return res.status(400).json({ error: 'Song title and artist, or YouTube URL is required' });
     }
 
     const env = getEnv();
@@ -49,7 +50,8 @@ export default async function handler(req, res) {
       
       if (daysSinceFound < 7 && (existingRequest.music_service_links.spotify || 
                                  existingRequest.music_service_links.youtube || 
-                                 existingRequest.music_service_links.tidal)) {
+                                 existingRequest.music_service_links.tidal ||
+                                 existingRequest.music_service_links.apple_music)) {
         return res.status(200).json({
           links: existingRequest.music_service_links,
           cached: true
@@ -58,11 +60,45 @@ export default async function handler(req, res) {
     }
 
     // Find music links
-    console.log(`Finding music links for: "${songTitle}" by "${songArtist}"`);
+    // If YouTube URL is provided, use it to extract song info and find other services
+    // Otherwise, use songTitle and songArtist
+    console.log(youtubeUrl 
+      ? `Finding music links from YouTube URL: ${youtubeUrl}`
+      : `Finding music links for: "${songTitle}" by "${songArtist}"`
+    );
+    console.log('Request body:', { requestId, songTitle, songArtist, youtubeUrl });
+    
     const links = await findMusicLinks(songTitle, songArtist, {
-      timeout: 8000, // 8 second timeout per service
-      services: ['spotify', 'youtube', 'tidal']
+      timeout: 10000, // 10 second timeout per service (increased from 8s)
+      services: ['spotify', 'youtube', 'tidal', 'apple_music'],
+      youtubeUrl: youtubeUrl || null
     });
+
+    console.log('Links found:', {
+      spotify: !!links.spotify,
+      youtube: !!links.youtube,
+      tidal: !!links.tidal,
+      apple_music: !!links.apple_music,
+      found_at: links.found_at
+    });
+    
+    // Log actual URLs for debugging (truncated)
+    if (links.spotify) console.log('Spotify URL:', links.spotify.substring(0, 50) + '...');
+    if (links.youtube) console.log('YouTube URL:', links.youtube.substring(0, 50) + '...');
+    if (links.tidal) console.log('Tidal URL:', links.tidal.substring(0, 50) + '...');
+    if (links.apple_music) console.log('Apple Music URL:', links.apple_music.substring(0, 50) + '...');
+    
+    // Ensure all fields are present in response
+    const responseLinks = {
+      spotify: links.spotify || null,
+      youtube: links.youtube || null,
+      tidal: links.tidal || null,
+      apple_music: links.apple_music || null,
+      found_at: links.found_at || null,
+      search_method: links.search_method || 'web_scrape'
+    };
+    
+    console.log('Response links object:', responseLinks);
 
     // Update the request with found links
     const { error: updateError } = await supabase
@@ -76,7 +112,7 @@ export default async function handler(req, res) {
     }
 
     res.status(200).json({
-      links,
+      links: responseLinks,
       cached: false
     });
 

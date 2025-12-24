@@ -9,6 +9,8 @@ import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { canAccessAdminPage } from '@/utils/subscription-access';
 
 export default function AnalyticsPage() {
   const router = useRouter();
@@ -18,6 +20,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     checkUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkUser = async () => {
@@ -29,9 +32,6 @@ export default function AnalyticsPage() {
       }
 
       // Check subscription access for analytics feature
-      const { isPlatformAdmin } = await import('@/utils/auth-helpers/platform-admin');
-      const { canAccessAdminPage } = await import('@/utils/subscription-access');
-      
       const isAdmin = isPlatformAdmin(user.email);
       
       if (!isAdmin) {

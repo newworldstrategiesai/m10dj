@@ -1,0 +1,134 @@
+// API endpoint to download audio from YouTube links (SUPER ADMIN ONLY)
+import { requireSuperAdmin } from '@/utils/auth-helpers/api-auth';
+import { createClient } from '@supabase/supabase-js';
+import { getEnv } from '@/utils/env-validator';
+import { downloadYouTubeAudio, isValidYouTubeUrl } from '@/utils/youtube-audio-downloader';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    // SUPER ADMIN ONLY
+    const user = await requireSuperAdmin(req, res);
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({ error: 'Supabase configuration missing' });
+    }
+
+    const { requestId, youtubeUrl } = req.body;
+
+    if (!requestId) {
+      return res.status(400).json({ error: 'requestId is required' });
+    }
+
+    if (!youtubeUrl) {
+      return res.status(400).json({ error: 'youtubeUrl is required' });
+    }
+
+    if (!isValidYouTubeUrl(youtubeUrl)) {
+      return res.status(400).json({ error: 'Invalid YouTube URL' });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch request details
+    const { data: request, error: fetchError } = await supabase
+      .from('crowd_requests')
+      .select('id, song_title, song_artist, posted_link, audio_download_status')
+      .eq('id', requestId)
+      .single();
+
+    if (fetchError || !request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    // Check if already downloaded
+    if (request.audio_download_status === 'completed') {
+      // Fetch the current download URL
+      const { data: currentRequest } = await supabase
+        .from('crowd_requests')
+        .select('downloaded_audio_url')
+        .eq('id', requestId)
+        .single();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Audio already downloaded',
+        url: currentRequest?.downloaded_audio_url,
+      });
+    }
+
+    // Update status to processing
+    await supabase
+      .from('crowd_requests')
+      .update({
+        audio_download_status: 'processing',
+        audio_download_error: null,
+      })
+      .eq('id', requestId);
+
+    // Download audio
+    const result = await downloadYouTubeAudio(
+      youtubeUrl,
+      requestId,
+      request.song_title || undefined,
+      request.song_artist || undefined
+    );
+
+    if (!result.success) {
+      // Update status to failed
+      await supabase
+        .from('crowd_requests')
+        .update({
+          audio_download_status: 'failed',
+          audio_download_error: result.error || 'Unknown error',
+        })
+        .eq('id', requestId);
+
+      return res.status(500).json({
+        success: false,
+        error: result.error || 'Failed to download audio',
+      });
+    }
+
+    // Update status to completed with download URL
+    const { error: updateError } = await supabase
+      .from('crowd_requests')
+      .update({
+        audio_download_status: 'completed',
+        downloaded_audio_url: result.url,
+        audio_download_error: null,
+        audio_downloaded_at: new Date().toISOString(),
+      })
+      .eq('id', requestId);
+
+    if (updateError) {
+      console.error('Error updating request:', updateError);
+      // Audio was downloaded but update failed - still return success
+    }
+
+    return res.status(200).json({
+      success: true,
+      url: result.url,
+      path: result.path,
+      message: 'Audio downloaded successfully',
+    });
+  } catch (error) {
+    // Error from requireSuperAdmin is already handled
+    if (res.headersSent) {
+      return;
+    }
+
+    console.error('YouTube audio download error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Internal server error',
+    });
+  }
+}
+

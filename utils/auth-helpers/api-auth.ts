@@ -119,3 +119,29 @@ export async function optionalAuth(
   return user;
 }
 
+/**
+ * Require super admin access for API route
+ * Returns 403 if not super admin
+ */
+export async function requireSuperAdmin(
+  req: NextApiRequest,
+  res: NextApiResponse
+): Promise<AuthenticatedUser> {
+  const user = await requireAuth(req, res);
+
+  if (!user.email) {
+    res.status(403).json({ error: 'Super admin access required' });
+    throw new Error('Super admin access required');
+  }
+
+  const { isSuperAdminEmail } = await import('./super-admin');
+  const isSuper = isSuperAdminEmail(user.email);
+  
+  if (!isSuper) {
+    res.status(403).json({ error: 'Super admin access required' });
+    throw new Error('Super admin access required');
+  }
+
+  return user;
+}
+

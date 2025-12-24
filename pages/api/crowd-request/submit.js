@@ -45,7 +45,8 @@ export default async function handler(req, res) {
     artistRightsConfirmed,
     isArtist,
     scanId, // QR scan ID from sessionStorage
-    sessionId // QR session ID from sessionStorage
+    sessionId, // QR session ID from sessionStorage
+    postedLink // Original URL if request was created from a posted link
   } = req.body;
 
   // Validate required fields
@@ -278,7 +279,8 @@ export default async function handler(req, res) {
       is_custom_audio: isCustomAudio || false,
       artist_rights_confirmed: artistRightsConfirmed || false,
       is_artist: isArtist || false,
-      audio_upload_fee: (isCustomAudio && audioFileUrl) ? 10000 : 0 // $100.00 in cents
+      audio_upload_fee: (isCustomAudio && audioFileUrl) ? 10000 : 0, // $100.00 in cents
+      posted_link: postedLink || null // Store original URL if request was created from a posted link
     };
 
     // Add organization_id if we have it

@@ -116,9 +116,16 @@ interface CrowdRequest {
     spotify: string | null;
     youtube: string | null;
     tidal: string | null;
+    apple_music: string | null;
     found_at: string | null;
     search_method: string;
   } | null;
+  posted_link?: string | null;
+  // YouTube audio download fields (super admin only)
+  downloaded_audio_url?: string | null;
+  audio_download_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  audio_download_error?: string | null;
+  audio_downloaded_at?: string | null;
   // Bidding fields
   bidding_enabled?: boolean;
   bidding_round_id?: string | null;
@@ -264,6 +271,25 @@ export default function CrowdRequestsPage() {
   const [biddingRound, setBiddingRound] = useState<any>(null);
   const [loadingBidHistory, setLoadingBidHistory] = useState(false);
   const [selectedRequestForBids, setSelectedRequestForBids] = useState<string | null>(null);
+  // YouTube audio download state (super admin only)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [downloadingAudio, setDownloadingAudio] = useState<string | null>(null); // requestId being downloaded
+
+  useEffect(() => {
+    // Check if user is super admin
+    const checkSuperAdmin = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          const { isSuperAdminEmail } = await import('@/utils/auth-helpers/super-admin');
+          setIsSuperAdmin(isSuperAdminEmail(user.email));
+        }
+      } catch (error) {
+        console.error('Error checking super admin:', error);
+      }
+    };
+    checkSuperAdmin();
+  }, [supabase]);
 
   useEffect(() => {
     fetchRequests();
@@ -2587,6 +2613,93 @@ export default function CrowdRequestsPage() {
       console.error('Error fetching Stripe details:', error);
     } finally {
       setLoadingStripeDetails(false);
+    }
+  };
+
+  // Download YouTube audio (super admin only)
+  const handleDownloadYouTubeAudio = async (request: CrowdRequest) => {
+    // Extract YouTube URL from multiple possible sources:
+    // 1. posted_link (if it's a YouTube URL)
+    // 2. music_service_links.youtube (from the "Find Music Links" feature)
+    let youtubeUrl: string | null = null;
+
+    // Check if posted_link is a YouTube URL
+    if (request.posted_link && (request.posted_link.includes('youtube.com') || request.posted_link.includes('youtu.be'))) {
+      youtubeUrl = request.posted_link;
+    }
+    // Otherwise, check music_service_links for YouTube link
+    else if (request.music_service_links?.youtube) {
+      youtubeUrl = request.music_service_links.youtube;
+    }
+
+    if (!youtubeUrl) {
+      toast({
+        title: 'Error',
+        description: 'No YouTube link found for this request. Please use "Find Music Links" to locate the YouTube URL first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setDownloadingAudio(request.id);
+    try {
+      const response = await fetch('/api/crowd-request/download-youtube-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: request.id,
+          youtubeUrl: youtubeUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to download audio');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Audio downloaded successfully',
+      });
+
+      // Update the request in state
+      setSelectedRequest(prev => prev ? {
+        ...prev,
+        downloaded_audio_url: data.url,
+        audio_download_status: 'completed',
+        audio_downloaded_at: new Date().toISOString(),
+      } : null);
+
+      // Also update in requests list
+      setRequests(prev => prev.map(r => 
+        r.id === request.id 
+          ? { 
+              ...r, 
+              downloaded_audio_url: data.url,
+              audio_download_status: 'completed',
+              audio_downloaded_at: new Date().toISOString(),
+            }
+          : r
+      ));
+
+      fetchRequests(); // Refresh to get updated data
+    } catch (error: any) {
+      console.error('Error downloading YouTube audio:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to download audio',
+        variant: 'destructive',
+      });
+
+      // Update status to failed
+      setSelectedRequest(prev => prev ? {
+        ...prev,
+        audio_download_status: 'failed',
+        audio_download_error: error.message || 'Unknown error',
+      } : null);
+    } finally {
+      setDownloadingAudio(null);
     }
   };
 
@@ -6176,6 +6289,7 @@ export default function CrowdRequestsPage() {
                                     requestId={request.id}
                                     songTitle={request.song_title}
                                     songArtist={request.song_artist}
+                                    postedLink={request.posted_link || null}
                                     links={request.music_service_links || null}
                                     onLinksUpdated={(newLinks) => {
                                       // Update the request in local state
@@ -6914,6 +7028,134 @@ export default function CrowdRequestsPage() {
                             Detected as: "{selectedRequest.matched_song_detection.song_title}" by {selectedRequest.matched_song_detection.song_artist}
                           </p>
                         </div>
+                      </div>
+                    )}
+                    {/* Posted Link Info */}
+                    {selectedRequest.posted_link && (
+                      <div className="mt-3 pt-3 border-t border-purple-300 dark:border-purple-700">
+                        <div className="flex items-center gap-2 mb-2">
+                          <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                            Original Posted Link
+                          </p>
+                        </div>
+                        <a
+                          href={selectedRequest.posted_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline break-all flex items-center gap-1"
+                        >
+                          {selectedRequest.posted_link}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+                    {/* Music Service Links */}
+                    {selectedRequest.request_type === 'song_request' && (
+                      <div className="mt-3 pt-3 border-t border-purple-300 dark:border-purple-700">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                          Streaming Service Links
+                        </p>
+                        <MusicServiceLinks
+                          requestId={selectedRequest.id}
+                          songTitle={selectedRequest.song_title}
+                          songArtist={selectedRequest.song_artist}
+                          postedLink={selectedRequest.posted_link || null}
+                          links={selectedRequest.music_service_links || null}
+                          onLinksUpdated={(newLinks) => {
+                            // Update the selected request in local state
+                            setSelectedRequest(prev => prev ? { ...prev, music_service_links: newLinks } : null);
+                            // Also update in requests list
+                            setRequests(prev => prev.map(r => 
+                              r.id === selectedRequest.id 
+                                ? { ...r, music_service_links: newLinks }
+                                : r
+                            ));
+                          }}
+                        />
+                      </div>
+                    )}
+                    {/* YouTube Audio Download (Super Admin Only) */}
+                    {isSuperAdmin && selectedRequest.request_type === 'song_request' && (
+                      <div className="mt-3 pt-3 border-t border-purple-300 dark:border-purple-700">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                          Download Audio (Super Admin)
+                        </p>
+                        {/* Show download button if YouTube link exists, or show message to find links first */}
+                        {selectedRequest.posted_link?.includes('youtube.com') || 
+                         selectedRequest.posted_link?.includes('youtu.be') ||
+                         selectedRequest.music_service_links?.youtube ? (
+                          <>
+                        {selectedRequest.audio_download_status === 'completed' && selectedRequest.downloaded_audio_url ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Audio downloaded successfully</span>
+                            </div>
+                            <a
+                              href={selectedRequest.downloaded_audio_url}
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-semibold"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download MP3
+                            </a>
+                            {selectedRequest.audio_downloaded_at && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Downloaded: {new Date(selectedRequest.audio_downloaded_at).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        ) : selectedRequest.audio_download_status === 'processing' || downloadingAudio === selectedRequest.id ? (
+                          <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Downloading audio...</span>
+                          </div>
+                        ) : selectedRequest.audio_download_status === 'failed' ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                              <XCircle className="w-4 h-4" />
+                              <span>Download failed</span>
+                            </div>
+                            {selectedRequest.audio_download_error && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                {selectedRequest.audio_download_error}
+                              </p>
+                            )}
+                            <Button
+                              onClick={() => handleDownloadYouTubeAudio(selectedRequest)}
+                              size="sm"
+                              variant="outline"
+                              disabled={downloadingAudio === selectedRequest.id}
+                              className="text-xs"
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              Retry Download
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            onClick={() => handleDownloadYouTubeAudio(selectedRequest)}
+                            size="sm"
+                            variant="outline"
+                            disabled={downloadingAudio === selectedRequest.id}
+                            className="text-xs"
+                          >
+                            <Download className="w-3 h-3 mr-1" />
+                            {downloadingAudio === selectedRequest.id ? 'Downloading...' : 'Download Audio as MP3'}
+                          </Button>
+                        )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Download audio from YouTube for use in external DJ software
+                        </p>
+                          </>
+                        ) : (
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            <p>No YouTube link found. Use "Find Music Links" to locate the YouTube URL first.</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

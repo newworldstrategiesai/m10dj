@@ -287,7 +287,8 @@ export default function CrowdRequestPage() {
         artistRightsConfirmed: artistRightsConfirmed,
         isArtist: isArtist,
         scanId: scanId,
-        sessionId: sessionId
+        sessionId: sessionId,
+        postedLink: extractedSongUrl || null // Include the original URL if request was created from a posted link
       };
       
       const mainData = await crowdRequestAPI.submitRequest(mainRequestBody);
