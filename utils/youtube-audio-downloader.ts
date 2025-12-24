@@ -27,9 +27,27 @@ export interface DownloadResult {
 let ytDlpWrap: any | null = null;
 
 /**
+ * Check if we're in a serverless environment
+ */
+function isServerless(): boolean {
+  return !!(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.GOOGLE_CLOUD_FUNCTION ||
+    process.env.AZURE_FUNCTIONS_ENVIRONMENT ||
+    process.env.NEXT_RUNTIME === 'nodejs'
+  );
+}
+
+/**
  * Get or initialize yt-dlp wrapper
  */
 async function getYtDlpWrap(): Promise<any> {
+  // Check if we're in serverless - yt-dlp won't work there
+  if (isServerless()) {
+    throw new Error('yt-dlp is not available in serverless environments. This feature requires a server with Python and yt-dlp installed.');
+  }
+
   if (ytDlpWrap) {
     return ytDlpWrap;
   }
@@ -43,8 +61,12 @@ async function getYtDlpWrap(): Promise<any> {
     await ytDlpWrap.getBinaryPath();
   } catch (error) {
     console.log('Downloading yt-dlp binary...');
-    // The library will auto-download on first use, but we can also explicitly download
-    await ytDlpWrap.downloadBinary();
+    try {
+      // The library will auto-download on first use, but we can also explicitly download
+      await ytDlpWrap.downloadBinary();
+    } catch (downloadError: any) {
+      throw new Error(`Failed to download yt-dlp binary: ${downloadError.message}. This feature requires Python and write access to download the binary.`);
+    }
   }
 
   return ytDlpWrap;
@@ -253,8 +275,12 @@ export async function downloadYouTubeAudio(
     
     let errorMessage = 'Failed to download audio';
     
-    // Handle specific YouTube errors
-    if (error.message?.includes('Private video') || error.message?.includes('private')) {
+    // Handle serverless/environment errors
+    if (error.message?.includes('ENOENT') || error.message?.includes('spawn yt-dlp')) {
+      errorMessage = 'YouTube audio download is not available in this environment. This feature requires a server with Python and yt-dlp installed. Please contact support for server configuration.';
+    } else if (error.message?.includes('serverless')) {
+      errorMessage = 'YouTube audio download is not available in serverless environments. This feature requires a dedicated server.';
+    } else if (error.message?.includes('Private video') || error.message?.includes('private')) {
       errorMessage = 'Video is private and cannot be downloaded';
     } else if (error.message?.includes('Video unavailable') || error.message?.includes('unavailable')) {
       errorMessage = 'Video is unavailable or has been removed';

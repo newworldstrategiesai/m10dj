@@ -1080,7 +1080,12 @@ export default function CrowdRequestsPage() {
             .in('matched_crowd_request_id', songRequestIds);
           
           if (songsError) {
-            console.warn('Error fetching songs_played data (non-critical):', songsError);
+            // Check if it's a table not found error (500) or permission issue
+            if (songsError.code === 'PGRST116' || songsError.message?.includes('relation') || songsError.message?.includes('does not exist')) {
+              console.warn('songs_played table not found or not accessible (non-critical):', songsError.message);
+            } else {
+              console.warn('Error fetching songs_played data (non-critical):', songsError);
+            }
             // Don't throw - this is optional data
           } else if (songsDetected) {
             songsDetected.forEach((song: any) => {
