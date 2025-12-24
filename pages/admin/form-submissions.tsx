@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getPhoneLocation } from '@/utils/area-code-lookup';
 
 interface FormSubmission {
   id: string;
@@ -494,7 +495,7 @@ export default function FormSubmissionsPage() {
 
       {/* Submission Detail Modal */}
       {selectedSubmission && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-[#fcba00] to-[#d99f00] px-6 py-5 flex items-center justify-between">
@@ -576,12 +577,22 @@ export default function FormSubmissionsPage() {
                       </div>
                       <div className="flex-1">
                         <p className="text-xs font-medium text-gray-500 uppercase">Phone</p>
-                        <a
-                          href={`tel:${selectedSubmission.phone}`}
-                          className="text-sm font-semibold text-green-600 hover:text-green-700 hover:underline"
-                        >
-                          {selectedSubmission.phone}
-                        </a>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <a
+                            href={`tel:${selectedSubmission.phone}`}
+                            className="text-sm font-semibold text-green-600 hover:text-green-700 hover:underline"
+                          >
+                            {selectedSubmission.phone}
+                          </a>
+                          {(() => {
+                            const phoneLocation = getPhoneLocation(selectedSubmission.phone);
+                            return phoneLocation ? (
+                              <span className="text-xs text-gray-500 italic">
+                                ({phoneLocation})
+                              </span>
+                            ) : null;
+                          })()}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1047,7 +1058,7 @@ djbenmurray@gmail.com`
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10001] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
