@@ -1,13 +1,20 @@
-# Render configuration file (optional but helpful)
 services:
   - type: web
     name: youtube-download-server
     env: node
-    buildCommand: npm install
+    buildCommand: |
+      npm install
+      chmod +x install-dependencies.sh || true
+      ./install-dependencies.sh || echo "Dependency install script failed, continuing..."
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DOWNLOAD_SERVER_API_KEY
+        sync: false

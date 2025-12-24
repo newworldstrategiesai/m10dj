@@ -20,15 +20,24 @@ async function getYtDlpWrap() {
     // Check if binary exists
     const binaryPath = ytDlpWrap.getBinaryPath();
     if (fs.existsSync(binaryPath)) {
-      console.log('yt-dlp binary found at:', binaryPath);
+      console.log('✅ yt-dlp binary found at:', binaryPath);
+      // Verify it's executable
+      if (process.platform !== 'win32') {
+        try {
+          fs.accessSync(binaryPath, fs.constants.X_OK);
+        } catch {
+          console.log('Making binary executable...');
+          fs.chmodSync(binaryPath, '755');
+        }
+      }
     } else {
       throw new Error('Binary not found');
     }
   } catch (error) {
-    console.log('yt-dlp binary not found, downloading...');
+    console.log('📥 yt-dlp binary not found, downloading...');
     try {
       await ytDlpWrap.downloadBinary();
-      console.log('yt-dlp binary downloaded successfully');
+      console.log('✅ yt-dlp binary downloaded successfully');
       
       // Verify it exists after download
       const binaryPath = ytDlpWrap.getBinaryPath();
@@ -39,10 +48,23 @@ async function getYtDlpWrap() {
       // Make it executable (Unix systems)
       if (process.platform !== 'win32') {
         fs.chmodSync(binaryPath, '755');
+        console.log('✅ Binary made executable');
+      }
+      
+      // Test if binary works
+      console.log('🧪 Testing yt-dlp binary...');
+      const { execSync } = require('child_process');
+      try {
+        execSync(`"${binaryPath}" --version`, { timeout: 5000 });
+        console.log('✅ yt-dlp binary is working');
+      } catch (testError) {
+        console.warn('⚠️  yt-dlp binary test failed:', testError.message);
+        console.warn('   This might be due to missing Python or FFmpeg');
       }
     } catch (downloadError) {
-      console.error('Failed to download yt-dlp binary:', downloadError);
-      throw new Error(`Failed to setup yt-dlp: ${downloadError.message}. Make sure Python and FFmpeg are available.`);
+      console.error('❌ Failed to download/setup yt-dlp binary:', downloadError);
+      console.error('   Error details:', downloadError.message);
+      throw new Error(`Failed to setup yt-dlp: ${downloadError.message}. The Render server may need Python and FFmpeg installed.`);
     }
   }
 
