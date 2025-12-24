@@ -21,6 +21,7 @@ interface PublicVoiceAssistantProps {
   onTranscription?: (text: string) => void;
   onResponse?: (response: string) => void;
   onError?: (error: Error) => void;
+  onClose?: () => void;
   className?: string;
   contactId?: string;
   phoneNumber?: string;
@@ -38,6 +39,7 @@ export function PublicVoiceAssistant({
   onTranscription,
   onResponse,
   onError,
+  onClose,
   className,
   contactId,
   phoneNumber,

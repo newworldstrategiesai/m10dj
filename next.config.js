@@ -93,6 +93,11 @@ module.exports = {
       test: /supabase\/functions\/.*\.ts$/,
       use: 'ignore-loader',
     });
+    // Exclude agents directory (separate server process)
+    config.module.rules.push({
+      test: /agents\/.*\.ts$/,
+      use: 'ignore-loader',
+    });
     
     // Exclude Puppeteer from client-side bundle (server-only)
     if (isServer) {

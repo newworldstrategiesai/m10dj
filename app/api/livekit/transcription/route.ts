@@ -75,10 +75,14 @@ export async function POST(request: NextRequest) {
               timestamp: new Date().toISOString(),
             });
             
+            // Convert string to Uint8Array for sendData
+            const encoder = new TextEncoder();
+            const dataBytes = encoder.encode(dataPayload);
+            
             await roomService.sendData(
               roomName,
-              dataPayload,
-              { kind: DataPacket_Kind.RELIABLE }
+              dataBytes,
+              DataPacket_Kind.RELIABLE
             );
           } catch (error) {
             console.error('Error sending transcription to room:', error);

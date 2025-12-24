@@ -40,7 +40,11 @@ export async function publishAdminNotification(
   const timestamp = notification.timestamp || new Date().toISOString();
 
   const notificationPayload = {
-    ...notification,
+    type: notification.type,
+    title: notification.title,
+    message: notification.message,
+    data: notification.data,
+    priority: notification.priority,
     timestamp,
   };
 
@@ -51,13 +55,19 @@ export async function publishAdminNotification(
     
     if (participants.length > 0) {
       // Admin is connected - send via LiveKit
+      const dataPayload = JSON.stringify({
+        messageType: 'notification',
+        ...notificationPayload,
+      });
+      
+      // Convert string to Uint8Array for sendData
+      const encoder = new TextEncoder();
+      const dataBytes = encoder.encode(dataPayload);
+      
       await roomService.sendData(
         roomName,
-        JSON.stringify({
-          type: 'notification',
-          ...notificationPayload,
-        }),
-        { kind: DataPacket_Kind.RELIABLE }
+        dataBytes,
+        DataPacket_Kind.RELIABLE
       );
 
       return { success: true, method: 'livekit' };
