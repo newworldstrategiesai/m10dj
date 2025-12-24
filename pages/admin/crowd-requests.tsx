@@ -1047,17 +1047,25 @@ export default function CrowdRequestsPage() {
       
       let songsDetectedMap: Record<string, any> = {};
       if (songRequestIds.length > 0) {
-        const { data: songsDetected } = await supabase
-          .from('songs_played')
-          .select('id, song_title, song_artist, recognition_confidence, recognition_timestamp, auto_marked_as_played, matched_crowd_request_id')
-          .in('matched_crowd_request_id', songRequestIds);
-        
-        if (songsDetected) {
-          songsDetected.forEach((song: any) => {
-            if (song.matched_crowd_request_id) {
-              songsDetectedMap[song.matched_crowd_request_id] = song;
-            }
-          });
+        try {
+          const { data: songsDetected, error: songsError } = await supabase
+            .from('songs_played')
+            .select('id, song_title, song_artist, recognition_confidence, recognition_timestamp, auto_marked_as_played, matched_crowd_request_id')
+            .in('matched_crowd_request_id', songRequestIds);
+          
+          if (songsError) {
+            console.warn('Error fetching songs_played data (non-critical):', songsError);
+            // Don't throw - this is optional data
+          } else if (songsDetected) {
+            songsDetected.forEach((song: any) => {
+              if (song.matched_crowd_request_id) {
+                songsDetectedMap[song.matched_crowd_request_id] = song;
+              }
+            });
+          }
+        } catch (err) {
+          console.warn('Error querying songs_played table (non-critical):', err);
+          // Continue without songs_played data - this is optional
         }
       }
       

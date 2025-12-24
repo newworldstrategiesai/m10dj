@@ -101,40 +101,92 @@ export default function BiddingRoundsAdmin() {
 
     try {
       setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('bidding_rounds')
-        .select(`
-          *,
-          winning_request:crowd_requests!bidding_rounds_winning_request_id_fkey(
-            id,
-            song_title,
-            song_artist,
-            recipient_name,
-            requester_name,
-            current_bid_amount
-          )
-        `)
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      // First, try to get rounds without the foreign key relationship
+      // If that fails, we'll try a simpler query
+      let data, fetchError;
+      
+      try {
+        const result = await supabase
+          .from('bidding_rounds')
+          .select(`
+            *,
+            winning_request:crowd_requests!bidding_rounds_winning_request_id_fkey(
+              id,
+              song_title,
+              song_artist,
+              recipient_name,
+              requester_name,
+              current_bid_amount
+            )
+          `)
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        
+        data = result.data;
+        fetchError = result.error;
+      } catch (fkError: any) {
+        // If foreign key query fails, try without the relationship
+        console.warn('Foreign key query failed, trying simpler query:', fkError);
+        const result = await supabase
+          .from('bidding_rounds')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        
+        data = result.data;
+        fetchError = result.error;
+      }
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        throw new Error(fetchError.message || JSON.stringify(fetchError));
+      }
 
       // Get bid counts for each round
       const roundsWithStats = await Promise.all(
         (data || []).map(async (round) => {
-          const { count: bidCount } = await supabase
+          // Get bid count
+          const { count: bidCount, error: bidError } = await supabase
             .from('bid_history')
             .select('*', { count: 'exact', head: true })
             .eq('bidding_round_id', round.id);
+          
+          if (bidError) {
+            console.warn(`Error getting bid count for round ${round.id}:`, bidError);
+          }
 
-          const { count: requestCount } = await supabase
+          // Get request count
+          const { count: requestCount, error: requestError } = await supabase
             .from('crowd_requests')
             .select('*', { count: 'exact', head: true })
             .eq('bidding_round_id', round.id);
+          
+          if (requestError) {
+            console.warn(`Error getting request count for round ${round.id}:`, requestError);
+          }
+
+          // If winning_request wasn't loaded via foreign key, fetch it manually
+          let winningRequest = round.winning_request;
+          if (!winningRequest && round.winning_request_id) {
+            try {
+              const { data: requestData } = await supabase
+                .from('crowd_requests')
+                .select('id, song_title, song_artist, recipient_name, requester_name, current_bid_amount')
+                .eq('id', round.winning_request_id)
+                .single();
+              
+              if (requestData) {
+                winningRequest = requestData;
+              }
+            } catch (err) {
+              console.warn(`Error fetching winning request for round ${round.id}:`, err);
+            }
+          }
 
           return {
             ...round,
+            winning_request: winningRequest,
             bidCount: bidCount || 0,
             requestCount: requestCount || 0
           };
@@ -142,9 +194,11 @@ export default function BiddingRoundsAdmin() {
       );
 
       setRounds(roundsWithStats);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading rounds:', err);
-      setError('Failed to load bidding rounds');
+      // Show actual error message instead of generic message
+      const errorMessage = err?.message || err?.error?.message || JSON.stringify(err);
+      setError(`Failed to load bidding rounds: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
