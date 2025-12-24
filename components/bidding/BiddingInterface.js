@@ -39,6 +39,7 @@ export default function BiddingInterface({
   const [bidFeed, setBidFeed] = useState([]); // Live feed of bids
   const [allBidsList, setAllBidsList] = useState([]); // All bids (real + dummy) for live list
   const [retryCount, setRetryCount] = useState(0); // For auto-creating rounds
+  const [startingBid, setStartingBid] = useState(500); // Default starting bid (never $0)
   const intervalRef = useRef(null);
   const prevRoundRef = useRef(null);
   const confettiTriggeredRef = useRef(false);
@@ -153,9 +154,24 @@ export default function BiddingInterface({
 
     // Aggregate all bids from all requests for live list
     const allBids = [];
+    const seenBids = new Set(); // Track seen bids to prevent duplicates
+    
     requests.forEach(req => {
       if (req.recentBids && req.recentBids.length > 0) {
         req.recentBids.forEach(bid => {
+          // Create unique key for deduplication: request_id + bidder_name + bid_amount + created_at
+          // For dummy bids, also include the bid id if available
+          const bidKey = bid.id 
+            ? `${req.id}-${bid.id}` 
+            : `${req.id}-${bid.bidder_name || 'unknown'}-${bid.bid_amount || 0}-${bid.created_at || ''}`;
+          
+          // Skip if we've already seen this bid
+          if (seenBids.has(bidKey)) {
+            return;
+          }
+          
+          seenBids.add(bidKey);
+          
           allBids.push({
             ...bid,
             song_title: req.song_title,
@@ -397,14 +413,14 @@ export default function BiddingInterface({
       
       // Set minimum bid amount
       if (req) {
-        const minBid = Math.max(
-          (req.current_bid_amount || 0) + 100, // $1 increment
-          500 // $5 minimum
-        );
+        // Use starting bid if no bids exist, otherwise use current bid + $1 increment
+        const minBid = req.current_bid_amount > 0
+          ? Math.max((req.current_bid_amount || 0) + 100, startingBid) // $1 increment, but at least starting bid
+          : startingBid; // Use starting bid when no bids exist (never $0)
         setBidAmount((minBid / 100).toFixed(2));
       }
     }
-  }, [requestId, requests]);
+  }, [requestId, requests, startingBid]);
 
   const triggerConfetti = (options = {}) => {
     const { small = false } = options;
@@ -608,6 +624,11 @@ export default function BiddingInterface({
       }
       
       if (data.active && data.round) {
+        // Store bidding settings (starting bid, minimum bid)
+        if (data.biddingSettings) {
+          setStartingBid(data.biddingSettings.startingBid || 500);
+        }
+        
         // Only enhance requests with dummy bids if they have NO real bids
         let enhancedRequests = (data.requests || []).map(req => {
           // Only add dummy bids if there are NO real bids at all
@@ -831,15 +852,20 @@ export default function BiddingInterface({
   // Calculate minimum bid based on current winning bid - use memoized value
   // MUST be before any early returns to follow Rules of Hooks
   const minBid = useMemo(() => {
+    // If no bids exist, use starting bid (never $0)
+    if (currentWinningBidAmount === 0) {
+      return startingBid;
+    }
+    
     return currentRequest 
       ? (() => {
           const isBiddingOnWinningRequest = currentRequest.current_bid_amount === currentWinningBidAmount && currentWinningBidAmount > 0;
           return isBiddingOnWinningRequest
             ? currentWinningBidAmount + 100 // Must be at least $1 more than current bid on this request
-            : Math.max(currentWinningBidAmount + 100, 500); // Must beat the winning bid, minimum $5
+            : Math.max(currentWinningBidAmount + 100, startingBid); // Must beat the winning bid, at least starting bid
         })()
-      : Math.max(currentWinningBidAmount + 100, 500);
-  }, [currentRequest, currentWinningBidAmount]);
+      : Math.max(currentWinningBidAmount + 100, startingBid);
+  }, [currentRequest, currentWinningBidAmount, startingBid]);
 
   // Pre-select minimum bid when minBid changes
   // MUST be before any early returns to follow Rules of Hooks

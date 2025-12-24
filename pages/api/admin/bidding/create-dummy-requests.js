@@ -76,9 +76,40 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Bidding round is not active' });
     }
 
+    // Check for existing requests in this round to prevent duplicates
+    const { data: existingRequests } = await supabase
+      .from('crowd_requests')
+      .select('song_title, song_artist')
+      .eq('bidding_round_id', biddingRoundId)
+      .eq('bidding_enabled', true);
+
+    // Create a set of existing song+artist combinations for quick lookup
+    const existingSongs = new Set(
+      (existingRequests || []).map(r => 
+        `${(r.song_title || '').trim().toLowerCase()}-${(r.song_artist || '').trim().toLowerCase()}`
+      )
+    );
+
+    // Filter out requests that already exist in this round
+    const uniqueRequests = requests.filter(req => {
+      const songKey = `${req.song_title.trim().toLowerCase()}-${req.song_artist.trim().toLowerCase()}`;
+      return !existingSongs.has(songKey);
+    });
+
+    if (uniqueRequests.length === 0) {
+      return res.status(400).json({ 
+        error: 'All requested songs already exist in this bidding round',
+        skipped: requests.length - uniqueRequests.length
+      });
+    }
+
+    if (uniqueRequests.length < requests.length) {
+      console.log(`⚠️ Filtered out ${requests.length - uniqueRequests.length} duplicate request(s)`);
+    }
+
     // Create crowd_requests entries
     const now = new Date().toISOString();
-    const requestsToInsert = requests.map(req => ({
+    const requestsToInsert = uniqueRequests.map(req => ({
       organization_id: organizationId,
       request_type: 'song_request',
       song_title: req.song_title.trim(),

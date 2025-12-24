@@ -55,6 +55,7 @@ export default function RequestsPageSettings() {
   const [activeTab, setActiveTab] = useState<'cover' | 'social' | 'bidding'>('cover');
   const [biddingEnabled, setBiddingEnabled] = useState(false);
   const [minimumBid, setMinimumBid] = useState(500); // In cents
+  const [startingBid, setStartingBid] = useState(500); // In cents - default starting bid (never $0)
   
   const [coverPhotos, setCoverPhotos] = useState({
     requests_cover_photo_url: '',
@@ -131,6 +132,7 @@ export default function RequestsPageSettings() {
         // Set bidding settings
         setBiddingEnabled(org.requests_bidding_enabled || false);
         setMinimumBid(org.requests_bidding_minimum_bid || 500);
+        setStartingBid(org.requests_bidding_starting_bid || 500); // Default to $5.00 if not set
       }
     } catch (error) {
       console.error('Error:', error);
@@ -175,6 +177,7 @@ export default function RequestsPageSettings() {
           social_links: validSocialLinks,
           requests_bidding_enabled: biddingEnabled,
           requests_bidding_minimum_bid: minimumBid,
+          requests_bidding_starting_bid: startingBid,
         })
         .eq('id', organization.id);
 
@@ -663,6 +666,38 @@ export default function RequestsPageSettings() {
                       </label>
                     </div>
 
+                    {/* Starting Bid Amount */}
+                    {biddingEnabled && (
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Starting Bid Amount <span className="text-red-500">*</span>
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                          The default initial bid amount for new requests. This ensures bids never start at $0. (in dollars)
+                        </p>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="1"
+                            value={(startingBid / 100).toFixed(2)}
+                            onChange={(e) => {
+                              const value = Math.round(parseFloat(e.target.value) * 100) || 100;
+                              setStartingBid(Math.max(100, value)); // Minimum $1.00
+                              setError(null);
+                              setSuccess(false);
+                            }}
+                            className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                            placeholder="5.00"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Current starting bid: ${(startingBid / 100).toFixed(2)} (stored as {startingBid} cents)
+                        </p>
+                      </div>
+                    )}
+
                     {/* Minimum Bid Amount */}
                     {biddingEnabled && (
                       <div>
@@ -670,7 +705,7 @@ export default function RequestsPageSettings() {
                           Minimum Bid Amount
                         </label>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                          The minimum amount users must bid (in dollars)
+                          The minimum amount users must bid to beat the current winning bid (in dollars)
                         </p>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>

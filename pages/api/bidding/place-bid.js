@@ -90,24 +90,28 @@ export default async function handler(req, res) {
       ? Math.max(...allRequests.map(r => r.current_bid_amount || 0))
       : 0;
 
-    // 4. Get organization minimum bid setting
+    // 4. Get organization bidding settings (starting bid and minimum bid)
     const { data: org } = await supabase
       .from('organizations')
-      .select('requests_bidding_minimum_bid')
+      .select('requests_bidding_starting_bid, requests_bidding_minimum_bid')
       .eq('id', round.organization_id)
       .single();
 
     const minimumBidIncrement = 100; // $1.00 minimum increment
     const currentBid = request.current_bid_amount || 0;
-    const orgMinimumBid = org?.requests_bidding_minimum_bid || 500; // $5.00 default
+    const orgStartingBid = org?.requests_bidding_starting_bid || 500; // $5.00 default starting bid
+    const orgMinimumBid = org?.requests_bidding_minimum_bid || 500; // $5.00 default minimum bid
     
     // Calculate minimum bid:
+    // - If no bids exist yet, use the starting bid (never $0)
     // - If bidding on the current winning request, must be at least $1 more than its current bid
     // - If bidding on a different request, must beat the winning bid
     const isBiddingOnWinningRequest = currentBid === currentWinningBid && currentWinningBid > 0;
-    const minimumBid = isBiddingOnWinningRequest
-      ? currentBid + minimumBidIncrement // Must be at least $1 more than current bid on this request
-      : Math.max(currentWinningBid + minimumBidIncrement, orgMinimumBid); // Must beat the winning bid, minimum $5
+    const minimumBid = currentWinningBid === 0
+      ? orgStartingBid // Use starting bid when no bids exist (never $0)
+      : isBiddingOnWinningRequest
+        ? currentBid + minimumBidIncrement // Must be at least $1 more than current bid on this request
+        : Math.max(currentWinningBid + minimumBidIncrement, orgMinimumBid); // Must beat the winning bid
 
     if (bidAmount < minimumBid) {
       if (currentWinningBid > 0) {

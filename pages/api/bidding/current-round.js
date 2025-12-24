@@ -117,7 +117,7 @@ export default async function handler(req, res) {
       (requests || []).map(async (request) => {
         const { data: recentBids } = await supabase
           .from('bid_history')
-          .select('bid_amount, bidder_name, created_at')
+          .select('id, bid_amount, bidder_name, created_at, is_dummy')
           .eq('request_id', request.id)
           .eq('bidding_round_id', round.id)
           .order('created_at', { ascending: false })
@@ -130,7 +130,7 @@ export default async function handler(req, res) {
       })
     );
 
-    // 4. Get organization bidding dummy data settings
+    // 4. Get organization bidding settings (dummy data + starting bid)
     const { data: org, error: orgError } = await supabase
       .from('organizations')
       .select(`
@@ -138,7 +138,9 @@ export default async function handler(req, res) {
         bidding_dummy_data_aggressiveness,
         bidding_dummy_data_max_bid_multiplier,
         bidding_dummy_data_frequency_multiplier,
-        bidding_dummy_data_scale_with_real_activity
+        bidding_dummy_data_scale_with_real_activity,
+        requests_bidding_starting_bid,
+        requests_bidding_minimum_bid
       `)
       .eq('id', organizationId)
       .single();
@@ -159,6 +161,13 @@ export default async function handler(req, res) {
         status: round.status
       },
       requests: requestsWithBids,
+      biddingSettings: org ? {
+        startingBid: org.requests_bidding_starting_bid || 500, // Default $5.00
+        minimumBid: org.requests_bidding_minimum_bid || 500, // Default $5.00
+      } : {
+        startingBid: 500,
+        minimumBid: 500
+      },
       dummyDataSettings: org ? {
         enabled: org.bidding_dummy_data_enabled ?? true,
         aggressiveness: org.bidding_dummy_data_aggressiveness ?? 'medium',
