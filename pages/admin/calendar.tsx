@@ -27,14 +27,17 @@ import Link from 'next/link';
 
 interface Event {
   id: string;
-  event_name: string;
-  client_name: string;
+  event_name?: string; // For events table
+  title?: string; // For case_studies table
+  client_name?: string;
   event_date: string;
   start_time: string | null;
   end_time: string | null;
   venue_name: string | null;
-  status: string;
+  status?: string;
   event_type: string;
+  source: 'event' | 'case_study'; // Track which table it came from
+  slug?: string; // For case studies
 }
 
 export default function CalendarPage() {
@@ -78,23 +81,88 @@ export default function CalendarPage() {
       setLoading(true);
       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      const startDateStr = startOfMonth.toISOString().split('T')[0];
+      const endDateStr = endOfMonth.toISOString().split('T')[0];
 
-      let query = supabase
+      // Fetch from events table (projects/bookings)
+      let eventsQuery = supabase
         .from('events')
         .select('id, event_name, client_name, event_date, start_time, end_time, venue_name, status, event_type')
-        .gte('event_date', startOfMonth.toISOString().split('T')[0])
-        .lte('event_date', endOfMonth.toISOString().split('T')[0])
+        .gte('event_date', startDateStr)
+        .lte('event_date', endDateStr)
         .order('event_date', { ascending: true })
         .order('start_time', { ascending: true });
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        eventsQuery = eventsQuery.eq('status', statusFilter);
       }
 
-      const { data, error } = await query;
+      const { data: eventsData, error: eventsError } = await eventsQuery;
 
-      if (error) throw error;
-      setEvents(data || []);
+      if (eventsError) {
+        console.error('Error fetching events:', eventsError);
+      }
+
+      // Fetch from case_studies table (event pages)
+      // Only show published case studies, and don't filter by status (case studies don't have status)
+      let caseStudiesQuery = supabase
+        .from('case_studies')
+        .select('id, title, event_date, venue_name, event_type, slug')
+        .eq('is_published', true)
+        .gte('event_date', startDateStr)
+        .lte('event_date', endDateStr)
+        .order('event_date', { ascending: true });
+
+      const { data: caseStudiesData, error: caseStudiesError } = await caseStudiesQuery;
+
+      if (caseStudiesError) {
+        console.error('Error fetching case studies:', caseStudiesError);
+      }
+
+      // Normalize and combine both data sources
+      const normalizedEvents: Event[] = [];
+
+      // Add events from events table
+      if (eventsData) {
+        eventsData.forEach(event => {
+          normalizedEvents.push({
+            ...event,
+            source: 'event' as const
+          });
+        });
+      }
+
+      // Add events from case_studies table
+      if (caseStudiesData) {
+        caseStudiesData.forEach(caseStudy => {
+          normalizedEvents.push({
+            id: caseStudy.id,
+            title: caseStudy.title,
+            event_name: caseStudy.title, // Use title as event_name for display
+            event_date: caseStudy.event_date,
+            start_time: null, // Case studies don't have times
+            end_time: null,
+            venue_name: caseStudy.venue_name,
+            event_type: caseStudy.event_type || '',
+            status: 'published', // Case studies are always published if shown
+            source: 'case_study' as const,
+            slug: caseStudy.slug
+          });
+        });
+      }
+
+      // Sort combined events by date and time
+      normalizedEvents.sort((a, b) => {
+        const dateCompare = a.event_date.localeCompare(b.event_date);
+        if (dateCompare !== 0) return dateCompare;
+        // If same date, sort by start_time (nulls last)
+        if (!a.start_time && !b.start_time) return 0;
+        if (!a.start_time) return 1;
+        if (!b.start_time) return -1;
+        return a.start_time.localeCompare(b.start_time);
+      });
+
+      setEvents(normalizedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
     } finally {
@@ -317,25 +385,34 @@ export default function CalendarPage() {
                           {date.getDate()}
                         </div>
                         <div className="space-y-1">
-                          {dayEvents.slice(0, 3).map(event => (
-                            <Link
-                              key={event.id}
-                              href={`/admin/projects/${event.id}`}
-                              className="block"
-                            >
-                              <div className={`
-                                text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity
-                                ${getStatusColor(event.status)}
-                              `}>
-                                <div className="flex items-center gap-1">
-                                  {event.start_time && (
-                                    <Clock className="h-3 w-3" />
-                                  )}
-                                  <span className="truncate">{event.event_name || event.client_name}</span>
+                          {dayEvents.slice(0, 3).map(event => {
+                            const href = event.source === 'case_study' 
+                              ? `/events/${event.slug}` 
+                              : `/admin/projects/${event.id}`;
+                            const displayName = event.event_name || event.title || event.client_name || 'Untitled Event';
+                            
+                            return (
+                              <Link
+                                key={event.id}
+                                href={href}
+                                className="block"
+                                target={event.source === 'case_study' ? '_blank' : undefined}
+                              >
+                                <div className={`
+                                  text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity
+                                  ${getStatusColor(event.status || 'published')}
+                                  ${event.source === 'case_study' ? 'border-l-2 border-[#fcba00]' : ''}
+                                `}>
+                                  <div className="flex items-center gap-1">
+                                    {event.start_time && (
+                                      <Clock className="h-3 w-3" />
+                                    )}
+                                    <span className="truncate">{displayName}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            </Link>
-                          ))}
+                              </Link>
+                            );
+                          })}
                           {dayEvents.length > 3 && (
                             <div className="text-xs text-gray-500 dark:text-gray-400 px-1">
                               +{dayEvents.length - 3} more
@@ -361,53 +438,77 @@ export default function CalendarPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {events.map(event => (
-                <Link
-                  key={event.id}
-                  href={`/admin/projects/${event.id}`}
-                  className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-gray-900 dark:text-white truncate">
-                          {event.event_name || 'Untitled Event'}
-                        </h4>
-                        <Badge className={getStatusColor(event.status)}>
-                          {event.status}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                        <div className="flex items-center gap-1">
-                          <CalendarIcon className="h-4 w-4" />
-                          {new Date(event.event_date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
+              {events.map(event => {
+                const href = event.source === 'case_study' 
+                  ? `/events/${event.slug}` 
+                  : `/admin/projects/${event.id}`;
+                const displayName = event.event_name || event.title || 'Untitled Event';
+                const status = event.status || (event.source === 'case_study' ? 'published' : '');
+                
+                return (
+                  <Link
+                    key={event.id}
+                    href={href}
+                    className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    target={event.source === 'case_study' ? '_blank' : undefined}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-gray-900 dark:text-white truncate">
+                            {displayName}
+                          </h4>
+                          {status && (
+                            <Badge className={getStatusColor(status)}>
+                              {status}
+                            </Badge>
+                          )}
+                          {event.source === 'case_study' && (
+                            <Badge className="bg-[#fcba00]/20 text-[#fcba00] border border-[#fcba00]/30">
+                              Case Study
+                            </Badge>
+                          )}
                         </div>
-                        {event.start_time && (
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                           <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {formatTime(event.start_time)}
+                            <CalendarIcon className="h-4 w-4" />
+                            {new Date(event.event_date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
                           </div>
-                        )}
-                        {event.venue_name && (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" />
-                            <span className="truncate">{event.venue_name}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {event.client_name}
+                          {event.start_time && (
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {formatTime(event.start_time)}
+                            </div>
+                          )}
+                          {event.venue_name && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              <span className="truncate">{event.venue_name}</span>
+                            </div>
+                          )}
+                          {event.client_name && (
+                            <div className="flex items-center gap-1">
+                              <Users className="h-4 w-4" />
+                              {event.client_name}
+                            </div>
+                          )}
+                          {event.event_type && (
+                            <div className="flex items-center gap-1">
+                              <Music className="h-4 w-4" />
+                              {event.event_type}
+                            </div>
+                          )}
                         </div>
                       </div>
+                      <Music className="h-5 w-5 text-gray-400 flex-shrink-0" />
                     </div>
-                    <Music className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

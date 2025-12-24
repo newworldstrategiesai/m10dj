@@ -3055,11 +3055,7 @@ export default function CrowdRequestsPage() {
       <div className="space-y-6 px-4 lg:px-6">
         {/* Prominent Live Listen Button */}
         <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 -mx-4 lg:-mx-6 px-4 lg:px-6 py-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Crowd Requests</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage song requests and shoutouts from events</p>
-            </div>
+          <div className="flex items-center justify-end">
             <Button
               onClick={() => {
                 // Get the most common event code from requests, or leave empty
@@ -3118,23 +3114,8 @@ export default function CrowdRequestsPage() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
               Crowd Requests
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">
-              Manage song requests and shoutouts from events
-            </p>
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
-            <Button
-              onClick={() => {
-                setShowSettings(true);
-                setSettingsTab('payment');
-              }}
-              variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
-            >
-              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Payment Settings</span>
-              <span className="sm:hidden">Settings</span>
-            </Button>
             <Button
               onClick={() => router.push('/admin/qr-scans')}
               variant="outline"
