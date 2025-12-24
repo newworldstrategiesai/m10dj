@@ -1083,6 +1083,9 @@ export default function CrowdRequestsPage() {
             // Check if it's a table not found error (500) or permission issue
             if (songsError.code === 'PGRST116' || songsError.message?.includes('relation') || songsError.message?.includes('does not exist')) {
               console.warn('songs_played table not found or not accessible (non-critical):', songsError.message);
+            } else if (songsError.message?.includes('infinite recursion') || songsError.message?.includes('policy')) {
+              // Handle infinite recursion in RLS policies gracefully
+              console.warn('songs_played table has policy recursion issue (non-critical):', songsError.message);
             } else {
               console.warn('Error fetching songs_played data (non-critical):', songsError);
             }

@@ -100,12 +100,43 @@ export default async function handler(req, res) {
           }),
         });
 
-        const serverData = await serverResponse.json();
+        // Check if response is JSON before parsing
+        const contentType = serverResponse.headers.get('content-type');
+        let serverData;
+        
+        if (contentType && contentType.includes('application/json')) {
+          serverData = await serverResponse.json();
+        } else {
+          // Response is not JSON (likely HTML error page)
+          const textResponse = await serverResponse.text();
+          console.error('Download server returned non-JSON response:', {
+            status: serverResponse.status,
+            statusText: serverResponse.statusText,
+            contentType,
+            preview: textResponse.substring(0, 200)
+          });
+          
+          result = {
+            success: false,
+            error: `Download server error (${serverResponse.status}): ${serverResponse.statusText || 'Invalid response format'}`,
+          };
+          
+          // Update status to failed
+          await supabase
+            .from('crowd_requests')
+            .update({
+              audio_download_status: 'failed',
+              audio_download_error: result.error,
+            })
+            .eq('id', requestId);
+          
+          return res.status(500).json(result);
+        }
 
         if (!serverResponse.ok) {
           result = {
             success: false,
-            error: serverData.error || 'Download server error',
+            error: serverData.error || `Download server error (${serverResponse.status})`,
           };
         } else {
           result = {
