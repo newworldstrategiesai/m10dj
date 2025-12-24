@@ -30,14 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { roomName, participantName, participantIdentity } = body;
-
-    if (!roomName) {
-      return NextResponse.json(
-        { error: 'roomName is required' },
-        { status: 400 }
-      );
-    }
+    const { roomName, participantName, participantIdentity, roomType } = body;
 
     // Get authenticated user
     const supabase = await createClient();
@@ -47,6 +40,61 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Handle admin-assistant room type (no roomName required, auto-generated)
+    if (roomType === 'admin-assistant') {
+      const apiKey = process.env.LIVEKIT_API_KEY;
+      const apiSecret = process.env.LIVEKIT_API_SECRET;
+
+      if (!apiKey || !apiSecret) {
+        return NextResponse.json(
+          { error: 'LiveKit not configured' },
+          { status: 500 }
+        );
+      }
+
+      // Generate room name if not provided
+      const assistantRoomName = roomName || `assistant-${user.id}`;
+
+      // Set token expiry to 30 minutes for assistant rooms
+      const at = new AccessToken(apiKey, apiSecret, {
+        identity: participantIdentity || user.id,
+        name: participantName || user.email || 'Admin',
+        ttl: '30m', // 30-minute expiry for assistant rooms
+      });
+
+      // Grant permissions for audio publishing/subscribing
+      at.addGrant({
+        room: assistantRoomName,
+        roomJoin: true,
+        canPublish: true,  // Audio only
+        canSubscribe: true,
+        canPublishData: true,
+        roomCreate: true, // Allow creating the room if it doesn't exist
+      });
+
+      const token = await at.toJwt();
+
+      return NextResponse.json({
+        token,
+        url: process.env.LIVEKIT_URL,
+        roomName: assistantRoomName,
+      }, {
+        headers: {
+          'X-RateLimit-Limit': '10',
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-RateLimit-Reset': rateLimit.resetAt.toString(),
+        }
+      });
+    }
+
+    // Original logic for live stream rooms
+    if (!roomName) {
+      return NextResponse.json(
+        { error: 'roomName is required' },
+        { status: 400 }
       );
     }
 

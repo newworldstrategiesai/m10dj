@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageCircle, CheckCircle2, Zap, Loader, X, Minimize2, Maximize2 } from 'lucide-react';
+import { Send, MessageCircle, CheckCircle2, Zap, Loader, X, Minimize2, Maximize2, Mic, MicOff } from 'lucide-react';
+import { VoiceAssistantWidget } from './VoiceAssistantWidget';
 
 /**
  * Chat Window Component
@@ -10,6 +11,12 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showVoiceWidget, setShowVoiceWidget] = useState(false);
+  const [voiceToken, setVoiceToken] = useState(null);
+  const [voiceServerUrl, setVoiceServerUrl] = useState(null);
+  const [voiceRoomName, setVoiceRoomName] = useState(null);
+  const [isConnectingVoice, setIsConnectingVoice] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const conversationHistoryRef = useRef([]);
@@ -25,6 +32,18 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
 
   // State for info banner visibility
   const [showInfoBanner, setShowInfoBanner] = useState(true);
+
+  // Get or create session ID for voice conversations
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      let storedSessionId = localStorage.getItem('voice_session_id');
+      if (!storedSessionId) {
+        storedSessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('voice_session_id', storedSessionId);
+      }
+      setSessionId(storedSessionId);
+    }
+  }, []);
 
   // Initialize chat with AI greeting
   useEffect(() => {
@@ -433,6 +452,33 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
             </button>
           </div>
         </form>
+
+        {/* Voice Assistant Widget */}
+        {showVoiceWidget && voiceToken && (
+          <VoiceAssistantWidget
+            token={voiceToken}
+            serverUrl={voiceServerUrl}
+            roomName={voiceRoomName}
+            sessionId={sessionId}
+            formData={formData}
+            submissionId={submissionId}
+            onClose={() => {
+              setShowVoiceWidget(false);
+              setVoiceToken(null);
+            }}
+            onTranscription={(text) => {
+              setInputValue(text);
+            }}
+            onResponse={(response) => {
+              setMessages(prev => [...prev, {
+                id: prev.length + 1,
+                type: 'bot',
+                text: response,
+                timestamp: new Date()
+              }]);
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -638,6 +684,43 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
             className="flex-1 px-5 py-3 text-base rounded-full border-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           />
           <button
+            type="button"
+            onClick={async () => {
+              if (!sessionId) return;
+              setIsConnectingVoice(true);
+              try {
+                const response = await fetch('/api/livekit/public-token', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    sessionId: sessionId,
+                    participantName: formData.name || 'Guest',
+                  }),
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  setVoiceToken(data.token);
+                  setVoiceServerUrl(data.url);
+                  setVoiceRoomName(data.roomName);
+                  setShowVoiceWidget(true);
+                }
+              } catch (error) {
+                console.error('Error connecting voice:', error);
+              } finally {
+                setIsConnectingVoice(false);
+              }
+            }}
+            disabled={isConnectingVoice || !sessionId || showVoiceWidget}
+            className="flex-shrink-0 w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg"
+            title="Use Voice Assistant"
+          >
+            {isConnectingVoice ? (
+              <Loader className="w-5 h-5 animate-spin" />
+            ) : (
+              <Mic className="w-5 h-5" />
+            )}
+          </button>
+          <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
             className="flex-shrink-0 w-12 h-12 bg-brand text-white rounded-full flex items-center justify-center hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg"
@@ -650,9 +733,36 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
           </button>
         </form>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
-          💬 We&apos;re here to help! Ask us anything.
+          💬 We&apos;re here to help! Ask us anything. 🎤 Click the microphone to use voice.
         </p>
       </div>
+
+      {/* Voice Assistant Widget */}
+      {showVoiceWidget && voiceToken && (
+        <VoiceAssistantWidget
+          token={voiceToken}
+          serverUrl={voiceServerUrl}
+          roomName={voiceRoomName}
+          sessionId={sessionId}
+          formData={formData}
+          submissionId={submissionId}
+          onClose={() => {
+            setShowVoiceWidget(false);
+            setVoiceToken(null);
+          }}
+          onTranscription={(text) => {
+            setInputValue(text);
+          }}
+          onResponse={(response) => {
+            setMessages(prev => [...prev, {
+              id: prev.length + 1,
+              type: 'bot',
+              text: response,
+              timestamp: new Date()
+            }]);
+          }}
+        />
+      )}
 
       {/* Quick Actions */}
       <div className="px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">

@@ -1342,6 +1342,28 @@ export default async function handler(req, res) {
       serverIdempotency.markProcessed(idempotencyKey, successResponse);
     }
 
+    // Send real-time notification to admins (non-blocking)
+    if (criticalOperations.contactRecord.id) {
+      try {
+        const { broadcastToAllAdmins } = await import('@/utils/livekit/notifications');
+        await broadcastToAllAdmins({
+          type: 'new_lead',
+          title: 'New Lead Received',
+          message: `${sanitizedData.name} - ${sanitizedData.eventType || 'Event'}`,
+          data: {
+            contactId: criticalOperations.contactRecord.id,
+            quoteId: quoteId,
+            eventType: sanitizedData.eventType,
+            eventDate: sanitizedData.eventDate,
+          },
+          priority: 'high',
+        });
+      } catch (notifError) {
+        // Don't fail the request if notification fails
+        console.error('Error sending notification:', notifError);
+      }
+    }
+
     res.status(200).json(successResponse);
 
   } catch (error) {

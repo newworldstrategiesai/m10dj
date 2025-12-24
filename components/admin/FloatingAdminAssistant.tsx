@@ -29,6 +29,8 @@ import {
   IconChevronUp,
   IconRefresh,
   IconArrowRight,
+  IconMicrophone,
+  IconMicrophoneOff,
 } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,6 +55,7 @@ import { parseLeadThread, ParsedLeadThread } from '@/utils/lead-thread-parser';
 import { parseEmailContent, ParsedEmailData } from '@/utils/email-parser';
 import { MessageContentRenderer } from './MessageContentRenderer';
 import { isAdminEmail } from '@/utils/auth-helpers/admin-roles';
+import { VoiceAssistant } from './VoiceAssistant';
 
 // Admin emails removed - now using centralized admin roles system
 // See: utils/auth-helpers/admin-roles.ts
@@ -89,6 +92,7 @@ export default function FloatingAdminAssistant() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<any[]>([]);
+  const [voiceMode, setVoiceMode] = useState(false);
   
   // Import state
   const [threadText, setThreadText] = useState('');
@@ -629,6 +633,20 @@ export default function FloatingAdminAssistant() {
     await sendMessage(input);
   };
 
+  // Handle voice transcription
+  const handleVoiceTranscription = useCallback(async (text: string) => {
+    if (!text.trim() || isLoading) return;
+    
+    // Send transcribed text as a message
+    await sendMessage(text);
+    
+    // Show feedback
+    toast({
+      title: "Voice command received",
+      description: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+    });
+  }, [isLoading, sendMessage, toast]);
+
   // Import handlers
   const handleImport = useCallback(async () => {
     if (!threadText.trim()) return;
@@ -1117,6 +1135,44 @@ export default function FloatingAdminAssistant() {
                   {/* Input Area */}
                   <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 sm:px-4 py-3 sm:py-4">
                     <div className="max-w-3xl mx-auto">
+                      {/* Voice Assistant Toggle */}
+                      {user && (
+                        <div className="mb-2 flex items-center justify-center gap-2">
+                          <Button
+                            onClick={() => setVoiceMode(!voiceMode)}
+                            variant={voiceMode ? 'default' : 'outline'}
+                            size="sm"
+                            className="text-xs"
+                          >
+                            {voiceMode ? (
+                              <>
+                                <IconMicrophone className="h-3 w-3 mr-1" />
+                                Voice Active
+                              </>
+                            ) : (
+                              <>
+                                <IconMicrophoneOff className="h-3 w-3 mr-1" />
+                                Use Voice
+                              </>
+                            )}
+                          </Button>
+                          {voiceMode && (
+                            <VoiceAssistant
+                              userId={user.id}
+                              userEmail={user.email}
+                              onTranscription={handleVoiceTranscription}
+                              onError={(error) => {
+                                toast({
+                                  title: "Voice Error",
+                                  description: error.message,
+                                  variant: "destructive",
+                                });
+                              }}
+                            />
+                          )}
+                        </div>
+                      )}
+                      
                       <div className="flex gap-2 sm:gap-3 items-end">
                         <div className="flex-1 relative">
                           <Textarea
@@ -1144,6 +1200,7 @@ export default function FloatingAdminAssistant() {
                       </div>
                       <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 sm:mt-2 text-center hidden sm:block">
                         Press Enter to send, Shift+Enter for new line
+                        {voiceMode && ' • Voice mode active - speak your commands'}
                       </p>
                     </div>
                   </div>

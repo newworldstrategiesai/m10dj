@@ -71,6 +71,18 @@ export async function executeFunction(functionName, args, supabaseClient, userId
         return await getSchedulingLink(args, supabase);
 
       // ============================================
+      // PUBLIC VOICE ASSISTANT FUNCTIONS
+      // ============================================
+      case 'schedule_consultation':
+        return await scheduleConsultation(args, supabase);
+
+      case 'request_quote':
+        return await requestQuote(args, supabase);
+
+      case 'get_music_recommendations':
+        return await getMusicRecommendations(args);
+
+      // ============================================
       // CONTRACT MANAGEMENT
       // ============================================
       case 'get_contract':
@@ -105,6 +117,9 @@ export async function executeFunction(functionName, args, supabaseClient, userId
 
       case 'get_upcoming_events':
         return await getUpcomingEvents(args, supabase);
+
+      case 'initiate_outbound_call':
+        return await initiateOutboundCall(args, supabase, userId);
 
       case 'get_revenue_stats':
         return await getRevenueStats(args, supabase);
@@ -2120,6 +2135,67 @@ async function getUpcomingEvents(args, supabase) {
   };
 }
 
+async function initiateOutboundCall(args, supabase, userId) {
+  const { contact_id, call_type = 'follow_up', message } = args;
+
+  if (!contact_id) {
+    throw new Error('contact_id is required');
+  }
+
+  // Get contact details
+  const { data: contact, error: contactError } = await supabase
+    .from('contacts')
+    .select('*')
+    .eq('id', contact_id)
+    .single();
+
+  if (contactError || !contact) {
+    throw new Error(`Contact not found: ${contact_id}`);
+  }
+
+  if (!contact.phone) {
+    throw new Error('Contact does not have a phone number');
+  }
+
+  // Call the outbound call API
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  
+  try {
+    // Note: This requires admin authentication
+    // We'll use a service-to-service call
+    const response = await fetch(`${baseUrl}/api/livekit/outbound-call`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // In production, you'd include the admin's session token
+        // For now, the API will handle auth internally
+      },
+      body: JSON.stringify({
+        contactId: contact_id,
+        phoneNumber: contact.phone,
+        callType: call_type,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || 'Failed to initiate call');
+    }
+
+    const data = await response.json();
+
+    return {
+      success: true,
+      message: `Initiating ${call_type} call to ${contact.first_name} ${contact.last_name} at ${contact.phone}`,
+      roomName: data.roomName,
+      status: data.status,
+      note: data.note || 'Call room created. AI will handle the conversation when the call connects.',
+    };
+  } catch (error) {
+    throw new Error(`Failed to initiate call: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
 async function getRevenueStats(args, supabase) {
   const { month, year, date_range = 'month', start_date, end_date } = args;
 
@@ -2777,6 +2853,181 @@ async function getCommunicationHistory(args, supabase) {
     return {
       success: false,
       error: `Failed to fetch communication history: ${error.message}`
+    };
+  }
+}
+
+// ============================================
+// PUBLIC VOICE ASSISTANT FUNCTIONS
+// ============================================
+
+/**
+ * Schedule a consultation for a customer
+ */
+async function scheduleConsultation(args, supabase) {
+  try {
+    const { contact_id, email, name } = args;
+    
+    if (!email || !name) {
+      return {
+        success: false,
+        error: 'Email and name are required'
+      };
+    }
+
+    // Build schedule link with pre-filled data
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
+    const scheduleParams = new URLSearchParams();
+    scheduleParams.set('name', name);
+    scheduleParams.set('email', email);
+    if (contact_id) {
+      scheduleParams.set('contactId', contact_id);
+    }
+
+    const scheduleLink = `${baseUrl}/schedule?${scheduleParams.toString()}`;
+
+    return {
+      success: true,
+      message: `I've prepared a consultation scheduling link for you. You can book a time that works for you at: ${scheduleLink}`,
+      link: scheduleLink,
+      contact_id: contact_id || null
+    };
+  } catch (error) {
+    console.error('Error scheduling consultation:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to schedule consultation'
+    };
+  }
+}
+
+/**
+ * Request a quote for an event
+ */
+async function requestQuote(args, supabase) {
+  try {
+    const { contact_id, event_type, event_date, guest_count, notes } = args;
+
+    if (!event_type) {
+      return {
+        success: false,
+        error: 'Event type is required'
+      };
+    }
+
+    // If contact_id exists, create a quote request
+    if (contact_id) {
+      // Get contact details
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('id', contact_id)
+        .single();
+
+      if (contact) {
+        // Create a project/event for this quote request
+        const { data: project } = await supabase
+          .from('events')
+          .insert({
+            contact_id: contact_id,
+            event_type: event_type,
+            event_date: event_date || null,
+            guest_count: guest_count || null,
+            notes: notes || null,
+            status: 'quote_requested',
+          })
+          .select()
+          .single();
+
+        return {
+          success: true,
+          message: `I've submitted your quote request for a ${event_type} event. Our team will prepare a custom quote and get back to you soon!`,
+          project_id: project?.id || null,
+          contact_id: contact_id
+        };
+      }
+    }
+
+    // If no contact_id, just acknowledge the request
+    return {
+      success: true,
+      message: `I've noted your interest in a ${event_type} event. To get a custom quote, I'll need a bit more information. Would you like to provide your contact details?`,
+      event_type: event_type
+    };
+  } catch (error) {
+    console.error('Error requesting quote:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to request quote'
+    };
+  }
+}
+
+/**
+ * Get music recommendations based on event type and preferences
+ */
+async function getMusicRecommendations(args) {
+  try {
+    const { event_type, mood, genre, era } = args;
+
+    // Music recommendations database (you can expand this)
+    const recommendations = {
+      wedding: {
+        upbeat: ['Celebration - Kool & The Gang', 'I Wanna Dance with Somebody - Whitney Houston', 'Uptown Funk - Bruno Mars'],
+        romantic: ['At Last - Etta James', 'Perfect - Ed Sheeran', 'All of Me - John Legend'],
+        classic: ['Can\'t Help Myself - Four Tops', 'My Girl - The Temptations', 'Unchained Melody - Righteous Brothers'],
+      },
+      corporate: {
+        modern: ['Blinding Lights - The Weeknd', 'Levitating - Dua Lipa', 'Good as Hell - Lizzo'],
+        classic: ['September - Earth, Wind & Fire', 'Dancing Queen - ABBA', 'I Will Survive - Gloria Gaynor'],
+      },
+      school_dance: {
+        energetic: ['Old Town Road - Lil Nas X', 'Watermelon Sugar - Harry Styles', 'Savage - Megan Thee Stallion'],
+        classic: ['Cha Cha Slide - DJ Casper', 'Cupid Shuffle - Cupid', 'Electric Slide - Marcia Griffiths'],
+      },
+    };
+
+    let suggestions = [];
+
+    if (event_type && recommendations[event_type]) {
+      if (mood && recommendations[event_type][mood]) {
+        suggestions = recommendations[event_type][mood];
+      } else {
+        // Get all suggestions for this event type
+        Object.values(recommendations[event_type]).forEach((songs) => {
+          suggestions = suggestions.concat(songs);
+        });
+      }
+    }
+
+    // Filter by genre or era if specified
+    if (genre || era) {
+      // In a real implementation, you'd filter from a larger database
+      suggestions = suggestions.slice(0, 10); // Limit results
+    }
+
+    if (suggestions.length === 0) {
+      suggestions = [
+        'Celebration - Kool & The Gang',
+        'I Wanna Dance with Somebody - Whitney Houston',
+        'Uptown Funk - Bruno Mars',
+        'Blinding Lights - The Weeknd',
+        'September - Earth, Wind & Fire',
+      ];
+    }
+
+    return {
+      success: true,
+      message: `Here are some great song recommendations for your ${event_type || 'event'}: ${suggestions.slice(0, 5).join(', ')}. Would you like more suggestions or to discuss your music preferences in detail?`,
+      recommendations: suggestions.slice(0, 10),
+      event_type: event_type || null,
+      mood: mood || null,
+    };
+  } catch (error) {
+    console.error('Error getting music recommendations:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to get music recommendations'
     };
   }
 }

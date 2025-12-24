@@ -58,7 +58,21 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        console.log(`Unhandled LiveKit event: ${event.event}`);
+        // Handle transcription events (not in WebhookEventNames type yet)
+        const eventType = (event as any).event;
+        if (eventType === 'transcription_received' || eventType === 'transcription_final') {
+          const transcription = (event as any).transcription;
+          if (transcription && event.room) {
+            await handleCallTranscription(
+              event.room.name,
+              transcription.text || '',
+              eventType === 'transcription_final'
+            );
+          }
+        } else {
+          console.log(`Unhandled LiveKit event: ${eventType || event.event}`);
+        }
+        break;
     }
 
     return NextResponse.json({ received: true });
@@ -81,6 +95,68 @@ async function updateStreamStatus(roomName: string, isLive: boolean) {
     .from('live_streams') as any)
     .update({ is_live: isLive, updated_at: new Date().toISOString() })
     .eq('room_name', roomName);
+}
+
+async function handleCallTranscription(
+  roomName: string,
+  text: string,
+  isFinal: boolean
+) {
+  // Only process call rooms (not assistant rooms)
+  if (!roomName.startsWith('call-')) {
+    return;
+  }
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  try {
+    // Get call record
+    const { data: call, error: callError } = await supabase
+      .from('voice_calls')
+      .select('*')
+      .eq('room_name', roomName)
+      .single();
+
+    if (callError || !call) {
+      console.log(`Call record not found for room: ${roomName}`);
+      return;
+    }
+
+    // Append to transcript
+    const currentTranscript = call.transcript || '';
+    const updatedTranscript = isFinal 
+      ? currentTranscript + ' ' + text
+      : currentTranscript; // Don't update partial transcripts in DB
+
+    if (isFinal && text.trim()) {
+      await supabase
+        .from('voice_calls')
+        .update({
+          transcript: updatedTranscript.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('room_name', roomName);
+
+      // If call is completed and we have a contact_id, analyze the transcript
+      if (call.contact_id && call.status === 'completed') {
+        const { analyzeCallTranscript } = await import('@/utils/admin-assistant/call-analyzer');
+        await analyzeCallTranscript(
+          call.contact_id,
+          updatedTranscript.trim(),
+          {
+            duration: call.duration_seconds,
+            callType: call.call_type,
+            clientPhone: call.client_phone,
+          }
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error handling call transcription:', error);
+  }
 }
 
 async function broadcastViewerCount(roomName: string) {

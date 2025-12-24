@@ -5,6 +5,87 @@
  * using OpenAI Function Calling format
  */
 
+/**
+ * Get public-safe function definitions for website voice assistant
+ */
+export function getPublicFunctionDefinitions() {
+  return [
+    {
+      name: 'create_contact',
+      description: 'Create a new contact/lead with personal information and event details. Use this when a customer provides their information.',
+      parameters: {
+        type: 'object',
+        properties: {
+          first_name: { type: 'string', description: 'First name' },
+          last_name: { type: 'string', description: 'Last name' },
+          email_address: { type: 'string', description: 'Email address' },
+          phone: { type: 'string', description: 'Phone number' },
+          event_type: {
+            type: 'string',
+            enum: ['wedding', 'corporate', 'school_dance', 'holiday_party', 'private_party', 'other']
+          },
+          event_date: { type: 'string', description: 'Event date in YYYY-MM-DD format' },
+          venue_name: { type: 'string', description: 'Venue name' },
+          venue_address: { type: 'string', description: 'Venue address' },
+          guest_count: { type: 'number', description: 'Number of guests' },
+          notes: { type: 'string', description: 'Additional notes' },
+        },
+        required: ['first_name', 'email_address']
+      }
+    },
+    {
+      name: 'schedule_consultation',
+      description: 'Schedule a free consultation for a customer. Returns a link to the scheduling page.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contact_id: { type: 'string', description: 'Contact ID if available' },
+          email: { type: 'string', description: 'Customer email' },
+          name: { type: 'string', description: 'Customer name' },
+        },
+        required: ['email', 'name']
+      }
+    },
+    {
+      name: 'request_quote',
+      description: 'Request a quote for an event. Creates a quote request that will be processed by the team.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contact_id: { type: 'string', description: 'Contact ID if available' },
+          event_type: {
+            type: 'string',
+            enum: ['wedding', 'corporate', 'school_dance', 'holiday_party', 'private_party', 'other']
+          },
+          event_date: { type: 'string', description: 'Event date' },
+          guest_count: { type: 'number', description: 'Number of guests' },
+          notes: { type: 'string', description: 'Special requests or details' },
+        },
+        required: ['event_type']
+      }
+    },
+    {
+      name: 'get_music_recommendations',
+      description: 'Get music recommendations based on event type, preferences, or mood. Helps customers discover music for their event.',
+      parameters: {
+        type: 'object',
+        properties: {
+          event_type: {
+            type: 'string',
+            enum: ['wedding', 'corporate', 'school_dance', 'holiday_party', 'private_party', 'other']
+          },
+          mood: {
+            type: 'string',
+            enum: ['upbeat', 'romantic', 'energetic', 'relaxed', 'classic', 'modern']
+          },
+          genre: { type: 'string', description: 'Preferred music genre' },
+          era: { type: 'string', description: 'Preferred music era (e.g., 80s, 90s, 2000s)' },
+        }
+      }
+    },
+  ];
+}
+
 export function getFunctionDefinitions() {
   return [
     // ============================================
@@ -676,6 +757,30 @@ export function getFunctionDefinitions() {
             default: 50
           }
         }
+      }
+    },
+    {
+      name: 'initiate_outbound_call',
+      description: 'Initiate an AI-powered outbound call to a contact. Use this when user says "call [contact]", "give them a call", "reach out to [name]", "call [name] about [topic]". The AI will have a natural conversation with the contact.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contact_id: {
+            type: 'string',
+            description: 'Contact ID to call. ALWAYS use contact_id from previous function results (get_contact_details, search_contacts, etc.) - do NOT search again.'
+          },
+          call_type: {
+            type: 'string',
+            description: 'Type of call',
+            enum: ['follow_up', 'qualification', 'reminder', 'confirmation', 'payment_reminder'],
+            default: 'follow_up'
+          },
+          message: {
+            type: 'string',
+            description: 'Optional: Specific message or topic for the call (e.g., "following up on their quote", "confirming event details")'
+          }
+        },
+        required: ['contact_id']
       }
     },
     {

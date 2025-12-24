@@ -1,53 +1,67 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useToast } from '@/components/ui/Toasts/use-toast';
+import { useDataChannel } from '@livekit/components-react';
 
-interface NewSubmission {
+export interface NewSubmission {
   id: string;
   name: string;
   email: string;
   phone?: string;
-  event_type: string;
-  event_date?: string;
+  eventType?: string;
+  eventDate?: string;
   location?: string;
-  message?: string;
   created_at: string;
 }
 
-interface UseAdminNotificationsReturn {
-  checkForNewSubmissions: () => Promise<void>;
+export interface UseAdminNotificationsReturn {
   newSubmissionsCount: number;
   isChecking: boolean;
+  checkForNewSubmissions: () => Promise<void>;
 }
 
 export function useAdminNotifications(): UseAdminNotificationsReturn {
   const [newSubmissionsCount, setNewSubmissionsCount] = useState(0);
   const [isChecking, setIsChecking] = useState(false);
   const { toast } = useToast();
+  
+  // LiveKit data channel for real-time notifications (if in voice assistant room)
+  const { message } = useDataChannel('notifications');
 
-  const getLastLoginTime = (): string | null => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('admin_last_login');
-    }
-    return null;
-  };
+  // Listen to LiveKit notifications
+  useEffect(() => {
+    if (message) {
+      try {
+        const data = JSON.parse(new TextDecoder().decode(message.payload));
+        if (data.type === 'notification') {
+          // Show toast notification
+          toast({
+            title: data.title,
+            description: data.message,
+            duration: 5000,
+          });
 
-  const setLastLoginTime = (timestamp: string): void => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('admin_last_login', timestamp);
+          // Update count if it's a new lead
+          if (data.type === 'new_lead') {
+            setNewSubmissionsCount(prev => prev + 1);
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing notification:', error);
+      }
     }
-  };
+  }, [message, toast]);
 
   const formatSubmissionForToast = (submission: NewSubmission): string => {
-    const parts = [];
-    if (submission.event_type) parts.push(submission.event_type);
-    if (submission.event_date) parts.push(new Date(submission.event_date).toLocaleDateString());
+    const parts: string[] = [];
+    if (submission.eventType) parts.push(submission.eventType);
+    if (submission.eventDate) parts.push(new Date(submission.eventDate).toLocaleDateString());
     if (submission.location) parts.push(submission.location);
     
     return parts.length > 0 ? parts.join(' • ') : 'New inquiry';
   };
 
-  const checkForNewSubmissions = async (): Promise<void> => {
+  const checkForNewSubmissions = useCallback(async (): Promise<void> => {
     setIsChecking(true);
     
     try {
@@ -111,11 +125,32 @@ export function useAdminNotifications(): UseAdminNotificationsReturn {
     } finally {
       setIsChecking(false);
     }
-  };
+  }, [toast]);
+
+  // Check on mount and set up polling
+  useEffect(() => {
+    checkForNewSubmissions();
+    
+    // Poll every 30 seconds (reduced from 5 minutes since we have LiveKit now)
+    const interval = setInterval(checkForNewSubmissions, 30000);
+    
+    return () => clearInterval(interval);
+  }, [checkForNewSubmissions]);
 
   return {
-    checkForNewSubmissions,
     newSubmissionsCount,
-    isChecking
+    isChecking,
+    checkForNewSubmissions,
   };
+}
+
+// Helper functions for localStorage
+function getLastLoginTime(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('admin_last_login');
+}
+
+function setLastLoginTime(isoString: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('admin_last_login', isoString);
 }
