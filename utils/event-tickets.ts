@@ -281,6 +281,10 @@ export async function updateTicketPayment(
   paymentMethod?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    if (!supabase) {
+      return { success: false, error: 'Database connection not configured' };
+    }
+    
     const updateData: any = {
       payment_status: paymentStatus,
       updated_at: new Date().toISOString()
@@ -315,6 +319,10 @@ export async function getTicket(
   byQRCode: boolean = false
 ): Promise<{ success: boolean; ticket?: Ticket; error?: string }> {
   try {
+    if (!supabase) {
+      return { success: false, error: 'Database connection not configured' };
+    }
+    
     const query = byQRCode
       ? supabase
           .from('event_tickets')
@@ -363,6 +371,10 @@ export async function checkInTicket(
 
     if (!['paid', 'cash', 'card_at_door'].includes(ticket.payment_status)) {
       return { success: false, error: 'Ticket payment not confirmed' };
+    }
+
+    if (!supabase) {
+      return { success: false, error: 'Database connection not configured' };
     }
 
     // Check in the ticket
