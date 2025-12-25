@@ -71,7 +71,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "libphonenumber-js": "^1.12.10",
-    "@livekit/agents": "^0.9.0",
+    "@livekit/agents": "^1.1.0",
     "livekit-server-sdk": "^2.5.0",
     "lucide-react": "^0.330.0",
     "next": "13.5.6",
