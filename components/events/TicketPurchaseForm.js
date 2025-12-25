@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { Loader2, Ticket, AlertCircle } from 'lucide-react';
 
@@ -46,10 +48,17 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        // If response is not JSON, it's likely a server error
+        throw new Error('Server error. Please try again or contact support.');
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create ticket purchase');
+        const errorMessage = data?.error || data?.message || `Server error (${response.status})`;
+        throw new Error(errorMessage);
       }
 
       // Redirect to Stripe Checkout
@@ -57,9 +66,16 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
         window.location.href = data.url;
       } else if (onSuccess) {
         onSuccess(data);
+      } else {
+        throw new Error('No checkout URL received. Please try again.');
       }
     } catch (err) {
-      setError(err.message);
+      // Handle network errors
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError(err.message || 'An unexpected error occurred. Please try again.');
+      }
       setLoading(false);
     }
   };
@@ -67,11 +83,12 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start">
+        <div className="bg-red-50 dark:bg-red-900/30 border-2 border-red-300 dark:border-red-600 rounded-lg p-4 flex items-start shadow-lg">
           <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-3 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="text-red-800 dark:text-red-200 font-semibold mb-1">Error</h3>
-            <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+          <div className="flex-1">
+            <h3 className="text-red-800 dark:text-red-100 font-semibold mb-1 text-base">Purchase Error</h3>
+            <p className="text-red-700 dark:text-red-200 text-sm font-medium">{error}</p>
+            <p className="text-red-600 dark:text-red-300 text-xs mt-2">Please check your information and try again, or contact support if the problem persists.</p>
           </div>
         </div>
       )}
@@ -87,7 +104,7 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
             const value = e.target.value;
             setFormData(prev => ({ ...prev, ticketType: value }));
           }}
-          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-black text-gray-900 dark:text-white"
           required
         >
           {Object.entries(ticketTypes).map(([key, type]) => (
@@ -114,7 +131,7 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
             onClick={() => {
               setFormData(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1) }));
             }}
-            className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900 transition-colors text-gray-900 dark:text-white"
+            className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-black transition-colors text-gray-900 dark:text-white"
             disabled={formData.quantity <= 1}
           >
             −
@@ -136,7 +153,7 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
             onClick={() => {
               setFormData(prev => ({ ...prev, quantity: Math.min(10, prev.quantity + 1) }));
             }}
-            className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900 transition-colors text-gray-900 dark:text-white"
+            className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-black transition-colors text-gray-900 dark:text-white"
             disabled={formData.quantity >= 10}
           >
             +
@@ -145,7 +162,7 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
       </div>
 
       {/* Total Price */}
-      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+      <div className="bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg p-4">
         <div className="flex justify-between items-center">
           <span className="text-gray-600 dark:text-gray-400">Total:</span>
           <span className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -167,7 +184,7 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
               const value = e.target.value;
               setFormData(prev => ({ ...prev, purchaserName: value }));
             }}
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-black text-gray-900 dark:text-white"
             placeholder="John Doe"
             required
           />
@@ -184,7 +201,7 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
               const value = e.target.value;
               setFormData(prev => ({ ...prev, purchaserEmail: value }));
             }}
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-black text-gray-900 dark:text-white"
             placeholder="john@example.com"
             required
           />
@@ -201,7 +218,7 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
               const value = e.target.value;
               setFormData(prev => ({ ...prev, purchaserPhone: value }));
             }}
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-black text-gray-900 dark:text-white"
             placeholder="(901) 555-1234"
           />
         </div>

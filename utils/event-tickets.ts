@@ -5,10 +5,12 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = (supabaseUrl && supabaseServiceKey) 
+  ? createClient(supabaseUrl, supabaseServiceKey) 
+  : null;
 
 export interface TicketConfig {
   eventId: string;
@@ -121,6 +123,11 @@ export function getEventTicketConfig(eventId: string): TicketConfig {
  */
 export async function getTicketsSold(eventId: string, ticketType?: string): Promise<number> {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return 0;
+    }
+    
     let query = supabase
       .from('event_tickets')
       .select('quantity', { count: 'exact', head: false })
@@ -202,6 +209,10 @@ export async function createTicketRecord(purchase: TicketPurchase): Promise<{
   error?: string;
 }> {
   try {
+    if (!supabase) {
+      return { success: false, error: 'Database connection not configured' };
+    }
+    
     const config = getEventTicketConfig(purchase.eventId);
     const ticketTypeConfig = config.ticketTypes[purchase.ticketType];
 
@@ -389,6 +400,16 @@ export async function getEventTicketStats(eventId: string): Promise<{
   byPaymentMethod: { [key: string]: { count: number; revenue: number } };
 }> {
   try {
+    if (!supabase) {
+      return {
+        totalSold: 0,
+        totalRevenue: 0,
+        checkedIn: 0,
+        byType: {},
+        byPaymentMethod: {}
+      };
+    }
+    
     const { data, error } = await supabase
       .from('event_tickets')
       .select('*')

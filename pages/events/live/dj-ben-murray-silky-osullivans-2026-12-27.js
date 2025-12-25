@@ -575,7 +575,7 @@ export default function DJBenMurraySilkyOSullivansEvent() {
                     </p>
                   </div>
 
-                  <div className="bg-white/5 dark:bg-black/50 backdrop-blur-xl rounded-xl border border-gray-800 p-6">
+                  <div className="bg-black/50 backdrop-blur-xl rounded-xl border border-gray-800 p-6">
                     <TicketPurchaseForm 
                       eventId="dj-ben-murray-silky-osullivans-2026-12-27"
                       onSuccess={(data) => {

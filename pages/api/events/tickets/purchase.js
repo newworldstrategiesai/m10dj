@@ -7,9 +7,15 @@ import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { getEventTicketConfig, createTicketRecord, checkTicketAvailability } from '../../../../utils/event-tickets';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY_LIVE || '', {
+// Validate Stripe key exists
+const stripeKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY_LIVE;
+if (!stripeKey) {
+  console.error('STRIPE_SECRET_KEY or STRIPE_SECRET_KEY_LIVE environment variable is not set');
+}
+
+const stripe = stripeKey ? new Stripe(stripeKey, {
   apiVersion: '2025-07-30.preview',
-});
+}) : null;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -28,6 +34,22 @@ export default async function handler(req, res) {
       purchaserEmail,
       purchaserPhone
     } = req.body;
+
+    // Validate Stripe is configured
+    if (!stripe) {
+      console.error('Stripe is not configured - missing API key');
+      return res.status(500).json({ 
+        error: 'Payment processing is not configured. Please contact support.' 
+      });
+    }
+
+    // Validate Supabase is configured
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase is not configured - missing credentials');
+      return res.status(500).json({ 
+        error: 'Database connection is not configured. Please contact support.' 
+      });
+    }
 
     // Validate input
     if (!eventId || !ticketType || !quantity || !purchaserName || !purchaserEmail) {
@@ -116,7 +138,6 @@ export default async function handler(req, res) {
     const sessionParams = {
       payment_method_types: ['card'],
       mode: 'payment',
-      customer: customerId,
       line_items: [
         {
           price_data: {
@@ -144,9 +165,15 @@ export default async function handler(req, res) {
       },
       success_url: `${req.headers.origin || 'https://www.m10djcompany.com'}/events/tickets/confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin || 'https://www.m10djcompany.com'}/events/live/${eventId}?canceled=true`,
-      customer_email: purchaserEmail,
       expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 minutes
     };
+
+    // Only set customer OR customer_email, not both
+    if (customerId) {
+      sessionParams.customer = customerId;
+    } else {
+      sessionParams.customer_email = purchaserEmail;
+    }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
@@ -165,9 +192,20 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error creating ticket purchase:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to create ticket purchase';
+    if (error.message) {
+      errorMessage = error.message;
+    } else if (error.type === 'StripeInvalidRequestError') {
+      errorMessage = 'Payment processing error. Please check your payment information.';
+    } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      errorMessage = 'Service temporarily unavailable. Please try again in a moment.';
+    }
+    
     return res.status(500).json({
-      error: 'Failed to create ticket purchase',
-      message: error.message
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }
