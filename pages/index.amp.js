@@ -1,8 +1,9 @@
 import Head from 'next/head';
 
-export const config = {
-  amp: true,
-};
+// AMP disabled - using styled-jsx which requires JavaScript
+// export const config = {
+//   amp: true,
+// };
 
 export default function HomeAMP() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
