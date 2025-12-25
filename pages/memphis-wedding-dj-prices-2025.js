@@ -146,12 +146,12 @@ export default function MemphisWeddingDJPrices2025() {
         />
         <meta name="keywords" content="Memphis wedding DJ prices, wedding DJ cost Memphis, Memphis DJ pricing 2025, how much does a wedding DJ cost Memphis, Memphis wedding DJ packages, affordable wedding DJ Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/memphis-wedding-dj-prices-2025" />
+        <link rel="canonical" href="https://www.m10djcompany.com/memphis-wedding-dj-prices-2025" />
         
         {/* Open Graph tags */}
         <meta property="og:title" content="Memphis Wedding DJ Prices 2025: Complete Pricing Guide" />
         <meta property="og:description" content="Comprehensive guide to Memphis wedding DJ services for 2025. Learn about packages, services, and what to consider when planning your wedding entertainment." />
-        <meta property="og:url" content="https://m10djcompany.com/memphis-wedding-dj-prices-2025" />
+        <meta property="og:url" content="https://www.m10djcompany.com/memphis-wedding-dj-prices-2025" />
         <meta property="og:type" content="article" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         <meta property="article:published_time" content="2025-01-01" />

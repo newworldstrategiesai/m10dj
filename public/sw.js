@@ -1,10 +1,10 @@
 // Service Worker for Mobile Performance Optimization
 // Implements aggressive caching strategies for Core Web Vitals improvement
 
-const CACHE_NAME = 'm10dj-v1';
-const STATIC_CACHE = 'm10dj-static-v1';
-const DYNAMIC_CACHE = 'm10dj-dynamic-v1';
-const IMAGE_CACHE = 'm10dj-images-v1';
+const CACHE_NAME = 'm10dj-v2';
+const STATIC_CACHE = 'm10dj-static-v2';
+const DYNAMIC_CACHE = 'm10dj-dynamic-v2';
+const IMAGE_CACHE = 'm10dj-images-v2';
 
 // Assets to cache immediately
 const PRECACHE_ASSETS = [
@@ -139,7 +139,32 @@ async function handleAPIRequest(request) {
 }
 
 // Stale-while-revalidate strategy for pages
+// Event pages use network-first to ensure fresh content
 async function handlePageRequest(request) {
+  const url = new URL(request.url);
+  const isEventPage = url.pathname.startsWith('/events/');
+  
+  // Event pages: Network-first strategy (always get fresh content)
+  if (isEventPage) {
+    try {
+      const networkResponse = await fetch(request);
+      if (networkResponse.ok) {
+        const cache = await caches.open(DYNAMIC_CACHE);
+        cache.put(request, networkResponse.clone());
+      }
+      return networkResponse;
+    } catch (error) {
+      // Fallback to cache if network fails
+      const cache = await caches.open(DYNAMIC_CACHE);
+      const cachedResponse = await cache.match(request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      throw error;
+    }
+  }
+  
+  // Regular pages: Stale-while-revalidate strategy
   const cache = await caches.open(DYNAMIC_CACHE);
   const cachedResponse = await cache.match(request);
   

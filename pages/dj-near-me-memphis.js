@@ -193,12 +193,12 @@ export default function DJNearMemphis() {
         />
         <meta name="keywords" content="DJ near me Memphis, Memphis DJ near me, local DJ Memphis, DJ near me, find DJ near me, Memphis area DJ, nearby DJ Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/dj-near-me-memphis" />
+        <link rel="canonical" href="https://www.m10djcompany.com/dj-near-me-memphis" />
         
         {/* Open Graph tags */}
         <meta property="og:title" content="DJ Near Me Memphis, TN | Local Wedding & Event DJs" />
         <meta property="og:description" content="Professional DJ services near you in Memphis. Wedding, corporate, and party entertainment with 15+ years experience and 5-star ratings." />
-        <meta property="og:url" content="https://m10djcompany.com/dj-near-me-memphis" />
+        <meta property="og:url" content="https://www.m10djcompany.com/dj-near-me-memphis" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         

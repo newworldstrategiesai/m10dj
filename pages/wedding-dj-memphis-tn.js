@@ -156,12 +156,12 @@ export default function WeddingDJMemphisTN() {
         />
         <meta name="keywords" content="Tennessee wedding DJ, wedding DJ Tennessee, TN wedding entertainment, Memphis TN wedding DJ, Tennessee wedding entertainment, wedding DJ services TN" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/wedding-dj-memphis-tn" />
+        <link rel="canonical" href="https://www.m10djcompany.com/wedding-dj-memphis-tn" />
         
         {/* Open Graph tags */}
         <meta property="og:title" content="Tennessee Wedding DJ Services | Memphis TN Wedding Entertainment" />
         <meta property="og:description" content="Professional wedding DJ services across Tennessee. From Memphis to Nashville, we provide premium wedding entertainment for TN couples. Experienced DJs, state-wide coverage." />
-        <meta property="og:url" content="https://m10djcompany.com/wedding-dj-memphis-tn" />
+        <meta property="og:url" content="https://www.m10djcompany.com/wedding-dj-memphis-tn" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         

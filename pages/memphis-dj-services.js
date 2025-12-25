@@ -149,12 +149,12 @@ export default function MemphisDJServices() {
         />
         <meta name="keywords" content="Memphis DJ services, DJ services Memphis, event DJ Memphis, corporate DJ Memphis, Memphis event DJ, Memphis party DJ, professional DJ Memphis, anniversary DJ Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/memphis-dj-services" />
+        <link rel="canonical" href="https://www.m10djcompany.com/memphis-dj-services" />
         
         {/* Open Graph tags */}
         <meta property="og:title" content="Memphis DJ Services | Professional Event Entertainment" />
         <meta property="og:description" content="Complete Memphis DJ services for all events with professional equipment and experienced entertainers. Serving Memphis, TN and surrounding areas." />
-        <meta property="og:url" content="https://m10djcompany.com/memphis-dj-services" />
+        <meta property="og:url" content="https://www.m10djcompany.com/memphis-dj-services" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         

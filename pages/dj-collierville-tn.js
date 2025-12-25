@@ -230,12 +230,12 @@ export default function DJColliervilleTN() {
         />
         <meta name="keywords" content="DJ Collierville TN, Collierville DJ services, wedding DJ Collierville Tennessee, DJ services Collierville TN, Collierville wedding DJ, corporate DJ Collierville TN, Collierville event DJ, DJ Collierville Tennessee, best DJ Collierville, professional DJ Collierville" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/dj-collierville-tn" />
+        <link rel="canonical" href="https://www.m10djcompany.com/dj-collierville-tn" />
         
         {/* Open Graph tags */}
         <meta property="og:title" content="DJ Collierville TN | Wedding & Event DJ Services | Collierville Tennessee" />
         <meta property="og:description" content="Professional DJ services in Collierville, TN for weddings, corporate events, and community celebrations. Historic venues and family-focused entertainment." />
-        <meta property="og:url" content="https://m10djcompany.com/dj-collierville-tn" />
+        <meta property="og:url" content="https://www.m10djcompany.com/dj-collierville-tn" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         

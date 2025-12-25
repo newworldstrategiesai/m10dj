@@ -228,12 +228,12 @@ export default function DJGermantownTN() {
         />
         <meta name="keywords" content="DJ Germantown TN, Germantown DJ services, wedding DJ Germantown Tennessee, DJ services Germantown TN, Germantown wedding DJ, corporate DJ Germantown TN, Germantown event DJ, DJ Germantown Tennessee, best DJ Germantown, professional DJ Germantown" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/dj-germantown-tn" />
+        <link rel="canonical" href="https://www.m10djcompany.com/dj-germantown-tn" />
         
         {/* Open Graph tags */}
         <meta property="og:title" content="DJ Germantown TN | Wedding & Event DJ Services | Germantown Tennessee" />
         <meta property="og:description" content="Professional DJ services in Germantown, TN for weddings, corporate events, and celebrations. Experienced with luxury venues and upscale events." />
-        <meta property="og:url" content="https://m10djcompany.com/dj-germantown-tn" />
+        <meta property="og:url" content="https://www.m10djcompany.com/dj-germantown-tn" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         

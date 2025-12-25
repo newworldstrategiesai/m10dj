@@ -134,12 +134,12 @@ export default function DJEastMemphisTN() {
         />
         <meta name="keywords" content="East Memphis DJ, DJ East Memphis TN, East Memphis wedding DJ, East Memphis corporate DJ, DJ services East Memphis, East Memphis party DJ, Poplar Avenue DJ, White Station DJ" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/dj-east-memphis-tn" />
+        <link rel="canonical" href="https://www.m10djcompany.com/dj-east-memphis-tn" />
         
         {/* Open Graph tags */}
         <meta property="og:title" content="East Memphis DJ Services | Professional DJ East Memphis TN" />
         <meta property="og:description" content="Professional DJ services in East Memphis, TN for weddings, corporate events, and celebrations. Serving all East Memphis neighborhoods with premium entertainment." />
-        <meta property="og:url" content="https://m10djcompany.com/dj-east-memphis-tn" />
+        <meta property="og:url" content="https://www.m10djcompany.com/dj-east-memphis-tn" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         

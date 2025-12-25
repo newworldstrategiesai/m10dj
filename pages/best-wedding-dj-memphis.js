@@ -183,12 +183,12 @@ export default function BestWeddingDJMemphis() {
         />
         <meta name="keywords" content="best wedding DJ Memphis, top wedding DJ Memphis, best Memphis wedding DJ, top Memphis wedding DJ, Memphis wedding DJ reviews, wedding DJ reviews Memphis, Memphis DJ testimonials, wedding DJ ratings Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/best-wedding-dj-memphis" />
+        <link rel="canonical" href="https://www.m10djcompany.com/best-wedding-dj-memphis" />
         
         {/* Open Graph tags */}
         <meta property="og:title" content="Memphis Wedding DJ Reviews | 500+ 5-Star Weddings | M10 DJ Company" />
         <meta property="og:description" content="See what makes M10 Memphis's most trusted wedding DJ. Read real reviews, see photos & videos from 500+ successful weddings, and discover why couples choose us." />
-        <meta property="og:url" content="https://m10djcompany.com/best-wedding-dj-memphis" />
+        <meta property="og:url" content="https://www.m10djcompany.com/best-wedding-dj-memphis" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         
