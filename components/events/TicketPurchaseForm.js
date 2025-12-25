@@ -1,0 +1,217 @@
+import { useState, useEffect } from 'react';
+import { Loader2, Ticket, AlertCircle, CheckCircle } from 'lucide-react';
+
+export default function TicketPurchaseForm({ eventId, onSuccess }) {
+  const [formData, setFormData] = useState({
+    ticketType: 'general_admission',
+    quantity: 1,
+    purchaserName: '',
+    purchaserEmail: '',
+    purchaserPhone: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [availability, setAvailability] = useState(null);
+
+  // Ticket configuration
+  const ticketTypes = {
+    general_admission: {
+      name: 'General Admission',
+      price: 12.00,
+      description: 'Entry to DJ Ben Murray Live at Silky O\'Sullivan\'s'
+    },
+    early_bird: {
+      name: 'Early Bird',
+      price: 10.00,
+      description: 'Limited early bird pricing (first 50 tickets)'
+    }
+  };
+
+  const selectedTicket = ticketTypes[formData.ticketType];
+  const totalPrice = selectedTicket ? selectedTicket.price * formData.quantity : 0;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/events/tickets/purchase', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          eventId,
+          ...formData
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create ticket purchase');
+      }
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      } else if (onSuccess) {
+        onSuccess(data);
+      }
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start">
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-3 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-red-800 dark:text-red-200 font-semibold mb-1">Error</h3>
+            <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Type Selection */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+          Ticket Type
+        </label>
+        <select
+          value={formData.ticketType}
+          onChange={(e) => setFormData({ ...formData, ticketType: e.target.value })}
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+          required
+        >
+          {Object.entries(ticketTypes).map(([key, type]) => (
+            <option key={key} value={key}>
+              {type.name} - ${type.price.toFixed(2)}
+            </option>
+          ))}
+        </select>
+        {selectedTicket && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            {selectedTicket.description}
+          </p>
+        )}
+      </div>
+
+      {/* Quantity */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+          Quantity
+        </label>
+        <div className="flex items-center space-x-4">
+          <button
+            type="button"
+            onClick={() => setFormData({ ...formData, quantity: Math.max(1, formData.quantity - 1) })}
+            className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900 transition-colors text-gray-900 dark:text-white"
+            disabled={formData.quantity <= 1}
+          >
+            −
+          </button>
+          <input
+            type="number"
+            min="1"
+            max="10"
+            value={formData.quantity}
+            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
+            className="w-20 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setFormData({ ...formData, quantity: Math.min(10, formData.quantity + 1) })}
+            className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900 transition-colors text-gray-900 dark:text-white"
+            disabled={formData.quantity >= 10}
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      {/* Total Price */}
+      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-600 dark:text-gray-400">Total:</span>
+          <span className="text-2xl font-bold text-gray-900 dark:text-white">
+            ${totalPrice.toFixed(2)}
+          </span>
+        </div>
+      </div>
+
+      {/* Purchaser Information */}
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            Your Name *
+          </label>
+          <input
+            type="text"
+            value={formData.purchaserName}
+            onChange={(e) => setFormData({ ...formData, purchaserName: e.target.value })}
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            placeholder="John Doe"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            Email Address *
+          </label>
+          <input
+            type="email"
+            value={formData.purchaserEmail}
+            onChange={(e) => setFormData({ ...formData, purchaserEmail: e.target.value })}
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            placeholder="john@example.com"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            Phone Number (Optional)
+          </label>
+          <input
+            type="tel"
+            value={formData.purchaserPhone}
+            onChange={(e) => setFormData({ ...formData, purchaserPhone: e.target.value })}
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            placeholder="(901) 555-1234"
+          />
+        </div>
+      </div>
+
+      {/* Submit Button */}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full btn-primary text-lg py-4 flex items-center justify-center"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          <>
+            <Ticket className="w-5 h-5 mr-2" />
+            Buy Tickets - ${totalPrice.toFixed(2)}
+          </>
+        )}
+      </button>
+
+      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+        You'll be redirected to Stripe Checkout to complete your payment securely.
+      </p>
+    </form>
+  );
+}
+
