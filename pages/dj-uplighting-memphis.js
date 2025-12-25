@@ -73,17 +73,17 @@ const benefits = [
   {
     icon: Palette,
     title: "Transform Your Venue",
-    description: "Uplighting instantly transforms any space, creating an elegant atmosphere that matches your wedding colors or event theme."
+    description: "We've seen it hundreds of times—a venue that looks fine, then uplighting gets added and suddenly it's transformed. The walls glow with your wedding colors, the dance floor has that perfect ambiance, and every photo looks more professional. It's one of the most cost-effective ways to elevate your event's atmosphere."
   },
   {
     icon: Sparkles,
     title: "Professional Quality",
-    description: "Premium LED fixtures with full color spectrum, remote control, and professional installation for flawless results."
+    description: "We use professional-grade LED fixtures that can match any color you can imagine. Whether you want elegant gold uplighting at The Peabody, vibrant purple at a modern venue, or soft white for a classic look, our equipment handles it. Remote control means we can adjust colors throughout the night if needed, and professional installation ensures everything looks perfect."
   },
   {
     icon: Home,
     title: "Memphis Venue Expertise",
-    description: "We know how to light Memphis venues like The Peabody, Graceland, and Memphis Botanic Garden for maximum impact."
+    description: "After lighting hundreds of Memphis events, we know the quirks of different venues. The Peabody's ballroom needs different placement than Graceland's chapel. Memphis Botanic Garden's outdoor spaces require weather-resistant equipment. Dixon Gallery has specific power requirements. We've worked at all of them and know how to make each venue look its absolute best."
   },
   {
     icon: Award,
@@ -95,23 +95,27 @@ const benefits = [
 const faqs = [
   {
     question: "What is DJ uplighting in Memphis?",
-    answer: "DJ uplighting uses LED light fixtures placed around the perimeter of your venue to create ambient lighting that matches your color scheme. It transforms the atmosphere of any Memphis venue, from ballrooms to outdoor spaces."
+    answer: "DJ uplighting uses LED light fixtures placed around the perimeter of your venue—typically along walls, columns, or architectural features—to create ambient lighting that matches your color scheme. Instead of harsh overhead lighting or dim, unflattering light, uplighting creates a warm, elegant glow that transforms the entire atmosphere. We've used it at Memphis venues ranging from The Peabody's formal ballrooms to outdoor celebrations at Memphis Botanic Garden, and it works beautifully in both settings. The lights are subtle enough that guests don't notice them directly, but the effect on the overall atmosphere is dramatic."
   },
   {
     question: "How much does wedding uplighting cost in Memphis?",
-    answer: "Wedding uplighting in Memphis typically costs $200-$500 depending on the number of lights and package level. Most couples invest $350 for our Standard package with 8-12 lights, which covers most Memphis wedding venues."
+    answer: "Wedding uplighting in Memphis typically costs $200-$500 depending on the number of lights and package level. Most couples invest $350 for our Standard package with 8-12 lights, which covers most Memphis wedding venues like The Peabody, Graceland, Memphis Botanic Garden, and country clubs. Smaller, more intimate venues might only need 4-6 lights ($200), while large ballrooms or outdoor spaces might need 12-16 lights ($500). We assess each venue during planning to determine the optimal number of fixtures needed for maximum impact."
   },
   {
     question: "Do I need uplighting if I already have a DJ?",
-    answer: "Uplighting is an optional enhancement that dramatically improves your venue's atmosphere. While not required, it's one of the most impactful add-ons for creating a memorable event. Many couples add it to their DJ package."
+    answer: "Uplighting is an optional enhancement, but it's one of the most impactful add-ons we offer. You don't need it—your event will still be great without it. But once you see the difference it makes in photos and overall atmosphere, most couples wish they'd added it. It's especially valuable at venues with plain walls or less-than-ideal lighting. Many couples add it to their DJ package because it's relatively affordable ($200-$500) compared to the visual impact it creates. We've had couples tell us it was the best $350 they spent on their wedding."
   },
   {
     question: "Can uplighting match my wedding colors?",
-    answer: "Yes! Our LED uplighting fixtures offer full color spectrum capabilities. We can match any wedding color scheme, from elegant whites and golds to vibrant blues, purples, or any custom color you choose."
+    answer: "Yes! Our LED uplighting fixtures offer full color spectrum capabilities—we can match virtually any color you can imagine. We've matched everything from elegant gold and white at formal Peabody weddings to vibrant purple and teal at modern celebrations. Some couples even change colors throughout the night—maybe gold during dinner, then switching to their wedding colors for dancing. We can also create color-changing effects that slowly transition between colors. The key is bringing color swatches or photos of your wedding colors so we can program the exact shade you want."
   },
   {
     question: "Which Memphis venues work best with uplighting?",
-    answer: "Uplighting works beautifully at most Memphis venues including The Peabody, Graceland, Memphis Botanic Garden, Dixon Gallery & Gardens, and country clubs. We assess each venue to determine optimal placement and fixture count."
+    answer: "Uplighting works beautifully at most Memphis venues, but each venue has its own considerations. The Peabody's Grand Ballroom has columns and architectural features that create perfect uplighting opportunities. Graceland's chapel has specific power requirements we know how to work with. Memphis Botanic Garden's outdoor spaces need weather-resistant equipment. Dixon Gallery & Gardens has historic spaces where we need to be careful with placement. Country clubs throughout Germantown and Collierville often have neutral-colored walls that uplighting transforms. We've worked at all of these venues and many more, so we know the specific requirements and best placement strategies for each one. During planning, we'll discuss your venue's layout and determine the optimal number of fixtures and placement."
+  },
+  {
+    question: "When should I decide if I want uplighting?",
+    answer: "You can add uplighting at any point, but we recommend deciding during initial planning so we can factor it into your venue assessment and ensure we have the right equipment available. That said, we've added uplighting to events just a few weeks before the date—it's flexible. The main consideration is your venue's power availability and layout, which we'll assess during planning. If you're on the fence, we can show you examples from similar venues to help you decide. Many couples start without it, see examples, and then add it because the visual impact is so significant."
   }
 ];
 
@@ -172,7 +176,10 @@ export default function DJUplightingMemphis() {
               </h1>
               
               <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-                Professional LED uplighting that transforms any Memphis venue. Match your wedding colors, create ambiance, and make your event unforgettable. Packages from $200.
+                We've lit up Memphis venues from The Peabody's Grand Ballroom to intimate celebrations at Dixon Gallery & Gardens. 
+                Uplighting is one of those details that doesn't seem essential until you see it—then you can't imagine your event without it. 
+                It transforms spaces, matches your colors perfectly, and creates that professional, polished look that makes photos pop. 
+                Packages from $200.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
@@ -200,7 +207,9 @@ export default function DJUplightingMemphis() {
                 Why Choose Professional Uplighting?
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                Transform your Memphis venue with professional LED uplighting that creates the perfect atmosphere for your event.
+                Uplighting is one of those details that separates a good event from a great one. It's not flashy or obvious—guests 
+                don't walk in and say 'wow, look at that uplighting.' But they do notice how beautiful the venue looks, how professional 
+                everything feels, and how great the photos turn out. That's the power of good uplighting.
               </p>
             </div>
 

@@ -29,7 +29,8 @@ import {
   MapPin,
   Music,
   Star,
-  Video
+  Video,
+  Ticket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -642,7 +643,7 @@ export default function AdminDashboard() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Jump to your most-used features</p>
               </div>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-9 gap-2 sm:gap-3">
               <Link href="/admin/contacts" className="group flex flex-col items-center gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:shadow-sm min-h-[70px] sm:min-h-[90px]">
                 <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg group-hover:scale-110 transition-transform">
                   <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
@@ -654,6 +655,18 @@ export default function AdminDashboard() {
                   <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <span className="text-xs font-semibold text-gray-900 dark:text-white text-center">Projects</span>
+              </Link>
+              <Link href="/admin/events" className="group flex flex-col items-center gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-cyan-500 dark:hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-all duration-200 hover:shadow-sm min-h-[70px] sm:min-h-[90px]">
+                <div className="p-1.5 sm:p-2 bg-cyan-100 dark:bg-cyan-900/40 rounded-lg group-hover:scale-110 transition-transform">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-600 dark:text-cyan-400" />
+                </div>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white text-center">Events</span>
+              </Link>
+              <Link href="/admin/tickets" className="group flex flex-col items-center gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-200 hover:shadow-sm min-h-[70px] sm:min-h-[90px]">
+                <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/40 rounded-lg group-hover:scale-110 transition-transform">
+                  <Ticket className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white text-center">Tickets</span>
               </Link>
               <Link href="/admin/invoices" className="group flex flex-col items-center gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all duration-200 hover:shadow-sm min-h-[70px] sm:min-h-[90px]">
                 <div className="p-1.5 sm:p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg group-hover:scale-110 transition-transform">

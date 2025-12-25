@@ -112,8 +112,10 @@ export default function MulticulturalDJMemphis() {
               </h1>
               
               <p className="text-xl md:text-2xl mb-8 leading-relaxed text-white/90">
-                Celebrate your heritage with authentic multicultural DJ services in Memphis. From Spanish and Latino celebrations 
-                to Indian weddings and Bollywood parties, we honor your culture while creating unforgettable experiences.
+                Memphis is a beautifully diverse city, and we're honored to serve communities celebrating their heritage. 
+                Whether you're planning a quinceañera in Hickory Hill, an Indian wedding in Germantown, or a multicultural 
+                celebration anywhere in the Memphis area, we bring authentic music, cultural respect, and professional service 
+                to every event.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
@@ -196,7 +198,9 @@ export default function MulticulturalDJMemphis() {
             <div className="text-center mb-16">
               <h2 className="heading-2 mb-6 text-gray-900">Why Choose M10 DJ for Multicultural Events?</h2>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                We understand that cultural celebrations require sensitivity, authenticity, and deep musical knowledge.
+                After 15+ years serving Memphis, we've learned that cultural celebrations aren't just about playing the right songs—they're 
+                about understanding traditions, respecting customs, and creating an atmosphere where every guest feels included. 
+                We take the time to learn about your specific cultural needs and work with you to ensure every detail is perfect.
               </p>
             </div>
 
@@ -222,38 +226,79 @@ export default function MulticulturalDJMemphis() {
           </div>
         </section>
 
-        {/* Testimonials Section */}
+        {/* Memphis Multicultural Community Section */}
         <section className="py-20 bg-white">
           <div className="section-container">
-            <h2 className="heading-2 text-center mb-12 text-gray-900">What Our Multicultural Clients Say</h2>
-            
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-gray-50 rounded-lg p-6">
-                <div className="flex items-center mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <p className="text-gray-600 mb-4 italic">
-                  "Ben understood exactly what we needed for our quinceañera. The music selection was perfect, 
-                  and he kept everyone dancing all night. ¡Excelente servicio!"
+            <div className="max-w-4xl mx-auto">
+              <h2 className="heading-2 text-center mb-12 text-gray-900">Serving Memphis's Diverse Communities</h2>
+              
+              <div className="prose prose-lg max-w-none text-gray-700 mb-8">
+                <p className="text-lg leading-relaxed mb-6">
+                  Memphis is home to vibrant Hispanic communities in neighborhoods like Berclair, Hickory Hill, and South Memphis, 
+                  where quinceañeras and bodas (weddings) are celebrated with traditional Latin music. We've provided DJ services 
+                  for celebrations at venues throughout the city, understanding the importance of playing the right songs at the 
+                  right moments—from the hora loca to the last dance.
                 </p>
-                <div className="font-semibold text-gray-900">- María Rodriguez</div>
-                <div className="text-sm text-gray-500">Quinceañera Celebration</div>
+                
+                <p className="text-lg leading-relaxed mb-6">
+                  The Memphis area also has a growing Indian community, with weddings and cultural celebrations that require 
+                  deep knowledge of Bollywood music, traditional ceremony music, and the ability to blend classical Indian sounds 
+                  with modern hits. Whether it's a Sangeet ceremony or the main reception, we work closely with families to ensure 
+                  every cultural tradition is honored through music.
+                </p>
+                
+                <p className="text-lg leading-relaxed">
+                  As Memphis continues to grow more diverse, we're committed to serving all communities with respect, cultural 
+                  sensitivity, and authentic music libraries. From bilingual MC services that make everyone feel included to 
+                  extensive music collections spanning multiple cultures, we bring the same level of professionalism to every 
+                  multicultural celebration.
+                </p>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-6">
-                <div className="flex items-center mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                  ))}
+              <div className="grid md:grid-cols-2 gap-6 mt-12">
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Memphis Hispanic Community</h3>
+                  <ul className="space-y-2 text-gray-600">
+                    <li className="flex items-start">
+                      <CheckCircle className="h-5 w-5 text-brand mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Quinceañeras at venues across Memphis and surrounding areas</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="h-5 w-5 text-brand mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Bilingual wedding ceremonies and receptions</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="h-5 w-5 text-brand mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Fiestas and community celebrations</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="h-5 w-5 text-brand mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Authentic Latin music: Reggaeton, Salsa, Bachata, Merengue</span>
+                    </li>
+                  </ul>
                 </div>
-                <p className="text-gray-600 mb-4 italic">
-                  "Our Indian wedding was absolutely perfect! The DJ understood our cultural needs and played 
-                  all the right Bollywood songs at the right moments. Highly recommended!"
-                </p>
-                <div className="font-semibold text-gray-900">- Priya & Raj Patel</div>
-                <div className="text-sm text-gray-500">Indian Wedding</div>
+
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Memphis Indian Community</h3>
+                  <ul className="space-y-2 text-gray-600">
+                    <li className="flex items-start">
+                      <CheckCircle className="h-5 w-5 text-brand mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Indian weddings with traditional ceremony music</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="h-5 w-5 text-brand mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Sangeet and Mehndi celebrations</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="h-5 w-5 text-brand mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Bollywood parties and cultural festivals</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="h-5 w-5 text-brand mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Extensive Bollywood, Bhangra, and regional Indian music</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -268,22 +313,27 @@ export default function MulticulturalDJMemphis() {
               <div className="space-y-6">
                 <div className="bg-white rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Do you provide Spanish DJ services in Memphis?</h3>
-                  <p className="text-gray-600">¡Sí! We offer professional Spanish DJ services for bodas (weddings), quinceañeras, fiestas, and other Hispanic celebrations throughout Memphis. Our DJs are bilingual and understand Latino culture.</p>
+                  <p className="text-gray-600">¡Sí! We offer professional Spanish DJ services for bodas (weddings), quinceañeras, fiestas, and other Hispanic celebrations throughout Memphis and surrounding areas. Our DJs understand Latino culture and have extensive libraries of Reggaeton, Salsa, Bachata, Merengue, and other Latin music genres. We've worked with families in neighborhoods across Memphis, from Berclair to Hickory Hill, and understand the importance of playing the right songs at the right moments—especially during traditional dances like the hora loca.</p>
                 </div>
 
                 <div className="bg-white rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Can you DJ Indian weddings and Bollywood parties?</h3>
-                  <p className="text-gray-600">Absolutely! We specialize in Indian wedding DJ services and Bollywood parties in Memphis. We have extensive knowledge of Indian music, from classical to modern Bollywood hits, and understand traditional ceremony requirements.</p>
+                  <p className="text-gray-600">Absolutely! We specialize in Indian wedding DJ services and Bollywood parties throughout the Memphis area. We have extensive knowledge of Indian music, from classical ragas to modern Bollywood hits, and understand the timing requirements for traditional ceremonies. Whether you need music for a Sangeet, Mehndi, or the main reception, we work closely with families to ensure every cultural tradition is honored. Our music library includes Bollywood classics, Punjabi hits, Bhangra, Garba, and regional Indian music.</p>
                 </div>
 
                 <div className="bg-white rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">What makes your bilingual DJ services special?</h3>
-                  <p className="text-gray-600">Our bilingual DJs can seamlessly transition between languages during events, ensuring all guests feel included. We provide MC services in multiple languages and understand cultural nuances.</p>
+                  <p className="text-gray-600">Our bilingual DJ services go beyond just speaking two languages—we understand cultural nuances and know when to transition between languages during events. This ensures all guests, regardless of their primary language, feel included and engaged. We provide MC services in multiple languages and can coordinate announcements, introductions, and special moments in the language that makes your guests most comfortable. This is especially important for multicultural weddings where families may speak different languages.</p>
                 </div>
 
                 <div className="bg-white rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Do you offer female DJ services in Memphis?</h3>
-                  <p className="text-gray-600">Yes! We have professional female DJs available for events where clients prefer female entertainment staff. Our female DJs bring unique energy and perspective to every celebration.</p>
+                  <p className="text-gray-600">Yes! We have professional female DJs available for events where clients prefer female entertainment staff. This is especially popular for women's events, bridal showers, certain cultural celebrations, and corporate events. Our female DJs bring unique energy and perspective to every celebration while maintaining the same high level of professionalism and musical expertise.</p>
+                </div>
+
+                <div className="bg-white rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">How do you ensure cultural authenticity in your music selection?</h3>
+                  <p className="text-gray-600">We start by having detailed conversations with you about your cultural traditions, must-play songs, and any songs to avoid. We maintain extensive music libraries for various cultures and continuously update them with new releases. For Indian weddings, we understand the significance of different ceremony phases and play appropriate music. For Hispanic celebrations, we know the difference between a bachata wedding and a reggaeton party. Most importantly, we're not afraid to ask questions and learn—we want to get it right for your family.</p>
                 </div>
               </div>
             </div>

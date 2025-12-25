@@ -75,40 +75,44 @@ const benefits = [
   {
     icon: Zap,
     title: "Grand Entrance Moments",
-    description: "Perfect for grand entrances, first dances, cake cutting, and other special moments. Creates unforgettable photo and video opportunities."
+    description: "Cold spark machines are perfect for those special moments you want to highlight. Grand entrances are the most popular use—imagine the newlyweds entering the reception with sparks flying. First dances are another favorite, especially when the lights dim and sparks create that romantic, dramatic effect. Cake cuttings, bouquet tosses, and even anniversary celebrations benefit from that extra visual impact. The key is timing—we coordinate with the DJ and use remote control activation so the sparks hit at exactly the right moment. The photos and videos from these moments are always some of the best from the event."
   },
   {
     icon: Shield,
     title: "Venue-Approved",
-    description: "Cold spark machines are approved for use at most Memphis venues including The Peabody, Graceland, and premier event spaces."
+    description: "Cold spark machines are approved for use at most Memphis venues because they're completely safe—no heat, no fire risk, no smoke. We've used them at The Peabody, Graceland, Memphis Botanic Garden, country clubs throughout Germantown and Collierville, and many other venues. Some venues that don't allow traditional pyrotechnics or sparklers are fine with cold spark machines because they're so safe. We always check with venues beforehand to confirm approval, but in our experience, most Memphis venues are comfortable with them once they understand the safety features."
   },
   {
     icon: Award,
     title: "Professional Operation",
-    description: "Our team handles all setup, operation, and breakdown. Remote control activation ensures perfect timing for your special moments."
+    description: "We handle everything—setup, operation, and breakdown. The remote control activation is crucial because it means we can trigger the sparks at exactly the right moment, coordinated with the music and lighting. You don't have to worry about timing or operation—we're watching for the cues and activating at the perfect moment. This is especially important for grand entrances where timing is everything, or first dances where the sparks should start at a specific point in the song."
   }
 ];
 
 const faqs = [
   {
     question: "What are cold spark machines?",
-    answer: "Cold spark machines create dramatic spark effects using titanium particles that produce bright, safe sparks without heat or fire risk. They're perfect for indoor events and create stunning visual effects for grand entrances, first dances, and special moments."
+    answer: "Cold spark machines create dramatic spark effects using titanium particles that produce bright, safe sparks without heat or fire risk. Unlike traditional sparklers or pyrotechnics that produce heat and can be dangerous, cold sparks are cool to the touch and completely safe for indoor use. They look like fireworks but are safe around guests, decorations, and venue structures. They're perfect for indoor events and create stunning visual effects for grand entrances, first dances, cake cuttings, and other special moments. The sparks are bright and dramatic, creating incredible photo and video opportunities that make these moments unforgettable."
   },
   {
     question: "How much do cold spark machines cost in Memphis?",
-    answer: "Cold spark machine rental in Memphis typically costs $500-$1,000 depending on the number of machines and activations. Most couples invest $750 for our Dual Machine package with 2 machines and up to 5 activations."
+    answer: "Cold spark machine rental in Memphis typically costs $500-$1,000 depending on the number of machines and activations. Most couples invest $750 for our Dual Machine package with 2 machines and up to 5 activations—this covers a grand entrance, first dance, cake cutting, and maybe a bouquet toss or garter toss. The Single Machine package ($500) works well if you just want one or two special moments, while the Premium package ($1,000) with 3-4 machines and unlimited activations is perfect for events where you want multiple spark moments throughout the night. The dual machine setup is popular because it creates more dramatic effects—sparks coming from both sides create a fuller, more impressive visual."
   },
   {
     question: "Are cold spark machines safe for indoor use?",
-    answer: "Yes! Cold spark machines are completely safe for indoor use. They produce sparks without heat, making them safe for venues, guests, and decorations. They're approved for use at most Memphis event venues."
+    answer: "Yes! Cold spark machines are completely safe for indoor use. They produce sparks without heat—you can actually touch the sparks and they're cool. This makes them safe for venues, guests, decorations, and venue structures. They don't produce smoke, heat, or fire risk like traditional sparklers or pyrotechnics. They're approved for use at most Memphis event venues including The Peabody, Graceland, Memphis Botanic Garden, and country clubs. Some venues that don't allow traditional pyrotechnics are fine with cold spark machines because they understand the safety features. We always confirm with venues beforehand, but in our experience, most Memphis venues are comfortable with them."
   },
   {
     question: "When are cold spark machines typically used?",
-    answer: "Cold spark machines are perfect for grand entrances, first dances, cake cutting, bouquet toss, and other special moments. They create dramatic photo and video opportunities that make your event unforgettable."
+    answer: "Cold spark machines are perfect for those special moments you want to highlight. Grand entrances are the most popular—imagine the newlyweds entering the reception with sparks flying as they walk in. First dances are another favorite, especially when the lights dim and sparks create that romantic, dramatic effect. Cake cuttings benefit from the visual impact, and bouquet/garter tosses become more exciting. Some couples even use them for anniversary celebrations or special announcements. The key is choosing 2-3 moments rather than using them constantly—they're more impactful when used strategically. We coordinate timing with the DJ and use remote control activation so the sparks hit at exactly the right moment. The photos and videos from these moments are always some of the best from the event."
   },
   {
     question: "Can cold spark machines be added to a DJ package?",
-    answer: "Yes! Cold spark machines can be added to any DJ package or rented separately. Many couples combine cold spark effects with DJ services and uplighting for a complete premium entertainment experience."
+    answer: "Yes! Cold spark machines can be added to any DJ package or rented separately. Many couples combine cold spark effects with DJ services and uplighting for a complete premium entertainment experience. When you book everything together, we can coordinate the timing—the DJ knows when to cue the music, we know when to activate the sparks, and if you have uplighting, we can coordinate color changes. This creates a seamless, professional experience where everything works together. We've done full premium packages at venues like The Peabody and Graceland where couples wanted the complete experience—DJ, uplighting, photo booth, and cold spark effects all coordinated together."
+  },
+  {
+    question: "How do you coordinate cold spark timing with the DJ?",
+    answer: "Coordination is key for cold spark effects. We work closely with the DJ (or if we're providing the DJ, we handle it ourselves) to time the activation perfectly. For grand entrances, we'll activate as the couple enters—usually coordinated with a specific song cue or when they reach a certain point. For first dances, we might activate at the start of the song or at a specific moment in the music. The remote control activation means we can trigger it at exactly the right second. We'll discuss timing during planning and can even do a quick rehearsal if needed. The goal is seamless coordination where the music, lighting, and sparks all work together to create that perfect moment."
   }
 ];
 
@@ -168,7 +172,10 @@ export default function ColdSparksMemphis() {
               </h1>
               
               <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-                Professional cold spark machine rental for grand entrances and special moments. Indoor-safe, venue-approved, and completely stunning. Packages from $500.
+                Cold spark machines create those 'wow' moments that make events unforgettable. We've used them for grand entrances at 
+                The Peabody, first dances at Graceland, and cake cuttings at venues throughout Memphis. The best part? They're completely 
+                safe for indoor use—no heat, no fire risk, just stunning visual effects that create incredible photo and video moments. 
+                Packages from $500.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
@@ -196,7 +203,10 @@ export default function ColdSparksMemphis() {
                 Why Choose Cold Spark Machines?
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                Create unforgettable moments with indoor-safe spark effects that add drama and excitement to your event.
+                Cold spark machines create those moments that guests talk about for years. They're not something you use throughout 
+                the entire event—they're for those 2-3 special moments you want to highlight. And when those moments hit, with sparks 
+                flying and music building, the photos and videos are always incredible. It's one of those additions that takes an event 
+                from great to unforgettable.
               </p>
             </div>
 

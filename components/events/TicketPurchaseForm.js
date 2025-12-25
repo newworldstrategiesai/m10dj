@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Ticket, AlertCircle, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, Ticket, AlertCircle } from 'lucide-react';
 
 export default function TicketPurchaseForm({ eventId, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -11,7 +11,6 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [availability, setAvailability] = useState(null);
 
   // Ticket configuration
   const ticketTypes = {
@@ -84,7 +83,10 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
         </label>
         <select
           value={formData.ticketType}
-          onChange={(e) => setFormData({ ...formData, ticketType: e.target.value })}
+          onChange={(e) => {
+            const value = e.target.value;
+            setFormData(prev => ({ ...prev, ticketType: value }));
+          }}
           className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
           required
         >
@@ -109,7 +111,9 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
         <div className="flex items-center space-x-4">
           <button
             type="button"
-            onClick={() => setFormData({ ...formData, quantity: Math.max(1, formData.quantity - 1) })}
+            onClick={() => {
+              setFormData(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1) }));
+            }}
             className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900 transition-colors text-gray-900 dark:text-white"
             disabled={formData.quantity <= 1}
           >
@@ -120,13 +124,18 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
             min="1"
             max="10"
             value={formData.quantity}
-            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
+            onChange={(e) => {
+              const value = parseInt(e.target.value) || 1;
+              setFormData(prev => ({ ...prev, quantity: value }));
+            }}
             className="w-20 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
             required
           />
           <button
             type="button"
-            onClick={() => setFormData({ ...formData, quantity: Math.min(10, formData.quantity + 1) })}
+            onClick={() => {
+              setFormData(prev => ({ ...prev, quantity: Math.min(10, prev.quantity + 1) }));
+            }}
             className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900 transition-colors text-gray-900 dark:text-white"
             disabled={formData.quantity >= 10}
           >
@@ -154,7 +163,10 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
           <input
             type="text"
             value={formData.purchaserName}
-            onChange={(e) => setFormData({ ...formData, purchaserName: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData(prev => ({ ...prev, purchaserName: value }));
+            }}
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
             placeholder="John Doe"
             required
@@ -168,7 +180,10 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
           <input
             type="email"
             value={formData.purchaserEmail}
-            onChange={(e) => setFormData({ ...formData, purchaserEmail: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData(prev => ({ ...prev, purchaserEmail: value }));
+            }}
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
             placeholder="john@example.com"
             required
@@ -182,7 +197,10 @@ export default function TicketPurchaseForm({ eventId, onSuccess }) {
           <input
             type="tel"
             value={formData.purchaserPhone}
-            onChange={(e) => setFormData({ ...formData, purchaserPhone: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData(prev => ({ ...prev, purchaserPhone: value }));
+            }}
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
             placeholder="(901) 555-1234"
           />

@@ -138,9 +138,9 @@ export default function NewEventPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Head>
 
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gray-50 dark:bg-black">
         {/* Header */}
-        <header className="bg-white dark:bg-gray-800 shadow">
+        <header className="bg-white dark:bg-black shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <div className="flex items-center">
@@ -201,7 +201,7 @@ export default function NewEventPage() {
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Title */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Title *
                 </label>
@@ -211,13 +211,13 @@ export default function NewEventPage() {
                   value={formData.title}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xl font-semibold"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white text-xl font-semibold"
                   placeholder="Amazing Wedding at The Peabody"
                 />
               </div>
 
               {/* URL Slug */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   URL Slug
                 </label>
@@ -230,14 +230,14 @@ export default function NewEventPage() {
                     name="slug"
                     value={formData.slug}
                     onChange={handleInputChange}
-                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                     placeholder="amazing-wedding-peabody"
                   />
                 </div>
               </div>
 
               {/* Event Details */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
                   <Calendar className="w-5 h-5 mr-2" />
                   Event Details
@@ -252,7 +252,7 @@ export default function NewEventPage() {
                       name="event_date"
                       value={formData.event_date}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                     />
                   </div>
                   <div>
@@ -264,7 +264,7 @@ export default function NewEventPage() {
                       name="event_type"
                       value={formData.event_type}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                     >
                       <option value="">Select event type...</option>
                       {eventTypes.map(type => (
@@ -284,7 +284,7 @@ export default function NewEventPage() {
                       name="venue_name"
                       value={formData.venue_name}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       placeholder="The Peabody Hotel"
                     />
                   </div>
@@ -298,7 +298,7 @@ export default function NewEventPage() {
                       name="number_of_guests"
                       value={formData.number_of_guests}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       placeholder="150"
                     />
                   </div>
@@ -312,14 +312,14 @@ export default function NewEventPage() {
                     name="venue_address"
                     value={formData.venue_address}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                     placeholder="149 Union Ave, Memphis, TN 38103"
                   />
                 </div>
               </div>
 
               {/* Excerpt */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Excerpt
                 </label>
@@ -328,13 +328,13 @@ export default function NewEventPage() {
                   value={formData.excerpt}
                   onChange={handleInputChange}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                   placeholder="Brief summary of the event (used in previews and SEO)..."
                 />
               </div>
 
               {/* Content Editor */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
                   <FileText className="w-4 h-4 mr-2" />
                   Content *
@@ -345,7 +345,7 @@ export default function NewEventPage() {
                   onChange={handleInputChange}
                   required
                   rows={20}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white font-mono text-sm"
                   placeholder="Write your event case study content here. You can use HTML tags for formatting..."
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -354,7 +354,7 @@ export default function NewEventPage() {
               </div>
 
               {/* Highlights */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
                   <Star className="w-4 h-4 mr-2" />
                   Key Highlights
@@ -364,7 +364,7 @@ export default function NewEventPage() {
                   value={formData.highlights}
                   onChange={handleInputChange}
                   rows={5}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                   placeholder="Enter each highlight on a new line:&#10;Custom lighting design&#10;Live saxophone performance&#10;Interactive photo booth"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -373,7 +373,7 @@ export default function NewEventPage() {
               </div>
 
               {/* Testimonial */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                   Client Testimonial (Optional)
                 </h3>
@@ -387,7 +387,7 @@ export default function NewEventPage() {
                       name="testimonial_client_name"
                       value={formData.testimonial_client_name}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       placeholder="John & Jane Smith"
                     />
                   </div>
@@ -400,7 +400,7 @@ export default function NewEventPage() {
                       value={formData.testimonial_text}
                       onChange={handleInputChange}
                       rows={4}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       placeholder="The DJ made our wedding absolutely perfect..."
                     />
                   </div>
@@ -413,7 +413,7 @@ export default function NewEventPage() {
                         name="testimonial_rating"
                         value={formData.testimonial_rating}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       >
                         <option value="5">5 Stars</option>
                         <option value="4">4 Stars</option>
@@ -431,7 +431,7 @@ export default function NewEventPage() {
                         name="testimonial_event_date"
                         value={formData.testimonial_event_date}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       />
                     </div>
                   </div>
@@ -442,7 +442,7 @@ export default function NewEventPage() {
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Publish Settings */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                   Publish Settings
                 </h3>
@@ -483,7 +483,7 @@ export default function NewEventPage() {
                       name="display_order"
                       value={formData.display_order}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       placeholder="0"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -494,7 +494,7 @@ export default function NewEventPage() {
               </div>
 
               {/* Featured Image */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
                   <Image className="w-5 h-5 mr-2" />
                   Featured Image
@@ -505,7 +505,7 @@ export default function NewEventPage() {
                   name="featured_image_url"
                   value={formData.featured_image_url}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-3"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white mb-3"
                   placeholder="https://example.com/image.jpg"
                 />
                 
@@ -524,7 +524,7 @@ export default function NewEventPage() {
               </div>
 
               {/* Gallery Images */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                   Gallery Images
                 </h3>
@@ -534,7 +534,7 @@ export default function NewEventPage() {
                   value={formData.gallery_images}
                   onChange={handleInputChange}
                   rows={5}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                   placeholder="Enter each image URL on a new line:&#10;https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -543,7 +543,7 @@ export default function NewEventPage() {
               </div>
 
               {/* SEO Settings */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow p-6">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                   SEO Settings
                 </h3>
@@ -558,7 +558,7 @@ export default function NewEventPage() {
                       name="seo_title"
                       value={formData.seo_title}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       placeholder="SEO optimized title..."
                     />
                   </div>
@@ -572,7 +572,7 @@ export default function NewEventPage() {
                       value={formData.seo_description}
                       onChange={handleInputChange}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       placeholder="Brief description for search engines..."
                     />
                   </div>
@@ -586,7 +586,7 @@ export default function NewEventPage() {
                       name="seo_keywords"
                       value={formData.seo_keywords}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
                       placeholder="wedding dj, memphis, peabody hotel"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

@@ -384,10 +384,13 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                         ? getAssetUrl("/assets/m10 dj company logo white.gif")
                         : getAssetUrl("/assets/m10 dj company logo black.gif")}
                       alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
-                      className="max-h-[54px] sm:max-h-[68px] w-auto h-auto rounded-lg transition-transform group-hover:scale-105"
+                      className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
                       style={{ 
                         display: 'block',
-                        objectFit: 'contain'
+                        objectFit: 'contain',
+                        width: 'auto',
+                        height: 'auto',
+                        maxWidth: 'none'
                       }}
                       onError={(e) => {
                         // Fallback if GIF doesn't load, try JPG version

@@ -80,45 +80,49 @@ const benefits = [
   {
     icon: Users,
     title: "Guest Entertainment",
-    description: "Photo booths keep guests entertained and create lasting memories. Perfect for weddings, corporate events, and parties."
+    description: "Photo booths solve a problem you might not realize you have: keeping guests entertained during lulls in the event. While the DJ is playing dinner music or during cocktail hour, guests head to the photo booth. It's especially popular with kids and teenagers, but we see all ages using it. At corporate events, it breaks the ice and gets people interacting. At weddings, it creates those fun, candid moments that end up being some of the best photos from the night."
   },
   {
     icon: Gift,
     title: "Instant Keepsakes",
-    description: "Guests take home instant photo prints and access digital galleries. Great party favors and social media content."
+    description: "Every photo booth session creates instant prints—usually two copies so guests can keep one and leave one in a guest book or for the couple. But we also provide a digital gallery with all photos, so guests can download and share on social media. This means your event gets organic social media coverage throughout the night, and you get a collection of fun, candid photos that are often more entertaining than the formal photographer's shots."
   },
   {
     icon: Sparkles,
     title: "Custom Branding",
-    description: "Add your wedding monogram, company logo, or custom graphics to every photo. Make it uniquely yours."
+    description: "We can add your wedding monogram, company logo, or custom graphics to every photo. This is especially popular for corporate events where companies want their logo on every photo for brand visibility, and for weddings where couples want their names or wedding date on each print. It's a small detail that makes the photos feel more personalized and professional."
   },
   {
     icon: Award,
     title: "Professional Setup",
-    description: "Full-service photo booth rental with on-site attendant, professional equipment, and seamless integration with your event."
+    description: "We provide a full-service photo booth experience—we bring the equipment, set it up, provide an on-site attendant to help guests and keep things running smoothly, and handle all breakdown. The attendant is key because they help guests use the booth, manage props, troubleshoot any issues, and ensure the equipment stays working throughout your event. You don't have to worry about anything—we handle it all."
   }
 ];
 
 const faqs = [
   {
     question: "How much does photo booth rental cost in Memphis?",
-    answer: "Photo booth rental in Memphis typically costs $500-$1,000 depending on package level and duration. Most couples invest $750 for our Premium package with 4 hours of coverage, custom branding, and unlimited prints."
+    answer: "Photo booth rental in Memphis typically costs $500-$1,000 depending on package level and duration. Most couples invest $750 for our Premium package with 4 hours of coverage, custom branding, and unlimited prints. The Classic package ($500) works well for shorter events or smaller celebrations, while the Deluxe package ($1,000) adds green screen options and video capabilities for premium events. The 4-hour Premium package usually covers most of the reception, which is when photo booths get the most use. We've set up photo booths at venues throughout Memphis, from The Peabody to backyard celebrations, and the pricing is consistent regardless of venue."
   },
   {
     question: "What's included in photo booth rental?",
-    answer: "Photo booth rental includes professional setup, instant photo prints, props and accessories, on-site attendant, digital gallery access, and setup/breakdown. Premium packages add custom branding, social media sharing, and extended coverage."
+    answer: "Photo booth rental includes professional setup (we arrive early to set everything up before guests arrive), instant photo prints (usually 2 copies per session), props and accessories (we bring a collection of fun props that guests love), on-site attendant (someone to help guests, manage props, and keep everything running smoothly), digital gallery access (all photos available for download after the event), and setup/breakdown (we handle everything). Premium packages add custom branding (your logo or monogram on every photo), social media sharing capabilities (guests can share directly to social media), and extended coverage (longer rental periods). The on-site attendant is crucial—they ensure the booth stays working, help guests who aren't familiar with photo booths, and keep the props organized."
   },
   {
     question: "Can photo booth be added to a DJ package?",
-    answer: "Yes! Photo booth rental can be added to any DJ package or rented separately. Many couples combine photo booth with DJ services for complete event entertainment."
+    answer: "Yes! Photo booth rental can be added to any DJ package or rented separately. Many couples combine photo booth with DJ services for complete event entertainment. When you book both together, we can coordinate timing—maybe the photo booth is especially active during dinner when the DJ is playing background music, or we can announce photo booth availability during certain songs. We've also had couples rent photo booths for events where they're handling music themselves, or for corporate events where they just want the photo booth. It's completely flexible."
   },
   {
     question: "Do you provide props and backdrops?",
-    answer: "Yes, all photo booth packages include props, accessories, and backdrop options. Premium packages include custom backdrop options and extensive prop collections."
+    answer: "Yes, all photo booth packages include props, accessories, and backdrop options. We bring a collection of fun props—silly hats, glasses, signs, boas, and other accessories that guests love using. Premium packages include more extensive prop collections and custom backdrop options. Some couples provide their own props that match their theme (like cowboy hats for a western theme, or specific signs they've made), and we're happy to incorporate those. The backdrop options range from simple, elegant backdrops to custom-designed ones that match your wedding colors or theme."
   },
   {
     question: "How many photos can guests take?",
-    answer: "Classic packages include standard photo sessions. Premium and Deluxe packages offer unlimited photos during the rental period. All packages include instant prints and digital gallery access."
+    answer: "Classic packages include standard photo sessions (guests can take photos throughout the rental period, but there might be limits on how many sessions per hour). Premium and Deluxe packages offer unlimited photos during the rental period—guests can use it as much as they want. All packages include instant prints (usually 2 copies per session) and digital gallery access (all photos available for download after the event). The unlimited option is popular because it means guests don't have to worry about 'using up' the photo booth—they can go back multiple times throughout the night. We've seen guests at weddings use the photo booth 3-4 times throughout the evening as the party energy changes."
+  },
+  {
+    question: "Where should the photo booth be placed at my venue?",
+    answer: "Photo booth placement depends on your venue layout, but we generally recommend placing it in a visible but not intrusive location. Near the dance floor works well because guests can see it and are reminded to use it. In a separate area like a cocktail space or near the bar also works—it gives guests something to do during cocktail hour or dinner. We need access to power and enough space for the booth, props table, and a small line of guests. We'll discuss placement during planning and can visit your venue if needed to determine the best spot. We've set up photo booths at Memphis venues ranging from The Peabody's ballroom to backyard celebrations, and we know how to work with different space constraints."
   }
 ];
 
@@ -178,7 +182,10 @@ export default function PhotoBoothRentalMemphis() {
               </h1>
               
               <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-                Professional photo booth rental with instant prints, props, and custom branding. Perfect for weddings, corporate events, and parties. Packages from $500.
+                Photo booths are one of those additions that seem optional until you see how much guests love them. We've set up photo 
+                booths at weddings across Memphis—from elegant Peabody celebrations to backyard parties in Germantown. Guests line up 
+                for them, they create instant party favors, and they generate social media content throughout your event. Plus, you get 
+                a digital gallery of all the fun, candid moments. Packages from $500.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
@@ -206,7 +213,10 @@ export default function PhotoBoothRentalMemphis() {
                 Why Add a Photo Booth to Your Event?
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                Photo booths are one of the most popular event additions, keeping guests entertained and creating lasting memories.
+                Photo booths have become a standard at Memphis weddings and events, and for good reason. They're one of the few 
+                additions that guests actively seek out and use throughout the night. Unlike some entertainment options that guests 
+                might ignore, photo booths create a line—and that's a good thing. It means people are engaged, having fun, and 
+                creating memories.
               </p>
             </div>
 

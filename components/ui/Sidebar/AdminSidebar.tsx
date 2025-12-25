@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useTheme } from 'next-themes';
 import {
   Home,
   Briefcase,
@@ -19,7 +20,10 @@ import {
   LogOut,
   ChevronRight,
   ClipboardList,
-  QrCode
+  QrCode,
+  Ticket,
+  Moon,
+  Sun
 } from 'lucide-react';
 
 interface NavItem {
@@ -41,6 +45,8 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
   const [internalIsMobileOpen, setInternalIsMobileOpen] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const { theme, setTheme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   
   // Use external state if provided, otherwise use internal state
   const isMobileOpen = externalIsMobileOpen !== undefined ? externalIsMobileOpen : internalIsMobileOpen;
@@ -56,6 +62,26 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
   useEffect(() => {
     checkSubscriptionTier();
   }, []);
+
+  // Initialize mounted state
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Toggle theme between light and dark (skip system for simplicity)
+  const toggleTheme = () => {
+    const currentTheme = theme === 'system' ? systemTheme : theme;
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+  };
+
+  // Get the actual theme to display (resolve system theme)
+  const displayTheme = mounted && theme !== 'system' ? theme : (mounted && systemTheme || 'dark');
+
+  // Determine logo based on theme
+  const logoSrc = displayTheme === 'dark'
+    ? '/assets/m10 dj company logo white.gif'
+    : '/assets/m10 dj company logo black.gif';
 
   const checkSubscriptionTier = async () => {
     try {
@@ -97,6 +123,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     { label: 'Contacts', href: '/admin/contacts', icon: <Users className="w-5 h-5" /> },
     { label: 'Form Submissions', href: '/admin/form-submissions', icon: <ClipboardList className="w-5 h-5" /> },
     { label: 'Calendar', href: '/admin/calendar', icon: <Calendar className="w-5 h-5" /> },
+    { label: 'Events', href: '/admin/events', icon: <Ticket className="w-5 h-5" /> },
     { label: 'Contracts', href: '/admin/contracts', icon: <FileText className="w-5 h-5" /> },
     { label: 'Invoices', href: '/admin/invoices', icon: <DollarSign className="w-5 h-5" /> },
     { label: 'Financial', href: '/admin/financial', icon: <BarChart3 className="w-5 h-5" /> },
@@ -158,6 +185,18 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     }
   }, [router.pathname, onMobileToggle]);
 
+  const sidebarClasses = `
+    fixed left-0 top-0 h-screen z-[60]
+    transition-all duration-300 ease-in-out
+    flex flex-col
+    ${displayTheme === 'dark'
+      ? 'bg-black text-white'
+      : 'bg-gray-100 text-gray-900'
+    }
+    ${isExpanded ? 'w-64' : 'w-20'}
+    ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+  `;
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -172,19 +211,19 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
       <aside
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
-        className={`
-          fixed left-0 top-0 h-screen bg-gray-900 text-white z-[60]
-          transition-all duration-300 ease-in-out
-          flex flex-col
-          ${isExpanded ? 'w-64' : 'w-20'}
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
+        className={sidebarClasses}
       >
         {/* Logo/Brand */}
-        <div className="h-16 flex items-center justify-center border-b border-gray-800">
+        <div className={`h-16 flex items-center justify-center border-b ${
+          displayTheme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+        }`}>
           <Link href="/admin/dashboard" className="flex items-center gap-3 px-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#fcba00] to-[#d97706] rounded-lg flex items-center justify-center flex-shrink-0">
-              <Music className="w-5 h-5 text-black" />
+            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+              <img
+                src={logoSrc}
+                alt="M10 DJ Company Logo"
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <span
               className={`
@@ -212,7 +251,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
                       transition-all duration-200
                       ${active
                         ? 'bg-[#fcba00] text-black font-semibold'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        : displayTheme === 'dark' ? 'text-gray-300 hover:bg-gray-800 hover:text-white' : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                       }
                       ${!isExpanded && 'justify-center'}
                     `}
@@ -240,7 +279,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         </nav>
 
         {/* Bottom Navigation */}
-        <div className="border-t border-gray-800 py-4 px-2">
+        <div className={`border-t py-4 px-2 ${displayTheme === 'dark' ? 'border-gray-800' : 'border-gray-300'}`}>
           <ul className="space-y-1">
             {bottomNavItems.map((item) => {
               const active = isActive(item.href);
@@ -253,7 +292,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
                       transition-all duration-200
                       ${active
                         ? 'bg-[#fcba00] text-black font-semibold'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        : displayTheme === 'dark' ? 'text-gray-300 hover:bg-gray-800 hover:text-white' : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                       }
                       ${!isExpanded && 'justify-center'}
                     `}
@@ -272,6 +311,37 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
                 </li>
               );
             })}
+            
+            {/* Theme Toggle */}
+            {mounted && (
+              <li>
+                <button
+                  onClick={toggleTheme}
+                  className={`
+                    w-full flex items-center gap-3 px-4 py-3 rounded-lg
+                    displayTheme === 'dark' ? 'text-gray-300 hover:bg-gray-800 hover:text-white' : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                    transition-all duration-200
+                    ${!isExpanded && 'justify-center'}
+                  `}
+                  title={displayTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {displayTheme === 'dark' ? (
+                    <Sun className="w-5 h-5 flex-shrink-0" />
+                  ) : (
+                    <Moon className="w-5 h-5 flex-shrink-0" />
+                  )}
+                  <span
+                    className={`
+                      whitespace-nowrap overflow-hidden
+                      transition-all duration-300
+                      ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'}
+                    `}
+                  >
+                    {displayTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                  </span>
+                </button>
+              </li>
+            )}
             
             {/* Sign Out */}
             <li>

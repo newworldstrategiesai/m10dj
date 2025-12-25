@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { 
-  Plus,
+import {
   Edit,
   Trash2,
   Eye,
@@ -18,28 +17,32 @@ import {
   Filter,
   Star,
   FileText,
-  ArrowLeft
+  Ticket,
+  Plus,
+  DoorOpen
 } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import AdminLayout from '@/components/layouts/AdminLayout';
 
-interface CaseStudy {
+interface LiveEvent {
   id: string;
-  title: string;
+  event_id: string;
   slug: string;
-  excerpt?: string;
-  content: string;
-  event_date?: string;
-  event_type?: string;
-  venue_name?: string;
-  venue_address?: string;
-  number_of_guests?: number;
+  title: string;
+  description?: string;
+  event_date: string;
+  event_time?: string;
+  end_time?: string;
+  venue_name: string;
+  venue_address: string;
+  venue_url?: string;
   featured_image_url?: string;
-  gallery_images?: string[];
-  highlights?: string[];
-  testimonial?: any;
+  cover_photo_url?: string;
   is_published: boolean;
   is_featured: boolean;
+  ticketing_enabled: boolean;
+  ticket_price?: number;
+  capacity?: number;
   display_order: number;
   seo_title?: string;
   seo_description?: string;
@@ -52,12 +55,11 @@ interface CaseStudy {
 export default function EventsManagement() {
   const router = useRouter();
   const supabase = createClientComponentClient();
-  const [events, setEvents] = useState<CaseStudy[]>([]);
+  const [events, setEvents] = useState<LiveEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterEventType, setFilterEventType] = useState('all');
 
   useEffect(() => {
     loadEvents();
@@ -76,16 +78,16 @@ export default function EventsManagement() {
     
     try {
       const { data, error: fetchError } = await supabase
-        .from('case_studies')
+        .from('live_events')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('event_date', { ascending: false });
 
       if (fetchError) throw fetchError;
       
       setEvents(data || []);
     } catch (err) {
-      console.error('Error loading event pages:', err);
-      setError('Failed to load event pages. Please check your connection.');
+      console.error('Error loading live events:', err);
+      setError('Failed to load live events. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -94,7 +96,7 @@ export default function EventsManagement() {
   const togglePublishStatus = async (eventId: string, currentStatus: boolean) => {
     try {
       const { error: updateError } = await supabase
-        .from('case_studies')
+        .from('live_events')
         .update({ 
           is_published: !currentStatus,
           published_at: !currentStatus ? new Date().toISOString() : null,
@@ -126,7 +128,7 @@ export default function EventsManagement() {
   const toggleFeaturedStatus = async (eventId: string, currentStatus: boolean) => {
     try {
       const { error: updateError } = await supabase
-        .from('case_studies')
+        .from('live_events')
         .update({ 
           is_featured: !currentStatus,
           updated_at: new Date().toISOString()
@@ -150,24 +152,22 @@ export default function EventsManagement() {
   };
 
   const deleteEvent = async (eventId: string) => {
-    if (!confirm('Are you sure you want to delete this event page? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this live event? This action cannot be undone.')) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/admin/event/${eventId}`, {
-        method: 'DELETE',
-      });
+      const { error: deleteError } = await supabase
+        .from('live_events')
+        .delete()
+        .eq('id', eventId);
 
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to delete event page');
-      }
+      if (deleteError) throw deleteError;
       
       setEvents(prev => prev.filter(event => event.id !== eventId));
     } catch (err: any) {
       console.error('Error deleting event:', err);
-      alert(`Failed to delete event page: ${err.message}`);
+      alert(`Failed to delete live event: ${err.message}`);
     }
   };
 
@@ -189,19 +189,15 @@ export default function EventsManagement() {
   // Filter events based on search and filters
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.excerpt?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.venue_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === 'all' || 
                          (filterStatus === 'published' && event.is_published) ||
                          (filterStatus === 'draft' && !event.is_published);
     
-    const matchesEventType = filterEventType === 'all' || event.event_type === filterEventType;
-    
-    return matchesSearch && matchesStatus && matchesEventType;
+    return matchesSearch && matchesStatus;
   });
-
-  const eventTypes = Array.from(new Set(events.map(event => event.event_type).filter((type): type is string => Boolean(type))));
 
   if (loading) {
     return (
@@ -237,61 +233,33 @@ export default function EventsManagement() {
   }
 
   return (
-    <AdminLayout title="Event Pages" description="Manage event case study pages">
+    <AdminLayout
+      title="Live Events"
+      description="Manage public live events with ticketing"
+      showPageTitle={true}
+      pageTitle="Live Events"
+      pageDescription="Create and manage public live events with ticketing"
+      newButton={{
+        href: "/admin/events/new",
+        label: "New Live Event"
+      }}
+    >
       <Head>
-        <title>Event Pages - M10 DJ Company Admin</title>
+        <title>Live Events - M10 DJ Company Admin</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
 
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Header */}
-        <header className="bg-white dark:bg-gray-800 shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <Link 
-                  href="/admin/dashboard"
-                  className="flex items-center text-gray-600 dark:text-gray-400 hover:text-[#fcba00] mr-6"
-                >
-                  <ArrowLeft className="w-5 h-5 mr-2" />
-                  Back to Dashboard
-                </Link>
-                
-                <div className="w-8 h-8 bg-[#fcba00] rounded-lg flex items-center justify-center mr-3">
-                  <FileText className="w-5 h-5 text-black" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                    Event Pages
-                  </h1>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Create and manage event case study pages
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <Link
-                  href="/admin/events/new"
-                  className="bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Event Page
-                </Link>
-              </div>
-            </div>
-          </div>
-        </header>
 
-        {/* Success Messages */}
+      {/* Success Messages - Mobile responsive */}
         {router.query.created === 'true' && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-            <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 rounded-lg p-4">
-              <p className="text-green-800 dark:text-green-200">
-                ✅ Event page created successfully! 
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 pt-4 sm:pt-6">
+            <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 rounded-lg p-3 sm:p-4">
+              <p className="text-sm sm:text-base text-green-800 dark:text-green-200">
+                ✅ Live event created successfully! 
                 {router.query.slug && (
                   <Link 
-                    href={`/events/${router.query.slug}`} 
-                    className="underline ml-2"
+                    href={`/events/live/${router.query.slug}`} 
+                    className="underline ml-1 sm:ml-2 inline-block mt-1 sm:mt-0 sm:inline"
                     target="_blank"
                   >
                     View page →
@@ -302,14 +270,14 @@ export default function EventsManagement() {
           </div>
         )}
         {router.query.updated === 'true' && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-            <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 rounded-lg p-4">
-              <p className="text-green-800 dark:text-green-200">
-                ✅ Event page updated successfully! 
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 pt-4 sm:pt-6">
+            <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 rounded-lg p-3 sm:p-4">
+              <p className="text-sm sm:text-base text-green-800 dark:text-green-200">
+                ✅ Live event updated successfully! 
                 {router.query.slug && (
                   <Link 
-                    href={`/events/${router.query.slug}`} 
-                    className="underline ml-2"
+                    href={`/events/live/${router.query.slug}`} 
+                    className="underline ml-1 sm:ml-2 inline-block mt-1 sm:mt-0 sm:inline"
                     target="_blank"
                   >
                     View page →
@@ -320,10 +288,10 @@ export default function EventsManagement() {
           </div>
         )}
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Filters */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
+          {/* Filters - Mobile-first */}
+          <div className="bg-white dark:bg-black rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-6 lg:mb-8 border border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -332,7 +300,7 @@ export default function EventsManagement() {
                   placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="pl-9 sm:pl-10 pr-4 py-2.5 sm:py-2 w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white text-base sm:text-sm focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
                 />
               </div>
 
@@ -340,219 +308,327 @@ export default function EventsManagement() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="px-4 py-2.5 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white text-base sm:text-sm focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
               >
                 <option value="all">All Status</option>
                 <option value="published">Published</option>
                 <option value="draft">Draft</option>
               </select>
-
-              {/* Event Type Filter */}
-              <select
-                value={filterEventType}
-                onChange={(e) => setFilterEventType(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="all">All Event Types</option>
-                {eventTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
             </div>
           </div>
 
-          {/* Events List */}
+          {/* Events List - Mobile-first: Cards on mobile, Table on desktop */}
           {filteredEvents.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                No event pages found
+            <div className="bg-white dark:bg-black rounded-lg shadow p-8 sm:p-12 text-center border border-gray-200 dark:border-gray-700">
+              <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                No live events found
               </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                {searchTerm || filterStatus !== 'all' || filterEventType !== 'all'
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 sm:mb-6">
+                {searchTerm || filterStatus !== 'all'
                   ? 'Try adjusting your filters'
-                  : 'Get started by creating your first event page'}
+                  : 'Get started by creating your first live event'}
               </p>
-              {!searchTerm && filterStatus === 'all' && filterEventType === 'all' && (
+              {!searchTerm && filterStatus === 'all' && (
                 <Link
                   href="/admin/events/new"
-                  className="inline-flex items-center bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-medium"
+                  className="inline-flex items-center bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2.5 sm:py-2 rounded-lg font-medium text-sm sm:text-base touch-manipulation"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Create First Event Page
+                  Create First Live Event
                 </Link>
               )}
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-900">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Event
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Details
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Created
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {filteredEvents.map((event) => (
-                      <tr key={event.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {event.featured_image_url && (
-                              <img
-                                src={event.featured_image_url}
-                                alt={event.title}
-                                className="w-12 h-12 rounded-lg object-cover mr-3"
-                                onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            )}
-                            <div>
-                              <div className="flex items-center">
-                                <Link
-                                  href={`/events/${event.slug}`}
-                                  target="_blank"
-                                  className="text-sm font-medium text-gray-900 dark:text-white hover:text-[#fcba00]"
-                                >
-                                  {event.title}
-                                </Link>
-                                {event.is_featured && (
-                                  <Star className="w-4 h-4 text-[#fcba00] ml-2 fill-current" />
+            <>
+              {/* Mobile: Card Layout */}
+              <div className="block lg:hidden space-y-3 sm:space-y-4">
+                {filteredEvents.map((event) => (
+                  <div key={event.id} className="bg-white dark:bg-black rounded-lg shadow p-4 sm:p-5 border border-gray-200 dark:border-gray-700">
+                    {/* Event Header */}
+                    <div className="flex items-start gap-3 mb-3">
+                      {event.featured_image_url && (
+                        <img
+                          src={event.featured_image_url}
+                          alt={event.title}
+                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover flex-shrink-0"
+                          onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Link
+                            href={`/events/live/${event.slug}`}
+                            target="_blank"
+                            className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white hover:text-[#fcba00] truncate"
+                          >
+                            {event.title}
+                          </Link>
+                          {event.is_featured && (
+                            <Star className="w-4 h-4 text-[#fcba00] flex-shrink-0 fill-current" />
+                          )}
+                        </div>
+                        {event.description && (
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                            {event.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Event Details */}
+                    <div className="space-y-2 mb-4">
+                      {event.venue_name && (
+                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                          <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+                          <span className="truncate">{event.venue_name}</span>
+                        </div>
+                      )}
+                      {event.event_date && (
+                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                          <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+                          {formatDate(event.event_date)}
+                        </div>
+                      )}
+                      {event.ticketing_enabled && (
+                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                          <Ticket className="w-4 h-4 mr-2 flex-shrink-0" />
+                          Tickets: ${event.ticket_price?.toFixed(2) || 'N/A'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Status and Actions */}
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(event.is_published)}`}>
+                        {event.is_published ? 'Published' : 'Draft'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/admin/events/edit/${event.id}`}
+                          className="p-2 text-gray-600 dark:text-gray-400 hover:text-[#fcba00] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation"
+                          title="Edit"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </Link>
+                        <button
+                          onClick={() => togglePublishStatus(event.id, event.is_published)}
+                          className="p-2 text-gray-600 dark:text-gray-400 hover:text-[#fcba00] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation"
+                          title={event.is_published ? 'Unpublish' : 'Publish'}
+                        >
+                          {event.is_published ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => toggleFeaturedStatus(event.id, event.is_featured)}
+                          className={`p-2 ${event.is_featured ? 'text-[#fcba00]' : 'text-gray-600 dark:text-gray-400'} hover:text-[#fcba00] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation`}
+                          title={event.is_featured ? 'Remove from featured' : 'Mark as featured'}
+                        >
+                          <Star className={`w-5 h-5 ${event.is_featured ? 'fill-current' : ''}`} />
+                        </button>
+                        <Link
+                          href={`/admin/events/${event.id}/door`}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg touch-manipulation"
+                          title="Walk-up App"
+                        >
+                          <DoorOpen className="w-5 h-5" />
+                        </Link>
+                        <Link
+                          href={`/events/live/${event.slug}`}
+                          target="_blank"
+                          className="p-2 text-gray-600 dark:text-gray-400 hover:text-[#fcba00] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation"
+                          title="View page"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </Link>
+                        <button
+                          onClick={() => deleteEvent(event.id)}
+                          className="p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg touch-manipulation"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: Table Layout */}
+              <div className="hidden lg:block bg-white dark:bg-black rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-black">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Event
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Details
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Created
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700">
+                      {filteredEvents.map((event) => (
+                        <tr key={event.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              {event.featured_image_url && (
+                                <img
+                                  src={event.featured_image_url}
+                                  alt={event.title}
+                                  className="w-12 h-12 rounded-lg object-cover mr-3"
+                                  onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              <div>
+                                <div className="flex items-center">
+                                  <Link
+                                    href={`/events/live/${event.slug}`}
+                                    target="_blank"
+                                    className="text-sm font-medium text-gray-900 dark:text-white hover:text-[#fcba00]"
+                                  >
+                                    {event.title}
+                                  </Link>
+                                  {event.is_featured && (
+                                    <Star className="w-4 h-4 text-[#fcba00] ml-2 fill-current" />
+                                  )}
+                                </div>
+                                {event.description && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
+                                    {event.description}
+                                  </p>
                                 )}
                               </div>
-                              {event.excerpt && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
-                                  {event.excerpt}
-                                </p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900 dark:text-white space-y-1">
+                              {event.venue_name && (
+                                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                  <MapPin className="w-3 h-3 mr-1" />
+                                  {event.venue_name}
+                                </div>
+                              )}
+                              {event.ticketing_enabled && (
+                                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                  <Ticket className="w-3 h-3 mr-1" />
+                                  Tickets: ${event.ticket_price?.toFixed(2) || 'N/A'}
+                                </div>
+                              )}
+                              {event.event_date && (
+                                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  {formatDate(event.event_date)}
+                                </div>
                               )}
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 dark:text-white space-y-1">
-                            {event.venue_name && (
-                              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                                <MapPin className="w-3 h-3 mr-1" />
-                                {event.venue_name}
-                              </div>
-                            )}
-                            {event.event_type && (
-                              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                                <Music className="w-3 h-3 mr-1" />
-                                {event.event_type}
-                              </div>
-                            )}
-                            {event.event_date && (
-                              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                {formatDate(event.event_date)}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(event.is_published)}`}>
-                            {event.is_published ? 'Published' : 'Draft'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {formatDate(event.created_at)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end space-x-2">
-                            <Link
-                              href={`/admin/events/edit/${event.id}`}
-                              className="text-gray-600 dark:text-gray-400 hover:text-[#fcba00]"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Link>
-                            <button
-                              onClick={() => togglePublishStatus(event.id, event.is_published)}
-                              className="text-gray-600 dark:text-gray-400 hover:text-[#fcba00]"
-                              title={event.is_published ? 'Unpublish' : 'Publish'}
-                            >
-                              {event.is_published ? (
-                                <EyeOff className="w-4 h-4" />
-                              ) : (
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(event.is_published)}`}>
+                              {event.is_published ? 'Published' : 'Draft'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(event.created_at)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end space-x-2">
+                              <Link
+                                href={`/admin/events/edit/${event.id}`}
+                                className="text-gray-600 dark:text-gray-400 hover:text-[#fcba00]"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => togglePublishStatus(event.id, event.is_published)}
+                                className="text-gray-600 dark:text-gray-400 hover:text-[#fcba00]"
+                                title={event.is_published ? 'Unpublish' : 'Publish'}
+                              >
+                                {event.is_published ? (
+                                  <EyeOff className="w-4 h-4" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => toggleFeaturedStatus(event.id, event.is_featured)}
+                                className={`${event.is_featured ? 'text-[#fcba00]' : 'text-gray-600 dark:text-gray-400'} hover:text-[#fcba00]`}
+                                title={event.is_featured ? 'Remove from featured' : 'Mark as featured'}
+                              >
+                                <Star className={`w-4 h-4 ${event.is_featured ? 'fill-current' : ''}`} />
+                              </button>
+                              <Link
+                                href={`/events/live/${event.slug}`}
+                                target="_blank"
+                                className="text-gray-600 dark:text-gray-400 hover:text-[#fcba00]"
+                                title="View page"
+                              >
                                 <Eye className="w-4 h-4" />
-                              )}
-                            </button>
-                            <button
-                              onClick={() => toggleFeaturedStatus(event.id, event.is_featured)}
-                              className={`${event.is_featured ? 'text-[#fcba00]' : 'text-gray-600 dark:text-gray-400'} hover:text-[#fcba00]`}
-                              title={event.is_featured ? 'Remove from featured' : 'Mark as featured'}
-                            >
-                              <Star className={`w-4 h-4 ${event.is_featured ? 'fill-current' : ''}`} />
-                            </button>
-                            <Link
-                              href={`/events/${event.slug}`}
-                              target="_blank"
-                              className="text-gray-600 dark:text-gray-400 hover:text-[#fcba00]"
-                              title="View page"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Link>
-                            <button
-                              onClick={() => deleteEvent(event.id)}
-                              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                              </Link>
+                              <button
+                                onClick={() => deleteEvent(event.id)}
+                                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            </>
           )}
 
-          {/* Stats */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+          {/* Stats - Mobile responsive */}
+          <div className="mt-4 sm:mt-6 lg:mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="bg-white dark:bg-black rounded-lg shadow p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+              <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {events.length}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Total Event Pages
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Total Live Events
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className="bg-white dark:bg-black rounded-lg shadow p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+              <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
                 {events.filter(e => e.is_published).length}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Published
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <div className="text-2xl font-bold text-[#fcba00]">
+            <div className="bg-white dark:bg-black rounded-lg shadow p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+              <div className="text-xl sm:text-2xl font-bold text-[#fcba00]">
                 {events.filter(e => e.is_featured).length}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Featured
               </div>
             </div>
           </div>
-        </main>
-      </div>
+        </div>
     </AdminLayout>
   );
 }
