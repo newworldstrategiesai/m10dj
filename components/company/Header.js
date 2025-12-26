@@ -1099,7 +1099,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-semibold font-inter mb-0.5 ${
-                        shouldBeTransparent && !isScrolled ? 'text-white/80' : 'text-gray-700'
+                        shouldBeTransparent && !isScrolled ? 'text-white/80' : 'text-gray-700 dark:text-white'
                       }`}>Email Us</p>
                       <a href="mailto:info@m10djcompany.com" className={`font-bold font-inter text-sm transition-colors break-all ${
                         shouldBeTransparent && !isScrolled ? 'text-brand hover:text-brand/80' : 'text-brand hover:text-brand/80'
