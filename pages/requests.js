@@ -1793,14 +1793,14 @@ export function GeneralRequestsPage({
                           )}
                           {/* Autocomplete suggestions */}
                           {showAutocomplete && suggestions.length > 0 && (
-                            <div className="mt-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                            <div className="mt-2 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
                               {suggestions.map((suggestion, index) => (
                                 <button
                                   key={suggestion.id}
                                   type="button"
                                   onClick={() => handleSuggestionSelect(suggestion)}
-                                  className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-3 ${
-                                    index === selectedSuggestionIndex ? 'bg-gray-100 dark:bg-gray-800' : ''
+                                  className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-black/80 transition-colors flex items-center gap-3 ${
+                                    index === selectedSuggestionIndex ? 'bg-gray-100 dark:bg-black/80' : ''
                                   }`}
                                 >
                                   {suggestion.albumArt && (
@@ -1823,7 +1823,7 @@ export function GeneralRequestsPage({
                             </div>
                           )}
                           {showAutocomplete && searchingSongs && suggestions.length === 0 && (
-                            <div className="mt-2 p-3 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
+                            <div className="mt-2 p-3 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
                               <Loader2 className="w-4 h-4 animate-spin text-brand" />
                               <span className="text-sm text-gray-600 dark:text-gray-400">Searching...</span>
                             </div>
@@ -2327,14 +2327,14 @@ export function GeneralRequestsPage({
                          )}
                          {/* Autocomplete suggestions */}
                          {showAutocomplete && suggestions.length > 0 && (
-                           <div className="mt-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                           <div className="mt-2 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
                              {suggestions.map((suggestion, index) => (
                                <button
                                  key={suggestion.id}
                                  type="button"
                                  onClick={() => handleSuggestionSelect(suggestion)}
-                                 className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-3 ${
-                                   index === selectedSuggestionIndex ? 'bg-gray-100 dark:bg-gray-800' : ''
+                                 className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-black/80 transition-colors flex items-center gap-3 ${
+                                   index === selectedSuggestionIndex ? 'bg-gray-100 dark:bg-black/80' : ''
                                  }`}
                                >
                                  {suggestion.albumArt && (
@@ -2357,7 +2357,7 @@ export function GeneralRequestsPage({
                            </div>
                          )}
                          {showAutocomplete && searchingSongs && suggestions.length === 0 && (
-                           <div className="mt-2 p-3 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
+                           <div className="mt-2 p-3 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
                               <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
                              <span className="text-sm text-gray-600 dark:text-gray-400">Searching...</span>
                            </div>
