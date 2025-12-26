@@ -61,6 +61,44 @@ html[data-requests-page="true"] body {
   padding-top: 0 !important;
 }
 
+/* Requests page GPU artifact / blur fix (scoped) */
+html[data-requests-page="true"] [class*="backdrop-blur"],
+html[data-requests-page="true"] .backdrop-blur,
+html[data-requests-page="true"] .backdrop-blur-sm,
+html[data-requests-page="true"] .backdrop-blur-md,
+html[data-requests-page="true"] .backdrop-blur-lg,
+html[data-requests-page="true"] .backdrop-blur-xl,
+html[data-requests-page="true"] .backdrop-blur-2xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Also neutralize any header blur on requests pages */
+html[data-requests-page="true"] header {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Reduce GPU compositing artifacts on requests pages (Chromium white wedge issue) */
+html[data-requests-page="true"] [class*="blur-"] {
+  filter: none !important;
+}
+
+html[data-requests-page="true"] [class*="animate-"] {
+  animation: none !important;
+}
+
+/* Attempt to eliminate Chromium "white wedge" compositing artifact by forcing isolated paint layers */
+html[data-requests-page="true"] .shadow-2xl,
+html[data-requests-page="true"] .shadow-xl,
+html[data-requests-page="true"] .shadow-lg {
+  isolation: isolate;
+  contain: paint;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
 /* Ensure main content areas also account for header */
 main {
   position: relative;

@@ -281,11 +281,11 @@ function BiddingAmountSelector({
 
   return (
     <div 
-      className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0"
+      className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/70 dark:bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0"
       key={`bidding-selector-${organizationId}-${currentWinningBid}-${loading}`}
     >
       <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2">
-        <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+        <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-brand-500" />
         Your Bid Amount
         {process.env.NODE_ENV === 'development' && (
           <span className="text-xs text-gray-500 ml-2">
@@ -347,7 +347,7 @@ function BiddingAmountSelector({
                       ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 focus:border-red-500 focus:ring-red-500'
                       : customAmount && customAmountValid
                       ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 focus:border-green-500 focus:ring-green-500'
-                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-purple-500 focus:ring-purple-500'
+                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:border-brand-500 focus:ring-brand-500'
                   }`}
                 />
               ) : (
@@ -370,7 +370,7 @@ function BiddingAmountSelector({
                       ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 focus:border-red-500 focus:ring-red-500'
                       : customAmount && customAmountValid
                       ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 focus:border-green-500 focus:ring-green-500'
-                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-purple-500 focus:ring-purple-500'
+                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:border-brand-500 focus:ring-brand-500'
                   }`}
                 />
               )}

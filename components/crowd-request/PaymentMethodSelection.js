@@ -259,7 +259,7 @@ function PaymentMethodSelection({
   };
 
   return (
-    <div className="bg-white dark:bg-black rounded-2xl shadow-xl p-6 sm:p-8" data-payment-methods>
+    <div className="bg-gray-50 dark:bg-black rounded-2xl shadow-xl p-6 sm:p-8" data-payment-methods>
       <div className="text-center mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Choose Payment Method

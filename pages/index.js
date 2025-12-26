@@ -71,8 +71,8 @@ export default function Home() {
           {/* Enhanced Background Elements */}
           <div className="absolute inset-0">
             <div className="absolute top-20 right-10 w-64 h-64 md:w-96 md:h-96 bg-brand/10 dark:bg-brand/5 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-20 left-10 w-64 h-64 md:w-80 md:h-80 bg-purple-500/10 dark:bg-purple-500/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] md:w-[600px] md:h-[600px] bg-blue-500/5 dark:bg-blue-500/3 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-20 left-10 w-64 h-64 md:w-80 md:h-80 bg-brand-600/10 dark:bg-brand-600/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] md:w-[600px] md:h-[600px] bg-brand-500/5 dark:bg-brand-500/3 rounded-full blur-3xl"></div>
           </div>
           
           <div className="section-container relative z-10 text-center py-16 md:py-24 lg:py-32">
@@ -169,25 +169,25 @@ export default function Home() {
                 </div>
                 
                 <div className="modern-card text-center group relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 via-blue-500 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-brand-500 to-brand-700 text-white rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg">
                     <Radio className="w-8 h-8 md:w-10 md:h-10" />
                   </div>
                   <h3 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4 text-gray-900 dark:text-white">Wedding-Grade Equipment</h3>
                   <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 font-inter leading-relaxed mb-3 md:mb-4">Crystal-clear sound systems, elegant uplighting, and wireless microphones for ceremony, cocktail hour, and reception perfection.</p>
-                  <Link href="/services" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold mt-2 md:mt-4 inline-flex items-center group-hover:gap-2 gap-1 transition-all text-sm md:text-base">
+                  <Link href="/services" className="text-brand hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 font-semibold mt-2 md:mt-4 inline-flex items-center group-hover:gap-2 gap-1 transition-all text-sm md:text-base">
                     View All Services <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
                 
                 <div className="modern-card text-center group relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-brand to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-amber-500 to-brand-600 text-white rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg">
                     <Zap className="w-8 h-8 md:w-10 md:h-10" />
                   </div>
                   <h3 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4 text-gray-900 dark:text-white">Customized Entertainment</h3>
                   <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 font-inter leading-relaxed mb-3 md:mb-4">Custom playlists, seamless timeline coordination, and MC services tailored to your event vision and guest preferences.</p>
-                  <Link href="/dj-near-me-memphis" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold mt-2 md:mt-4 inline-flex items-center group-hover:gap-2 gap-1 transition-all text-sm md:text-base">
+                  <Link href="/dj-near-me-memphis" className="text-brand hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 font-semibold mt-2 md:mt-4 inline-flex items-center group-hover:gap-2 gap-1 transition-all text-sm md:text-base">
                     Find DJs Near You <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
@@ -230,7 +230,7 @@ export default function Home() {
         </section>
 
         {/* Internal Linking Hub - SEO Optimization */}
-        <section className="py-12 md:py-16 bg-gradient-to-b from-white to-gray-50 dark:from-black dark:to-gray-900">
+        <section className="py-12 md:py-16 bg-gradient-to-b from-white to-gray-50 dark:from-black dark:to-black">
           <div className="section-container">
             <div className="max-w-6xl mx-auto px-4">
               <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center text-gray-900 dark:text-white">
@@ -242,7 +242,7 @@ export default function Home() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
                 {/* Primary Service Pages */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                <div className="bg-white dark:bg-black rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
                   <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Wedding DJ Services</h3>
                   <ul className="space-y-2">
                     <li><Link href="/memphis-wedding-dj" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Memphis Wedding DJ</Link></li>
@@ -253,7 +253,7 @@ export default function Home() {
                 </div>
                 
                 {/* Location Pages */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                <div className="bg-white dark:bg-black rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
                   <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">DJ Services by Location</h3>
                   <ul className="space-y-2">
                     <li><Link href="/dj-near-me-memphis" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">DJ Near Me Memphis</Link></li>
@@ -264,7 +264,7 @@ export default function Home() {
                 </div>
                 
                 {/* Service Type Pages */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                <div className="bg-white dark:bg-black rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
                   <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Event Services</h3>
                   <ul className="space-y-2">
                     <li><Link href="/memphis-dj-services" className="text-brand hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Memphis DJ Services</Link></li>
@@ -304,7 +304,7 @@ export default function Home() {
           {/* Background Decoration */}
           <div className="absolute inset-0 opacity-30">
             <div className="absolute top-10 right-10 w-48 h-48 md:w-72 md:h-72 bg-brand/10 dark:bg-brand/5 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-10 left-10 w-64 h-64 md:w-96 md:h-96 bg-blue-500/10 dark:bg-blue-500/5 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-10 left-10 w-64 h-64 md:w-96 md:h-96 bg-brand-600/10 dark:bg-brand-600/5 rounded-full blur-3xl"></div>
           </div>
           
           <div className="section-container relative z-10">
@@ -340,13 +340,13 @@ export default function Home() {
                 
                 <div className="modern-card bg-white dark:bg-black hover:shadow-xl transition-shadow">
                   <div className="flex items-start space-x-3 md:space-x-4">
-                    <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-brand-500 to-brand-700 text-white rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                       <Mail className="w-6 h-6 md:w-7 md:h-7" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2 font-inter">Email Us</h3>
                       <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-2 md:mb-3 font-inter">Send us your event details and questions</p>
-                      <a href="mailto:info@m10djcompany.com" className="text-blue-600 dark:text-blue-400 text-sm md:text-lg font-bold hover:text-blue-700 dark:hover:text-blue-300 transition-colors break-all inline-flex items-center gap-1 md:gap-2 group flex-wrap">
+                      <a href="mailto:info@m10djcompany.com" className="text-brand dark:text-brand-400 text-sm md:text-lg font-bold hover:text-brand-600 dark:hover:text-brand-300 transition-colors break-all inline-flex items-center gap-1 md:gap-2 group flex-wrap">
                         <span>info@m10djcompany.com</span>
                         <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform flex-shrink-0" />
                       </a>
@@ -356,7 +356,7 @@ export default function Home() {
                 
                 <div className="modern-card bg-white dark:bg-black hover:shadow-xl transition-shadow">
                   <div className="flex items-start space-x-3 md:space-x-4">
-                    <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-amber-500 to-brand-600 text-white rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                       <MapPin className="w-6 h-6 md:w-7 md:h-7" />
                     </div>
                     <div className="flex-1 min-w-0">

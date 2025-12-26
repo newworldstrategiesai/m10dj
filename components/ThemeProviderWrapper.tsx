@@ -6,7 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function ThemeProviderWrapper({ children }: { children: React.ReactNode }) {
   const [defaultTheme, setDefaultTheme] = useState<'light' | 'dark' | 'system'>('light'); // Default to light for non-logged-in users
-  const [forcedTheme, setForcedTheme] = useState<'light' | undefined>(undefined);
+  const [forcedTheme, setForcedTheme] = useState<'light' | 'dark' | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -19,7 +19,11 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
     );
     
     if (isRequestsPage) {
-      // Don't apply theme on requests page - let the page handle its own dark mode
+      // Force dark mode on requests pages to avoid mixed theme classes (e.g. "light dark")
+      const root = document.documentElement;
+      root.classList.remove('light');
+      root.classList.add('dark');
+      root.style.colorScheme = 'dark';
       return;
     }
     
@@ -36,6 +40,8 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
           setForcedTheme('light');
           const root = document.documentElement;
           root.classList.remove('dark');
+          root.classList.add('light');
+          root.style.colorScheme = 'light';
           return;
         }
         
@@ -60,15 +66,23 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
               const root = document.documentElement;
               if (theme === 'dark') {
                 root.classList.add('dark');
+                root.classList.remove('light');
+                root.style.colorScheme = 'dark';
               } else if (theme === 'light') {
                 root.classList.remove('dark');
+                root.classList.add('light');
+                root.style.colorScheme = 'light';
               } else {
                 // System theme
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 if (prefersDark) {
                   root.classList.add('dark');
+                  root.classList.remove('light');
+                  root.style.colorScheme = 'dark';
                 } else {
                   root.classList.remove('dark');
+                  root.classList.add('light');
+                  root.style.colorScheme = 'light';
                 }
               }
             }
@@ -92,6 +106,8 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
         setForcedTheme('light');
         const root = document.documentElement;
         root.classList.remove('dark');
+        root.classList.add('light');
+        root.style.colorScheme = 'light';
       } else {
         // User logged in, allow theme customization
         setForcedTheme(undefined);
@@ -125,14 +141,19 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
     return <>{children}</>;
   }
 
+  const isRequestsPage = typeof window !== 'undefined' && (
+    window.location.pathname === '/requests' ||
+    (window.location.pathname.startsWith('/organizations/') && window.location.pathname.endsWith('/requests'))
+  );
+
   return (
     <ThemeProvider 
       attribute="class" 
-      defaultTheme={defaultTheme}
-      enableSystem={defaultTheme === 'system'}
+      defaultTheme={isRequestsPage ? 'dark' : defaultTheme}
+      enableSystem={!isRequestsPage && defaultTheme === 'system'}
       disableTransitionOnChange={false}
       storageKey="app-theme"
-      forcedTheme={forcedTheme}
+      forcedTheme={isRequestsPage ? 'dark' : forcedTheme}
     >
       {children}
     </ThemeProvider>

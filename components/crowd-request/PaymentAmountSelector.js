@@ -24,9 +24,9 @@ function PaymentAmountSelector({
   currentWinningBid = 0 // Current winning bid amount in cents (for bidding mode)
 }) {
   return (
-    <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
+    <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/80 dark:bg-black/80 rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
       <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2">
-        <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+        <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-brand-500" />
         {isBiddingMode ? 'Your Bid Amount' : 'Payment Amount'}
       </h2>
       
@@ -43,7 +43,7 @@ function PaymentAmountSelector({
             onClick={() => setAmountType('preset')}
             className={`flex-1 py-2.5 sm:py-3 md:py-3.5 px-2 sm:px-3 md:px-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation min-h-[44px] sm:min-h-[48px] ${
               amountType === 'preset'
-                ? 'border-purple-500 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 scale-105'
+                ? 'border-brand-500 bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/30 scale-105'
                 : 'border-transparent bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
@@ -55,7 +55,7 @@ function PaymentAmountSelector({
             onClick={() => setAmountType('custom')}
             className={`flex-1 py-2.5 sm:py-3 md:py-3.5 px-2 sm:px-3 md:px-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation min-h-[44px] sm:min-h-[48px] ${
               amountType === 'custom'
-                ? 'border-purple-500 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 scale-105'
+                ? 'border-brand-500 bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/30 scale-105'
                 : 'border-transparent bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
@@ -87,10 +87,10 @@ function PaymentAmountSelector({
                     isBelowMinimum
                       ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/50 opacity-50 cursor-not-allowed'
                       : presetAmount === preset.value
-                    ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-105'
+                    ? 'border-brand-500 bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-xl shadow-brand-500/40 scale-105'
                       : beatsCurrentBid
                       ? 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-900/20 hover:border-green-500 hover:scale-[1.02] hover:shadow-lg'
-                    : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-lg'
+                    : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-black/50 hover:border-brand-300 hover:scale-[1.02] hover:shadow-lg'
                 }`}
               >
                 {presetAmount === preset.value && (
@@ -108,7 +108,7 @@ function PaymentAmountSelector({
                       ? 'text-gray-400 dark:text-gray-600'
                       : beatsCurrentBid
                       ? 'text-green-700 dark:text-green-300'
-                    : 'text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400'
+                    : 'text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400'
                 }`}>
                   {preset.label}
                 </span>
@@ -157,7 +157,7 @@ function PaymentAmountSelector({
                   })()
                     ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
                     : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
-                } text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent touch-manipulation`}
+                } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
                 placeholder={(() => {
                   const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
                   return minAmount.toFixed(2);
@@ -295,7 +295,7 @@ function PaymentAmountSelector({
           </div>
         )}
 
-        <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-purple-900/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6 border-2 border-purple-200/50 dark:border-purple-700/30">
+        <div className="bg-gradient-to-br from-brand-50 via-brand-100/50 to-brand-200/30 dark:from-brand-900/20 dark:via-brand-800/20 dark:to-brand-700/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6 border-2 border-brand-200/50 dark:border-brand-700/30">
           <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center justify-between text-sm sm:text-base">
               <span className="text-gray-700 dark:text-gray-300 font-medium">Base Amount:</span>
@@ -325,11 +325,11 @@ function PaymentAmountSelector({
                 </span>
               </div>
             )}
-            <div className="border-t-2 border-purple-300/50 dark:border-purple-700/50 pt-2 sm:pt-3 md:pt-4 flex items-center justify-between">
+            <div className="border-t-2 border-brand-300/50 dark:border-brand-700/50 pt-2 sm:pt-3 md:pt-4 flex items-center justify-between">
               <span className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white">
                 Total Amount:
               </span>
-              <span className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent">
+              <span className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 dark:from-brand-400 dark:via-brand-300 dark:to-brand-500 bg-clip-text text-transparent">
                 ${(getPaymentAmount() / 100).toFixed(2)}
               </span>
             </div>

@@ -50,7 +50,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
   
   // Helper classes for mobile menu styling based on transparency
   const mobileMenuTextClass = shouldBeTransparent && !isScrolled 
-    ? 'text-white hover:text-yellow-300' 
+    ? 'text-white hover:text-brand' 
     : 'text-gray-900 dark:text-gray-100 hover:text-brand';
   const mobileMenuBgClass = shouldBeTransparent && !isScrolled 
     ? 'hover:bg-white/10' 
@@ -385,13 +385,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                         : getAssetUrl("/assets/m10 dj company logo black.gif")}
                       alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
                       className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
-                      style={{ 
-                        display: 'block',
-                        objectFit: 'contain',
-                        width: 'auto',
-                        height: 'auto',
-                        maxWidth: 'none'
-                      }}
+                      style={{ display: 'block', objectFit: 'contain' }}
                       onError={(e) => {
                         // Fallback if GIF doesn't load, try JPG version
                         const currentSrc = e.target.src;
@@ -403,27 +397,42 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       }}
                     />
                   ) : (
-                    <Image
-                      key={`logo-${isDarkMode ? 'dark' : 'light'}`}
-                      src={customLogoUrl || (isDarkMode 
-                        ? getAssetUrl("/assets/m10 dj company logo white.gif")
-                        : getAssetUrl("/assets/m10 dj company logo black.gif"))}
-                      alt={customLogoUrl ? "Organization Logo" : "M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"}
-                      width={45}
-                      height={45}
-                      className="w-9 h-9 sm:w-[45px] sm:h-[45px] rounded-lg transition-transform group-hover:scale-105"
-                      priority
-                      unoptimized={customLogoUrl ? true : false}
-                      onError={(e) => {
-                        // Fallback if GIF doesn't load, try static JPG version
-                        const currentSrc = e.target.src;
-                        if (currentSrc.includes('white.gif')) {
-                          e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
-                        } else if (currentSrc.includes('black.gif')) {
-                          e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
-                        }
-                      }}
-                    />
+                    customLogoUrl ? (
+                      // Custom org logos are typically square, keep square sizing
+                      <Image
+                        key={`logo-custom-${isDarkMode ? 'dark' : 'light'}`}
+                        src={customLogoUrl}
+                        alt="Organization Logo"
+                        width={45}
+                        height={45}
+                        className="w-9 h-9 sm:w-[45px] sm:h-[45px] rounded-lg transition-transform group-hover:scale-105"
+                        priority
+                        unoptimized
+                      />
+                    ) : (
+                      // Default M10 logo is wide—use same sizing as requests page so it doesn't look squished
+                      <Image
+                        key={`logo-m10-${isDarkMode ? 'dark' : 'light'}`}
+                        src={isDarkMode 
+                          ? getAssetUrl("/assets/m10 dj company logo white.gif")
+                          : getAssetUrl("/assets/m10 dj company logo black.gif")}
+                        alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
+                        width={150}
+                        height={68}
+                        className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
+                        style={{ objectFit: 'contain' }}
+                        priority
+                        onError={(e) => {
+                          // Fallback if GIF doesn't load, try static JPG version
+                          const currentSrc = e.target.src;
+                          if (currentSrc.includes('white.gif')) {
+                            e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
+                          } else if (currentSrc.includes('black.gif')) {
+                            e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
+                          }
+                        }}
+                      />
+                    )
                   )}
                 </div>
               </div>
@@ -437,7 +446,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                   <>
                     <Link href="/" className={`font-medium text-sm transition-colors py-2 ${
                       shouldBeTransparent && !isScrolled 
-                        ? 'text-white hover:text-yellow-300' 
+                        ? 'text-white hover:text-brand' 
                         : 'text-gray-700 dark:text-gray-200 hover:text-brand'
                     }`}>
                       Home
@@ -448,7 +457,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       <button
                         className={`flex items-center font-medium text-sm transition-colors py-2 ${
                           shouldBeTransparent && !isScrolled 
-                            ? 'text-white hover:text-yellow-300' 
+                            ? 'text-white hover:text-brand' 
                             : 'text-gray-700 dark:text-gray-200 hover:text-brand'
                         }`}
                         onClick={() => toggleDropdown('services')}
@@ -480,7 +489,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       <button
                         className={`flex items-center font-medium text-sm transition-colors py-2 ${
                           shouldBeTransparent && !isScrolled 
-                            ? 'text-white hover:text-yellow-300' 
+                            ? 'text-white hover:text-brand' 
                             : 'text-gray-700 dark:text-gray-200 hover:text-brand'
                         }`}
                         onClick={() => toggleDropdown('areas')}
@@ -506,7 +515,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
 
                     <Link href="/about" className={`font-medium text-sm transition-colors py-2 ${
                       shouldBeTransparent && !isScrolled 
-                        ? 'text-white hover:text-yellow-300' 
+                        ? 'text-white hover:text-brand' 
                         : 'text-gray-700 dark:text-gray-200 hover:text-brand'
                     }`}>
                       About
@@ -514,7 +523,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     
                     <Link href="/contact" className={`font-medium text-sm transition-colors py-2 ${
                       shouldBeTransparent && !isScrolled 
-                        ? 'text-white hover:text-yellow-300' 
+                        ? 'text-white hover:text-brand' 
                         : 'text-gray-700 dark:text-gray-200 hover:text-brand'
                     }`}>
                       Contact
@@ -610,7 +619,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                   href="tel:+19014102020" 
                   className={`flex items-center space-x-2 font-medium text-sm transition-colors px-3 py-2 rounded-md ${
                     shouldBeTransparent && !isScrolled
-                      ? 'text-white hover:text-yellow-300 hover:bg-white/10'
+                      ? 'text-white hover:text-brand hover:bg-white/10'
                       : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-gray-50 dark:hover:bg-black/50'
                   }`}
                   onClick={() => {
@@ -629,7 +638,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     <ThemeToggle 
                       className={
                         shouldBeTransparent && !isScrolled
-                          ? 'text-white hover:text-yellow-300 hover:bg-white/10'
+                          ? 'text-white hover:text-brand hover:bg-white/10'
                           : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-gray-50 dark:hover:bg-black/50'
                       }
                     />
@@ -642,20 +651,17 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     <div className={`h-6 w-px ${shouldBeTransparent && !isScrolled ? 'bg-white/30' : 'bg-gray-300 dark:bg-gray-700'}`}></div>
                     
                     {/* Admin Link */}
-                    <a
+                    <Link
                       href="/signin"
                       className={`font-medium text-sm transition-colors px-3 py-2 rounded-md ${
                         shouldBeTransparent && !isScrolled
                           ? 'text-white/80 hover:text-white hover:bg-white/10'
                           : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-black/50'
                       }`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        window.location.href = '/signin';
-                      }}
+                      onClick={() => closeDropdown()}
                     >
                       Admin
-                    </a>
+                    </Link>
                   </>
                 )}
               </div>
@@ -680,11 +686,11 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
             </div>
 
             {/* Mobile Menu Button */}
-            <button
+              <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className={`lg:hidden p-2 transition-colors rounded-lg ${
                 shouldBeTransparent && !isScrolled
-                  ? 'text-white hover:text-yellow-300 hover:bg-white/10'
+                  ? 'text-white hover:text-brand hover:bg-white/10'
                   : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-gray-100 dark:hover:bg-black/50'
               }`}
             >
@@ -733,7 +739,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                 {isRequestsPage && isOwner && (
                   <div className="space-y-1">
                     <div className="px-4 py-2 mb-2">
-                      <p className={`text-xs font-semibold uppercase tracking-wider ${shouldBeTransparent && !isScrolled ? 'text-yellow-300/80' : 'text-brand/80'}`}>
+                      <p className={`text-xs font-semibold uppercase tracking-wider text-brand/80`}>
                         Admin Menu
                       </p>
                     </div>
@@ -742,7 +748,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <Music className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <Music className="w-5 h-5 text-brand" />
                       <span className="font-medium">Song Requests</span>
                     </Link>
                     <Link 
@@ -750,7 +756,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <FileText className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <FileText className="w-5 h-5 text-brand" />
                       <span className="font-medium">Edit Requests Page</span>
                     </Link>
                     <Link 
@@ -758,7 +764,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <Calendar className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <Calendar className="w-5 h-5 text-brand" />
                       <span className="font-medium">Dashboard</span>
                     </Link>
                     <Link 
@@ -766,7 +772,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <Users className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <Users className="w-5 h-5 text-brand" />
                       <span className="font-medium">Contacts</span>
                     </Link>
                     <Link 
@@ -774,7 +780,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <FileText className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <FileText className="w-5 h-5 text-brand" />
                       <span className="font-medium">Contracts</span>
                     </Link>
                     <Link 
@@ -782,7 +788,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <CreditCard className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <CreditCard className="w-5 h-5 text-brand" />
                       <span className="font-medium">Invoices</span>
                     </Link>
                     <Link 
@@ -790,7 +796,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <Calendar className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <Calendar className="w-5 h-5 text-brand" />
                       <span className="font-medium">Projects</span>
                     </Link>
                     <Link 
@@ -798,7 +804,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <DollarSign className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <DollarSign className="w-5 h-5 text-brand" />
                       <span className="font-medium">Payouts</span>
                     </Link>
                     <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
@@ -807,7 +813,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <Settings className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <Settings className="w-5 h-5 text-brand" />
                       <span className="font-medium">Account Settings</span>
                     </Link>
                   </div>
@@ -830,15 +836,15 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                         className={`flex items-center justify-between w-full font-bold font-inter py-3 px-4 transition-all ${
                           shouldBeTransparent && !isScrolled
                             ? 'text-white hover:bg-white/10 bg-white/5'
-                            : 'text-gray-900 dark:text-gray-100 bg-gradient-to-r from-amber-50/50 dark:from-amber-900/20 to-orange-50/50 dark:to-orange-900/20 hover:from-amber-50 dark:hover:from-amber-900/30 hover:to-orange-50 dark:hover:to-orange-900/30'
+                            : 'text-gray-900 dark:text-gray-100 bg-gray-50/60 dark:bg-black hover:bg-gray-50 dark:hover:bg-black/80'
                         }`}
                         onClick={() => toggleDropdown('mobile-services')}
                       >
                         <span className="flex items-center gap-2">
-                          <span className={`w-1.5 h-1.5 rounded-full ${shouldBeTransparent && !isScrolled ? 'bg-yellow-300' : 'bg-brand'}`}></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
                         Services
                         </span>
-                        <ChevronDown className={`w-5 h-5 transition-transform ${openDropdown === 'mobile-services' ? 'rotate-180' : ''} ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                        <ChevronDown className={`w-5 h-5 transition-transform ${openDropdown === 'mobile-services' ? 'rotate-180' : ''} text-brand`} />
                       </button>
                       {openDropdown === 'mobile-services' && (
                         <div className={`p-3 space-y-1 ${
@@ -852,7 +858,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                               href={service.href}
                               className={`block font-inter py-2 px-3 rounded-md transition-all text-sm ${
                                 shouldBeTransparent && !isScrolled
-                                  ? 'text-white hover:text-yellow-300 hover:bg-white/10'
+                                  ? 'text-white hover:text-brand hover:bg-white/10'
                                   : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-brand/5 dark:hover:bg-brand/10'
                               }`}
                               onClick={() => {
@@ -873,15 +879,15 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                         className={`flex items-center justify-between w-full font-bold font-inter py-3 px-4 transition-all ${
                           shouldBeTransparent && !isScrolled
                             ? 'text-white hover:bg-white/10 bg-white/5'
-                            : 'text-gray-900 bg-gradient-to-r from-blue-50/50 to-purple-50/50 hover:from-blue-50 hover:to-purple-50'
+                            : 'text-gray-900 dark:text-white bg-gray-50/60 dark:bg-black hover:bg-gray-50 dark:hover:bg-black/80'
                         }`}
                         onClick={() => toggleDropdown('mobile-areas')}
                       >
                         <span className="flex items-center gap-2">
-                          <MapPin className={`w-4 h-4 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-blue-600'}`} />
+                          <MapPin className="w-4 h-4 text-brand" />
                         Service Areas
                         </span>
-                        <ChevronDown className={`w-5 h-5 transition-transform ${openDropdown === 'mobile-areas' ? 'rotate-180' : ''} ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-blue-600'}`} />
+                        <ChevronDown className={`w-5 h-5 transition-transform ${openDropdown === 'mobile-areas' ? 'rotate-180' : ''} text-brand`} />
                       </button>
                       {openDropdown === 'mobile-areas' && (
                         <div className={`p-3 grid grid-cols-2 gap-1 ${
@@ -895,8 +901,8 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                               href={area.href}
                               className={`block font-inter py-2 px-3 rounded-md transition-all text-sm ${
                                 shouldBeTransparent && !isScrolled
-                                  ? 'text-white hover:text-yellow-300 hover:bg-white/10'
-                                  : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                                  ? 'text-white hover:text-brand hover:bg-white/10'
+                                  : 'text-gray-700 hover:text-brand hover:bg-brand/5'
                               }`}
                               onClick={() => setIsMobileMenuOpen(false)}
                             >
@@ -926,17 +932,13 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     </button>
                     
                     {!isRequestsPage && (
-                      <a 
+                      <Link 
                         href="/signin" 
                         className={`block font-semibold font-inter py-3 px-4 rounded-lg transition-all ${mobileMenuTextClass} ${mobileMenuBgClass}`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setIsMobileMenuOpen(false);
-                          window.location.href = '/signin';
-                        }}
+                        onClick={() => setIsMobileMenuOpen(false)}
                       >
                         Admin Sign In
-                      </a>
+                      </Link>
                     )}
                     
                     {/* Theme Toggle - Mobile - Only show for logged in users */}
@@ -960,7 +962,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <Calendar className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <Calendar className="w-5 h-5 text-brand" />
                       <span className="font-medium">My Events</span>
                     </Link>
                     <Link 
@@ -968,7 +970,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <Music className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <Music className="w-5 h-5 text-brand" />
                       <span className="font-medium">My Songs</span>
                     </Link>
                     <Link 
@@ -976,7 +978,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <FileText className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <FileText className="w-5 h-5 text-brand" />
                       <span className="font-medium">Invoice</span>
                     </Link>
                     <Link 
@@ -984,7 +986,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <FileText className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <FileText className="w-5 h-5 text-brand" />
                       <span className="font-medium">Contract</span>
                     </Link>
                     <Link 
@@ -992,7 +994,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${mobileMenuTextClass} ${mobileMenuBgClass}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <CreditCard className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-yellow-300' : 'text-brand'}`} />
+                      <CreditCard className="w-5 h-5 text-brand" />
                       <span className="font-medium">{hasPayments ? 'Payments' : 'Payment'}</span>
                     </Link>
                   </div>
@@ -1031,7 +1033,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                               }}
                               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border-0 bg-transparent w-full text-left ${
                                 shouldBeTransparent && !isScrolled
-                                  ? 'text-white hover:text-yellow-300 hover:bg-white/10'
+                                  ? 'text-white hover:text-brand hover:bg-white/10'
                                   : 'text-gray-700 dark:text-gray-300 hover:text-brand hover:bg-gray-100 dark:hover:bg-gray-600'
                               }`}
                               aria-label={link.label || link.platform}
@@ -1051,7 +1053,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                             onClick={() => setIsMobileMenuOpen(false)}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
                               shouldBeTransparent && !isScrolled
-                                ? 'text-white hover:text-yellow-300 hover:bg-white/10'
+                                ? 'text-white hover:text-brand hover:bg-white/10'
                                 : 'text-gray-700 dark:text-gray-300 hover:text-brand hover:bg-gray-100 dark:hover:bg-gray-600'
                             }`}
                             aria-label={link.label || link.platform}
@@ -1067,21 +1069,17 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                 <div className={`px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-shadow ${
                   shouldBeTransparent && !isScrolled
                     ? 'bg-white/10 backdrop-blur-sm border border-white/20'
-                    : 'bg-gradient-to-br from-brand/10 to-amber-100/50 border border-brand/20'
+                    : 'bg-brand/5 dark:bg-black/50 border border-brand/20'
                 }`}>
                   <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md ${
-                      shouldBeTransparent && !isScrolled ? 'bg-yellow-300' : 'bg-brand'
-                    }`}>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md bg-brand">
                       <Phone className="w-5 h-5 text-black" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-semibold font-inter mb-0.5 ${
                         shouldBeTransparent && !isScrolled ? 'text-white/80' : 'text-gray-700 dark:text-white'
                       }`}>Call or Text</p>
-                      <a href="tel:+19014102020" className={`font-bold font-inter text-lg transition-colors ${
-                        shouldBeTransparent && !isScrolled ? 'text-yellow-300 hover:text-yellow-200' : 'text-brand hover:text-amber-700'
-                      }`}>
+                      <a href="tel:+19014102020" className="font-bold font-inter text-lg transition-colors text-brand hover:text-brand/80">
                         (901) 410-2020
                       </a>
                     </div>
@@ -1091,22 +1089,20 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                 <div className={`px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-shadow ${
                   shouldBeTransparent && !isScrolled
                     ? 'bg-white/10 backdrop-blur-sm border border-white/20'
-                    : 'bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200'
+                    : 'bg-white dark:bg-black border border-gray-200 dark:border-gray-800'
                 }`}>
                   <div className="flex items-center space-x-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md ${
-                      shouldBeTransparent && !isScrolled
-                        ? 'bg-white/20'
-                        : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                      shouldBeTransparent && !isScrolled ? 'bg-white/20' : 'bg-brand'
                     }`}>
-                      <Mail className="w-5 h-5 text-white" />
+                      <Mail className={`w-5 h-5 ${shouldBeTransparent && !isScrolled ? 'text-white' : 'text-black'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-semibold font-inter mb-0.5 ${
                         shouldBeTransparent && !isScrolled ? 'text-white/80' : 'text-gray-700'
                       }`}>Email Us</p>
                       <a href="mailto:info@m10djcompany.com" className={`font-bold font-inter text-sm transition-colors break-all ${
-                        shouldBeTransparent && !isScrolled ? 'text-yellow-300 hover:text-yellow-200' : 'text-blue-600 hover:text-blue-700'
+                        shouldBeTransparent && !isScrolled ? 'text-brand hover:text-brand/80' : 'text-brand hover:text-brand/80'
                       }`}>
                         info@m10djcompany.com
                       </a>
@@ -1123,7 +1119,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                 <Link
                   href="/requests"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl min-h-[48px] text-base"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-brand hover:bg-brand/90 text-black font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl min-h-[48px] text-base"
                 >
                   <Music className="w-5 h-5" />
                   Requests

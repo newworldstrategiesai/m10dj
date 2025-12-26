@@ -92,7 +92,8 @@ module.exports = {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'brand-gradient': 'linear-gradient(135deg, #fcba00 0%, #ffd700 100%)',
+        // Keep brand gradient within approved palette (brand gold only)
+        'brand-gradient': 'linear-gradient(135deg, #fcba00 0%, #fcba00 100%)',
         'subtle-gradient': 'linear-gradient(135deg, #fefefe 0%, #f8f9fa 100%)'
       },
       boxShadow: {
