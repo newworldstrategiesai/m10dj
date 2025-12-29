@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createPaymentWithPlatformFee, calculatePlatformFee } from '@/utils/stripe/connect';
+import { optionalAuth } from '@/utils/auth-helpers/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -9,6 +10,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  * 
  * This endpoint processes payments for SaaS users (DJs) and automatically
  * handles payouts via Stripe Connect with platform fees deducted.
+ * 
+ * SECURITY: This endpoint is used for public payment flows (tips, invoices)
+ * so full auth is not required, but we validate organization and amount.
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -16,7 +20,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { amount, organizationId, metadata = {} } = req.body;
+    // Optional auth - track if authenticated for audit purposes
+    const user = await optionalAuth(req, res);
+    
+    const { amount, organizationId, invoiceId, metadata = {} } = req.body;
 
     if (!amount || amount < 50) {
       return res.status(400).json({ error: 'Amount must be at least $0.50 (50 cents)' });

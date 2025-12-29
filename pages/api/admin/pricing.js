@@ -1,9 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export default async function handler(req, res) {
+  // SECURITY: Require admin authentication for pricing management
+  try {
+    await requireAdmin(req, res);
+  } catch (error) {
+    if (res.headersSent) return;
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   if (req.method === 'GET') {
     try {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);

@@ -151,11 +151,9 @@ export default async function handler(req, res) {
         event_name: quote.package_name,
         total_amount: quote.total_price,
         deposit_amount: quote.total_price * 0.5,
-        status: 'sent'
+        status: 'sent',
+        quote_selection_id: quote.id // Link to quote_selections (FK fixed in migration)
       };
-      
-      // Only add service_selection_id if the table exists and the foreign key is valid
-      // For now, we'll skip it since quote_selections might not match service_selections
       
       const { data: newContract, error: contractError } = await supabase
         .from('contracts')

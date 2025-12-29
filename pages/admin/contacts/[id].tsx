@@ -19,6 +19,7 @@ import PaymentHistory from '@/components/admin/PaymentHistory';
 import InvoiceList from '@/components/admin/InvoiceList';
 import PipelineView from '@/components/admin/PipelineView';
 import UnifiedCommunicationHub from '@/components/admin/UnifiedCommunicationHub';
+import CustomerTimeline from '@/components/admin/CustomerTimeline';
 import { syncVenueFromContactToProjects } from '@/utils/sync-venue-data';
 
 interface Contact {
@@ -1119,6 +1120,7 @@ export default function ContactDetailPage() {
               <TabsTrigger value="details" className="text-xs sm:text-sm whitespace-nowrap">Details</TabsTrigger>
               <TabsTrigger value="event" className="text-xs sm:text-sm whitespace-nowrap">Event</TabsTrigger>
               <TabsTrigger value="business" className="text-xs sm:text-sm whitespace-nowrap">Business</TabsTrigger>
+              <TabsTrigger value="journey" className="text-xs sm:text-sm whitespace-nowrap">Journey</TabsTrigger>
             {socialMessages.length > 0 && (
                 <TabsTrigger value="social" className="text-xs sm:text-sm whitespace-nowrap">
                   Social ({socialMessages.length})
@@ -1789,6 +1791,19 @@ export default function ContactDetailPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          {/* Customer Journey Tab */}
+          <TabsContent value="journey">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+              <CustomerTimeline 
+                contactId={contact.id}
+                email={contact.email_address || undefined}
+                phone={contact.phone || undefined}
+                showHeader={true}
+                limit={100}
+              />
             </div>
           </TabsContent>
         </Tabs>

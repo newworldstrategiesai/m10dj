@@ -5,13 +5,16 @@ import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import ContractTemplateEditor from '@/components/admin/ContractTemplateEditor';
 import ContractManager from '@/components/admin/ContractManager';
-import { FileText, Settings } from 'lucide-react';
+import CreateStandaloneContract from '@/components/admin/CreateStandaloneContract';
+import { FileText, Settings, Plus, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function ContractsPage() {
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [activeTab, setActiveTab] = useState<'templates' | 'contracts'>('templates');
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -64,11 +67,21 @@ export default function ContractsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
           {/* Header */}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Contract Management</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Create templates and manage client contracts
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Contract Management</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
+                Create templates and manage client contracts
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 flex items-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Send NDA / Agreement</span>
+              <span className="sm:hidden">New Agreement</span>
+            </Button>
           </div>
 
           {/* Tabs */}
@@ -113,6 +126,16 @@ export default function ContractsPage() {
           )}
         </div>
       </div>
+
+      {/* Create Standalone Contract Modal */}
+      <CreateStandaloneContract
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          // Optionally refresh the contracts list
+          setActiveTab('contracts');
+        }}
+      />
     </div>
   );
 }

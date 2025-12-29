@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,8 +7,13 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  // Admin auth is handled by service role key - this endpoint requires service role
-  // In production, you should add proper admin authentication here
+  // SECURITY: Require admin authentication for discount code management
+  try {
+    await requireAdmin(req, res);
+  } catch (error) {
+    if (res.headersSent) return;
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   if (req.method === 'GET') {
     try {

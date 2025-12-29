@@ -35,9 +35,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'This contract has already been signed' });
     }
 
-    if (new Date(contract.signing_token_expires_at) < new Date()) {
+    if (contract.signing_token_expires_at && new Date(contract.signing_token_expires_at) < new Date()) {
       return res.status(400).json({ error: 'This contract link has expired' });
     }
+
+    // Get signer email - handle both contact-based and standalone contracts
+    const signerEmail = contract.contacts?.email_address || contract.recipient_email || null;
 
     // Update contract with signature
     const { error: updateError } = await supabase
@@ -46,7 +49,7 @@ export default async function handler(req, res) {
         status: 'signed',
         signed_at: new Date().toISOString(),
         signed_by_client: signature_name,
-        signed_by_client_email: contract.contacts.email_address,
+        signed_by_client_email: signerEmail,
         signed_by_client_ip: clientIp,
         client_signature_data: signature_data,
         updated_at: new Date().toISOString()
@@ -60,64 +63,109 @@ export default async function handler(req, res) {
     console.log(`✅ Contract ${contract.contract_number} signed by ${signature_name}`);
 
     // TODO: Generate PDF with signature
-    // TODO: Send signed contract via email
-    // TODO: Send admin notification
 
-    // Send confirmation email to client
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/email/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: contract.contacts.email_address,
-          subject: `Contract Signed - ${contract.event_name}`,
-          html: `
+    // Determine contract details - handle both contact-based and standalone contracts
+    const isStandalone = !contract.contacts;
+    const signerFirstName = contract.contacts?.first_name || contract.recipient_name?.split(' ')[0] || 'Recipient';
+    const signerFullName = contract.contacts 
+      ? `${contract.contacts.first_name} ${contract.contacts.last_name}` 
+      : contract.recipient_name || signature_name;
+    const contractTitle = contract.event_name || contract.purpose || 'Agreement';
+    const isPersonal = contract.is_personal || contract.contract_type === 'personal_agreement' || contract.contract_type === 'nda';
+
+    // Send confirmation email to signer
+    if (signerEmail) {
+      try {
+        const emailContent = isPersonal 
+          ? `
+            <h2>Agreement Signed Successfully</h2>
+            <p>Dear ${signerFirstName},</p>
+            <p>Thank you for signing the <strong>${contractTitle}</strong>.</p>
+            <p><strong>Agreement Details:</strong></p>
+            <ul>
+              <li>Agreement ID: ${contract.contract_number}</li>
+              <li>Signed: ${new Date().toLocaleDateString()}</li>
+            </ul>
+            <p>A copy of the signed agreement will be provided upon request.</p>
+            <p>This agreement is now legally binding.</p>
+          `
+          : `
             <h2>Contract Signed Successfully</h2>
-            <p>Dear ${contract.contacts.first_name},</p>
-            <p>Thank you for signing your contract for <strong>${contract.event_name}</strong>.</p>
+            <p>Dear ${signerFirstName},</p>
+            <p>Thank you for signing your contract for <strong>${contractTitle}</strong>.</p>
             <p><strong>Contract Details:</strong></p>
             <ul>
               <li>Contract Number: ${contract.contract_number}</li>
-              <li>Event Date: ${new Date(contract.event_date).toLocaleDateString()}</li>
-              <li>Total Amount: $${contract.total_amount.toLocaleString()}</li>
+              ${contract.event_date ? `<li>Event Date: ${new Date(contract.event_date).toLocaleDateString()}</li>` : ''}
+              ${contract.total_amount ? `<li>Total Amount: $${Number(contract.total_amount).toLocaleString()}</li>` : ''}
               <li>Signed: ${new Date().toLocaleDateString()}</li>
             </ul>
             <p>A copy of the signed contract is attached to this email.</p>
             <p>We'll be in touch soon with next steps and payment information.</p>
             <p>Best regards,<br/>M10 DJ Company</p>
-          `
-        })
-      });
-    } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
-      // Don't fail the request if email fails
+          `;
+
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/email/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: signerEmail,
+            subject: isPersonal 
+              ? `Agreement Signed - ${contract.contract_number}` 
+              : `Contract Signed - ${contractTitle}`,
+            html: emailContent
+          })
+        });
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+        // Don't fail the request if email fails
+      }
     }
 
-    // Send admin notification
+    // Send admin/sender notification
     try {
+      const adminEmail = contract.sender_email || 'm10djcompany@gmail.com';
+      const adminContent = isPersonal
+        ? `
+          <h2>Agreement Signed!</h2>
+          <p><strong>${signature_name}</strong> has signed the agreement.</p>
+          <p><strong>Agreement Details:</strong></p>
+          <ul>
+            <li>Agreement ID: ${contract.contract_number}</li>
+            <li>Signer: ${signerFullName}</li>
+            <li>Email: ${signerEmail || 'Not provided'}</li>
+            <li>Signature Method: ${signature_method || 'draw'}</li>
+            <li>Signed At: ${new Date().toLocaleString()}</li>
+            <li>IP Address: ${clientIp}</li>
+          </ul>
+          <p>This agreement is now legally binding.</p>
+        `
+        : `
+          <h2>Contract Signed!</h2>
+          <p><strong>${signature_name}</strong> has signed the contract for <strong>${contractTitle}</strong>.</p>
+          <p><strong>Contract Details:</strong></p>
+          <ul>
+            <li>Contract Number: ${contract.contract_number}</li>
+            <li>Client: ${signerFullName}</li>
+            <li>Email: ${signerEmail || 'Not provided'}</li>
+            ${contract.event_date ? `<li>Event Date: ${new Date(contract.event_date).toLocaleDateString()}</li>` : ''}
+            ${contract.total_amount ? `<li>Total Amount: $${Number(contract.total_amount).toLocaleString()}</li>` : ''}
+            <li>Signature Method: ${signature_method || 'draw'}</li>
+            <li>Signed At: ${new Date().toLocaleString()}</li>
+            <li>IP Address: ${clientIp}</li>
+          </ul>
+          <p>Next steps: Send deposit invoice and finalize event details.</p>
+        `;
+
       await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/email/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: 'm10djcompany@gmail.com',
-          subject: `🎉 Contract Signed - ${contract.event_name}`,
-          html: `
-            <h2>Contract Signed!</h2>
-            <p><strong>${signature_name}</strong> has signed the contract for <strong>${contract.event_name}</strong>.</p>
-            <p><strong>Contract Details:</strong></p>
-            <ul>
-              <li>Contract Number: ${contract.contract_number}</li>
-              <li>Client: ${contract.contacts.first_name} ${contract.contacts.last_name}</li>
-              <li>Email: ${contract.contacts.email_address}</li>
-              <li>Event: ${contract.event_name}</li>
-              <li>Event Date: ${new Date(contract.event_date).toLocaleDateString()}</li>
-              <li>Total Amount: $${contract.total_amount.toLocaleString()}</li>
-              <li>Signature Method: ${signature_method || 'draw'}</li>
-              <li>Signed At: ${new Date().toLocaleString()}</li>
-              <li>IP Address: ${clientIp}</li>
-            </ul>
-            <p>Next steps: Send deposit invoice and finalize event details.</p>
-          `
+          to: adminEmail,
+          subject: isPersonal 
+            ? `🔐 Agreement Signed - ${contract.contract_number}` 
+            : `🎉 Contract Signed - ${contractTitle}`,
+          html: adminContent
         })
       });
     } catch (emailError) {

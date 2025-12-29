@@ -24,6 +24,7 @@ export default async function handler(req, res) {
         id,
         contract_number,
         contract_html,
+        contract_type,
         event_name,
         event_date,
         total_amount,
@@ -31,6 +32,12 @@ export default async function handler(req, res) {
         signing_token,
         signing_token_expires_at,
         contact_id,
+        recipient_name,
+        recipient_email,
+        sender_name,
+        sender_email,
+        is_personal,
+        purpose,
         contacts (
           first_name,
           last_name,
@@ -45,8 +52,33 @@ export default async function handler(req, res) {
     }
 
     // Check if token is expired
-    if (new Date(contract.signing_token_expires_at) < new Date()) {
+    if (contract.signing_token_expires_at && new Date(contract.signing_token_expires_at) < new Date()) {
       return res.status(400).json({ error: 'This contract link has expired' });
+    }
+
+    // Handle both contact-based and standalone contracts
+    let contactInfo;
+    if (contract.contacts) {
+      // Traditional contract with contact
+      contactInfo = {
+        first_name: contract.contacts.first_name,
+        last_name: contract.contacts.last_name,
+        email_address: contract.contacts.email_address
+      };
+    } else if (contract.recipient_name) {
+      // Standalone contract with recipient info
+      const nameParts = contract.recipient_name.split(' ');
+      contactInfo = {
+        first_name: nameParts[0] || contract.recipient_name,
+        last_name: nameParts.slice(1).join(' ') || '',
+        email_address: contract.recipient_email
+      };
+    } else {
+      contactInfo = {
+        first_name: 'Recipient',
+        last_name: '',
+        email_address: ''
+      };
     }
 
     // Format response
@@ -56,15 +88,16 @@ export default async function handler(req, res) {
         id: contract.id,
         contract_number: contract.contract_number,
         contract_html: contract.contract_html,
-        event_name: contract.event_name,
+        contract_type: contract.contract_type,
+        event_name: contract.event_name || contract.purpose,
         event_date: contract.event_date,
         total_amount: contract.total_amount,
         status: contract.status,
-        contact: {
-          first_name: contract.contacts.first_name,
-          last_name: contract.contacts.last_name,
-          email_address: contract.contacts.email_address
-        }
+        is_personal: contract.is_personal,
+        is_standalone: !contract.contact_id,
+        sender_name: contract.sender_name,
+        sender_email: contract.sender_email,
+        contact: contactInfo
       }
     };
 

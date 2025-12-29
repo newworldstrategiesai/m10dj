@@ -281,7 +281,7 @@ export default async function handler(req, res) {
             contact_id: contact.id,
             organization_id: contactOrgId, // Set organization_id for multi-tenant isolation
             invoice_id: invoiceData?.id || null,
-            service_selection_id: selection.id,
+            quote_selection_id: selection.id, // Renamed from service_selection_id
             event_name: variables.event_name,
             event_type: variables.event_type,
             event_date: contact.event_date || selections.eventDate,

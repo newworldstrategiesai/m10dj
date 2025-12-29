@@ -460,7 +460,7 @@ export default function AdminDashboard() {
   return (
     <PageLoadingWrapper isLoading={loading} message="Loading your dashboard...">
       <AdminLayout title="Dashboard" description="M10 DJ Company Admin Dashboard">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pb-2 sm:pb-4 lg:pb-8">
         {/* Stripe Connect Requirement Banner - Compact */}
         <StripeConnectRequirementBanner organization={organization} className="mb-2 sm:mb-4" />
         

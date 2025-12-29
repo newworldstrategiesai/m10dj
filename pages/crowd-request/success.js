@@ -3,9 +3,10 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../components/company/Header';
-import { CheckCircle, Music, Mic, Loader2, Zap, Mail, Check, Clock, Gift } from 'lucide-react';
+import { CheckCircle, Music, Mic, Loader2, Zap, Mail, Check, Clock, Gift, Radio, Play } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useSuccessPageTracking } from '../../hooks/useSuccessPageTracking';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function CrowdRequestSuccessPage() {
   const router = useRouter();
@@ -16,10 +17,62 @@ export default function CrowdRequestSuccessPage() {
   const [receiptSent, setReceiptSent] = useState(false);
   const [receiptError, setReceiptError] = useState(null);
   const [userRequestCount, setUserRequestCount] = useState(0);
+  const [statusJustChanged, setStatusJustChanged] = useState(false);
   const confettiTriggered = useRef(false);
+  const playingConfettiTriggered = useRef(false);
+  const supabase = createClientComponentClient();
 
   // Track success page view
   useSuccessPageTracking(request_id);
+
+  // Subscribe to real-time updates for this request
+  useEffect(() => {
+    if (!request_id) return;
+
+    const channel = supabase
+      .channel(`request-${request_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'crowd_requests',
+          filter: `id=eq.${request_id}`
+        },
+        (payload) => {
+          console.log('Request updated:', payload);
+          const updatedRequest = payload.new;
+          
+          // Check if status changed to playing or played
+          if (updatedRequest.status === 'playing' || updatedRequest.status === 'played') {
+            // Trigger celebration effect
+            if (!playingConfettiTriggered.current) {
+              playingConfettiTriggered.current = true;
+              triggerPlayingConfetti();
+            }
+            setStatusJustChanged(true);
+            setTimeout(() => setStatusJustChanged(false), 3000);
+          }
+          
+          setRequest(prev => ({ ...prev, ...updatedRequest }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [request_id, supabase]);
+
+  // Celebration confetti when song is played
+  const triggerPlayingConfetti = () => {
+    confetti({
+      particleCount: 150,
+      spread: 100,
+      origin: { y: 0.6 },
+      colors: ['#10b981', '#22c55e', '#4ade80', '#86efac']
+    });
+  };
 
   useEffect(() => {
     if (request_id && session_id) {
@@ -249,14 +302,20 @@ export default function CrowdRequestSuccessPage() {
                 <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400" />
               </div>
               
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                {request?.played_at ? 'Song Played!' : 'Thank You!'}
+              <h1 className={`text-4xl font-bold text-gray-900 dark:text-white mb-4 transition-all duration-500 ${statusJustChanged ? 'scale-110' : ''}`}>
+                {request?.status === 'playing' 
+                  ? '🎶 Playing Now!' 
+                  : request?.status === 'played'
+                    ? '🎵 Song Played!' 
+                    : 'Thank You!'}
               </h1>
               
               <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-                {request?.played_at 
-                  ? 'Great news! Your song request has been played. We hope you enjoyed it!'
-                  : 'Your payment was successful and your request has been submitted. We appreciate your support!'
+                {request?.status === 'playing'
+                  ? 'Amazing! Your song is playing right now! Enjoy the music!'
+                  : request?.status === 'played'
+                    ? 'Great news! Your song request has been played. We hope you enjoyed it!'
+                    : 'Your payment was successful and your request has been submitted. We appreciate your support!'
                 }
               </p>
 
@@ -291,34 +350,94 @@ export default function CrowdRequestSuccessPage() {
                               <span className="font-medium">Artist:</span> {request.song_artist}
                             </p>
                           )}
-                          {request.played_at ? (
-                            <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-700">
-                              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                                <CheckCircle className="w-5 h-5" />
-                                <p className="text-sm font-semibold">
-                                  🎵 Your song was played!
+                          
+                          {/* Live Status Display */}
+                          <div className={`mt-3 pt-3 border-t border-purple-200 dark:border-purple-700 transition-all duration-500 ${statusJustChanged ? 'animate-pulse' : ''}`}>
+                            {request.status === 'playing' ? (
+                              // PLAYING NOW - Song is currently playing (check this FIRST!)
+                              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg p-3 border border-green-200 dark:border-green-700">
+                                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                                  <span className="relative flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                  </span>
+                                  <Radio className="w-5 h-5 animate-pulse" />
+                                  <p className="text-sm font-bold">
+                                    🎶 Playing Now!
+                                  </p>
+                                </div>
+                                <p className="text-sm text-green-700 dark:text-green-300 mt-1 ml-8">
+                                  Your song is playing right now! Enjoy!
+                                </p>
+                                {request.played_at && (
+                                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-8">
+                                    Started at: {new Date(request.played_at).toLocaleTimeString('en-US', {
+                                      hour: 'numeric',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })}
+                                  </p>
+                                )}
+                              </div>
+                            ) : request.status === 'played' || request.played_at ? (
+                              // PLAYED - Song has been played (only show after 'playing' ends)
+                              <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3">
+                                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                                  <CheckCircle className="w-5 h-5" />
+                                  <p className="text-sm font-semibold">
+                                    🎵 Your song was played!
+                                  </p>
+                                </div>
+                                {request.played_at && (
+                                  <p className="text-sm text-green-700 dark:text-green-300 mt-1 ml-7">
+                                    Played at: {new Date(request.played_at).toLocaleString('en-US', {
+                                      weekday: 'short',
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: 'numeric',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })}
+                                  </p>
+                                )}
+                              </div>
+                            ) : request.is_fast_track ? (
+                              // FAST-TRACK - Priority queue
+                              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3">
+                                <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                                  <Zap className="w-5 h-5" />
+                                  <p className="text-sm font-semibold">
+                                    ⚡ Fast-Track Active
+                                  </p>
+                                </div>
+                                <p className="text-sm text-orange-700 dark:text-orange-300 mt-1 ml-7">
+                                  Your song has priority placement. Coming up soon!
                                 </p>
                               </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                Played at: {new Date(request.played_at).toLocaleString('en-US', {
-                                  weekday: 'short',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                  hour12: true
-                                })}
-                              </p>
-                            </div>
-                          ) : request.is_fast_track ? (
-                            <p className="text-sm text-orange-600 dark:text-orange-400 font-medium mt-2">
-                              ⚡ Fast-Track: Your song has priority placement in the queue.
+                            ) : (
+                              // IN QUEUE - Waiting to be played
+                              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                                  <Clock className="w-5 h-5" />
+                                  <p className="text-sm font-semibold">
+                                    🎵 In the Queue
+                                  </p>
+                                </div>
+                                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 ml-7">
+                                  Your song is queued and will be played when possible.
+                                </p>
+                              </div>
+                            )}
+                            
+                            {/* Real-time update indicator */}
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 flex items-center gap-1">
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                              </span>
+                              Live updates enabled • Status updates automatically
                             </p>
-                          ) : (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                              Your song is in the queue and will be played when possible.
-                            </p>
-                          )}
+                          </div>
                         </div>
                       ) : (
                         <div>
@@ -347,7 +466,20 @@ export default function CrowdRequestSuccessPage() {
                 </div>
               )}
 
-              {request?.is_fast_track ? (
+              {/* Status-based messaging */}
+              {request?.status === 'playing' ? (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-8">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>🎶 On the decks!</strong> Your song is playing right now. Get on the dance floor and enjoy!
+                  </p>
+                </div>
+              ) : request?.status === 'played' ? (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-8">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>✅ Request Complete!</strong> Your song has been played. Thanks for making the party great! Want to request another?
+                  </p>
+                </div>
+              ) : request?.is_fast_track ? (
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-8">
                   <p className="text-sm text-orange-800 dark:text-orange-200">
                     <strong>⚡ Fast-Track Confirmed!</strong> Your song request has priority placement in the queue. The DJ will receive your request and will play it as soon as possible.
@@ -356,7 +488,7 @@ export default function CrowdRequestSuccessPage() {
               ) : (
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-8">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>What's next?</strong> The DJ will receive your request and will do their best to fulfill it during the event. Keep an eye out!
+                    <strong>What's next?</strong> The DJ will receive your request and will do their best to fulfill it during the event. This page updates automatically when your song plays!
                   </p>
                 </div>
               )}

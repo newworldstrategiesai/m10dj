@@ -18,6 +18,7 @@ import SongRecognition from '@/components/audio/SongRecognition';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { getCurrentOrganization } from '@/utils/organization-context';
+import CustomerTimeline from '@/components/admin/CustomerTimeline';
 
 interface Project {
   id: string;
@@ -254,10 +255,10 @@ export default function ProjectDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-16 lg:pt-0 px-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading project...</p>
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-sm sm:text-base text-gray-600">Loading project...</p>
         </div>
       </div>
     );
@@ -265,10 +266,10 @@ export default function ProjectDetailPage() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-16 lg:pt-0 px-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Project Not Found</h1>
-          <p className="text-gray-600 mb-6">The project you're looking for doesn't exist or you don't have access to it.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Project Not Found</h1>
+          <p className="text-sm sm:text-base text-gray-600 mb-6">The project you're looking for doesn't exist or you don't have access to it.</p>
           <Link href="/admin/contacts">
             <Button>Back to Contacts</Button>
           </Link>
@@ -279,36 +280,36 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 pt-16 lg:pt-8 pb-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href={from === 'contacts' ? '/admin/contacts' : '/admin/dashboard'}>
-                <Button variant="slim" >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
+        <div className="mb-4 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <Link href={from === 'contacts' ? '/admin/contacts' : '/admin/dashboard'} className="flex-shrink-0">
+                <Button variant="slim" className="h-9 px-3 sm:px-4">
+                  <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Back</span>
                 </Button>
               </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{project.event_name}</h1>
-                <p className="text-gray-600">Project Details</p>
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">{project.event_name}</h1>
+                <p className="text-sm text-gray-600">Project Details</p>
               </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex gap-2 sm:flex-shrink-0">
               {isEditing ? (
                 <>
-                  <Button onClick={() => setIsEditing(false)} variant="slim">
+                  <Button onClick={() => setIsEditing(false)} variant="slim" className="flex-1 sm:flex-none text-sm">
                     Cancel
                   </Button>
-                  <Button onClick={handleSave} disabled={saving}>
-                    {saving ? 'Saving...' : 'Save Changes'}
+                  <Button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none text-sm">
+                    {saving ? 'Saving...' : 'Save'}
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setIsEditing(true)}>
+                <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto text-sm">
                   <Edit3 className="h-4 w-4 mr-2" />
-                  Edit Project
+                  Edit
                 </Button>
               )}
             </div>
@@ -316,18 +317,21 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="details" className="space-y-6">
-          <TabsList className="bg-white border rounded-lg p-1">
-            <TabsTrigger value="details">Project Details</TabsTrigger>
-            <TabsTrigger value="client">Client Information</TabsTrigger>
-            <TabsTrigger value="notes">Notes & Communication</TabsTrigger>
-            <TabsTrigger value="audio">Audio Tracking</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="details" className="space-y-4 sm:space-y-6">
+          <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+            <TabsList className="bg-white border rounded-lg p-1 inline-flex min-w-max sm:w-auto">
+              <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-4">Details</TabsTrigger>
+              <TabsTrigger value="client" className="text-xs sm:text-sm px-2 sm:px-4">Client</TabsTrigger>
+              <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-4">Notes</TabsTrigger>
+              <TabsTrigger value="audio" className="text-xs sm:text-sm px-2 sm:px-4">Audio</TabsTrigger>
+              <TabsTrigger value="journey" className="text-xs sm:text-sm px-2 sm:px-4">Journey</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="details">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold mb-4">Event Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Event Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
                   {isEditing ? (
@@ -461,9 +465,9 @@ export default function ProjectDetailPage() {
           </TabsContent>
 
           <TabsContent value="client">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold mb-4">Client Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Client Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
                   {isEditing ? (
@@ -518,9 +522,9 @@ export default function ProjectDetailPage() {
           </TabsContent>
 
           <TabsContent value="notes">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold mb-4">Notes & Communication</h3>
-              <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Notes & Communication</h3>
+              <div className="space-y-4 sm:space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Project Notes</label>
                   {isEditing ? (
@@ -560,32 +564,30 @@ export default function ProjectDetailPage() {
           </TabsContent>
 
           <TabsContent value="audio">
-            <div className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Automatic Song Recognition</h3>
-                  <p className="text-sm text-gray-600">
-                    Enable automatic song detection using your phone's microphone. Detected songs will automatically match to song requests and mark them as played.
-                  </p>
-                </div>
+            <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div>
+                <h3 className="text-base sm:text-lg font-semibold mb-2">Automatic Song Recognition</h3>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Enable automatic song detection using your phone's microphone. Detected songs will automatically match to song requests and mark them as played.
+                </p>
               </div>
 
               {/* Toggle Switch */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-lg border">
+                <div className="flex items-center gap-3">
                   {project.audio_tracking_enabled ? (
-                    <Mic className="h-5 w-5 text-green-600" />
+                    <Mic className="h-5 w-5 text-green-600 flex-shrink-0" />
                   ) : (
-                    <MicOff className="h-5 w-5 text-gray-400" />
+                    <MicOff className="h-5 w-5 text-gray-400 flex-shrink-0" />
                   )}
                   <div>
-                    <Label htmlFor="audio-tracking" className="text-base font-medium cursor-pointer">
+                    <Label htmlFor="audio-tracking" className="text-sm sm:text-base font-medium cursor-pointer">
                       Enable Audio Tracking
                     </Label>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs sm:text-sm text-gray-500">
                       {project.audio_tracking_enabled 
-                        ? 'Audio recognition is active for this event'
-                        : 'Turn on to automatically detect and track songs'}
+                        ? 'Audio recognition is active'
+                        : 'Turn on to detect and track songs'}
                     </p>
                   </div>
                 </div>
@@ -594,6 +596,7 @@ export default function ProjectDetailPage() {
                   checked={project.audio_tracking_enabled ?? false}
                   onCheckedChange={handleToggleAudioTracking}
                   disabled={saving}
+                  className="self-end sm:self-auto"
                 />
               </div>
 
@@ -615,12 +618,23 @@ export default function ProjectDetailPage() {
               )}
 
               {!project.audio_tracking_enabled && (
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800">
+                <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs sm:text-sm text-blue-800">
                     <strong>How it works:</strong> When enabled, place your phone near the speakers and the system will automatically detect songs being played. Matching song requests will be marked as "played" automatically.
                   </p>
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="journey">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+              <CustomerTimeline 
+                email={project.client_email || undefined}
+                phone={project.client_phone || undefined}
+                showHeader={true}
+                limit={100}
+              />
             </div>
           </TabsContent>
         </Tabs>

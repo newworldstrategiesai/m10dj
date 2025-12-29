@@ -1,0 +1,78 @@
+"use strict";
+/**
+ * Simple logger for companion app
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.logger = void 0;
+const LOG_COLORS = {
+    debug: '\x1b[36m', // Cyan
+    info: '\x1b[32m', // Green
+    warn: '\x1b[33m', // Yellow
+    error: '\x1b[31m', // Red
+    reset: '\x1b[0m',
+};
+const LOG_ICONS = {
+    debug: '🔍',
+    info: '✅',
+    warn: '⚠️',
+    error: '❌',
+};
+class Logger {
+    minLevel = 'info';
+    setLevel(level) {
+        this.minLevel = level;
+    }
+    shouldLog(level) {
+        const levels = ['debug', 'info', 'warn', 'error'];
+        return levels.indexOf(level) >= levels.indexOf(this.minLevel);
+    }
+    format(level, message, data) {
+        const timestamp = new Date().toLocaleTimeString();
+        const color = LOG_COLORS[level];
+        const icon = LOG_ICONS[level];
+        const reset = LOG_COLORS.reset;
+        let output = `${color}[${timestamp}] ${icon} ${message}${reset}`;
+        if (data !== undefined) {
+            output += '\n' + JSON.stringify(data, null, 2);
+        }
+        return output;
+    }
+    debug(message, data) {
+        if (this.shouldLog('debug')) {
+            console.log(this.format('debug', message, data));
+        }
+    }
+    info(message, data) {
+        if (this.shouldLog('info')) {
+            console.log(this.format('info', message, data));
+        }
+    }
+    warn(message, data) {
+        if (this.shouldLog('warn')) {
+            console.warn(this.format('warn', message, data));
+        }
+    }
+    error(message, data) {
+        if (this.shouldLog('error')) {
+            console.error(this.format('error', message, data));
+        }
+    }
+    // Special formatting for track detection
+    track(artist, title) {
+        console.log(`\n🎵 ${LOG_COLORS.info}Now Playing:${LOG_COLORS.reset}`);
+        console.log(`   ${title}`);
+        console.log(`   by ${artist}\n`);
+    }
+    // Banner for startup
+    banner() {
+        console.log('\n');
+        console.log('╔═══════════════════════════════════════════════╗');
+        console.log('║     🎵 Serato Play Detection Companion 🎵     ║');
+        console.log('║                                               ║');
+        console.log('║  Detects "Now Playing" and notifies requesters║');
+        console.log('╚═══════════════════════════════════════════════╝');
+        console.log('\n');
+    }
+}
+exports.logger = new Logger();
+//# sourceMappingURL=logger.js.map

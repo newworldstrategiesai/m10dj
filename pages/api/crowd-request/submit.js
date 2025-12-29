@@ -47,7 +47,8 @@ export default async function handler(req, res) {
     isArtist,
     scanId, // QR scan ID from sessionStorage
     sessionId, // QR session ID from sessionStorage
-    postedLink // Original URL if request was created from a posted link
+    postedLink, // Original URL if request was created from a posted link
+    visitor_id // Visitor ID for customer journey tracking
   } = req.body;
 
   // Validate required fields
@@ -324,7 +325,8 @@ export default async function handler(req, res) {
       artist_rights_confirmed: artistRightsConfirmed || false,
       is_artist: isArtist || false,
       audio_upload_fee: (isCustomAudio && audioFileUrl) ? 10000 : 0, // $100.00 in cents
-      posted_link: postedLink || null // Store original URL if request was created from a posted link
+      posted_link: postedLink || null, // Store original URL if request was created from a posted link
+      visitor_id: visitor_id || null // Link to visitor tracking for customer journey
     };
 
     // Add organization_id if we have it
@@ -490,6 +492,34 @@ export default async function handler(req, res) {
         }
       } catch (err) {
         console.error('⚠️ Error finding scan by session:', err);
+      }
+    }
+
+    // Link visitor session to contact info if visitor_id provided
+    if (visitor_id && (requesterEmail || requesterPhone || requesterName)) {
+      try {
+        await supabase.rpc('link_visitor_to_contact', {
+          p_visitor_id: visitor_id,
+          p_email: requesterEmail || null,
+          p_phone: requesterPhone || null,
+          p_name: requesterName || null,
+          p_contact_id: null,
+          p_contact_submission_id: null
+        });
+        
+        // Mark visitor as having made a song request
+        await supabase
+          .from('visitor_sessions')
+          .update({ 
+            has_made_song_request: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', visitor_id);
+          
+        console.log('✅ Linked visitor to song request for journey tracking');
+      } catch (linkError) {
+        console.warn('⚠️ Failed to link visitor to song request (non-critical):', linkError.message);
+        // Don't fail the request - visitor tracking is non-critical
       }
     }
 

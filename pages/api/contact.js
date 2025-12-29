@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { name, email, phone, eventType, eventDate, eventTime, venueName, venueAddress, location, message, honeypot, idempotencyKey } = req.body;
+  const { name, email, phone, eventType, eventDate, eventTime, venueName, venueAddress, location, message, honeypot, idempotencyKey, visitor_id } = req.body;
 
   // SECURITY: Honeypot check - if filled, it's likely a bot
   if (honeypot && honeypot.trim().length > 0) {
@@ -256,7 +256,8 @@ export default async function handler(req, res) {
       eventDate: sanitizedData.eventDate,
       location: sanitizedData.location,
       message: sanitizedData.message,
-      organization_id: organizationId // Include organization_id in submission
+      organization_id: organizationId, // Include organization_id in submission
+      visitor_id: visitor_id || null // Link to visitor tracking
     };
     
     // Add venue fields if provided (for future use)
@@ -833,6 +834,34 @@ export default async function handler(req, res) {
     }
     
     console.log('✅ Contact record guaranteed:', criticalOperations.contactRecord.id);
+
+    // Link visitor session to contact info (for customer journey tracking)
+    if (visitor_id && criticalOperations.contactRecord.id) {
+      try {
+        await supabase.rpc('link_visitor_to_contact', {
+          p_visitor_id: visitor_id,
+          p_email: email,
+          p_phone: phone || null,
+          p_name: name,
+          p_contact_id: criticalOperations.contactRecord.id,
+          p_contact_submission_id: dbSubmission.id
+        });
+        
+        // Mark visitor as having submitted a form
+        await supabase
+          .from('visitor_sessions')
+          .update({ 
+            has_submitted_form: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', visitor_id);
+          
+        console.log('✅ Linked visitor to contact for journey tracking');
+      } catch (linkError) {
+        console.warn('⚠️ Failed to link visitor to contact (non-critical):', linkError.message);
+        // Don't fail the request - visitor tracking is non-critical
+      }
+    }
 
     // Auto-create quote, invoice, and contract for the new contact
     console.log('🎯 Auto-creating quote, invoice, and contract...');

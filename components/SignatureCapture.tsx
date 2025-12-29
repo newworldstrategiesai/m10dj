@@ -7,6 +7,7 @@ interface SignatureCaptureProps {
   defaultMethod?: 'draw' | 'type';
   label?: string;
   disabled?: boolean;
+  initialName?: string;
 }
 
 export default function SignatureCapture({
@@ -14,13 +15,14 @@ export default function SignatureCapture({
   defaultValue,
   defaultMethod = 'draw',
   label = 'Your Signature',
-  disabled = false
+  disabled = false,
+  initialName = ''
 }: SignatureCaptureProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'type'>(defaultMethod);
-  const [typedName, setTypedName] = useState('');
+  const [typedName, setTypedName] = useState(initialName);
   const [selectedFont, setSelectedFont] = useState('Allura');
   const [hasSignature, setHasSignature] = useState(false);
 

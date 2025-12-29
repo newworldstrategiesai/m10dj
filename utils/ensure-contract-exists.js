@@ -74,13 +74,49 @@ export async function ensureContractExists(quoteId, supabaseClient = null) {
       return { success: false, error: 'Contact not found' };
     }
 
-    // Generate contract number
-    const contractNumber = generateContractNumberFromId(quoteId) || 
-      `CONT-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    // First, check if there's already a contract for this contact (prevent duplicates)
+    const { data: existingContractForContact } = await supabase
+      .from('contracts')
+      .select('id')
+      .eq('contact_id', quote.lead_id)
+      .not('status', 'in', '("cancelled","expired")')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingContractForContact) {
+      // Link existing contract to quote if not linked
+      await supabase
+        .from('quote_selections')
+        .update({ contract_id: existingContractForContact.id })
+        .eq('lead_id', quoteId);
+
+      return { 
+        success: true, 
+        contract_id: existingContractForContact.id,
+        created: false,
+        contract: existingContractForContact
+      };
+    }
+
+    // Generate contract number (consistent format: CONT-YYYYMMDD-XXX)
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+    
+    // Get count of contracts created today for sequence number
+    const { count: todayCount } = await supabase
+      .from('contracts')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', today.toISOString().slice(0, 10) + 'T00:00:00Z')
+      .lt('created_at', today.toISOString().slice(0, 10) + 'T23:59:59Z');
+
+    const sequenceNum = String((todayCount || 0) + 1).padStart(3, '0');
+    const contractNumber = `CONT-${dateStr}-${sequenceNum}`;
 
     // Create draft contract
     const contractData = {
       contact_id: quote.lead_id,
+      quote_selection_id: quote.id, // Link to quote_selections (NEW!)
       contract_number: contractNumber,
       contract_type: 'service_agreement',
       event_name: contact.event_type ? `${contact.first_name || ''} ${contact.last_name || ''} ${contact.event_type}`.trim() : null,
@@ -99,6 +135,11 @@ export async function ensureContractExists(quoteId, supabaseClient = null) {
     // Link invoice if it exists
     if (quote.invoice_id) {
       contractData.invoice_id = quote.invoice_id;
+    }
+
+    // Link organization if exists
+    if (quote.organization_id || contact.organization_id) {
+      contractData.organization_id = quote.organization_id || contact.organization_id;
     }
 
     const { data: newContract, error: contractError } = await supabase

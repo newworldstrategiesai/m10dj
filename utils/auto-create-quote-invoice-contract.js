@@ -7,6 +7,11 @@
  * 3. A draft contract
  * 
  * All records start in "draft" status and are linked together
+ * 
+ * IMPORTANT: All records inherit organization_id from the contact
+ * to maintain multi-tenant data isolation.
+ * 
+ * See ENTITY_RELATIONSHIPS.md for full documentation.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -16,19 +21,39 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
  * Generate a unique contract number
+ * Format: CONT-YYYYMMDD-XXX (consistent with other contract creation paths)
  */
-function generateContractNumber() {
-  const year = new Date().getFullYear();
-  const month = String(new Date().getMonth() + 1).padStart(2, '0');
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `CONTRACT-${year}${month}-${random}`;
+async function generateContractNumber(supabase, organizationId = null) {
+  const today = new Date();
+  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+  
+  // Get count of contracts created today for sequence number
+  // Scoped to organization if provided
+  let query = supabase
+    .from('contracts')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', today.toISOString().slice(0, 10) + 'T00:00:00Z')
+    .lt('created_at', today.toISOString().slice(0, 10) + 'T23:59:59Z');
+  
+  if (organizationId) {
+    query = query.eq('organization_id', organizationId);
+  }
+  
+  const { count: todayCount } = await query;
+
+  const sequenceNum = String((todayCount || 0) + 1).padStart(3, '0');
+  return `CONT-${dateStr}-${sequenceNum}`;
 }
 
 /**
  * Auto-create quote, invoice, and contract for a new contact
- * @param {Object} contact - Contact record from database
- * @param {Object} supabase - Supabase client (optional, will create if not provided)
+ * @param {Object} contact - Contact record from database (must include organization_id for multi-tenant)
+ * @param {Object} supabaseClient - Supabase client (optional, will create if not provided)
  * @returns {Object} Result with created records
+ * 
+ * @example
+ * const results = await autoCreateQuoteInvoiceContract(contact);
+ * // results.quote.id, results.invoice.id, results.contract.id
  */
 export async function autoCreateQuoteInvoiceContract(contact, supabaseClient = null) {
   const supabase = supabaseClient || createClient(supabaseUrl, supabaseKey);
@@ -39,25 +64,37 @@ export async function autoCreateQuoteInvoiceContract(contact, supabaseClient = n
     contract: { success: false, id: null, error: null }
   };
 
+  // Extract organization_id for multi-tenant isolation
+  const organizationId = contact.organization_id || null;
+  
+  // Extract initial pricing from contact if available
+  const initialPrice = contact.quoted_price || 0;
+  const depositAmount = contact.deposit_amount || (initialPrice * 0.5);
+
   try {
     console.log(`🔄 Auto-creating quote, invoice, and contract for contact: ${contact.id}`);
+    if (organizationId) {
+      console.log(`   Organization: ${organizationId}`);
+    }
 
     // Generate invoice number
-    const invoiceNumber = await generateInvoiceNumber(supabase);
+    const invoiceNumber = await generateInvoiceNumber(supabase, organizationId);
     
     // Generate contract number
-    const contractNumber = generateContractNumber();
+    const contractNumber = await generateContractNumber(supabase, organizationId);
 
     // 1. Create Quote Selection (draft)
     try {
       console.log('📝 Creating draft quote selection...');
       const quoteData = {
         lead_id: contact.id,
+        organization_id: organizationId, // Multi-tenant isolation
         package_id: 'pending', // Will be updated when customer selects
         package_name: 'Service Selection Pending',
-        package_price: 0,
+        package_price: initialPrice,
         addons: [],
-        total_price: 0,
+        total_price: initialPrice,
+        deposit_amount: depositAmount,
         status: 'pending'
       };
 
@@ -88,18 +125,30 @@ export async function autoCreateQuoteInvoiceContract(contact, supabaseClient = n
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 30);
       
+      // Build client name safely
+      const clientName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Client';
+      
       const invoiceData = {
         contact_id: contact.id,
+        organization_id: organizationId, // Multi-tenant isolation
         invoice_number: invoiceNumber,
         invoice_status: 'Draft',
-        invoice_title: `${contact.event_type || 'Event'} - ${contact.first_name || 'Client'} ${contact.last_name || ''}`.trim(),
+        invoice_title: `${contact.event_type || 'Event'} - ${clientName}`.trim(),
         invoice_description: `Invoice for ${contact.event_type || 'event'} services`,
         invoice_date: new Date().toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
-        subtotal: 0,
-        total_amount: 0,
-        balance_due: 0,
-        line_items: []
+        subtotal: initialPrice,
+        total_amount: initialPrice,
+        balance_due: initialPrice,
+        line_items: initialPrice > 0 ? [
+          {
+            description: `${contact.event_type || 'DJ'} Services`,
+            type: 'service',
+            quantity: 1,
+            rate: initialPrice,
+            amount: initialPrice
+          }
+        ] : []
       };
 
       const { data: invoice, error: invoiceError } = await supabase
@@ -133,20 +182,31 @@ export async function autoCreateQuoteInvoiceContract(contact, supabaseClient = n
     try {
       console.log('📄 Creating draft contract...');
       
+      // Build event name from contact details
+      const eventName = [
+        contact.first_name,
+        contact.last_name,
+        '-',
+        contact.event_type || 'Event'
+      ].filter(Boolean).join(' ').trim();
+      
       const contractData = {
         contact_id: contact.id,
+        organization_id: organizationId, // Multi-tenant isolation
         invoice_id: results.invoice.success ? results.invoice.id : null,
+        quote_selection_id: results.quote.success ? results.quote.id : null,
         contract_number: contractNumber,
         contract_type: 'service_agreement',
-        event_name: contact.event_type ? `${contact.first_name || ''} ${contact.last_name || ''} ${contact.event_type}`.trim() : null,
+        event_name: eventName,
         event_type: contact.event_type || null,
         event_date: contact.event_date || null,
         event_time: contact.event_time || null,
         venue_name: contact.venue_name || null,
         venue_address: contact.venue_address || null,
         guest_count: contact.guest_count || null,
-        total_amount: 0,
-        deposit_amount: 0,
+        total_amount: initialPrice,
+        deposit_amount: depositAmount,
+        deposit_percentage: 50, // 50% deposit default
         status: 'draft',
         contract_template: 'standard_service_agreement'
       };
@@ -209,8 +269,10 @@ export async function autoCreateQuoteInvoiceContract(contact, supabaseClient = n
 
 /**
  * Generate invoice number using database function or manual generation
+ * @param {Object} supabase - Supabase client
+ * @param {string|null} organizationId - Organization ID for scoping (optional)
  */
-async function generateInvoiceNumber(supabase) {
+async function generateInvoiceNumber(supabase, organizationId = null) {
   try {
     // Try to use database function first
     const { data, error } = await supabase.rpc('generate_invoice_number');
@@ -225,13 +287,68 @@ async function generateInvoiceNumber(supabase) {
   const year = new Date().getFullYear();
   const month = String(new Date().getMonth() + 1).padStart(2, '0');
   
-  // Get count of invoices this month
-  const { count } = await supabase
+  // Get count of invoices this month, scoped to organization if provided
+  let query = supabase
     .from('invoices')
     .select('*', { count: 'exact', head: true })
     .like('invoice_number', `INV-${year}${month}%`);
+  
+  if (organizationId) {
+    query = query.eq('organization_id', organizationId);
+  }
+  
+  const { count } = await query;
 
   const sequenceNum = String((count || 0) + 1).padStart(3, '0');
   return `INV-${year}${month}-${sequenceNum}`;
+}
+
+/**
+ * Check if a contact already has linked records
+ * @param {Object} supabase - Supabase client
+ * @param {string} contactId - Contact ID
+ * @returns {Object} { hasQuote, hasInvoice, hasContract }
+ */
+export async function checkExistingRecords(supabase, contactId) {
+  const [quoteResult, invoiceResult, contractResult] = await Promise.all([
+    supabase.from('quote_selections').select('id').eq('lead_id', contactId).limit(1),
+    supabase.from('invoices').select('id').eq('contact_id', contactId).limit(1),
+    supabase.from('contracts').select('id').eq('contact_id', contactId).neq('status', 'cancelled').limit(1)
+  ]);
+  
+  return {
+    hasQuote: quoteResult.data?.length > 0,
+    hasInvoice: invoiceResult.data?.length > 0,
+    hasContract: contractResult.data?.length > 0,
+    quoteId: quoteResult.data?.[0]?.id || null,
+    invoiceId: invoiceResult.data?.[0]?.id || null,
+    contractId: contractResult.data?.[0]?.id || null
+  };
+}
+
+/**
+ * Ensure a contact has all required linked records
+ * Only creates missing records, doesn't duplicate existing ones
+ * @param {Object} contact - Contact record
+ * @param {Object} supabaseClient - Supabase client (optional)
+ * @returns {Object} Result with record IDs
+ */
+export async function ensureContactRecords(contact, supabaseClient = null) {
+  const supabase = supabaseClient || createClient(supabaseUrl, supabaseKey);
+  
+  // Check what already exists
+  const existing = await checkExistingRecords(supabase, contact.id);
+  
+  if (existing.hasQuote && existing.hasInvoice && existing.hasContract) {
+    console.log(`✅ Contact ${contact.id} already has all records`);
+    return {
+      quote: { success: true, id: existing.quoteId, existed: true },
+      invoice: { success: true, id: existing.invoiceId, existed: true },
+      contract: { success: true, id: existing.contractId, existed: true }
+    };
+  }
+  
+  console.log(`⚠️ Contact ${contact.id} missing records, creating...`);
+  return autoCreateQuoteInvoiceContract(contact, supabase);
 }
 

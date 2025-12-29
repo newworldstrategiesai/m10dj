@@ -26,7 +26,8 @@ export default async function handler(req, res) {
       event_qr_code,
       organization_id,
       referrer,
-      is_qr_scan = false
+      is_qr_scan = false,
+      visitor_id // New: Accept visitor_id from frontend
     } = req.body;
 
     if (!event_qr_code) {
@@ -55,6 +56,7 @@ export default async function handler(req, res) {
         ip_address: ipAddress,
         referrer: referrer || null,
         session_id: sessionId,
+        visitor_id: visitor_id || null, // Link to visitor tracking
         is_qr_scan: is_qr_scan === true || is_qr_scan === 'true' || is_qr_scan === 1 || is_qr_scan === '1'
       })
       .select()

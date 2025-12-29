@@ -186,12 +186,12 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
   }, [router.pathname, onMobileToggle]);
 
   const sidebarClasses = `
-    fixed left-0 top-0 h-screen z-[60]
+    fixed inset-y-0 left-0 z-[60]
     transition-all duration-300 ease-in-out
     flex flex-col
     ${displayTheme === 'dark'
-      ? 'bg-black text-white'
-      : 'bg-gray-100 text-gray-900'
+      ? 'bg-black text-white border-r border-gray-800'
+      : 'bg-gray-100 text-gray-900 border-r border-gray-200'
     }
     ${isExpanded ? 'w-64' : 'w-20'}
     ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -212,6 +212,14 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
         className={sidebarClasses}
+        style={{
+          position: 'fixed',
+          top: 0,
+          bottom: 0,
+          left: 0,
+          height: '100vh',
+          overflowY: 'auto'
+        }}
       >
         {/* Logo/Brand */}
         <div className={`h-16 flex items-center justify-center border-b ${

@@ -350,7 +350,7 @@ export default async function handler(req, res) {
       .insert({
         contact_id: contactId,
         invoice_id: invoiceId || null,
-        service_selection_id: serviceSelectionId || null,
+        quote_selection_id: serviceSelectionId || null, // Renamed from service_selection_id
         organization_id: orgId || contact.organization_id, // Set organization_id
         
         event_name: variables.event_name,

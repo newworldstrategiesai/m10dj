@@ -8,6 +8,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import AdminNavbar from '@/components/admin/AdminNavbar';
 import { Toaster } from '@/components/ui/Toasts/toaster-pages';
 import { useEffect } from 'react';
+import { trackPageView } from '@/utils/visitor-tracking';
 // Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
 
@@ -69,6 +70,27 @@ export default function App({ Component, pageProps }) {
   const isBidPage = router.pathname === '/bid';
   // Check if we're on DJ Dash pages (djdash.net domain or /djdash routes or /dj/ profile routes)
   const isDJDashPage = router.pathname.startsWith('/djdash') || router.pathname.startsWith('/dj/');
+
+  // Set data attribute to remove body padding on admin pages
+  useEffect(() => {
+    if (isAdminRoute) {
+      document.documentElement.setAttribute('data-admin-page', 'true');
+    } else {
+      document.documentElement.removeAttribute('data-admin-page');
+    }
+  }, [isAdminRoute]);
+
+  // Track page views for M10 DJ Company pages (customer journey tracking)
+  // Skip admin pages and DJ Dash pages - only track public-facing M10 pages
+  useEffect(() => {
+    if (!isAdminRoute && !isDJDashPage && !isSignInPage) {
+      // Small delay to ensure page is loaded
+      const timer = setTimeout(() => {
+        trackPageView();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [router.asPath, isAdminRoute, isDJDashPage, isSignInPage]);
   
   return (
     <ThemeProviderWrapper>
