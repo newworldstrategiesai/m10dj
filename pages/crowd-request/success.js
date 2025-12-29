@@ -790,7 +790,7 @@ export default function CrowdRequestSuccessPage() {
               {request?.event_qr_code && (
                 <div className="mb-6">
                   <Link
-                    href={`/crowd-request/${request.event_qr_code}`}
+                    href={request.event_qr_code.startsWith('general') ? '/requests' : `/crowd-request/${request.event_qr_code}`}
                     className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 dark:from-purple-500 dark:to-pink-500 dark:hover:from-purple-600 dark:hover:to-pink-600 text-white font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
                   >
                     <Music className="w-6 h-6" />
@@ -802,7 +802,9 @@ export default function CrowdRequestSuccessPage() {
               {/* Secondary Action: Return Home */}
               <div className="flex justify-center">
                 <Link
-                  href={request?.event_qr_code ? `/crowd-request/${request.event_qr_code}` : "/"}
+                  href={request?.event_qr_code 
+                    ? (request.event_qr_code.startsWith('general') ? '/requests' : `/crowd-request/${request.event_qr_code}`)
+                    : "/"}
                   className="btn-outline inline-flex items-center justify-center gap-2"
                 >
                   {request?.event_qr_code ? 'Back to Requests' : 'Return to Home'}
