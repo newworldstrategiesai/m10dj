@@ -273,7 +273,14 @@ export default function CrowdRequestSuccessPage() {
         
         // Fetch bundled songs if this is part of a bundle
         // Look for requests with "Bundle deal" message from the same requester created within 5 seconds
-        await fetchBundledSongs(data);
+        try {
+          await fetchBundledSongs(data);
+        } catch (bundleErr) {
+          console.error('Error fetching bundled songs (non-critical):', bundleErr);
+          // Continue - bundled songs are optional, don't block the page
+        }
+      } else {
+        console.error('Failed to fetch request details:', response.status);
       }
     } catch (err) {
       console.error('Error fetching request details:', err);
