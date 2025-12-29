@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
 
 // Note: You'll need to install and configure Twilio for SMS functionality
 // npm install twilio
@@ -8,6 +9,14 @@ import { createClient } from '@/utils/supabase/server';
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Require admin authentication to send SMS
+  try {
+    await requireAdmin(req, res);
+  } catch (error) {
+    if (res.headersSent) return;
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   // Accept both parameter names for flexibility

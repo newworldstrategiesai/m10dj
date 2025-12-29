@@ -2,6 +2,7 @@
 // This is useful for troubleshooting payments that didn't get recorded
 const { createClient } = require('@supabase/supabase-js');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -9,6 +10,14 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Require admin authentication to verify payments
+  try {
+    await requireAdmin(req, res);
+  } catch (error) {
+    if (res.headersSent) return;
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const { payment_intent_id, lead_id } = req.body;

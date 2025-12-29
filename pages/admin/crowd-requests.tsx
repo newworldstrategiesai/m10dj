@@ -66,6 +66,7 @@ import StripeConnectRequirementBanner from '@/components/subscription/StripeConn
 import { getCurrentOrganization } from '@/utils/organization-context';
 import SongRecognition from '@/components/audio/SongRecognition';
 import MusicServiceLinks from '@/components/admin/MusicServiceLinks';
+import { DecoratedQRCode } from '@/components/ui/DecoratedQRCode';
 
 interface CrowdRequest {
   id: string;
@@ -1610,6 +1611,119 @@ export default function CrowdRequestsPage() {
       pdfContainer.style.backgroundColor = '#ffffff';
       pdfContainer.style.fontFamily = 'Arial, sans-serif';
       
+      // Helper function to generate decorated QR code HTML with festive corner brackets and confetti
+      const createDecoratedQRCode = (qrImageUrl: string, size: string) => {
+        const sizeNum = parseInt(size);
+        const padding = 24;
+        const totalSize = sizeNum + padding * 2;
+        const cornerLength = isTableTent ? 30 : 45;
+        const cornerThickness = isTableTent ? 3 : 4;
+        const containerSize = totalSize + (isTableTent ? 40 : 60);
+        const decorPadding = isTableTent ? 20 : 30;
+
+        return `
+          <div style="
+            position: relative;
+            display: inline-block;
+            width: ${containerSize}px;
+            height: ${containerSize}px;
+            padding: ${decorPadding}px;
+          ">
+            <!-- Background confetti elements -->
+            <!-- Top-left curved line (blue) -->
+            <svg style="position: absolute; top: ${isTableTent ? 5 : 10}px; left: 0;" width="${isTableTent ? 40 : 60}" height="${isTableTent ? 55 : 80}" viewBox="0 0 60 80">
+              <path d="M45 5 Q30 30, 10 75" stroke="#4285F4" stroke-width="3" fill="none" stroke-linecap="round"/>
+            </svg>
+            
+            <!-- Top-left dots -->
+            <svg style="position: absolute; top: ${isTableTent ? 30 : 45}px; left: ${isTableTent ? 5 : 8}px;" width="20" height="20" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="${isTableTent ? 3 : 4}" fill="#FBBC04"/>
+            </svg>
+            <svg style="position: absolute; top: ${isTableTent ? 50 : 75}px; left: ${isTableTent ? 12 : 20}px;" width="12" height="12" viewBox="0 0 12 12">
+              <circle cx="6" cy="6" r="${isTableTent ? 2 : 3}" fill="#EA4335"/>
+            </svg>
+
+            <!-- Top-right curved line (green) -->
+            <svg style="position: absolute; top: 0; right: ${isTableTent ? 2 : 5}px;" width="${isTableTent ? 35 : 50}" height="${isTableTent ? 50 : 70}" viewBox="0 0 50 70">
+              <path d="M5 60 Q20 30, 45 10" stroke="#34A853" stroke-width="3" fill="none" stroke-linecap="round"/>
+            </svg>
+
+            <!-- Bottom-left curved line (purple) -->
+            <svg style="position: absolute; bottom: ${isTableTent ? 5 : 10}px; left: ${isTableTent ? 2 : 5}px;" width="${isTableTent ? 40 : 60}" height="${isTableTent ? 50 : 70}" viewBox="0 0 60 70">
+              <path d="M50 5 Q30 25, 10 65" stroke="#9B59B6" stroke-width="3" fill="none" stroke-linecap="round"/>
+            </svg>
+            
+            <!-- Bottom-left dot -->
+            <svg style="position: absolute; bottom: ${isTableTent ? 18 : 30}px; left: ${isTableTent ? 28 : 45}px;" width="10" height="10" viewBox="0 0 10 10">
+              <circle cx="5" cy="5" r="${isTableTent ? 2 : 3}" fill="#34A853"/>
+            </svg>
+
+            <!-- Bottom-right curved line (yellow) -->
+            <svg style="position: absolute; bottom: ${isTableTent ? 2 : 5}px; right: 0;" width="${isTableTent ? 38 : 55}" height="${isTableTent ? 52 : 75}" viewBox="0 0 55 75">
+              <path d="M5 10 Q25 40, 50 70" stroke="#FBBC04" stroke-width="3" fill="none" stroke-linecap="round"/>
+            </svg>
+            
+            <!-- Bottom-right dot -->
+            <svg style="position: absolute; bottom: ${isTableTent ? 35 : 55}px; right: ${isTableTent ? 10 : 15}px;" width="10" height="10" viewBox="0 0 10 10">
+              <circle cx="5" cy="5" r="${isTableTent ? 2 : 3}" fill="#EA4335"/>
+            </svg>
+
+            <!-- Additional accent dot -->
+            <svg style="position: absolute; top: ${isTableTent ? 12 : 20}px; right: ${isTableTent ? 22 : 35}px;" width="8" height="8" viewBox="0 0 8 8">
+              <circle cx="4" cy="4" r="2.5" fill="#4285F4"/>
+            </svg>
+            
+            <!-- QR Code Card with corner brackets -->
+            <div style="
+              position: relative;
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+              width: ${totalSize}px;
+              height: ${totalSize}px;
+              padding: ${padding}px;
+              box-sizing: border-box;
+            ">
+              <!-- Top-left corner (blue) -->
+              <svg style="position: absolute; top: -2px; left: -2px;" width="${cornerLength + 10}" height="${cornerLength + 10}">
+                <path d="M${cornerThickness} ${cornerLength} L${cornerThickness} ${cornerThickness} L${cornerLength} ${cornerThickness}" 
+                      stroke="#4285F4" stroke-width="${cornerThickness}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+
+              <!-- Top-right corner (red) -->
+              <svg style="position: absolute; top: -2px; right: -2px;" width="${cornerLength + 10}" height="${cornerLength + 10}">
+                <path d="M10 ${cornerThickness} L${cornerLength + 6} ${cornerThickness} L${cornerLength + 6} ${cornerLength}" 
+                      stroke="#EA4335" stroke-width="${cornerThickness}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+
+              <!-- Bottom-left corner (green) -->
+              <svg style="position: absolute; bottom: -2px; left: -2px;" width="${cornerLength + 10}" height="${cornerLength + 10}">
+                <path d="M${cornerThickness} 10 L${cornerThickness} ${cornerLength + 6} L${cornerLength} ${cornerLength + 6}" 
+                      stroke="#34A853" stroke-width="${cornerThickness}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+
+              <!-- Bottom-right corner (blue) -->
+              <svg style="position: absolute; bottom: -2px; right: -2px;" width="${cornerLength + 10}" height="${cornerLength + 10}">
+                <path d="M10 ${cornerLength + 6} L${cornerLength + 6} ${cornerLength + 6} L${cornerLength + 6} 10" 
+                      stroke="#4285F4" stroke-width="${cornerThickness}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              
+              <!-- QR Code Image -->
+              <img 
+                src="${qrImageUrl}" 
+                alt="QR Code"
+                style="
+                  display: block;
+                  width: ${size};
+                  height: ${size};
+                  image-rendering: pixelated;
+                "
+              />
+            </div>
+          </div>
+        `;
+      };
+      
       // Panel content template (reusable for both layouts)
       const createPanelContent = (side: 'left' | 'right' | 'single' = 'single') => {
         const qrSize = isTableTent ? '180px' : '400px';
@@ -1796,25 +1910,8 @@ export default function CrowdRequestsPage() {
                 ">Powered by m10 dj company</p>
               </div>
               
-                <!-- QR Code on the right side -->
-                <div style="
-                  margin-left: 20px;
-                  padding: 15px;
-                  background: #ffffff;
-                  border: 2px solid #000000;
-                  flex-shrink: 0;
-                ">
-                  <img 
-                    src="${qrImageDataUrl}" 
-                    alt="QR Code" 
-                    style="
-                      width: ${qrSize};
-                      height: ${qrSize};
-                      display: block;
-                      border: 1px solid #cccccc;
-                    "
-                  />
-                </div>
+                <!-- Decorated QR Code on the right side -->
+                ${createDecoratedQRCode(qrImageDataUrl, qrSize)}
               </div>
             </div>
           `;
@@ -1858,24 +1955,8 @@ export default function CrowdRequestsPage() {
               ">${eventDateHtml}</p>
             ` : ''}
             
-            <!-- QR Code -->
-            <div style="
-              margin: 15px 0;
-              padding: 20px;
-              background: #ffffff;
-              border: 2px solid #000000;
-            ">
-              <img 
-                src="${qrImageDataUrl}" 
-                alt="QR Code" 
-                style="
-                  width: ${qrSize};
-                  height: ${qrSize};
-                  display: block;
-                  border: 1px solid #cccccc;
-                "
-              />
-            </div>
+            <!-- Decorated QR Code -->
+            ${createDecoratedQRCode(qrImageDataUrl, qrSize)}
             
             <p style="
               font-size: 18px;
@@ -3735,15 +3816,15 @@ export default function CrowdRequestsPage() {
 
                 {generatedQR && (
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <div className="flex items-start gap-6">
-                      <div className="bg-white p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <img 
-                          src={generatedQR} 
-                          alt="QR Code" 
-                          className="w-48 h-48"
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                      <div className="flex-shrink-0">
+                        <DecoratedQRCode 
+                          qrCodeUrl={generatedQR} 
+                          size={180}
+                          showDecorations={true}
                         />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 text-center sm:text-left">
                         <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                           Request URL:
                         </p>
@@ -3752,6 +3833,9 @@ export default function CrowdRequestsPage() {
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                           Scan this QR code or share the URL above with your event attendees.
+                        </p>
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                          ✨ Festive decorations will appear in your printed PDF!
                         </p>
                       </div>
                     </div>
@@ -3820,15 +3904,15 @@ export default function CrowdRequestsPage() {
 
                 {generatedPublicQR && (
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <div className="flex items-start gap-6">
-                      <div className="bg-white p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <img 
-                          src={generatedPublicQR} 
-                          alt="Public Requests QR Code" 
-                          className="w-48 h-48"
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                      <div className="flex-shrink-0">
+                        <DecoratedQRCode 
+                          qrCodeUrl={generatedPublicQR} 
+                          size={180}
+                          showDecorations={true}
                         />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 text-center sm:text-left">
                         <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                           Public Requests URL:
                         </p>
@@ -3837,6 +3921,9 @@ export default function CrowdRequestsPage() {
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                           Scan this QR code or share the URL above. This page is publicly accessible to anyone.
+                        </p>
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                          ✨ Festive decorations will appear in your printed PDF!
                         </p>
                       </div>
                     </div>

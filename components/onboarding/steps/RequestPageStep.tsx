@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { ExternalLink, Copy, CheckCircle, QrCode } from 'lucide-react';
 import { OnboardingStepProps } from '../OnboardingWizard';
+import { DecoratedQRCode } from '@/components/ui/DecoratedQRCode';
 
 export default function RequestPageStep({
   organization,
@@ -112,8 +113,12 @@ export default function RequestPageStep({
         </label>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           {qrCodeUrl ? (
-            <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <img src={qrCodeUrl} alt="QR Code" className="w-32 h-32" />
+            <div className="flex-shrink-0">
+              <DecoratedQRCode 
+                qrCodeUrl={qrCodeUrl} 
+                size={128}
+                showDecorations={true}
+              />
             </div>
           ) : (
             <button

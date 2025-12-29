@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -13,6 +14,14 @@ const supabase = createClient(
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Require admin authentication to view submission logs
+  try {
+    await requireAdmin(req, res);
+  } catch (error) {
+    if (res.headersSent) return;
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {

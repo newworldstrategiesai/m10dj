@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate detection method
-    const validMethods = ['text_file', 'serato_history', 'live_playlists', 'websocket', 'manual'];
+    const validMethods = ['text_file', 'serato_history', 'live_playlists', 'websocket', 'manual', 'virtualdj', 'rekordbox', 'traktor'];
     if (detection_method && !validMethods.includes(detection_method)) {
       return NextResponse.json(
         { error: `Invalid detection_method. Must be one of: ${validMethods.join(', ')}` },

@@ -57,6 +57,37 @@ export default async function handler(req, res) {
       });
     }
 
+    // SECURITY: If invoiceId provided, validate amount against database
+    if (invoiceId) {
+      const { data: invoice, error: invoiceError } = await supabaseAdmin
+        .from('invoices')
+        .select('total_amount, balance_due, status, organization_id')
+        .eq('id', invoiceId)
+        .single();
+      
+      if (invoiceError || !invoice) {
+        console.error('Invoice validation failed:', invoiceId);
+        return res.status(400).json({ error: 'Invalid invoice' });
+      }
+      
+      // Verify invoice belongs to this organization
+      if (invoice.organization_id !== organizationId) {
+        console.error('Invoice org mismatch:', { invoice: invoice.organization_id, request: organizationId });
+        return res.status(403).json({ error: 'Invoice does not belong to this organization' });
+      }
+      
+      // Verify amount matches
+      const expectedAmount = invoice.balance_due || invoice.total_amount;
+      if (Math.abs(amount - expectedAmount) > 0.01) {
+        console.error('Amount mismatch:', { provided: amount, expected: expectedAmount });
+        return res.status(400).json({ error: 'Amount does not match invoice balance' });
+      }
+      
+      if (invoice.status === 'paid') {
+        return res.status(400).json({ error: 'Invoice already paid' });
+      }
+    }
+
     // Calculate platform fee
     const platformFeePercentage = organization.platform_fee_percentage || 3.50;
     const platformFeeFixed = organization.platform_fee_fixed || 0.30;
