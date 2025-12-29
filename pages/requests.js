@@ -747,6 +747,18 @@ export function GeneralRequestsPage({
     // Normal input change - set the field value
     setFormData(prev => ({ ...prev, [name]: value }));
     
+    // Clear audio upload when user manually enters song title or artist name
+    // (they're requesting an existing song, not uploading custom audio)
+    if ((name === 'songTitle' || name === 'songArtist') && value?.trim()) {
+      if (audioFileUrl || audioFile) {
+        setAudioFile(null);
+        setAudioFileUrl('');
+        setArtistRightsConfirmed(false);
+        setIsArtist(false);
+        setAudioUploadExpanded(false);
+      }
+    }
+    
     // Show autocomplete when typing (not URLs, not extracted)
     if (name === 'songTitle') {
       const isUrl = detectUrl(value);
@@ -778,6 +790,15 @@ export function GeneralRequestsPage({
     setShowAutocomplete(false);
     setSelectedSuggestionIndex(-1);
     setIsExtractedFromLink(false); // Not from link, but from search
+    
+    // Clear audio upload when selecting from autocomplete (user wants an existing song)
+    if (audioFileUrl || audioFile) {
+      setAudioFile(null);
+      setAudioFileUrl('');
+      setArtistRightsConfirmed(false);
+      setIsArtist(false);
+      setAudioUploadExpanded(false);
+    }
   };
 
   // Handle keyboard navigation in autocomplete
@@ -835,6 +856,15 @@ export function GeneralRequestsPage({
       // Store album art
       if (extractedData.albumArt) {
         setAlbumArtUrl(extractedData.albumArt);
+      }
+      
+      // Clear audio upload when song is extracted from URL (user wants an existing song)
+      if (audioFileUrl || audioFile) {
+        setAudioFile(null);
+        setAudioFileUrl('');
+        setArtistRightsConfirmed(false);
+        setIsArtist(false);
+        setAudioUploadExpanded(false);
       }
     }
     
@@ -1042,19 +1072,26 @@ export function GeneralRequestsPage({
 
   // Track previous extraction state to detect when extraction completes
   const prevExtractingSong = useRef(extractingSong);
+  const hasAutoFocusedNameField = useRef(false); // Track if we've already auto-focused the name field
   
-  // Auto-advance to payment step when song selection is complete (not for tip)
+  // Auto-focus name field when song selection is complete (only once per session)
   useEffect(() => {
     if (requestType === 'song_request' && isSongSelectionComplete() && currentStep === 1) {
-      // Auto-advance to step 2 (payment) when song selection is complete
-      setCurrentStep(2);
-      // Scroll to payment section after a brief delay to ensure it's rendered
-      setTimeout(() => {
-        const paymentElement = document.querySelector('[data-payment-section]');
-        if (paymentElement) {
-          paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
+      // Only auto-focus name field once, and only if name is empty
+      if (!hasAutoFocusedNameField.current && !formData.requesterName?.trim()) {
+        hasAutoFocusedNameField.current = true;
+        setTimeout(() => {
+          const nameInput = document.querySelector('input[name="requesterName"]');
+          if (nameInput) {
+            nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            nameInput.focus();
+          }
+        }, 100);
+      }
+    }
+    // Reset the flag when song selection becomes incomplete (user cleared fields)
+    if (!isSongSelectionComplete()) {
+      hasAutoFocusedNameField.current = false;
     }
     // For tip, we're already showing the payment selector inline, so no need to advance
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1104,18 +1141,18 @@ export function GeneralRequestsPage({
     setError('');
 
     if (!validateForm()) {
-      if (typeof window !== 'undefined' && window.innerWidth < 640 && error) {
-        setTimeout(() => {
-          try {
-            const errorEl = document.querySelector('.bg-red-50, .bg-red-900');
-            if (errorEl) {
-              errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          } catch (scrollErr) {
-            logger.warn('Scroll error', scrollErr);
+      // Scroll to error message after a brief delay to allow state to update
+      // Note: Don't check `error` here - it's stale (React state updates are async)
+      setTimeout(() => {
+        try {
+          const errorEl = document.querySelector('.bg-red-50, .bg-red-900');
+          if (errorEl) {
+            errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-        }, 100);
-      }
+        } catch (scrollErr) {
+          logger.warn('Scroll error', scrollErr);
+        }
+      }, 100);
       return;
     }
 
@@ -2953,36 +2990,37 @@ export function GeneralRequestsPage({
                         </div>
                       )}
 
-                      {/* Audio File Upload Section - Collapsible */}
-                      {organizationData?.requests_show_audio_upload !== false && (
-                      <Collapsible open={audioUploadExpanded} onOpenChange={setAudioUploadExpanded} className="mt-2">
-                          <div className={`rounded-lg border overflow-hidden transition-colors ${
+                      {/* Audio File Upload Section - Collapsible (subtle by default) */}
+                      {/* Hide when user manually enters song title or artist name (they're requesting an existing song) */}
+                      {organizationData?.requests_show_audio_upload !== false && !formData.songTitle?.trim() && !formData.songArtist?.trim() && (
+                      <Collapsible open={audioUploadExpanded} onOpenChange={setAudioUploadExpanded} className="mt-3">
+                          <div className={`rounded-md overflow-hidden transition-colors ${
                           audioUploadExpanded 
-                            ? 'bg-brand-50 dark:bg-brand-900/20 border-brand-200 dark:border-brand-800' 
-                            : 'bg-transparent border-gray-200 dark:border-gray-800'
+                            ? 'bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800' 
+                            : 'bg-transparent'
                         }`}>
-                          <CollapsibleTrigger className={`w-full py-2 px-3 flex items-center justify-between gap-2 transition-colors ${
+                          <CollapsibleTrigger className={`w-full py-1.5 px-2 flex items-center justify-center gap-1.5 transition-colors ${
                             audioUploadExpanded
-                              ? 'hover:bg-brand-100/50 dark:hover:bg-brand-900/30'
-                              : 'hover:bg-gray-50 dark:hover:bg-gray-900/30'
+                              ? 'hover:bg-gray-100/50 dark:hover:bg-gray-800/30'
+                              : 'hover:text-gray-600 dark:hover:text-gray-300'
                           }`}>
-                            <div className="flex items-center gap-1.5 flex-1">
-                              <Music className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${
+                            <div className="flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
+                              <Music className={`w-3 h-3 flex-shrink-0 transition-colors ${
                                 audioUploadExpanded 
-                                  ? 'text-brand-600 dark:text-brand-400' 
-                                  : 'text-gray-500 dark:text-gray-400'
+                                  ? 'text-gray-600 dark:text-gray-400' 
+                                  : 'text-gray-400 dark:text-gray-500'
                               }`} />
-                              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                                Upload your own audio
+                              <span className="text-[10px] text-gray-500 dark:text-gray-500">
+                                Have your own track? Upload audio
                               </span>
+                              <ChevronDown 
+                                className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${
+                                  audioUploadExpanded 
+                                    ? 'transform rotate-180 text-gray-500 dark:text-gray-400' 
+                                    : 'text-gray-400 dark:text-gray-500'
+                                }`}
+                              />
                         </div>
-                            <ChevronDown 
-                              className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${
-                                audioUploadExpanded 
-                                  ? 'transform rotate-180 text-brand-600 dark:text-brand-400' 
-                                  : 'text-gray-500 dark:text-gray-400'
-                              }`}
-                            />
                           </CollapsibleTrigger>
                           
                           <CollapsibleContent className="px-4 pb-4 space-y-3">
@@ -3162,7 +3200,7 @@ export function GeneralRequestsPage({
                   )}
 
                   {/* Requester Information - Required for payment verification */}
-                  {currentStep === 1 && (
+                  {/* Always show name field - it's required for all request types and must remain visible after auto-advance to step 2 */}
                   <div className="mt-2 sm:mt-3 md:mt-4 space-y-2 sm:space-y-3">
                     <div>
                       <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
@@ -3178,9 +3216,12 @@ export function GeneralRequestsPage({
                         required
                         autoComplete="name"
                       />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Required: Helps us match your payment to your request
-                      </p>
+                      {/* Only show help text when there's a name validation error */}
+                      {error === 'Please enter your name' && (
+                        <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                          Required: Helps us match your payment to your request
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
@@ -3196,7 +3237,6 @@ export function GeneralRequestsPage({
                       />
                     </div>
                   </div>
-                  )}
 
                 </div>
 

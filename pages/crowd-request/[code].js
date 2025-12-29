@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Header from '../../components/company/Header';
@@ -202,6 +202,17 @@ export default function CrowdRequestPage() {
     
     // Normal input change - set the field value
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear audio upload when user manually enters song title or artist name
+    // (they're requesting an existing song, not uploading custom audio)
+    if ((name === 'songTitle' || name === 'songArtist') && value?.trim()) {
+      if (audioFileUrl || audioFile) {
+        setAudioFile(null);
+        setAudioFileUrl('');
+        setArtistRightsConfirmed(false);
+        setIsArtist(false);
+      }
+    }
   };
 
   const handleSongUrlChange = async (e) => {
@@ -227,6 +238,14 @@ export default function CrowdRequestPage() {
     setTimeout(() => {
       setSongUrl('');
     }, CROWD_REQUEST_CONSTANTS.SONG_EXTRACTION_DELAY);
+    
+    // Clear audio upload when song is extracted from URL (user wants an existing song)
+    if (audioFileUrl || audioFile) {
+      setAudioFile(null);
+      setAudioFileUrl('');
+      setArtistRightsConfirmed(false);
+      setIsArtist(false);
+    }
   };
 
   // Hide link field when song is manually entered
@@ -259,19 +278,27 @@ export default function CrowdRequestPage() {
   // getBaseAmount and getPaymentAmount are now provided by useCrowdRequestPayment hook
   // isSongSelectionComplete is now provided by useCrowdRequestValidation hook
   // validateForm is now provided by useCrowdRequestValidation hook
+  
+  const hasAutoFocusedNameField = useRef(false); // Track if we've already auto-focused the name field
 
-  // Auto-advance to payment step when song selection is complete
+  // Auto-focus name field when song selection is complete (only once per session)
   useEffect(() => {
     if (requestType === 'song_request' && isSongSelectionComplete() && currentStep === 1) {
-      // Auto-advance to step 2 (payment) when song selection is complete
-      setCurrentStep(2);
-      // Scroll to payment section after a brief delay to ensure it's rendered
-      setTimeout(() => {
-        const paymentElement = document.querySelector('[data-payment-section]');
-        if (paymentElement) {
-          paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
+      // Only auto-focus name field once, and only if name is empty
+      if (!hasAutoFocusedNameField.current && !formData.requesterName?.trim()) {
+        hasAutoFocusedNameField.current = true;
+        setTimeout(() => {
+          const nameInput = document.querySelector('input[name="requesterName"]');
+          if (nameInput) {
+            nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            nameInput.focus();
+          }
+        }, 100);
+      }
+    }
+    // Reset the flag when song selection becomes incomplete (user cleared fields)
+    if (!isSongSelectionComplete()) {
+      hasAutoFocusedNameField.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.songTitle, formData.songArtist, requestType, currentStep]);
@@ -281,15 +308,14 @@ export default function CrowdRequestPage() {
     setError('');
 
     if (!validateForm()) {
-      // Scroll to error on mobile
-      if (window.innerWidth < 640 && error) {
-        setTimeout(() => {
-          const errorEl = document.querySelector('.bg-red-50, .bg-red-900');
-          if (errorEl) {
-            errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 100);
-      }
+      // Scroll to error message after a brief delay to allow state to update
+      // Note: Don't check `error` here - it's stale (React state updates are async)
+      setTimeout(() => {
+        const errorEl = document.querySelector('.bg-red-50, .bg-red-900');
+        if (errorEl) {
+          errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
       return;
     }
 
@@ -799,16 +825,18 @@ export default function CrowdRequestPage() {
                         </div>
                       )}
 
-                      {/* Audio File Upload Section */}
-                      <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Music className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                          <label className="block text-sm font-semibold text-gray-900 dark:text-white">
-                            Upload Your Own Audio File
+                      {/* Audio File Upload Section - Subtle styling */}
+                      {/* Hide when user manually enters song title or artist name (they're requesting an existing song) */}
+                      {!formData.songTitle?.trim() && !formData.songArtist?.trim() && (
+                      <div className="mt-3 p-3 bg-transparent rounded-md border border-dashed border-gray-300 dark:border-gray-700">
+                        <div className="flex items-center gap-1.5 mb-2 opacity-70">
+                          <Music className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
+                          <label className="block text-xs text-gray-600 dark:text-gray-400">
+                            Have your own track? Upload audio
                           </label>
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                          Upload your own audio file to be played. This is perfect for upcoming artists or custom tracks. ($100 per file)
+                        <p className="text-[10px] text-gray-500 dark:text-gray-500 mb-2">
+                          Perfect for upcoming artists or custom tracks. ($100 per file)
                         </p>
                         
                         {!audioFileUrl ? (
@@ -909,6 +937,7 @@ export default function CrowdRequestPage() {
                           </div>
                         )}
                       </div>
+                      )}
                     </div>
                   )}
 
@@ -975,41 +1004,43 @@ export default function CrowdRequestPage() {
                   )}
 
                   {/* Requester Information - Required for payment verification */}
-                  {currentStep === 1 && (
-                    <div className="mt-4 space-y-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                          Your Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="requesterName"
-                          value={formData.requesterName}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="Enter your name"
-                          required
-                          autoComplete="name"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {/* Always show name field - it's required for all request types and must remain visible after auto-advance to step 2 */}
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        Your Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="requesterName"
+                        value={formData.requesterName}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter your name"
+                        required
+                        autoComplete="name"
+                      />
+                      {/* Only show help text when there's a name validation error */}
+                      {error === 'Please enter your name' && (
+                        <p className="text-xs text-red-500 dark:text-red-400 mt-1">
                           Required: Helps us match your payment to your request
                         </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                          Additional Notes (optional)
-                        </label>
-                        <textarea
-                          name="message"
-                          value={formData.message}
-                          onChange={handleInputChange}
-                          rows={3}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="Any additional information..."
-                        />
-                      </div>
+                      )}
                     </div>
-                  )}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        Additional Notes (optional)
+                      </label>
+                      <textarea
+                        name="message"
+                        value={formData.message}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Any additional information..."
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Payment Amount - Only show after song selection is complete and step 2 */}

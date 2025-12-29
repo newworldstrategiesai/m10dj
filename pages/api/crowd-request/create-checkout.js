@@ -471,21 +471,10 @@ export default async function handler(req, res) {
       mode: 'payment',
       success_url: `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`,
       cancel_url: cancelUrl,
+      // Pre-fill customer email if we have it (Stripe only supports email pre-fill in Checkout)
+      // Note: customer_details is read-only on completed sessions, not a valid create parameter
       customer_email: crowdRequest.requester_email || undefined,
-      // Pre-fill customer information if we have it from the form (prevents asking twice)
-      customer_details: {
-        ...(crowdRequest.requester_name && crowdRequest.requester_name !== 'Guest' && {
-          name: crowdRequest.requester_name,
-        }),
-        ...(crowdRequest.requester_email && {
-          email: crowdRequest.requester_email,
-        }),
-        ...(crowdRequest.requester_phone && {
-          phone: crowdRequest.requester_phone,
-        }),
-      },
-      // Collect billing address (but name will be pre-filled if we have it)
-      billing_address_collection: 'auto', // Collect billing address (name will be pre-filled from customer_details)
+      billing_address_collection: 'auto',
       phone_number_collection: {
         enabled: !crowdRequest.requester_phone, // Only collect phone if we don't already have it
       },

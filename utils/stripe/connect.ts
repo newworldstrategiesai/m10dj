@@ -471,33 +471,15 @@ export async function createCheckoutSessionWithPlatformFee(
     mode: 'payment',
     success_url: successUrl,
     cancel_url: cancelUrl,
-    // Pre-fill customer information if we have it from the form (prevents asking twice)
-    ...(customerDetails && {
-      customer_details: {
-        ...(customerDetails.name && customerDetails.name !== 'Guest' && {
-          name: customerDetails.name,
-        }),
-        ...(customerDetails.email && {
-          email: customerDetails.email,
-        }),
-        ...(customerDetails.phone && {
-          phone: customerDetails.phone,
-        }),
-      },
-      customer_email: customerDetails.email || undefined,
-      // Collect billing address (but name will be pre-filled if we have it)
-      billing_address_collection: 'auto',
-      phone_number_collection: {
-        enabled: !customerDetails.phone, // Only collect phone if we don't already have it
-      },
+    // Pre-fill customer email if we have it (Stripe only supports email pre-fill in Checkout)
+    // Note: customer_details is read-only on completed sessions, not a valid create parameter
+    ...(customerDetails?.email && {
+      customer_email: customerDetails.email,
     }),
-    ...(!customerDetails && {
-      // If no customer details provided, collect them during checkout
-      billing_address_collection: 'auto',
-      phone_number_collection: {
-        enabled: true,
-      },
-    }),
+    billing_address_collection: 'auto',
+    phone_number_collection: {
+      enabled: !(customerDetails?.phone), // Only collect phone if we don't already have it
+    },
     payment_intent_data: {
       application_fee_amount: applicationFeeAmount,
       transfer_data: {
