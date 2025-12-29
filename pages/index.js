@@ -20,6 +20,9 @@ export default function Home() {
   useEffect(() => {
     setIsVisible(true);
     
+    // Scroll to top on mount (fixes issue when navigating from other pages)
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    
     // Listen for global modal open event
     const handleOpenModal = () => setIsContactModalOpen(true);
     window.addEventListener('openContactModal', handleOpenModal);

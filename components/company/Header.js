@@ -374,7 +374,18 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
               : 'h-16 sm:h-20'
           }`}>
             {/* Logo */}
-            <Link href="/" className="flex-shrink-0 group">
+            <Link 
+              href="/" 
+              className="flex-shrink-0 group"
+              onClick={(e) => {
+                // Always ensure scroll to top when clicking logo to go home
+                if (router.pathname === '/') {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+                // For navigation to home, the useEffect in pages/index.js will handle scroll to top
+              }}
+            >
               <div className="flex items-center space-x-2.5">
                 <div className="relative flex-shrink-0 overflow-visible">
                   {shouldBeTransparent && !customLogoUrl ? (

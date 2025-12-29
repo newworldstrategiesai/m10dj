@@ -878,7 +878,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
           </div>
 
           {/* Sticky Submit Button Footer */}
-          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-black shadow-lg" style={{ flexShrink: 0, flex: '0 0 auto', padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-black shadow-lg" style={{ flexShrink: 0, flex: '0 0 auto', padding: '16px', paddingBottom: `max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px))` }}>
             <button
               type="submit"
               disabled={isSubmitting}

@@ -52,7 +52,8 @@ export default function SettingsPage() {
     timezone: 'America/Chicago',
     dateFormat: 'MM/DD/YYYY',
     currency: 'USD',
-    language: 'en'
+    language: 'en',
+    minimumTipAmount: '10.00' // Minimum tip/amount for song requests (default $10.00)
   });
 
   useEffect(() => {
@@ -103,6 +104,37 @@ export default function SettingsPage() {
           ...preferences
         }));
       }
+
+      // Fetch admin settings (using admin_settings API)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const response = await fetch('/api/admin-settings?settingKey=minimum_tip_amount', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        if (response.ok) {
+          const result = await response.json();
+          if (result.settings?.minimum_tip_amount) {
+            setSettings(prev => ({
+              ...prev,
+              minimumTipAmount: result.settings.minimum_tip_amount
+            }));
+          } else {
+            // If no setting exists, default to $10.00
+            setSettings(prev => ({
+              ...prev,
+              minimumTipAmount: '10.00'
+            }));
+          }
+        } else {
+          // If fetch fails, default to $10.00
+          setSettings(prev => ({
+            ...prev,
+            minimumTipAmount: '10.00'
+          }));
+        }
+      }
     } catch (error) {
       console.error('Error fetching settings:', error);
     }
@@ -112,18 +144,40 @@ export default function SettingsPage() {
     try {
       setSaving(true);
 
-      // Save user preferences
+      // Save user preferences (excluding admin settings)
+      const { minimumTipAmount, ...preferences } = settings;
       const { error } = await supabase
         .from('user_preferences')
         .upsert({
           user_id: user.id,
-          ...settings,
+          ...preferences,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id'
         });
 
       if (error) throw error;
+
+      // Save admin settings (minimum tip amount)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const response = await fetch('/api/admin-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            settingKey: 'minimum_tip_amount',
+            settingValue: minimumTipAmount
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save admin settings');
+        }
+      }
 
       toast({
         title: "Settings Saved",
@@ -220,6 +274,34 @@ export default function SettingsPage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400">Last changed: Never</p>
                   </div>
                   <Button variant="outline" size="sm">Change Password</Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Payment Settings
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="minimumTipAmount">Minimum Tip Amount (Song Requests)</Label>
+                  <div className="mt-1 relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
+                    <Input
+                      id="minimumTipAmount"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={settings.minimumTipAmount}
+                      onChange={(e) => setSettings(prev => ({ ...prev, minimumTipAmount: e.target.value }))}
+                      className="pl-8"
+                      placeholder="1.00"
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Minimum amount required for song request tips (in USD)
+                  </p>
                 </div>
               </div>
             </div>

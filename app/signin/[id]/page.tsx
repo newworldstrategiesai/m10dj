@@ -129,8 +129,8 @@ export default async function SignIn({
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 py-8 sm:py-4">
+      <div className="w-full max-w-md mx-auto">
         {/* Logo and Branding */}
         <div className="flex justify-center mb-8">
           <div className="text-center">
@@ -155,7 +155,7 @@ export default async function SignIn({
         </div>
         
         {/* Sign In Form */}
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-white mb-2">
               {viewProp === 'forgot_password'

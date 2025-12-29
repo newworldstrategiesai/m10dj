@@ -66,7 +66,7 @@ export default function ContactFormModal({ isOpen, onClose }) {
         }}
       >
         {/* Compact Header */}
-        <div className="flex-shrink-0 px-4 pt-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex-shrink-0 px-4 pt-3 pb-2 border-b border-gray-200 dark:border-gray-700" style={{ paddingTop: 'max(12px, env(safe-area-inset-top, 12px))' }}>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Get Your Free Quote
           </h2>
@@ -75,8 +75,11 @@ export default function ContactFormModal({ isOpen, onClose }) {
           </p>
         </div>
 
-        {/* Form Container - Single form spanning both sections */}
-        <div className="flex-1 min-h-0 flex flex-col">
+        {/* Form Container - Scrollable with iOS safe area */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-y-auto" style={{ 
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)'
+        }}>
           <ContactForm className="modal-form" modalLayout={true} />
         </div>
       </div>

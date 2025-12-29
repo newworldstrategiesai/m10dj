@@ -11,12 +11,12 @@ export function usePaymentSettings() {
   });
   const [fastTrackFee, setFastTrackFee] = useState(1000);
   const [nextFee, setNextFee] = useState(2000);
-  const [minimumAmount, setMinimumAmount] = useState(100);
+  const [minimumAmount, setMinimumAmount] = useState(1000); // Default $10.00 (1000 cents)
   const [presetAmounts, setPresetAmounts] = useState([
-    { label: '$5', value: 500 },
     { label: '$10', value: 1000 },
+    { label: '$15', value: 1500 },
     { label: '$20', value: 2000 },
-    { label: '$50', value: 5000 }
+    { label: '$25', value: 2500 }
   ]);
   const [bundleDiscountEnabled, setBundleDiscountEnabled] = useState(true);
   const [bundleDiscount, setBundleDiscount] = useState(0.1);
