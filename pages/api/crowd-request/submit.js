@@ -2,6 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 const { createRateLimitMiddleware, getClientIp } = require('@/utils/rate-limiter');
 const { normalizeSongCasing } = require('@/utils/song-casing-normalizer');
+const { cleanSongData } = require('@/utils/song-title-cleanup');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -48,7 +49,9 @@ export default async function handler(req, res) {
     scanId, // QR scan ID from sessionStorage
     sessionId, // QR session ID from sessionStorage
     postedLink, // Original URL if request was created from a posted link
-    visitor_id // Visitor ID for customer journey tracking
+    visitor_id, // Visitor ID for customer journey tracking
+    paymentCode: existingPaymentCode, // Optional: for bundle songs to share same payment code
+    parentRequestId // Optional: for bundle songs to link to parent request
   } = req.body;
 
   // Validate required fields
@@ -274,6 +277,7 @@ export default async function handler(req, res) {
     
     // Generate unique payment code for CashApp/Venmo verification
     // Format: M10-XXXXXX (6 alphanumeric characters)
+    // For bundle songs, use the existing payment code from the main request
     const generatePaymentCode = () => {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing chars (0, O, I, 1)
       let code = 'M10-';
@@ -283,20 +287,38 @@ export default async function handler(req, res) {
       return code;
     };
     
-    const paymentCode = generatePaymentCode();
+    // Use existing payment code if provided (for bundle songs), otherwise generate new one
+    const paymentCode = existingPaymentCode || generatePaymentCode();
     
-    // Normalize song title and artist casing (uses title case by default)
+    // Clean up and normalize song title and artist
+    // Step 1: Clean up common issues (e.g., "Latch Disclosure" → "Latch" when artist is "Disclosure")
+    // Step 2: Normalize casing (uses title case by default)
     let normalizedTitle = songTitle || null;
     let normalizedArtist = songArtist || null;
     
     if (requestType === 'song_request' && (songTitle || songArtist)) {
-      const normalized = normalizeSongCasing(songTitle || '', songArtist || '');
+      // First, clean up the song data (remove artist from title, etc.)
+      const cleaned = cleanSongData(songTitle || '', songArtist || '');
+      
+      // Then normalize casing
+      const normalized = normalizeSongCasing(cleaned.cleanedTitle || '', cleaned.cleanedArtist || '');
       normalizedTitle = normalized.normalizedTitle || null;
       normalizedArtist = normalized.normalizedArtist || null;
-      console.log('Normalized casing on request creation:', {
-        original: { title: songTitle, artist: songArtist },
-        normalized: { title: normalizedTitle, artist: normalizedArtist }
-      });
+      
+      // Log the cleanup for debugging
+      const wasModified = (songTitle !== cleaned.cleanedTitle) || (songArtist !== cleaned.cleanedArtist);
+      if (wasModified) {
+        console.log('🧹 Cleaned up song data:', {
+          original: { title: songTitle, artist: songArtist },
+          cleaned: { title: cleaned.cleanedTitle, artist: cleaned.cleanedArtist },
+          final: { title: normalizedTitle, artist: normalizedArtist }
+        });
+      } else {
+        console.log('Normalized casing on request creation:', {
+          original: { title: songTitle, artist: songArtist },
+          normalized: { title: normalizedTitle, artist: normalizedArtist }
+        });
+      }
     }
     
     // Create crowd request record with all fields

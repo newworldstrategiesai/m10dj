@@ -12,6 +12,7 @@ export default function CrowdRequestSuccessPage() {
   const router = useRouter();
   const { session_id, request_id } = router.query;
   const [request, setRequest] = useState(null);
+  const [bundledSongs, setBundledSongs] = useState([]); // Array of bundled song requests
   const [loading, setLoading] = useState(true);
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [receiptSent, setReceiptSent] = useState(false);
@@ -64,6 +65,51 @@ export default function CrowdRequestSuccessPage() {
     };
   }, [request_id, supabase]);
 
+  // Subscribe to real-time updates for bundled songs
+  useEffect(() => {
+    if (bundledSongs.length === 0) return;
+
+    const bundleIds = bundledSongs.map(s => s.id);
+    
+    const bundleChannel = supabase
+      .channel(`bundle-songs-${request_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'crowd_requests'
+        },
+        (payload) => {
+          // Check if this update is for one of our bundled songs
+          if (bundleIds.includes(payload.new.id)) {
+            console.log('Bundled song updated:', payload);
+            const updatedSong = payload.new;
+            
+            // Trigger celebration if bundled song is playing/played
+            if (updatedSong.status === 'playing' || updatedSong.status === 'played') {
+              if (!playingConfettiTriggered.current) {
+                playingConfettiTriggered.current = true;
+                triggerPlayingConfetti();
+              }
+            }
+            
+            // Update the bundled songs state
+            setBundledSongs(prev => prev.map(song => 
+              song.id === updatedSong.id 
+                ? { ...song, ...updatedSong }
+                : song
+            ));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(bundleChannel);
+    };
+  }, [bundledSongs, request_id, supabase]);
+
   // Celebration confetti when song is played
   const triggerPlayingConfetti = () => {
     confetti({
@@ -105,7 +151,8 @@ export default function CrowdRequestSuccessPage() {
     // Create a confetti cannon effect
     const duration = 3000; // 3 seconds
     const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+    // Use a high z-index to ensure confetti appears on top of all content
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
 
     function randomInRange(min, max) {
       return Math.random() * (max - min) + min;
@@ -223,11 +270,87 @@ export default function CrowdRequestSuccessPage() {
       if (response.ok) {
         const data = await response.json();
         setRequest(data);
+        
+        // Fetch bundled songs if this is part of a bundle
+        // Look for requests with "Bundle deal" message from the same requester created within 5 seconds
+        await fetchBundledSongs(data);
       }
     } catch (err) {
       console.error('Error fetching request details:', err);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const fetchBundledSongs = async (mainRequest) => {
+    if (!mainRequest) return;
+    
+    try {
+      // Query for bundled songs - look for requests with "Bundle deal" message
+      // Primary method: Use payment_code (bundle songs share the same payment code)
+      // Fallback: Find by requester email/phone created within 5 seconds
+      
+      let bundleData = [];
+      
+      // Method 1: Find by shared payment_code (most reliable for new bundles)
+      if (mainRequest.payment_code) {
+        const { data: paymentCodeMatches, error: pcError } = await supabase
+          .from('crowd_requests')
+          .select('id, song_title, song_artist, status, played_at, message, created_at, payment_code')
+          .neq('id', mainRequest.id)
+          .eq('payment_code', mainRequest.payment_code)
+          .order('created_at', { ascending: true });
+        
+        if (!pcError && paymentCodeMatches?.length > 0) {
+          // Filter to only include requests with "Bundle deal" in message
+          bundleData = paymentCodeMatches.filter(r => 
+            r.message && r.message.includes('Bundle deal')
+          );
+        }
+      }
+      
+      // Method 2: Fallback to time-based matching if no payment_code matches found
+      if (bundleData.length === 0) {
+        const timeWindowStart = new Date(new Date(mainRequest.created_at).getTime() - 5000).toISOString();
+        const timeWindowEnd = new Date(new Date(mainRequest.created_at).getTime() + 5000).toISOString();
+        
+        // Build filter for requester matching
+        let requesterFilter = '';
+        if (mainRequest.requester_email) {
+          requesterFilter = `requester_email.eq.${mainRequest.requester_email}`;
+        }
+        if (mainRequest.requester_phone) {
+          if (requesterFilter) {
+            requesterFilter += `,requester_phone.eq.${mainRequest.requester_phone}`;
+          } else {
+            requesterFilter = `requester_phone.eq.${mainRequest.requester_phone}`;
+          }
+        }
+        
+        if (requesterFilter) {
+          const { data: timeMatches, error: tmError } = await supabase
+            .from('crowd_requests')
+            .select('id, song_title, song_artist, status, played_at, message, created_at, payment_code')
+            .neq('id', mainRequest.id)
+            .eq('event_qr_code', mainRequest.event_qr_code)
+            .or(requesterFilter)
+            .gte('created_at', timeWindowStart)
+            .lte('created_at', timeWindowEnd)
+            .order('created_at', { ascending: true });
+          
+          if (!tmError && timeMatches?.length > 0) {
+            // Filter to only include requests with "Bundle deal" in message
+            bundleData = timeMatches.filter(r => 
+              r.message && r.message.includes('Bundle deal')
+            );
+          }
+        }
+      }
+      
+      console.log('Bundled songs found:', bundleData.length, bundleData);
+      setBundledSongs(bundleData);
+    } catch (err) {
+      console.error('Error fetching bundled songs:', err);
     }
   };
 
@@ -461,6 +584,83 @@ export default function CrowdRequestSuccessPage() {
                           </span>
                         )}
                       </p>
+                      
+                      {/* Bundled Songs Display */}
+                      {bundledSongs.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-700">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Gift className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                              Bundle Songs ({bundledSongs.length + 1} total)
+                            </h4>
+                          </div>
+                          <div className="space-y-2">
+                            {bundledSongs.map((song, index) => (
+                              <div 
+                                key={song.id} 
+                                className={`bg-white dark:bg-gray-700 rounded-lg px-3 py-2 border ${
+                                  song.status === 'playing' 
+                                    ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20' 
+                                    : song.status === 'played'
+                                      ? 'border-green-200 dark:border-green-800'
+                                      : 'border-purple-100 dark:border-purple-800'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                                      #{index + 2}
+                                    </span>
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {song.song_title || 'Song title pending'}
+                                      </p>
+                                      {song.song_artist && (
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                                          {song.song_artist}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {/* Status indicator for bundled song */}
+                                  {song.status === 'playing' ? (
+                                    <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
+                                      <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                      </span>
+                                      🎶 Playing Now
+                                    </span>
+                                  ) : song.status === 'played' ? (
+                                    <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
+                                      <CheckCircle className="w-3 h-3" />
+                                      ✓ Played
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                      <Clock className="w-3 h-3" />
+                                      In Queue
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Show play time if song was played */}
+                                {song.played_at && (
+                                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-6">
+                                    Played at: {new Date(song.played_at).toLocaleString('en-US', {
+                                      weekday: 'short',
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: 'numeric',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

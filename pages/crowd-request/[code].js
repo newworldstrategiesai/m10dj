@@ -67,13 +67,106 @@ export default function CrowdRequestPage() {
     if (bundleSize > 1) {
       const newBundleSongs = [];
       for (let i = 0; i < bundleSize - 1; i++) {
-        newBundleSongs.push(bundleSongs[i] || { songTitle: '', songArtist: '' });
+        newBundleSongs.push(bundleSongs[i] || { songTitle: '', songArtist: '', songUrl: '', extracting: false });
       }
       setBundleSongs(newBundleSongs);
     } else {
       setBundleSongs([]);
     }
   }, [bundleSize]); // Only depend on bundleSize, not bundleSongs to avoid infinite loop
+
+  // Handle bundle song input changes with URL detection
+  const handleBundleSongChange = async (index, field, value) => {
+    // Detect if a URL was pasted into song title or artist field
+    if ((field === 'songTitle' || field === 'songArtist') && value) {
+      const urlPattern = /(youtube\.com|youtu\.be|spotify\.com|soundcloud\.com|tidal\.com|music\.apple\.com|itunes\.apple\.com)/i;
+      if (urlPattern.test(value)) {
+        // Extract song info from the URL
+        setBundleSongs(prev => {
+          const newSongs = [...prev];
+          newSongs[index] = { ...newSongs[index], songUrl: value, extracting: true };
+          return newSongs;
+        });
+        
+        try {
+          // Use the crowdRequestAPI for consistency
+          const data = await crowdRequestAPI.extractSongInfo(value);
+          
+          setBundleSongs(prev => {
+            const updatedSongs = [...prev];
+            updatedSongs[index] = {
+              ...updatedSongs[index],
+              songTitle: data?.title || updatedSongs[index].songTitle,
+              songArtist: data?.artist || updatedSongs[index].songArtist,
+              songUrl: '', // Clear after extraction
+              extracting: false
+            };
+            return updatedSongs;
+          });
+        } catch (err) {
+          logger.error('Bundle song extraction error', err);
+          setBundleSongs(prev => {
+            const updatedSongs = [...prev];
+            updatedSongs[index] = { ...updatedSongs[index], extracting: false };
+            return updatedSongs;
+          });
+        }
+        return;
+      }
+    }
+    
+    // Normal input change - set the field value
+    setBundleSongs(prev => {
+      const newSongs = [...prev];
+      newSongs[index] = { ...newSongs[index], [field]: value };
+      return newSongs;
+    });
+  };
+  
+  // Handle bundle song URL input directly
+  const handleBundleSongUrlChange = async (index, url) => {
+    setBundleSongs(prev => {
+      const newSongs = [...prev];
+      newSongs[index] = { ...newSongs[index], songUrl: url };
+      return newSongs;
+    });
+
+    // Auto-extract when URL is pasted and looks complete
+    if (url && (url.includes('youtube.com') || url.includes('youtu.be') || 
+        url.includes('spotify.com') || url.includes('soundcloud.com') || 
+        url.includes('tidal.com') || url.includes('music.apple.com') || 
+        url.includes('itunes.apple.com'))) {
+      
+      setBundleSongs(prev => {
+        const updatedSongs = [...prev];
+        updatedSongs[index] = { ...updatedSongs[index], extracting: true };
+        return updatedSongs;
+      });
+      
+      try {
+        const data = await crowdRequestAPI.extractSongInfo(url);
+        
+        setBundleSongs(prev => {
+          const finalSongs = [...prev];
+          finalSongs[index] = {
+            ...finalSongs[index],
+            songTitle: data?.title || finalSongs[index].songTitle,
+            songArtist: data?.artist || finalSongs[index].songArtist,
+            songUrl: '', // Clear URL field after extraction
+            extracting: false
+          };
+          return finalSongs;
+        });
+      } catch (err) {
+        logger.error('Bundle song URL extraction error', err);
+        setBundleSongs(prev => {
+          const finalSongs = [...prev];
+          finalSongs[index] = { ...finalSongs[index], extracting: false };
+          return finalSongs;
+        });
+      }
+    }
+  };
 
   // Use payment settings hook
   const {
@@ -407,7 +500,10 @@ export default function CrowdRequestPage() {
             fastTrackFee: 0,
             nextFee: 0,
             organizationId: organizationId || null,
-            message: `Bundle deal - ${bundleSize} songs for $${(bundlePrice / 100).toFixed(2)}`
+            message: `Bundle deal - ${bundleSize} songs for $${(bundlePrice / 100).toFixed(2)}`,
+            // Link bundle songs to main request's payment code for proper grouping
+            paymentCode: mainData.paymentCode || null,
+            parentRequestId: mainData.requestId || null // Link to parent for easier tracking
           };
 
           try {
@@ -774,7 +870,7 @@ export default function CrowdRequestPage() {
                             </h3>
                           </div>
                           <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
-                            Enter the details for your additional bundle songs:
+                            Paste a music link or enter the details manually:
                           </p>
                           <div className="space-y-4">
                             {bundleSongs.map((song, index) => (
@@ -783,6 +879,41 @@ export default function CrowdRequestPage() {
                                   Song {index + 2} of {bundleSize}
                                 </div>
                                 <div className="space-y-3">
+                                  {/* Music Link Input for Bundle Songs */}
+                                  {!song.songTitle && !song.songArtist && (
+                                    <>
+                                      <div className="relative">
+                                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                          <Music className="w-3 h-3 inline mr-1" />
+                                          Paste Music Link (Optional)
+                                        </label>
+                                        <input
+                                          type="url"
+                                          value={song.songUrl || ''}
+                                          onChange={(e) => handleBundleSongUrlChange(index, e.target.value)}
+                                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                          placeholder="Paste YouTube, Spotify, SoundCloud, etc."
+                                          autoComplete="off"
+                                        />
+                                        {song.extracting && (
+                                          <div className="absolute right-3 top-8 flex items-center gap-1">
+                                            <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                                            <span className="text-xs text-purple-600 dark:text-purple-400">Extracting...</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="relative">
+                                        <div className="absolute inset-0 flex items-center">
+                                          <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                                        </div>
+                                        <div className="relative flex justify-center text-[10px] uppercase">
+                                          <span className="bg-white dark:bg-gray-800 px-2 text-gray-400 dark:text-gray-500">
+                                            Or enter manually
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
                                   <div>
                                     <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
                                       Song Title <span className="text-red-500">*</span>
@@ -790,13 +921,9 @@ export default function CrowdRequestPage() {
                                     <input
                                       type="text"
                                       value={song.songTitle || ''}
-                                      onChange={(e) => {
-                                        const newSongs = [...bundleSongs];
-                                        newSongs[index] = { ...newSongs[index], songTitle: e.target.value };
-                                        setBundleSongs(newSongs);
-                                      }}
+                                      onChange={(e) => handleBundleSongChange(index, 'songTitle', e.target.value)}
                                       className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                      placeholder="Enter song title"
+                                      placeholder="Enter song title or paste link"
                                       required
                                       autoComplete="off"
                                     />
@@ -808,16 +935,27 @@ export default function CrowdRequestPage() {
                                     <input
                                       type="text"
                                       value={song.songArtist || ''}
-                                      onChange={(e) => {
-                                        const newSongs = [...bundleSongs];
-                                        newSongs[index] = { ...newSongs[index], songArtist: e.target.value };
-                                        setBundleSongs(newSongs);
-                                      }}
+                                      onChange={(e) => handleBundleSongChange(index, 'songArtist', e.target.value)}
                                       className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                      placeholder="Enter artist name"
+                                      placeholder="Enter artist name or paste link"
                                       autoComplete="off"
                                     />
                                   </div>
+                                  {/* Show "Start over" button when song is filled */}
+                                  {(song.songTitle || song.songArtist) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newSongs = [...bundleSongs];
+                                        newSongs[index] = { songTitle: '', songArtist: '', songUrl: '', extracting: false };
+                                        setBundleSongs(newSongs);
+                                      }}
+                                      className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                                    >
+                                      <Music className="w-3 h-3" />
+                                      Clear & start over
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             ))}
