@@ -3421,7 +3421,7 @@ export default function CrowdRequestsPage() {
     
     switch (status) {
       case 'new':
-        return <Badge className="bg-blue-500 text-white">New</Badge>;
+        return <Badge className="bg-gray-500 text-white">New</Badge>;
       case 'acknowledged':
         return <Badge className="bg-purple-500 text-white">Acknowledged</Badge>;
       case 'playing':
@@ -3477,48 +3477,6 @@ export default function CrowdRequestsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6 px-4 lg:px-6">
-        {/* Prominent Live Listen Button */}
-        <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 -mx-4 lg:-mx-6 px-4 lg:px-6 py-4 mb-6">
-          <div className="flex items-center justify-end">
-            <Button
-              onClick={() => {
-                // Get the most common event code from requests, or leave empty
-                const eventCodes = requests
-                  .filter(r => r.event_qr_code)
-                  .map(r => r.event_qr_code);
-                const mostCommonEvent = eventCodes.length > 0 
-                  ? eventCodes.sort((a, b) => 
-                      eventCodes.filter(v => v === b).length - eventCodes.filter(v => v === a).length
-                    )[0]
-                  : null;
-                setSelectedEventCode(mostCommonEvent || null);
-                setSelectedEventId(null);
-                setShowAudioTrackingModal(true);
-                
-                // If there's a most common event, fetch its ID
-                if (mostCommonEvent) {
-                  setLoadingEventId(true);
-                  supabase
-                    .from('events')
-                    .select('id')
-                    .eq('event_qr_code', mostCommonEvent)
-                    .single()
-                    .then(({ data, error }) => {
-                      if (!error && data) {
-                        setSelectedEventId(data.id);
-                      }
-                      setLoadingEventId(false);
-                    });
-                }
-              }}
-              size="lg"
-              className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 shadow-lg hover:shadow-xl transition-all"
-            >
-              <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>Start Live Song Detection</span>
-            </Button>
-          </div>
-        </div>
         {/* Stripe Connect Requirement Banner */}
         <StripeConnectRequirementBanner organization={organization} />
         
@@ -3844,7 +3802,7 @@ export default function CrowdRequestsPage() {
               </>
             ) : (
               <>
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
                   <p className="text-sm text-gray-700 dark:text-gray-300">
                     This QR code will link to the public requests page at <code className="bg-white dark:bg-gray-800 px-2 py-1 rounded">/requests</code>. 
                     Anyone can use this page to submit song requests or shoutouts.
@@ -3963,7 +3921,7 @@ export default function CrowdRequestsPage() {
                     onClick={() => setPdfType('full-page')}
                     className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
                       pdfType === 'full-page'
-                        ? 'bg-blue-600 text-white shadow-sm'
+                        ? 'bg-purple-600 text-white shadow-sm'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
@@ -3974,7 +3932,7 @@ export default function CrowdRequestsPage() {
                     onClick={() => setPdfType('table-tent')}
                     className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
                       pdfType === 'table-tent'
-                        ? 'bg-blue-600 text-white shadow-sm'
+                        ? 'bg-purple-600 text-white shadow-sm'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
@@ -4259,7 +4217,7 @@ export default function CrowdRequestsPage() {
                 <TabsContent value="pricing" className="space-y-6 mt-0">
                   <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
                         <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
@@ -4428,7 +4386,7 @@ export default function CrowdRequestsPage() {
                   {/* Header Settings */}
                   <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
                         <Music className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                       </div>
                       <div>
@@ -4685,7 +4643,7 @@ export default function CrowdRequestsPage() {
 
                       {/* Primary Cover Photo Source Selection - Show when both artist and venue are set */}
                       {coverPhotoSettings.requests_artist_photo_url && coverPhotoSettings.requests_venue_photo_url && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
                           <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                             Primary Cover Photo Source
                           </label>
@@ -4748,11 +4706,11 @@ export default function CrowdRequestsPage() {
                             if (!currentCoverPhoto) return null;
                             
                             return (
-                              <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
+                              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                   Current Cover Photo Preview
                                 </label>
-                                <div className="relative rounded-lg overflow-hidden border-2 border-blue-300 dark:border-blue-700">
+                                <div className="relative rounded-lg overflow-hidden border-2 border-gray-300 dark:border-gray-700">
                                   <img
                                     src={currentCoverPhoto}
                                     alt="Current cover photo preview"
@@ -4932,9 +4890,9 @@ export default function CrowdRequestsPage() {
                     
                     <div className="space-y-6">
                       {/* SEO Settings */}
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-5 border border-blue-200 dark:border-blue-800">
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-50 dark:from-gray-800 dark:to-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
                         <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                          <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                          <span className="w-2 h-2 bg-gray-500 rounded-full"></span>
                           SEO & Page Info
                         </h4>
                         <div className="grid md:grid-cols-2 gap-4">
@@ -5345,7 +5303,7 @@ export default function CrowdRequestsPage() {
                   <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
                           <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
@@ -5576,7 +5534,7 @@ export default function CrowdRequestsPage() {
                     </div>
                     
                     <div className="space-y-6">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                         <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">
                           How Bidding Mode Works
                         </h4>
@@ -6815,20 +6773,6 @@ export default function CrowdRequestsPage() {
                 </Button>
           
           <Button
-            onClick={() => {
-              setShowAudioTrackingModal(true);
-              setSelectedEventCode(null);
-              setSelectedEventId(null);
-            }}
-            variant={showAudioTrackingModal ? "default" : "outline"}
-            className="inline-flex items-center gap-2"
-            title="Start live song detection"
-          >
-            <Mic className={`w-4 h-4 ${showAudioTrackingModal ? 'animate-pulse' : ''}`} />
-            {showAudioTrackingModal ? 'Listening...' : 'Live Listening'}
-                </Button>
-          
-          <Button
             onClick={fetchRequests}
             variant="outline"
             className="inline-flex items-center gap-2"
@@ -6861,7 +6805,7 @@ export default function CrowdRequestsPage() {
 
         {/* Bulk Action Bar */}
         {selectedRequests.size > 0 && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-center justify-between">
+          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="font-semibold text-gray-900 dark:text-white">
                 {selectedRequests.size} request(s) selected
@@ -7062,7 +7006,7 @@ export default function CrowdRequestsPage() {
                       return (
                     <tr 
                       key={request.id} 
-                      className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
+                      className={`bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
                         request.is_fast_track ? 'bg-orange-50 dark:bg-orange-900/10 border-l-4 border-orange-500' : ''
                       } ${
                         !request.organization_id ? 'bg-yellow-50 dark:bg-yellow-900/10 border-l-4 border-yellow-500' : ''
@@ -7107,7 +7051,7 @@ export default function CrowdRequestsPage() {
                                 </Badge>
                               )}
                               {request.is_custom_audio && (
-                                <Badge className="bg-blue-500 text-white flex items-center gap-1 px-2 py-0.5">
+                                <Badge className="bg-gray-500 text-white flex items-center gap-1 px-2 py-0.5">
                                   <FileText className="w-3 h-3" />
                                   Custom Audio
                                 </Badge>
@@ -7136,7 +7080,7 @@ export default function CrowdRequestsPage() {
                                 </Badge>
                               )}
                               {request.organization_id && request.organization_id !== organization?.id && (request as any).organization && (
-                                <Badge className="bg-blue-500 text-white flex items-center gap-1 px-2 py-0.5" title={`From organization: ${(request as any).organization?.name || 'Other'}`}>
+                                <Badge className="bg-gray-500 text-white flex items-center gap-1 px-2 py-0.5" title={`From organization: ${(request as any).organization?.name || 'Other'}`}>
                                   🏢 {(request as any).organization?.name || 'Other Org'}
                                 </Badge>
                               )}
@@ -7618,7 +7562,7 @@ export default function CrowdRequestsPage() {
                           </Badge>
                         )}
                         {request.is_custom_audio && (
-                          <Badge className="bg-blue-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs">
+                          <Badge className="bg-gray-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs">
                             <FileText className="w-3 h-3" />
                             Custom Audio
                           </Badge>
@@ -8214,7 +8158,7 @@ export default function CrowdRequestsPage() {
                 )}
 
                 {/* Requester Information */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">Requester Information</p>
                     {/* Allow editing requester name for Venmo/CashApp payments where name might be missing */}
@@ -8286,7 +8230,7 @@ export default function CrowdRequestsPage() {
 
                 {/* Stripe Payment Details */}
                 {(selectedRequest.payment_intent_id || (selectedRequest as any).stripe_session_id) && (
-                  <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800">
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">Stripe Payment Details</p>
                       {!stripeDetails && !loadingStripeDetails && (
@@ -8797,7 +8741,7 @@ export default function CrowdRequestsPage() {
                 </div>
 
                 {/* Customer Timeline */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <div className="bg-gradient-to-br from-gray-50 to-gray-50 dark:from-gray-800 dark:to-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-2 mb-4">
                     <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">Customer Timeline</p>
@@ -8824,7 +8768,7 @@ export default function CrowdRequestsPage() {
                       {/* Payment Made */}
                       {selectedRequest.paid_at && (
                         <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
+                          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-gray-500 mt-2"></div>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-gray-900 dark:text-white">Payment Made</p>
                             <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
@@ -9053,7 +8997,7 @@ export default function CrowdRequestsPage() {
                     onClick={() => {
                       linkStripePayment(linkPaymentRequestId, linkPaymentIntentId);
                     }}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   >
                     <DollarSign className="w-4 h-4 mr-2" />
                     Link Payment
@@ -9105,7 +9049,7 @@ export default function CrowdRequestsPage() {
                   </p>
                 </div>
                 
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                   <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
                     <strong>Steps to process refund:</strong>
                   </p>
@@ -9255,7 +9199,7 @@ export default function CrowdRequestsPage() {
               
               <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                 {/* Event Selection */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
                   <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
                     Select Event <span className="text-gray-500 text-xs font-normal">(Optional)</span>
                   </label>
@@ -9300,7 +9244,7 @@ export default function CrowdRequestsPage() {
                             setEventSearchQuery('');
                           }}
                           className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                            !selectedEventId ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+                            !selectedEventId ? 'bg-gray-50 dark:bg-gray-800' : ''
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -9346,7 +9290,7 @@ export default function CrowdRequestsPage() {
                                       setEventSearchQuery('');
                                     }}
                                     className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-t border-gray-200 dark:border-gray-700 ${
-                                      isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+                                      isSelected ? 'bg-gray-50 dark:bg-gray-800' : ''
                                     }`}
                                   >
                                     <div className="flex items-start gap-3">

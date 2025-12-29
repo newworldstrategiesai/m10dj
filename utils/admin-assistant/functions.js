@@ -912,6 +912,74 @@ export function getFunctionDefinitions() {
         },
         required: []
       }
+    },
+
+    // ============================================
+    // SONG REQUESTS / CROWD REQUESTS
+    // ============================================
+    {
+      name: 'get_recent_song_requests',
+      description: 'Get recent song requests and shoutouts from events. Returns song requests from the crowd_requests table including song details, requester info, payment status, and request status. Use this when user asks "what are the recent song requests", "show me song requests", "any new requests", "crowd requests", or "what songs have been requested".',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: {
+            type: 'number',
+            description: 'Maximum number of requests to return (default: 20, max: 100)',
+            default: 20
+          },
+          status: {
+            type: 'string',
+            description: 'Filter by request status',
+            enum: ['new', 'acknowledged', 'playing', 'played', 'cancelled', 'all'],
+            default: 'all'
+          },
+          payment_status: {
+            type: 'string',
+            description: 'Filter by payment status',
+            enum: ['pending', 'paid', 'failed', 'cancelled', 'all'],
+            default: 'all'
+          },
+          request_type: {
+            type: 'string',
+            description: 'Filter by request type',
+            enum: ['song_request', 'shoutout', 'all'],
+            default: 'all'
+          },
+          event_qr_code: {
+            type: 'string',
+            description: 'Filter by specific event QR code/identifier'
+          },
+          hours_back: {
+            type: 'number',
+            description: 'Only show requests from the last X hours (default: 24 for last day, use 0 for all time)',
+            default: 24
+          }
+        }
+      }
+    },
+    {
+      name: 'update_song_request_status',
+      description: 'Update the status of a song request. Use this to mark songs as acknowledged, playing, played, or cancelled.',
+      parameters: {
+        type: 'object',
+        properties: {
+          request_id: {
+            type: 'string',
+            description: 'The song request ID (UUID)'
+          },
+          status: {
+            type: 'string',
+            description: 'New status for the request',
+            enum: ['new', 'acknowledged', 'playing', 'played', 'cancelled']
+          },
+          admin_notes: {
+            type: 'string',
+            description: 'Optional admin notes about the request'
+          }
+        },
+        required: ['request_id', 'status']
+      }
     }
   ];
 }

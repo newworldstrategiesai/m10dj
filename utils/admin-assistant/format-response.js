@@ -62,6 +62,12 @@ export function formatResponseWithUI(functionName, result, functionArgs) {
     case 'get_communication_history':
       return formatCommunicationHistory(result);
     
+    case 'get_recent_song_requests':
+      return formatSongRequests(result);
+    
+    case 'update_song_request_status':
+      return formatSongRequestUpdate(result);
+    
     default:
       return null;
   }
@@ -2015,6 +2021,235 @@ function formatCommunicationHistory(result) {
   return {
     text: `Found ${result.communications.length} communication${result.communications.length === 1 ? '' : 's'} for ${result.contact_name || 'this contact'}`,
     cards: cards
+  };
+}
+
+function formatSongRequests(result) {
+  if (!result.success) {
+    return {
+      text: `❌ Failed to fetch song requests${result.error ? `: ${result.error}` : ''}`,
+      cards: [{
+        title: 'Error',
+        description: result.error || 'Unknown error',
+        fields: []
+      }]
+    };
+  }
+
+  if (!result.requests || result.requests.length === 0) {
+    return {
+      text: `🎵 No song requests found for the specified time range.`,
+      cards: [{
+        title: 'No Song Requests',
+        description: result.time_range || 'No requests found',
+        fields: [
+          { label: 'Total', value: '0' },
+          { label: 'Revenue', value: '$0.00' }
+        ],
+        actions: [{
+          label: 'View All Requests',
+          action: 'link',
+          value: '/admin/crowd-requests',
+          variant: 'default'
+        }]
+      }]
+    };
+  }
+
+  const cards = [];
+  const summary = result.summary || {};
+
+  // Build summary text
+  let summaryText = `🎵 **Song Requests** (${result.time_range || 'Recent'})\n\n`;
+  summaryText += `• Total: ${result.count || 0} request${result.count === 1 ? '' : 's'}\n`;
+  summaryText += `• Revenue: ${result.formatted_revenue || '$0.00'}\n`;
+  if (result.formatted_pending && result.formatted_pending !== '$0.00') {
+    summaryText += `• Pending: ${result.formatted_pending}\n`;
+  }
+  
+  // Status breakdown
+  if (summary.by_status) {
+    const statusParts = [];
+    if (summary.by_status.new > 0) statusParts.push(`${summary.by_status.new} new`);
+    if (summary.by_status.acknowledged > 0) statusParts.push(`${summary.by_status.acknowledged} acknowledged`);
+    if (summary.by_status.playing > 0) statusParts.push(`${summary.by_status.playing} playing`);
+    if (summary.by_status.played > 0) statusParts.push(`${summary.by_status.played} played`);
+    if (statusParts.length > 0) {
+      summaryText += `• Status: ${statusParts.join(', ')}\n`;
+    }
+  }
+
+  // Summary card
+  cards.push({
+    title: '🎵 Song Requests Summary',
+    description: result.time_range || 'Recent requests',
+    fields: [
+      { label: 'Total Requests', value: String(result.count || 0) },
+      { label: 'Song Requests', value: String(summary.by_type?.song_requests || 0) },
+      { label: 'Shoutouts', value: String(summary.by_type?.shoutouts || 0) },
+      { label: 'New', value: String(summary.by_status?.new || 0) },
+      { label: 'Acknowledged', value: String(summary.by_status?.acknowledged || 0) },
+      { label: 'Played', value: String(summary.by_status?.played || 0) },
+      { label: 'Total Revenue', value: result.formatted_revenue || '$0.00' },
+      { label: 'Pending Tips', value: result.formatted_pending || '$0.00' }
+    ],
+    actions: [{
+      label: 'View All Requests',
+      action: 'link',
+      value: '/admin/crowd-requests',
+      variant: 'default'
+    }]
+  });
+
+  // Individual request cards (show up to 10)
+  const recentRequests = result.requests.slice(0, 10);
+  recentRequests.forEach((request) => {
+    const isSongRequest = request.type === 'song_request';
+    const typeEmoji = isSongRequest ? '🎵' : '📢';
+    const statusEmoji = {
+      'new': '🆕',
+      'acknowledged': '👀',
+      'playing': '▶️',
+      'played': '✅',
+      'cancelled': '❌'
+    };
+
+    const fields = [];
+    
+    // Song/Shoutout info
+    if (isSongRequest && request.song) {
+      fields.push({ label: 'Song', value: request.song });
+    } else if (!isSongRequest && request.recipient) {
+      fields.push({ label: 'For', value: request.recipient });
+      if (request.shoutout_message) {
+        fields.push({ label: 'Message', value: request.shoutout_message.length > 50 ? request.shoutout_message.substring(0, 50) + '...' : request.shoutout_message });
+      }
+    }
+
+    // Requester info
+    fields.push({ label: 'From', value: request.requester || 'Anonymous' });
+    
+    // Payment info
+    fields.push({ label: 'Tip', value: request.formatted_amount || 'Free' });
+    fields.push({ label: 'Payment', value: request.is_paid ? '✅ Paid' : '⏳ Pending' });
+    
+    // Status and timing
+    fields.push({ label: 'Status', value: `${statusEmoji[request.status] || ''} ${request.status || 'Unknown'}` });
+    fields.push({ label: 'Time', value: request.time_ago || 'Unknown' });
+    
+    // Event info if available
+    if (request.event_name) {
+      fields.push({ label: 'Event', value: request.event_name });
+    }
+
+    // Build actions for the card
+    const actions = [];
+    
+    // Status update actions based on current status
+    if (request.status === 'new') {
+      actions.push({
+        label: '👀 Acknowledge',
+        action: 'update_song_request',
+        value: 'acknowledged',
+        variant: 'outline',
+        metadata: {
+          request_id: request.id,
+          status: 'acknowledged'
+        }
+      });
+    }
+    
+    if (request.status === 'new' || request.status === 'acknowledged') {
+      actions.push({
+        label: '▶️ Now Playing',
+        action: 'update_song_request',
+        value: 'playing',
+        variant: 'outline',
+        metadata: {
+          request_id: request.id,
+          status: 'playing'
+        }
+      });
+    }
+    
+    if (request.status !== 'played' && request.status !== 'cancelled') {
+      actions.push({
+        label: '✅ Mark Played',
+        action: 'update_song_request',
+        value: 'played',
+        variant: 'default',
+        metadata: {
+          request_id: request.id,
+          status: 'played'
+        }
+      });
+    }
+
+    cards.push({
+      title: `${typeEmoji} ${isSongRequest ? (request.song || 'Song Request') : (request.recipient ? `Shoutout for ${request.recipient}` : 'Shoutout')}`,
+      description: `${statusEmoji[request.status] || ''} ${request.status || 'Unknown'} • ${request.formatted_amount || 'Free'}`,
+      fields: fields,
+      actions: actions.length > 0 ? actions : undefined
+    });
+  });
+
+  // Add "View All" button if there are more than shown
+  const buttons = [];
+  if (result.count > 10) {
+    buttons.push({
+      label: `View All ${result.count} Requests`,
+      action: 'link',
+      value: '/admin/crowd-requests',
+      variant: 'default'
+    });
+  }
+
+  return {
+    text: summaryText,
+    cards: cards,
+    buttons: buttons.length > 0 ? buttons : undefined
+  };
+}
+
+function formatSongRequestUpdate(result) {
+  if (!result.success) {
+    return {
+      text: `❌ Failed to update song request${result.error ? `: ${result.error}` : ''}`,
+      cards: [{
+        title: 'Update Failed',
+        description: result.error || 'Unknown error',
+        fields: []
+      }]
+    };
+  }
+
+  const request = result.request || {};
+  const statusEmoji = {
+    'new': '🆕',
+    'acknowledged': '👀',
+    'playing': '▶️',
+    'played': '✅',
+    'cancelled': '❌'
+  };
+
+  return {
+    text: `✅ Song request updated to "${request.status}"`,
+    cards: [{
+      title: `${statusEmoji[request.status] || '🎵'} Request Updated`,
+      description: request.song || 'Song request',
+      fields: [
+        ...(request.song ? [{ label: 'Song', value: request.song }] : []),
+        { label: 'Requester', value: request.requester || 'Unknown' },
+        { label: 'Status', value: `${statusEmoji[request.status] || ''} ${request.status || 'Unknown'}` },
+        ...(request.admin_notes ? [{ label: 'Notes', value: request.admin_notes }] : [])
+      ],
+      actions: [{
+        label: 'View All Requests',
+        action: 'link',
+        value: '/admin/crowd-requests',
+        variant: 'default'
+      }]
+    }]
   };
 }
 

@@ -139,6 +139,15 @@ export async function executeFunction(functionName, args, supabaseClient, userId
       case 'get_communication_history':
         return await getCommunicationHistory(args, supabase);
 
+      // ============================================
+      // SONG REQUESTS / CROWD REQUESTS
+      // ============================================
+      case 'get_recent_song_requests':
+        return await getRecentSongRequests(args, supabase);
+
+      case 'update_song_request_status':
+        return await updateSongRequestStatus(args, supabase);
+
       default:
         throw new Error(`Unknown function: ${functionName}`);
     }
@@ -3030,5 +3039,228 @@ async function getMusicRecommendations(args) {
       error: error.message || 'Failed to get music recommendations'
     };
   }
+}
+
+// ============================================
+// SONG REQUESTS / CROWD REQUESTS FUNCTIONS
+// ============================================
+
+/**
+ * Get recent song requests from crowd_requests table
+ */
+async function getRecentSongRequests(args, supabase) {
+  const { 
+    limit = 20, 
+    status = 'all', 
+    payment_status = 'all', 
+    request_type = 'all',
+    event_qr_code,
+    hours_back = 24
+  } = args;
+
+  try {
+    let query = supabase
+      .from('crowd_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(Math.min(limit, 100));
+
+    // Apply time filter if hours_back > 0
+    if (hours_back > 0) {
+      const hoursAgo = new Date();
+      hoursAgo.setHours(hoursAgo.getHours() - hours_back);
+      query = query.gte('created_at', hoursAgo.toISOString());
+    }
+
+    // Apply status filter
+    if (status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    // Apply payment status filter
+    if (payment_status !== 'all') {
+      query = query.eq('payment_status', payment_status);
+    }
+
+    // Apply request type filter
+    if (request_type !== 'all') {
+      query = query.eq('request_type', request_type);
+    }
+
+    // Apply event filter
+    if (event_qr_code) {
+      query = query.eq('event_qr_code', event_qr_code);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch song requests: ${error.message}`);
+    }
+
+    // Format the results for better display
+    const formattedRequests = (data || []).map(request => ({
+      id: request.id,
+      type: request.request_type,
+      // Song request fields
+      song: request.request_type === 'song_request' 
+        ? `${request.song_title || 'Unknown'} - ${request.song_artist || 'Unknown Artist'}`
+        : null,
+      song_title: request.song_title,
+      song_artist: request.song_artist,
+      // Shoutout fields
+      recipient: request.request_type === 'shoutout' ? request.recipient_name : null,
+      shoutout_message: request.request_type === 'shoutout' ? request.recipient_message : null,
+      // Requester info
+      requester: request.requester_name,
+      requester_email: request.requester_email,
+      requester_phone: request.requester_phone,
+      message: request.request_message,
+      // Payment info
+      amount_requested: request.amount_requested ? (request.amount_requested / 100) : 0, // Convert cents to dollars
+      amount_paid: request.amount_paid ? (request.amount_paid / 100) : 0,
+      formatted_amount: request.amount_requested 
+        ? `$${(request.amount_requested / 100).toFixed(2)}`
+        : 'Free',
+      payment_status: request.payment_status,
+      is_paid: request.payment_status === 'paid',
+      // Event info
+      event_name: request.event_name,
+      event_date: request.event_date,
+      event_qr_code: request.event_qr_code,
+      // Status
+      status: request.status,
+      admin_notes: request.admin_notes,
+      // Timestamps
+      created_at: request.created_at,
+      paid_at: request.paid_at,
+      played_at: request.played_at,
+      // Formatted timestamp
+      time_ago: getTimeAgo(new Date(request.created_at))
+    }));
+
+    // Calculate summary statistics
+    const summary = {
+      total: formattedRequests.length,
+      by_status: {
+        new: formattedRequests.filter(r => r.status === 'new').length,
+        acknowledged: formattedRequests.filter(r => r.status === 'acknowledged').length,
+        playing: formattedRequests.filter(r => r.status === 'playing').length,
+        played: formattedRequests.filter(r => r.status === 'played').length,
+        cancelled: formattedRequests.filter(r => r.status === 'cancelled').length,
+      },
+      by_type: {
+        song_requests: formattedRequests.filter(r => r.type === 'song_request').length,
+        shoutouts: formattedRequests.filter(r => r.type === 'shoutout').length,
+      },
+      total_revenue: formattedRequests
+        .filter(r => r.is_paid)
+        .reduce((sum, r) => sum + r.amount_paid, 0),
+      pending_revenue: formattedRequests
+        .filter(r => r.payment_status === 'pending')
+        .reduce((sum, r) => sum + r.amount_requested, 0),
+    };
+
+    return {
+      success: true,
+      requests: formattedRequests,
+      count: formattedRequests.length,
+      summary: summary,
+      formatted_revenue: `$${summary.total_revenue.toFixed(2)}`,
+      formatted_pending: `$${summary.pending_revenue.toFixed(2)}`,
+      time_range: hours_back > 0 ? `Last ${hours_back} hours` : 'All time'
+    };
+  } catch (error) {
+    console.error('Error getting song requests:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to get song requests'
+    };
+  }
+}
+
+/**
+ * Update the status of a song request
+ */
+async function updateSongRequestStatus(args, supabase) {
+  const { request_id, status, admin_notes } = args;
+
+  if (!request_id || !status) {
+    throw new Error('request_id and status are required');
+  }
+
+  const validStatuses = ['new', 'acknowledged', 'playing', 'played', 'cancelled'];
+  if (!validStatuses.includes(status)) {
+    throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+  }
+
+  try {
+    const updateData = {
+      status: status,
+      updated_at: new Date().toISOString()
+    };
+
+    // Add played_at timestamp if marking as played
+    if (status === 'played') {
+      updateData.played_at = new Date().toISOString();
+    }
+
+    // Add admin notes if provided
+    if (admin_notes) {
+      updateData.admin_notes = admin_notes;
+    }
+
+    const { data, error } = await supabase
+      .from('crowd_requests')
+      .update(updateData)
+      .eq('id', request_id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update song request: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error('Song request not found');
+    }
+
+    return {
+      success: true,
+      message: `Song request status updated to "${status}"`,
+      request: {
+        id: data.id,
+        song: data.request_type === 'song_request' 
+          ? `${data.song_title || 'Unknown'} - ${data.song_artist || 'Unknown Artist'}`
+          : null,
+        requester: data.requester_name,
+        status: data.status,
+        admin_notes: data.admin_notes
+      }
+    };
+  } catch (error) {
+    console.error('Error updating song request status:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to update song request status'
+    };
+  }
+}
+
+/**
+ * Helper function to format time ago
+ */
+function getTimeAgo(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  return date.toLocaleDateString();
 }
 

@@ -20,7 +20,7 @@ import { ComposeMessageModal } from './ComposeMessageModal';
 
 interface ActionButton {
   label: string;
-  action: 'link' | 'function' | 'copy' | 'send_sms' | 'send_email' | 'mark_spam' | 'request_review' | 'approve_and_send_sms' | 'approve_and_send_email' | 'quick_option';
+  action: 'link' | 'function' | 'copy' | 'send_sms' | 'send_email' | 'mark_spam' | 'request_review' | 'approve_and_send_sms' | 'approve_and_send_email' | 'quick_option' | 'update_song_request';
   value: string;
   variant?: 'default' | 'outline' | 'secondary';
   metadata?: {
@@ -33,6 +33,8 @@ interface ActionButton {
     message?: string;
     subject?: string;
     option_text?: string; // The text to send when option is selected
+    request_id?: string; // For song request updates
+    status?: string; // For song request status updates
   };
 }
 
@@ -509,6 +511,26 @@ export function MessageContentRenderer({
           // Use natural language to select the option
           // Common patterns: "Let's do [option]", "I'll take [option]", "Go with [option]", "[option]"
           onSendMessage(`Let's do ${optionText}`);
+        }
+        break;
+      case 'update_song_request':
+        // Update song request status
+        if (button.metadata?.request_id && button.metadata?.status && onSendMessage) {
+          const statusLabel = button.metadata.status === 'played' ? 'played' :
+                             button.metadata.status === 'playing' ? 'now playing' :
+                             button.metadata.status === 'acknowledged' ? 'acknowledged' :
+                             button.metadata.status;
+          onSendMessage(`Mark song request ${button.metadata.request_id} as ${statusLabel}`);
+          toast({
+            title: "Updating request",
+            description: `Marking as ${statusLabel}...`,
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Unable to update request - missing information',
+            variant: 'destructive',
+          });
         }
         break;
     }
