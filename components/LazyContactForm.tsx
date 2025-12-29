@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 // Skeleton loading component for contact form
 const ContactFormSkeleton = () => (
-  <div className="min-h-[400px] bg-white dark:bg-slate-800 rounded-xl p-8 space-y-6">
+  <div className="min-h-[400px] bg-white dark:bg-gray-900 rounded-xl p-8 space-y-6">
     <div className="space-y-2">
       <Skeleton className="h-6 w-48" />
       <Skeleton className="h-4 w-64" />

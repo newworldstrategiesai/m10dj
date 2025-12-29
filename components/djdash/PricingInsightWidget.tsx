@@ -221,7 +221,7 @@ export default function PricingInsightWidget({
         </div>
 
         {/* Insight Text */}
-        <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3 mt-4">
+        <div className="bg-blue-50 dark:bg-gray-900 rounded-lg p-3 mt-4">
           <p className="text-sm text-blue-900 dark:text-blue-100">
             {insight.insight_text}
           </p>

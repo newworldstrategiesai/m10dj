@@ -156,7 +156,7 @@ export default function CityPricingDisplay({
         </div>
 
         {/* Summary Text */}
-        <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
+        <div className="bg-blue-50 dark:bg-gray-900 rounded-lg p-4">
           <p className="text-sm text-blue-900 dark:text-blue-100">
             <strong>{eventTypeLabel} DJs in {city}</strong>
             {state && `, ${state}`} typically cost between{' '}
