@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../components/company/Header';
 import { CheckCircle, Music, Mic, Loader2, Zap, Mail, Check, Clock, Gift } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { useSuccessPageTracking } from '../../hooks/useSuccessPageTracking';
 
 export default function CrowdRequestSuccessPage() {
   const router = useRouter();
@@ -14,6 +16,10 @@ export default function CrowdRequestSuccessPage() {
   const [receiptSent, setReceiptSent] = useState(false);
   const [receiptError, setReceiptError] = useState(null);
   const [userRequestCount, setUserRequestCount] = useState(0);
+  const confettiTriggered = useRef(false);
+
+  // Track success page view
+  useSuccessPageTracking(request_id);
 
   useEffect(() => {
     if (request_id && session_id) {
@@ -27,10 +33,63 @@ export default function CrowdRequestSuccessPage() {
   }, [request_id, session_id]);
 
   useEffect(() => {
-    if (request) {
+    if (request && !loading) {
       fetchUserStats();
+      
+      // Trigger confetti animation when request is successfully loaded and page is ready
+      // Only trigger once per page load
+      if (!confettiTriggered.current) {
+        confettiTriggered.current = true;
+        // Small delay to ensure page is fully rendered
+        setTimeout(() => {
+          triggerConfetti();
+        }, 300);
+      }
     }
-  }, [request]);
+  }, [request, loading]);
+
+  const triggerConfetti = () => {
+    // Create a confetti cannon effect
+    const duration = 3000; // 3 seconds
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+    function randomInRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    const interval = setInterval(() => {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      
+      // Launch confetti from both sides
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+      });
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+      });
+    }, 250);
+
+    // Also do a big burst from the center
+    setTimeout(() => {
+      confetti({
+        ...defaults,
+        particleCount: 100,
+        origin: { x: 0.5, y: 0.5 },
+        colors: ['#9333ea', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444']
+      });
+    }, 100);
+  };
 
   const fetchUserStats = async () => {
     try {
@@ -191,11 +250,14 @@ export default function CrowdRequestSuccessPage() {
               </div>
               
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Thank You!
+                {request?.played_at ? 'Song Played!' : 'Thank You!'}
               </h1>
               
               <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-                Your payment was successful and your request has been submitted. We appreciate your support!
+                {request?.played_at 
+                  ? 'Great news! Your song request has been played. We hope you enjoyed it!'
+                  : 'Your payment was successful and your request has been submitted. We appreciate your support!'
+                }
               </p>
 
               {request && (
@@ -229,9 +291,32 @@ export default function CrowdRequestSuccessPage() {
                               <span className="font-medium">Artist:</span> {request.song_artist}
                             </p>
                           )}
-                          {request.is_fast_track && (
+                          {request.played_at ? (
+                            <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-700">
+                              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                                <CheckCircle className="w-5 h-5" />
+                                <p className="text-sm font-semibold">
+                                  🎵 Your song was played!
+                                </p>
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                Played at: {new Date(request.played_at).toLocaleString('en-US', {
+                                  weekday: 'short',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </p>
+                            </div>
+                          ) : request.is_fast_track ? (
                             <p className="text-sm text-orange-600 dark:text-orange-400 font-medium mt-2">
-                              ⚡ Your song will be played next!
+                              ⚡ Fast-Track: Your song has priority placement in the queue.
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                              Your song is in the queue and will be played when possible.
                             </p>
                           )}
                         </div>
@@ -265,7 +350,7 @@ export default function CrowdRequestSuccessPage() {
               {request?.is_fast_track ? (
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-8">
                   <p className="text-sm text-orange-800 dark:text-orange-200">
-                    <strong>⚡ Fast-Track Confirmed!</strong> Your song request has priority placement and will be played next! The DJ will receive your request immediately.
+                    <strong>⚡ Fast-Track Confirmed!</strong> Your song request has priority placement in the queue. The DJ will receive your request and will play it as soon as possible.
                   </p>
                 </div>
               ) : (

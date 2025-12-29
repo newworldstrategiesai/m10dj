@@ -3,6 +3,25 @@ import { CreditCard, Loader2, Plus, X } from 'lucide-react';
 import CashAppPaymentScreen from './CashAppPaymentScreen';
 import VenmoPaymentScreen from './VenmoPaymentScreen';
 
+// Client-side function to normalize casing (matches server-side logic)
+const toTitleCase = (str) => {
+  if (!str) return '';
+  const lowercaseWords = ['and', 'or', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from'];
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map((word, index) => {
+      if (index === 0) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      if (lowercaseWords.includes(word) && word.length > 1) {
+        return word;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+};
+
 function PaymentMethodSelection({ 
   requestId, 
   amount, 
@@ -16,6 +35,7 @@ function PaymentMethodSelection({
   songTitle, 
   songArtist, 
   recipientName,
+  requesterName, // New prop: requester name to include in payment note
   additionalSongs = [],
   setAdditionalSongs,
   bundleDiscount = 0,
@@ -26,6 +46,7 @@ function PaymentMethodSelection({
 }) {
   const [cashAppQr, setCashAppQr] = useState(null);
   const [venmoQr, setVenmoQr] = useState(null);
+  const [venmoRecipientsParam, setVenmoRecipientsParam] = useState(null);
   const [localSelectedMethod, setLocalSelectedMethod] = useState(null);
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const [showAddSongs, setShowAddSongs] = useState(false);
@@ -43,40 +64,64 @@ function PaymentMethodSelection({
   };
 
   // Build payment note with song/shoutout details
+  // Uses normalized casing for song titles and artist names
+  // Includes requester name to help with payment verification
   const buildPaymentNote = () => {
     let note = '';
     
+    // Start with requester name if available (helps with payment verification)
+    const namePrefix = requesterName && requesterName.trim() && requesterName.trim() !== 'Guest' 
+      ? `${requesterName.trim()} - ` 
+      : '';
+    
     if (requestType === 'song_request') {
       if (songTitle) {
-        note = songTitle;
-        if (songArtist) {
-          note += ` by ${songArtist}`;
+        // Normalize casing for display in payment memo
+        const normalizedTitle = toTitleCase(songTitle);
+        const normalizedArtist = songArtist ? toTitleCase(songArtist) : null;
+        
+        note = namePrefix + normalizedTitle;
+        if (normalizedArtist) {
+          note += ` by ${normalizedArtist}`;
         }
         if (paymentCode) {
           note += ` - ${paymentCode}`;
         }
       } else {
-        note = paymentCode ? `Song Request - ${paymentCode}` : 'Song Request';
+        note = namePrefix + (paymentCode ? `Song Request - ${paymentCode}` : 'Song Request');
       }
     } else if (requestType === 'shoutout') {
       if (recipientName) {
-        note = `Shoutout for ${recipientName}`;
+        note = namePrefix + `Shoutout for ${recipientName}`;
         if (paymentCode) {
           note += ` - ${paymentCode}`;
         }
       } else {
-        note = paymentCode ? `Shoutout - ${paymentCode}` : 'Shoutout';
+        note = namePrefix + (paymentCode ? `Shoutout - ${paymentCode}` : 'Shoutout');
       }
+    } else if (requestType === 'tip') {
+      note = namePrefix + (paymentCode ? `Tip - ${paymentCode}` : 'Tip');
     } else {
-      note = paymentCode ? `Crowd Request - ${paymentCode}` : 'Crowd Request';
+      note = namePrefix + (paymentCode ? `Crowd Request - ${paymentCode}` : 'Crowd Request');
     }
     
     // Keep note under character limits:
     // CashApp: ~100 characters
     // Venmo: ~280 characters
-    // Trim to be safe
+    // Trim to be safe (but prioritize keeping name and payment code)
     if (note.length > 200) {
-      note = note.substring(0, 197) + '...';
+      // If we have a payment code, try to keep it
+      if (paymentCode && note.includes(paymentCode)) {
+        // Keep name, payment code, and truncate the middle
+        const codePart = ` - ${paymentCode}`;
+        const maxLength = 200 - codePart.length;
+        const mainPart = note.substring(0, note.indexOf(codePart));
+        if (mainPart.length > maxLength) {
+          note = mainPart.substring(0, maxLength - 3) + '...' + codePart;
+        }
+      } else {
+        note = note.substring(0, 197) + '...';
+      }
     }
     
     return note;
@@ -164,8 +209,16 @@ function PaymentMethodSelection({
         throw new Error('Venmo username is not configured. Please contact support.');
       }
       
-      // Use updated amount if additional songs were added
-      const finalAmount = updatedAmount || amount;
+      // Use getPaymentAmount() to ensure we include all fees (fast-track, next, bundle, etc.)
+      // This is the source of truth for the total payment amount
+      // Only fall back to updatedAmount or amount if getPaymentAmount is not available
+      let finalAmount;
+      if (getPaymentAmount) {
+        finalAmount = getPaymentAmount();
+      } else {
+        // Fallback: Use updated amount if additional songs were added, otherwise use base amount
+        finalAmount = updatedAmount || amount;
+      }
       
       if (!finalAmount || finalAmount <= 0) {
         throw new Error('Invalid payment amount');
@@ -173,6 +226,16 @@ function PaymentMethodSelection({
       
       // Update additional songs before payment
       handleProceedWithPayment('venmo');
+      
+      // Set thank you URL in sessionStorage for consistent flow (same as Stripe)
+      // This allows users to easily return to the success page after completing Venmo payment
+      if (requestId) {
+        const thankYouUrl = `${window.location.origin}/crowd-request/success?request_id=${requestId}`;
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('venmo_thank_you_url', thankYouUrl);
+          console.log('✅ Set Venmo thank you URL:', thankYouUrl);
+        }
+      }
       
       // Strip @ from username if present
       const cleanUsername = paymentSettings.venmoUsername.replace(/^@/, '');
@@ -182,24 +245,48 @@ function PaymentMethodSelection({
       const paymentNote = buildPaymentNote();
       const encodedNote = encodeURIComponent(paymentNote);
       
-      // Also show QR code first
-      const webUrl = `https://venmo.com/${cleanUsername}?txn=pay&amount=${amountStr}&note=${encodedNote}`;
-      const qr = generateQRCode(webUrl);
+      // Get Venmo phone number if available (for fallback in deep link)
+      // Venmo deep links can accept phone numbers (digits only) as recipients
+      // This prevents phone verification when username lookup fails
+      const venmoPhone = paymentSettings?.venmoPhoneNumber || null;
+      let recipientsParam = cleanUsername;
+      
+      // If we have a phone number, use it as primary recipient (more reliable)
+      // Venmo will find the user by phone without requiring verification
+      // Format: digits only (no dashes, spaces, or +1 prefix)
+      if (venmoPhone) {
+        const phoneDigits = venmoPhone.replace(/\D/g, ''); // Remove all non-digits
+        // Remove leading 1 if present (US country code)
+        const cleanPhone = phoneDigits.startsWith('1') && phoneDigits.length === 11 
+          ? phoneDigits.substring(1) 
+          : phoneDigits;
+        
+        if (cleanPhone.length === 10) {
+          recipientsParam = cleanPhone; // Use phone number - more reliable, no verification needed
+          console.log('✅ Using Venmo phone number for deep link (prevents phone verification)');
+        } else {
+          console.warn('⚠️ Venmo phone number invalid, using username:', cleanPhone);
+        }
+      } else {
+        console.warn('⚠️ No Venmo phone number configured - users may need to verify if they type username manually');
+      }
+      
+      // Generate QR code that points to our redirect page (which opens Venmo app)
+      // This prevents users from seeing the username and typing it manually
+      // Include request_id so redirect page can send user to success page
+      const redirectUrl = `${window.location.origin}/venmo-redirect?recipients=${encodeURIComponent(recipientsParam)}&amount=${encodeURIComponent(amountStr)}&note=${encodeURIComponent(encodedNote)}${requestId ? `&request_id=${requestId}` : ''}`;
+      const qr = generateQRCode(redirectUrl);
       setVenmoQr(qr);
       setLocalSelectedMethod('venmo');
       onPaymentMethodSelected('venmo');
       
-      // Deep link to Venmo app
-      const venmoUrl = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&amount=${amountStr}&note=${encodedNote}`;
+      // Deep link to Venmo app - use phone number if available (prevents verification)
+      const venmoUrl = `venmo://paycharge?txn=pay&recipients=${recipientsParam}&amount=${amountStr}&note=${encodedNote}`;
       
-      // Try app deep link first, fallback to web after 2 seconds
+      // Immediately try to open Venmo app (no fallback to web)
+      // This ensures users always go through the app, never manually type username
       setTimeout(() => {
         window.location.href = venmoUrl;
-        
-        // Fallback to web after 2 seconds if app doesn't open
-        setTimeout(() => {
-          window.location.href = webUrl;
-        }, 2000);
       }, 100);
     } catch (err) {
       console.error('Venmo payment error:', err);
@@ -292,6 +379,7 @@ function PaymentMethodSelection({
         <VenmoPaymentScreen
           qrCode={venmoQr}
           username={paymentSettings.venmoUsername}
+          venmoRecipients={venmoRecipientsParam || paymentSettings.venmoUsername.replace(/^@/, '')}
           amount={updatedAmount || amount}
           requestId={requestId}
           paymentCode={paymentCode}

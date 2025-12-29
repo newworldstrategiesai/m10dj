@@ -332,7 +332,11 @@ export default function SchedulePage() {
                 <h2 className="text-xl font-semibold mb-4">Available Times</h2>
                 {loadingSlots ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#fcba00]"></div>
+                    <img
+                      src="/M10-Rotating-Logo.gif"
+                      alt="M10 DJ Company Loading"
+                      className="w-16 h-16 object-contain"
+                    />
                   </div>
                 ) : availableSlots.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">

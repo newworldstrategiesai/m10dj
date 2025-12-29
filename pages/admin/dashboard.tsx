@@ -39,6 +39,7 @@ import UsageDashboard from '@/components/subscription/UsageDashboard';
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
 import StripeConnectRequirementBanner from '@/components/subscription/StripeConnectRequirementBanner';
 import { getCurrentOrganization, Organization } from '@/utils/organization-context';
+import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
 
 interface DashboardStats {
   totalContacts: number;
@@ -456,24 +457,9 @@ export default function AdminDashboard() {
     return 'Good evening';
   };
 
-  if (loading) {
-    return (
-      <AdminLayout title="Dashboard" description="M10 DJ Company Admin Dashboard">
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 dark:border-gray-700 mx-auto mb-6"></div>
-              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-[#fcba00] absolute top-0 left-1/2 -translate-x-1/2"></div>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 font-medium">Loading your dashboard...</p>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
   return (
-    <AdminLayout title="Dashboard" description="M10 DJ Company Admin Dashboard">
+    <PageLoadingWrapper isLoading={loading} message="Loading your dashboard...">
+      <AdminLayout title="Dashboard" description="M10 DJ Company Admin Dashboard">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-8">
         {/* Stripe Connect Requirement Banner - Compact */}
         <StripeConnectRequirementBanner organization={organization} className="mb-2 sm:mb-4" />
@@ -914,6 +900,7 @@ export default function AdminDashboard() {
           )}
       </div>
     </AdminLayout>
+    </PageLoadingWrapper>
   );
 }
 

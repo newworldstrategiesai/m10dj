@@ -1,7 +1,7 @@
 import ReceiptRequestButton from './ReceiptRequestButton';
 import { CheckCircle } from 'lucide-react';
 
-export default function VenmoPaymentScreen({ qrCode, username, amount, requestId, paymentCode, paymentNote, onBack }) {
+export default function VenmoPaymentScreen({ qrCode, username, venmoRecipients, amount, requestId, paymentCode, paymentNote, onBack }) {
   return (
     <div className="text-center space-y-6">
       <div>
@@ -9,7 +9,7 @@ export default function VenmoPaymentScreen({ qrCode, username, amount, requestId
           Pay with Venmo
         </h3>
         <p className="text-gray-600 dark:text-gray-400">
-          Scan the QR code or send ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to {username}
+          Scan the QR code or click the button below to open Venmo
         </p>
       </div>
 
@@ -34,9 +34,14 @@ export default function VenmoPaymentScreen({ qrCode, username, amount, requestId
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 space-y-2">
-        <p className="text-sm text-gray-700 dark:text-gray-300">
-          <strong>Venmo Username:</strong> {username}
-        </p>
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700 rounded-lg p-3">
+          <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+            ⚠️ IMPORTANT
+          </p>
+          <p className="text-sm text-yellow-700 dark:text-yellow-300">
+            You must use the QR code or "Open Venmo to Pay" button below. Do not manually type the username in Venmo.
+          </p>
+        </div>
         <p className="text-sm text-gray-700 dark:text-gray-300">
           <strong>Amount:</strong> ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
@@ -48,24 +53,24 @@ export default function VenmoPaymentScreen({ qrCode, username, amount, requestId
             <p className="text-sm text-gray-800 dark:text-gray-200 font-semibold">
               {paymentNote}
             </p>
+            <p className="text-xs text-blue-700 dark:text-blue-300 mt-2 font-medium">
+              💡 Tip: You can add your name to the payment note in Venmo to help us identify your payment faster!
+            </p>
           </div>
         )}
       </div>
 
-      {/* Open Venmo Link Button */}
-      <a
-        href={`https://venmo.com/${username.replace(/^@/, '')}?txn=pay&amount=${Number(amount).toFixed(2)}&note=${encodeURIComponent(paymentNote || '')}`}
-        target="_blank"
-        rel="noopener noreferrer"
+      {/* Open Venmo Link Button - Uses redirect page to open Venmo app */}
+      <button
         onClick={() => {
-          // Get thank you URL from sessionStorage if available
-          const thankYouUrl = sessionStorage.getItem('venmo_thank_you_url');
-          if (thankYouUrl) {
-            // After opening Venmo, redirect to thank you page after a delay
-            setTimeout(() => {
-              window.location.href = thankYouUrl;
-            }, 3000); // Give them 3 seconds to complete payment
-          }
+          const amountStr = Number(amount).toFixed(2);
+          const encodedNote = encodeURIComponent(paymentNote || '');
+          
+          // Use redirect page to open Venmo app (prevents manual entry)
+          // venmoRecipients is either phone number (if configured) or username
+          const recipients = venmoRecipients || username.replace(/^@/, '');
+          const redirectUrl = `${window.location.origin}/venmo-redirect?recipients=${encodeURIComponent(recipients)}&amount=${encodeURIComponent(amountStr)}&note=${encodeURIComponent(encodedNote)}${requestId ? `&request_id=${requestId}` : ''}`;
+          window.location.href = redirectUrl;
         }}
         className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors inline-flex items-center justify-center gap-2"
       >
@@ -73,16 +78,27 @@ export default function VenmoPaymentScreen({ qrCode, username, amount, requestId
           <path d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z"/>
         </svg>
         Open Venmo to Pay
-      </a>
+      </button>
       
-      {/* Return to Thank You Page Button */}
-      {typeof window !== 'undefined' && sessionStorage.getItem('venmo_thank_you_url') && (
+      {/* Return to Thank You Page Button - Always show if requestId is available */}
+      {requestId && (
+        <a
+          href={`/crowd-request/success?request_id=${requestId}`}
+          className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors inline-flex items-center justify-center gap-2 mt-3"
+        >
+          <CheckCircle className="w-5 h-5" />
+          I&apos;ve Completed Payment - View Confirmation
+        </a>
+      )}
+      
+      {/* Fallback: Use sessionStorage URL if available and no requestId */}
+      {!requestId && typeof window !== 'undefined' && sessionStorage.getItem('venmo_thank_you_url') && (
         <a
           href={sessionStorage.getItem('venmo_thank_you_url')}
           className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors inline-flex items-center justify-center gap-2 mt-3"
         >
           <CheckCircle className="w-5 h-5" />
-          I&apos;ve Completed Payment - Continue
+          I&apos;ve Completed Payment - View Confirmation
         </a>
       )}
 

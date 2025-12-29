@@ -505,10 +505,14 @@ export default function InvoiceDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading invoice...</p>
+          <img
+            src="/M10-Rotating-Logo.gif"
+            alt="M10 DJ Company Loading"
+            className="w-24 h-24 object-contain mx-auto mb-4"
+          />
+          <p className="text-white">Loading invoice...</p>
         </div>
       </div>
     );

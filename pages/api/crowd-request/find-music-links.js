@@ -88,7 +88,7 @@ export default async function handler(req, res) {
     if (links.tidal) console.log('Tidal URL:', links.tidal.substring(0, 50) + '...');
     if (links.apple_music) console.log('Apple Music URL:', links.apple_music.substring(0, 50) + '...');
     
-    // Ensure all fields are present in response
+    // Ensure all fields are present in response (exclude normalized fields from links object)
     const responseLinks = {
       spotify: links.spotify || null,
       youtube: links.youtube || null,
@@ -100,15 +100,34 @@ export default async function handler(req, res) {
     
     console.log('Response links object:', responseLinks);
 
-    // Update the request with found links
+    // Prepare update data - include normalized title/artist if available
+    const updateData = {
+      music_service_links: responseLinks
+    };
+
+    // Update song title and artist with normalized casing if available
+    if (links.normalized_title || links.normalized_artist) {
+      if (links.normalized_title) {
+        updateData.song_title = links.normalized_title;
+        console.log(`Updating song_title to normalized: "${links.normalized_title}"`);
+      }
+      if (links.normalized_artist) {
+        updateData.song_artist = links.normalized_artist;
+        console.log(`Updating song_artist to normalized: "${links.normalized_artist}"`);
+      }
+    }
+
+    // Update the request with found links and normalized casing
     const { error: updateError } = await supabase
       .from('crowd_requests')
-      .update({ music_service_links: links })
+      .update(updateData)
       .eq('id', requestId);
 
     if (updateError) {
       console.error('Error updating request with links:', updateError);
       // Still return the links even if update fails
+    } else {
+      console.log('✅ Updated request with normalized casing and links');
     }
 
     res.status(200).json({

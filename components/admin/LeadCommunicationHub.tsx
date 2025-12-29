@@ -420,7 +420,11 @@ This test was sent to your email (${adminEmail}) to preview how the email will l
     return (
       <Card className="p-6">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#fcba00]"></div>
+          <img
+            src="/M10-Rotating-Logo.gif"
+            alt="M10 DJ Company Loading"
+            className="w-16 h-16 object-contain"
+          />
         </div>
       </Card>
     );

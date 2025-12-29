@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
 
 interface LiveEvent {
   id: string;
@@ -199,51 +200,42 @@ export default function EventsManagement() {
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
-    return (
-      <AdminLayout title="Event Pages" description="Manage event case study pages">
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#fcba00] mx-auto"></div>
-            <p className="text-gray-600 dark:text-gray-400 mt-4">Loading event pages...</p>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
 
   if (error) {
     return (
-      <AdminLayout title="Event Pages" description="Manage event case study pages">
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center max-w-md">
-            <FileText className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Event Management Error</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-            <button
-              onClick={loadEvents}
-              className="bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-medium"
-            >
-              Try Again
-            </button>
+      <PageLoadingWrapper isLoading={loading} message="Loading event pages...">
+        <AdminLayout title="Event Pages" description="Manage event case study pages">
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <FileText className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Event Management Error</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+              <button
+                onClick={loadEvents}
+                className="bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-medium"
+              >
+                Try Again
+              </button>
+            </div>
           </div>
-        </div>
-      </AdminLayout>
+        </AdminLayout>
+      </PageLoadingWrapper>
     );
   }
 
   return (
-    <AdminLayout
-      title="Live Events"
-      description="Manage public live events with ticketing"
-      showPageTitle={true}
-      pageTitle="Live Events"
-      pageDescription="Create and manage public live events with ticketing"
-      newButton={{
-        href: "/admin/events/new",
-        label: "New Live Event"
-      }}
-    >
+    <PageLoadingWrapper isLoading={loading} message="Loading event pages...">
+      <AdminLayout
+        title="Live Events"
+        description="Manage public live events with ticketing"
+        showPageTitle={true}
+        pageTitle="Live Events"
+        pageDescription="Create and manage public live events with ticketing"
+        newButton={{
+          href: "/admin/events/new",
+          label: "New Live Event"
+        }}
+      >
       <Head>
         <title>Live Events - M10 DJ Company Admin</title>
         <meta name="robots" content="noindex, nofollow" />
@@ -629,7 +621,8 @@ export default function EventsManagement() {
             </div>
           </div>
         </div>
-    </AdminLayout>
+      </AdminLayout>
+    </PageLoadingWrapper>
   );
 }
 

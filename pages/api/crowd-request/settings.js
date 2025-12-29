@@ -64,7 +64,7 @@ export default async function handler(req, res) {
           .from('admin_settings')
           .select('setting_key, setting_value, updated_at, user_id')
           .eq('user_id', orgData.owner_id) // Get settings for organization owner
-          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_fast_track_fee', 'crowd_request_minimum_amount', 'minimum_tip_amount', 'crowd_request_preset_amounts', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent'])
+          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_venmo_phone_number', 'crowd_request_fast_track_fee', 'crowd_request_minimum_amount', 'minimum_tip_amount', 'crowd_request_preset_amounts', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent'])
           .order('updated_at', { ascending: false });
 
         if (!settingsError && allSettings && allSettings.length > 0) {
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
           .from('admin_settings')
           .select('setting_key, setting_value, updated_at, user_id')
           .in('user_id', adminUserIds)
-          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_fast_track_fee', 'crowd_request_minimum_amount', 'minimum_tip_amount', 'crowd_request_preset_amounts', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent'])
+          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_venmo_phone_number', 'crowd_request_fast_track_fee', 'crowd_request_minimum_amount', 'minimum_tip_amount', 'crowd_request_preset_amounts', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent'])
           .order('updated_at', { ascending: false });
 
         if (!settingsError && allSettings && allSettings.length > 0) {
@@ -127,6 +127,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         cashAppTag: process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray',
         venmoUsername: process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray',
+        venmoPhoneNumber: process.env.VENMO_PHONE_NUMBER || null, // Include phone number for Venmo deep links
         fastTrackFee: 1000,
         minimumAmount: defaultMinimum,
         presetAmounts: generateDefaultPresets(defaultMinimum)
@@ -136,6 +137,7 @@ export default async function handler(req, res) {
     // Parse settings
     const cashAppTag = settings.find(s => s.setting_key === 'crowd_request_cashapp_tag')?.setting_value || process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray';
     const venmoUsername = settings.find(s => s.setting_key === 'crowd_request_venmo_username')?.setting_value || process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray';
+    const venmoPhoneNumber = settings.find(s => s.setting_key === 'crowd_request_venmo_phone_number')?.setting_value || process.env.VENMO_PHONE_NUMBER || null;
     const fastTrackFee = settings.find(s => s.setting_key === 'crowd_request_fast_track_fee')?.setting_value || '1000';
     // Check for minimum_tip_amount first (newer key), then fall back to crowd_request_minimum_amount (legacy), then default to $10.00
     const minimumAmountSetting = settings.find(s => s.setting_key === 'minimum_tip_amount')?.setting_value 
@@ -171,6 +173,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       cashAppTag,
       venmoUsername,
+      venmoPhoneNumber, // Include phone number for Venmo deep links
       fastTrackFee: parseInt(fastTrackFee),
       minimumAmount: minimumAmount,
       presetAmounts,
@@ -183,6 +186,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       cashAppTag: process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray',
       venmoUsername: process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray',
+      venmoPhoneNumber: process.env.VENMO_PHONE_NUMBER || null, // Include phone number for Venmo deep links
       fastTrackFee: 1000,
       minimumAmount: defaultMinimum,
       presetAmounts: generateDefaultPresets(defaultMinimum), // $10, $15, $20, $25

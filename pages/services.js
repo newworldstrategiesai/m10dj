@@ -275,7 +275,13 @@ export default function Services() {
 
             {loading ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto"></div>
+                <div className="flex items-center justify-center">
+                  <img
+                    src="/M10-Rotating-Logo.gif"
+                    alt="M10 DJ Company Loading"
+                    className="w-20 h-20 object-contain"
+                  />
+                </div>
                 <p className="text-gray-600 dark:text-gray-400 mt-4">Loading our services...</p>
               </div>
             ) : selectedCategory === 'all' ? (

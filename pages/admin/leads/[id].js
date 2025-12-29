@@ -662,10 +662,14 @@ If you received this email, your email system is working correctly!`
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#fcba00] mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading lead details...</p>
+          <img
+            src="/M10-Rotating-Logo.gif"
+            alt="M10 DJ Company Loading"
+            className="w-20 h-20 object-contain mx-auto"
+          />
+          <p className="mt-4 text-white">Loading lead details...</p>
         </div>
       </div>
     );

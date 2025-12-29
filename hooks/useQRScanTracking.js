@@ -22,6 +22,12 @@ export function useQRScanTracking(eventQrCode, organizationId = null) {
       try {
         const referrer = typeof window !== 'undefined' ? document.referrer : null;
         
+        // Check if this visit came from a QR code scan
+        // Look for ?qr=1 or ?source=qr in the URL
+        const isQrScan = typeof window !== 'undefined' && router.isReady
+          ? (router.query.qr === '1' || router.query.source === 'qr')
+          : false;
+        
         const response = await fetch('/api/qr-scan/track', {
           method: 'POST',
           headers: {
@@ -30,7 +36,8 @@ export function useQRScanTracking(eventQrCode, organizationId = null) {
           body: JSON.stringify({
             event_qr_code: eventQrCode,
             organization_id: organizationId,
-            referrer: referrer
+            referrer: referrer,
+            is_qr_scan: isQrScan
           }),
         });
 
@@ -54,7 +61,7 @@ export function useQRScanTracking(eventQrCode, organizationId = null) {
     };
 
     trackScan();
-  }, [eventQrCode, organizationId]);
+  }, [eventQrCode, organizationId, router.isReady, router.query]);
 
   // Return the scan ID if available
   return scanIdRef.current;

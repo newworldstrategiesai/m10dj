@@ -293,10 +293,14 @@ export default function FormSubmissionsPage() {
   if (loading) {
     return (
       <AdminLayout title="Form Submissions" description="Manage website contact form submissions">
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen bg-black">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading submissions...</p>
+            <img
+              src="/M10-Rotating-Logo.gif"
+              alt="M10 DJ Company Loading"
+              className="w-24 h-24 object-contain mx-auto mb-4"
+            />
+            <p className="text-white">Loading submissions...</p>
           </div>
         </div>
       </AdminLayout>
@@ -801,7 +805,11 @@ export default function FormSubmissionsPage() {
 
               {loadingHistory && (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#fcba00]"></div>
+                  <img
+                    src="/M10-Rotating-Logo.gif"
+                    alt="M10 DJ Company Loading"
+                    className="w-16 h-16 object-contain"
+                  />
                 </div>
               )}
 

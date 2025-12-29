@@ -15,10 +15,7 @@ export function useCrowdRequestValidation({
     try {
       if (requestType === 'song_request') {
         const hasTitle = formData?.songTitle?.trim()?.length > 0;
-        // If extracted from link, only title is required; otherwise both are required
-        if (isExtractedFromLink) {
-          return hasTitle;
-        }
+        // Artist name is always required, whether extracted from link or entered manually
         return hasTitle && formData?.songArtist?.trim()?.length > 0;
       } else if (requestType === 'shoutout') {
         return formData?.recipientName?.trim()?.length > 0 && formData?.recipientMessage?.trim()?.length > 0;
@@ -36,13 +33,19 @@ export function useCrowdRequestValidation({
 
   const validateForm = (setError) => {
     try {
+      // Requester name is always required for all request types
+      if (!formData?.requesterName?.trim()) {
+        setError('Please enter your name');
+        return false;
+      }
+
       if (requestType === 'song_request') {
         if (!formData?.songTitle?.trim()) {
           setError('Please enter a song title');
           return false;
         }
-        // Artist is only required if NOT extracted from link
-        if (!isExtractedFromLink && !formData?.songArtist?.trim()) {
+        // Artist name is always required, whether extracted from link or entered manually
+        if (!formData?.songArtist?.trim()) {
           setError('Please enter an artist name');
           return false;
         }
@@ -56,7 +59,7 @@ export function useCrowdRequestValidation({
           return false;
         }
       } else if (requestType === 'tip') {
-        // For tips, we only validate the amount (no form fields required)
+        // For tips, we only validate the amount (no form fields required except name)
       }
 
       // In bidding mode, we still need to validate that a bid amount is selected

@@ -58,6 +58,22 @@ export default function CrowdRequestPage() {
   const [audioFileUrl, setAudioFileUrl] = useState(''); // Uploaded file URL
   const [artistRightsConfirmed, setArtistRightsConfirmed] = useState(false); // Artist rights checkbox
   const [isArtist, setIsArtist] = useState(false); // Is the requester the artist
+  const [organizationId, setOrganizationId] = useState(null); // Organization ID for this event
+  const [bundleSize, setBundleSize] = useState(1); // Bundle size: 1, 2, or 3
+  const [bundleSongs, setBundleSongs] = useState([]); // Array of {songTitle, songArtist} for bundle songs
+
+  // Initialize bundle songs array when bundle size changes
+  useEffect(() => {
+    if (bundleSize > 1) {
+      const newBundleSongs = [];
+      for (let i = 0; i < bundleSize - 1; i++) {
+        newBundleSongs.push(bundleSongs[i] || { songTitle: '', songArtist: '' });
+      }
+      setBundleSongs(newBundleSongs);
+    } else {
+      setBundleSongs([]);
+    }
+  }, [bundleSize]); // Only depend on bundleSize, not bundleSongs to avoid infinite loop
 
   // Use payment settings hook
   const {
@@ -82,7 +98,7 @@ export default function CrowdRequestPage() {
   const { extractingSong, extractionError, extractSongInfo: extractSongInfoHook } = useSongExtraction();
 
   // Use payment calculation hook
-  const { getBaseAmount, getPaymentAmount } = useCrowdRequestPayment({
+  const { getBaseAmount, getPaymentAmount, calculateBundlePrice } = useCrowdRequestPayment({
     amountType,
     presetAmount,
     customAmount,
@@ -95,6 +111,7 @@ export default function CrowdRequestPage() {
     nextFee,
     additionalSongs,
     bundleDiscount: bundleDiscountPercent,
+    bundleSize, // Pass bundle size
     audioFileUrl,
     audioUploadFee: 10000 // $100.00 in cents
   });
@@ -110,8 +127,9 @@ export default function CrowdRequestPage() {
 
   useEffect(() => {
     if (code) {
-      // Optionally fetch event info based on code
+      // Fetch event info and determine organization
       fetchEventInfo(code);
+      determineOrganization(code);
     }
   }, [code]);
 
@@ -124,6 +142,38 @@ export default function CrowdRequestPage() {
       }
     } catch (err) {
       logger.error('Error fetching event info', err);
+    }
+  };
+
+  // Determine organization from existing requests with same event code or from URL
+  const determineOrganization = async (eventCode) => {
+    try {
+      // First, try to find an existing request with the same event code to get its organization
+      const response = await fetch(`/api/crowd-request/find-organization?eventCode=${encodeURIComponent(eventCode)}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.organizationId) {
+          setOrganizationId(data.organizationId);
+          logger.info('Found organization from existing requests:', data.organizationId);
+          return;
+        }
+      }
+      
+      // Fallback: Try to extract organization from URL path
+      // If URL is /{slug}/crowd-request/{code}, extract slug
+      if (typeof window !== 'undefined') {
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        if (pathParts.length >= 2 && pathParts[0] !== 'crowd-request') {
+          const potentialSlug = pathParts[0];
+          // Try to look up organization by slug (if you have this endpoint)
+          // For now, we'll let the backend handle it via header detection
+          logger.info('Could not determine organization from URL, backend will use fallback methods');
+        }
+      }
+      
+      logger.warn('Could not determine organization for event code:', eventCode);
+    } catch (err) {
+      logger.error('Error determining organization', err);
     }
   };
 
@@ -248,8 +298,19 @@ export default function CrowdRequestPage() {
     try {
       const amount = getPaymentAmount();
       
-      // Validate additional songs if any
-      if (requestType === 'song_request' && additionalSongs.length > 0) {
+      // Validate bundle songs if bundle size > 1
+      if (requestType === 'song_request' && bundleSize > 1) {
+        if (!bundleSongs || bundleSongs.length < bundleSize - 1) {
+          throw new Error(`Please enter song details for all ${bundleSize} songs in your bundle`);
+        }
+        const invalidSongs = bundleSongs.filter(song => !song.songTitle?.trim());
+        if (invalidSongs.length > 0) {
+          throw new Error('Please enter a song title for all songs in your bundle');
+        }
+      }
+      
+      // Validate additional songs if any (legacy support)
+      if (requestType === 'song_request' && additionalSongs.length > 0 && bundleSize === 1) {
         const invalidSongs = additionalSongs.filter(song => !song.songTitle?.trim());
         if (invalidSongs.length > 0) {
           throw new Error('Please enter a song title for all additional songs');
@@ -273,7 +334,7 @@ export default function CrowdRequestPage() {
         songTitle: formData.songTitle || null,
         recipientName: formData.recipientName || null,
         recipientMessage: formData.recipientMessage || null,
-        requesterName: formData.requesterName?.trim() || 'Guest',
+        requesterName: formData.requesterName?.trim(),
         requesterEmail: formData.requesterEmail || null,
         requesterPhone: formData.requesterPhone || null,
         message: formData.message || null,
@@ -288,27 +349,64 @@ export default function CrowdRequestPage() {
         isArtist: isArtist,
         scanId: scanId,
         sessionId: sessionId,
+        organizationId: organizationId || null, // Include organization ID if determined
         postedLink: extractedSongUrl || null // Include the original URL if request was created from a posted link
       };
       
       const mainData = await crowdRequestAPI.submitRequest(mainRequestBody);
 
-      // Create additional song requests if any (even without titles - users can add them after payment)
-      // Count the number of additional songs (based on array length, not whether they have titles)
-      const additionalSongCount = additionalSongs.length;
       const allRequestIds = [mainData.requestId];
-
-      // Create placeholder requests for additional songs (users will fill in details after payment)
       const additionalIds = [];
-      if (additionalSongCount > 0) {
-        for (let i = 0; i < additionalSongCount; i++) {
+
+      // Handle bundle songs (new bundle system)
+      if (requestType === 'song_request' && bundleSize > 1 && bundleSongs && bundleSongs.length > 0) {
+        // Calculate price per song in bundle
+        const baseAmount = getBaseAmount();
+        const bundlePrice = calculateBundlePrice(baseAmount, bundleSize, minimumAmount);
+        const pricePerSong = Math.round(bundlePrice / bundleSize);
+        
+        for (let i = 0; i < bundleSongs.length; i++) {
+          const song = bundleSongs[i];
+          const bundleRequestBody = {
+            eventCode: code,
+            requestType: 'song_request',
+            songArtist: song.songArtist?.trim() || null,
+            songTitle: song.songTitle?.trim() || null,
+            requesterName: formData.requesterName?.trim(),
+            requesterEmail: formData.requesterEmail || null,
+            requesterPhone: formData.requesterPhone || null,
+            amount: pricePerSong, // Each song gets equal share of bundle price
+            isFastTrack: false, // Bundle songs don't get fast track (only main song can)
+            isNext: false,
+            fastTrackFee: 0,
+            nextFee: 0,
+            organizationId: organizationId || null,
+            message: `Bundle deal - ${bundleSize} songs for $${(bundlePrice / 100).toFixed(2)}`
+          };
+
+          try {
+            const bundleData = await crowdRequestAPI.submitRequest(bundleRequestBody);
+            if (bundleData?.requestId) {
+              allRequestIds.push(bundleData.requestId);
+              additionalIds.push(bundleData.requestId);
+            }
+          } catch (err) {
+            logger.warn('Failed to create bundle song request', err);
+            // Continue with other songs even if one fails
+          }
+        }
+      }
+
+      // Legacy: Create additional song requests if any (only if not using bundle system)
+      if (requestType === 'song_request' && bundleSize === 1 && additionalSongs.length > 0) {
+        for (let i = 0; i < additionalSongs.length; i++) {
           const song = additionalSongs[i] || {};
           const additionalRequestBody = {
             eventCode: code,
             requestType: 'song_request',
             songArtist: song.songArtist?.trim() || null,
-            songTitle: song.songTitle?.trim() || null, // Can be null - user will add after payment
-            requesterName: formData.requesterName?.trim() || 'Guest',
+            songTitle: song.songTitle?.trim() || null,
+            requesterName: formData.requesterName?.trim(),
             requesterEmail: formData.requesterEmail || null,
             requesterPhone: formData.requesterPhone || null,
             amount: 0, // Bundled with main request - payment already included in main request
@@ -316,6 +414,7 @@ export default function CrowdRequestPage() {
             isNext: false,
             fastTrackFee: 0,
             nextFee: 0,
+            organizationId: organizationId || null,
             message: `Bundled with main request - ${Math.round(bundleDiscountPercent * 100)}% discount applied. ${song.songTitle?.trim() ? '' : 'Song details to be added after payment.'}`
           };
 
@@ -495,6 +594,7 @@ export default function CrowdRequestPage() {
                   songTitle={formData.songTitle}
                   songArtist={formData.songArtist}
                   recipientName={formData.recipientName}
+                  requesterName={formData.requesterName}
                   additionalSongs={additionalSongs}
                   setAdditionalSongs={setAdditionalSongs}
                   bundleDiscount={bundleDiscountPercent}
@@ -624,7 +724,7 @@ export default function CrowdRequestPage() {
                       
                       <div>
                         <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                          Artist Name
+                          Artist Name <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -637,6 +737,67 @@ export default function CrowdRequestPage() {
                           autoComplete="off"
                         />
                       </div>
+
+                      {/* Bundle Songs Input (only show when bundle size > 1) */}
+                      {bundleSize > 1 && bundleSongs.length > 0 && (
+                        <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Gift className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                              Bundle Songs ({bundleSize - 1} additional {bundleSize - 1 === 1 ? 'song' : 'songs'})
+                            </h3>
+                          </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                            Enter the details for your additional bundle songs:
+                          </p>
+                          <div className="space-y-4">
+                            {bundleSongs.map((song, index) => (
+                              <div key={index} className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-purple-200 dark:border-purple-700">
+                                <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-2">
+                                  Song {index + 2} of {bundleSize}
+                                </div>
+                                <div className="space-y-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                                      Song Title <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={song.songTitle || ''}
+                                      onChange={(e) => {
+                                        const newSongs = [...bundleSongs];
+                                        newSongs[index] = { ...newSongs[index], songTitle: e.target.value };
+                                        setBundleSongs(newSongs);
+                                      }}
+                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                      placeholder="Enter song title"
+                                      required
+                                      autoComplete="off"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                                      Artist Name
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={song.songArtist || ''}
+                                      onChange={(e) => {
+                                        const newSongs = [...bundleSongs];
+                                        newSongs[index] = { ...newSongs[index], songArtist: e.target.value };
+                                        setBundleSongs(newSongs);
+                                      }}
+                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                      placeholder="Enter artist name"
+                                      autoComplete="off"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Audio File Upload Section */}
                       <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
@@ -813,21 +974,41 @@ export default function CrowdRequestPage() {
                     </div>
                   )}
 
-                  {/* Additional Message */}
+                  {/* Requester Information - Required for payment verification */}
                   {currentStep === 1 && (
-                  <div className="mt-4">
-                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                      Additional Notes (optional)
-                    </label>
-                    <textarea
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      rows={3}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Any additional information..."
-                    />
-                  </div>
+                    <div className="mt-4 space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                          Your Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="requesterName"
+                          value={formData.requesterName}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="Enter your name"
+                          required
+                          autoComplete="name"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Required: Helps us match your payment to your request
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                          Additional Notes (optional)
+                        </label>
+                        <textarea
+                          name="message"
+                          value={formData.message}
+                          onChange={handleInputChange}
+                          rows={3}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="Any additional information..."
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -852,6 +1033,8 @@ export default function CrowdRequestPage() {
                       nextFee={nextFee}
                       getBaseAmount={getBaseAmount}
                       getPaymentAmount={getPaymentAmount}
+                      bundleSize={bundleSize}
+                      setBundleSize={setBundleSize}
                     />
                   </div>
                 )}

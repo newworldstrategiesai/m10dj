@@ -254,6 +254,7 @@ export default async function handler(req, res) {
     
     if (hasConnectAccount) {
       // Use Stripe Connect to route payment to DJ's account with platform fee
+      // Pre-fill customer information if we have it from the form (prevents asking twice)
       session = await createCheckoutSessionWithPlatformFee(
         Math.round(amount * 100), // Convert to cents
         organization.stripe_connect_account_id,
@@ -282,7 +283,20 @@ export default async function handler(req, res) {
           }),
         },
         platformFeePercentage,
-        platformFeeFixed
+        platformFeeFixed,
+        undefined, // branding (optional)
+        {
+          // Pre-fill customer details from form to avoid asking twice
+          ...(crowdRequest.requester_name && crowdRequest.requester_name !== 'Guest' && {
+            name: crowdRequest.requester_name,
+          }),
+          ...(crowdRequest.requester_email && {
+            email: crowdRequest.requester_email,
+          }),
+          ...(crowdRequest.requester_phone && {
+            phone: crowdRequest.requester_phone,
+          }),
+        }
       );
       
       // Update session with additional payment method types and customer info
@@ -328,10 +342,22 @@ export default async function handler(req, res) {
       success_url: `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`,
       cancel_url: cancelUrl,
       customer_email: crowdRequest.requester_email || undefined,
-      // Collect customer information during checkout
-      billing_address_collection: 'auto', // Collect billing address (includes name)
+      // Pre-fill customer information if we have it from the form (prevents asking twice)
+      customer_details: {
+        ...(crowdRequest.requester_name && crowdRequest.requester_name !== 'Guest' && {
+          name: crowdRequest.requester_name,
+        }),
+        ...(crowdRequest.requester_email && {
+          email: crowdRequest.requester_email,
+        }),
+        ...(crowdRequest.requester_phone && {
+          phone: crowdRequest.requester_phone,
+        }),
+      },
+      // Collect billing address (but name will be pre-filled if we have it)
+      billing_address_collection: 'auto', // Collect billing address (name will be pre-filled from customer_details)
       phone_number_collection: {
-        enabled: true, // Collect phone number during checkout
+        enabled: !crowdRequest.requester_phone, // Only collect phone if we don't already have it
       },
       metadata: {
         request_id: crowdRequest.id,

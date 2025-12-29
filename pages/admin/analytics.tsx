@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
 import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
 import { canAccessAdminPage } from '@/utils/subscription-access';
@@ -52,25 +53,14 @@ export default function AnalyticsPage() {
     }
   };
 
-  if (loading) {
-    return (
+  return (
+    <PageLoadingWrapper isLoading={loading} message="Loading analytics...">
       <AdminLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500"></div>
-            <p className="mt-4 text-gray-600">Loading analytics...</p>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <AnalyticsDashboard />
         </div>
       </AdminLayout>
-    );
-  }
-
-  return (
-    <AdminLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <AnalyticsDashboard />
-      </div>
-    </AdminLayout>
+    </PageLoadingWrapper>
   );
 }
 

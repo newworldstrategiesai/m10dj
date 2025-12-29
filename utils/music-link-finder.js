@@ -4,6 +4,9 @@
  * No API keys required - uses public search pages
  */
 
+// Import song casing normalizer
+import { normalizeSongCasing } from './song-casing-normalizer.js';
+
 // Import headless browser search functions
 let headlessBrowserSearch = null;
 async function getHeadlessBrowserSearch() {
@@ -86,6 +89,7 @@ export async function extractSongInfoFromYouTubeUrl(youtubeUrl) {
 
 /**
  * Find Spotify link by searching Spotify's web search
+ * Returns { url, trackName, artistName } or null
  */
 export async function findSpotifyLink(songTitle, artist) {
   try {
@@ -107,24 +111,31 @@ export async function findSpotifyLink(songTitle, artist) {
     });
 
     let foundLink = null;
+    let trackName = null;
+    let artistName = null;
     
     if (response.ok) {
       const html = await response.text();
       console.log(`Spotify: Fetched HTML (${html.length} chars), searching for links...`);
       
       // Try multiple extraction methods
-      // Method 1: Look for embedded JSON data
+      // Method 1: Look for embedded JSON data (best for getting track name and artist)
       const jsonMatch = html.match(/<script[^>]*id="initial-state"[^>]*>(.*?)<\/script>/i);
       if (jsonMatch) {
         try {
           const data = JSON.parse(jsonMatch[1]);
           const tracks = data?.entities?.tracks || data?.tracks?.items || [];
           if (tracks.length > 0) {
-            const trackId = tracks[0].id || tracks[0].uri?.split(':')[2];
+            const track = tracks[0];
+            const trackId = track.id || track.uri?.split(':')[2];
             if (trackId) {
               foundLink = `https://open.spotify.com/track/${trackId}`;
+              // Extract track name and artist from track data
+              trackName = track.name || track.title || null;
+              artistName = track.artists?.[0]?.name || track.artist?.[0]?.name || null;
               console.log('✅ Spotify link found via JSON:', foundLink);
-              return foundLink;
+              console.log('✅ Spotify track data:', { trackName, artistName });
+              return { url: foundLink, trackName, artistName };
             }
           }
         } catch (e) {
@@ -147,7 +158,20 @@ export async function findSpotifyLink(songTitle, artist) {
           if (trackId && trackId.length === 22) {
             foundLink = `https://open.spotify.com/track/${trackId}`;
             console.log('✅ Spotify link found via pattern:', foundLink);
-            return foundLink;
+            // Try to extract track name and artist from HTML
+            // Look for track name near the link
+            const trackNameMatch = html.match(new RegExp(`"name":"([^"]+)"[^}]*"uri":"spotify:track:${trackId}`, 'i')) ||
+                                  html.match(new RegExp(`spotify:track:${trackId}[^}]*"name":"([^"]+)"`, 'i'));
+            if (trackNameMatch) {
+              trackName = trackNameMatch[1];
+            }
+            // Look for artist name
+            const artistMatch = html.match(new RegExp(`"artists":\\[\\{[^}]*"name":"([^"]+)"[^}]*\\}[^}]*spotify:track:${trackId}`, 'i')) ||
+                              html.match(new RegExp(`spotify:track:${trackId}[^}]*"artists":\\[\\{[^}]*"name":"([^"]+)"`, 'i'));
+            if (artistMatch) {
+              artistName = artistMatch[1];
+            }
+            return { url: foundLink, trackName, artistName };
           }
         }
       }
@@ -166,7 +190,9 @@ export async function findSpotifyLink(songTitle, artist) {
         const result = await browserSearch.searchSpotifyWithBrowser(songTitle, artist);
         if (result) {
           console.log('Spotify: ✅ Headless browser found link:', result);
-          return result;
+          // If headless browser returns just a URL, return it with null track data
+          // (we'll fall back to title case)
+          return typeof result === 'string' ? { url: result, trackName: null, artistName: null } : result;
         } else {
           console.log('Spotify: ❌ Headless browser found no link');
         }
@@ -260,6 +286,7 @@ function validateYouTubeVideoMatch(videoTitle, videoDescription, songTitle, arti
 
 /**
  * Find YouTube link by searching YouTube with validation
+ * Returns { url, videoTitle } or null
  */
 export async function findYouTubeLink(songTitle, artist) {
   try {
@@ -318,7 +345,10 @@ export async function findYouTubeLink(songTitle, artist) {
         const bestMatch = videoCandidates[0];
         if (bestMatch && bestMatch.matchScore >= 0.4) {
           console.log(`YouTube match found: "${bestMatch.videoTitle}" (score: ${bestMatch.matchScore.toFixed(2)})`);
-          return bestMatch.url;
+          return {
+            url: bestMatch.url,
+            videoTitle: bestMatch.videoTitle
+          };
         } else if (bestMatch) {
           console.log(`YouTube match rejected: "${bestMatch.videoTitle}" (score: ${bestMatch.matchScore.toFixed(2)} below threshold)`);
         }
@@ -334,7 +364,10 @@ export async function findYouTubeLink(songTitle, artist) {
     const match = html.match(videoIdPattern);
     if (match && match[1]) {
       console.warn('Using fallback YouTube link extraction (no validation)');
-      return `https://www.youtube.com/watch?v=${match[1]}`;
+      return {
+        url: `https://www.youtube.com/watch?v=${match[1]}`,
+        videoTitle: null // No title available in fallback
+      };
     }
 
     return null;
@@ -546,13 +579,17 @@ export async function findMusicLinks(songTitle, artist, options = {}) {
   // But still try to search with what we have (some services might work with just title)
   if (!extractedSongTitle) {
     console.warn('No song title available for search');
+    // Still normalize casing even if we can't search
+    const normalized = normalizeSongCasing(songTitle, artist);
     return {
       spotify: null,
       youtube: youtubeUrl || null,
       tidal: null,
       apple_music: null,
       found_at: null,
-      search_method: 'web_scrape'
+      search_method: 'web_scrape',
+      normalized_title: normalized.normalizedTitle,
+      normalized_artist: normalized.normalizedArtist
     };
   }
 
@@ -562,11 +599,17 @@ export async function findMusicLinks(songTitle, artist, options = {}) {
     tidal: null,
     apple_music: null,
     found_at: new Date().toISOString(),
-    search_method: 'web_scrape'
+    search_method: 'web_scrape',
+    // Add fields for normalized casing
+    normalized_title: null,
+    normalized_artist: null
   };
 
   console.log(`Searching for: "${extractedSongTitle}" by "${extractedArtist || 'Unknown'}"`);
   console.log('Services to search:', services);
+
+  // Track Spotify track data for casing extraction
+  let spotifyTrackData = null;
 
   // Search all services in parallel with timeout
   const searchPromises = [];
@@ -574,28 +617,43 @@ export async function findMusicLinks(songTitle, artist, options = {}) {
   if (services.includes('spotify')) {
     searchPromises.push(
       Promise.race([
-        findSpotifyLink(extractedSongTitle, extractedArtist).then(url => {
-          console.log('Spotify result:', url ? 'Found' : 'Not found');
-          return url;
+        findSpotifyLink(extractedSongTitle, extractedArtist).then(result => {
+          if (result) {
+            console.log('Spotify result: Found', result.url ? 'with link' : 'without link');
+            return result;
+          }
+          console.log('Spotify result: Not found');
+          return null;
         }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
       ]).catch((err) => {
         console.error('Spotify search error:', err.message);
         return null;
-      }).then(url => { 
-        results.spotify = url;
-        if (url) console.log('✅ Spotify link found:', url);
+      }).then(result => { 
+        if (result) {
+          results.spotify = result.url;
+          // Store track data for casing extraction
+          if (result.trackName || result.artistName) {
+            spotifyTrackData = {
+              trackName: result.trackName,
+              artistName: result.artistName
+            };
+            console.log('✅ Spotify track data for casing:', spotifyTrackData);
+          }
+          if (result.url) console.log('✅ Spotify link found:', result.url);
+        }
       })
     );
   }
 
   // Only search YouTube if we don't already have a URL
+  // Note: We don't use YouTube for casing extraction anymore - only Spotify
   if (services.includes('youtube') && !results.youtube) {
     searchPromises.push(
       Promise.race([
-        findYouTubeLink(extractedSongTitle, extractedArtist).then(url => {
-          console.log('YouTube result:', url ? 'Found' : 'Not found');
-          return url;
+        findYouTubeLink(extractedSongTitle, extractedArtist).then(result => {
+          console.log('YouTube result:', result ? 'Found' : 'Not found');
+          return result?.url || result || null;
         }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
       ]).catch((err) => {
@@ -648,6 +706,33 @@ export async function findMusicLinks(songTitle, artist, options = {}) {
 
   console.log(`Waiting for ${searchPromises.length} search promises to complete...`);
   await Promise.allSettled(searchPromises);
+
+  // Extract normalized casing from Spotify track data if available
+  // Spotify has the most accurate casing, so we prioritize it
+  let apiTitle = null;
+  let apiArtist = null;
+  
+  if (spotifyTrackData) {
+    apiTitle = spotifyTrackData.trackName;
+    apiArtist = spotifyTrackData.artistName;
+    console.log('Using Spotify casing:', { apiTitle, apiArtist });
+  }
+  // Note: We no longer use YouTube for casing as it's less reliable
+
+  // Normalize casing (uses Spotify API casing if available, otherwise title case)
+  const normalized = normalizeSongCasing(extractedSongTitle, extractedArtist, {
+    apiTitle,
+    apiArtist
+  });
+  
+  results.normalized_title = normalized.normalizedTitle;
+  results.normalized_artist = normalized.normalizedArtist;
+  
+  console.log('Normalized casing:', {
+    original: { title: extractedSongTitle, artist: extractedArtist },
+    normalized: { title: results.normalized_title, artist: results.normalized_artist },
+    source: spotifyTrackData ? 'Spotify' : 'Title Case (fallback)'
+  });
 
   // Log final results
   const foundCount = [results.spotify, results.youtube, results.tidal, results.apple_music].filter(Boolean).length;

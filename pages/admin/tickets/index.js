@@ -128,7 +128,13 @@ export default function TicketsOverview() {
             {/* Events List */}
             {loading ? (
               <div className="modern-card text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4"></div>
+                <div className="flex items-center justify-center mb-4">
+                  <img
+                    src="/M10-Rotating-Logo.gif"
+                    alt="M10 DJ Company Loading"
+                    className="w-20 h-20 object-contain"
+                  />
+                </div>
                 <p className="text-gray-600 dark:text-gray-400">Loading events...</p>
               </div>
             ) : filteredEvents.length === 0 ? (

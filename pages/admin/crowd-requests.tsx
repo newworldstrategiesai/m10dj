@@ -9,7 +9,8 @@ import {
   Mic, 
   Download, 
   Copy, 
-  CheckCircle, 
+  CheckCircle,
+  CheckCircle2,
   AlertCircle, 
   Plus,
   RefreshCw,
@@ -42,7 +43,9 @@ import {
   ArrowUpDown,
   Gift,
   Minimize2,
-  Maximize2
+  Maximize2,
+  Globe,
+  Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +56,7 @@ import AdminLayout from '@/components/layouts/AdminLayout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/utils/cn';
@@ -73,12 +77,14 @@ interface CrowdRequest {
   recipient_message: string | null;
   requester_name: string;
   requester_email: string | null;
+  requester_venmo_username?: string | null;
   requester_phone: string | null;
   amount_requested: number;
   amount_paid: number;
   payment_status: string;
   payment_method: string | null;
   payment_intent_id: string | null;
+  payment_code: string | null;
   refund_amount: number | null;
   refunded_at: string | null;
   status: string;
@@ -154,6 +160,8 @@ export default function CrowdRequestsPage() {
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<CrowdRequest | null>(null);
+  const [successPageViews, setSuccessPageViews] = useState<any[]>([]);
+  const [loadingSuccessViews, setLoadingSuccessViews] = useState(false);
   const [dateRangeStart, setDateRangeStart] = useState<string>('');
   const [dateRangeEnd, setDateRangeEnd] = useState<string>('');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
@@ -253,7 +261,8 @@ export default function CrowdRequestsPage() {
   // Settings State
   const [paymentSettings, setPaymentSettings] = useState({
     cashAppTag: '$DJbenmurray',
-    venmoUsername: '@djbenmurray'
+    venmoUsername: '@djbenmurray',
+    venmoPhoneNumber: '' // Venmo phone number (digits only) for deep link fallback
   });
   const [requestSettings, setRequestSettings] = useState({
     fastTrackFee: 1000, // in cents ($10.00)
@@ -265,6 +274,20 @@ export default function CrowdRequestsPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundRequest, setRefundRequest] = useState<CrowdRequest | null>(null);
+  // Social Links state
+  const [socialLinks, setSocialLinks] = useState<Array<{
+    platform: string;
+    url: string;
+    label: string;
+    enabled: boolean;
+    order: number;
+  }>>([]);
+  // Bidding settings state
+  const [biddingSettings, setBiddingSettings] = useState({
+    enabled: false,
+    minimumBid: 500, // in cents
+    startingBid: 500 // in cents
+  });
   // Bidding state
   const [showBidHistoryModal, setShowBidHistoryModal] = useState(false);
   const [bidHistory, setBidHistory] = useState<any[]>([]);
@@ -296,6 +319,20 @@ export default function CrowdRequestsPage() {
     fetchPaymentSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Handle openRequest query parameter to open request detail modal
+  useEffect(() => {
+    const { openRequest } = router.query;
+    if (openRequest && typeof openRequest === 'string' && requests.length > 0) {
+      const request = requests.find(r => r.id === openRequest);
+      if (request) {
+        openDetailModal(request);
+        // Remove the query parameter from URL without reloading
+        router.replace('/admin/crowd-requests', undefined, { shallow: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.query.openRequest, requests]);
 
   // Fetch available events for audio tracking
   const fetchAvailableEvents = async () => {
@@ -388,6 +425,7 @@ export default function CrowdRequestsPage() {
         const data = result.settings ? Object.entries(result.settings).map(([key, value]) => ({ setting_key: key, setting_value: value })) : [];
         const cashAppSetting = data.find((s: any) => s.setting_key === 'crowd_request_cashapp_tag');
         const venmoSetting = data.find((s: any) => s.setting_key === 'crowd_request_venmo_username');
+        const venmoPhoneSetting = data.find((s: any) => s.setting_key === 'crowd_request_venmo_phone_number');
         const fastTrackFeeSetting = data.find((s: any) => s.setting_key === 'crowd_request_fast_track_fee');
         const minimumAmountSetting = data.find((s: any) => s.setting_key === 'crowd_request_minimum_amount');
         const presetAmountsSetting = data.find((s: any) => s.setting_key === 'crowd_request_preset_amounts');
@@ -399,6 +437,9 @@ export default function CrowdRequestsPage() {
         }
         if (venmoSetting) {
           setPaymentSettings(prev => ({ ...prev, venmoUsername: String(venmoSetting.setting_value ?? '') }));
+        }
+        if (venmoPhoneSetting) {
+          setPaymentSettings(prev => ({ ...prev, venmoPhoneNumber: String(venmoPhoneSetting.setting_value ?? '') }));
         }
         if (fastTrackFeeSetting) {
           setRequestSettings(prev => ({ ...prev, fastTrackFee: parseInt(String(fastTrackFeeSetting.setting_value || '1000')) || 1000 }));
@@ -467,6 +508,11 @@ export default function CrowdRequestsPage() {
 
       // Save Venmo username
       await saveAdminSetting('crowd_request_venmo_username', paymentSettings.venmoUsername);
+
+      // Save Venmo phone number (for deep link fallback - prevents phone verification)
+      if (paymentSettings.venmoPhoneNumber) {
+        await saveAdminSetting('crowd_request_venmo_phone_number', paymentSettings.venmoPhoneNumber);
+      }
 
       // Save fast-track fee
       await saveAdminSetting('crowd_request_fast_track_fee', requestSettings.fastTrackFee.toString());
@@ -611,6 +657,21 @@ export default function CrowdRequestsPage() {
         updateData.requests_show_fast_track = pageSettings.showFastTrack;
         updateData.requests_show_next_song = pageSettings.showNextSong;
         updateData.requests_show_bundle_discount = pageSettings.showBundleDiscount;
+        
+        // Save social links (filter out empty ones)
+        const validSocialLinks = socialLinks
+          .filter(link => link.url.trim() !== '' && link.label.trim() !== '')
+          .map(link => ({
+            ...link,
+            url: link.url.trim(),
+            label: link.label.trim(),
+          }));
+        updateData.social_links = validSocialLinks;
+        
+        // Save bidding settings
+        updateData.requests_bidding_enabled = biddingSettings.enabled;
+        updateData.requests_bidding_minimum_bid = biddingSettings.minimumBid;
+        updateData.requests_bidding_starting_bid = biddingSettings.startingBid;
 
         const { data: updatedOrg, error: orgError } = await supabase
           .from('organizations')
@@ -741,6 +802,19 @@ export default function CrowdRequestsPage() {
           setCoverPhotoHistory(loadPhotoHistory(refreshedOrg.requests_cover_photo_history));
           setArtistPhotoHistory(loadPhotoHistory(refreshedOrg.requests_artist_photo_history));
           setVenuePhotoHistory(loadPhotoHistory(refreshedOrg.requests_venue_photo_history));
+          
+          // Update social links
+          if (refreshedOrg.social_links && Array.isArray(refreshedOrg.social_links)) {
+            setSocialLinks(refreshedOrg.social_links.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)));
+          }
+          
+          // Update bidding settings
+          setBiddingSettings({
+            enabled: (refreshedOrg as any).requests_bidding_enabled || false,
+            minimumBid: (refreshedOrg as any).requests_bidding_minimum_bid || 500,
+            startingBid: (refreshedOrg as any).requests_bidding_starting_bid || 500
+          });
+          
           console.log('✅ Organization data refreshed:', refreshedOrg);
           console.log('🎯 Primary cover source after refresh:', {
             requests_primary_cover_source: refreshedOrg.requests_primary_cover_source,
@@ -1058,11 +1132,26 @@ export default function CrowdRequestsPage() {
       });
 
       // Filter by organization_id OR null (to catch orphaned requests that need assignment)
+      // Also include requests from other organizations to catch any missing requests
       // Note: We'll handle sorting in the frontend to allow dynamic column sorting
+      // 
+      // IMPORTANT: Show ALL requests, not just current organization
+      // This ensures Venmo payments from other orgs or orphaned requests are visible
+      // The RLS policy allows admins to view all requests, so we don't filter by organization_id
       const { data, error } = await supabase
         .from('crowd_requests')
-        .select('*')
-        .or(`organization_id.eq.${org.id},organization_id.is.null`); // Include requests for this org OR orphaned requests
+        .select(`
+          *,
+          organization:organization_id (
+            id,
+            name,
+            slug
+          )
+        `)
+        // Show ALL requests regardless of organization_id
+        // This ensures we don't miss any requests that might have been created with a different org_id
+        .order('created_at', { ascending: false })
+        .limit(10000); // Large limit to show all requests (adjust if needed)
 
       if (error) throw error;
       
@@ -1112,7 +1201,8 @@ export default function CrowdRequestsPage() {
       setRequests(requestsWithDetection);
       
       // Fetch Stripe customer names for requests that need them
-      // (have payment_intent_id but requester_name is "Guest" or empty)
+      // NOTE: New requests (after making name mandatory) will always have a name.
+      // This check is for legacy records that may still have "Guest" or empty names.
       const requestsNeedingNames = (data || []).filter(
         (req: CrowdRequest) => 
           (req.payment_intent_id || (req as any).stripe_session_id) && 
@@ -1295,7 +1385,8 @@ export default function CrowdRequestsPage() {
 
     if (qrType === 'public') {
       // Generate QR for public requests page
-      requestUrl = `${baseUrl}/requests`;
+      // Add ?qr=1 to automatically mark scans as QR code scans
+      requestUrl = `${baseUrl}/requests?qr=1`;
       qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(requestUrl)}`;
       setGeneratedPublicQR(qrCodeUrl);
       setGeneratedQR(null);
@@ -1309,7 +1400,8 @@ export default function CrowdRequestsPage() {
         });
         return;
       }
-      requestUrl = `${baseUrl}/crowd-request/${encodeURIComponent(qrEventCode)}`;
+      // Add ?qr=1 to automatically mark scans as QR code scans
+      requestUrl = `${baseUrl}/crowd-request/${encodeURIComponent(qrEventCode)}?qr=1`;
       qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(requestUrl)}`;
       setGeneratedQR(qrCodeUrl);
       setGeneratedPublicQR(null);
@@ -1326,10 +1418,12 @@ export default function CrowdRequestsPage() {
     let requestUrl: string;
     
     if (qrType === 'public') {
-      requestUrl = `${baseUrl}/requests`;
+      // Add ?qr=1 to automatically mark scans as QR code scans
+      requestUrl = `${baseUrl}/requests?qr=1`;
     } else {
       if (!qrEventCode.trim()) return;
-      requestUrl = `${baseUrl}/crowd-request/${encodeURIComponent(qrEventCode)}`;
+      // Add ?qr=1 to automatically mark scans as QR code scans
+      requestUrl = `${baseUrl}/crowd-request/${encodeURIComponent(qrEventCode)}?qr=1`;
     }
     
     navigator.clipboard.writeText(requestUrl);
@@ -1470,9 +1564,11 @@ export default function CrowdRequestsPage() {
       let requestUrl: string;
       
       if (qrType === 'public') {
-        requestUrl = `${baseUrl}/requests`;
+        // Add ?qr=1 to automatically mark scans as QR code scans
+        requestUrl = `${baseUrl}/requests?qr=1`;
       } else {
-        requestUrl = `${baseUrl}/crowd-request/${encodeURIComponent(qrEventCode)}`;
+        // Add ?qr=1 to automatically mark scans as QR code scans
+        requestUrl = `${baseUrl}/crowd-request/${encodeURIComponent(qrEventCode)}?qr=1`;
       }
 
       // Escape HTML in event name and date for safe rendering
@@ -2288,6 +2384,107 @@ export default function CrowdRequestsPage() {
     }
   };
 
+  const fetchSuccessPageViews = async (requestId: string) => {
+    if (!requestId) return;
+    
+    setLoadingSuccessViews(true);
+    try {
+      const response = await fetch(`/api/crowd-request/success-views?request_id=${requestId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSuccessPageViews(data.views || []);
+      }
+    } catch (error) {
+      console.error('Error fetching success page views:', error);
+    } finally {
+      setLoadingSuccessViews(false);
+    }
+  };
+
+  const updateVenmoUsername = async (requestId: string, venmoUsername: string) => {
+    try {
+      const response = await fetch('/api/crowd-request/update-venmo-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          venmoUsername: venmoUsername.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update Venmo username');
+      }
+
+      // Update local state
+      setRequests(prev => prev.map(r => 
+        r.id === requestId 
+          ? { ...r, requester_venmo_username: venmoUsername.trim() }
+          : r
+      ));
+      
+      if (selectedRequest?.id === requestId) {
+        setSelectedRequest(prev => prev ? { ...prev, requester_venmo_username: venmoUsername.trim() } : null);
+      }
+    } catch (error) {
+      console.error('Error updating Venmo username:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update Venmo username',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const updateRequesterName = async (requestId: string, requesterName: string) => {
+    try {
+      const response = await fetch('/api/crowd-request/update-requester-name', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          requesterName
+        })
+      });
+
+      // Check if response is OK before trying to parse JSON
+      if (!response.ok) {
+        // Try to parse error message from JSON, but handle HTML error pages
+        let errorMessage = 'Failed to update requester name';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // If JSON parsing fails, it's likely an HTML error page
+          errorMessage = `Server error (${response.status}). Please try again.`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: 'Success',
+        description: `Requester name updated to ${requesterName}`,
+      });
+      
+      // Update the selected request in state
+      if (selectedRequest && selectedRequest.id === requestId) {
+        setSelectedRequest({ ...selectedRequest, requester_name: requesterName });
+      }
+      
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error updating requester name:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update requester name',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Bulk operations
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -2354,20 +2551,75 @@ export default function CrowdRequestsPage() {
       return;
     }
 
+    const requestsToUpdate = Array.from(selectedRequests)
+      .map(id => requests.find(r => r.id === id))
+      .filter((r): r is CrowdRequest => r !== undefined);
+
+    // For bulk "paid" updates, check if any Venmo/CashApp payments need names
+    if (paymentStatus === 'paid') {
+      const venmoRequests = requestsToUpdate.filter(r => 
+        (r.payment_method === 'venmo' || r.payment_method === 'cashapp') &&
+        (!r.requester_name || r.requester_name === 'Guest')
+      );
+
+      if (venmoRequests.length > 0) {
+        const proceed = confirm(
+          `${venmoRequests.length} ${venmoRequests.length === 1 ? 'payment' : 'payments'} ${venmoRequests.length === 1 ? 'needs' : 'need'} a requester name.\n\n` +
+          `You'll be prompted for each name when marking them as paid.\n\n` +
+          `Continue?`
+        );
+        if (!proceed) return;
+      }
+    }
+
     try {
-      const updates = Array.from(selectedRequests).map(id => 
-        fetch('/api/crowd-request/update-payment-status', {
+      for (const request of requestsToUpdate) {
+        // For Venmo/CashApp payments being marked as paid, prompt for name if missing
+        if (paymentStatus === 'paid' && 
+            (request.payment_method === 'venmo' || request.payment_method === 'cashapp') &&
+            (!request.requester_name || request.requester_name === 'Guest')) {
+          const venmoName = prompt(
+            `Request: ${request.song_title || request.recipient_name || 'Request'}\n` +
+            `Payment Code: ${request.payment_code || 'N/A'}\n\n` +
+            `Enter the requester's name from the ${request.payment_method === 'venmo' ? 'Venmo' : 'CashApp'} transaction:\n\n` +
+            `(Leave blank to skip.)`,
+            ''
+          );
+          
+          // If name was provided, update it first
+          if (venmoName && venmoName.trim()) {
+            await updateRequesterName(request.id, venmoName.trim());
+          }
+        }
+
+        // For Venmo payments, also prompt for Venmo username if not already set
+        if (paymentStatus === 'paid' && 
+            request.payment_method === 'venmo' &&
+            !request.requester_venmo_username) {
+          const venmoUsername = prompt(
+            `Request: ${request.song_title || request.recipient_name || 'Request'}\n` +
+            `Payment Code: ${request.payment_code || 'N/A'}\n\n` +
+            `Enter the customer's Venmo username from the transaction (e.g., @username):\n\n` +
+            `(Leave blank to skip.)`,
+            ''
+          );
+          
+          // If username was provided, update it
+          if (venmoUsername && venmoUsername.trim()) {
+            await updateVenmoUsername(request.id, venmoUsername.trim());
+          }
+        }
+
+        await fetch('/api/crowd-request/update-payment-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            requestId: id,
+            requestId: request.id,
             paymentStatus,
-            paymentMethod: 'manual'
+            paymentMethod: request.payment_method || 'manual'
           })
-        })
-      );
-
-      await Promise.all(updates);
+        });
+      }
       
       toast({
         title: 'Success',
@@ -2531,10 +2783,13 @@ export default function CrowdRequestsPage() {
     setSelectedRequest(request);
     setShowDetailModal(true);
     setStripeDetails(null);
+    setSuccessPageViews([]); // Reset success page views
     // Auto-fetch Stripe details if payment_intent_id or stripe_session_id exists
     if (request.payment_intent_id || (request as any).stripe_session_id) {
       fetchStripeDetails(request);
     }
+    // Fetch success page views
+    fetchSuccessPageViews(request.id);
   };
 
   // Fetch Stripe payment details
@@ -2860,7 +3115,9 @@ export default function CrowdRequestsPage() {
       request.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.event_qr_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.requester_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.requester_phone?.toLowerCase().includes(searchTerm.toLowerCase());
+      request.requester_phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.payment_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.id?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || request.status === statusFilter || 
                          (statusFilter === 'paid' && request.payment_status === 'paid');
@@ -3042,6 +3299,18 @@ export default function CrowdRequestsPage() {
         if (org) {
           setSubscriptionTier(org.subscription_tier);
           setOrganization(org);
+          
+          // Load social links
+          if ((org as any).social_links && Array.isArray((org as any).social_links)) {
+            setSocialLinks((org as any).social_links.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)));
+          }
+          
+          // Load bidding settings
+          setBiddingSettings({
+            enabled: (org as any).requests_bidding_enabled || false,
+            minimumBid: (org as any).requests_bidding_minimum_bid || 500,
+            startingBid: (org as any).requests_bidding_starting_bid || 500
+          });
         }
       } catch (error) {
         console.error('Error checking subscription tier:', error);
@@ -3132,6 +3401,50 @@ export default function CrowdRequestsPage() {
               <QrCode className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">{showQRGenerator ? 'Hide' : 'Generate'} QR Code</span>
               <span className="sm:hidden">QR Code</span>
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/crowd-request/find-missing-venmo?days=7&paymentMethod=venmo');
+                  const data = await response.json();
+                  if (data.success) {
+                    toast({
+                      title: 'Missing Requests Found',
+                      description: `Found ${data.summary.total} requests. ${data.summary.without_organization} without organization. Check console for details.`,
+                    });
+                    console.log('Missing requests data:', data);
+                    // If there are requests without organization, offer to assign them
+                    if (data.without_organization.length > 0 && organization?.id) {
+                      const assign = confirm(`Found ${data.without_organization.length} requests without organization. Assign them to your organization?`);
+                      if (assign) {
+                        for (const req of data.without_organization) {
+                          await supabase
+                            .from('crowd_requests')
+                            .update({ organization_id: organization.id })
+                            .eq('id', req.id);
+                        }
+                        toast({
+                          title: 'Success',
+                          description: `Assigned ${data.without_organization.length} request(s) to your organization`,
+                        });
+                        fetchRequests();
+                      }
+                    }
+                  }
+                } catch (error) {
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to find missing requests',
+                    variant: 'destructive',
+                  });
+                }
+              }}
+              variant="outline"
+              className="inline-flex items-center gap-2 whitespace-nowrap"
+              title="Find missing Venmo requests from the last 7 days"
+            >
+              <Search className="w-4 h-4" />
+              <span className="hidden sm:inline">Find Missing</span>
             </Button>
             <Button
               onClick={handleManualSync}
@@ -3361,7 +3674,7 @@ export default function CrowdRequestsPage() {
                           Request URL:
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded break-all">
-                          {process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/crowd-request/{qrEventCode}
+                          {process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/crowd-request/{qrEventCode}?qr=1
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                           Scan this QR code or share the URL above with your event attendees.
@@ -3446,7 +3759,7 @@ export default function CrowdRequestsPage() {
                           Public Requests URL:
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded break-all">
-                          {process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/requests
+                          {process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/requests?qr=1
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                           Scan this QR code or share the URL above. This page is publicly accessible to anyone.
@@ -3682,7 +3995,7 @@ export default function CrowdRequestsPage() {
             {/* Tabbed Content - Scrollable */}
             <div className="flex-1 overflow-y-auto p-8">
               <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v)} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                <TabsList className="grid w-full grid-cols-6 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
                   <TabsTrigger value="payment" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
                     <DollarSign className="w-4 h-4" />
                     <span className="hidden sm:inline">Payment</span>
@@ -3698,6 +4011,14 @@ export default function CrowdRequestsPage() {
                   <TabsTrigger value="content" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
                     <FileText className="w-4 h-4" />
                     <span className="hidden sm:inline">Content</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="social" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                    <Globe className="w-4 h-4" />
+                    <span className="hidden sm:inline">Social</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="bidding" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:inline">Bidding</span>
                   </TabsTrigger>
                 </TabsList>
 
@@ -3748,6 +4069,27 @@ export default function CrowdRequestsPage() {
                           Your Venmo username for manual payments
                         </p>
                       </div>
+                    </div>
+                    
+                    <div className="mt-6 space-y-2">
+                      <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                        Venmo Phone Number (Optional - Recommended)
+                      </label>
+                      <Input
+                        type="tel"
+                        value={paymentSettings.venmoPhoneNumber}
+                        onChange={(e) => {
+                          // Only allow digits
+                          const digits = e.target.value.replace(/\D/g, '');
+                          setPaymentSettings(prev => ({ ...prev, venmoPhoneNumber: digits }));
+                        }}
+                        placeholder="9014977001"
+                        className="w-full"
+                        maxLength={10}
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Your Venmo phone number (10 digits, no dashes). This prevents customers from needing to verify your phone number when making payments. If provided, the deep link will use your phone number instead of username, which is more reliable.
+                      </p>
                     </div>
                   </div>
                 </TabsContent>
@@ -4833,6 +5175,345 @@ export default function CrowdRequestsPage() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Social Links Tab */}
+                <TabsContent value="social" className="space-y-6 mt-0">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                          <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                            Social Links
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Add social media links to display on your requests page
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const newLink = {
+                            platform: 'custom',
+                            url: '',
+                            label: '',
+                            enabled: true,
+                            order: socialLinks.length + 1
+                          };
+                          setSocialLinks([...socialLinks, newLink]);
+                        }}
+                        className="bg-[#fcba00] hover:bg-[#d99f00] text-black"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Link
+                      </Button>
+                    </div>
+
+                    {socialLinks.length === 0 ? (
+                      <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                        <Globe className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                        <p className="text-gray-500 dark:text-gray-400 mb-2 font-medium">No social links added yet</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
+                          Default links (Instagram & Facebook) will be shown to visitors
+                        </p>
+                        <Button
+                          onClick={() => {
+                            const newLink = {
+                              platform: 'custom',
+                              url: '',
+                              label: '',
+                              enabled: true,
+                              order: 1
+                            };
+                            setSocialLinks([newLink]);
+                          }}
+                          variant="outline"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Your First Link
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {socialLinks.map((link, index) => (
+                          <div
+                            key={index}
+                            className={`border rounded-lg p-4 transition-all ${
+                              link.enabled
+                                ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
+                                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 opacity-60'
+                            }`}
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className="flex flex-col gap-1 pt-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (index > 0) {
+                                      const updated = [...socialLinks];
+                                      [updated[index], updated[index - 1]] = [updated[index - 1], updated[index]];
+                                      updated[index].order = index + 1;
+                                      updated[index - 1].order = index;
+                                      setSocialLinks(updated);
+                                    }
+                                  }}
+                                  disabled={index === 0}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <ArrowUp className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (index < socialLinks.length - 1) {
+                                      const updated = [...socialLinks];
+                                      [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
+                                      updated[index].order = index + 1;
+                                      updated[index + 1].order = index + 2;
+                                      setSocialLinks(updated);
+                                    }
+                                  }}
+                                  disabled={index === socialLinks.length - 1}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <ArrowDown className="w-3 h-3" />
+                                </Button>
+                              </div>
+
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Platform
+                                  </label>
+                                  <select
+                                    value={link.platform}
+                                    onChange={(e) => {
+                                      const updated = [...socialLinks];
+                                      updated[index] = { ...updated[index], platform: e.target.value };
+                                      if (e.target.value !== 'custom' && !updated[index].label) {
+                                        const platforms: Record<string, string> = {
+                                          facebook: 'Facebook',
+                                          instagram: 'Instagram',
+                                          twitter: 'Twitter/X',
+                                          youtube: 'YouTube',
+                                          tiktok: 'TikTok',
+                                          linkedin: 'LinkedIn',
+                                          snapchat: 'Snapchat',
+                                          pinterest: 'Pinterest'
+                                        };
+                                        updated[index].label = platforms[e.target.value] || e.target.value;
+                                      }
+                                      setSocialLinks(updated);
+                                    }}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  >
+                                    <option value="custom">Custom Link</option>
+                                    <option value="facebook">Facebook</option>
+                                    <option value="instagram">Instagram</option>
+                                    <option value="twitter">Twitter/X</option>
+                                    <option value="youtube">YouTube</option>
+                                    <option value="tiktok">TikTok</option>
+                                    <option value="linkedin">LinkedIn</option>
+                                    <option value="snapchat">Snapchat</option>
+                                    <option value="pinterest">Pinterest</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Link Label
+                                  </label>
+                                  <Input
+                                    type="text"
+                                    value={link.label}
+                                    onChange={(e) => {
+                                      const updated = [...socialLinks];
+                                      updated[index] = { ...updated[index], label: e.target.value };
+                                      setSocialLinks(updated);
+                                    }}
+                                    placeholder="e.g., Follow Us"
+                                    className="w-full"
+                                  />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    URL
+                                  </label>
+                                  <Input
+                                    type="url"
+                                    value={link.url}
+                                    onChange={(e) => {
+                                      const updated = [...socialLinks];
+                                      updated[index] = { ...updated[index], url: e.target.value };
+                                      setSocialLinks(updated);
+                                    }}
+                                    placeholder="https://..."
+                                    className="w-full"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-end gap-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={link.enabled}
+                                    onChange={(e) => {
+                                      const updated = [...socialLinks];
+                                      updated[index] = { ...updated[index], enabled: e.target.checked };
+                                      setSocialLinks(updated);
+                                    }}
+                                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                                  />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">Enabled</span>
+                                </label>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSocialLinks(socialLinks.filter((_, i) => i !== index));
+                                  }}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* Bidding Mode Tab */}
+                <TabsContent value="bidding" className="space-y-6 mt-0">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                        <Settings className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          Bidding War Mode
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Enable competitive bidding for song requests
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">
+                          How Bidding Mode Works
+                        </h4>
+                        <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-disc list-inside">
+                          <li>Users submit requests and place bids</li>
+                          <li>Every 30 minutes, the highest bidder wins</li>
+                          <li>Winner is charged, others&apos; authorizations are released</li>
+                          <li>Winning request is played by the DJ</li>
+                        </ul>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Enable Bidding War Mode
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            When enabled, requests go to bidding rounds instead of direct payment
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={biddingSettings.enabled}
+                            onChange={(e) => {
+                              setBiddingSettings(prev => ({ ...prev, enabled: e.target.checked }));
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#fcba00]/20 dark:peer-focus:ring-[#fcba00]/40 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#fcba00]"></div>
+                        </label>
+                      </div>
+
+                      {biddingSettings.enabled && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                              Starting Bid Amount <span className="text-red-500">*</span>
+                            </label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                              The default initial bid amount for new requests. This ensures bids never start at $0. (in dollars)
+                            </p>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="1"
+                                value={(biddingSettings.startingBid / 100).toFixed(2)}
+                                onChange={(e) => {
+                                  const value = Math.round(parseFloat(e.target.value) * 100) || 100;
+                                  setBiddingSettings(prev => ({ ...prev, startingBid: Math.max(100, value) }));
+                                }}
+                                className="w-full pl-8"
+                                placeholder="5.00"
+                              />
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                              Current starting bid: ${(biddingSettings.startingBid / 100).toFixed(2)} (stored as {biddingSettings.startingBid} cents)
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                              Minimum Bid Amount
+                            </label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                              The minimum amount users must bid to beat the current winning bid (in dollars)
+                            </p>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="1"
+                                value={(biddingSettings.minimumBid / 100).toFixed(2)}
+                                onChange={(e) => {
+                                  const value = Math.round(parseFloat(e.target.value) * 100) || 100;
+                                  setBiddingSettings(prev => ({ ...prev, minimumBid: Math.max(100, value) }));
+                                }}
+                                className="w-full pl-8"
+                                placeholder="5.00"
+                              />
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                              Current minimum: ${(biddingSettings.minimumBid / 100).toFixed(2)} (stored as {biddingSettings.minimumBid} cents)
+                            </p>
+                          </div>
+                        </>
+                      )}
+
+                      {!biddingSettings.enabled && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Bidding mode is currently <strong>disabled</strong>. Requests will use the normal payment flow.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </TabsContent>
@@ -5973,6 +6654,20 @@ export default function CrowdRequestsPage() {
                 </Button>
           
           <Button
+            onClick={() => {
+              setShowAudioTrackingModal(true);
+              setSelectedEventCode(null);
+              setSelectedEventId(null);
+            }}
+            variant={showAudioTrackingModal ? "default" : "outline"}
+            className="inline-flex items-center gap-2"
+            title="Start live song detection"
+          >
+            <Mic className={`w-4 h-4 ${showAudioTrackingModal ? 'animate-pulse' : ''}`} />
+            {showAudioTrackingModal ? 'Listening...' : 'Live Listening'}
+          </Button>
+
+          <Button
             onClick={fetchRequests}
             variant="outline"
             className="inline-flex items-center gap-2"
@@ -6261,6 +6956,16 @@ export default function CrowdRequestsPage() {
                                   Bidding
                                 </Badge>
                               )}
+                              {!request.organization_id && (
+                                <Badge className="bg-yellow-500 text-white flex items-center gap-1 px-2 py-0.5" title="Orphaned - No organization assigned">
+                                  ⚠️ Orphaned
+                                </Badge>
+                              )}
+                              {request.organization_id && request.organization_id !== organization?.id && (request as any).organization && (
+                                <Badge className="bg-blue-500 text-white flex items-center gap-1 px-2 py-0.5" title={`From organization: ${(request as any).organization?.name || 'Other'}`}>
+                                  🏢 {(request as any).organization?.name || 'Other Org'}
+                                </Badge>
+                              )}
                             </div>
                             {request.request_type === 'song_request' && request.song_artist && (
                               <>
@@ -6280,6 +6985,7 @@ export default function CrowdRequestsPage() {
                                     songArtist={request.song_artist}
                                     postedLink={request.posted_link || null}
                                     links={request.music_service_links || null}
+                                    showRefreshButton={false}
                                     onLinksUpdated={(newLinks) => {
                                       // Update the request in local state
                                       setRequests(prev => prev.map(r => 
@@ -6394,23 +7100,9 @@ export default function CrowdRequestsPage() {
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                         {new Date(request.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex flex-col gap-2">
-                          {!request.organization_id && (
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm('Assign this orphaned request to your organization?')) {
-                                  assignRequestToOrganization(request.id);
-                                }
-                              }}
-                              size="sm"
-                              className="text-xs h-7 w-full bg-yellow-600 hover:bg-yellow-700 text-white"
-                              title="This request has no organization assigned. Click to assign it to your organization."
-                            >
-                              Assign to Org
-                            </Button>
-                          )}
+                      <td className="px-6 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                          {/* Quick Action - View Details */}
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -6418,210 +7110,254 @@ export default function CrowdRequestsPage() {
                             }}
                             size="sm"
                             variant="outline"
-                            className="text-xs h-7 w-full"
+                            className="h-8 px-3"
+                            title="View Details"
                           >
-                            <Eye className="w-3 h-3 mr-1" />
-                            View Details
+                            <Eye className="w-4 h-4" />
                           </Button>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteRequest(request.id);
-                            }}
-                            size="sm"
-                            variant="destructive"
-                            className="text-xs h-7 w-full"
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Delete
-                          </Button>
-                          <select
-                            value={request.status}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              updateRequestStatus(request.id, e.target.value);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                          >
-                            <option value="new">New</option>
-                            <option value="acknowledged">Acknowledged</option>
-                            <option value="playing">Playing</option>
-                            <option value="played">Played</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
                           
-                          {/* Live Listen button - Show for song requests */}
-                          {request.request_type === 'song_request' && request.event_qr_code && (
-                            <Button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                setSelectedEventCode(request.event_qr_code);
-                                setSelectedEventId(null);
-                                setShowAudioTrackingModal(true);
-                                
-                                // Fetch event ID
-                                if (request.event_qr_code) {
-                                  setLoadingEventId(true);
-                                  const { data: eventData, error } = await supabase
-                                    .from('events')
-                                    .select('id')
-                                    .eq('event_qr_code', request.event_qr_code)
-                                    .single();
-                                  
-                                  if (!error && eventData) {
-                                    setSelectedEventId(eventData.id);
-                                  }
-                                  setLoadingEventId(false);
-                                }
-                              }}
-                              size="sm"
-                              className="text-xs h-7 w-full bg-purple-600 hover:bg-purple-700 text-white"
-                              title="Start live song detection for this event"
-                            >
-                              <Mic className="w-3 h-3 mr-1" />
-                              Live Listen
-                            </Button>
-                          )}
-                          {/* Mark as Played button - Show for song requests that aren't already played */}
-                          {request.request_type === 'song_request' && request.status !== 'played' && (
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markAsPlayed(request.id);
-                              }}
-                              size="sm"
-                              className="text-xs h-7 w-full bg-green-600 hover:bg-green-700 text-white"
-                              title="Mark this song request as played"
-                            >
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Mark as Played
-                            </Button>
-                          )}
-                          
-                          {/* Bidding-specific actions */}
-                          {request.bidding_enabled && request.bidding_round_id && (
-                            <>
+                          {/* Single Consolidated Actions Dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                               <Button
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  await handleViewBidHistory(request.id, request.bidding_round_id!);
-                                }}
-                                size="sm"
                                 variant="outline"
-                                className="text-xs h-7 w-full border-purple-500 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                                size="sm"
+                                className="h-8 px-3"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <DollarSign className="w-3 h-3 mr-1" />
-                                View Bid History
+                                <MoreVertical className="w-4 h-4" />
                               </Button>
-                              {request.payment_status === 'pending' && request.current_bid_amount && (
-                                <>
-                                  <Button
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      if (confirm(`Charge the winning bid of $${(request.current_bid_amount! / 100).toFixed(2)}?`)) {
-                                        await handleChargeWinningBid(request.id);
-                                      }
-                                    }}
-                                    size="sm"
-                                    className="text-xs h-7 w-full bg-green-600 hover:bg-green-700 text-white"
-                                  >
-                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                    Charge Winning Bid
-                                  </Button>
-                                  <Button
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      if (confirm('Cancel this bid authorization? The payment hold will be released.')) {
-                                        await handleCancelBidAuthorization(request.id);
-                                      }
-                                    }}
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs h-7 w-full border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                  >
-                                    <X className="w-3 h-3 mr-1" />
-                                    Cancel Authorization
-                                  </Button>
-                                </>
-                              )}
-                            </>
-                          )}
-                          
-                          {/* Payment Status Update - Show for pending payments (non-bidding) */}
-                          {!request.bidding_enabled && request.payment_status === 'pending' && (
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const paymentMethod = request.payment_method || 'manual';
-                                updatePaymentStatus(request.id, 'paid', paymentMethod);
-                              }}
-                              size="sm"
-                              className="text-xs h-6 bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              Mark Paid
-                            </Button>
-                          )}
-                          
-                          {/* Show payment method if paid */}
-                          {request.payment_status === 'paid' && request.payment_method && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {request.payment_method === 'card' ? '💳 Card' : 
-                                 request.payment_method === 'cashapp' ? '💰 CashApp' :
-                                 request.payment_method === 'venmo' ? '💸 Venmo' :
-                                 '✅ Paid'}
-                              </span>
-                              {/* Refund button - for Stripe, Venmo, and CashApp payments */}
-                              {(request.payment_intent_id || request.payment_method === 'venmo' || request.payment_method === 'cashapp') && (
-                                <Button
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
+                              {/* View Details (duplicate for convenience) */}
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDetailModal(request);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuSeparator />
+                              
+                              {/* Status Change */}
+                              <div className="px-2 py-1.5">
+                                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Change Status</p>
+                                <select
+                                  value={request.status}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    updateRequestStatus(request.id, e.target.value);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                >
+                                  <option value="new">New</option>
+                                  <option value="acknowledged">Acknowledged</option>
+                                  <option value="playing">Playing</option>
+                                  <option value="played">Played</option>
+                                  <option value="cancelled">Cancelled</option>
+                                </select>
+                              </div>
+                              
+                              <DropdownMenuSeparator />
+                              
+                              {/* Assign to Org */}
+                              {!request.organization_id && (
+                                <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (request.payment_method === 'venmo') {
-                                      handleVenmoRefundClick(request);
-                                    } else {
-                                      const isStripe = !!request.payment_intent_id;
-                                      const paymentMethodName = request.payment_method === 'cashapp' ? 'CashApp' : 'Stripe';
-                                      const confirmMessage = isStripe
-                                        ? 'Are you sure you want to refund this payment? The refund will be processed automatically via Stripe.'
-                                        : `Are you sure you want to mark this ${paymentMethodName} payment as refunded? You must process the refund manually in ${paymentMethodName} first.`;
-                                      
-                                      if (confirm(confirmMessage)) {
-                                        handleRefund(request.id, true);
-                                      }
+                                    if (confirm('Assign this orphaned request to your organization?')) {
+                                      assignRequestToOrganization(request.id);
                                     }
                                   }}
-                                  size="sm"
-                                  className={`text-xs h-6 ${
-                                    request.payment_intent_id 
-                                      ? 'bg-red-600 hover:bg-red-700' 
-                                      : 'bg-orange-600 hover:bg-orange-700'
-                                  } text-white`}
-                                  title={request.payment_intent_id 
-                                    ? "Refund payment via Stripe" 
-                                    : request.payment_method === 'venmo'
-                                    ? "Open Venmo to send refund"
-                                    : `Mark as refunded (process refund manually in CashApp first)`}
+                                  className="text-yellow-600 dark:text-yellow-400"
                                 >
-                                  <RotateCcw className="w-3 h-3 mr-1" />
-                                  {request.payment_intent_id ? 'Refund' : request.payment_method === 'venmo' ? 'Refund' : 'Mark Refunded'}
-                                </Button>
+                                  <Settings className="w-4 h-4 mr-2" />
+                                  Assign to Org
+                                </DropdownMenuItem>
                               )}
-                            </div>
-                          )}
-                          {/* Show refund status if refunded */}
-                          {(request.payment_status === 'refunded' || request.payment_status === 'partially_refunded') && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-red-600 dark:text-red-400 font-medium">
-                                {request.payment_status === 'refunded' ? '🔄 Refunded' : '🔄 Partially Refunded'}
-                              </span>
-                              {request.refund_amount && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                  ${(request.refund_amount / 100).toFixed(2)}
-                                </span>
+                              
+                              {/* Mark as Played */}
+                              {request.request_type === 'song_request' && request.status !== 'played' && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markAsPlayed(request.id);
+                                  }}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Mark as Played
+                                </DropdownMenuItem>
                               )}
-                            </div>
-                          )}
+                              
+                              {/* Bidding Actions */}
+                              {request.bidding_enabled && request.bidding_round_id && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await handleViewBidHistory(request.id, request.bidding_round_id!);
+                                    }}
+                                  >
+                                    <DollarSign className="w-4 h-4 mr-2" />
+                                    View Bid History
+                                  </DropdownMenuItem>
+                                  {request.payment_status === 'pending' && request.current_bid_amount && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          if (confirm(`Charge the winning bid of $${(request.current_bid_amount! / 100).toFixed(2)}?`)) {
+                                            await handleChargeWinningBid(request.id);
+                                          }
+                                        }}
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Charge Winning Bid
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          if (confirm('Cancel this bid authorization? The payment hold will be released.')) {
+                                            await handleCancelBidAuthorization(request.id);
+                                          }
+                                        }}
+                                        className="text-red-600 dark:text-red-400"
+                                      >
+                                        <X className="w-4 h-4 mr-2" />
+                                        Cancel Authorization
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </>
+                              )}
+                              
+                              {/* Payment Actions */}
+                              {!request.bidding_enabled && request.payment_status === 'pending' && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const paymentMethod = request.payment_method || 'manual';
+                                      
+                                      if ((paymentMethod === 'venmo' || paymentMethod === 'cashapp') && 
+                                          (!request.requester_name || request.requester_name === 'Guest')) {
+                                        const venmoName = prompt(
+                                          `Request: ${request.song_title || request.recipient_name || 'Request'}\n` +
+                                          `Payment Code: ${request.payment_code || 'N/A'}\n\n` +
+                                          `Enter the requester's name from the ${paymentMethod === 'venmo' ? 'Venmo' : 'CashApp'} transaction:\n\n` +
+                                          `(This helps match the payment. Leave blank to skip.)`,
+                                          ''
+                                        );
+                                        
+                                        if (venmoName && venmoName.trim()) {
+                                          await updateRequesterName(request.id, venmoName.trim());
+                                        }
+                                      }
+
+                                      // For Venmo payments, also prompt for Venmo username if not already set
+                                      if (paymentMethod === 'venmo' && !request.requester_venmo_username) {
+                                        const venmoUsername = prompt(
+                                          `Request: ${request.song_title || request.recipient_name || 'Request'}\n` +
+                                          `Payment Code: ${request.payment_code || 'N/A'}\n\n` +
+                                          `Enter the customer's Venmo username from the transaction (e.g., @username):\n\n` +
+                                          `(Leave blank to skip.)`,
+                                          ''
+                                        );
+                                        
+                                        if (venmoUsername && venmoUsername.trim()) {
+                                          await updateVenmoUsername(request.id, venmoUsername.trim());
+                                        }
+                                      }
+                                      
+                                      await updatePaymentStatus(request.id, 'paid', paymentMethod);
+                                    }}
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    Mark Paid
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              
+                              {/* Refund Actions */}
+                              {request.payment_status === 'paid' && 
+                               (request.payment_intent_id || request.payment_method === 'venmo' || request.payment_method === 'cashapp') && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (request.payment_method === 'venmo') {
+                                        handleVenmoRefundClick(request);
+                                      } else {
+                                        const isStripe = !!request.payment_intent_id;
+                                        const paymentMethodName = request.payment_method === 'cashapp' ? 'CashApp' : 'Stripe';
+                                        const confirmMessage = isStripe
+                                          ? 'Are you sure you want to refund this payment? The refund will be processed automatically via Stripe.'
+                                          : `Are you sure you want to mark this ${paymentMethodName} payment as refunded? You must process the refund manually in ${paymentMethodName} first.`;
+                                        
+                                        if (confirm(confirmMessage)) {
+                                          handleRefund(request.id, true);
+                                        }
+                                      }
+                                    }}
+                                    className="text-red-600 dark:text-red-400"
+                                  >
+                                    <RotateCcw className="w-4 h-4 mr-2" />
+                                    {request.payment_intent_id ? 'Refund via Stripe' : request.payment_method === 'venmo' ? 'Refund via Venmo' : 'Mark as Refunded'}
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              
+                              {/* Payment Method Display */}
+                              {request.payment_status === 'paid' && request.payment_method && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <div className="px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                    {request.payment_method === 'card' ? '💳 Card' : 
+                                     request.payment_method === 'cashapp' ? '💰 CashApp' :
+                                     request.payment_method === 'venmo' ? '💸 Venmo' :
+                                     '✅ Paid'}
+                                  </div>
+                                </>
+                              )}
+                              
+                              {/* Refund Status */}
+                              {(request.payment_status === 'refunded' || request.payment_status === 'partially_refunded') && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <div className="px-2 py-1.5 text-xs">
+                                    <span className="text-red-600 dark:text-red-400 font-medium">
+                                      {request.payment_status === 'refunded' ? '🔄 Refunded' : '🔄 Partially Refunded'}
+                                    </span>
+                                    {request.refund_amount && (
+                                      <span className="text-gray-500 dark:text-gray-400 ml-2">
+                                        ${(request.refund_amount / 100).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                              
+                              {/* Delete - Always at the bottom */}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRequest(request.id);
+                                }}
+                                className="text-red-600 dark:text-red-400"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </td>
                     </tr>
@@ -6662,6 +7398,20 @@ export default function CrowdRequestsPage() {
                             ? `Shoutout for ${request.recipient_name}`
                             : 'Tip'}
                         </p>
+                        {/* Played/Unplayed Status for Song Requests */}
+                        {request.request_type === 'song_request' && (
+                          request.status === 'played' ? (
+                            <Badge className="bg-green-600 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+                              <CheckCircle className="w-3 h-3" />
+                              Played
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-gray-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+                              <Clock className="w-3 h-3" />
+                              Not Played
+                            </Badge>
+                          )
+                        )}
                         {request.is_fast_track && (
                           <Badge className="bg-orange-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs">
                             <Zap className="w-3 h-3" />
@@ -6778,38 +7528,7 @@ export default function CrowdRequestsPage() {
                       {new Date(request.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                    {request.request_type === 'song_request' && request.event_qr_code && (
-                      <Button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          setSelectedEventCode(request.event_qr_code);
-                          setSelectedEventId(null);
-                          setShowAudioTrackingModal(true);
-                          
-                          // Fetch event ID
-                          if (request.event_qr_code) {
-                            setLoadingEventId(true);
-                            const { data: eventData, error } = await supabase
-                              .from('events')
-                              .select('id')
-                              .eq('event_qr_code', request.event_qr_code)
-                              .single();
-                            
-                            if (!error && eventData) {
-                              setSelectedEventId(eventData.id);
-                            }
-                            setLoadingEventId(false);
-                          }
-                        }}
-                        size="sm"
-                        className="text-xs h-8 bg-purple-600 hover:bg-purple-700 text-white"
-                        title="Start live song detection for this event"
-                      >
-                        <Mic className="w-3 h-3 mr-1" />
-                        Listen
-                      </Button>
-                    )}
+                  <div className="flex gap-1.5 flex-wrap overflow-x-auto" onClick={(e) => e.stopPropagation()}>
                     {!request.organization_id && (
                       <Button
                         onClick={(e) => {
@@ -6819,9 +7538,24 @@ export default function CrowdRequestsPage() {
                           }
                         }}
                         size="sm"
-                        className="text-xs h-8 bg-yellow-600 hover:bg-yellow-700 text-white"
+                        className="text-xs h-7 px-2 bg-yellow-600 hover:bg-yellow-700 text-white flex-shrink-0"
+                        title="Assign to organization"
                       >
-                        Assign
+                        <Settings className="w-3 h-3" />
+                      </Button>
+                    )}
+                    {/* Mark as Played - Only for song requests that haven't been played */}
+                    {request.request_type === 'song_request' && request.status !== 'played' && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markAsPlayed(request.id);
+                        }}
+                        size="sm"
+                        className="text-xs h-7 px-2 bg-green-600 hover:bg-green-700 text-white flex-shrink-0"
+                        title="Mark as played"
+                      >
+                        <CheckCircle className="w-3 h-3" />
                       </Button>
                     )}
                     <Button
@@ -6831,10 +7565,10 @@ export default function CrowdRequestsPage() {
                       }}
                       size="sm"
                       variant="outline"
-                      className="text-xs h-8"
+                      className="text-xs h-7 px-2 flex-shrink-0"
+                      title="View details"
                     >
-                      <Eye className="w-3 h-3 mr-1" />
-                      View
+                      <Eye className="w-3 h-3" />
                     </Button>
                     <Button
                       onClick={(e) => {
@@ -6843,10 +7577,10 @@ export default function CrowdRequestsPage() {
                       }}
                       size="sm"
                       variant="destructive"
-                      className="text-xs h-8"
+                      className="text-xs h-7 px-2 flex-shrink-0"
+                      title="Delete request"
                     >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      Delete
+                      <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
                 </div>
@@ -6976,9 +7710,95 @@ export default function CrowdRequestsPage() {
                   </div>
 
                   <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Status</p>
-                    <div className="flex items-center gap-2">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Status</p>
+                    <div className="flex items-center gap-2 mb-3">
                       {getStatusBadge(selectedRequest.status, selectedRequest.payment_status, selectedRequest)}
+                    </div>
+                    <div className="space-y-3">
+                      {/* Request Status Update - Only for song requests */}
+                      {selectedRequest.request_type === 'song_request' && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Request Status
+                          </label>
+                          <select
+                            value={selectedRequest.status}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value;
+                              await updateRequestStatus(selectedRequest.id, newStatus);
+                              // Update local state
+                              setSelectedRequest({ ...selectedRequest, status: newStatus as any });
+                              // Refresh requests list
+                              await fetchRequests();
+                            }}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          >
+                            <option value="new">New</option>
+                            <option value="acknowledged">Acknowledged</option>
+                            <option value="playing">Playing</option>
+                            <option value="played">Played</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </div>
+                      )}
+                      {/* Payment Status Update */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Payment Status
+                        </label>
+                        <select
+                          value={selectedRequest.payment_status}
+                          onChange={async (e) => {
+                            const newPaymentStatus = e.target.value;
+                            const paymentMethod = selectedRequest.payment_method || 'manual';
+                            
+                            // For Venmo/CashApp payments, prompt for requester name if missing
+                            if ((newPaymentStatus === 'paid') && 
+                                (paymentMethod === 'venmo' || paymentMethod === 'cashapp') && 
+                                (!selectedRequest.requester_name || selectedRequest.requester_name === 'Guest')) {
+                              const venmoName = prompt(
+                                `Enter the requester's name from the ${paymentMethod === 'venmo' ? 'Venmo' : 'CashApp'} transaction:\n\n` +
+                                `(This helps match the payment to the request. Leave blank to skip.)`,
+                                ''
+                              );
+                              
+                              // If name was provided, update it first
+                              if (venmoName && venmoName.trim()) {
+                                await updateRequesterName(selectedRequest.id, venmoName.trim());
+                              }
+                            }
+
+                            // For Venmo payments, also prompt for Venmo username if not already set
+                            if (newPaymentStatus === 'paid' && 
+                                paymentMethod === 'venmo' && 
+                                !selectedRequest.requester_venmo_username) {
+                              const venmoUsername = prompt(
+                                `Enter the customer's Venmo username from the transaction (e.g., @username):\n\n` +
+                                `(Leave blank to skip.)`,
+                                ''
+                              );
+                              
+                              // If username was provided, update it
+                              if (venmoUsername && venmoUsername.trim()) {
+                                await updateVenmoUsername(selectedRequest.id, venmoUsername.trim());
+                              }
+                            }
+                            
+                            await updatePaymentStatus(selectedRequest.id, newPaymentStatus, paymentMethod);
+                            // Update local state
+                            setSelectedRequest({ ...selectedRequest, payment_status: newPaymentStatus as any });
+                            // Refresh requests list
+                            await fetchRequests();
+                          }}
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="paid">Paid</option>
+                          <option value="failed">Failed</option>
+                          <option value="refunded">Refunded</option>
+                          <option value="partially_refunded">Partially Refunded</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -7164,7 +7984,28 @@ export default function CrowdRequestsPage() {
 
                 {/* Requester Information */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Requester Information</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Requester Information</p>
+                    {/* Allow editing requester name for Venmo/CashApp payments where name might be missing */}
+                    {/* NOTE: New requests will always have a name (mandatory field). This is for legacy records. */}
+                    {(selectedRequest.payment_method === 'venmo' || selectedRequest.payment_method === 'cashapp') && 
+                     (!selectedRequest.requester_name || selectedRequest.requester_name === 'Guest') && (
+                      <Button
+                        onClick={() => {
+                          const newName = prompt('Enter the requester name (from Venmo/CashApp payment):', selectedRequest.requester_name || '');
+                          if (newName && newName.trim() && newName.trim() !== selectedRequest.requester_name) {
+                            updateRequesterName(selectedRequest.id, newName.trim());
+                          }
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                      >
+                        <Edit3 className="w-3 h-3 mr-1" />
+                        Update Name
+                      </Button>
+                    )}
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Name</p>
@@ -7172,6 +8013,10 @@ export default function CrowdRequestsPage() {
                         {stripeDetails?.customer?.name || selectedRequest.requester_name}
                         {stripeDetails?.customer?.name && stripeDetails.customer.name !== selectedRequest.requester_name && (
                           <span className="text-xs text-gray-500 ml-2">(from Stripe)</span>
+                        )}
+                        {(!selectedRequest.requester_name || selectedRequest.requester_name === 'Guest') && 
+                         (selectedRequest.payment_method === 'venmo' || selectedRequest.payment_method === 'cashapp') && (
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400 ml-2">(Legacy record - Click "Update Name" to add from payment)</span>
                         )}
                       </p>
                     </div>
@@ -7495,6 +8340,34 @@ export default function CrowdRequestsPage() {
                         </p>
                       </div>
                     )}
+                    {selectedRequest.payment_method === 'venmo' && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Venmo Username</p>
+                          <Button
+                            onClick={() => {
+                              const currentUsername = selectedRequest.requester_venmo_username || '';
+                              const newUsername = prompt(
+                                'Enter the customer\'s Venmo username (e.g., @username):',
+                                currentUsername
+                              );
+                              if (newUsername !== null && newUsername.trim() !== currentUsername) {
+                                updateVenmoUsername(selectedRequest.id, newUsername.trim());
+                              }
+                            }}
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-6 px-2"
+                          >
+                            <Edit3 className="w-3 h-3 mr-1" />
+                            {selectedRequest.requester_venmo_username ? 'Edit' : 'Add'}
+                          </Button>
+                        </div>
+                        <p className="font-medium text-purple-600 dark:text-purple-400">
+                          {selectedRequest.requester_venmo_username || 'Not set'}
+                        </p>
+                      </div>
+                    )}
                     {selectedRequest.refund_amount && (
                       <div>
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Refund Amount</p>
@@ -7504,6 +8377,28 @@ export default function CrowdRequestsPage() {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Payment Code for Venmo/CashApp Verification */}
+                  {selectedRequest.payment_code && (selectedRequest.payment_method === 'venmo' || selectedRequest.payment_method === 'cashapp') && (
+                    <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-300 dark:border-purple-700 rounded-lg p-4">
+                      <p className="text-xs font-semibold text-purple-900 dark:text-purple-100 mb-2">
+                        🔑 Payment Verification Code
+                      </p>
+                      <p className="text-2xl font-bold text-purple-900 dark:text-purple-100 font-mono text-center mb-2">
+                        {selectedRequest.payment_code}
+                      </p>
+                      <p className="text-xs text-purple-700 dark:text-purple-300 text-center">
+                        {selectedRequest.payment_method === 'venmo' 
+                          ? 'Look for this code in the Venmo payment note to verify payment'
+                          : 'Look for this code in the CashApp payment note to verify payment'}
+                      </p>
+                      {selectedRequest.payment_status === 'pending' && (
+                        <p className="text-xs text-yellow-700 dark:text-yellow-300 text-center mt-2 font-medium">
+                          ⚠️ Verify this code in your {selectedRequest.payment_method === 'venmo' ? 'Venmo' : 'CashApp'} app before marking as paid
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Event Information */}
@@ -7585,6 +8480,106 @@ export default function CrowdRequestsPage() {
                   </div>
                 </div>
 
+                {/* Customer Timeline */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Customer Timeline</p>
+                  </div>
+                  
+                  {loadingSuccessViews ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Request Created */}
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-2 h-2 rounded-full bg-green-500 mt-2"></div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">Request Created</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(selectedRequest.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Payment Made */}
+                      {selectedRequest.paid_at && (
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">Payment Made</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {new Date(selectedRequest.paid_at).toLocaleString()}
+                            </p>
+                            {selectedRequest.payment_method && (
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+                                via {selectedRequest.payment_method === 'card' ? 'Stripe' : selectedRequest.payment_method === 'venmo' ? 'Venmo' : selectedRequest.payment_method === 'cashapp' ? 'CashApp' : selectedRequest.payment_method}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Success Page Views */}
+                      {successPageViews.length > 0 ? (
+                        successPageViews.map((view, index) => (
+                          <div key={view.id} className="flex items-start gap-3">
+                            <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+                              view.is_first_view ? 'bg-purple-500' : 'bg-gray-400'
+                            }`}></div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                                {view.is_first_view ? (
+                                  <>
+                                    <CheckCircle2 className="w-4 h-4 text-purple-500" />
+                                    Success Page Viewed (First Time)
+                                  </>
+                                ) : (
+                                  <>
+                                    <Eye className="w-4 h-4 text-gray-400" />
+                                    Success Page Re-visited
+                                  </>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {new Date(view.viewed_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-gray-300 mt-2"></div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                              Success page not yet viewed
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Song Played */}
+                      {selectedRequest.played_at && (
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-orange-500 mt-2"></div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">Song Played</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {new Date(selectedRequest.played_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Actions */}
                 <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Button
@@ -7613,9 +8608,26 @@ export default function CrowdRequestsPage() {
                   </Button>
                   {selectedRequest.payment_status === 'pending' && (
                     <Button
-                      onClick={() => {
+                      onClick={async () => {
                         const paymentMethod = selectedRequest.payment_method || 'manual';
-                        updatePaymentStatus(selectedRequest.id, 'paid', paymentMethod);
+                        
+                        // For Venmo/CashApp payments, prompt for requester name if missing
+                        if ((paymentMethod === 'venmo' || paymentMethod === 'cashapp') && 
+                            (!selectedRequest.requester_name || selectedRequest.requester_name === 'Guest')) {
+                          const venmoName = prompt(
+                            `Enter the requester's name from the ${paymentMethod === 'venmo' ? 'Venmo' : 'CashApp'} transaction:\n\n` +
+                            `(This helps match the payment to the request. Leave blank to skip.)`,
+                            ''
+                          );
+                          
+                          // If name was provided, update it first
+                          if (venmoName && venmoName.trim()) {
+                            await updateRequesterName(selectedRequest.id, venmoName.trim());
+                          }
+                        }
+                        
+                        // Update payment status
+                        await updatePaymentStatus(selectedRequest.id, 'paid', paymentMethod);
                         setShowDetailModal(false);
                         setSelectedRequest(null);
                       }}

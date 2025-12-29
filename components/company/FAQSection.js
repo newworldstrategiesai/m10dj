@@ -144,7 +144,13 @@ export default function FAQSection({ className = '', showSchema = true, useDatab
           <div className="max-w-4xl mx-auto">
             {loading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold mx-auto"></div>
+                <div className="flex items-center justify-center">
+                  <img
+                    src="/M10-Rotating-Logo.gif"
+                    alt="M10 DJ Company Loading"
+                    className="w-16 h-16 object-contain"
+                  />
+                </div>
                 <p className="text-gray-600 dark:text-gray-400 mt-2">Loading FAQs...</p>
               </div>
             ) : (

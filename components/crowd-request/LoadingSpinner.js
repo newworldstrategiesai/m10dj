@@ -1,9 +1,15 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import FullScreenLoader to avoid SSR issues
+const FullScreenLoader = dynamic(() => import('@/components/ui/FullScreenLoader'), {
+  ssr: false,
+});
 
 /**
  * Reusable loading spinner component
- * Optimized with React.memo to prevent unnecessary re-renders
+ * For full-screen loading, uses M10 DJ Company rotating logo
+ * For inline loading, shows a simple spinner
  */
 const LoadingSpinner = React.memo(({ 
   size = 'md', 
@@ -11,6 +17,13 @@ const LoadingSpinner = React.memo(({
   className = '',
   fullScreen = false 
 }) => {
+  // For full-screen loading, use the M10 logo loader
+  if (fullScreen) {
+    return <FullScreenLoader isOpen={true} message={text} />;
+  }
+
+  // For inline loading, show a simple centered spinner
+  // This maintains backward compatibility for non-fullscreen cases
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-6 h-6',
@@ -18,24 +31,14 @@ const LoadingSpinner = React.memo(({
     xl: 'w-12 h-12'
   };
 
-  const spinner = (
+  return (
     <div className={`flex flex-col items-center justify-center gap-3 ${className}`}>
-      <Loader2 className={`${sizeClasses[size]} text-purple-500 animate-spin`} />
+      <div className={`${sizeClasses[size]} border-2 border-[#fcba00] border-t-transparent rounded-full animate-spin`} />
       {text && (
         <p className="text-sm text-gray-600 dark:text-gray-400">{text}</p>
       )}
     </div>
   );
-
-  if (fullScreen) {
-    return (
-      <div className="fixed inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-50 flex items-center justify-center">
-        {spinner}
-      </div>
-    );
-  }
-
-  return spinner;
 });
 
 LoadingSpinner.displayName = 'LoadingSpinner';

@@ -1,6 +1,7 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 const { createRateLimitMiddleware, getClientIp } = require('@/utils/rate-limiter');
+const { normalizeSongCasing } = require('@/utils/song-casing-normalizer');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -50,10 +51,15 @@ export default async function handler(req, res) {
   } = req.body;
 
   // Validate required fields
-  // Note: requesterName is optional - use 'Guest' as fallback
+  // Note: requesterName is now required - users must provide their name
   // Note: amount can be 0 for bidding mode requests (payment happens when bid is placed)
   if (!eventCode || !requestType || amount === undefined || amount === null) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  // Requester name is required
+  if (!requesterName || !requesterName.trim()) {
+    return res.status(400).json({ error: 'Requester name is required' });
   }
 
   // Validate request type
@@ -83,8 +89,22 @@ export default async function handler(req, res) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Determine organization_id
-    // Priority: 1. Explicit organizationId, 2. From referrer/origin URL slug, 3. From eventCode lookup, 4. Platform admin's org
+    // Priority: 1. Explicit organizationId (from request body - MOST RELIABLE), 
+    //           2. From referrer/origin URL slug, 
+    //           3. From eventCode lookup, 
+    //           4. Platform admin's org
+    // 
+    // IMPORTANT: If organizationId is explicitly provided, use it and skip header-based detection
+    // This ensures consistency when requests are made from the same page
     let organizationIdToUse = organizationId;
+    
+    // Log the source of organization_id for debugging
+    if (organizationIdToUse) {
+      console.log('✅ Using explicit organizationId from request body:', organizationIdToUse);
+      console.log('   Skipping header-based organization detection for consistency');
+    } else {
+      console.log('⚠️ No explicit organizationId provided - will use fallback detection methods');
+    }
 
     // Helper function to extract slug from URL
     const extractSlugFromUrl = (url) => {
@@ -130,6 +150,7 @@ export default async function handler(req, res) {
     }
 
     // Check origin URL for organization slug
+    // SKIP THIS IF organizationId was explicitly provided
     if (!organizationIdToUse) {
       const origin = req.headers.origin;
       const originSlug = extractSlugFromUrl(origin);
@@ -154,6 +175,7 @@ export default async function handler(req, res) {
 
     // Try to get organization from eventCode (future: events table mapping)
     // For now, if eventCode matches an organization slug pattern, try to look it up
+    // SKIP THIS IF organizationId was explicitly provided
     if (!organizationIdToUse && eventCode && eventCode !== 'general') {
       // Check if eventCode could be an organization slug
       if (/^[a-z0-9-]+$/.test(eventCode)) {
@@ -175,6 +197,7 @@ export default async function handler(req, res) {
     }
 
     // Fallback: Use platform admin's organization
+    // SKIP THIS IF organizationId was explicitly provided
     if (!organizationIdToUse) {
       try {
         // Get admin user ID
@@ -223,6 +246,13 @@ export default async function handler(req, res) {
       if (!organizationIdToUse) {
         console.error('❌ CRITICAL: No organization_id found - request will be orphaned');
         console.error('   This request will need manual assignment in the admin UI');
+        console.error('   To prevent this, ensure the frontend passes organizationId in the request body');
+        console.error('   Request details:', {
+          eventCode,
+          referer: req.headers.referer,
+          origin: req.headers.origin,
+          hasExplicitOrgId: !!organizationId
+        });
       }
     }
 
@@ -254,15 +284,29 @@ export default async function handler(req, res) {
     
     const paymentCode = generatePaymentCode();
     
+    // Normalize song title and artist casing (uses title case by default)
+    let normalizedTitle = songTitle || null;
+    let normalizedArtist = songArtist || null;
+    
+    if (requestType === 'song_request' && (songTitle || songArtist)) {
+      const normalized = normalizeSongCasing(songTitle || '', songArtist || '');
+      normalizedTitle = normalized.normalizedTitle || null;
+      normalizedArtist = normalized.normalizedArtist || null;
+      console.log('Normalized casing on request creation:', {
+        original: { title: songTitle, artist: songArtist },
+        normalized: { title: normalizedTitle, artist: normalizedArtist }
+      });
+    }
+    
     // Create crowd request record with all fields
     const insertData = {
       event_qr_code: uniqueEventCode,
       request_type: requestType,
-      song_artist: songArtist || null,
-      song_title: songTitle || null,
+      song_artist: normalizedArtist,
+      song_title: normalizedTitle,
       recipient_name: recipientName || null,
       recipient_message: recipientMessage || null,
-      requester_name: requesterName?.trim() || 'Guest',
+      requester_name: requesterName.trim(),
       requester_email: requesterEmail?.trim() || null,
       requester_phone: requesterPhone || null,
       request_message: message || null,

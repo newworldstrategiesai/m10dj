@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import Link from 'next/link';
+import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
 
 interface Event {
   id: string;
@@ -239,26 +240,13 @@ export default function CalendarPage() {
     }
   };
 
-  if (loading && !user) {
-    return (
-      <AdminLayout title="Calendar" description="Event Calendar">
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 dark:border-gray-700 mx-auto mb-6"></div>
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-[#fcba00] absolute top-0 left-1/2 -translate-x-1/2"></div>
-            <p className="text-gray-600 dark:text-gray-400 font-medium mt-4">Loading calendar...</p>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const days = getDaysInMonth();
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <AdminLayout title="Calendar" description="Event Calendar - M10 DJ Admin">
+    <PageLoadingWrapper isLoading={loading && !user} message="Loading calendar...">
+      <AdminLayout title="Calendar" description="Event Calendar - M10 DJ Admin">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -514,6 +502,7 @@ export default function CalendarPage() {
         </div>
       </div>
     </AdminLayout>
+    </PageLoadingWrapper>
   );
 }
 

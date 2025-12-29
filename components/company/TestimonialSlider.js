@@ -207,7 +207,13 @@ export default function TestimonialSlider({ className = '', showSchema = true, u
       <section className={`py-16 bg-white dark:bg-black ${className}`}>
         <div className="section-container">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold mx-auto"></div>
+            <div className="flex items-center justify-center">
+              <img
+                src="/M10-Rotating-Logo.gif"
+                alt="M10 DJ Company Loading"
+                className="w-16 h-16 object-contain"
+              />
+            </div>
             <p className="text-gray-600 dark:text-gray-400 mt-2">Loading testimonials...</p>
           </div>
         </div>

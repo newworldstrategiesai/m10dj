@@ -63,10 +63,14 @@ export default function BlogPost({ post: initialPost, relatedPosts: initialRelat
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="min-h-screen bg-black flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto"></div>
-            <p className="text-gray-600 dark:text-gray-400 mt-4">Loading article...</p>
+            <img
+              src="/M10-Rotating-Logo.gif"
+              alt="M10 DJ Company Loading"
+              className="w-24 h-24 object-contain mx-auto"
+            />
+            <p className="text-white mt-4">Loading article...</p>
           </div>
         </div>
         <Footer />

@@ -2,6 +2,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getDefaultSignInView } from '@/utils/auth-helpers/settings';
 
+// Force dynamic rendering to ensure redirects work properly
+export const dynamic = 'force-dynamic';
+
 export default async function SignIn({
   searchParams
 }: {

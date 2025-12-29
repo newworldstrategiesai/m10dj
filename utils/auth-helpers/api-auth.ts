@@ -75,7 +75,9 @@ export async function requireAuth(
   const { user, error } = await authenticateRequest(req, res);
 
   if (!user || error) {
-    res.status(401).json({ error: error || 'Unauthorized' });
+    if (!res.headersSent) {
+      res.status(401).json({ error: error || 'Unauthorized' });
+    }
     throw new Error('Unauthorized');
   }
 
@@ -93,14 +95,18 @@ export async function requireAdmin(
   const user = await requireAuth(req, res);
 
   if (!user.email) {
-    res.status(403).json({ error: 'Admin access required' });
+    if (!res.headersSent) {
+      res.status(403).json({ error: 'Admin access required' });
+    }
     throw new Error('Admin access required');
   }
 
   const isAdmin = await isAdminEmail(user.email);
   
   if (!isAdmin) {
-    res.status(403).json({ error: 'Admin access required' });
+    if (!res.headersSent) {
+      res.status(403).json({ error: 'Admin access required' });
+    }
     throw new Error('Admin access required');
   }
 

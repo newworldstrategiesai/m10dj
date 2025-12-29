@@ -50,10 +50,14 @@ export default function TicketView() {
     return (
       <>
         <Header />
-        <main className="min-h-screen flex items-center justify-center">
+        <main className="min-h-screen flex items-center justify-center bg-black">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading ticket...</p>
+            <img
+              src="/M10-Rotating-Logo.gif"
+              alt="M10 DJ Company Loading"
+              className="w-24 h-24 object-contain mx-auto mb-4"
+            />
+            <p className="text-white">Loading ticket...</p>
           </div>
         </main>
         <Footer />

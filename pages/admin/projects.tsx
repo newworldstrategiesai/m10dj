@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
 import Link from 'next/link';
 
 interface Project {
@@ -302,21 +303,9 @@ export default function ProjectsDashboard() {
     return eventDate >= tomorrow;
   };
 
-  if (loading) {
-    return (
-      <AdminLayout title="Projects" description="Projects Dashboard">
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading projects...</p>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
   return (
-    <AdminLayout title="Projects" description="Projects Dashboard - M10 DJ Admin">
+    <PageLoadingWrapper isLoading={loading} message="Loading projects...">
+      <AdminLayout title="Projects" description="Projects Dashboard - M10 DJ Admin">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -562,6 +551,7 @@ export default function ProjectsDashboard() {
         </div>
       </div>
     </AdminLayout>
+    </PageLoadingWrapper>
   );
 }
 

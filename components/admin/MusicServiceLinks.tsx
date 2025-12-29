@@ -19,6 +19,7 @@ interface MusicServiceLinksProps {
     search_method: string;
   } | null;
   onLinksUpdated?: (links: any) => void;
+  showRefreshButton?: boolean; // Whether to show the refresh/find links button
 }
 
 export default function MusicServiceLinks({
@@ -27,7 +28,8 @@ export default function MusicServiceLinks({
   songArtist,
   postedLink,
   links,
-  onLinksUpdated
+  onLinksUpdated,
+  showRefreshButton = true
 }: MusicServiceLinksProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [currentLinks, setCurrentLinks] = useState(links);
@@ -126,7 +128,7 @@ export default function MusicServiceLinks({
   );
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-1.5 flex-nowrap">
       {hasLinks ? (
         <>
           {currentLinks.spotify && (
@@ -134,12 +136,12 @@ export default function MusicServiceLinks({
               href={currentLinks.spotify}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors whitespace-nowrap"
               title="Open on Spotify"
             >
-              <Music className="w-3.5 h-3.5" />
-              <span>Spotify</span>
-              <ExternalLink className="w-3 h-3" />
+              <Music className="w-3 h-3" />
+              <span className="hidden sm:inline">Spotify</span>
+              <ExternalLink className="w-2.5 h-2.5" />
             </a>
           )}
           {currentLinks.youtube && (
@@ -147,12 +149,12 @@ export default function MusicServiceLinks({
               href={currentLinks.youtube}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded transition-colors whitespace-nowrap"
               title="Open on YouTube"
             >
-              <Youtube className="w-3.5 h-3.5" />
-              <span>YouTube</span>
-              <ExternalLink className="w-3 h-3" />
+              <Youtube className="w-3 h-3" />
+              <span className="hidden sm:inline">YouTube</span>
+              <ExternalLink className="w-2.5 h-2.5" />
             </a>
           )}
           {currentLinks.tidal && (
@@ -160,12 +162,12 @@ export default function MusicServiceLinks({
               href={currentLinks.tidal}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-black hover:bg-gray-800 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-black hover:bg-gray-800 rounded transition-colors whitespace-nowrap"
               title="Open on Tidal"
             >
-              <Waves className="w-3.5 h-3.5" />
-              <span>Tidal</span>
-              <ExternalLink className="w-3 h-3" />
+              <Waves className="w-3 h-3" />
+              <span className="hidden sm:inline">Tidal</span>
+              <ExternalLink className="w-2.5 h-2.5" />
             </a>
           )}
           {currentLinks.apple_music && (
@@ -173,55 +175,52 @@ export default function MusicServiceLinks({
               href={currentLinks.apple_music}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-pink-600 hover:bg-pink-700 rounded transition-colors whitespace-nowrap"
               title="Open on Apple Music"
             >
-              <Music className="w-3.5 h-3.5" />
-              <span>Apple Music</span>
-              <ExternalLink className="w-3 h-3" />
+              <Music className="w-3 h-3" />
+              <span className="hidden sm:inline">Apple</span>
+              <ExternalLink className="w-2.5 h-2.5" />
             </a>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleFindLinks}
-            disabled={isSearching}
-            className="h-7 text-xs"
-          >
-            {isSearching ? (
-              <>
-                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                Searching...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Refresh
-              </>
-            )}
-          </Button>
+          {showRefreshButton && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFindLinks}
+              disabled={isSearching}
+              className="h-6 px-2 text-xs flex-shrink-0"
+              title="Refresh links"
+            >
+              {isSearching ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+            </Button>
+          )}
         </>
-      ) : (
+      ) : showRefreshButton ? (
         <Button
           variant="outline"
           size="sm"
           onClick={handleFindLinks}
           disabled={isSearching || (!songTitle && !songArtist && !(postedLink && (postedLink.includes('youtube.com') || postedLink.includes('youtu.be'))))}
-          className="h-7 text-xs"
+          className="h-6 px-2 text-xs"
         >
           {isSearching ? (
             <>
               <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-              Finding Links...
+              <span className="hidden sm:inline">Finding...</span>
             </>
           ) : (
             <>
               <Music className="w-3 h-3 mr-1" />
-              Find Music Links
+              <span className="hidden sm:inline">Find Links</span>
             </>
           )}
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

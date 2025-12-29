@@ -16,6 +16,9 @@ import UpdatePassword from '@/components/ui/AuthForms/UpdatePassword';
 import SignUp from '@/components/ui/AuthForms/Signup';
 import { getRoleBasedRedirectUrl } from '@/utils/auth-helpers/role-redirect';
 
+// Force dynamic rendering to ensure redirects and auth checks work properly
+export const dynamic = 'force-dynamic';
+
 export default async function SignIn({
   params,
   searchParams

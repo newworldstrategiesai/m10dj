@@ -19,6 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
 
 export default function EditEventPage() {
   const router = useRouter();
@@ -207,41 +208,32 @@ export default function EditEventPage() {
     { value: 'Other', label: 'Other' }
   ];
 
-  if (loading) {
-    return (
-      <AdminLayout title="Edit Event Page" description="Edit event case study page">
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#fcba00] mx-auto"></div>
-            <p className="text-gray-600 dark:text-gray-400 mt-4">Loading event page...</p>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
 
   if (error) {
     return (
-      <AdminLayout title="Edit Event Page" description="Edit event case study page">
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center max-w-md">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Error</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-            <Link
-              href="/admin/events"
-              className="bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-medium inline-block"
-            >
-              Back to Events
-            </Link>
+      <PageLoadingWrapper isLoading={loading} message="Loading event page...">
+        <AdminLayout title="Edit Event Page" description="Edit event case study page">
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Error</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+              <Link
+                href="/admin/events"
+                className="bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-medium inline-block"
+              >
+                Back to Events
+              </Link>
+            </div>
           </div>
-        </div>
-      </AdminLayout>
+        </AdminLayout>
+      </PageLoadingWrapper>
     );
   }
 
   return (
-    <AdminLayout title="Edit Event Page" description="Edit event case study page">
+    <PageLoadingWrapper isLoading={loading} message="Loading event page...">
+      <AdminLayout title="Edit Event Page" description="Edit event case study page">
       <Head>
         <title>Edit Event Page - M10 DJ Company Admin</title>
         <meta name="robots" content="noindex, nofollow" />
@@ -717,6 +709,7 @@ export default function EditEventPage() {
         </main>
       </div>
     </AdminLayout>
+    </PageLoadingWrapper>
   );
 }
 

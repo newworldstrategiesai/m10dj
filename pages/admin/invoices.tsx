@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
+import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
 import { calculateQuoteTotals } from '@/utils/quote-calculations';
 
 interface Invoice {
@@ -554,19 +555,9 @@ export default function InvoicesDashboard() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading invoices...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <PageLoadingWrapper isLoading={loading} message="Loading invoices...">
+      <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -805,6 +796,7 @@ export default function InvoicesDashboard() {
         </div>
       </div>
     </div>
+    </PageLoadingWrapper>
   );
 }
 

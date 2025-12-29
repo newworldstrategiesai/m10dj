@@ -1,5 +1,6 @@
 import React from 'react';
 import { Gift, DollarSign, Zap } from 'lucide-react';
+import BundleSelector from './BundleSelector';
 
 function PaymentAmountSelector({
   amountType,
@@ -21,7 +22,9 @@ function PaymentAmountSelector({
   getPaymentAmount,
   hidePriorityOptions = false, // Hide fast track and next options (for bidding mode)
   isBiddingMode = false, // Indicates if this is in bidding mode
-  currentWinningBid = 0 // Current winning bid amount in cents (for bidding mode)
+  currentWinningBid = 0, // Current winning bid amount in cents (for bidding mode)
+  bundleSize = 1, // Bundle size: 1, 2, or 3
+  setBundleSize = () => {} // Function to set bundle size
 }) {
   return (
     <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/80 dark:bg-black/80 rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
@@ -188,6 +191,18 @@ function PaymentAmountSelector({
           </div>
         )}
 
+        {/* Bundle Selector (only for song requests, not bidding mode) */}
+        {requestType === 'song_request' && !isBiddingMode && (
+          <BundleSelector
+            baseAmount={getBaseAmount()}
+            minimumAmount={minimumAmount}
+            bundleSize={bundleSize}
+            setBundleSize={setBundleSize}
+            requestType={requestType}
+            disabled={!getBaseAmount() || getBaseAmount() < minimumAmount}
+          />
+        )}
+
         {/* Fast-Track and Next Options (only for song requests) - Compact Radio Style */}
         {requestType === 'song_request' && !hidePriorityOptions && (
           <div className="border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-3 sm:pt-4 mt-3 sm:mt-4 space-y-2 sm:space-y-3">
@@ -236,8 +251,8 @@ function PaymentAmountSelector({
                     +${(fastTrackFee / 100).toFixed(2)}
                   </span>
                 </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Priority placement in queue
+                <p className="text-[10px] sm:text-xs text-orange-600 dark:text-orange-400 font-medium mt-0.5">
+                  ⚡ Your song will be played next!
                 </p>
               </div>
             </label>

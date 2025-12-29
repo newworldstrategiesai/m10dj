@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 
@@ -195,21 +196,10 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading && !user) {
-    return (
-      <AdminLayout title="Settings" description="Admin Settings">
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 dark:border-gray-700 mx-auto mb-6"></div>
-            <p className="text-gray-600 dark:text-gray-400 font-medium">Loading settings...</p>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
 
   return (
-    <AdminLayout title="Settings" description="Admin Settings - M10 DJ Admin">
+    <PageLoadingWrapper isLoading={loading && !user} message="Loading settings...">
+      <AdminLayout title="Settings" description="Admin Settings - M10 DJ Admin">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         {/* Header */}
         <div className="mb-6">
@@ -537,6 +527,7 @@ export default function SettingsPage() {
         </div>
       </div>
     </AdminLayout>
+    </PageLoadingWrapper>
   );
 }
 
