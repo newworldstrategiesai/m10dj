@@ -296,15 +296,15 @@ export default function CrowdRequestSuccessPage() {
       if (mainRequest.payment_code) {
         const { data: paymentCodeMatches, error: pcError } = await supabase
           .from('crowd_requests')
-          .select('id, song_title, song_artist, status, played_at, message, created_at, payment_code')
+          .select('id, song_title, song_artist, status, played_at, request_message, created_at, payment_code')
           .neq('id', mainRequest.id)
           .eq('payment_code', mainRequest.payment_code)
           .order('created_at', { ascending: true });
         
         if (!pcError && paymentCodeMatches?.length > 0) {
-          // Filter to only include requests with "Bundle deal" in message
+          // Filter to only include requests with "Bundle deal" in request_message
           bundleData = paymentCodeMatches.filter(r => 
-            r.message && r.message.includes('Bundle deal')
+            r.request_message && r.request_message.includes('Bundle deal')
           );
         }
       }
@@ -330,7 +330,7 @@ export default function CrowdRequestSuccessPage() {
         if (requesterFilter) {
           const { data: timeMatches, error: tmError } = await supabase
             .from('crowd_requests')
-            .select('id, song_title, song_artist, status, played_at, message, created_at, payment_code')
+            .select('id, song_title, song_artist, status, played_at, request_message, created_at, payment_code')
             .neq('id', mainRequest.id)
             .eq('event_qr_code', mainRequest.event_qr_code)
             .or(requesterFilter)
@@ -339,9 +339,9 @@ export default function CrowdRequestSuccessPage() {
             .order('created_at', { ascending: true });
           
           if (!tmError && timeMatches?.length > 0) {
-            // Filter to only include requests with "Bundle deal" in message
+            // Filter to only include requests with "Bundle deal" in request_message
             bundleData = timeMatches.filter(r => 
-              r.message && r.message.includes('Bundle deal')
+              r.request_message && r.request_message.includes('Bundle deal')
             );
           }
         }
