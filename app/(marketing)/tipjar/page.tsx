@@ -6,6 +6,7 @@ import TipJarFooter from '@/components/tipjar/Footer';
 import { FeatureCard } from '@/components/tipjar/FeatureCard';
 import { TestimonialCard } from '@/components/tipjar/TestimonialCard';
 import { StickyCTA } from '@/components/tipjar/StickyCTA';
+import { ProductStructuredData, FAQSchema } from '@/components/shared/marketing/StructuredData';
 import {
   CreditCard,
   Music,
@@ -22,6 +23,26 @@ import {
   Shield,
   Clock
 } from 'lucide-react';
+
+// FAQ data for structured data (matches the FAQ section on the page)
+const tipjarFAQs = [
+  {
+    question: 'How does TipJar work for DJs?',
+    answer: 'Sign up free, customize your branding, and get your unique TipJar link. Display your QR code or share your link at events. Guests open it on their phone—no app download needed—and can send tips or request songs instantly. Tips go straight to your connected Stripe account.',
+  },
+  {
+    question: 'Is TipJar free to use?',
+    answer: 'Yes! TipJar has a free forever plan with 10 requests per month. Upgrade to Pro for $29/month for unlimited requests, full tipping, and custom branding. We only take a 3.5% + $0.30 platform fee on tips when you get paid.',
+  },
+  {
+    question: 'Do guests need to download an app?',
+    answer: 'No! TipJar works in any web browser. Guests simply scan your QR code or open your link—no app download required. It works on iPhone, Android, or any device.',
+  },
+  {
+    question: 'How fast do I get my money?',
+    answer: 'Tips are processed instantly through Stripe. You can choose daily automatic payouts (free) or instant payouts (1.5% fee). Money goes directly to your connected bank account.',
+  },
+];
 
 export const metadata: Metadata = {
   title: 'Tip Jar App & Song Request App | DJ Tip Collection Made Easy | TipJar.Live',
@@ -63,6 +84,21 @@ export const metadata: Metadata = {
 export default function TipJarHomePage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
+      {/* Structured Data for SEO */}
+      <ProductStructuredData 
+        product="tipjar"
+        includeOrganization={true}
+        includeSoftwareApp={true}
+        includeWebsite={true}
+        faqQuestions={tipjarFAQs}
+        softwareAppProps={{
+          name: 'TipJar Live - DJ Tip Collection App',
+          applicationCategory: 'BusinessApplication',
+          offers: { price: '0', priceCurrency: 'USD' },
+          aggregateRating: { ratingValue: '4.9', reviewCount: '1200' },
+        }}
+      />
+      
       <TipJarHeader />
       
       {/* Hero Section - Redesigned */}

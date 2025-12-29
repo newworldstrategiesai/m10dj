@@ -46,3 +46,6 @@ Thumbs.db
 # Cache
 .cache/
 node_modules/.cache/
+
+# Audit reports
+/audit-reports/

@@ -26,7 +26,10 @@
     "optimize:logo-gif": "node scripts/optimize-logo-gif.js",
     "generate:og-image": "node scripts/generate-og-image.js",
     "agent:dev": "tsx watch agents/index.ts",
-    "agent:start": "tsx agents/index.ts"
+    "agent:start": "tsx agents/index.ts",
+    "audit:sync": "node scripts/sync-audit.js",
+    "audit:sync:json": "node scripts/sync-audit.js --json",
+    "audit:sync:md": "node scripts/sync-audit.js --markdown"
   },
   "dependencies": {
     "@livekit/components-react": "^2.9.17",
