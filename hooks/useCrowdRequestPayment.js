@@ -72,7 +72,8 @@ export function useCrowdRequestPayment({
 
   const getPaymentAmount = useCallback(() => {
     const baseAmount = getBaseAmount();
-    const fastTrack = (requestType === 'song_request' && isFastTrack) ? fastTrackFee : 0;
+    // Fast track fee should be multiplied by bundle size (each song in bundle gets fast track)
+    const fastTrack = (requestType === 'song_request' && isFastTrack) ? fastTrackFee * bundleSize : 0;
     const next = (requestType === 'song_request' && isNext) ? nextFee : 0;
     const audioFee = (requestType === 'song_request' && audioFileUrl) ? audioUploadFee : 0;
     

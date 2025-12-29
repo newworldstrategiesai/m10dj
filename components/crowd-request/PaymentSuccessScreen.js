@@ -1,26 +1,106 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Music, Loader2 } from 'lucide-react';
+import { CheckCircle, Music, Loader2, Gift } from 'lucide-react';
 import ReceiptRequestButton from './ReceiptRequestButton';
 import { crowdRequestAPI } from '../../utils/crowd-request-api';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function PaymentSuccessScreen({ requestId, amount, additionalRequestIds = [] }) {
   const [additionalSongs, setAdditionalSongs] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [isBundle, setIsBundle] = useState(false);
+  const [bundleSize, setBundleSize] = useState(0);
+  const [bundlePrice, setBundlePrice] = useState(null);
+  const [loadingBundleInfo, setLoadingBundleInfo] = useState(true);
 
-  // Initialize additional songs state
+  // Fetch request details to detect if it's a bundle
   useEffect(() => {
-    if (additionalRequestIds && additionalRequestIds.length > 0) {
-      setAdditionalSongs(
-        additionalRequestIds.map(id => ({
+    const fetchBundleInfo = async () => {
+      if (!requestId || additionalRequestIds.length === 0) {
+        setLoadingBundleInfo(false);
+        return;
+      }
+
+      try {
+        const supabase = createClientComponentClient();
+        
+        // Check main request message for bundle indicator
+        const { data: mainRequest, error: mainError } = await supabase
+          .from('crowd_requests')
+          .select('message, amount, song_title, song_artist')
+          .eq('id', requestId)
+          .single();
+
+        if (mainError) {
+          console.warn('Error fetching main request:', mainError);
+          setLoadingBundleInfo(false);
+          return;
+        }
+
+        // Check if any additional requests have bundle message
+        const { data: additionalRequests, error: additionalError } = await supabase
+          .from('crowd_requests')
+          .select('message, amount, song_title, song_artist')
+          .in('id', additionalRequestIds)
+          .order('created_at', { ascending: true });
+
+        if (additionalError) {
+          console.warn('Error fetching additional requests:', additionalError);
+          setLoadingBundleInfo(false);
+          return;
+        }
+
+        // Check if any request has "Bundle deal" in message
+        const bundleMessage = additionalRequests?.find(req => 
+          req.message?.includes('Bundle deal')
+        )?.message || mainRequest?.message;
+
+        if (bundleMessage?.includes('Bundle deal')) {
+          setIsBundle(true);
+          
+          // Extract bundle size from message (e.g., "Bundle deal - 2 songs for $10.00")
+          const bundleMatch = bundleMessage.match(/Bundle deal - (\d+) songs? for \$([\d.]+)/);
+          if (bundleMatch) {
+            setBundleSize(parseInt(bundleMatch[1], 10));
+            setBundlePrice(parseFloat(bundleMatch[2]));
+          } else {
+            // Fallback: use additional request count + 1 (main request)
+            setBundleSize(additionalRequestIds.length + 1);
+            setBundlePrice(mainRequest?.amount ? mainRequest.amount / 100 : null);
+          }
+        }
+
+        // Initialize additional songs state with existing data if available
+        const songsWithData = additionalRequests?.map((req, index) => ({
+          requestId: additionalRequestIds[index],
+          songTitle: req.song_title || '',
+          songArtist: req.song_artist || '',
+          message: req.message || ''
+        })) || additionalRequestIds.map(id => ({
           requestId: id,
           songTitle: '',
           songArtist: ''
-        }))
-      );
-    }
-  }, [additionalRequestIds]);
+        }));
+
+        setAdditionalSongs(songsWithData);
+      } catch (err) {
+        console.error('Error fetching bundle info:', err);
+        // Fallback to basic initialization
+        setAdditionalSongs(
+          additionalRequestIds.map(id => ({
+            requestId: id,
+            songTitle: '',
+            songArtist: ''
+          }))
+        );
+      } finally {
+        setLoadingBundleInfo(false);
+      }
+    };
+
+    fetchBundleInfo();
+  }, [requestId, additionalRequestIds]);
 
   const handleSongChange = (index, field, value) => {
     const updated = [...additionalSongs];
@@ -68,24 +148,61 @@ export default function PaymentSuccessScreen({ requestId, amount, additionalRequ
         </p>
       </div>
 
+      {/* Bundle Information */}
+      {isBundle && bundleSize > 0 && (
+        <div className="mt-6 p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/20 rounded-xl border-2 border-purple-200 dark:border-purple-700">
+          <div className="flex items-center gap-2 mb-2">
+            <Gift className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Bundle Purchase Complete! 🎉
+            </h3>
+          </div>
+          <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
+            You purchased a <span className="font-bold text-purple-600 dark:text-purple-400">{bundleSize}-song bundle</span>
+            {bundlePrice && (
+              <span> for <span className="font-bold text-purple-600 dark:text-purple-400">${bundlePrice.toFixed(2)}</span></span>
+            )}
+          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">
+            All {bundleSize} songs are now in the queue!
+          </p>
+        </div>
+      )}
+
       {/* Additional Songs Form */}
-      {hasAdditionalSongs && !saved && (
-        <div className="mt-6 p-6 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+      {hasAdditionalSongs && !saved && !loadingBundleInfo && (
+        <div className={`mt-6 p-6 rounded-xl border ${
+          isBundle 
+            ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' 
+            : 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
+        }`}>
           <div className="flex items-center gap-2 mb-4">
             <Music className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Enter Your Additional Song Details
+              {isBundle ? 'Enter Your Bundle Song Details' : 'Enter Your Additional Song Details'}
             </h3>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Please enter the song title and artist for each additional song you purchased.
+            {isBundle 
+              ? `Please enter the song title and artist for each song in your ${bundleSize}-song bundle.`
+              : 'Please enter the song title and artist for each additional song you purchased.'
+            }
           </p>
 
           <div className="space-y-4 mb-4">
             {additionalSongs.map((song, index) => (
-              <div key={song.requestId} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <div key={song.requestId} className={`bg-white dark:bg-gray-800 rounded-lg p-4 border ${
+                isBundle 
+                  ? 'border-purple-200 dark:border-purple-700 border-l-4 border-l-purple-500' 
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}>
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
-                  Song {index + 1}
+                  {isBundle ? `Song ${index + 2} of ${bundleSize}` : `Song ${index + 1}`}
+                  {isBundle && index === 0 && (
+                    <span className="ml-2 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-[10px] font-semibold">
+                      Bundle
+                    </span>
+                  )}
                 </p>
                 <div className="space-y-3">
                   <div>

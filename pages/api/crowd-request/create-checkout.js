@@ -42,6 +42,70 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Request not found' });
     }
 
+    // Fetch bundle songs if this is part of a bundle
+    // Bundle songs share: same requester (email/phone), same payment_code, created within 5 seconds
+    let bundleSongs = [];
+    if (crowdRequest.request_type === 'song_request') {
+      // Find all related requests (main + bundle songs) created within 5 seconds
+      const timeWindow = 5000; // 5 seconds in milliseconds
+      const requestTime = new Date(crowdRequest.created_at).getTime();
+      const startTime = new Date(requestTime - timeWindow).toISOString();
+      const endTime = new Date(requestTime + timeWindow).toISOString();
+      
+      // Build query to find related requests
+      let query = supabase
+        .from('crowd_requests')
+        .select('song_title, song_artist, created_at, request_message, id')
+        .eq('request_type', 'song_request')
+        .gte('created_at', startTime)
+        .lte('created_at', endTime);
+      
+      // Match by email or phone
+      if (crowdRequest.requester_email) {
+        query = query.eq('requester_email', crowdRequest.requester_email);
+      } else if (crowdRequest.requester_phone) {
+        query = query.eq('requester_phone', crowdRequest.requester_phone);
+      }
+      
+      const { data: relatedRequests } = await query.order('created_at', { ascending: true }).limit(10);
+      
+      if (relatedRequests && relatedRequests.length > 0) {
+        // Separate main request from bundle songs
+        const mainRequest = relatedRequests.find(r => !r.request_message || !r.request_message.includes('Bundle deal'));
+        const bundleRequests = relatedRequests.filter(r => r.request_message && r.request_message.includes('Bundle deal'));
+        
+        // Add main song first
+        if (mainRequest && mainRequest.song_title) {
+          bundleSongs.push({ 
+            song_title: mainRequest.song_title, 
+            song_artist: mainRequest.song_artist || null 
+          });
+        } else if (crowdRequest.song_title) {
+          // Fallback to current request if no main found
+          bundleSongs.push({ 
+            song_title: crowdRequest.song_title, 
+            song_artist: crowdRequest.song_artist || null 
+          });
+        }
+        
+        // Add bundle songs
+        bundleRequests.forEach(r => {
+          if (r.song_title) {
+            bundleSongs.push({ 
+              song_title: r.song_title, 
+              song_artist: r.song_artist || null 
+            });
+          }
+        });
+      } else if (crowdRequest.song_title) {
+        // No bundle found, just use main song
+        bundleSongs.push({ 
+          song_title: crowdRequest.song_title, 
+          song_artist: crowdRequest.song_artist || null 
+        });
+      }
+    }
+
     // Get organization data (if available) - including Stripe Connect account
     let organization = null;
     if (crowdRequest.organization_id) {
@@ -70,8 +134,30 @@ export default async function handler(req, res) {
     const isFastTrackRequest = crowdRequest.is_fast_track;
     const isNextRequest = crowdRequest.is_next;
     const priorityLabel = isNextRequest ? ' 🎁 NEXT' : (isFastTrackRequest ? ' ⚡ FAST-TRACK' : '');
+    
+    // Build song list for description (include all bundle songs)
+    let songDescription = '';
+    if (crowdRequest.request_type === 'song_request') {
+      if (bundleSongs.length > 1) {
+        // Bundle: list all songs
+        const songList = bundleSongs.map(s => {
+          const artist = s.song_artist ? ` by ${s.song_artist}` : '';
+          return `${s.song_title}${artist}`;
+        }).join(', ');
+        songDescription = `Bundle (${bundleSongs.length} songs)${priorityLabel}: ${songList}`;
+      } else if (bundleSongs.length === 1) {
+        // Single song from bundle list
+        const s = bundleSongs[0];
+        const artist = s.song_artist ? ` by ${s.song_artist}` : '';
+        songDescription = `Song Request${priorityLabel}: ${s.song_title}${artist}`;
+      } else {
+        // Fallback to main request
+        songDescription = `Song Request${priorityLabel}: ${crowdRequest.song_title}${crowdRequest.song_artist ? ` by ${crowdRequest.song_artist}` : ''}`;
+      }
+    }
+    
     const description = crowdRequest.request_type === 'song_request'
-      ? `Song Request${priorityLabel}: ${crowdRequest.song_title}${crowdRequest.song_artist ? ` by ${crowdRequest.song_artist}` : ''}`
+      ? songDescription
       : crowdRequest.request_type === 'shoutout'
       ? `Shoutout for ${crowdRequest.recipient_name}`
       : 'Tip';
@@ -81,8 +167,26 @@ export default async function handler(req, res) {
       if (crowdRequest.request_type === 'tip') {
         return 'Tip';
       } else if (crowdRequest.request_type === 'song_request') {
-        const song = crowdRequest.song_title || 'Song Request';
-        const artist = crowdRequest.song_artist || '';
+        if (bundleSongs.length > 1) {
+          // Bundle: list all songs
+          const songList = bundleSongs.map(s => {
+            const artist = s.song_artist ? ` by ${s.song_artist}` : '';
+            return `${s.song_title}${artist}`;
+          }).join('; ');
+          let desc = `Bundle (${bundleSongs.length} songs): ${songList}`;
+          if (isNextRequest) {
+            desc += ' (NEXT - Highest Priority)';
+          } else if (isFastTrackRequest) {
+            desc += ' (Fast-Track - Priority Placement)';
+          }
+          if (crowdRequest.is_custom_audio) {
+            desc += ' [Custom Audio Upload]';
+          }
+          return desc;
+        } else {
+          // Single song
+          const song = bundleSongs.length === 1 ? bundleSongs[0].song_title : (crowdRequest.song_title || 'Song Request');
+          const artist = bundleSongs.length === 1 ? bundleSongs[0].song_artist : (crowdRequest.song_artist || '');
         let desc = `Song Request: ${song}`;
         if (artist) {
           desc += ` by ${artist}`;
@@ -96,6 +200,7 @@ export default async function handler(req, res) {
           desc += ' [Custom Audio Upload]';
         }
         return desc;
+        }
       } else {
         const recipient = crowdRequest.recipient_name || 'Recipient';
         let desc = `Shoutout for ${recipient}`;
@@ -118,13 +223,33 @@ export default async function handler(req, res) {
     
     // Base request item with detailed description
     if (baseAmount > 0) {
-      const baseDescription = crowdRequest.request_type === 'song_request'
-        ? (crowdRequest.song_title 
+      // Build base description with all bundle songs
+      let baseDescription = '';
+      if (crowdRequest.request_type === 'song_request') {
+        if (bundleSongs.length > 1) {
+          // Bundle: list all songs
+          const songList = bundleSongs.map(s => {
+            const artist = s.song_artist ? ` by ${s.song_artist}` : '';
+            return `${s.song_title}${artist}`;
+          }).join(', ');
+          baseDescription = `Bundle (${bundleSongs.length} songs): ${songList}`;
+        } else if (bundleSongs.length === 1) {
+          // Single song
+          const s = bundleSongs[0];
+          baseDescription = s.song_title 
+            ? `${s.song_title}${s.song_artist ? ` by ${s.song_artist}` : ''}`
+            : 'Song Request';
+        } else {
+          // Fallback
+          baseDescription = crowdRequest.song_title 
             ? `${crowdRequest.song_title}${crowdRequest.song_artist ? ` by ${crowdRequest.song_artist}` : ''}`
-            : 'Song Request')
-        : crowdRequest.request_type === 'shoutout'
-        ? `Shoutout for ${crowdRequest.recipient_name || 'Recipient'}`
-        : 'Tip';
+            : 'Song Request';
+        }
+      } else if (crowdRequest.request_type === 'shoutout') {
+        baseDescription = `Shoutout for ${crowdRequest.recipient_name || 'Recipient'}`;
+      } else {
+        baseDescription = 'Tip';
+      }
       
       lineItems.push({
         price_data: {
@@ -324,6 +449,11 @@ export default async function handler(req, res) {
                 ...(crowdRequest.request_type === 'song_request' && {
                   song_title: crowdRequest.song_title || '',
                   song_artist: crowdRequest.song_artist || '',
+                  bundle_size: bundleSongs.length > 1 ? bundleSongs.length.toString() : '1',
+                  bundle_songs: bundleSongs.length > 1 ? JSON.stringify(bundleSongs.map(s => ({
+                    title: s.song_title || '',
+                    artist: s.song_artist || ''
+                  }))) : '',
                 }),
                 ...(crowdRequest.request_type === 'shoutout' && {
                   recipient_name: crowdRequest.recipient_name || '',
@@ -370,6 +500,11 @@ export default async function handler(req, res) {
           song_title: crowdRequest.song_title || '',
           song_artist: crowdRequest.song_artist || '',
           song_full: fullDescription, // Full song description in metadata
+          bundle_size: bundleSongs.length > 1 ? bundleSongs.length.toString() : '1',
+          bundle_songs: bundleSongs.length > 1 ? JSON.stringify(bundleSongs.map(s => ({
+            title: s.song_title || '',
+            artist: s.song_artist || ''
+          }))) : '',
         }),
         ...(crowdRequest.request_type === 'shoutout' && {
           recipient_name: crowdRequest.recipient_name || '',
@@ -402,6 +537,11 @@ export default async function handler(req, res) {
             song_title: crowdRequest.song_title || '',
             song_artist: crowdRequest.song_artist || '',
             song_full: fullDescription, // Full song description in metadata
+            bundle_size: bundleSongs.length > 1 ? bundleSongs.length.toString() : '1',
+            bundle_songs: bundleSongs.length > 1 ? JSON.stringify(bundleSongs.map(s => ({
+              title: s.song_title || '',
+              artist: s.song_artist || ''
+            }))) : '',
           }),
           ...(crowdRequest.request_type === 'shoutout' && {
             recipient_name: crowdRequest.recipient_name || '',

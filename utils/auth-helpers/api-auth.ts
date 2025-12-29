@@ -76,7 +76,7 @@ export async function requireAuth(
 
   if (!user || error) {
     if (!res.headersSent) {
-      res.status(401).json({ error: error || 'Unauthorized' });
+    res.status(401).json({ error: error || 'Unauthorized' });
     }
     throw new Error('Unauthorized');
   }
@@ -96,7 +96,7 @@ export async function requireAdmin(
 
   if (!user.email) {
     if (!res.headersSent) {
-      res.status(403).json({ error: 'Admin access required' });
+    res.status(403).json({ error: 'Admin access required' });
     }
     throw new Error('Admin access required');
   }
@@ -105,7 +105,7 @@ export async function requireAdmin(
   
   if (!isAdmin) {
     if (!res.headersSent) {
-      res.status(403).json({ error: 'Admin access required' });
+    res.status(403).json({ error: 'Admin access required' });
     }
     throw new Error('Admin access required');
   }

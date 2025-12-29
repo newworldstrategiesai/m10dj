@@ -38,6 +38,8 @@ function PaymentMethodSelection({
   requesterName, // New prop: requester name to include in payment note
   additionalSongs = [],
   setAdditionalSongs,
+  bundleSongs = [], // New: Bundle songs array
+  bundleSize = 1, // New: Bundle size (1, 2, or 3)
   bundleDiscount = 0,
   bundleDiscountEnabled = false,
   getBaseAmount,
@@ -63,9 +65,42 @@ function PaymentMethodSelection({
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`;
   };
 
+  // Helper function to abbreviate song/artist names if needed
+  const abbreviateSong = (title, artist, maxLength) => {
+    if (!title) return '';
+    
+    const artistPart = artist ? ` by ${artist}` : '';
+    const fullSong = `${title}${artistPart}`;
+    
+    if (fullSong.length <= maxLength) {
+      return fullSong;
+    }
+    
+    // Need to abbreviate - prioritize keeping title over artist
+    if (artist) {
+      // Try abbreviating artist first
+      const artistAbbrev = artist.length > 8 ? artist.substring(0, 6) + '..' : artist;
+      const withAbbrevArtist = `${title} by ${artistAbbrev}`;
+      
+      if (withAbbrevArtist.length <= maxLength) {
+        return withAbbrevArtist;
+      }
+      
+      // Need to abbreviate title too
+      const titleMax = maxLength - artistAbbrev.length - 6; // " by " + artist
+      const titleAbbrev = title.length > titleMax ? title.substring(0, titleMax - 2) + '..' : title;
+      return `${titleAbbrev} by ${artistAbbrev}`;
+    } else {
+      // No artist, just abbreviate title
+      return title.length > maxLength ? title.substring(0, maxLength - 2) + '..' : title;
+    }
+  };
+
   // Build payment note with song/shoutout details
   // Uses normalized casing for song titles and artist names
   // Includes requester name to help with payment verification
+  // Includes all bundle songs if applicable
+  // Abbreviates song/artist names if needed to fit Venmo's 280 character limit
   const buildPaymentNote = () => {
     let note = '';
     
@@ -75,19 +110,86 @@ function PaymentMethodSelection({
       : '';
     
     if (requestType === 'song_request') {
+      // Build list of all songs (main + bundle songs)
+      const allSongs = [];
+      
+      // Add main song
       if (songTitle) {
-        // Normalize casing for display in payment memo
         const normalizedTitle = toTitleCase(songTitle);
         const normalizedArtist = songArtist ? toTitleCase(songArtist) : null;
+        const songStr = normalizedArtist 
+          ? `${normalizedTitle} by ${normalizedArtist}`
+          : normalizedTitle;
+        allSongs.push({ title: normalizedTitle, artist: normalizedArtist, full: songStr });
+      }
+      
+      // Add bundle songs
+      if (bundleSize > 1 && bundleSongs && bundleSongs.length > 0) {
+        bundleSongs.forEach(song => {
+          if (song.songTitle?.trim()) {
+            const normalizedTitle = toTitleCase(song.songTitle);
+            const normalizedArtist = song.songArtist ? toTitleCase(song.songArtist) : null;
+            const songStr = normalizedArtist 
+              ? `${normalizedTitle} by ${normalizedArtist}`
+              : normalizedTitle;
+            allSongs.push({ title: normalizedTitle, artist: normalizedArtist, full: songStr });
+          }
+        });
+      }
+      
+      // Build note with all songs
+      if (allSongs.length > 0) {
+        // Calculate available space for songs
+        const codePart = paymentCode ? ` - ${paymentCode}` : '';
+        const reservedLength = namePrefix.length + codePart.length;
+        const maxLength = 280; // Venmo limit
+        const availableForSongs = maxLength - reservedLength - 2; // -2 for safety margin
         
-        note = namePrefix + normalizedTitle;
-        if (normalizedArtist) {
-          note += ` by ${normalizedArtist}`;
-        }
-        if (paymentCode) {
-          note += ` - ${paymentCode}`;
+        // First, try with full song names
+        let songList = allSongs.map(s => s.full).join(', ');
+        let fullNote = namePrefix + songList + codePart;
+        
+        // If too long, abbreviate songs
+        if (fullNote.length > maxLength) {
+          // Calculate per-song length (distribute available space)
+          const numSongs = allSongs.length;
+          const perSongLength = Math.floor(availableForSongs / numSongs) - 2; // -2 for comma and space
+          
+          // Abbreviate each song to fit
+          const abbreviatedSongs = allSongs.map(song => {
+            return abbreviateSong(song.title, song.artist, perSongLength);
+          });
+          
+          songList = abbreviatedSongs.join(', ');
+          fullNote = namePrefix + songList + codePart;
+          
+          // If still too long, truncate from the end (but keep payment code)
+          if (fullNote.length > maxLength) {
+            const mainPart = namePrefix + songList;
+            const availableForMain = maxLength - codePart.length - 3; // -3 for "..."
+            
+            if (mainPart.length > availableForMain) {
+              // Truncate but try to end at a song boundary (comma)
+              let truncated = mainPart.substring(0, availableForMain);
+              const lastComma = truncated.lastIndexOf(',');
+              
+              // Only truncate at comma if we keep at least 60% of content
+              if (lastComma > availableForMain * 0.6) {
+                truncated = truncated.substring(0, lastComma);
+              }
+              
+              note = truncated + '...' + codePart;
+            } else {
+              note = mainPart + codePart;
+            }
+          } else {
+            note = fullNote;
+          }
+        } else {
+          note = fullNote;
         }
       } else {
+        // Fallback if no songs
         note = namePrefix + (paymentCode ? `Song Request - ${paymentCode}` : 'Song Request');
       }
     } else if (requestType === 'shoutout') {
@@ -105,22 +207,17 @@ function PaymentMethodSelection({
       note = namePrefix + (paymentCode ? `Crowd Request - ${paymentCode}` : 'Crowd Request');
     }
     
-    // Keep note under character limits:
-    // CashApp: ~100 characters
-    // Venmo: ~280 characters
-    // Trim to be safe (but prioritize keeping name and payment code)
-    if (note.length > 200) {
-      // If we have a payment code, try to keep it
+    // Final safety check - ensure we're under Venmo's 280 character limit
+    const maxLength = 280;
+    if (note.length > maxLength) {
+      // Last resort: truncate but preserve payment code
       if (paymentCode && note.includes(paymentCode)) {
-        // Keep name, payment code, and truncate the middle
         const codePart = ` - ${paymentCode}`;
-        const maxLength = 200 - codePart.length;
+        const availableLength = maxLength - codePart.length - 3; // -3 for "..."
         const mainPart = note.substring(0, note.indexOf(codePart));
-        if (mainPart.length > maxLength) {
-          note = mainPart.substring(0, maxLength - 3) + '...' + codePart;
-        }
+        note = mainPart.substring(0, availableLength) + '...' + codePart;
       } else {
-        note = note.substring(0, 197) + '...';
+        note = note.substring(0, maxLength - 3) + '...';
       }
     }
     

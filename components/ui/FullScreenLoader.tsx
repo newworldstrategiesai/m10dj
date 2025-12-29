@@ -16,9 +16,53 @@ export default function FullScreenLoader({
   const [mounted, setMounted] = useState(false);
   const [isFading, setIsFading] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    
+    // Check initial dark mode state
+    const checkDarkMode = () => {
+      // Check for dark class, data-force-dark attribute, or if we're on a requests page
+      const hasDarkClass = document.documentElement.classList.contains('dark');
+      const hasForceDark = document.documentElement.getAttribute('data-force-dark') === 'true';
+      const isRequestsPage = typeof window !== 'undefined' && 
+        (window.location.pathname.includes('/requests') || 
+         document.documentElement.getAttribute('data-requests-page') === 'true');
+      
+      setIsDarkMode(hasDarkClass || hasForceDark || isRequestsPage);
+    };
+    
+    // Check immediately
+    checkDarkMode();
+    
+    // Check again after a short delay to catch late-applied dark mode (like on requests page)
+    const initialCheckTimeout = setTimeout(checkDarkMode, 150);
+    
+    // Watch for dark mode changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class' || 
+            mutation.attributeName === 'data-force-dark' ||
+            mutation.attributeName === 'data-requests-page') {
+          checkDarkMode();
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { 
+      attributes: true,
+      attributeFilter: ['class', 'data-force-dark', 'data-requests-page']
+    });
+    
+    // Also check periodically to catch any missed changes
+    const intervalId = setInterval(checkDarkMode, 200);
+    
+    return () => {
+      clearTimeout(initialCheckTimeout);
+      clearInterval(intervalId);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -40,9 +84,23 @@ export default function FullScreenLoader({
 
   if (!mounted || !shouldRender) return null;
 
+  // Use white logo in dark mode, regular logo in light mode
+  const logoSrc = isDarkMode 
+    ? '/assets/m10 dj company logo white.gif'
+    : '/M10-Rotating-Logo.gif';
+  
+  // Bright backdrop for light mode, dark backdrop for dark mode
+  const backdropClass = isDarkMode
+    ? 'bg-black/75 backdrop-blur-md'
+    : 'bg-white/95 backdrop-blur-md';
+  
+  const textColorClass = isDarkMode
+    ? 'text-white'
+    : 'text-gray-900';
+
   return (
     <div 
-      className={`fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center transition-opacity duration-700 ease-out ${
+      className={`fixed inset-0 z-[9999] ${backdropClass} flex items-center justify-center transition-opacity duration-700 ease-out ${
         isFading ? 'opacity-0' : 'opacity-100'
       }`}
       role="status"
@@ -53,7 +111,7 @@ export default function FullScreenLoader({
         {/* Animated Logo GIF - Centered */}
         <div className="relative w-64 h-64 md:w-96 md:h-96">
           <img
-            src="/M10-Rotating-Logo.gif"
+            src={logoSrc}
             alt="M10 DJ Company Loading Animation"
             className="w-full h-full object-contain"
             loading="eager"
@@ -62,7 +120,7 @@ export default function FullScreenLoader({
 
         {/* Loading Message - Optional */}
         {message && (
-          <p className="mt-8 text-lg font-medium text-white animate-pulse drop-shadow-lg">
+          <p className={`mt-8 text-lg font-medium ${textColorClass} animate-pulse drop-shadow-lg`}>
             {message}
           </p>
         )}

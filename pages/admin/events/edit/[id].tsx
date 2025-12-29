@@ -212,24 +212,24 @@ export default function EditEventPage() {
   if (error) {
     return (
       <PageLoadingWrapper isLoading={loading} message="Loading event page...">
-        <AdminLayout title="Edit Event Page" description="Edit event case study page">
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-            <div className="text-center max-w-md">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Error</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-              <Link
-                href="/admin/events"
-                className="bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-medium inline-block"
-              >
-                Back to Events
-              </Link>
-            </div>
-          </div>
-        </AdminLayout>
-      </PageLoadingWrapper>
-    );
-  }
+      <AdminLayout title="Edit Event Page" description="Edit event case study page">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Error</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+            <Link
+              href="/admin/events"
+              className="bg-[#fcba00] hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-medium inline-block"
+            >
+              Back to Events
+            </Link>
+        </div>
+      </div>
+    </AdminLayout>
+    </PageLoadingWrapper>
+  );
+}
 
   return (
     <PageLoadingWrapper isLoading={loading} message="Loading event page...">

@@ -76,6 +76,8 @@ function PaymentAmountSelector({
                 }
                 return true; // Show this button
               })
+              .slice()
+              .reverse() // Reverse order: max first, min last
               .map((preset, idx) => {
               const beatsCurrentBid = isBiddingMode && currentWinningBid > 0 && preset.value > currentWinningBid;
               const isBelowMinimum = isBiddingMode && preset.value < minimumAmount;
@@ -248,7 +250,12 @@ function PaymentAmountSelector({
                     </span>
                   </div>
                   <span className="text-xs sm:text-sm font-bold text-orange-600 dark:text-orange-400 whitespace-nowrap">
-                    +${(fastTrackFee / 100).toFixed(2)}
+                    +${((fastTrackFee * bundleSize) / 100).toFixed(2)}
+                    {bundleSize > 1 && (
+                      <span className="text-[10px] text-orange-500 dark:text-orange-400 ml-1">
+                        ({bundleSize}x)
+                      </span>
+                    )}
                   </span>
                 </div>
                 <p className="text-[10px] sm:text-xs text-orange-600 dark:text-orange-400 font-medium mt-0.5">
@@ -325,7 +332,12 @@ function PaymentAmountSelector({
                   Fast-Track Fee:
                 </span>
                 <span className="font-bold text-base sm:text-lg bg-gradient-to-r from-orange-600 to-amber-600 dark:from-orange-400 dark:to-amber-400 bg-clip-text text-transparent">
-                  +${(fastTrackFee / 100).toFixed(2)}
+                  +${((fastTrackFee * bundleSize) / 100).toFixed(2)}
+                  {bundleSize > 1 && (
+                    <span className="text-sm text-orange-500 dark:text-orange-400 ml-1">
+                      ({bundleSize}x)
+                    </span>
+                  )}
                 </span>
               </div>
             )}

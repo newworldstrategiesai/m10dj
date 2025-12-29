@@ -73,6 +73,14 @@ function BundleSelector({
     return null;
   }
 
+  // Check if min bid is selected (needed for bundle options 2 and 3)
+  const isMinBidSelected = baseAmount === minimumAmount;
+
+  // Hide entire bundle selector until minimum bid is selected
+  if (!isMinBidSelected) {
+    return null;
+  }
+
   return (
     <div className="mt-4 sm:mt-6 border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-4 sm:pt-6">
       <div className="flex items-center gap-2 mb-3 sm:mb-4">
@@ -87,18 +95,20 @@ function BundleSelector({
           const isSelected = bundleSize === bundle.size;
           const pricePerSong = getPricePerSong(bundle.size);
           const hasDiscount = bundle.savings > 0;
+          // Disable bundle options 2 and 3 if min bid is not selected (1 song is always available)
+          const isBundleDisabled = disabled || (!isMinBidSelected && bundle.size > 1);
           
           return (
             <button
               key={bundle.size}
               type="button"
-              onClick={() => !disabled && setBundleSize(bundle.size)}
-              disabled={disabled}
+              onClick={() => !isBundleDisabled && setBundleSize(bundle.size)}
+              disabled={isBundleDisabled}
               className={`relative p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation ${
                 isSelected
                   ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/20 shadow-lg shadow-purple-500/20 scale-105'
                   : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-md'
-              } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              } ${isBundleDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
               {isSelected && (
                 <div className="absolute -top-2 -right-2 bg-purple-500 text-white rounded-full p-1">
@@ -152,6 +162,7 @@ function BundleSelector({
           </p>
         </div>
       )}
+      
     </div>
   );
 }

@@ -75,6 +75,7 @@ interface CrowdRequest {
   song_title: string | null;
   recipient_name: string | null;
   recipient_message: string | null;
+  request_message: string | null; // Message field (used for bundle deals)
   requester_name: string;
   requester_email: string | null;
   requester_venmo_username?: string | null;
@@ -3147,6 +3148,79 @@ export default function CrowdRequestsPage() {
   const isPaid = (request: CrowdRequest) => {
     return request.payment_status === 'paid' || 
            (request.amount_paid > 0 && request.payment_intent_id);
+  };
+
+  // Helper function to detect if a request is part of a bundle
+  // A request is part of a bundle if:
+  // 1. It has a "Bundle deal" message, OR
+  // 2. It's the main request (no bundle message) but there are other requests with bundle messages from the same requester created within 5 seconds
+  const isBundleRequest = (request: CrowdRequest): boolean => {
+    // Direct bundle request (has bundle message)
+    if (request.request_message && request.request_message.includes('Bundle deal')) {
+      return true;
+    }
+    
+    // Check if this is the main request in a bundle (no bundle message, but other bundle requests exist)
+    // Look for other requests with bundle messages from same requester created within 5 seconds
+    const hasBundleSiblings = requests.some(r => 
+      r.id !== request.id &&
+      r.request_message?.includes('Bundle deal') &&
+      (
+        (request.requester_email && r.requester_email && request.requester_email === r.requester_email) ||
+        (request.requester_phone && r.requester_phone && request.requester_phone === r.requester_phone)
+      ) &&
+      Math.abs(new Date(request.created_at).getTime() - new Date(r.created_at).getTime()) < 5000
+    );
+    
+    return hasBundleSiblings;
+  };
+
+  // Helper function to extract bundle info from message
+  const getBundleInfo = (request: CrowdRequest): { bundleSize: number; bundlePrice: number } | null => {
+    if (!isBundleRequest(request)) return null;
+    
+    const message = request.request_message || '';
+    // Extract bundle size and price from message like "Bundle deal - 2 songs for $20.00"
+    const match = message.match(/Bundle deal - (\d+) songs? for \$([\d.]+)/);
+    if (match) {
+      return {
+        bundleSize: parseInt(match[1], 10),
+        bundlePrice: parseFloat(match[2]) * 100 // Convert to cents
+      };
+    }
+    return null;
+  };
+
+  // Helper function to group bundle requests together
+  // Bundle requests share: same requester (email/phone), same payment_code or payment_intent_id, created within 5 seconds
+  const getBundleGroup = (request: CrowdRequest): string | null => {
+    if (!isBundleRequest(request)) return null;
+    
+    // Try to find other bundle requests that share payment info
+    const bundleRequests = requests.filter(r => 
+      isBundleRequest(r) &&
+      r.id !== request.id &&
+      (
+        // Same payment code
+        (request.payment_code && r.payment_code && request.payment_code === r.payment_code) ||
+        // Same payment intent ID
+        (request.payment_intent_id && r.payment_intent_id && request.payment_intent_id === r.payment_intent_id) ||
+        // Same requester and created within 5 seconds (fallback for manual payments)
+        (
+          (request.requester_email && r.requester_email && request.requester_email === r.requester_email) ||
+          (request.requester_phone && r.requester_phone && request.requester_phone === r.requester_phone)
+        ) &&
+        Math.abs(new Date(request.created_at).getTime() - new Date(r.created_at).getTime()) < 5000
+      )
+    );
+
+    if (bundleRequests.length > 0) {
+      // Use the earliest request ID as the group identifier
+      const allBundleIds = [request.id, ...bundleRequests.map(r => r.id)].sort();
+      return allBundleIds[0]; // Use first ID as group key
+    }
+    
+    return request.id; // Single bundle request (shouldn't happen, but handle gracefully)
   };
 
   // Sorting function
@@ -6665,8 +6739,8 @@ export default function CrowdRequestsPage() {
           >
             <Mic className={`w-4 h-4 ${showAudioTrackingModal ? 'animate-pulse' : ''}`} />
             {showAudioTrackingModal ? 'Listening...' : 'Live Listening'}
-          </Button>
-
+                </Button>
+          
           <Button
             onClick={fetchRequests}
             variant="outline"
@@ -6893,13 +6967,20 @@ export default function CrowdRequestsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {paginatedRequests.map((request) => (
+                    {paginatedRequests.map((request) => {
+                      const bundleInfo = getBundleInfo(request);
+                      const bundleGroup = getBundleGroup(request);
+                      const bundleRequests = bundleGroup ? requests.filter(r => getBundleGroup(r) === bundleGroup) : [];
+                      
+                      return (
                     <tr 
                       key={request.id} 
                       className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
                         request.is_fast_track ? 'bg-orange-50 dark:bg-orange-900/10 border-l-4 border-orange-500' : ''
                       } ${
                         !request.organization_id ? 'bg-yellow-50 dark:bg-yellow-900/10 border-l-4 border-yellow-500' : ''
+                        } ${
+                          isBundleRequest(request) ? 'bg-purple-50 dark:bg-purple-900/10 border-l-4 border-purple-500' : ''
                       }`}
                       onClick={() => openDetailModal(request)}
                     >
@@ -6942,6 +7023,12 @@ export default function CrowdRequestsPage() {
                                 <Badge className="bg-blue-500 text-white flex items-center gap-1 px-2 py-0.5">
                                   <FileText className="w-3 h-3" />
                                   Custom Audio
+                                </Badge>
+                              )}
+                              {isBundleRequest(request) && (
+                                <Badge className="bg-purple-500 text-white flex items-center gap-1 px-2 py-0.5">
+                                  <Gift className="w-3 h-3" />
+                                  Bundle
                                 </Badge>
                               )}
                               {request.is_artist && (
@@ -7083,7 +7170,24 @@ export default function CrowdRequestsPage() {
                                   +${(request.audio_upload_fee / 100).toFixed(2)} audio upload
                                 </span>
                               )}
+                              {bundleInfo && (
+                                <span className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                                  <Gift className="w-3 h-3" />
+                                  Bundle: {bundleInfo.bundleSize} songs (${(bundleInfo.bundlePrice / 100).toFixed(2)} total)
+                                </span>
+                              )}
                             </>
+                          )}
+                          {bundleGroup && bundleRequests.length > 0 && (
+                            <div className="mt-1 text-xs text-purple-600 dark:text-purple-400">
+                              <span className="font-medium">Bundle Group:</span> {bundleRequests.length} request{bundleRequests.length !== 1 ? 's' : ''} 
+                              {request.payment_code && (
+                                <span className="ml-1">(Code: {request.payment_code})</span>
+                              )}
+                              {request.payment_intent_id && (
+                                <span className="ml-1">(Intent: {request.payment_intent_id.substring(0, 12)}...)</span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -7361,7 +7465,8 @@ export default function CrowdRequestsPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                    })}
                 </tbody>
               </table>
             </div>
@@ -7369,7 +7474,12 @@ export default function CrowdRequestsPage() {
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-3 mt-4">
-            {paginatedRequests.map((request) => (
+            {paginatedRequests.map((request) => {
+              const bundleInfo = getBundleInfo(request);
+              const bundleGroup = getBundleGroup(request);
+              const bundleRequests = bundleGroup ? requests.filter(r => getBundleGroup(r) === bundleGroup) : [];
+              
+              return (
               <div
                 key={request.id}
                 onClick={() => openDetailModal(request)}
@@ -7377,6 +7487,8 @@ export default function CrowdRequestsPage() {
                   request.is_fast_track ? 'border-l-4 border-l-orange-500 bg-orange-50/50 dark:bg-orange-900/10' : ''
                 } ${
                   !request.organization_id ? 'border-l-4 border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-900/10' : ''
+                } ${
+                  isBundleRequest(request) ? 'border-l-4 border-l-purple-500 bg-purple-50/50 dark:bg-purple-900/10' : ''
                 }`}
               >
                 {/* Card Header */}
@@ -7428,6 +7540,12 @@ export default function CrowdRequestsPage() {
                           <Badge className="bg-green-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs">
                             <User className="w-3 h-3" />
                             Artist
+                          </Badge>
+                        )}
+                        {isBundleRequest(request) && (
+                          <Badge className="bg-purple-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs">
+                            <Gift className="w-3 h-3" />
+                            Bundle
                           </Badge>
                         )}
                       </div>
@@ -7514,11 +7632,36 @@ export default function CrowdRequestsPage() {
                         +${(request.audio_upload_fee / 100).toFixed(2)}
                       </span>
                     )}
+                    {bundleInfo && (
+                      <span className="text-xs text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1">
+                        <Gift className="w-3 h-3" />
+                        Bundle: {bundleInfo.bundleSize} songs
+                      </span>
+                    )}
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     {getStatusBadge(request.status, request.payment_status)}
                   </div>
                 </div>
+                
+                {/* Bundle Group Info */}
+                {bundleGroup && bundleRequests.length > 0 && (
+                  <div className="mb-3 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+                    <p className="text-xs text-purple-700 dark:text-purple-300 font-medium mb-1">
+                      Bundle Group: {bundleRequests.length} request{bundleRequests.length !== 1 ? 's' : ''}
+                    </p>
+                    {request.payment_code && (
+                      <p className="text-xs text-purple-600 dark:text-purple-400 font-mono">
+                        Code: {request.payment_code}
+                      </p>
+                    )}
+                    {request.payment_intent_id && (
+                      <p className="text-xs text-purple-600 dark:text-purple-400 font-mono truncate">
+                        Intent: {request.payment_intent_id.substring(0, 20)}...
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Date and Actions */}
                 <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -7585,7 +7728,8 @@ export default function CrowdRequestsPage() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+              })}
           </div>
 
           {/* Pagination */}
@@ -8400,6 +8544,91 @@ export default function CrowdRequestsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Bundle Information */}
+                {isBundleRequest(selectedRequest) && (() => {
+                  const bundleInfo = getBundleInfo(selectedRequest);
+                  const bundleGroup = getBundleGroup(selectedRequest);
+                  const bundleRequests = bundleGroup ? requests.filter(r => getBundleGroup(r) === bundleGroup && r.id !== selectedRequest.id) : [];
+                  
+                  return (
+                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border-2 border-purple-300 dark:border-purple-700">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Gift className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Bundle Deal Information</p>
+                      </div>
+                      
+                      {bundleInfo && (
+                        <div className="mb-4">
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Bundle Details</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {bundleInfo.bundleSize} songs for ${(bundleInfo.bundlePrice / 100).toFixed(2)} total
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            ${(bundleInfo.bundlePrice / bundleInfo.bundleSize / 100).toFixed(2)} per song
+                          </p>
+                        </div>
+                      )}
+                      
+                      {(selectedRequest.payment_code || selectedRequest.payment_intent_id) && (
+                        <div className="mb-4">
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Shared Payment Identifier</p>
+                          {selectedRequest.payment_code && (
+                            <p className="text-sm font-mono text-purple-600 dark:text-purple-400">
+                              Code: {selectedRequest.payment_code}
+                            </p>
+                          )}
+                          {selectedRequest.payment_intent_id && (
+                            <p className="text-xs font-mono text-purple-600 dark:text-purple-400 mt-1">
+                              Intent: {selectedRequest.payment_intent_id}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      
+                      {bundleRequests.length > 0 && (
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                            Linked Bundle Requests ({bundleRequests.length}):
+                          </p>
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {bundleRequests.map((bundleReq) => (
+                              <div 
+                                key={bundleReq.id}
+                                className="bg-white dark:bg-gray-800 rounded p-2 border border-purple-200 dark:border-purple-700 cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                                onClick={() => {
+                                  setShowDetailModal(false);
+                                  setTimeout(() => openDetailModal(bundleReq), 100);
+                                }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                                      {bundleReq.song_title || 'Unknown Song'}
+                                    </p>
+                                    {bundleReq.song_artist && (
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                        by {bundleReq.song_artist}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="ml-2 text-right">
+                                    <p className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                                      ${((bundleReq.amount_paid || bundleReq.amount_requested) / 100).toFixed(2)}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      {getStatusBadge(bundleReq.status, bundleReq.payment_status, bundleReq)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Event Information */}
                 {(selectedRequest.event_qr_code || selectedRequest.event_name || selectedRequest.event_date) && (

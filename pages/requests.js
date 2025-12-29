@@ -23,6 +23,7 @@ import { useQRScanTracking } from '../hooks/useQRScanTracking';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import BiddingInterface from '../components/bidding/BiddingInterface';
 import BidSuccessModal from '../components/bidding/BidSuccessModal';
+import FullScreenLoader from '@/components/ui/FullScreenLoader';
 
 const logger = createLogger('GeneralRequestsPage');
 
@@ -35,7 +36,9 @@ export default function RequestsPageWrapper() {
   const supabase = createClientComponentClient();
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showLoader, setShowLoader] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [startTime] = useState(() => Date.now());
 
   useEffect(() => {
     async function loadDefaultOrganization() {
@@ -102,15 +105,29 @@ export default function RequestsPageWrapper() {
     return () => clearInterval(refreshInterval);
   }, [supabase]);
 
-  if (loading) {
+  // Ensure loader shows for minimum time to prevent flash
+  useEffect(() => {
+    if (!loading) {
+      const elapsed = Date.now() - startTime;
+      const minLoadTime = 400; // Minimum 400ms to prevent flash
+      const remaining = Math.max(0, minLoadTime - elapsed);
+      
+      const timer = setTimeout(() => {
+        setShowLoader(false);
+      }, remaining);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setShowLoader(true);
+    }
+  }, [loading, startTime]);
+
+  if (showLoader) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <img
-          src="/M10-Rotating-Logo.gif"
-          alt="M10 DJ Company Loading"
-          className="w-32 h-32 object-contain"
+      <FullScreenLoader 
+        isOpen={true} 
+        message="Loading requests page..." 
         />
-      </div>
     );
   }
 
@@ -225,6 +242,7 @@ export function GeneralRequestsPage({
   const [showAutocomplete, setShowAutocomplete] = useState(false); // Show/hide autocomplete suggestions
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1); // Keyboard navigation
   const songTitleInputRef = useRef(null); // Ref for scrolling to song title field
+  const bundleSongsRef = useRef(null); // Ref for scrolling to bundle songs section
   const [requestId, setRequestId] = useState(null);
   const [paymentCode, setPaymentCode] = useState(null);
   const [additionalRequestIds, setAdditionalRequestIds] = useState([]);
@@ -233,6 +251,15 @@ export function GeneralRequestsPage({
   const [additionalSongs, setAdditionalSongs] = useState([]); // Array of {songTitle, songArtist}
   const [bundleSize, setBundleSize] = useState(1); // Bundle size: 1, 2, or 3
   const [bundleSongs, setBundleSongs] = useState([]); // Array of {songTitle, songArtist} for bundle songs
+  // State for bundle song extraction and autocomplete (per song index)
+  const [bundleExtractingSong, setBundleExtractingSong] = useState({}); // {index: boolean}
+  const [bundleExtractedSongUrls, setBundleExtractedSongUrls] = useState({}); // {index: string}
+  const [bundleIsExtractedFromLink, setBundleIsExtractedFromLink] = useState({}); // {index: boolean}
+  const [bundleExtractionErrors, setBundleExtractionErrors] = useState({}); // {index: string}
+  const [bundleShowAutocomplete, setBundleShowAutocomplete] = useState({}); // {index: boolean}
+  const [bundleSelectedSuggestionIndex, setBundleSelectedSuggestionIndex] = useState({}); // {index: number}
+  const [activeBundleSongIndex, setActiveBundleSongIndex] = useState(null); // Track which bundle song is being searched
+  const [bundleSongSearchQuery, setBundleSongSearchQuery] = useState(''); // Current search query for bundle songs
   const [socialSelectorOpen, setSocialSelectorOpen] = useState(false);
   const [selectedSocialPlatform, setSelectedSocialPlatform] = useState(null);
   const [audioFile, setAudioFile] = useState(null); // Selected audio file
@@ -312,6 +339,7 @@ export function GeneralRequestsPage({
       setBundleSongs([]);
     }
   }, [bundleSize]); // Only depend on bundleSize, not bundleSongs to avoid infinite loop
+
 
   // Check if bidding is enabled for this organization
   // /requests page: Only enable if organization setting is true
@@ -456,10 +484,13 @@ export function GeneralRequestsPage({
     }
   }, []);
 
-  // Set initial preset amount when settings load
+  // Set initial preset amount when settings load - default to max (first) amount
+  // Note: presetAmounts array is now reversed in PaymentAmountSelector, so max is first
   useEffect(() => {
     if (presetAmounts.length > 0 && presetAmount === CROWD_REQUEST_CONSTANTS.DEFAULT_PRESET_AMOUNT) {
-      setPresetAmount(presetAmounts[0].value);
+      // Set to the maximum preset amount (first one in array, since array is reversed in UI)
+      const maxPreset = presetAmounts[presetAmounts.length - 1];
+      setPresetAmount(maxPreset.value);
     }
   }, [presetAmounts, presetAmount]);
 
@@ -517,6 +548,47 @@ export function GeneralRequestsPage({
     }
     return getPaymentAmountHook();
   }, [shouldUseBidding, biddingSelectedAmount, getPaymentAmountHook]);
+
+  // Scroll to bundle songs section when bundle is selected and min bid is selected
+  // Must be after getBaseAmount is defined
+  useEffect(() => {
+    if (bundleSize > 1) {
+      // Check if min bid is selected
+      const baseAmount = getBaseAmount();
+      const isMinBidSelected = baseAmount === minimumAmount;
+      
+      if (isMinBidSelected) {
+        // Check if first song is filled in
+        const isFirstSongFilled = formData.songTitle?.trim() && formData.songArtist?.trim();
+        
+        // Small delay to ensure DOM is updated
+        setTimeout(() => {
+          if (!isFirstSongFilled && songTitleInputRef.current) {
+            // First song not filled - scroll to first song input
+            songTitleInputRef.current.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center',
+              inline: 'nearest'
+            });
+            // Focus the field briefly to highlight it
+            songTitleInputRef.current.focus();
+            setTimeout(() => {
+              if (songTitleInputRef.current) {
+                songTitleInputRef.current.blur();
+              }
+            }, 500);
+          } else if (isFirstSongFilled && bundleSongsRef.current) {
+            // First song filled - scroll to bundle songs section
+            bundleSongsRef.current.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            });
+          }
+        }, 100);
+      }
+    }
+  }, [bundleSize, getBaseAmount, minimumAmount, formData.songTitle, formData.songArtist]);
 
   // Calculate minimum bid amount based on current winning bid (only for bidding mode)
   const dynamicMinimumAmount = useMemo(() => {
@@ -624,6 +696,17 @@ export function GeneralRequestsPage({
                        formData.songTitle.trim().length >= 2;
   const { suggestions, loading: searchingSongs } = useSongSearch(
     shouldSearch ? formData.songTitle : '', 
+    organizationId
+  );
+  
+  // Search hook for bundle songs (only active when a bundle song is being edited)
+  const shouldSearchBundle = activeBundleSongIndex !== null && 
+    bundleSongSearchQuery && 
+    !detectUrl(bundleSongSearchQuery) && 
+    !bundleIsExtractedFromLink[activeBundleSongIndex] && 
+    bundleSongSearchQuery.trim().length >= 2;
+  const { suggestions: bundleSuggestions, loading: bundleSearching } = useSongSearch(
+    shouldSearchBundle ? bundleSongSearchQuery : '', 
     organizationId
   );
   
@@ -753,14 +836,171 @@ export function GeneralRequestsPage({
       if (extractedData.albumArt) {
         setAlbumArtUrl(extractedData.albumArt);
       }
+    }
+    
+    return extractedData;
+  };
+
+  // Extract song info for bundle songs
+  const extractBundleSongInfo = async (url, bundleIndex) => {
+    setBundleExtractingSong(prev => ({ ...prev, [bundleIndex]: true }));
+    setBundleExtractionErrors(prev => ({ ...prev, [bundleIndex]: null }));
+    
+    try {
+      const extractedData = await extractSongInfoHook(url, (updater) => {
+        // Custom updater for bundle songs
+        if (typeof updater === 'function') {
+          const newData = updater({ songTitle: '', songArtist: '' });
+          setBundleSongs(prev => {
+            const newSongs = [...prev];
+            newSongs[bundleIndex] = {
+              ...newSongs[bundleIndex],
+              songTitle: newData.songTitle || '',
+              songArtist: newData.songArtist || ''
+            };
+            return newSongs;
+          });
+        } else {
+          setBundleSongs(prev => {
+            const newSongs = [...prev];
+            newSongs[bundleIndex] = {
+              ...newSongs[bundleIndex],
+              songTitle: updater.songTitle || '',
+              songArtist: updater.songArtist || ''
+            };
+            return newSongs;
+          });
+        }
+      });
+      
+      if (extractedData) {
+        setBundleExtractedSongUrls(prev => ({ ...prev, [bundleIndex]: url }));
+        setBundleIsExtractedFromLink(prev => ({ ...prev, [bundleIndex]: true }));
+      }
       
       return extractedData;
-    } else {
-      // Extraction failed - clear states
-      setIsExtractedFromLink(false);
-      setAlbumArtUrl(null);
+    } catch (error) {
+      setBundleExtractionErrors(prev => ({ ...prev, [bundleIndex]: error.message || 'Failed to extract song info' }));
       return null;
+    } finally {
+      setBundleExtractingSong(prev => ({ ...prev, [bundleIndex]: false }));
     }
+  };
+
+  // Handle bundle song input change
+  const handleBundleSongInputChange = async (e, bundleIndex) => {
+    const value = e.target.value;
+    const newSongs = [...bundleSongs];
+    
+    // Update the song title
+    newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: value };
+    setBundleSongs(newSongs);
+    
+    // Update search query if this is the active bundle song
+    if (activeBundleSongIndex === bundleIndex) {
+      setBundleSongSearchQuery(value);
+    }
+    
+    // Check if it's a URL
+    const isUrl = detectUrl(value);
+    
+    if (isUrl) {
+      // URL detected - trigger extraction
+      const url = value.trim();
+      // Clear the input field immediately
+      newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: '' };
+      setBundleSongs(newSongs);
+      setBundleSongSearchQuery('');
+      
+      // Extract song info
+      await extractBundleSongInfo(url, bundleIndex);
+      return;
+    }
+    
+    // Show autocomplete when typing (not URLs, not extracted)
+    if (!isUrl && !bundleIsExtractedFromLink[bundleIndex] && value.trim().length >= 2) {
+      setBundleShowAutocomplete(prev => ({ ...prev, [bundleIndex]: true }));
+    } else {
+      setBundleShowAutocomplete(prev => ({ ...prev, [bundleIndex]: false }));
+    }
+    
+    // Clear extraction state if user manually edits after extraction
+    if (bundleIsExtractedFromLink[bundleIndex]) {
+      setBundleIsExtractedFromLink(prev => ({ ...prev, [bundleIndex]: false }));
+      setBundleExtractedSongUrls(prev => ({ ...prev, [bundleIndex]: '' }));
+    }
+  };
+
+  // Handle bundle song blur (for URL detection)
+  const handleBundleSongBlur = async (e, bundleIndex) => {
+    const value = e.target.value;
+    if (!value || bundleExtractingSong[bundleIndex]) return;
+    
+    const isUrl = detectUrl(value);
+    if (isUrl && !bundleIsExtractedFromLink[bundleIndex]) {
+      const url = value.trim();
+      const newSongs = [...bundleSongs];
+      newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: '' };
+      setBundleSongs(newSongs);
+      
+      await extractBundleSongInfo(url, bundleIndex);
+    }
+  };
+
+  // Handle bundle song suggestion selection
+  const handleBundleSuggestionSelect = (suggestion, bundleIndex) => {
+    const newSongs = [...bundleSongs];
+    newSongs[bundleIndex] = {
+      ...newSongs[bundleIndex],
+      songTitle: suggestion.title,
+      songArtist: suggestion.artist
+    };
+    setBundleSongs(newSongs);
+    setBundleShowAutocomplete(prev => ({ ...prev, [bundleIndex]: false }));
+    setBundleSelectedSuggestionIndex(prev => ({ ...prev, [bundleIndex]: -1 }));
+    setBundleIsExtractedFromLink(prev => ({ ...prev, [bundleIndex]: false }));
+  };
+
+  // Handle keyboard navigation for bundle songs
+  const handleBundleSongKeyDown = (e, bundleIndex) => {
+    // Only handle if this is the active bundle song
+    if (activeBundleSongIndex !== bundleIndex) return;
+    
+    const suggestions = bundleSuggestions;
+    const showAutocomplete = bundleShowAutocomplete[bundleIndex];
+    const selectedIndex = bundleSelectedSuggestionIndex[bundleIndex] || -1;
+    
+    if (!showAutocomplete || suggestions.length === 0) return;
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setBundleSelectedSuggestionIndex(prev => ({
+        ...prev,
+        [bundleIndex]: selectedIndex < suggestions.length - 1 ? selectedIndex + 1 : selectedIndex
+      }));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setBundleSelectedSuggestionIndex(prev => ({
+        ...prev,
+        [bundleIndex]: selectedIndex > 0 ? selectedIndex - 1 : -1
+      }));
+    } else if (e.key === 'Enter' && selectedIndex >= 0) {
+      e.preventDefault();
+      handleBundleSuggestionSelect(suggestions[selectedIndex], bundleIndex);
+    } else if (e.key === 'Escape') {
+      setBundleShowAutocomplete(prev => ({ ...prev, [bundleIndex]: false }));
+      setBundleSelectedSuggestionIndex(prev => ({ ...prev, [bundleIndex]: -1 }));
+    }
+  };
+
+  // Handle clear extraction for bundle songs
+  const handleClearBundleExtraction = (bundleIndex) => {
+    const newSongs = [...bundleSongs];
+    newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: '', songArtist: '' };
+    setBundleSongs(newSongs);
+    setBundleIsExtractedFromLink(prev => ({ ...prev, [bundleIndex]: false }));
+    setBundleExtractedSongUrls(prev => ({ ...prev, [bundleIndex]: '' }));
+    setBundleExtractionErrors(prev => ({ ...prev, [bundleIndex]: null }));
   };
 
   // Clear extraction state
@@ -1916,7 +2156,7 @@ export function GeneralRequestsPage({
 
                         {/* Bundle Songs Input (only show when bundle size > 1) */}
                         {bundleSize > 1 && bundleSongs.length > 0 && (
-                          <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                          <div ref={bundleSongsRef} className="mt-4 p-4 bg-white/70 dark:bg-black/50 rounded-lg border border-gray-200/50 dark:border-gray-800/50">
                             <div className="flex items-center gap-2 mb-3">
                               <Gift className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -1927,50 +2167,143 @@ export function GeneralRequestsPage({
                               Enter the details for your additional bundle songs:
                             </p>
                             <div className="space-y-4">
-                              {bundleSongs.map((song, index) => (
-                                <div key={index} className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-purple-200 dark:border-purple-700">
-                                  <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-2">
-                                    Song {index + 2} of {bundleSize}
-                                  </div>
-                                  <div className="space-y-3">
-                                    <div>
-                                      <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
-                                        Song Title <span className="text-red-500">*</span>
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={song.songTitle || ''}
-                                        onChange={(e) => {
-                                          const newSongs = [...bundleSongs];
-                                          newSongs[index] = { ...newSongs[index], songTitle: e.target.value };
-                                          setBundleSongs(newSongs);
-                                        }}
-                                        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                        placeholder="Enter song title"
-                                        required
-                                        autoComplete="off"
-                                      />
+                              {bundleSongs.map((song, index) => {
+                                // Get suggestions for this bundle song (only if it's the active one)
+                                const currentSuggestions = activeBundleSongIndex === index ? bundleSuggestions : [];
+                                const currentSearching = activeBundleSongIndex === index ? bundleSearching : false;
+                                
+                                return (
+                                  <div key={index} className="bg-white/50 dark:bg-black/30 rounded-lg p-3 sm:p-4 border border-gray-200/50 dark:border-gray-700/50">
+                                    <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-2">
+                                      Song {index + 2} of {bundleSize}
                                     </div>
-                                    <div>
-                                      <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
-                                        Artist Name
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={song.songArtist || ''}
-                                        onChange={(e) => {
-                                          const newSongs = [...bundleSongs];
-                                          newSongs[index] = { ...newSongs[index], songArtist: e.target.value };
-                                          setBundleSongs(newSongs);
-                                        }}
-                                        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                        placeholder="Enter artist name"
-                                        autoComplete="off"
-                                      />
+                                    <div className="space-y-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                                          <Music className="w-3 h-3 inline mr-1" />
+                                          Song Title <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                          <input
+                                            type="text"
+                                            value={song.songTitle || ''}
+                                            onChange={(e) => handleBundleSongInputChange(e, index)}
+                                            onFocus={() => {
+                                              setActiveBundleSongIndex(index);
+                                              setBundleSongSearchQuery(song.songTitle || '');
+                                              if (song.songTitle && !detectUrl(song.songTitle) && !bundleIsExtractedFromLink[index] && song.songTitle.trim().length >= 2) {
+                                                setBundleShowAutocomplete(prev => ({ ...prev, [index]: true }));
+                                              }
+                                            }}
+                                            onKeyDown={(e) => handleBundleSongKeyDown(e, index)}
+                                            onBlur={(e) => {
+                                              setTimeout(() => {
+                                                setBundleShowAutocomplete(prev => ({ ...prev, [index]: false }));
+                                                setBundleSelectedSuggestionIndex(prev => ({ ...prev, [index]: -1 }));
+                                              }, 200);
+                                              handleBundleSongBlur(e, index);
+                                            }}
+                                            className={`w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 ${
+                                              bundleExtractingSong[index] ? 'pr-20' : bundleIsExtractedFromLink[index] ? 'pr-20' : 'pr-3'
+                                            }`}
+                                            placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
+                                            required
+                                            autoComplete="off"
+                                          />
+                                          {bundleExtractingSong[index] && (
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+                                              <Loader2 className="w-4 h-4 animate-spin text-brand flex-shrink-0" />
+                                              <span className="text-xs text-gray-700 dark:text-gray-300 hidden sm:inline whitespace-nowrap">Extracting...</span>
+                                            </div>
+                                          )}
+                                          {bundleIsExtractedFromLink[index] && !bundleExtractingSong[index] && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleClearBundleExtraction(index)}
+                                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                              title="Clear and start over"
+                                            >
+                                              <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                            </button>
+                                          )}
+                                        </div>
+                                        {bundleExtractionErrors[index] && (
+                                          <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3" />
+                                            {bundleExtractionErrors[index]}
+                                          </p>
+                                        )}
+                                        {bundleIsExtractedFromLink[index] && !bundleExtractionErrors[index] && (
+                                          <p className="mt-1 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" />
+                                            Song info extracted successfully
+                                          </p>
+                                        )}
+                                        {!song.songTitle && !bundleIsExtractedFromLink[index] && !bundleExtractingSong[index] && (
+                                          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                            <Link2 className="w-3 h-3 flex-shrink-0" />
+                                            <span>Type a song name or paste a music link</span>
+                                          </p>
+                                        )}
+                                        {/* Autocomplete suggestions */}
+                                        {bundleShowAutocomplete[index] && currentSuggestions.length > 0 && (
+                                          <div className="mt-2 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                                            {currentSuggestions.map((suggestion, sugIndex) => (
+                                              <button
+                                                key={suggestion.id}
+                                                type="button"
+                                                onClick={() => handleBundleSuggestionSelect(suggestion, index)}
+                                                className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-black/80 transition-colors flex items-center gap-3 ${
+                                                  sugIndex === (bundleSelectedSuggestionIndex[index] || -1) ? 'bg-gray-100 dark:bg-black/80' : ''
+                                                }`}
+                                              >
+                                                {suggestion.albumArt && (
+                                                  <img
+                                                    src={suggestion.albumArt}
+                                                    alt=""
+                                                    className="w-10 h-10 rounded flex-shrink-0 object-cover"
+                                                  />
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                    {suggestion.title}
+                                                  </p>
+                                                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                    {suggestion.artist}
+                                                  </p>
+                                                </div>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        )}
+                                        {bundleShowAutocomplete[index] && currentSearching && currentSuggestions.length === 0 && (
+                                          <div className="mt-2 p-3 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
+                                            <Loader2 className="w-4 h-4 animate-spin text-brand" />
+                                            <span className="text-sm text-gray-600 dark:text-gray-400">Searching...</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                                          Artist Name
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={song.songArtist || ''}
+                                          onChange={(e) => {
+                                            const newSongs = [...bundleSongs];
+                                            newSongs[index] = { ...newSongs[index], songArtist: e.target.value };
+                                            setBundleSongs(newSongs);
+                                          }}
+                                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
+                                          placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
+                                          autoComplete="off"
+                                        />
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -2274,6 +2607,8 @@ export function GeneralRequestsPage({
                 requesterName={formData.requesterName}
                 additionalSongs={additionalSongs}
                 setAdditionalSongs={setAdditionalSongs}
+                bundleSongs={bundleSongs} // New: Pass bundle songs
+                bundleSize={bundleSize} // New: Pass bundle size
                 bundleDiscount={bundleDiscountPercent}
                     bundleDiscountEnabled={organizationData?.requests_show_bundle_discount !== false ? bundleDiscountEnabled : false}
                 getBaseAmount={getBaseAmount}
@@ -2515,7 +2850,7 @@ export function GeneralRequestsPage({
 
                       {/* Bundle Songs Input (only show when bundle size > 1) */}
                       {bundleSize > 1 && bundleSongs.length > 0 && (
-                        <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <div ref={bundleSongsRef} className="mt-4 p-4 bg-white/70 dark:bg-black/50 rounded-lg border border-gray-200/50 dark:border-gray-800/50">
                           <div className="flex items-center gap-2 mb-3">
                             <Gift className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -2527,7 +2862,7 @@ export function GeneralRequestsPage({
                           </p>
                           <div className="space-y-4">
                             {bundleSongs.map((song, index) => (
-                              <div key={index} className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-purple-200 dark:border-purple-700">
+                              <div key={index} className="bg-white/50 dark:bg-black/30 rounded-lg p-3 sm:p-4 border border-gray-200/50 dark:border-gray-700/50">
                                 <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-2">
                                   Song {index + 2} of {bundleSize}
                                 </div>
@@ -2544,7 +2879,7 @@ export function GeneralRequestsPage({
                                         newSongs[index] = { ...newSongs[index], songTitle: e.target.value };
                                         setBundleSongs(newSongs);
                                       }}
-                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
                                       placeholder="Enter song title"
                                       required
                                       autoComplete="off"
@@ -2562,7 +2897,7 @@ export function GeneralRequestsPage({
                                         newSongs[index] = { ...newSongs[index], songArtist: e.target.value };
                                         setBundleSongs(newSongs);
                                       }}
-                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
                                       placeholder="Enter artist name"
                                       autoComplete="off"
                                     />
