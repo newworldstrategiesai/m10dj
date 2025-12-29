@@ -243,6 +243,9 @@ export function GeneralRequestsPage({
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1); // Keyboard navigation
   const songTitleInputRef = useRef(null); // Ref for scrolling to song title field
   const bundleSongsRef = useRef(null); // Ref for scrolling to bundle songs section
+  const desktopVideoRef = useRef(null); // Ref for desktop video background
+  const mobileVideoRef = useRef(null); // Ref for mobile video background
+  const [videoFailed, setVideoFailed] = useState(false); // Track if video autoplay failed
   const [requestId, setRequestId] = useState(null);
   const [paymentCode, setPaymentCode] = useState(null);
   const [additionalRequestIds, setAdditionalRequestIds] = useState([]);
@@ -482,6 +485,31 @@ export function GeneralRequestsPage({
         document.documentElement.removeAttribute('data-force-dark');
       };
     }
+  }, []);
+
+  // Force video autoplay for Safari - Safari requires programmatic play() call
+  useEffect(() => {
+    const playVideo = async (videoRef) => {
+      if (videoRef.current) {
+        try {
+          // Ensure video is muted (required for autoplay)
+          videoRef.current.muted = true;
+          await videoRef.current.play();
+        } catch (error) {
+          console.warn('Video autoplay failed:', error);
+          // If autoplay fails, show poster image instead
+          setVideoFailed(true);
+        }
+      }
+    };
+
+    // Attempt to play both videos when component mounts
+    const timer = setTimeout(() => {
+      playVideo(desktopVideoRef);
+      playVideo(mobileVideoRef);
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Set initial preset amount when settings load - default to max (first) amount
@@ -1685,17 +1713,34 @@ export function GeneralRequestsPage({
         {/* Desktop Video Sidebar - Fixed position, stays stationary while content scrolls */}
         {!embedMode && !showPaymentMethods && (
           <div className="hidden md:block md:fixed md:left-0 md:top-0 md:w-[400px] lg:w-[450px] xl:w-[500px] md:h-screen md:overflow-hidden bg-black z-40">
-            <video
-              className="absolute inset-0 w-full h-full object-cover"
-              autoPlay
-              loop
-              muted
-              playsInline
-              poster={coverPhoto}
-              style={{ objectPosition: 'center center' }}
-            >
-              <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
-            </video>
+            {!videoFailed ? (
+              <video
+                ref={desktopVideoRef}
+                className="absolute inset-0 w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+                webkit-playsinline="true"
+                x-webkit-airplay="deny"
+                disablePictureInPicture
+                poster={coverPhoto}
+                style={{ objectPosition: 'center center' }}
+                onLoadedData={() => {
+                  // Programmatically play when video data is loaded (Safari fix)
+                  if (desktopVideoRef.current) {
+                    desktopVideoRef.current.play().catch(() => setVideoFailed(true));
+                  }
+                }}
+              >
+                <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
+              </video>
+            ) : (
+              <div 
+                className="absolute inset-0 w-full h-full bg-cover bg-center"
+                style={{ backgroundImage: `url(${coverPhoto})` }}
+              />
+            )}
             {/* Subtle gradient overlay on right edge for seamless blend */}
             <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/40 to-transparent pointer-events-none z-10"></div>
             
@@ -1841,17 +1886,34 @@ export function GeneralRequestsPage({
             }}
           >
             {/* Mobile Video Background - Only shown on mobile */}
-            <video
-              className="absolute inset-0 w-full h-full object-cover md:hidden"
-              autoPlay
-              loop
-              muted
-              playsInline
-              poster={coverPhoto}
-              style={{ zIndex: 0, objectPosition: 'center 40%' }}
-            >
-              <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
-            </video>
+            {!videoFailed ? (
+              <video
+                ref={mobileVideoRef}
+                className="absolute inset-0 w-full h-full object-cover md:hidden"
+                autoPlay
+                loop
+                muted
+                playsInline
+                webkit-playsinline="true"
+                x-webkit-airplay="deny"
+                disablePictureInPicture
+                poster={coverPhoto}
+                style={{ zIndex: 0, objectPosition: 'center 40%' }}
+                onLoadedData={() => {
+                  // Programmatically play when video data is loaded (Safari fix)
+                  if (mobileVideoRef.current) {
+                    mobileVideoRef.current.play().catch(() => setVideoFailed(true));
+                  }
+                }}
+              >
+                <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
+              </video>
+            ) : (
+              <div 
+                className="absolute inset-0 w-full h-full bg-cover bg-center md:hidden"
+                style={{ backgroundImage: `url(${coverPhoto})`, objectPosition: 'center 40%' }}
+              />
+            )}
             
             {/* Desktop Background - Simplified since video is in sidebar */}
             <div 
