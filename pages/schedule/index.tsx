@@ -40,8 +40,7 @@ export default function SchedulePage() {
   const supabase = createClientComponentClient();
   const { toast } = useToast();
   
-  const [meetingTypes, setMeetingTypes] = useState<MeetingType[]>([]);
-  const [selectedMeetingType, setSelectedMeetingType] = useState<string | null>(null);
+  const [defaultMeetingType, setDefaultMeetingType] = useState<MeetingType | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -58,9 +57,9 @@ export default function SchedulePage() {
     venueAddress: ''
   });
 
-  // Fetch meeting types
+  // Fetch default meeting type (for admin use only, not shown to clients)
   useEffect(() => {
-    fetchMeetingTypes();
+    fetchDefaultMeetingType();
   }, []);
 
   // Pre-fill form from URL query parameters or sessionStorage
@@ -105,47 +104,48 @@ export default function SchedulePage() {
     }
   }, [router.isReady, router.query]);
 
-  // Fetch available slots when date or meeting type changes
+  // Fetch available slots when date changes
   useEffect(() => {
-    if (selectedDate && selectedMeetingType) {
+    if (selectedDate) {
       fetchAvailableSlots();
     } else {
       setAvailableSlots([]);
     }
-  }, [selectedDate, selectedMeetingType]);
+  }, [selectedDate]);
 
-  const fetchMeetingTypes = async () => {
+  const fetchDefaultMeetingType = async () => {
     try {
+      // Get the first active meeting type (default is Consultation)
+      // This is used internally but not shown to clients
       const { data, error } = await supabase
         .from('meeting_types')
         .select('*')
         .eq('is_active', true)
-        .order('display_order', { ascending: true });
+        .order('display_order', { ascending: true })
+        .limit(1)
+        .single();
 
       if (error) throw error;
 
-      setMeetingTypes(data || []);
-      if (data && data.length > 0) {
-        setSelectedMeetingType(data[0].id);
+      if (data) {
+        setDefaultMeetingType(data);
       }
     } catch (error) {
-      console.error('Error fetching meeting types:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load meeting types',
-        variant: 'destructive'
-      });
+      console.error('Error fetching default meeting type:', error);
+      // Don't show error to user, just log it
+      // The booking will still work with a default duration
     }
   };
 
   const fetchAvailableSlots = async () => {
-    if (!selectedDate || !selectedMeetingType) return;
+    if (!selectedDate) return;
 
     setLoadingSlots(true);
     try {
       const dateString = selectedDate.toISOString().split('T')[0];
+      // API will use default meeting type if not provided
       const response = await fetch(
-        `/api/schedule/available-slots?date=${dateString}&meeting_type_id=${selectedMeetingType}`
+        `/api/schedule/available-slots?date=${dateString}`
       );
 
       if (!response.ok) {
@@ -167,7 +167,7 @@ export default function SchedulePage() {
   };
 
   const handleBooking = async () => {
-    if (!selectedDate || !selectedTime || !selectedMeetingType) {
+    if (!selectedDate || !selectedTime) {
       toast({
         title: 'Missing Information',
         description: 'Please select a date and time',
@@ -189,16 +189,20 @@ export default function SchedulePage() {
     try {
       const meetingDate = selectedDate.toISOString().split('T')[0];
       
+      // Use default meeting type if available, otherwise use NULL (database allows it)
+      const meetingTypeId = defaultMeetingType?.id || null;
+      const durationMinutes = defaultMeetingType?.duration_minutes || 30;
+      
       const { data, error } = await supabase
         .from('meeting_bookings')
         .insert({
-          meeting_type_id: selectedMeetingType,
+          meeting_type_id: meetingTypeId,
           client_name: formData.name,
           client_email: formData.email,
           client_phone: formData.phone || null,
           meeting_date: meetingDate,
           meeting_time: selectedTime,
-          duration_minutes: meetingTypes.find(mt => mt.id === selectedMeetingType)?.duration_minutes || 30,
+          duration_minutes: durationMinutes,
           notes: formData.notes || null,
           event_type: formData.eventType || null,
           event_date: formData.eventDate || null,
@@ -210,8 +214,7 @@ export default function SchedulePage() {
       if (error) throw error;
 
       // Send confirmation emails
-      const meetingType = meetingTypes.find(mt => mt.id === selectedMeetingType);
-      if (data && meetingType) {
+      if (data && defaultMeetingType) {
         // Send emails in background (don't wait for them)
         fetch('/api/schedule/send-confirmation-emails', {
           method: 'POST',
@@ -221,14 +224,14 @@ export default function SchedulePage() {
             clientName: formData.name,
             clientEmail: formData.email,
             clientPhone: formData.phone,
-            meetingType: meetingType.name,
+            meetingType: defaultMeetingType.name,
             meetingDate: meetingDate,
             meetingTime: selectedTime,
-            durationMinutes: meetingType.duration_minutes,
+            durationMinutes: defaultMeetingType.duration_minutes,
             eventType: formData.eventType || null,
             eventDate: formData.eventDate || null,
             notes: formData.notes || null,
-            meetingDescription: meetingType.description
+            meetingDescription: defaultMeetingType.description
           })
         }).catch(err => console.error('Failed to send confirmation emails:', err));
       }
@@ -264,9 +267,11 @@ export default function SchedulePage() {
     }
   };
 
-  const selectedMeetingTypeData = meetingTypes.find(mt => mt.id === selectedMeetingType);
   const minDate = new Date();
   minDate.setDate(minDate.getDate() + 1); // Can't book same day
+
+  // Check if we have pre-filled event information
+  const hasEventInfo = formData.eventType || formData.eventDate || formData.venueName;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -281,36 +286,55 @@ export default function SchedulePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Meeting Type & Calendar */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Meeting Type Selection */}
-            {meetingTypes.length > 0 && (
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Select Meeting Type</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {meetingTypes.map((type) => (
-                    <button
-                      key={type.id}
-                      onClick={() => setSelectedMeetingType(type.id)}
-                      className={`p-4 rounded-lg border-2 text-left transition-all ${
-                        selectedMeetingType === type.id
-                          ? 'border-[#fcba00] bg-[#fcba00]/10'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 mb-2">
-                        <Clock className="w-5 h-5 text-[#fcba00]" />
-                        <h3 className="font-semibold text-gray-900">{type.name}</h3>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{type.description}</p>
-                      <p className="text-xs text-gray-500">{type.duration_minutes} minutes</p>
-                    </button>
-                  ))}
+        {/* Event Information Display (when pre-filled) */}
+        {hasEventInfo && (
+          <Card className="p-6 mb-6 bg-gradient-to-r from-[#fcba00]/10 to-[#fcba00]/5 border-[#fcba00]/30">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 mt-1">
+                <CheckCircle className="w-6 h-6 text-[#fcba00]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Your Event Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  {formData.eventType && (
+                    <div>
+                      <span className="font-medium text-gray-700">Event Type:</span>{' '}
+                      <span className="text-gray-900">{formData.eventType}</span>
+                    </div>
+                  )}
+                  {formData.eventDate && (
+                    <div>
+                      <span className="font-medium text-gray-700">Event Date:</span>{' '}
+                      <span className="text-gray-900">
+                        {new Date(formData.eventDate).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {formData.venueName && (
+                    <div className="md:col-span-2">
+                      <span className="font-medium text-gray-700">Venue:</span>{' '}
+                      <span className="text-gray-900">{formData.venueName}</span>
+                      {formData.venueAddress && (
+                        <span className="text-gray-600"> - {formData.venueAddress}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </Card>
-            )}
+              </div>
+            </div>
+          </Card>
+        )}
 
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Calendar */}
+          <div className="lg:col-span-2 space-y-6">
             {/* Calendar */}
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -368,11 +392,11 @@ export default function SchedulePage() {
             <Card className="p-6 sticky top-4">
               <h2 className="text-xl font-semibold mb-4">Booking Details</h2>
               
-              {selectedMeetingTypeData && selectedDate && selectedTime && (
+              {selectedDate && selectedTime && (
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium">{selectedMeetingTypeData.name}</span>
+                    <span className="text-sm font-medium">{defaultMeetingType?.name || 'Consultation'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="w-4 h-4 text-gray-600" />
