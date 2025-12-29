@@ -1668,7 +1668,7 @@ export function GeneralRequestsPage({
       </Head>
 
       <div 
-        className="min-h-screen bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 dark:from-black dark:via-black dark:to-black relative overflow-x-hidden"
+        className="min-h-screen bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 dark:from-black dark:via-black dark:to-black relative overflow-x-hidden md:flex"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -1682,6 +1682,98 @@ export function GeneralRequestsPage({
           } : {})
         }}
       >
+        {/* Desktop Video Sidebar - Fixed position, stays stationary while content scrolls */}
+        {!embedMode && !showPaymentMethods && (
+          <div className="hidden md:block md:fixed md:left-0 md:top-0 md:w-[400px] lg:w-[450px] xl:w-[500px] md:h-screen md:overflow-hidden bg-black z-40">
+            <video
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+              poster={coverPhoto}
+              style={{ objectPosition: 'center center' }}
+            >
+              <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
+            </video>
+            {/* Subtle gradient overlay on right edge for seamless blend */}
+            <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/40 to-transparent pointer-events-none z-10"></div>
+            
+            {/* Gradient overlay at bottom for social links */}
+            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black via-black/60 to-transparent z-20 pointer-events-none"></div>
+            
+            {/* Social Links at bottom of video sidebar */}
+            {organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0 && (
+              <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-5 z-30">
+                {organizationData.social_links
+                  .filter(link => link.enabled !== false)
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((link, index) => {
+                    const getSocialIcon = (platform) => {
+                      const iconProps = { className: "w-6 h-6", strokeWidth: 2, fill: "none" };
+                      switch (platform?.toLowerCase()) {
+                        case 'facebook':
+                          return <Facebook {...iconProps} />;
+                        case 'instagram':
+                          return <Instagram {...iconProps} />;
+                        case 'twitter':
+                          return <Twitter {...iconProps} />;
+                        case 'youtube':
+                          return <Youtube {...iconProps} />;
+                        case 'linkedin':
+                          return <Linkedin {...iconProps} />;
+                        default:
+                          return <Link2 {...iconProps} />;
+                      }
+                    };
+                    const platform = link.platform?.toLowerCase();
+                    const isSelectable = platform === 'instagram' || platform === 'facebook';
+                    
+                    if (isSelectable) {
+                      return (
+                        <button
+                          key={`desktop-social-${index}`}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleSocialClick(e, platform);
+                          }}
+                          className="flex items-center justify-center w-11 h-11 rounded-full bg-white/20 backdrop-blur-md text-white hover:text-white hover:bg-white/30 transition-all cursor-pointer border border-white/20 p-0"
+                          aria-label={link.label || link.platform}
+                        >
+                          {getSocialIcon(link.platform)}
+                        </button>
+                      );
+                    }
+                    
+                    return (
+                      <a
+                        key={`desktop-social-${index}`}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center w-11 h-11 rounded-full bg-white/20 backdrop-blur-md text-white hover:text-white hover:bg-white/30 transition-all border border-white/20"
+                        aria-label={link.label || link.platform}
+                      >
+                        {getSocialIcon(link.platform)}
+                      </a>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Header - Fixed position overlaying video sidebar on desktop */}
+        {!embedMode && !showPaymentMethods && !minimalHeader && (
+          <div className="fixed top-0 left-0 right-0 z-50 md:right-auto md:left-4 md:top-4">
+            <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} isOwner={isOwner} organizationSlug={organizationData?.slug} organizationId={organizationId} />
+          </div>
+        )}
+        
+        {/* Main Content Area - Add left margin on desktop to account for fixed video sidebar */}
+        <div className="flex-1 min-w-0 relative md:ml-[400px] lg:ml-[450px] xl:ml-[500px]">
         {/* Apply custom branding styles */}
         {customBranding?.whiteLabelEnabled && (
           <style jsx global>{`
@@ -1736,15 +1828,13 @@ export function GeneralRequestsPage({
           </div>
         )}
         
-        {!embedMode && !showPaymentMethods && !minimalHeader && <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} isOwner={isOwner} organizationSlug={organizationData?.slug} organizationId={organizationId} />}
-        
         {/* Hero Section with Text Fallback */}
         {!embedMode && !showPaymentMethods && (
           <div 
             className={`relative w-full overflow-hidden top-0 bg-gradient-to-b from-gray-900 via-black to-black ${
               minimalHeader 
                 ? 'h-[120px] sm:h-[140px] min-h-[100px] sm:min-h-[120px]' 
-                : 'h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px]'
+                : 'h-[40vh] sm:h-[50vh] md:h-[200px] lg:h-[220px] min-h-[250px] sm:min-h-[350px] md:min-h-[180px] max-h-[600px] md:max-h-[250px]'
             }`}
             style={{ 
               zIndex: 0
@@ -1763,32 +1853,23 @@ export function GeneralRequestsPage({
               <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
             </video>
             
-            {/* Desktop Static Background - Only shown on desktop */}
+            {/* Desktop Background - Simplified since video is in sidebar */}
             <div 
-              className="absolute inset-0 hidden md:block"
-              style={{ 
-                backgroundImage: coverPhoto ? `url(${coverPhoto})` : undefined,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                zIndex: 0
-              }}
+              className="absolute inset-0 hidden md:block bg-gradient-to-b from-gray-900 via-black to-black"
+              style={{ zIndex: 0 }}
             />
-            
-            {/* Gradient overlay for text readability - only on desktop (mobile video is bright) */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black/70 z-10 hidden md:block"></div>
             {/* Content overlay */}
             <div className={`relative z-20 h-full flex flex-col justify-between items-center text-center px-4 ${
               minimalHeader ? 'justify-center' : ''
             }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '20px' }}>
               {/* Top content section */}
               <div className={`flex flex-col items-center justify-center ${minimalHeader ? '' : 'flex-1'}`}>
-                {/* Artist Name - Hidden on mobile (video has logo), visible on desktop for SEO */}
+                {/* Artist Name - Hidden visually (video has logo on both mobile and desktop), kept for SEO */}
                 <h1 
                   className={`font-black text-white drop-shadow-2xl uppercase tracking-tight ${
                     minimalHeader
                       ? 'text-xl sm:text-2xl mb-1'
-                      : 'sr-only md:not-sr-only md:text-6xl lg:text-7xl md:mb-4 sm:mb-6'
+                      : 'sr-only'
                   }`}
                   style={{
                     fontFamily: 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
@@ -1946,8 +2027,8 @@ export function GeneralRequestsPage({
           </div>
         )}
         
-        <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-8 sm:py-12 md:py-16' : 'py-3 sm:py-6 md:py-8 lg:py-12'} px-3 sm:px-4 md:px-6 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto'), display: 'flex', flexDirection: 'column', maxWidth: '100vw' }}>
-          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-2xl'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden`}>
+        <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-8 sm:py-12 md:py-16' : 'py-3 sm:py-6 md:py-8 lg:py-12'} px-3 sm:px-4 md:px-8 lg:px-12 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto'), display: 'flex', flexDirection: 'column', maxWidth: '100vw' }}>
+          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-xl md:max-w-lg'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden`}>
             {/* Header - Compact for no-scroll design - Hide when hero image is shown */}
             {false && (
               <div className="text-center mb-2 sm:mb-3">
@@ -2682,20 +2763,20 @@ export function GeneralRequestsPage({
               ) : (
               <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
                 {/* Request Type Selection */}
-                <div className="bg-white/70 dark:bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
-                  <h2 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4 lg:mb-6 flex items-center gap-2 sm:gap-3">
-                    <div className="w-1 h-5 sm:h-6 md:h-8 bg-brand rounded-full hidden sm:block"></div>
+                <div className="bg-white/70 dark:bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
+                  <h2 className="text-base sm:text-xl md:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4 flex items-center gap-2 sm:gap-3">
+                    <div className="w-1 h-5 sm:h-6 bg-brand rounded-full hidden sm:block"></div>
                     <span className="leading-tight">{organizationData?.requests_main_heading || 'What would you like to request?'}</span>
                   </h2>
                   
                   {/* Request Type Selection - Hide if only one type is allowed */}
                   {(!allowedRequestTypes || allowedRequestTypes.length > 1) && (
-                    <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-5 md:mb-6">
                       {(!allowedRequestTypes || allowedRequestTypes.includes('song_request')) && (
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('song_request')}
-                          className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                          className={`group relative p-2.5 sm:p-3 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
                             requestType === 'song_request'
                               ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
                               : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
@@ -2705,16 +2786,16 @@ export function GeneralRequestsPage({
                             <div className="absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent"></div>
                           )}
                           <div className="relative flex flex-col items-center justify-center">
-                            <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
+                            <div className={`inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg mb-1.5 sm:mb-2 transition-all duration-300 ${
                               requestType === 'song_request'
                                 ? 'bg-brand shadow-lg shadow-brand/30'
                                 : 'bg-gray-100 dark:bg-black/50 group-hover:bg-brand/10'
                             }`}>
-                              <Music className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
+                              <Music className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
                                 requestType === 'song_request' ? 'text-black' : 'text-gray-400 group-hover:text-brand'
                               }`} />
                             </div>
-                            <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_song_request_label || 'Song Request'}</h3>
+                            <h3 className="font-bold text-[11px] sm:text-xs text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_song_request_label || 'Song Request'}</h3>
                           </div>
                         </button>
                       )}
@@ -2723,7 +2804,7 @@ export function GeneralRequestsPage({
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('shoutout')}
-                          className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                          className={`group relative p-2.5 sm:p-3 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
                             requestType === 'shoutout'
                               ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
                               : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
@@ -2733,16 +2814,16 @@ export function GeneralRequestsPage({
                             <div className="absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent"></div>
                           )}
                           <div className="relative flex flex-col items-center justify-center">
-                            <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
+                            <div className={`inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg mb-1.5 sm:mb-2 transition-all duration-300 ${
                               requestType === 'shoutout'
                                 ? 'bg-brand shadow-lg shadow-brand/30'
                                 : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-brand/10'
                             }`}>
-                              <Mic className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
+                              <Mic className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
                                 requestType === 'shoutout' ? 'text-black' : 'text-gray-400 group-hover:text-brand'
                               }`} />
                             </div>
-                            <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_shoutout_label || 'Shoutout'}</h3>
+                            <h3 className="font-bold text-[11px] sm:text-xs text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_shoutout_label || 'Shoutout'}</h3>
                           </div>
                         </button>
                       )}
@@ -2751,7 +2832,7 @@ export function GeneralRequestsPage({
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('tip')}
-                          className={`group relative p-3 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                          className={`group relative p-2.5 sm:p-3 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
                             requestType === 'tip'
                               ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
                               : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
@@ -2761,16 +2842,16 @@ export function GeneralRequestsPage({
                             <div className="absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent"></div>
                           )}
                           <div className="relative flex flex-col items-center justify-center">
-                            <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl mb-2 sm:mb-4 transition-all duration-300 ${
+                            <div className={`inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg mb-1.5 sm:mb-2 transition-all duration-300 ${
                               requestType === 'tip'
                                 ? 'bg-brand shadow-lg shadow-brand/30'
                                 : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-brand/10'
                             }`}>
-                              <Gift className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 transition-colors ${
+                              <Gift className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
                                 requestType === 'tip' ? 'text-black' : 'text-gray-400 group-hover:text-brand'
                               }`} />
                             </div>
-                            <h3 className="font-bold text-xs sm:text-base md:text-lg text-gray-900 dark:text-white text-center leading-tight">Tip Me</h3>
+                            <h3 className="font-bold text-[11px] sm:text-xs text-gray-900 dark:text-white text-center leading-tight">Tip Me</h3>
                           </div>
                         </button>
                       )}
@@ -3407,14 +3488,17 @@ export function GeneralRequestsPage({
 
         {/* Inconspicuous "Create Your Page" link for new DJs */}
         <footer className="mt-8 mb-4 text-center">
-          <Link 
-            href="/onboarding/request-page" 
+          <a 
+            href="https://tipjar.live" 
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 transition-colors inline-flex items-center gap-1"
           >
             <span>Are you a DJ?</span>
             <span className="underline">Create your request page</span>
-          </Link>
+          </a>
         </footer>
+        </div>{/* End Main Content Area */}
       </div>
 
 

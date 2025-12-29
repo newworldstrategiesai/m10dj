@@ -27,8 +27,8 @@ function PaymentAmountSelector({
   setBundleSize = () => {} // Function to set bundle size
 }) {
   return (
-    <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/80 dark:bg-black/80 rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
-      <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2">
+    <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/80 dark:bg-black/80 rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
+      <h2 className="text-base sm:text-lg md:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2">
         <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-brand-500" />
         {isBiddingMode ? 'Your Bid Amount' : 'Payment Amount'}
       </h2>
@@ -40,34 +40,34 @@ function PaymentAmountSelector({
       )}
       
       <div className="space-y-2 sm:space-y-3 md:space-y-4">
-        <div className="flex gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6 p-1 bg-gray-100/50 dark:bg-gray-700/30 rounded-xl sm:rounded-2xl">
+        <div className="flex gap-2 sm:gap-3 mb-3 sm:mb-4 p-1 bg-gray-100/50 dark:bg-gray-700/30 rounded-lg sm:rounded-xl">
           <button
             type="button"
             onClick={() => setAmountType('preset')}
-            className={`flex-1 py-2.5 sm:py-3 md:py-3.5 px-2 sm:px-3 md:px-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation min-h-[44px] sm:min-h-[48px] ${
+            className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg border-2 transition-all duration-300 touch-manipulation min-h-[40px] sm:min-h-[44px] ${
               amountType === 'preset'
                 ? 'border-brand-500 bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/30 scale-105'
                 : 'border-transparent bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            <span className="font-bold text-xs sm:text-sm md:text-base">Quick Amount</span>
+            <span className="font-bold text-xs sm:text-sm">Quick Amount</span>
           </button>
           
           <button
             type="button"
             onClick={() => setAmountType('custom')}
-            className={`flex-1 py-2.5 sm:py-3 md:py-3.5 px-2 sm:px-3 md:px-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation min-h-[44px] sm:min-h-[48px] ${
+            className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg border-2 transition-all duration-300 touch-manipulation min-h-[40px] sm:min-h-[44px] ${
               amountType === 'custom'
                 ? 'border-brand-500 bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/30 scale-105'
                 : 'border-transparent bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            <span className="font-bold text-xs sm:text-sm md:text-base">Custom Amount</span>
+            <span className="font-bold text-xs sm:text-sm">Custom Amount</span>
           </button>
         </div>
 
         {amountType === 'preset' && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+          <div className="grid grid-cols-4 gap-2 sm:gap-3">
             {presetAmounts
               .filter(preset => {
                 // CRITICAL: In bidding mode, hide buttons that are <= winning bid
@@ -88,7 +88,7 @@ function PaymentAmountSelector({
                 type="button"
                   onClick={() => !isBelowMinimum && setPresetAmount(preset.value)}
                   disabled={isBelowMinimum}
-                className={`group relative p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl md:rounded-2xl border-2 transition-all duration-300 touch-manipulation min-h-[56px] sm:min-h-[64px] md:min-h-[72px] overflow-hidden ${
+                className={`group relative p-2.5 sm:p-3 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation min-h-[44px] sm:min-h-[52px] overflow-hidden ${
                     isBelowMinimum
                       ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/50 opacity-50 cursor-not-allowed'
                       : presetAmount === preset.value
@@ -106,7 +106,7 @@ function PaymentAmountSelector({
                       <span className="text-[10px] font-bold text-green-600 dark:text-green-400 bg-white dark:bg-gray-800 px-1 rounded">✓</span>
                     </div>
                   )}
-                <span className={`relative text-sm sm:text-base md:text-lg lg:text-xl font-bold transition-colors ${
+                <span className={`relative text-sm sm:text-base font-bold transition-colors ${
                   presetAmount === preset.value
                     ? 'text-white'
                       : isBelowMinimum
@@ -317,24 +317,24 @@ function PaymentAmountSelector({
           </div>
         )}
 
-        <div className="bg-gradient-to-br from-brand-50 via-brand-100/50 to-brand-200/30 dark:from-brand-900/20 dark:via-brand-800/20 dark:to-brand-700/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6 border-2 border-brand-200/50 dark:border-brand-700/30">
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex items-center justify-between text-sm sm:text-base">
+        <div className="bg-gradient-to-br from-brand-50 via-brand-100/50 to-brand-200/30 dark:from-brand-900/20 dark:via-brand-800/20 dark:to-brand-700/20 rounded-lg sm:rounded-xl p-3 sm:p-4 border-2 border-brand-200/50 dark:border-brand-700/30">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-gray-700 dark:text-gray-300 font-medium">Base Amount:</span>
-              <span className="text-gray-900 dark:text-white font-bold text-base sm:text-lg">
+              <span className="text-gray-900 dark:text-white font-bold text-sm sm:text-base">
                 ${(getBaseAmount() / 100).toFixed(2)}
               </span>
             </div>
             {isFastTrack && requestType === 'song_request' && (
-              <div className="flex items-center justify-between text-sm sm:text-base">
-                <span className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-1.5 sm:gap-2">
-                  <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-orange-500" />
                   Fast-Track Fee:
                 </span>
-                <span className="font-bold text-base sm:text-lg bg-gradient-to-r from-orange-600 to-amber-600 dark:from-orange-400 dark:to-amber-400 bg-clip-text text-transparent">
+                <span className="font-bold text-sm sm:text-base bg-gradient-to-r from-orange-600 to-amber-600 dark:from-orange-400 dark:to-amber-400 bg-clip-text text-transparent">
                   +${((fastTrackFee * bundleSize) / 100).toFixed(2)}
                   {bundleSize > 1 && (
-                    <span className="text-sm text-orange-500 dark:text-orange-400 ml-1">
+                    <span className="text-xs text-orange-500 dark:text-orange-400 ml-1">
                       ({bundleSize}x)
                     </span>
                   )}
@@ -342,21 +342,21 @@ function PaymentAmountSelector({
               </div>
             )}
             {isNext && requestType === 'song_request' && (
-              <div className="flex items-center justify-between text-sm sm:text-base">
-                <span className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-1.5 sm:gap-2">
-                  <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-1.5">
+                  <Gift className="w-4 h-4 text-blue-500" />
                   Next Fee:
                 </span>
-                <span className="font-bold text-base sm:text-lg bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
+                <span className="font-bold text-sm sm:text-base bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
                   +${(nextFee / 100).toFixed(2)}
                 </span>
               </div>
             )}
-            <div className="border-t-2 border-brand-300/50 dark:border-brand-700/50 pt-2 sm:pt-3 md:pt-4 flex items-center justify-between">
-              <span className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white">
+            <div className="border-t-2 border-brand-300/50 dark:border-brand-700/50 pt-2 flex items-center justify-between">
+              <span className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
                 Total Amount:
               </span>
-              <span className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 dark:from-brand-400 dark:via-brand-300 dark:to-brand-500 bg-clip-text text-transparent">
+              <span className="text-lg sm:text-xl font-extrabold bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 dark:from-brand-400 dark:via-brand-300 dark:to-brand-500 bg-clip-text text-transparent">
                 ${(getPaymentAmount() / 100).toFixed(2)}
               </span>
             </div>
