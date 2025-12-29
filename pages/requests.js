@@ -1710,27 +1710,48 @@ export function GeneralRequestsPage({
                 : 'h-[40vh] sm:h-[50vh] md:h-[60vh] min-h-[250px] sm:min-h-[350px] md:min-h-[400px] max-h-[600px]'
             }`}
             style={{ 
-              zIndex: 0,
-              backgroundImage: coverPhoto ? `url(${coverPhoto})` : undefined,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat'
+              zIndex: 0
             }}
           >
-            {/* Gradient overlay for text readability - dark at top, darker at bottom */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black/70 z-10"></div>
+            {/* Mobile Video Background - Only shown on mobile */}
+            <video
+              className="absolute inset-0 w-full h-full object-cover md:hidden"
+              autoPlay
+              loop
+              muted
+              playsInline
+              poster={coverPhoto}
+              style={{ zIndex: 0, objectPosition: 'center 40%' }}
+            >
+              <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
+            </video>
+            
+            {/* Desktop Static Background - Only shown on desktop */}
+            <div 
+              className="absolute inset-0 hidden md:block"
+              style={{ 
+                backgroundImage: coverPhoto ? `url(${coverPhoto})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                zIndex: 0
+              }}
+            />
+            
+            {/* Gradient overlay for text readability - only on desktop (mobile video is bright) */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black/70 z-10 hidden md:block"></div>
             {/* Content overlay */}
             <div className={`relative z-20 h-full flex flex-col justify-between items-center text-center px-4 ${
               minimalHeader ? 'justify-center' : ''
             }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '20px' }}>
               {/* Top content section */}
               <div className={`flex flex-col items-center justify-center ${minimalHeader ? '' : 'flex-1'}`}>
-                {/* Artist Name */}
+                {/* Artist Name - Hidden on mobile (video has logo), visible on desktop for SEO */}
                 <h1 
                   className={`font-black text-white drop-shadow-2xl uppercase tracking-tight ${
                     minimalHeader
                       ? 'text-xl sm:text-2xl mb-1'
-                      : 'text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-4 sm:mb-6'
+                      : 'sr-only md:not-sr-only md:text-6xl lg:text-7xl md:mb-4 sm:mb-6'
                   }`}
                   style={{
                     fontFamily: 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',

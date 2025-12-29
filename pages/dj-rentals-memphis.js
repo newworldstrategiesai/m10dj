@@ -88,18 +88,18 @@ export default function DJRentalsMemphis() {
   return (
     <>
       <Head>
-        <title>DJ Rentals Memphis | Sound System Rental</title>
+        <title>DJ Rentals Memphis from $75/Day | Speakers, Mics, Lighting | M10</title>
         <meta 
           name="description" 
-          content="DJ rentals Memphis - Professional sound system rental, microphones, lighting & DJ equipment. Perfect for weddings, corporate events & parties. Call (901) 410-2020!" 
+          content="Memphis DJ equipment rental from $75/day. Pro speakers, wireless mics, uplighting & full DJ setups. Free delivery available. Includes setup! 500+ events served. (901) 410-2020" 
         />
         <meta name="keywords" content="DJ rentals Memphis, sound system rental Memphis, audio equipment rental, microphone rental Memphis, DJ equipment rental, party equipment rental Memphis, wedding sound rental" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://www.m10djcompany.com/dj-rentals-memphis" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="DJ Rentals Memphis | Sound System Rental | Professional Audio Equipment" />
-        <meta property="og:description" content="Professional DJ rentals and sound system rental in Memphis. High-quality audio equipment, microphones, and lighting for all events." />
+        <meta property="og:title" content="DJ Rentals Memphis from $75/Day | Speakers, Mics, Lighting" />
+        <meta property="og:description" content="Memphis DJ equipment rental from $75/day. Pro speakers, wireless mics, uplighting & full DJ setups. Free delivery available. 500+ events served." />
         <meta property="og:url" content="https://www.m10djcompany.com/dj-rentals-memphis" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://www.m10djcompany.com/logo-static.jpg" />

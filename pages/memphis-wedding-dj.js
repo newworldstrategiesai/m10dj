@@ -203,8 +203,8 @@ export default function MemphisWeddingDJ() {
   return (
     <>
       <SEO
-        title="Memphis Wedding DJ | M10 DJ Company | 500+ Weddings"
-        description="Memphis wedding DJ for 500+ celebrations. Professional wedding DJ Memphis for ceremonies & receptions. MC services, premium lighting. Same-day quotes! Call (901) 410-2020!"
+        title="Memphis Wedding DJ ★★★★★ 500+ Weddings | From $795 | M10 DJ"
+        description="Top-rated Memphis wedding DJ with 500+ weddings at The Peabody, Graceland & 27+ venues. Ceremony + reception + MC included. $795-$1,495. Free quote in minutes! (901) 410-2020"
         keywords={[
           'memphis wedding dj',
           'wedding dj memphis',

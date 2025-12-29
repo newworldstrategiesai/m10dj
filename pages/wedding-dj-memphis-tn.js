@@ -149,18 +149,18 @@ export default function WeddingDJMemphisTN() {
   return (
     <>
       <Head>
-        <title>Tennessee Wedding DJ | Statewide Coverage | Memphis to Nashville</title>
+        <title>Wedding DJ Memphis TN ★★★★★ | 500+ Weddings | M10 DJ Company</title>
         <meta 
           name="description" 
-          content="Tennessee wedding DJ services with statewide coverage from Memphis to Nashville. Professional TN wedding DJs serving venues across Tennessee. Call (901) 410-2020!" 
+          content="Best wedding DJ in Memphis, Tennessee. 500+ weddings at The Peabody, Graceland & top TN venues. Ceremony, reception & MC. From $795. Free quotes! (901) 410-2020" 
         />
         <meta name="keywords" content="Tennessee wedding DJ, wedding DJ Tennessee, TN wedding entertainment, Memphis TN wedding DJ, Tennessee wedding entertainment, wedding DJ services TN" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://www.m10djcompany.com/wedding-dj-memphis-tn" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="Tennessee Wedding DJ Services | Memphis TN Wedding Entertainment" />
-        <meta property="og:description" content="Professional wedding DJ services across Tennessee. From Memphis to Nashville, we provide premium wedding entertainment for TN couples. Experienced DJs, state-wide coverage." />
+        <meta property="og:title" content="Wedding DJ Memphis TN | 500+ Weddings | M10 DJ Company" />
+        <meta property="og:description" content="Best wedding DJ in Memphis, Tennessee. 500+ weddings at The Peabody, Graceland & top TN venues. Ceremony, reception & MC included. From $795." />
         <meta property="og:url" content="https://www.m10djcompany.com/wedding-dj-memphis-tn" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
