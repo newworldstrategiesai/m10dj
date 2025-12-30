@@ -658,10 +658,10 @@ export default function CrowdRequestSuccessPage() {
                                 key={song.id} 
                                 className={`rounded-lg px-3 py-3 md:px-3 md:py-3 border transition-all ${
                                   song.status === 'playing' 
-                                    ? 'border-emerald-500/40 bg-emerald-500/10' 
+                                    ? 'border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10' 
                                     : song.status === 'played'
-                                      ? 'border-emerald-500/30 bg-emerald-500/5'
-                                      : 'border-neutral-700/50 bg-neutral-800/40'
+                                      ? 'border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/5'
+                                      : 'border-gray-300 dark:border-neutral-700/50 bg-gray-50 dark:bg-neutral-800/40'
                                 }`}
                               >
                                 <div className="flex items-center gap-3 md:gap-3">
@@ -687,11 +687,11 @@ export default function CrowdRequestSuccessPage() {
                                     </div>
                                   )}
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm md:text-sm font-semibold text-white">
+                                    <p className="text-sm md:text-sm font-semibold text-gray-900 dark:text-white">
                                       {song.song_title || 'Song title pending'}
                                     </p>
                                     {song.song_artist && (
-                                      <p className="text-xs md:text-xs text-neutral-400 mt-0.5">
+                                      <p className="text-xs md:text-xs text-gray-600 dark:text-neutral-400 mt-0.5">
                                         {song.song_artist}
                                       </p>
                                     )}
@@ -704,21 +704,21 @@ export default function CrowdRequestSuccessPage() {
                                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                                         </span>
-                                        <span className="text-xs text-emerald-400 font-medium">Playing</span>
+                                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Playing</span>
                                       </>
                                     ) : song.status === 'played' ? (
                                       <>
-                                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                                         {song.played_at && (
-                                          <span className="text-xs text-emerald-400/80">
+                                          <span className="text-xs text-emerald-600 dark:text-emerald-400/80">
                                             {new Date(song.played_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                           </span>
                                         )}
                                       </>
                                     ) : (
                                       <>
-                                        <Clock className="w-4 h-4 text-neutral-500" />
-                                        <span className="text-xs text-neutral-500">Queued</span>
+                                        <Clock className="w-4 h-4 text-gray-500 dark:text-neutral-500" />
+                                        <span className="text-xs text-gray-500 dark:text-neutral-500">Queued</span>
                                       </>
                                     )}
                                   </div>
