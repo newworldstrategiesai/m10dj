@@ -74,15 +74,42 @@ function getIconForLink(icon: string) {
 }
 
 export default async function ArtistPage({ params }: ArtistPageProps) {
-  const { data: org, error } = await supabase
+  // First check if organization exists
+  const { data: org, error: orgError } = await supabase
     .from('organizations')
     .select('*')
     .eq('slug', params.slug)
-    .eq('artist_page_enabled', true)
     .single();
 
-  if (error || !org) {
+  // If organization doesn't exist, show 404
+  if (orgError || !org) {
+    console.error('Organization not found:', params.slug, orgError);
     notFound();
+  }
+
+  // If artist page is not enabled, redirect to requests page or show a message
+  if (!org.artist_page_enabled) {
+    // Redirect to the requests page for this organization
+    const requestsUrl = `/${params.slug}/requests`;
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center px-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Artist Page Not Available
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            The artist page for {org.name} is not currently enabled.
+          </p>
+          <Link 
+            href={requestsUrl}
+            className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+          >
+            <Music className="w-5 h-5 mr-2" />
+            Go to Requests Page
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const links = (org.artist_page_links as any[]) || [];
