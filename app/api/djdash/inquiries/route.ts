@@ -31,6 +31,24 @@ export async function POST(request: NextRequest) {
   try {
     const body: DJInquiryRequest = await request.json();
 
+    // Extract source domain from request headers
+    let sourceDomain: string | null = null;
+    const origin = request.headers.get('origin') || '';
+    const referer = request.headers.get('referer') || request.headers.get('referrer') || '';
+    
+    // Extract domain from origin or referer
+    const extractDomain = (url: string): string | null => {
+      if (!url) return null;
+      try {
+        const urlObj = new URL(url);
+        return urlObj.hostname.replace('www.', '');
+      } catch (e) {
+        return null;
+      }
+    };
+    
+    sourceDomain = extractDomain(origin) || extractDomain(referer);
+
     // Validate required fields
     if (!body.dj_profile_id || !body.planner_name || !body.planner_email || !body.event_type) {
       return NextResponse.json(
@@ -169,7 +187,8 @@ export async function POST(request: NextRequest) {
               notes: `Inquiry from DJ Dash profile: ${djProfile.dj_name}\n${body.special_requests || ''}`,
               last_contacted_date: new Date().toISOString(),
               last_contact_type: 'form_submission',
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
+              source_domain: sourceDomain || null
             })
             .eq('id', existingContact.id)
             .select()
@@ -207,7 +226,8 @@ export async function POST(request: NextRequest) {
               last_contacted_date: new Date().toISOString(),
               last_contact_type: 'form_submission',
               opt_in_status: true,
-              priority_level: leadScore >= 50 ? 'High' : leadScore >= 30 ? 'Medium' : 'Low'
+              priority_level: leadScore >= 50 ? 'High' : leadScore >= 30 ? 'Medium' : 'Low',
+              source_domain: sourceDomain || null
             })
             .select()
             .single();

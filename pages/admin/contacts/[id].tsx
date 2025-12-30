@@ -48,6 +48,7 @@ interface Contact {
   lead_stage: string | null;
   lead_temperature: string | null;
   communication_preference: string | null;
+  source_domain: string | null; // Domain where the inquiry originated from
   payment_status: string | null;
   notes: string | null;
   custom_fields?: any; // For storing service selections and other custom data
@@ -1514,6 +1515,15 @@ export default function ContactDetailPage() {
                     <p className="text-gray-900">{contact.lead_source || 'Not specified'}</p>
                   )}
             </div>
+                {contact.source_domain && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Source Domain</label>
+                    <p className="text-gray-900 flex items-center gap-1">
+                      <span className="text-purple-500">🌐</span>
+                      {contact.source_domain}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Communication Preference</label>
                   {isEditing ? (

@@ -92,6 +92,27 @@ export default async function handler(req, res) {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Extract source domain from request headers
+    // Priority: 1. Explicit sourceDomain from body, 2. Origin header, 3. Referer header
+    let sourceDomain = req.body.sourceDomain || null;
+    if (!sourceDomain) {
+      const origin = req.headers.origin || '';
+      const referer = req.headers.referer || req.headers.referrer || '';
+      
+      // Extract domain from origin or referer
+      const extractDomain = (url) => {
+        if (!url) return null;
+        try {
+          const urlObj = new URL(url);
+          return urlObj.hostname.replace('www.', '');
+        } catch (e) {
+          return null;
+        }
+      };
+      
+      sourceDomain = extractDomain(origin) || extractDomain(referer);
+    }
+
     // Determine organization_id
     // Priority: 1. Explicit organizationId (from request body - MOST RELIABLE), 
     //           2. From referrer/origin URL slug, 
@@ -348,7 +369,8 @@ export default async function handler(req, res) {
       is_artist: isArtist || false,
       audio_upload_fee: (isCustomAudio && audioFileUrl) ? 10000 : 0, // $100.00 in cents
       posted_link: postedLink || null, // Store original URL if request was created from a posted link
-      visitor_id: visitor_id || null // Link to visitor tracking for customer journey
+      visitor_id: visitor_id || null, // Link to visitor tracking for customer journey
+      source_domain: sourceDomain || null // Track where the request originated from
     };
 
     // Add organization_id if we have it

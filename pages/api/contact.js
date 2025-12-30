@@ -505,6 +505,27 @@ export default async function handler(req, res) {
       console.warn('   This contact will need to be manually assigned to an organization');
     }
 
+    // Extract source domain from request headers
+    // Priority: 1. Explicit sourceDomain from body, 2. Origin header, 3. Referer header
+    let sourceDomain = req.body.sourceDomain || null;
+    if (!sourceDomain) {
+      const origin = req.headers.origin || '';
+      const referer = req.headers.referer || req.headers.referrer || '';
+      
+      // Extract domain from origin or referer
+      const extractDomain = (url) => {
+        if (!url) return null;
+        try {
+          const urlObj = new URL(url);
+          return urlObj.hostname.replace('www.', '');
+        } catch (e) {
+          return null;
+        }
+      };
+      
+      sourceDomain = extractDomain(origin) || extractDomain(referer);
+    }
+
     // Create contact record
     const contactData = {
       user_id: adminUserId, // May be null if no admin user found
@@ -530,7 +551,8 @@ export default async function handler(req, res) {
       last_contact_type: 'form_submission',
       opt_in_status: true, // Assume opt-in from contact form
       lead_score: 50, // Default score for website inquiries
-      priority_level: 'Medium'
+      priority_level: 'Medium',
+      source_domain: sourceDomain || null // Track where the inquiry originated from
     };
     
     console.log('Creating contact with data:', {

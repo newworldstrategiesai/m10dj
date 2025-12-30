@@ -1293,6 +1293,17 @@ export function GeneralRequestsPage({
       const scanId = typeof window !== 'undefined' ? sessionStorage.getItem('qr_scan_id') : null;
       const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem('qr_session_id') : null;
 
+      // Extract source domain from current location
+      const getSourceDomain = () => {
+        if (typeof window === 'undefined') return null;
+        try {
+          const hostname = window.location.hostname.replace('www.', '');
+          return hostname;
+        } catch (e) {
+          return null;
+        }
+      };
+
       const mainRequestBody = {
         eventCode: 'general',
         requestType: requestType || 'song_request',
@@ -1315,7 +1326,8 @@ export function GeneralRequestsPage({
         audioFileUrl: (requestType === 'song_request' ? audioFileUrl : null) || null,
         isCustomAudio: (requestType === 'song_request' && !!audioFileUrl) || false,
         artistRightsConfirmed: (requestType === 'song_request' ? artistRightsConfirmed : false) || false,
-        isArtist: (requestType === 'song_request' ? isArtist : false) || false
+        isArtist: (requestType === 'song_request' ? isArtist : false) || false,
+        sourceDomain: getSourceDomain() // Track where the request originated from
       };
       
       const mainData = await crowdRequestAPI.submitRequest(mainRequestBody);
@@ -1437,7 +1449,8 @@ export function GeneralRequestsPage({
             fastTrackFee: 0,
             nextFee: 0,
             organizationId: organizationId || null,
-            message: `Bundle deal - ${bundleSize} songs for $${(bundlePrice / 100).toFixed(2)}`
+            message: `Bundle deal - ${bundleSize} songs for $${(bundlePrice / 100).toFixed(2)}`,
+            sourceDomain: getSourceDomain() // Track where the request originated from
           };
 
           try {
@@ -1473,7 +1486,8 @@ export function GeneralRequestsPage({
             fastTrackFee: 0,
             nextFee: 0,
             message: `Bundled with main request - ${Math.round(bundleDiscountPercent * 100)}% discount applied. ${song.songTitle?.trim() ? '' : 'Song details to be added after payment.'}`,
-            organizationId: organizationId || null
+            organizationId: organizationId || null,
+            sourceDomain: getSourceDomain() // Track where the request originated from
           };
 
           try {

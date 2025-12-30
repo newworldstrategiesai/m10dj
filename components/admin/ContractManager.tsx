@@ -562,7 +562,11 @@ export default function ContractManager() {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredContracts.map((contract) => (
-                  <tr key={contract.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <tr 
+                    key={contract.id} 
+                    onClick={() => handlePreview(contract)}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
                         {contract.contract_number}
@@ -601,14 +605,20 @@ export default function ContractManager() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => handlePreview(contract)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePreview(contract);
+                          }}
                           className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
                           title="Preview"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleCopySigningLink(contract)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopySigningLink(contract);
+                          }}
                           className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
                           title="Copy Signing Link"
                         >
@@ -616,7 +626,10 @@ export default function ContractManager() {
                         </button>
                         {contract.status === 'draft' && (
                           <button
-                            onClick={() => handleSendContract(contract)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSendContract(contract);
+                            }}
                             className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                             title="Send for Signature"
                           >

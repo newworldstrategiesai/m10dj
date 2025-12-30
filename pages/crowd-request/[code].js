@@ -504,6 +504,17 @@ export default function CrowdRequestPage() {
       const scanId = typeof window !== 'undefined' ? sessionStorage.getItem('qr_scan_id') : null;
       const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem('qr_session_id') : null;
 
+      // Extract source domain from current location
+      const getSourceDomain = () => {
+        if (typeof window === 'undefined') return null;
+        try {
+          const hostname = window.location.hostname.replace('www.', '');
+          return hostname;
+        } catch (e) {
+          return null;
+        }
+      };
+
       // Create main request with total amount (includes all songs)
       const mainRequestBody = {
         eventCode: code,
@@ -528,7 +539,8 @@ export default function CrowdRequestPage() {
         scanId: scanId,
         sessionId: sessionId,
         organizationId: organizationId || null, // Include organization ID if determined
-        postedLink: extractedSongUrl || null // Include the original URL if request was created from a posted link
+        postedLink: extractedSongUrl || null, // Include the original URL if request was created from a posted link
+        sourceDomain: getSourceDomain() // Track where the request originated from
       };
       
       const mainData = await crowdRequestAPI.submitRequest(mainRequestBody);
@@ -556,6 +568,7 @@ export default function CrowdRequestPage() {
             amount: pricePerSong, // Each song gets equal share of bundle price
             isFastTrack: false, // Bundle songs don't get fast track (only main song can)
             isNext: false,
+            sourceDomain: getSourceDomain(), // Track where the request originated from
             fastTrackFee: 0,
             nextFee: 0,
             organizationId: organizationId || null,
@@ -596,7 +609,8 @@ export default function CrowdRequestPage() {
             fastTrackFee: 0,
             nextFee: 0,
             organizationId: organizationId || null,
-            message: `Bundled with main request - ${Math.round(bundleDiscountPercent * 100)}% discount applied. ${song.songTitle?.trim() ? '' : 'Song details to be added after payment.'}`
+            message: `Bundled with main request - ${Math.round(bundleDiscountPercent * 100)}% discount applied. ${song.songTitle?.trim() ? '' : 'Song details to be added after payment.'}`,
+            sourceDomain: getSourceDomain() // Track where the request originated from
           };
 
           try {

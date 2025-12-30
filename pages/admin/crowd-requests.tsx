@@ -129,6 +129,7 @@ interface CrowdRequest {
     search_method: string;
   } | null;
   posted_link?: string | null;
+  source_domain?: string | null; // Domain where the request originated from
   // YouTube audio download fields (super admin only)
   downloaded_audio_url?: string | null;
   audio_download_status?: 'pending' | 'processing' | 'completed' | 'failed';
@@ -3521,149 +3522,191 @@ export default function CrowdRequestsPage() {
         )}
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-              Crowd Requests
-            </h1>
-          </div>
-          <div className="flex gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
-            <Button
-              onClick={() => router.push('/admin/qr-scans')}
-              variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
-            >
-              <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">View Scans</span>
-              <span className="sm:hidden">Scans</span>
-            </Button>
-            <Button
-              onClick={() => setShowQRGenerator(!showQRGenerator)}
-              className="btn-primary inline-flex items-center gap-2 whitespace-nowrap"
-            >
-              <QrCode className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">{showQRGenerator ? 'Hide' : 'Generate'} QR Code</span>
-              <span className="sm:hidden">QR Code</span>
-            </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  const response = await fetch('/api/crowd-request/find-missing-venmo?days=7&paymentMethod=venmo');
-                  const data = await response.json();
-                  if (data.success) {
-                    toast({
-                      title: 'Missing Requests Found',
-                      description: `Found ${data.summary.total} requests. ${data.summary.without_organization} without organization. Check console for details.`,
-                    });
-                    console.log('Missing requests data:', data);
-                    // If there are requests without organization, offer to assign them
-                    if (data.without_organization.length > 0 && organization?.id) {
-                      const assign = confirm(`Found ${data.without_organization.length} requests without organization. Assign them to your organization?`);
-                      if (assign) {
-                        for (const req of data.without_organization) {
-                          await supabase
-                            .from('crowd_requests')
-                            .update({ organization_id: organization.id })
-                            .eq('id', req.id);
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                Crowd Requests
+              </h1>
+            </div>
+            <div className="flex gap-1.5 flex-shrink-0 flex-wrap">
+              <Button
+                onClick={() => router.push('/admin/qr-scans')}
+                variant="outline"
+                size="sm"
+                className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 h-8 sm:h-9"
+                title="View Scans"
+              >
+                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden md:inline text-xs sm:text-sm">View Scans</span>
+              </Button>
+              <Button
+                onClick={() => setShowQRGenerator(!showQRGenerator)}
+                size="sm"
+                className="btn-primary inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 h-8 sm:h-9"
+                title={showQRGenerator ? 'Hide QR Code Generator' : 'Generate QR Code'}
+              >
+                <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden md:inline text-xs sm:text-sm">{showQRGenerator ? 'Hide' : 'Generate'} QR</span>
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/crowd-request/find-missing-venmo?days=7&paymentMethod=venmo');
+                    const data = await response.json();
+                    if (data.success) {
+                      toast({
+                        title: 'Missing Requests Found',
+                        description: `Found ${data.summary.total} requests. ${data.summary.without_organization} without organization. Check console for details.`,
+                      });
+                      console.log('Missing requests data:', data);
+                      // If there are requests without organization, offer to assign them
+                      if (data.without_organization.length > 0 && organization?.id) {
+                        const assign = confirm(`Found ${data.without_organization.length} requests without organization. Assign them to your organization?`);
+                        if (assign) {
+                          for (const req of data.without_organization) {
+                            await supabase
+                              .from('crowd_requests')
+                              .update({ organization_id: organization.id })
+                              .eq('id', req.id);
+                          }
+                          toast({
+                            title: 'Success',
+                            description: `Assigned ${data.without_organization.length} request(s) to your organization`,
+                          });
+                          fetchRequests();
                         }
-                        toast({
-                          title: 'Success',
-                          description: `Assigned ${data.without_organization.length} request(s) to your organization`,
-                        });
-                        fetchRequests();
                       }
                     }
+                  } catch (error) {
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to find missing requests',
+                      variant: 'destructive',
+                    });
                   }
-                } catch (error) {
-                  toast({
-                    title: 'Error',
-                    description: 'Failed to find missing requests',
-                    variant: 'destructive',
-                  });
-                }
-              }}
-              variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
-              title="Find missing Venmo requests from the last 7 days"
-            >
-              <Search className="w-4 h-4" />
-              <span className="hidden sm:inline">Find Missing</span>
-            </Button>
-            <Button
-              onClick={handleManualSync}
-              disabled={syncingPayments}
-              variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
-              title="Sync payment status from Stripe for all requests"
-            >
-              <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${syncingPayments ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{syncingPayments ? 'Syncing...' : 'Sync Payments'}</span>
-              <span className="sm:hidden">{syncingPayments ? 'Syncing...' : 'Sync'}</span>
-            </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  const response = await fetch('/api/webhooks/stripe/test');
-                  const data = await response.json();
-                  const message = data.status === 'healthy' 
-                    ? `✅ Webhooks configured correctly!\n\n${JSON.stringify(data.checks, null, 2)}`
-                    : `⚠️ Issues detected:\n\n${data.recommendations?.map((r: any) => `- ${r.issue}: ${r.fix}`).join('\n') || 'Unknown error'}`;
-                  alert(message);
-                } catch (error: any) {
-                  toast({
-                    title: 'Test Failed',
-                    description: error?.message || 'Unknown error',
-                    variant: 'destructive',
-                  });
-                }
-              }}
-              variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
-              title="Test Stripe webhook configuration"
-            >
-              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Test Webhooks</span>
-              <span className="sm:hidden">Test</span>
-            </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  setSyncingPayments(true);
-                  const response = await fetch('/api/crowd-request/find-orphaned-payments');
-                  const data = await response.json();
-                  
-                  if (data.success) {
-                    const total = data.summary.orphaned_payments + data.summary.orphaned_sessions + data.summary.payments_without_request_id;
-                    if (total === 0) {
-                      toast({
-                        title: 'No Orphaned Payments',
-                        description: 'All payments in Stripe are properly linked!',
-                      });
-                    } else {
-                      setOrphanedPaymentsData(data);
-                      setShowOrphanedDialog(true);
-                      console.log('Orphaned Payments:', data);
+                }}
+                variant="outline"
+                size="sm"
+                className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 h-8 sm:h-9"
+                title="Find missing Venmo requests from the last 7 days"
+              >
+                <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden lg:inline text-xs sm:text-sm">Find Missing</span>
+              </Button>
+              <Button
+                onClick={handleManualSync}
+                disabled={syncingPayments}
+                variant="outline"
+                size="sm"
+                className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 h-8 sm:h-9"
+                title="Sync payment status from Stripe for all requests"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${syncingPayments ? 'animate-spin' : ''}`} />
+                <span className="hidden lg:inline text-xs sm:text-sm">{syncingPayments ? 'Syncing...' : 'Sync Payments'}</span>
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/webhooks/stripe/test');
+                    const data = await response.json();
+                    const message = data.status === 'healthy' 
+                      ? `✅ Webhooks configured correctly!\n\n${JSON.stringify(data.checks, null, 2)}`
+                      : `⚠️ Issues detected:\n\n${data.recommendations?.map((r: any) => `- ${r.issue}: ${r.fix}`).join('\n') || 'Unknown error'}`;
+                    alert(message);
+                  } catch (error: any) {
+                    toast({
+                      title: 'Test Failed',
+                      description: error?.message || 'Unknown error',
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 h-8 sm:h-9"
+                title="Test Stripe webhook configuration"
+              >
+                <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden lg:inline text-xs sm:text-sm">Test Webhooks</span>
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    setSyncingPayments(true);
+                    const response = await fetch('/api/crowd-request/find-orphaned-payments');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                      const total = data.summary.orphaned_payments + data.summary.orphaned_sessions + data.summary.payments_without_request_id;
+                      if (total === 0) {
+                        toast({
+                          title: 'No Orphaned Payments',
+                          description: 'All payments in Stripe are properly linked!',
+                        });
+                      } else {
+                        setOrphanedPaymentsData(data);
+                        setShowOrphanedDialog(true);
+                        console.log('Orphaned Payments:', data);
+                      }
                     }
+                  } catch (error: any) {
+                    toast({
+                      title: 'Error',
+                      description: error?.message || 'Unknown error',
+                      variant: 'destructive',
+                    });
+                  } finally {
+                    setSyncingPayments(false);
                   }
-                } catch (error: any) {
-                  toast({
-                    title: 'Error',
-                    description: error?.message || 'Unknown error',
-                    variant: 'destructive',
-                  });
-                } finally {
-                  setSyncingPayments(false);
-                }
-              }}
-              disabled={syncingPayments}
-              variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
-              title="Find payments in Stripe that aren't in the app"
-            >
-              <Search className={`w-4 h-4 sm:w-5 sm:h-5 ${syncingPayments ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{syncingPayments ? 'Searching...' : 'Find Orphaned'}</span>
-              <span className="sm:hidden">Find</span>
-            </Button>
+                }}
+                disabled={syncingPayments}
+                variant="outline"
+                size="sm"
+                className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 h-8 sm:h-9"
+                title="Find payments in Stripe that aren't in the app"
+              >
+                <Search className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${syncingPayments ? 'animate-spin' : ''}`} />
+                <span className="hidden lg:inline text-xs sm:text-sm">{syncingPayments ? 'Searching...' : 'Find Orphaned'}</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats Cards - Moved to Top */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Total Requests</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                {requests.length}
+              </p>
+            </div>
+            
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Paid</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
+                {requests.filter(r => r.payment_status === 'paid').length}
+              </p>
+            </div>
+            
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Total Revenue</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                ${(requests
+                  .filter(r => r.payment_status === 'paid' || r.payment_status === 'partially_refunded')
+                  .reduce((sum, r) => {
+                    const paid = r.amount_paid || 0;
+                    const refunded = r.refund_amount || 0;
+                    return sum + (paid - refunded);
+                  }, 0) / 100).toFixed(2)}
+              </p>
+            </div>
+            
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Pending</p>
+              <p className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                {requests.filter(r => r.payment_status === 'pending').length}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -7674,6 +7717,12 @@ export default function CrowdRequestsPage() {
                       {request.requester_phone}
                     </p>
                   )}
+                  {request.source_domain && (
+                    <p className="text-xs text-gray-500 dark:text-gray-500 ml-6 flex items-center gap-1">
+                      <span className="text-purple-500">🌐</span>
+                      {request.source_domain}
+                    </p>
+                  )}
                 </div>
 
                 {/* Amount and Status Row */}
@@ -9430,42 +9479,6 @@ export default function CrowdRequestsPage() {
         )}
 
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Requests</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {requests.length}
-            </p>
-          </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Paid</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {requests.filter(r => r.payment_status === 'paid').length}
-            </p>
-          </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Revenue</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              ${(requests
-                .filter(r => r.payment_status === 'paid' || r.payment_status === 'partially_refunded')
-                .reduce((sum, r) => {
-                  const paid = r.amount_paid || 0;
-                  const refunded = r.refund_amount || 0;
-                  return sum + (paid - refunded);
-                }, 0) / 100).toFixed(2)}
-            </p>
-          </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Pending</p>
-            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-              {requests.filter(r => r.payment_status === 'pending').length}
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Orphaned Payments Dialog */}
