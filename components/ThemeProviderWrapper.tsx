@@ -35,13 +35,10 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          // No session, force light mode for non-logged-in users
+          // No session, default to light mode but allow users to toggle
           setDefaultTheme('light');
-          setForcedTheme('light');
-          const root = document.documentElement;
-          root.classList.remove('dark');
-          root.classList.add('light');
-          root.style.colorScheme = 'light';
+          // Don't force the theme - allow users to toggle via ThemeToggle
+          setForcedTheme(undefined);
           return;
         }
         
@@ -90,9 +87,9 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
         }
       } catch (error) {
         console.error('Error loading theme preference:', error);
-        // Fall back to light mode for non-logged-in users
+        // Fall back to light mode but allow users to toggle
         setDefaultTheme('light');
-        setForcedTheme('light');
+        setForcedTheme(undefined);
       }
     }
 
@@ -101,13 +98,9 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
     // Listen for auth state changes to update theme when user logs in/out
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!session) {
-        // User logged out, force light mode
+        // User logged out, default to light mode but allow toggling
         setDefaultTheme('light');
-        setForcedTheme('light');
-        const root = document.documentElement;
-        root.classList.remove('dark');
-        root.classList.add('light');
-        root.style.colorScheme = 'light';
+        setForcedTheme(undefined);
       } else {
         // User logged in, allow theme customization
         setForcedTheme(undefined);

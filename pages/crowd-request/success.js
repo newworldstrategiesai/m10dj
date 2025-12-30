@@ -29,6 +29,19 @@ export default function CrowdRequestSuccessPage() {
   // Track success page view
   useSuccessPageTracking(request_id);
 
+  // Force dark mode on the success page
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('light');
+    root.classList.add('dark');
+    root.style.colorScheme = 'dark';
+    
+    // Cleanup on unmount - restore to previous state
+    return () => {
+      // Let the ThemeProvider handle the restoration
+    };
+  }, []);
+
   // Subscribe to real-time updates for this request
   useEffect(() => {
     if (!request_id) return;
@@ -901,7 +914,7 @@ export default function CrowdRequestSuccessPage() {
                 <div className="mb-6">
                   <Link
                     href={request.event_qr_code.startsWith('general') ? '/requests' : `/crowd-request/${request.event_qr_code}`}
-                    className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 dark:from-purple-500 dark:to-fuchsia-500 dark:hover:from-purple-400 dark:hover:to-fuchsia-400 text-white font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl dark:shadow-purple-500/25 dark:hover:shadow-purple-500/40 transition-all duration-200 transform hover:scale-[1.02]"
+                    className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-300 text-black font-bold text-lg rounded-xl shadow-lg hover:shadow-xl shadow-amber-500/30 hover:shadow-amber-400/50 transition-all duration-200 transform hover:scale-[1.02]"
                   >
                     <Music className="w-6 h-6" />
                     Request Another Song

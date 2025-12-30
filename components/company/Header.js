@@ -642,19 +642,15 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                   <span className="xl:hidden">(901) 410-2020</span>
                 </a>
                 
-                {/* Theme Toggle - Only show for logged in users */}
-                {isLoggedIn && (
-                  <>
-                    <div className={`h-6 w-px ${shouldBeTransparent && !isScrolled ? 'bg-white/30' : 'bg-gray-300 dark:bg-gray-800'}`}></div>
-                    <ThemeToggle 
-                      className={
-                        shouldBeTransparent && !isScrolled
-                          ? 'text-white hover:text-brand hover:bg-white/10'
-                          : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-gray-50 dark:hover:bg-black/50'
-                      }
-                    />
-                  </>
-                )}
+                {/* Theme Toggle - Always show */}
+                <div className={`h-6 w-px ${shouldBeTransparent && !isScrolled ? 'bg-white/30' : 'bg-gray-300 dark:bg-gray-800'}`}></div>
+                <ThemeToggle 
+                  className={
+                    shouldBeTransparent && !isScrolled
+                      ? 'text-white hover:text-brand hover:bg-white/10'
+                      : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-gray-50 dark:hover:bg-black/50'
+                  }
+                />
                 
                 {/* Divider - Only show if admin link is visible */}
                 {!isRequestsPage && (
@@ -952,16 +948,12 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       </Link>
                     )}
                     
-                    {/* Theme Toggle - Mobile - Only show for logged in users */}
-                    {isLoggedIn && (
-                      <>
-                        <div className="border-t border-gray-200 dark:border-gray-800 my-2"></div>
-                        <ThemeToggle 
-                          variant="mobile"
-                          className={mobileMenuTextClass + ' ' + mobileMenuBgClass}
-                        />
-                      </>
-                    )}
+                    {/* Theme Toggle - Mobile - Always show */}
+                    <div className="border-t border-gray-200 dark:border-gray-800 my-2"></div>
+                    <ThemeToggle 
+                      variant="mobile"
+                      className={mobileMenuTextClass + ' ' + mobileMenuBgClass}
+                    />
                   </>
                 )}
                 
