@@ -17,6 +17,9 @@ import { useQRScanTracking } from '../../hooks/useQRScanTracking';
 
 const logger = createLogger('CrowdRequestPage');
 
+// localStorage key for persisting requester info
+const REQUESTER_INFO_KEY = 'm10_requester_info';
+
 export default function CrowdRequestPage() {
   const router = useRouter();
   const { code } = router.query;
@@ -74,6 +77,25 @@ export default function CrowdRequestPage() {
       setBundleSongs([]);
     }
   }, [bundleSize]); // Only depend on bundleSize, not bundleSongs to avoid infinite loop
+
+  // Load saved requester info from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedInfo = localStorage.getItem(REQUESTER_INFO_KEY);
+      if (savedInfo) {
+        const { requesterName, requesterEmail, requesterPhone } = JSON.parse(savedInfo);
+        setFormData(prev => ({
+          ...prev,
+          requesterName: requesterName || '',
+          requesterEmail: requesterEmail || '',
+          requesterPhone: requesterPhone || ''
+        }));
+        logger.info('Loaded saved requester info from localStorage');
+      }
+    } catch (e) {
+      logger.error('Error loading requester info from localStorage:', e);
+    }
+  }, []);
 
   // Handle bundle song input changes with URL detection
   const handleBundleSongChange = async (index, field, value) => {
@@ -413,6 +435,21 @@ export default function CrowdRequestPage() {
     }
 
     setSubmitting(true);
+
+    // Save requester info to localStorage for future requests
+    try {
+      const requesterInfo = {
+        requesterName: formData.requesterName?.trim() || '',
+        requesterEmail: formData.requesterEmail?.trim() || '',
+        requesterPhone: formData.requesterPhone?.trim() || ''
+      };
+      if (requesterInfo.requesterName) {
+        localStorage.setItem(REQUESTER_INFO_KEY, JSON.stringify(requesterInfo));
+        logger.info('Saved requester info to localStorage');
+      }
+    } catch (e) {
+      logger.error('Error saving requester info to localStorage:', e);
+    }
 
     try {
       const amount = getPaymentAmount();

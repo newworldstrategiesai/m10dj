@@ -29,6 +29,9 @@ const logger = createLogger('GeneralRequestsPage');
 
 const DEFAULT_COVER_PHOTO = '/assets/DJ-Ben-Murray-Dodge-Poster.png';
 
+// localStorage key for persisting requester info
+const REQUESTER_INFO_KEY = 'm10_requester_info';
+
 // Wrapper component for /requests route that loads organization data
 export default function RequestsPageWrapper() {
   const router = useRouter();
@@ -329,6 +332,25 @@ export function GeneralRequestsPage({
 
   // Track QR code scan for public requests page
   useQRScanTracking('public', organizationId);
+
+  // Load saved requester info from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedInfo = localStorage.getItem(REQUESTER_INFO_KEY);
+      if (savedInfo) {
+        const { requesterName, requesterEmail, requesterPhone } = JSON.parse(savedInfo);
+        setFormData(prev => ({
+          ...prev,
+          requesterName: requesterName || '',
+          requesterEmail: requesterEmail || '',
+          requesterPhone: requesterPhone || ''
+        }));
+        logger.info('Loaded saved requester info from localStorage');
+      }
+    } catch (e) {
+      logger.error('Error loading requester info from localStorage:', e);
+    }
+  }, []);
 
   // Initialize bundle songs array when bundle size changes
   useEffect(() => {
@@ -1185,6 +1207,21 @@ export function GeneralRequestsPage({
     }
 
     setSubmitting(true);
+
+    // Save requester info to localStorage for future requests
+    try {
+      const requesterInfo = {
+        requesterName: formData.requesterName?.trim() || '',
+        requesterEmail: formData.requesterEmail?.trim() || '',
+        requesterPhone: formData.requesterPhone?.trim() || ''
+      };
+      if (requesterInfo.requesterName) {
+        localStorage.setItem(REQUESTER_INFO_KEY, JSON.stringify(requesterInfo));
+        logger.info('Saved requester info to localStorage');
+      }
+    } catch (e) {
+      logger.error('Error saving requester info to localStorage:', e);
+    }
 
     try {
       // shouldUseBidding is already defined at component level via useMemo
