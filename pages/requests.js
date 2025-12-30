@@ -48,12 +48,12 @@ export default function RequestsPageWrapper() {
       try {
         console.log('🔄 [REQUESTS] Loading default organization for /requests route...');
         
-        // Load the default organization (M10 DJ Company with slug 'm10dj')
+        // Load the default organization (M10 DJ Company with slug 'm10djcompany')
         // You can change this to load a different default organization
         const { data: org, error } = await supabase
           .from('organizations')
           .select('*')
-          .eq('slug', 'm10dj')
+          .eq('slug', 'm10djcompany')
           .single();
 
         if (error) {
@@ -1594,9 +1594,9 @@ export function GeneralRequestsPage({
   // are now imported from components/crowd-request/
 
   // Get the site URL for absolute image URLs
-  const siteUrl = typeof window !== 'undefined' 
-    ? window.location.origin 
-    : (process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com');
+  // Always use main domain for assets to ensure they load across all domains (tipjar.live, m10djcompany.com, etc.)
+  const mainDomain = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+  const siteUrl = mainDomain;
   
   // Convert cover photo to absolute URL if it's relative
   const getAbsoluteImageUrl = (imageUrl) => {
@@ -1793,6 +1793,8 @@ export function GeneralRequestsPage({
                 }}
             >
               <source src={`${siteUrl}/assets/djbenmurraylogo.mp4`} type="video/mp4" />
+              {/* Fallback message if video fails to load */}
+              <p className="text-white text-center p-4">Video unavailable</p>
             </video>
             ) : (
               <div 
@@ -1966,6 +1968,8 @@ export function GeneralRequestsPage({
                 }}
             >
               <source src={`${siteUrl}/assets/djbenmurraylogo.mp4`} type="video/mp4" />
+              {/* Fallback message if video fails to load */}
+              <p className="text-white text-center p-4">Video unavailable</p>
             </video>
             ) : (
               <div 

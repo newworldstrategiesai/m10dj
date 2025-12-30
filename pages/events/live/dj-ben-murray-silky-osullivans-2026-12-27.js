@@ -54,7 +54,7 @@ export default function DJBenMurraySilkyOSullivansEvent() {
       const { data } = await supabase
         .from('organizations')
         .select('id')
-        .eq('slug', 'm10dj')
+        .eq('slug', 'm10djcompany')
         .single();
       if (data) setOrganizationId(data.id);
     }

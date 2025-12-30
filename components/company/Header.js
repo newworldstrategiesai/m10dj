@@ -414,15 +414,19 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                   ) : (
                     customLogoUrl ? (
                       // Custom org logos are typically square, keep square sizing
-                      <Image
+                      // Use regular img tag for better error handling and cross-domain support
+                      <img
                         key={`logo-custom-${isDarkMode ? 'dark' : 'light'}`}
                         src={customLogoUrl}
                         alt="Organization Logo"
-                        width={45}
-                        height={45}
-                        className="w-9 h-9 sm:w-[45px] sm:h-[45px] rounded-lg transition-transform group-hover:scale-105"
-                        priority
-                        unoptimized
+                        className="w-9 h-9 sm:w-[45px] sm:h-[45px] rounded-lg transition-transform group-hover:scale-105 object-contain"
+                        style={{ display: 'block' }}
+                        onError={(e) => {
+                          // Fallback to default logo if custom logo fails to load
+                          console.warn('Custom logo failed to load, using default logo');
+                          e.target.style.display = 'none';
+                          // The parent will show default logo instead
+                        }}
                       />
                     ) : (
                       // Default M10 logo is wide—use same sizing as requests page so it doesn't look squished

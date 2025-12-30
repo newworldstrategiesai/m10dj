@@ -21,11 +21,11 @@ export default function BidPageWrapper() {
       try {
         console.log('🔄 [BID PAGE] Loading default organization for /bid route...');
         
-        // Load the default organization (M10 DJ Company with slug 'm10dj')
+        // Load the default organization (M10 DJ Company with slug 'm10djcompany')
         const { data: org, error } = await supabase
           .from('organizations')
           .select('*')
-          .eq('slug', 'm10dj')
+          .eq('slug', 'm10djcompany')
           .single();
 
         if (error) {
