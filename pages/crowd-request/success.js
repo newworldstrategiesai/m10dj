@@ -735,31 +735,54 @@ export default function CrowdRequestSuccessPage() {
 
               {/* Status-based messaging - Now shown on mobile too */}
               <div className="block mb-6 md:mb-8">
-                {request?.status === 'playing' ? (
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 md:p-4">
-                    <p className="text-xs md:text-sm text-green-800 dark:text-green-200">
-                      <strong>🎶 On the decks!</strong> Your song is playing right now. Get on the dance floor and enjoy!
-                    </p>
-                  </div>
-                ) : request?.status === 'played' ? (
-                  <div className="bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/30 rounded-lg p-3 md:p-4">
-                    <p className="text-xs md:text-sm text-green-800 dark:text-emerald-200">
-                      <strong className="dark:text-emerald-300">✅ Request Complete!</strong> Your song has been played. Thanks for making the party great! Want to request another?
-                    </p>
-                  </div>
-                ) : request?.is_fast_track ? (
-                  <div className="bg-orange-50 dark:bg-amber-500/10 border border-orange-200 dark:border-amber-500/30 rounded-lg p-3 md:p-4">
-                    <p className="text-xs md:text-sm text-orange-800 dark:text-amber-200">
-                      <strong className="dark:text-amber-300">⚡ Fast-Track Confirmed!</strong> Your song request has priority placement in the queue. The DJ will receive your request and will play it as soon as possible.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-gray-50 dark:bg-neutral-800/50 border border-gray-200 dark:border-neutral-700/50 rounded-lg p-3 md:p-4">
-                    <p className="text-xs md:text-sm text-gray-700 dark:text-neutral-300">
-                      <strong className="text-gray-900 dark:text-white">What&apos;s next?</strong> The DJ will receive your request and will do their best to fulfill it during the event. This page updates automatically when your song plays!
-                    </p>
-                  </div>
-                )}
+                {(() => {
+                  // Check if any songs have been played (main request or bundled songs)
+                  const mainSongPlayed = request?.status === 'played' || request?.played_at;
+                  const anyBundledSongPlayed = bundledSongs.some(song => song.status === 'played' || song.played_at);
+                  const noSongsPlayedYet = !mainSongPlayed && !anyBundledSongPlayed;
+                  
+                  if (request?.status === 'playing') {
+                    return (
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 md:p-4">
+                        <p className="text-xs md:text-sm text-green-800 dark:text-green-200">
+                          <strong>🎶 On the decks!</strong> Your song is playing right now. Get on the dance floor and enjoy!
+                        </p>
+                      </div>
+                    );
+                  } else if (request?.status === 'played') {
+                    return (
+                      <div className="bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/30 rounded-lg p-3 md:p-4">
+                        <p className="text-xs md:text-sm text-green-800 dark:text-emerald-200">
+                          <strong className="dark:text-emerald-300">✅ Request Complete!</strong> Your song has been played. Thanks for making the party great! Want to request another?
+                        </p>
+                      </div>
+                    );
+                  } else if (noSongsPlayedYet) {
+                    return (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 md:p-4">
+                        <p className="text-xs md:text-sm text-blue-800 dark:text-blue-200">
+                          <strong className="dark:text-blue-300">🔄 Reload this page for updates on when your song is coming up!</strong>
+                        </p>
+                      </div>
+                    );
+                  } else if (request?.is_fast_track) {
+                    return (
+                      <div className="bg-orange-50 dark:bg-amber-500/10 border border-orange-200 dark:border-amber-500/30 rounded-lg p-3 md:p-4">
+                        <p className="text-xs md:text-sm text-orange-800 dark:text-amber-200">
+                          <strong className="dark:text-amber-300">⚡ Fast-Track Confirmed!</strong> Your song request has priority placement in the queue. The DJ will receive your request and will play it as soon as possible.
+                        </p>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="bg-gray-50 dark:bg-neutral-800/50 border border-gray-200 dark:border-neutral-700/50 rounded-lg p-3 md:p-4">
+                        <p className="text-xs md:text-sm text-gray-700 dark:text-neutral-300">
+                          <strong className="text-gray-900 dark:text-white">What&apos;s next?</strong> The DJ will receive your request and will do their best to fulfill it during the event. This page updates automatically when your song plays!
+                        </p>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
 
               {/* Bundle Messaging - Desktop only */}
