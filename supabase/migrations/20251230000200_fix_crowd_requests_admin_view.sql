@@ -1,9 +1,13 @@
 -- Fix RLS policies for crowd_requests to allow platform admins to view all requests
 -- This migration adds back the "Admins can view all" policy that was removed in 20250123000001
 
+-- Drop policies first if they exist (PostgreSQL doesn't support IF NOT EXISTS for CREATE POLICY)
+DROP POLICY IF EXISTS "Platform admins can view all crowd requests" ON crowd_requests;
+DROP POLICY IF EXISTS "Org owners can view orphaned crowd requests" ON crowd_requests;
+
 -- Add policy for platform admins to view ALL crowd requests (regardless of organization)
 -- This ensures that platform admins can see orphaned requests with NULL organization_id
-CREATE POLICY IF NOT EXISTS "Platform admins can view all crowd requests"
+CREATE POLICY "Platform admins can view all crowd requests"
   ON crowd_requests
   FOR SELECT
   TO authenticated
@@ -22,7 +26,7 @@ CREATE POLICY IF NOT EXISTS "Platform admins can view all crowd requests"
 -- Also add a policy that allows organization owners to see requests with NULL organization_id
 -- These are likely orphaned requests that should be visible for manual assignment
 -- This is a safety net for any requests created before organization_id was properly enforced
-CREATE POLICY IF NOT EXISTS "Org owners can view orphaned crowd requests"
+CREATE POLICY "Org owners can view orphaned crowd requests"
   ON crowd_requests
   FOR SELECT
   TO authenticated
@@ -70,10 +74,9 @@ BEGIN
   END IF;
 END $$;
 
--- Add comment
+-- Add comments
 COMMENT ON POLICY "Platform admins can view all crowd requests" ON crowd_requests IS 
   'Allows platform admins and org owners to see all crowd requests for admin management';
 
 COMMENT ON POLICY "Org owners can view orphaned crowd requests" ON crowd_requests IS 
   'Allows org owners to see requests with NULL organization_id for manual assignment';
-
