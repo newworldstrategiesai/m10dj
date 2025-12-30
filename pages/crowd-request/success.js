@@ -494,21 +494,21 @@ export default function CrowdRequestSuccessPage() {
         <title>Request Confirmed! | M10 DJ Company</title>
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-purple-50 dark:from-black dark:via-neutral-950 dark:to-black pb-24 md:pb-8">
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-purple-50 dark:from-black dark:via-neutral-950 dark:to-black pb-28 md:pb-8">
         <Header />
         
-        <main className="section-container py-4 md:py-20">
+        <main className="section-container py-6 md:py-20">
           <div className="max-w-2xl mx-auto">
-            <div className="bg-white dark:bg-gradient-to-br dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-950 rounded-xl md:rounded-2xl shadow-xl dark:shadow-2xl dark:shadow-purple-500/5 p-4 md:p-12 text-center dark:border dark:border-neutral-800">
+            <div className="bg-white dark:bg-gradient-to-br dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-950 rounded-xl md:rounded-2xl shadow-xl dark:shadow-2xl dark:shadow-purple-500/5 p-6 md:p-12 text-center dark:border dark:border-neutral-800">
               
-              {/* Compact Header: Icon + Title + Status in one row on mobile */}
-              <div className="flex items-center justify-center gap-3 md:flex-col md:gap-0 mb-3 md:mb-6">
-                {/* Success Icon - smaller on mobile */}
-                <div className="inline-flex items-center justify-center w-12 h-12 md:w-20 md:h-20 rounded-full bg-green-100 dark:bg-emerald-500/10 md:mb-6 dark:ring-1 dark:ring-emerald-500/30 dark:shadow-lg dark:shadow-emerald-500/20 flex-shrink-0">
-                  <CheckCircle className="w-7 h-7 md:w-12 md:h-12 text-green-600 dark:text-emerald-400" />
+              {/* Header: Icon + Title - Better spacing on mobile */}
+              <div className="flex flex-col items-center gap-3 md:gap-0 mb-4 md:mb-6">
+                {/* Success Icon - larger on mobile */}
+                <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-green-100 dark:bg-emerald-500/10 md:mb-6 dark:ring-1 dark:ring-emerald-500/30 dark:shadow-lg dark:shadow-emerald-500/20 flex-shrink-0">
+                  <CheckCircle className="w-9 h-9 md:w-12 md:h-12 text-green-600 dark:text-emerald-400" />
                 </div>
                 
-                <h1 className={`text-xl md:text-4xl font-bold text-gray-900 dark:text-white transition-all duration-500 ${statusJustChanged ? 'scale-110' : ''}`}>
+                <h1 className={`text-2xl md:text-4xl font-bold text-gray-900 dark:text-white transition-all duration-500 ${statusJustChanged ? 'scale-110' : ''}`}>
                   {request?.status === 'playing' 
                     ? '🎶 Playing Now!' 
                     : request?.status === 'played'
@@ -517,7 +517,7 @@ export default function CrowdRequestSuccessPage() {
                 </h1>
               </div>
               
-              <p className="text-sm md:text-lg text-gray-600 dark:text-neutral-400 mb-4 md:mb-8">
+              <p className="text-base md:text-lg text-gray-600 dark:text-neutral-400 mb-6 md:mb-8">
                 {request?.status === 'playing'
                   ? 'Your song is playing right now! Enjoy!'
                   : request?.status === 'played'
@@ -527,12 +527,12 @@ export default function CrowdRequestSuccessPage() {
               </p>
 
               {request && (
-                <div className="bg-purple-50 dark:bg-neutral-900/80 dark:border dark:border-neutral-800 rounded-xl p-3 md:p-6 mb-4 md:mb-8 text-left dark:backdrop-blur-sm">
-                  <div className="flex items-center gap-3 md:gap-5">
-                    {/* Album Art or Icon */}
+                <div className="bg-purple-50 dark:bg-neutral-900/80 dark:border dark:border-neutral-800 rounded-xl p-5 md:p-6 mb-6 md:mb-8 text-left dark:backdrop-blur-sm">
+                  <div className="flex items-start gap-4 md:gap-5">
+                    {/* Album Art or Icon - Larger on mobile */}
                     {request.request_type === 'song_request' && albumArt ? (
                       <div className={`relative flex-shrink-0 ${request.status === 'playing' ? 'animate-pulse' : ''}`}>
-                        <div className="w-16 h-16 md:w-28 md:h-28 rounded-lg md:rounded-xl overflow-hidden shadow-lg ring-2 ring-purple-300 dark:ring-purple-500/50 dark:shadow-xl dark:shadow-purple-500/20">
+                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg md:rounded-xl overflow-hidden shadow-lg ring-2 ring-purple-300 dark:ring-purple-500/50 dark:shadow-xl dark:shadow-purple-500/20">
                           <img 
                             src={albumArt} 
                             alt={`${request.song_title} album art`}
@@ -551,17 +551,17 @@ export default function CrowdRequestSuccessPage() {
                         )}
                       </div>
                     ) : request.request_type === 'song_request' ? (
-                      <div className="w-16 h-16 md:w-28 md:h-28 rounded-lg md:rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 dark:from-purple-500 dark:to-fuchsia-500 flex items-center justify-center flex-shrink-0 shadow-lg dark:shadow-xl dark:shadow-purple-500/30">
-                        <Disc3 className="w-8 h-8 md:w-14 md:h-14 text-white/90" />
+                      <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg md:rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 dark:from-purple-500 dark:to-fuchsia-500 flex items-center justify-center flex-shrink-0 shadow-lg dark:shadow-xl dark:shadow-purple-500/30">
+                        <Disc3 className="w-10 h-10 md:w-14 md:h-14 text-white/90" />
                       </div>
                     ) : (
-                      <Mic className="w-8 h-8 text-pink-600 dark:text-pink-400 flex-shrink-0 mt-1" />
+                      <Mic className="w-10 h-10 text-pink-600 dark:text-pink-400 flex-shrink-0 mt-1" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-2">
                         {request.is_fast_track && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-amber-500/20 text-orange-700 dark:text-amber-400 text-[10px] md:text-xs font-semibold dark:ring-1 dark:ring-amber-500/30">
-                            <Zap className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 dark:bg-amber-500/20 text-orange-700 dark:text-amber-400 text-xs md:text-xs font-semibold dark:ring-1 dark:ring-amber-500/30">
+                            <Zap className="w-3 h-3 md:w-3 md:h-3" />
                             Fast
                           </span>
                         )}
@@ -569,54 +569,54 @@ export default function CrowdRequestSuccessPage() {
                       
                       {request.request_type === 'song_request' ? (
                         <div>
-                          <p className="text-base md:text-2xl font-bold text-gray-900 dark:text-white leading-tight truncate">
+                          <p className="text-lg md:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                             {request.song_title}
                           </p>
                           {request.song_artist && (
-                            <p className="text-sm md:text-base text-gray-600 dark:text-neutral-400 truncate">
+                            <p className="text-sm md:text-base text-gray-600 dark:text-neutral-400 mt-0.5">
                               {request.song_artist}
                             </p>
                           )}
                           
-                          {/* Live Status Display - Compact on mobile */}
-                          <div className={`mt-2 md:mt-4 pt-2 md:pt-4 border-t border-purple-200 dark:border-neutral-700/50 transition-all duration-500 ${statusJustChanged ? 'animate-pulse' : ''}`}>
+                          {/* Live Status Display - Better spacing on mobile */}
+                          <div className={`mt-3 md:mt-4 pt-3 md:pt-4 border-t border-purple-200 dark:border-neutral-700/50 transition-all duration-500 ${statusJustChanged ? 'animate-pulse' : ''}`}>
                             {request.status === 'playing' ? (
                               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                                <span className="relative flex h-2.5 w-2.5">
+                                <span className="relative flex h-3 w-3">
                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                                 </span>
-                                <span className="text-xs md:text-sm font-bold">Playing Now!</span>
+                                <span className="text-sm md:text-sm font-bold">Playing Now!</span>
                                 {request.played_at && (
-                                  <span className="text-[10px] md:text-xs text-emerald-500 dark:text-emerald-400/70">
+                                  <span className="text-xs md:text-xs text-emerald-500 dark:text-emerald-400/70">
                                     • Started {new Date(request.played_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                   </span>
                                 )}
                               </div>
                             ) : request.status === 'played' || request.played_at ? (
                               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                                <CheckCircle className="w-4 h-4" />
-                                <span className="text-xs md:text-sm font-semibold">Played</span>
+                                <CheckCircle className="w-5 h-5" />
+                                <span className="text-sm md:text-sm font-semibold">Played</span>
                                 {request.played_at && (
-                                  <span className="text-[10px] md:text-xs text-emerald-500">
+                                  <span className="text-xs md:text-xs text-emerald-500">
                                     • {new Date(request.played_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                   </span>
                                 )}
                               </div>
                             ) : request.is_fast_track ? (
                               <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                                <Zap className="w-4 h-4" />
-                                <span className="text-xs md:text-sm font-semibold">Fast-Track • Coming up soon!</span>
+                                <Zap className="w-5 h-5" />
+                                <span className="text-sm md:text-sm font-semibold">Fast-Track • Coming up soon!</span>
                               </div>
                             ) : (
                               <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
-                                <Clock className="w-4 h-4" />
-                                <span className="text-xs md:text-sm">In Queue</span>
-                                <span className="relative flex h-2 w-2 ml-1">
+                                <Clock className="w-5 h-5" />
+                                <span className="text-sm md:text-sm">In Queue</span>
+                                <span className="relative flex h-2.5 w-2.5 ml-1">
                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
                                 </span>
-                                <span className="text-[10px] md:text-xs text-neutral-500">Live</span>
+                                <span className="text-xs md:text-xs text-neutral-500">Live</span>
                               </div>
                             )}
                           </div>
@@ -632,7 +632,7 @@ export default function CrowdRequestSuccessPage() {
                         </div>
                       )}
                       
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 md:mt-4 text-[11px] md:text-sm text-gray-500 dark:text-gray-500">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 md:mt-4 text-xs md:text-sm text-gray-500 dark:text-gray-500">
                         <span>{request.requester_name}</span>
                         <span>•</span>
                         <span>${((request.amount_paid || request.amount_requested) / 100).toFixed(2)}</span>
@@ -643,20 +643,20 @@ export default function CrowdRequestSuccessPage() {
                         )}
                       </div>
                       
-                      {/* Bundled Songs Display - Compact on mobile */}
+                      {/* Bundled Songs Display - More prominent on mobile */}
                       {bundledSongs.length > 0 && (
-                        <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-purple-200 dark:border-neutral-700/50">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <Gift className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                            <h4 className="text-xs font-semibold text-gray-900 dark:text-white">
+                        <div className="mt-4 md:mt-4 pt-4 md:pt-4 border-t border-purple-200 dark:border-neutral-700/50">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Gift className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                               +{bundledSongs.length} more in bundle
                             </h4>
                           </div>
-                          <div className="space-y-1.5 md:space-y-2.5">
+                          <div className="space-y-2.5 md:space-y-2.5">
                             {bundledSongs.map((song, index) => (
                               <div 
                                 key={song.id} 
-                                className={`rounded-lg px-2 py-2 md:px-3 md:py-3 border transition-all ${
+                                className={`rounded-lg px-3 py-3 md:px-3 md:py-3 border transition-all ${
                                   song.status === 'playing' 
                                     ? 'border-emerald-500/40 bg-emerald-500/10' 
                                     : song.status === 'played'
@@ -664,11 +664,11 @@ export default function CrowdRequestSuccessPage() {
                                       : 'border-neutral-700/50 bg-neutral-800/40'
                                 }`}
                               >
-                                <div className="flex items-center gap-2 md:gap-3">
-                                  {/* Album Art for bundled song - smaller on mobile */}
+                                <div className="flex items-center gap-3 md:gap-3">
+                                  {/* Album Art for bundled song - larger on mobile */}
                                   {bundleAlbumArts[song.id] ? (
                                     <div className={`relative flex-shrink-0 ${song.status === 'playing' ? 'animate-pulse' : ''}`}>
-                                      <div className="w-10 h-10 md:w-14 md:h-14 rounded-md md:rounded-lg overflow-hidden ring-1 ring-purple-500/30">
+                                      <div className="w-14 h-14 md:w-14 md:h-14 rounded-lg md:rounded-lg overflow-hidden ring-1 ring-purple-500/30">
                                         <img 
                                           src={bundleAlbumArts[song.id]} 
                                           alt={`${song.song_title} album art`}
@@ -682,43 +682,43 @@ export default function CrowdRequestSuccessPage() {
                                       )}
                                     </div>
                                   ) : (
-                                    <div className="w-10 h-10 md:w-14 md:h-14 rounded-md md:rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center flex-shrink-0">
-                                      <Disc3 className="w-5 h-5 md:w-7 md:h-7 text-white/90" />
+                                    <div className="w-14 h-14 md:w-14 md:h-14 rounded-lg md:rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center flex-shrink-0">
+                                      <Disc3 className="w-7 h-7 md:w-7 md:h-7 text-white/90" />
                                     </div>
                                   )}
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-xs md:text-sm font-semibold text-white truncate">
+                                    <p className="text-sm md:text-sm font-semibold text-white">
                                       {song.song_title || 'Song title pending'}
                                     </p>
                                     {song.song_artist && (
-                                      <p className="text-[10px] md:text-xs text-neutral-400 truncate">
+                                      <p className="text-xs md:text-xs text-neutral-400 mt-0.5">
                                         {song.song_artist}
                                       </p>
                                     )}
                                   </div>
-                                  {/* Status indicator with played time */}
+                                  {/* Status indicator with played time - Better visibility */}
                                   <div className="flex-shrink-0 flex items-center gap-1.5">
                                     {song.status === 'playing' ? (
                                       <>
-                                        <span className="relative flex h-2 w-2">
+                                        <span className="relative flex h-2.5 w-2.5">
                                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                                         </span>
-                                        <span className="text-[10px] text-emerald-400 font-medium">Playing</span>
+                                        <span className="text-xs text-emerald-400 font-medium">Playing</span>
                                       </>
                                     ) : song.status === 'played' ? (
                                       <>
-                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-400" />
                                         {song.played_at && (
-                                          <span className="text-[10px] text-emerald-400/80">
+                                          <span className="text-xs text-emerald-400/80">
                                             {new Date(song.played_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                           </span>
                                         )}
                                       </>
                                     ) : (
                                       <>
-                                        <Clock className="w-3 h-3 text-neutral-500" />
-                                        <span className="text-[10px] text-neutral-500">Queued</span>
+                                        <Clock className="w-4 h-4 text-neutral-500" />
+                                        <span className="text-xs text-neutral-500">Queued</span>
                                       </>
                                     )}
                                   </div>
@@ -733,29 +733,29 @@ export default function CrowdRequestSuccessPage() {
                 </div>
               )}
 
-              {/* Status-based messaging - Hidden on mobile, shown on desktop */}
-              <div className="hidden md:block">
+              {/* Status-based messaging - Now shown on mobile too */}
+              <div className="block mb-6 md:mb-8">
                 {request?.status === 'playing' ? (
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-8">
-                    <p className="text-sm text-green-800 dark:text-green-200">
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 md:p-4">
+                    <p className="text-xs md:text-sm text-green-800 dark:text-green-200">
                       <strong>🎶 On the decks!</strong> Your song is playing right now. Get on the dance floor and enjoy!
                     </p>
                   </div>
                 ) : request?.status === 'played' ? (
-                  <div className="bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/30 rounded-lg p-4 mb-8">
-                    <p className="text-sm text-green-800 dark:text-emerald-200">
+                  <div className="bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/30 rounded-lg p-3 md:p-4">
+                    <p className="text-xs md:text-sm text-green-800 dark:text-emerald-200">
                       <strong className="dark:text-emerald-300">✅ Request Complete!</strong> Your song has been played. Thanks for making the party great! Want to request another?
                     </p>
                   </div>
                 ) : request?.is_fast_track ? (
-                  <div className="bg-orange-50 dark:bg-amber-500/10 border border-orange-200 dark:border-amber-500/30 rounded-lg p-4 mb-8">
-                    <p className="text-sm text-orange-800 dark:text-amber-200">
+                  <div className="bg-orange-50 dark:bg-amber-500/10 border border-orange-200 dark:border-amber-500/30 rounded-lg p-3 md:p-4">
+                    <p className="text-xs md:text-sm text-orange-800 dark:text-amber-200">
                       <strong className="dark:text-amber-300">⚡ Fast-Track Confirmed!</strong> Your song request has priority placement in the queue. The DJ will receive your request and will play it as soon as possible.
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-gray-50 dark:bg-neutral-800/50 border border-gray-200 dark:border-neutral-700/50 rounded-lg p-4 mb-8">
-                    <p className="text-sm text-gray-700 dark:text-neutral-300">
+                  <div className="bg-gray-50 dark:bg-neutral-800/50 border border-gray-200 dark:border-neutral-700/50 rounded-lg p-3 md:p-4">
+                    <p className="text-xs md:text-sm text-gray-700 dark:text-neutral-300">
                       <strong className="text-gray-900 dark:text-white">What&apos;s next?</strong> The DJ will receive your request and will do their best to fulfill it during the event. This page updates automatically when your song plays!
                     </p>
                   </div>
@@ -875,10 +875,10 @@ export default function CrowdRequestSuccessPage() {
         
         {/* Sticky Mobile CTA */}
         {request?.event_qr_code && (
-          <div className="md:hidden fixed bottom-0 left-0 right-0 p-3 bg-black/90 backdrop-blur-lg border-t border-neutral-800 safe-area-pb">
+          <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/95 via-black/90 to-black/80 backdrop-blur-lg border-t border-neutral-800 safe-area-pb">
             <Link
               href={request.event_qr_code.startsWith('general') ? '/requests' : `/crowd-request/${request.event_qr_code}`}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 text-black font-bold text-base rounded-xl shadow-lg shadow-amber-500/30"
+              className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-300 text-black font-bold text-base rounded-xl shadow-lg hover:shadow-xl shadow-amber-500/30 hover:shadow-amber-400/50 transition-all duration-200"
             >
               <Music className="w-5 h-5" />
               Request Another Song
