@@ -81,8 +81,43 @@ async function getFeaturedDJProfiles() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
+    const M10_DJ_COMPANY_ORG_ID = '2a10fa9f-c129-451d-bc4e-b669d42d521e';
 
-    // Get all published DJ profiles
+    // Always include M10 DJ Company profiles first (Memphis-based)
+    // Query without availability_status filter to be more lenient
+    const { data: m10Profiles, error: m10Error } = await supabase
+      .from('dj_profiles')
+      .select(`
+        id,
+        dj_name,
+        dj_slug,
+        tagline,
+        profile_image_url,
+        cover_image_url,
+        city,
+        state,
+        starting_price_range,
+        event_types,
+        is_featured,
+        organization_id
+      `)
+      .eq('is_published', true)
+      .eq('organization_id', M10_DJ_COMPANY_ORG_ID)
+      .order('is_featured', { ascending: false })
+      .limit(2); // Get up to 2 M10 DJ Company profiles
+
+    if (m10Error) {
+      console.error('Error fetching M10 DJ Company profiles:', m10Error);
+    }
+
+    // Log for debugging
+    if (m10Profiles && m10Profiles.length > 0) {
+      console.log('Found M10 DJ Company profiles:', m10Profiles.length);
+    } else {
+      console.log('No M10 DJ Company profiles found. Organization ID:', M10_DJ_COMPANY_ORG_ID);
+    }
+
+    // Get all published DJ Dash profiles
     const { data: allProfiles, error: profilesError } = await supabase
       .from('dj_profiles')
       .select(`
@@ -104,27 +139,30 @@ async function getFeaturedDJProfiles() {
       .order('created_at', { ascending: false })
       .limit(12);
 
-    if (profilesError || !allProfiles) {
+    if (profilesError) {
       console.error('Error fetching DJ profiles:', profilesError);
-      return [];
     }
 
     // Filter to only DJ Dash profiles by checking organizations
-    const orgIds = Array.from(new Set(allProfiles.map(p => p.organization_id)));
+    const orgIds = Array.from(new Set((allProfiles || []).map(p => p.organization_id)));
     const { data: orgs } = await supabase
       .from('organizations')
       .select('id, product_context')
       .in('id', orgIds)
       .eq('product_context', 'djdash');
 
-    if (!orgs || orgs.length === 0) return [];
+    const djdashOrgIds = new Set((orgs || []).map(o => o.id));
+    const djdashProfiles = (allProfiles || []).filter(p => djdashOrgIds.has(p.organization_id));
 
-    const djdashOrgIds = new Set(orgs.map(o => o.id));
-    const djdashProfiles = allProfiles.filter(p => djdashOrgIds.has(p.organization_id));
+    // Combine: M10 DJ Company first (always featured), then DJ Dash profiles
+    const combinedProfiles = [
+      ...(m10Profiles || []).map(p => ({ ...p, is_featured: true, is_m10_dj_company: true })),
+      ...djdashProfiles.filter(p => !(m10Profiles || []).some(m10 => m10.id === p.id))
+    ].slice(0, 8); // Limit to 8 total
 
     // Get aggregate ratings for each profile
     const profilesWithRatings = await Promise.all(
-      djdashProfiles.slice(0, 8).map(async (profile) => {
+      combinedProfiles.map(async (profile) => {
         const { data: reviews } = await supabase
           .from('dj_reviews')
           .select('rating')
@@ -148,6 +186,17 @@ async function getFeaturedDJProfiles() {
         };
       })
     );
+
+    // Sort: M10 DJ Company first, then by featured status
+    profilesWithRatings.sort((a, b) => {
+      const aIsM10 = (a as any).is_m10_dj_company;
+      const bIsM10 = (b as any).is_m10_dj_company;
+      if (aIsM10 && !bIsM10) return -1;
+      if (!aIsM10 && bIsM10) return 1;
+      if (a.is_featured && !b.is_featured) return -1;
+      if (!a.is_featured && b.is_featured) return 1;
+      return 0;
+    });
 
     return profilesWithRatings;
   } catch (error) {

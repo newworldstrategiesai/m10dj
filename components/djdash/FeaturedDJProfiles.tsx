@@ -82,23 +82,35 @@ export default function FeaturedDJProfiles({
               className="group"
             >
               <Card className="h-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all shadow-lg hover:shadow-2xl hover:-translate-y-1 overflow-hidden">
-                {/* Cover Image */}
-                <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 overflow-hidden">
-                  {profile.cover_image_url ? (
-                    <img
-                      src={profile.cover_image_url}
-                      alt={profile.dj_name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Music className="w-16 h-16 text-white/30" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                {/* Cover Image Container - with padding to accommodate profile image */}
+                <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 overflow-visible pb-12">
+                  <div className="relative h-48 overflow-hidden">
+                    {profile.cover_image_url ? (
+                      <img
+                        src={profile.cover_image_url}
+                        alt={profile.dj_name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Music className="w-16 h-16 text-white/30" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    
+                    {/* Featured Badge */}
+                    {profile.is_featured && (
+                      <div className="absolute top-4 right-4 z-20">
+                        <Badge className="bg-yellow-500 text-white border-0">
+                          <Award className="w-3 h-3 mr-1" />
+                          Featured
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
                   
-                  {/* Profile Image */}
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
+                  {/* Profile Image - positioned to extend beyond cover image */}
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10">
                     <div className="relative w-24 h-24 rounded-full border-4 border-white dark:border-gray-800 bg-white dark:bg-gray-800 overflow-hidden shadow-xl">
                       {profile.profile_image_url ? (
                         <img
@@ -113,16 +125,6 @@ export default function FeaturedDJProfiles({
                       )}
                     </div>
                   </div>
-
-                  {/* Featured Badge */}
-                  {profile.is_featured && (
-                    <div className="absolute top-4 right-4">
-                      <Badge className="bg-yellow-500 text-white border-0">
-                        <Award className="w-3 h-3 mr-1" />
-                        Featured
-                      </Badge>
-                    </div>
-                  )}
                 </div>
 
                 {/* Profile Info */}

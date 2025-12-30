@@ -21,8 +21,12 @@ const getAssetUrl = (path) => {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
     return `${siteUrl}${path}`;
   }
-  // Client-side: use current origin (works for both m10djcompany.com and tipjar.live)
-  return path;
+  // Client-side: use current origin to create absolute URL (works for both m10djcompany.com and tipjar.live)
+  // This ensures assets load correctly when accessed from different domains
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path; // Already absolute
+  }
+  return `${window.location.origin}${path.startsWith('/') ? path : `/${path}`}`;
 };
 
 export default function Header({ customLogoUrl = null, transparent = false, socialLinks = null, isOwner = false, organizationSlug = null, organizationId = null }) {

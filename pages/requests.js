@@ -1792,7 +1792,7 @@ export function GeneralRequestsPage({
                   }
                 }}
             >
-              <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
+              <source src={`${siteUrl}/assets/djbenmurraylogo.mp4`} type="video/mp4" />
             </video>
             ) : (
               <div 
@@ -1965,7 +1965,7 @@ export function GeneralRequestsPage({
                   }
                 }}
             >
-              <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
+              <source src={`${siteUrl}/assets/djbenmurraylogo.mp4`} type="video/mp4" />
             </video>
             ) : (
               <div 

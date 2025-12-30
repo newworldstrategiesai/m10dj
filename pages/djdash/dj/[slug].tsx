@@ -545,14 +545,18 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       };
     }
 
-    // Verify organization is DJ Dash
+    // Verify organization is DJ Dash or M10 DJ Company (platform owner)
     const { data: org } = await supabase
       .from('organizations')
-      .select('product_context')
+      .select('product_context, is_platform_owner')
       .eq('id', profile.organization_id)
       .single();
 
-    if (!org || org.product_context !== 'djdash') {
+    // Allow DJ Dash profiles OR M10 DJ Company (platform owner)
+    const isM10DJCompany = org?.is_platform_owner === true;
+    const isDJDash = org?.product_context === 'djdash';
+    
+    if (!org || (!isDJDash && !isM10DJCompany)) {
       return {
         props: {
           profile: null,

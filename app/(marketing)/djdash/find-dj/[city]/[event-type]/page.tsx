@@ -173,6 +173,36 @@ export default async function CityEventTypePage({ params }: PageProps) {
   const localInsights = generateLocalInsights(cityEventStats, pageContent.city_name, pageContent.state_abbr);
   const faqs = generateFAQs(cityEventStats, pageContent.city_name, eventType.type);
 
+  // M10 DJ Company organization ID - always feature for Memphis
+  const M10_DJ_COMPANY_ORG_ID = '2a10fa9f-c129-451d-bc4e-b669d42d521e';
+  const isMemphis = (pageContent.city_name || params.city).toLowerCase().includes('memphis');
+
+  // For Memphis: Always include M10 DJ Company profiles first
+  let m10DJs: any[] = [];
+  if (isMemphis) {
+    const { data: m10Data } = await supabase
+      .from('dj_profiles')
+      .select(`
+        id,
+        dj_name,
+        dj_slug,
+        tagline,
+        profile_image_url,
+        starting_price_range,
+        availability_status,
+        event_types
+      `)
+      .eq('is_published', true)
+      .eq('organization_id', M10_DJ_COMPANY_ORG_ID)
+      .or(`city.ilike.%${pageContent.city_name || params.city}%,primary_city.ilike.%${pageContent.city_name || params.city}%`)
+      .contains('event_types', [eventType.type])
+      .in('availability_status', ['available', 'limited']);
+
+    if (m10Data) {
+      m10DJs = m10Data.map(dj => ({ ...dj, is_m10_dj_company: true }));
+    }
+  }
+
   // Fetch ALL DJs for this city and event type (for the selection form)
   const { data: featuredDJs } = await supabase
     .from('dj_profiles')
@@ -195,6 +225,12 @@ export default async function CityEventTypePage({ params }: PageProps) {
     .order('is_featured', { ascending: false })
     .order('page_views', { ascending: false })
     .limit(100); // Get all DJs for selection form
+
+  // Combine: M10 DJ Company first, then DJ Dash profiles (excluding duplicates)
+  const allFeaturedDJs = [
+    ...m10DJs,
+    ...(featuredDJs || []).filter(dj => !m10DJs.some(m10 => m10.id === dj.id))
+  ];
 
   const {
     city_name,
@@ -532,7 +568,7 @@ export default async function CityEventTypePage({ params }: PageProps) {
         )}
 
         {/* Featured DJs Section */}
-        {featuredDJs && featuredDJs.length > 0 && (
+        {allFeaturedDJs && allFeaturedDJs.length > 0 && (
           <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-12">
@@ -545,7 +581,7 @@ export default async function CityEventTypePage({ params }: PageProps) {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {featuredDJs.map((dj) => (
+                {allFeaturedDJs.map((dj) => (
                   <Card key={dj.id} className="p-6 hover:shadow-lg transition-shadow">
                     <div className="flex items-start gap-4 mb-4">
                       {dj.profile_image_url && (
@@ -761,7 +797,7 @@ export default async function CityEventTypePage({ params }: PageProps) {
             <CityInquiryForm
               city={city_name}
               state={state_abbr}
-              featuredDJs={featuredDJs || []}
+              featuredDJs={allFeaturedDJs || []}
             />
           </div>
         </section>

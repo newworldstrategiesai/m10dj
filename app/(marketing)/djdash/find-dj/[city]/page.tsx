@@ -1,8 +1,10 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 import DJDashHeader from '@/components/djdash/Header';
 import DJDashFooter from '@/components/djdash/Footer';
+import FeaturedDJProfiles from '@/components/djdash/FeaturedDJProfiles';
 import { 
   MapPin, 
   Calendar, 
@@ -15,6 +17,9 @@ import {
   Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Major US cities for DJ directory
 const cities = {
@@ -124,7 +129,132 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default function FindDJCityPage({ params }: PageProps) {
+async function getCityDJs(cityName: string, stateAbbr: string) {
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const M10_DJ_COMPANY_ORG_ID = '2a10fa9f-c129-451d-bc4e-b669d42d521e';
+    const isMemphis = cityName.toLowerCase().includes('memphis');
+
+    // For Memphis: Always include M10 DJ Company profiles first
+    let m10Profiles: any[] = [];
+    if (isMemphis) {
+      const { data: m10Data, error: m10Error } = await supabase
+        .from('dj_profiles')
+        .select(`
+          id,
+          dj_name,
+          dj_slug,
+          tagline,
+          profile_image_url,
+          cover_image_url,
+          city,
+          state,
+          starting_price_range,
+          event_types,
+          is_featured,
+          organization_id
+        `)
+        .eq('is_published', true)
+        .eq('organization_id', M10_DJ_COMPANY_ORG_ID)
+        .or(`city.ilike.%${cityName}%,primary_city.ilike.%${cityName}%`)
+        .in('availability_status', ['available', 'limited']);
+
+      if (!m10Error && m10Data) {
+        m10Profiles = m10Data;
+      }
+    }
+
+    // Get DJ Dash profiles for this city
+    const { data: allProfiles, error: profilesError } = await supabase
+      .from('dj_profiles')
+      .select(`
+        id,
+        dj_name,
+        dj_slug,
+        tagline,
+        profile_image_url,
+        cover_image_url,
+        city,
+        state,
+        starting_price_range,
+        event_types,
+        is_featured,
+        organization_id,
+        organizations!inner(product_context)
+      `)
+      .eq('is_published', true)
+      .eq('organizations.product_context', 'djdash')
+      .or(`city.ilike.%${cityName}%,primary_city.ilike.%${cityName}%`)
+      .in('availability_status', ['available', 'limited'])
+      .order('is_featured', { ascending: false })
+      .order('page_views', { ascending: false })
+      .limit(12);
+
+    if (profilesError) {
+      console.error('Error fetching DJ profiles:', profilesError);
+    }
+
+    // Combine profiles: M10 DJ Company first (always featured), then DJ Dash profiles
+    const combinedProfiles = [
+      ...m10Profiles.map(p => ({ ...p, is_featured: true, is_m10_dj_company: true })),
+      ...(allProfiles || []).filter(p => !m10Profiles.some(m10 => m10.id === p.id))
+    ];
+
+    // Get aggregate ratings for each profile
+    const profilesWithRatings = await Promise.all(
+      combinedProfiles.map(async (profile) => {
+        const { data: reviews } = await supabase
+          .from('dj_reviews')
+          .select('rating')
+          .eq('dj_profile_id', profile.id)
+          .eq('is_verified', true)
+          .eq('is_approved', true);
+
+        let aggregate_rating: number | undefined = undefined;
+        let review_count = 0;
+
+        if (reviews && reviews.length > 0) {
+          const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+          aggregate_rating = totalRating / reviews.length;
+          review_count = reviews.length;
+        }
+
+        return {
+          ...profile,
+          is_featured: profile.is_featured ?? false,
+          aggregate_rating,
+          review_count
+        };
+      })
+    );
+
+    // Sort: M10 DJ Company first (always), then by featured status, then by page views
+    profilesWithRatings.sort((a, b) => {
+      // M10 DJ Company always first
+      const aIsM10 = (a as any).is_m10_dj_company;
+      const bIsM10 = (b as any).is_m10_dj_company;
+      if (aIsM10 && !bIsM10) return -1;
+      if (!aIsM10 && bIsM10) return 1;
+
+      // Then by featured status
+      if (a.is_featured && !b.is_featured) return -1;
+      if (!a.is_featured && b.is_featured) return 1;
+
+      // Then by rating
+      if ((a.aggregate_rating || 0) > (b.aggregate_rating || 0)) return -1;
+      if ((a.aggregate_rating || 0) < (b.aggregate_rating || 0)) return 1;
+
+      return 0;
+    });
+
+    return profilesWithRatings.slice(0, 12); // Limit to 12 total
+  } catch (error) {
+    console.error('Error fetching DJ profiles:', error);
+    return [];
+  }
+}
+
+export default async function FindDJCityPage({ params }: PageProps) {
   const cityData = cities[params.city as CityKey];
   
   if (!cityData) {
@@ -132,6 +262,9 @@ export default function FindDJCityPage({ params }: PageProps) {
   }
 
   const { name, state, stateAbbr, population, djCount } = cityData;
+  
+  // Fetch DJ profiles for this city
+  const cityDJs = await getCityDJs(name, stateAbbr);
 
   return (
     <>
@@ -241,6 +374,27 @@ export default function FindDJCityPage({ params }: PageProps) {
             </div>
           </div>
         </section>
+
+        {/* Featured DJs Section */}
+        {cityDJs && cityDJs.length > 0 && (
+          <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+                  Featured DJs in {name}
+                </h2>
+                <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                  Browse verified professional DJs available in {name}, {state}
+                </p>
+              </div>
+              <FeaturedDJProfiles 
+                profiles={cityDJs} 
+                title={`Featured DJs in ${name}`}
+                showViewAll={false}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Event Types */}
         <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
