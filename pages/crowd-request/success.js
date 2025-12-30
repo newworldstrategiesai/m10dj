@@ -481,14 +481,15 @@ export default function CrowdRequestSuccessPage() {
         <title>Request Confirmed! | M10 DJ Company</title>
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-purple-50 dark:from-black dark:via-neutral-950 dark:to-black">
         <Header />
         
         <main className="section-container py-12 md:py-20">
           <div className="max-w-2xl mx-auto">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 mb-6">
-                <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400" />
+            <div className="bg-white dark:bg-gradient-to-br dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-950 rounded-2xl shadow-xl dark:shadow-2xl dark:shadow-purple-500/5 p-8 md:p-12 text-center dark:border dark:border-neutral-800">
+              {/* Success Icon with Glow */}
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-emerald-500/10 mb-6 dark:ring-1 dark:ring-emerald-500/30 dark:shadow-lg dark:shadow-emerald-500/20">
+                <CheckCircle className="w-12 h-12 text-green-600 dark:text-emerald-400" />
               </div>
               
               <h1 className={`text-4xl font-bold text-gray-900 dark:text-white mb-4 transition-all duration-500 ${statusJustChanged ? 'scale-110' : ''}`}>
@@ -499,7 +500,7 @@ export default function CrowdRequestSuccessPage() {
                     : 'Thank You!'}
               </h1>
               
-              <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+              <p className="text-lg text-gray-600 dark:text-neutral-400 mb-8">
                 {request?.status === 'playing'
                   ? 'Amazing! Your song is playing right now! Enjoy the music!'
                   : request?.status === 'played'
@@ -509,12 +510,12 @@ export default function CrowdRequestSuccessPage() {
               </p>
 
               {request && (
-                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-6 mb-8 text-left">
-                  <div className="flex items-start gap-4">
+                <div className="bg-purple-50 dark:bg-neutral-900/80 dark:border dark:border-neutral-800 rounded-xl p-6 mb-8 text-left dark:backdrop-blur-sm">
+                  <div className="flex items-start gap-4 md:gap-5">
                     {/* Album Art or Icon */}
                     {request.request_type === 'song_request' && albumArt ? (
                       <div className={`relative flex-shrink-0 ${request.status === 'playing' ? 'animate-pulse' : ''}`}>
-                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden shadow-lg ring-2 ring-purple-300 dark:ring-purple-600">
+                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-xl overflow-hidden shadow-lg ring-2 ring-purple-300 dark:ring-purple-500/50 dark:shadow-xl dark:shadow-purple-500/20">
                           <img 
                             src={albumArt} 
                             alt={`${request.song_title} album art`}
@@ -522,30 +523,30 @@ export default function CrowdRequestSuccessPage() {
                           />
                         </div>
                         {request.status === 'playing' && (
-                          <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1.5 shadow-lg">
+                          <div className="absolute -bottom-1 -right-1 bg-emerald-500 rounded-full p-1.5 shadow-lg shadow-emerald-500/50">
                             <Radio className="w-4 h-4 text-white animate-pulse" />
                           </div>
                         )}
                         {request.status === 'played' && (
-                          <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1.5 shadow-lg">
+                          <div className="absolute -bottom-1 -right-1 bg-emerald-500 rounded-full p-1.5 shadow-lg shadow-emerald-500/50">
                             <CheckCircle className="w-4 h-4 text-white" />
                           </div>
                         )}
                       </div>
                     ) : request.request_type === 'song_request' ? (
-                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-lg">
-                        <Disc3 className="w-10 h-10 md:w-12 md:h-12 text-white/90" />
+                      <div className="w-20 h-20 md:w-28 md:h-28 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 dark:from-purple-500 dark:to-fuchsia-500 flex items-center justify-center flex-shrink-0 shadow-lg dark:shadow-xl dark:shadow-purple-500/30">
+                        <Disc3 className="w-10 h-10 md:w-14 md:h-14 text-white/90" />
                       </div>
                     ) : (
                       <Mic className="w-8 h-8 text-pink-600 dark:text-pink-400 flex-shrink-0 mt-1" />
                     )}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                        <h3 className="text-xs uppercase tracking-wider font-semibold text-purple-600 dark:text-purple-400">
                           {request.request_type === 'song_request' ? 'Song Request' : 'Shoutout'}
                         </h3>
                         {request.is_fast_track && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 text-xs font-semibold">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 dark:bg-amber-500/20 text-orange-700 dark:text-amber-400 text-xs font-semibold dark:ring-1 dark:ring-amber-500/30">
                             <Zap className="w-3 h-3" />
                             Fast-Track
                           </span>
@@ -554,35 +555,35 @@ export default function CrowdRequestSuccessPage() {
                       
                       {request.request_type === 'song_request' ? (
                         <div>
-                          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                          <p className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                             {request.song_title}
                           </p>
                           {request.song_artist && (
-                            <p className="text-gray-600 dark:text-gray-400">
+                            <p className="text-gray-600 dark:text-neutral-400 mt-0.5">
                               {request.song_artist}
                             </p>
                           )}
                           
                           {/* Live Status Display */}
-                          <div className={`mt-3 pt-3 border-t border-purple-200 dark:border-purple-700 transition-all duration-500 ${statusJustChanged ? 'animate-pulse' : ''}`}>
+                          <div className={`mt-4 pt-4 border-t border-purple-200 dark:border-neutral-700/50 transition-all duration-500 ${statusJustChanged ? 'animate-pulse' : ''}`}>
                             {request.status === 'playing' ? (
                               // PLAYING NOW - Song is currently playing (check this FIRST!)
-                              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg p-3 border border-green-200 dark:border-green-700">
-                                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-emerald-500/10 dark:to-green-500/10 rounded-lg p-4 border border-green-200 dark:border-emerald-500/30 dark:shadow-lg dark:shadow-emerald-500/10">
+                                <div className="flex items-center gap-2 text-green-600 dark:text-emerald-400">
                                   <span className="relative flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                                   </span>
                                   <Radio className="w-5 h-5 animate-pulse" />
                                   <p className="text-sm font-bold">
                                     🎶 Playing Now!
                                   </p>
                                 </div>
-                                <p className="text-sm text-green-700 dark:text-green-300 mt-1 ml-8">
+                                <p className="text-sm text-green-700 dark:text-emerald-300/80 mt-1 ml-8">
                                   Your song is playing right now! Enjoy!
                                 </p>
                                 {request.played_at && (
-                                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-8">
+                                  <p className="text-xs text-green-600 dark:text-emerald-400/70 mt-1 ml-8">
                                     Started at: {new Date(request.played_at).toLocaleTimeString('en-US', {
                                       hour: 'numeric',
                                       minute: '2-digit',
@@ -593,8 +594,8 @@ export default function CrowdRequestSuccessPage() {
                               </div>
                             ) : request.status === 'played' || request.played_at ? (
                               // PLAYED - Song has been played (only show after 'playing' ends)
-                              <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3">
-                                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                              <div className="bg-green-50 dark:bg-emerald-500/10 rounded-lg p-4 dark:border dark:border-emerald-500/20">
+                                <div className="flex items-center gap-2 text-green-600 dark:text-emerald-400">
                                   <CheckCircle className="w-5 h-5" />
                                   <p className="text-sm font-semibold">
                                     🎵 Your song was played!
@@ -628,8 +629,8 @@ export default function CrowdRequestSuccessPage() {
                               </div>
                             ) : (
                               // IN QUEUE - Waiting to be played
-                              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                              <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-lg p-4 dark:border dark:border-neutral-700/50">
+                                <div className="flex items-center gap-2 text-gray-600 dark:text-neutral-300">
                                   <Clock className="w-5 h-5" />
                                   <p className="text-sm font-semibold">
                                     🎵 In the Queue
@@ -676,30 +677,30 @@ export default function CrowdRequestSuccessPage() {
                       
                       {/* Bundled Songs Display */}
                       {bundledSongs.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-700">
+                        <div className="mt-4 pt-4 border-t border-purple-200 dark:border-neutral-700/50">
                           <div className="flex items-center gap-2 mb-3">
                             <Gift className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                             <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                               Bundle Songs ({bundledSongs.length + 1} total)
                             </h4>
                           </div>
-                          <div className="space-y-2">
+                          <div className="space-y-2.5">
                             {bundledSongs.map((song, index) => (
                               <div 
                                 key={song.id} 
-                                className={`bg-white dark:bg-gray-700 rounded-lg px-3 py-2.5 border ${
+                                className={`bg-white dark:bg-neutral-800/60 rounded-lg px-3 py-3 border transition-all ${
                                   song.status === 'playing' 
-                                    ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20' 
+                                    ? 'border-green-300 dark:border-emerald-500/40 bg-green-50 dark:bg-emerald-500/10 dark:shadow-lg dark:shadow-emerald-500/10' 
                                     : song.status === 'played'
-                                      ? 'border-green-200 dark:border-green-800'
-                                      : 'border-purple-100 dark:border-purple-800'
+                                      ? 'border-green-200 dark:border-emerald-500/30 dark:bg-emerald-500/5'
+                                      : 'border-purple-100 dark:border-neutral-700/50'
                                 }`}
                               >
                                 <div className="flex items-center gap-3">
                                   {/* Album Art for bundled song */}
                                   {bundleAlbumArts[song.id] ? (
                                     <div className={`relative flex-shrink-0 ${song.status === 'playing' ? 'animate-pulse' : ''}`}>
-                                      <div className="w-12 h-12 rounded-lg overflow-hidden shadow ring-1 ring-purple-200 dark:ring-purple-700">
+                                      <div className="w-14 h-14 rounded-lg overflow-hidden shadow ring-1 ring-purple-200 dark:ring-purple-500/30 dark:shadow-lg dark:shadow-purple-500/10">
                                         <img 
                                           src={bundleAlbumArts[song.id]} 
                                           alt={`${song.song_title} album art`}
@@ -707,33 +708,33 @@ export default function CrowdRequestSuccessPage() {
                                         />
                                       </div>
                                       {song.status === 'playing' && (
-                                        <div className="absolute -bottom-0.5 -right-0.5 bg-green-500 rounded-full p-0.5">
+                                        <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 shadow-lg shadow-emerald-500/50">
                                           <Radio className="w-2.5 h-2.5 text-white" />
                                         </div>
                                       )}
                                     </div>
                                   ) : (
-                                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center flex-shrink-0">
-                                      <Disc3 className="w-6 h-6 text-white/90" />
+                                    <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center flex-shrink-0 shadow-lg dark:shadow-purple-500/20">
+                                      <Disc3 className="w-7 h-7 text-white/90" />
                                     </div>
                                   )}
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                                      <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
                                         #{index + 2}
                                       </span>
-                                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                                         {song.song_title || 'Song title pending'}
                                       </p>
                                     </div>
                                     {song.song_artist && (
-                                      <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                      <p className="text-xs text-gray-600 dark:text-neutral-400 truncate">
                                         {song.song_artist}
                                       </p>
                                     )}
                                     {/* Show play time if song was played */}
                                     {song.played_at && (
-                                      <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                                      <p className="text-xs text-green-600 dark:text-emerald-400 mt-0.5 font-medium">
                                         Played at {new Date(song.played_at).toLocaleTimeString('en-US', {
                                           hour: 'numeric',
                                           minute: '2-digit',
@@ -745,20 +746,20 @@ export default function CrowdRequestSuccessPage() {
                                   {/* Status indicator for bundled song */}
                                   <div className="flex-shrink-0">
                                     {song.status === 'playing' ? (
-                                      <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
+                                      <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-emerald-400">
                                         <span className="relative flex h-2 w-2">
-                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                         </span>
                                         Playing
                                       </span>
                                     ) : song.status === 'played' ? (
-                                      <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
-                                        <CheckCircle className="w-3 h-3" />
+                                      <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-emerald-400">
+                                        <CheckCircle className="w-3.5 h-3.5" />
                                         Played
                                       </span>
                                     ) : (
-                                      <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                      <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-neutral-500">
                                         <Clock className="w-3 h-3" />
                                         Queued
                                       </span>
@@ -783,21 +784,21 @@ export default function CrowdRequestSuccessPage() {
                   </p>
                 </div>
               ) : request?.status === 'played' ? (
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-8">
-                  <p className="text-sm text-green-800 dark:text-green-200">
-                    <strong>✅ Request Complete!</strong> Your song has been played. Thanks for making the party great! Want to request another?
+                <div className="bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/30 rounded-lg p-4 mb-8">
+                  <p className="text-sm text-green-800 dark:text-emerald-200">
+                    <strong className="dark:text-emerald-300">✅ Request Complete!</strong> Your song has been played. Thanks for making the party great! Want to request another?
                   </p>
                 </div>
               ) : request?.is_fast_track ? (
-                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-8">
-                  <p className="text-sm text-orange-800 dark:text-orange-200">
-                    <strong>⚡ Fast-Track Confirmed!</strong> Your song request has priority placement in the queue. The DJ will receive your request and will play it as soon as possible.
+                <div className="bg-orange-50 dark:bg-amber-500/10 border border-orange-200 dark:border-amber-500/30 rounded-lg p-4 mb-8">
+                  <p className="text-sm text-orange-800 dark:text-amber-200">
+                    <strong className="dark:text-amber-300">⚡ Fast-Track Confirmed!</strong> Your song request has priority placement in the queue. The DJ will receive your request and will play it as soon as possible.
                   </p>
                 </div>
               ) : (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-8">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>What's next?</strong> The DJ will receive your request and will do their best to fulfill it during the event. This page updates automatically when your song plays!
+                <div className="bg-gray-50 dark:bg-neutral-800/50 border border-gray-200 dark:border-neutral-700/50 rounded-lg p-4 mb-8">
+                  <p className="text-sm text-gray-700 dark:text-neutral-300">
+                    <strong className="text-gray-900 dark:text-white">What&apos;s next?</strong> The DJ will receive your request and will do their best to fulfill it during the event. This page updates automatically when your song plays!
                   </p>
                 </div>
               )}
@@ -900,7 +901,7 @@ export default function CrowdRequestSuccessPage() {
                 <div className="mb-6">
                   <Link
                     href={request.event_qr_code.startsWith('general') ? '/requests' : `/crowd-request/${request.event_qr_code}`}
-                    className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 dark:from-purple-500 dark:to-pink-500 dark:hover:from-purple-600 dark:hover:to-pink-600 text-white font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
+                    className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 dark:from-purple-500 dark:to-fuchsia-500 dark:hover:from-purple-400 dark:hover:to-fuchsia-400 text-white font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl dark:shadow-purple-500/25 dark:hover:shadow-purple-500/40 transition-all duration-200 transform hover:scale-[1.02]"
                   >
                     <Music className="w-6 h-6" />
                     Request Another Song
