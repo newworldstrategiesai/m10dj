@@ -83,38 +83,41 @@ export default function CrowdRequestPage() {
     // Only run on client side
     if (typeof window === 'undefined') return;
     
-    // Wait for router to be ready
-    if (!router.isReady) return;
-    
-    try {
-      const savedInfo = localStorage.getItem(REQUESTER_INFO_KEY);
-      console.log('🔍 Checking localStorage for saved requester info:', savedInfo);
-      
-      if (savedInfo) {
-        const parsed = JSON.parse(savedInfo);
-        const { requesterName, requesterEmail, requesterPhone } = parsed;
-        console.log('✅ Found saved info:', { requesterName, requesterEmail, requesterPhone });
+    // Small delay to ensure component is fully mounted
+    const timer = setTimeout(() => {
+      try {
+        const savedInfo = localStorage.getItem(REQUESTER_INFO_KEY);
+        console.log('🔍 [crowd-request] Checking localStorage for saved requester info:', savedInfo);
         
-        setFormData(prev => {
-          const updated = {
-            ...prev,
-            requesterName: requesterName || '',
-            requesterEmail: requesterEmail || '',
-            requesterPhone: requesterPhone || ''
-          };
-          console.log('📝 Updated formData:', updated);
-          return updated;
-        });
-        logger.info('Loaded saved requester info from localStorage', { requesterName, requesterEmail, requesterPhone });
-      } else {
-        console.log('❌ No saved requester info found in localStorage');
-        logger.info('No saved requester info found in localStorage');
+        if (savedInfo) {
+          const parsed = JSON.parse(savedInfo);
+          const { requesterName, requesterEmail, requesterPhone } = parsed;
+          console.log('✅ [crowd-request] Found saved info:', { requesterName, requesterEmail, requesterPhone });
+          
+          setFormData(prev => {
+            // Only update if fields are currently empty to avoid overwriting user input
+            const updated = {
+              ...prev,
+              requesterName: prev.requesterName || requesterName || '',
+              requesterEmail: prev.requesterEmail || requesterEmail || '',
+              requesterPhone: prev.requesterPhone || requesterPhone || ''
+            };
+            console.log('📝 [crowd-request] Updated formData:', updated);
+            return updated;
+          });
+          logger.info('Loaded saved requester info from localStorage', { requesterName, requesterEmail, requesterPhone });
+        } else {
+          console.log('❌ [crowd-request] No saved requester info found in localStorage');
+          logger.info('No saved requester info found in localStorage');
+        }
+      } catch (e) {
+        console.error('❌ [crowd-request] Error loading requester info from localStorage:', e);
+        logger.error('Error loading requester info from localStorage:', e);
       }
-    } catch (e) {
-      console.error('❌ Error loading requester info from localStorage:', e);
-      logger.error('Error loading requester info from localStorage:', e);
-    }
-  }, [router.isReady]);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // Handle bundle song input changes with URL detection
   const handleBundleSongChange = async (index, field, value) => {

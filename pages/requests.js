@@ -338,34 +338,40 @@ export function GeneralRequestsPage({
     // Only run on client side
     if (typeof window === 'undefined') return;
     
-    try {
-      const savedInfo = localStorage.getItem(REQUESTER_INFO_KEY);
-      console.log('🔍 [requests.js] Checking localStorage for saved requester info:', savedInfo);
-      
-      if (savedInfo) {
-        const parsed = JSON.parse(savedInfo);
-        const { requesterName, requesterEmail, requesterPhone } = parsed;
-        console.log('✅ [requests.js] Found saved info:', { requesterName, requesterEmail, requesterPhone });
+    // Small delay to ensure component is fully mounted
+    const timer = setTimeout(() => {
+      try {
+        const savedInfo = localStorage.getItem(REQUESTER_INFO_KEY);
+        console.log('🔍 [requests.js] Checking localStorage for saved requester info:', savedInfo);
         
-        setFormData(prev => {
-          const updated = {
-            ...prev,
-            requesterName: requesterName || '',
-            requesterEmail: requesterEmail || '',
-            requesterPhone: requesterPhone || ''
-          };
-          console.log('📝 [requests.js] Updated formData:', updated);
-          return updated;
-        });
-        logger.info('Loaded saved requester info from localStorage', { requesterName, requesterEmail, requesterPhone });
-      } else {
-        console.log('❌ [requests.js] No saved requester info found in localStorage');
-        logger.info('No saved requester info found in localStorage');
+        if (savedInfo) {
+          const parsed = JSON.parse(savedInfo);
+          const { requesterName, requesterEmail, requesterPhone } = parsed;
+          console.log('✅ [requests.js] Found saved info:', { requesterName, requesterEmail, requesterPhone });
+          
+          setFormData(prev => {
+            // Only update if fields are currently empty to avoid overwriting user input
+            const updated = {
+              ...prev,
+              requesterName: prev.requesterName || requesterName || '',
+              requesterEmail: prev.requesterEmail || requesterEmail || '',
+              requesterPhone: prev.requesterPhone || requesterPhone || ''
+            };
+            console.log('📝 [requests.js] Updated formData:', updated);
+            return updated;
+          });
+          logger.info('Loaded saved requester info from localStorage', { requesterName, requesterEmail, requesterPhone });
+        } else {
+          console.log('❌ [requests.js] No saved requester info found in localStorage');
+          logger.info('No saved requester info found in localStorage');
+        }
+      } catch (e) {
+        console.error('❌ [requests.js] Error loading requester info from localStorage:', e);
+        logger.error('Error loading requester info from localStorage:', e);
       }
-    } catch (e) {
-      console.error('❌ [requests.js] Error loading requester info from localStorage:', e);
-      logger.error('Error loading requester info from localStorage:', e);
-    }
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Initialize bundle songs array when bundle size changes

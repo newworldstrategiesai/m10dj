@@ -207,6 +207,23 @@ export default function CrowdRequestSuccessPage() {
     if (request && !loading) {
       fetchUserStats();
       
+      // Save requester info to localStorage for "Request Another Song" functionality
+      if (typeof window !== 'undefined' && request.requester_name) {
+        try {
+          const requesterInfo = {
+            requesterName: request.requester_name?.trim() || '',
+            requesterEmail: request.requester_email?.trim() || '',
+            requesterPhone: request.requester_phone?.trim() || ''
+          };
+          if (requesterInfo.requesterName) {
+            localStorage.setItem('m10_requester_info', JSON.stringify(requesterInfo));
+            console.log('💾 Saved requester info to localStorage from success page:', requesterInfo);
+          }
+        } catch (e) {
+          console.error('Error saving requester info to localStorage:', e);
+        }
+      }
+      
       // Trigger confetti animation when request is successfully loaded and page is ready
       // Only trigger once per page load
       if (!confettiTriggered.current) {
