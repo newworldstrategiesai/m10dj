@@ -1287,17 +1287,17 @@ export default function CrowdRequestPage() {
                     disabled={submitting || getPaymentAmount() < (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount)}
                     className="w-full btn-primary py-4 sm:py-4 text-base sm:text-lg font-semibold inline-flex items-center justify-center gap-2 min-h-[56px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={(e) => {
-                      // Ensure button is in viewport before submitting
-                      if (window.innerWidth < 640) {
+                      // Prevent double-submission
+                      if (submitting) {
                         e.preventDefault();
+                        return;
+                      }
+                      
+                      // On mobile, ensure button is visible (but don't prevent submission)
+                      if (window.innerWidth < 640) {
                         const button = e.currentTarget;
+                        // Quick scroll without blocking submission
                         button.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        setTimeout(() => {
-                          const form = button.closest('form');
-                          if (form) {
-                            form.requestSubmit();
-                          }
-                        }, 300);
                       }
                     }}
                   >
