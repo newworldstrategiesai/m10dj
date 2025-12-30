@@ -473,11 +473,11 @@ export default function CrowdRequestSuccessPage() {
         <Head>
           <title>Processing Payment | M10 DJ Company</title>
         </Head>
-        <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
           <main className="section-container py-12 md:py-20">
             <div className="max-w-2xl mx-auto text-center">
-              <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
+              <Loader2 className="w-12 h-12 text-blue-500 dark:text-purple-500 animate-spin mx-auto mb-4" />
               <p className="text-lg text-gray-600 dark:text-gray-400">
                 Processing your payment...
               </p>
@@ -494,7 +494,7 @@ export default function CrowdRequestSuccessPage() {
         <title>Request Confirmed! | M10 DJ Company</title>
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-purple-50 dark:from-black dark:via-neutral-950 dark:to-black pb-28 md:pb-8">
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 dark:from-black dark:via-neutral-950 dark:to-black pb-28 md:pb-8">
         <Header />
         
         <main className="section-container py-6 md:py-20">
@@ -527,12 +527,12 @@ export default function CrowdRequestSuccessPage() {
               </p>
 
               {request && (
-                <div className="bg-purple-50 dark:bg-neutral-900/80 dark:border dark:border-neutral-800 rounded-xl p-5 md:p-6 mb-6 md:mb-8 text-left dark:backdrop-blur-sm">
+                <div className="bg-blue-50 dark:bg-neutral-900/80 dark:border dark:border-neutral-800 rounded-xl p-5 md:p-6 mb-6 md:mb-8 text-left dark:backdrop-blur-sm">
                   <div className="flex items-start gap-4 md:gap-5">
                     {/* Album Art or Icon - Larger on mobile */}
                     {request.request_type === 'song_request' && albumArt ? (
                       <div className={`relative flex-shrink-0 ${request.status === 'playing' ? 'animate-pulse' : ''}`}>
-                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg md:rounded-xl overflow-hidden shadow-lg ring-2 ring-purple-300 dark:ring-purple-500/50 dark:shadow-xl dark:shadow-purple-500/20">
+                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg md:rounded-xl overflow-hidden shadow-lg ring-2 ring-blue-300 dark:ring-purple-500/50 dark:shadow-xl dark:shadow-purple-500/20">
                           <img 
                             src={albumArt} 
                             alt={`${request.song_title} album art`}
@@ -551,7 +551,7 @@ export default function CrowdRequestSuccessPage() {
                         )}
                       </div>
                     ) : request.request_type === 'song_request' ? (
-                      <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg md:rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 dark:from-purple-500 dark:to-fuchsia-500 flex items-center justify-center flex-shrink-0 shadow-lg dark:shadow-xl dark:shadow-purple-500/30">
+                      <div className="w-20 h-20 md:w-28 md:h-28 rounded-lg md:rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 dark:from-purple-500 dark:to-fuchsia-500 flex items-center justify-center flex-shrink-0 shadow-lg dark:shadow-xl dark:shadow-purple-500/30">
                         <Disc3 className="w-10 h-10 md:w-14 md:h-14 text-white/90" />
                       </div>
                     ) : (
@@ -579,7 +579,7 @@ export default function CrowdRequestSuccessPage() {
                           )}
                           
                           {/* Live Status Display - Better spacing on mobile */}
-                          <div className={`mt-3 md:mt-4 pt-3 md:pt-4 border-t border-purple-200 dark:border-neutral-700/50 transition-all duration-500 ${statusJustChanged ? 'animate-pulse' : ''}`}>
+                          <div className={`mt-3 md:mt-4 pt-3 md:pt-4 border-t border-blue-200 dark:border-neutral-700/50 transition-all duration-500 ${statusJustChanged ? 'animate-pulse' : ''}`}>
                             {request.status === 'playing' ? (
                               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                                 <span className="relative flex h-3 w-3">
@@ -645,9 +645,9 @@ export default function CrowdRequestSuccessPage() {
                       
                       {/* Bundled Songs Display - More prominent on mobile */}
                       {bundledSongs.length > 0 && (
-                        <div className="mt-4 md:mt-4 pt-4 md:pt-4 border-t border-purple-200 dark:border-neutral-700/50">
+                        <div className="mt-4 md:mt-4 pt-4 md:pt-4 border-t border-blue-200 dark:border-neutral-700/50">
                           <div className="flex items-center gap-2 mb-3">
-                            <Gift className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            <Gift className="w-4 h-4 text-blue-600 dark:text-purple-400" />
                             <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                               +{bundledSongs.length} more in bundle
                             </h4>
@@ -668,7 +668,7 @@ export default function CrowdRequestSuccessPage() {
                                   {/* Album Art for bundled song - larger on mobile */}
                                   {bundleAlbumArts[song.id] ? (
                                     <div className={`relative flex-shrink-0 ${song.status === 'playing' ? 'animate-pulse' : ''}`}>
-                                      <div className="w-14 h-14 md:w-14 md:h-14 rounded-lg md:rounded-lg overflow-hidden ring-1 ring-purple-500/30">
+                                      <div className="w-14 h-14 md:w-14 md:h-14 rounded-lg md:rounded-lg overflow-hidden ring-1 ring-blue-500/30 dark:ring-purple-500/30">
                                         <img 
                                           src={bundleAlbumArts[song.id]} 
                                           alt={`${song.song_title} album art`}
@@ -682,7 +682,7 @@ export default function CrowdRequestSuccessPage() {
                                       )}
                                     </div>
                                   ) : (
-                                    <div className="w-14 h-14 md:w-14 md:h-14 rounded-lg md:rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center flex-shrink-0">
+                                    <div className="w-14 h-14 md:w-14 md:h-14 rounded-lg md:rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 dark:from-purple-500 dark:to-fuchsia-500 flex items-center justify-center flex-shrink-0">
                                       <Disc3 className="w-7 h-7 md:w-7 md:h-7 text-white/90" />
                                     </div>
                                   )}
@@ -787,9 +787,9 @@ export default function CrowdRequestSuccessPage() {
 
               {/* Bundle Messaging - Desktop only */}
               {userRequestCount > 1 && request?.request_type === 'song_request' && (
-                <div className="hidden md:block bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6 mb-6">
+                <div className="hidden md:block bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-blue-200 dark:border-purple-800 rounded-lg p-6 mb-6">
                   <div className="flex items-start gap-3">
-                    <Gift className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                    <Gift className="w-6 h-6 text-blue-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                         You've requested {userRequestCount} songs!
@@ -832,10 +832,10 @@ export default function CrowdRequestSuccessPage() {
 
               {/* Receipt Section - Desktop only */}
               {request?.requester_email && (
-                <div className="hidden md:block bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6 mb-8">
+                <div className="hidden md:block bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-blue-200 dark:border-purple-800 rounded-lg p-6 mb-8">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
-                      <Mail className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                      <Mail className="w-6 h-6 text-blue-600 dark:text-purple-400" />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
@@ -860,7 +860,7 @@ export default function CrowdRequestSuccessPage() {
                         <button
                           onClick={handleSendReceipt}
                           disabled={sendingReceipt}
-                          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {sendingReceipt ? (
                             <>
