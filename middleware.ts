@@ -111,12 +111,20 @@ export async function middleware(request: NextRequest) {
       // Keep /bid path as-is (dedicated bidding page)
       // Don't rewrite, let it fall through to pages router
     } else {
-      // Check if this is an artist page slug (e.g., /m10dj)
-      // Extract slug from path (remove leading slash)
-      const slug = path.replace(/^\//, '').split('/')[0];
-      if (slug && slug !== 'api' && slug !== '_next') {
-        // Route to artist page
-        rewritePath = `/tipjar/${slug}`;
+      // Check if this is a slug-based path (e.g., /m10dj or /m10dj/requests)
+      // Extract slug and sub-path from path
+      const pathParts = path.replace(/^\//, '').split('/');
+      const slug = pathParts[0];
+      const subPath = pathParts[1];
+      
+      if (slug && slug !== 'api' && slug !== '_next' && slug !== '_nextjs') {
+        // Handle /[slug]/requests -> route to organization requests page
+        if (subPath === 'requests') {
+          rewritePath = `/organizations/${slug}/requests`;
+        } else {
+          // Route to artist page (e.g., /m10dj -> /tipjar/m10dj)
+          rewritePath = `/tipjar/${slug}`;
+        }
       }
     }
 
