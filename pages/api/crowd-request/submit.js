@@ -314,10 +314,10 @@ export default async function handler(req, res) {
           final: { title: normalizedTitle, artist: normalizedArtist }
         });
       } else {
-        console.log('Normalized casing on request creation:', {
-          original: { title: songTitle, artist: songArtist },
-          normalized: { title: normalizedTitle, artist: normalizedArtist }
-        });
+      console.log('Normalized casing on request creation:', {
+        original: { title: songTitle, artist: songArtist },
+        normalized: { title: normalizedTitle, artist: normalizedArtist }
+      });
       }
     }
     

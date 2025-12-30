@@ -1714,27 +1714,27 @@ export function GeneralRequestsPage({
         {!embedMode && !showPaymentMethods && (
           <div className="hidden md:block md:fixed md:left-0 md:top-0 md:w-[400px] lg:w-[450px] xl:w-[500px] md:h-screen md:overflow-hidden bg-black z-40">
             {!videoFailed ? (
-              <video
+            <video
                 ref={desktopVideoRef}
-                className="absolute inset-0 w-full h-full object-cover"
-                autoPlay
-                loop
-                muted
-                playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
                 webkit-playsinline="true"
                 x-webkit-airplay="deny"
                 disablePictureInPicture
-                poster={coverPhoto}
-                style={{ objectPosition: 'center center' }}
+              poster={coverPhoto}
+              style={{ objectPosition: 'center center' }}
                 onLoadedData={() => {
                   // Programmatically play when video data is loaded (Safari fix)
                   if (desktopVideoRef.current) {
                     desktopVideoRef.current.play().catch(() => setVideoFailed(true));
                   }
                 }}
-              >
-                <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
-              </video>
+            >
+              <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
+            </video>
             ) : (
               <div 
                 className="absolute inset-0 w-full h-full bg-cover bg-center"
@@ -1887,27 +1887,27 @@ export function GeneralRequestsPage({
           >
             {/* Mobile Video Background - Only shown on mobile */}
             {!videoFailed ? (
-              <video
+            <video
                 ref={mobileVideoRef}
-                className="absolute inset-0 w-full h-full object-cover md:hidden"
-                autoPlay
-                loop
-                muted
-                playsInline
+              className="absolute inset-0 w-full h-full object-cover md:hidden"
+              autoPlay
+              loop
+              muted
+              playsInline
                 webkit-playsinline="true"
                 x-webkit-airplay="deny"
                 disablePictureInPicture
-                poster={coverPhoto}
-                style={{ zIndex: 0, objectPosition: 'center 40%' }}
+              poster={coverPhoto}
+              style={{ zIndex: 0, objectPosition: 'center 40%' }}
                 onLoadedData={() => {
                   // Programmatically play when video data is loaded (Safari fix)
                   if (mobileVideoRef.current) {
                     mobileVideoRef.current.play().catch(() => setVideoFailed(true));
                   }
                 }}
-              >
-                <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
-              </video>
+            >
+              <source src="/assets/djbenmurraylogo.mp4" type="video/mp4" />
+            </video>
             ) : (
               <div 
                 className="absolute inset-0 w-full h-full bg-cover bg-center md:hidden"
