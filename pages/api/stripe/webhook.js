@@ -213,6 +213,35 @@ export default async function handler(req, res) {
           } else {
             console.log('✅ Crowd request payment processed:', requestId);
             
+            // Also update any bundle requests with the same payment_code
+            // Bundle songs should be marked as paid when the main payment succeeds
+            if (requestDataBeforeUpdate?.payment_code) {
+              const bundleUpdateData = {
+                payment_status: 'paid',
+                payment_intent_id: session.payment_intent || session.id,
+                paid_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                payment_method: 'card'
+              };
+              
+              // Update customer info on bundle songs too
+              if (customerEmail) bundleUpdateData.requester_email = customerEmail;
+              if (customerName && !session.metadata?.requester_name) bundleUpdateData.requester_name = customerName;
+              if (customerPhone) bundleUpdateData.requester_phone = customerPhone;
+              
+              const { error: bundleError, count: bundleCount } = await supabase
+                .from('crowd_requests')
+                .update(bundleUpdateData)
+                .eq('payment_code', requestDataBeforeUpdate.payment_code)
+                .neq('id', requestId); // Don't update the main request again
+              
+              if (bundleError) {
+                console.error('⚠️ Error updating bundle requests:', bundleError);
+              } else {
+                console.log(`✅ Updated bundle requests with payment_code ${requestDataBeforeUpdate.payment_code}`);
+              }
+            }
+            
             // Notify admin about crowd request payment (non-blocking)
             (async () => {
               try {

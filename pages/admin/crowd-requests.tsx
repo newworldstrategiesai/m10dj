@@ -3324,6 +3324,18 @@ export default function CrowdRequestsPage() {
       if (!aPaid && bPaid) return 1;  // Unpaid comes after
     }
 
+    // Keep bundle requests together - if they share the same payment_code, group them
+    // The main request (without "Bundle deal" message) comes first, then bundle songs by created_at
+    if (a.payment_code && b.payment_code && a.payment_code === b.payment_code) {
+      // Same bundle - sort main request first (doesn't have "Bundle deal" in message)
+      const aIsBundle = a.request_message?.includes('Bundle deal');
+      const bIsBundle = b.request_message?.includes('Bundle deal');
+      if (!aIsBundle && bIsBundle) return -1; // Main request first
+      if (aIsBundle && !bIsBundle) return 1;
+      // Both are bundle songs - sort by created_at
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    }
+
     // Don't prioritize fast-track when sorting by date - sort purely by date
     // Fast-track priority only applies when NOT sorting by date
 
@@ -3333,8 +3345,16 @@ export default function CrowdRequestsPage() {
     switch (sortColumn) {
       case 'created_at':
       case 'date':
-        aValue = new Date(a.created_at).getTime();
-        bValue = new Date(b.created_at).getTime();
+        // For date sorting, use the earliest timestamp in the bundle group
+        // This keeps bundles together while still sorting by date
+        const aTime = a.payment_code 
+          ? Math.min(...filteredRequests.filter(r => r.payment_code === a.payment_code).map(r => new Date(r.created_at).getTime()))
+          : new Date(a.created_at).getTime();
+        const bTime = b.payment_code 
+          ? Math.min(...filteredRequests.filter(r => r.payment_code === b.payment_code).map(r => new Date(r.created_at).getTime()))
+          : new Date(b.created_at).getTime();
+        aValue = aTime;
+        bValue = bTime;
         break;
       case 'requester_name':
         aValue = a.requester_name?.toLowerCase() || '';
