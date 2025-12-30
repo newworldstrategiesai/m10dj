@@ -2,8 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import Image from 'next/image';
 import Header from '../../components/company/Header';
-import { CheckCircle, Music, Mic, Loader2, Zap, Mail, Check, Clock, Gift, Radio, Play } from 'lucide-react';
+import { CheckCircle, Music, Mic, Loader2, Zap, Mail, Check, Clock, Gift, Radio, Play, Disc3 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useSuccessPageTracking } from '../../hooks/useSuccessPageTracking';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -19,6 +20,8 @@ export default function CrowdRequestSuccessPage() {
   const [receiptError, setReceiptError] = useState(null);
   const [userRequestCount, setUserRequestCount] = useState(0);
   const [statusJustChanged, setStatusJustChanged] = useState(false);
+  const [albumArt, setAlbumArt] = useState(null); // Main song album art
+  const [bundleAlbumArts, setBundleAlbumArts] = useState({}); // Album art for bundled songs { songId: artUrl }
   const confettiTriggered = useRef(false);
   const playingConfettiTriggered = useRef(false);
   const supabase = createClientComponentClient();
@@ -119,6 +122,62 @@ export default function CrowdRequestSuccessPage() {
       colors: ['#10b981', '#22c55e', '#4ade80', '#86efac']
     });
   };
+
+  // Fetch album art from iTunes API (free, no auth required)
+  const fetchAlbumArt = async (songTitle, artist, songId = null) => {
+    if (!songTitle) return null;
+    
+    try {
+      const searchTerm = artist 
+        ? `${songTitle} ${artist}` 
+        : songTitle;
+      
+      const response = await fetch(
+        `https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&media=music&entity=song&limit=1`
+      );
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      
+      if (data.results && data.results.length > 0) {
+        // Get high-resolution artwork (600x600 instead of default 100x100)
+        const artworkUrl = data.results[0].artworkUrl100?.replace('100x100', '600x600');
+        
+        if (songId) {
+          // For bundled songs, store in the bundleAlbumArts object
+          setBundleAlbumArts(prev => ({ ...prev, [songId]: artworkUrl }));
+        }
+        
+        return artworkUrl;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching album art:', error);
+      return null;
+    }
+  };
+
+  // Fetch album art when request is loaded
+  useEffect(() => {
+    if (request && request.request_type === 'song_request' && request.song_title) {
+      fetchAlbumArt(request.song_title, request.song_artist).then(art => {
+        if (art) setAlbumArt(art);
+      });
+    }
+  }, [request?.id, request?.song_title, request?.song_artist]);
+
+  // Fetch album art for bundled songs
+  useEffect(() => {
+    if (bundledSongs.length > 0) {
+      bundledSongs.forEach(song => {
+        if (song.song_title && !bundleAlbumArts[song.id]) {
+          fetchAlbumArt(song.song_title, song.song_artist, song.id);
+        }
+      });
+    }
+  }, [bundledSongs]);
 
   useEffect(() => {
     if (request_id && session_id) {
@@ -452,8 +511,31 @@ export default function CrowdRequestSuccessPage() {
               {request && (
                 <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-6 mb-8 text-left">
                   <div className="flex items-start gap-4">
-                    {request.request_type === 'song_request' ? (
-                      <Music className="w-8 h-8 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-1" />
+                    {/* Album Art or Icon */}
+                    {request.request_type === 'song_request' && albumArt ? (
+                      <div className={`relative flex-shrink-0 ${request.status === 'playing' ? 'animate-pulse' : ''}`}>
+                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden shadow-lg ring-2 ring-purple-300 dark:ring-purple-600">
+                          <img 
+                            src={albumArt} 
+                            alt={`${request.song_title} album art`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        {request.status === 'playing' && (
+                          <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1.5 shadow-lg">
+                            <Radio className="w-4 h-4 text-white animate-pulse" />
+                          </div>
+                        )}
+                        {request.status === 'played' && (
+                          <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1.5 shadow-lg">
+                            <CheckCircle className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    ) : request.request_type === 'song_request' ? (
+                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <Disc3 className="w-10 h-10 md:w-12 md:h-12 text-white/90" />
+                      </div>
                     ) : (
                       <Mic className="w-8 h-8 text-pink-600 dark:text-pink-400 flex-shrink-0 mt-1" />
                     )}
@@ -472,12 +554,12 @@ export default function CrowdRequestSuccessPage() {
                       
                       {request.request_type === 'song_request' ? (
                         <div>
-                          <p className="text-gray-700 dark:text-gray-300">
-                            <span className="font-medium">Song:</span> {request.song_title}
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {request.song_title}
                           </p>
                           {request.song_artist && (
-                            <p className="text-gray-700 dark:text-gray-300">
-                              <span className="font-medium">Artist:</span> {request.song_artist}
+                            <p className="text-gray-600 dark:text-gray-400">
+                              {request.song_artist}
                             </p>
                           )}
                           
@@ -605,7 +687,7 @@ export default function CrowdRequestSuccessPage() {
                             {bundledSongs.map((song, index) => (
                               <div 
                                 key={song.id} 
-                                className={`bg-white dark:bg-gray-700 rounded-lg px-3 py-2 border ${
+                                className={`bg-white dark:bg-gray-700 rounded-lg px-3 py-2.5 border ${
                                   song.status === 'playing' 
                                     ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20' 
                                     : song.status === 'played'
@@ -613,56 +695,76 @@ export default function CrowdRequestSuccessPage() {
                                       : 'border-purple-100 dark:border-purple-800'
                                 }`}
                               >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                                      #{index + 2}
-                                    </span>
-                                    <div>
-                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                        {song.song_title || 'Song title pending'}
-                                      </p>
-                                      {song.song_artist && (
-                                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                                          {song.song_artist}
-                                        </p>
+                                <div className="flex items-center gap-3">
+                                  {/* Album Art for bundled song */}
+                                  {bundleAlbumArts[song.id] ? (
+                                    <div className={`relative flex-shrink-0 ${song.status === 'playing' ? 'animate-pulse' : ''}`}>
+                                      <div className="w-12 h-12 rounded-lg overflow-hidden shadow ring-1 ring-purple-200 dark:ring-purple-700">
+                                        <img 
+                                          src={bundleAlbumArts[song.id]} 
+                                          alt={`${song.song_title} album art`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                      {song.status === 'playing' && (
+                                        <div className="absolute -bottom-0.5 -right-0.5 bg-green-500 rounded-full p-0.5">
+                                          <Radio className="w-2.5 h-2.5 text-white" />
+                                        </div>
                                       )}
                                     </div>
+                                  ) : (
+                                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center flex-shrink-0">
+                                      <Disc3 className="w-6 h-6 text-white/90" />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                                        #{index + 2}
+                                      </span>
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                        {song.song_title || 'Song title pending'}
+                                      </p>
+                                    </div>
+                                    {song.song_artist && (
+                                      <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                        {song.song_artist}
+                                      </p>
+                                    )}
+                                    {/* Show play time if song was played */}
+                                    {song.played_at && (
+                                      <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                                        Played at {new Date(song.played_at).toLocaleTimeString('en-US', {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        })}
+                                      </p>
+                                    )}
                                   </div>
                                   {/* Status indicator for bundled song */}
-                                  {song.status === 'playing' ? (
-                                    <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
-                                      <span className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                  <div className="flex-shrink-0">
+                                    {song.status === 'playing' ? (
+                                      <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
+                                        <span className="relative flex h-2 w-2">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                        </span>
+                                        Playing
                                       </span>
-                                      🎶 Playing Now
-                                    </span>
-                                  ) : song.status === 'played' ? (
-                                    <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
-                                      <CheckCircle className="w-3 h-3" />
-                                      ✓ Played
-                                    </span>
-                                  ) : (
-                                    <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-                                      <Clock className="w-3 h-3" />
-                                      In Queue
-                                    </span>
-                                  )}
+                                    ) : song.status === 'played' ? (
+                                      <span className="flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
+                                        <CheckCircle className="w-3 h-3" />
+                                        Played
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                        <Clock className="w-3 h-3" />
+                                        Queued
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                {/* Show play time if song was played */}
-                                {song.played_at && (
-                                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-6">
-                                    Played at: {new Date(song.played_at).toLocaleString('en-US', {
-                                      weekday: 'short',
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: 'numeric',
-                                      minute: '2-digit',
-                                      hour12: true
-                                    })}
-                                  </p>
-                                )}
                               </div>
                             ))}
                           </div>
