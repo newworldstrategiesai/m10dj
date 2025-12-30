@@ -1200,7 +1200,17 @@ export default function CrowdRequestsPage() {
         matched_song_detection: songsDetectedMap[req.id] || null
       }));
       
-      setRequests(requestsWithDetection);
+      // Deduplicate requests by ID (RLS policies can sometimes return duplicates)
+      const seenIds = new Set<string>();
+      const deduplicatedRequests = requestsWithDetection.filter((req: CrowdRequest) => {
+        if (seenIds.has(req.id)) {
+          return false;
+        }
+        seenIds.add(req.id);
+        return true;
+      });
+      
+      setRequests(deduplicatedRequests);
       
       // Fetch Stripe customer names for requests that need them
       // NOTE: New requests (after making name mandatory) will always have a name.

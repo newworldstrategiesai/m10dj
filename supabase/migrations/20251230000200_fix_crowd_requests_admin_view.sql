@@ -1,50 +1,58 @@
 -- Fix RLS policies for crowd_requests to allow platform admins to view all requests
--- This migration adds back the "Admins can view all" policy that was removed in 20250123000001
+-- This migration adds back admin visibility that was removed in 20250123000001
 
--- Drop policies first if they exist (PostgreSQL doesn't support IF NOT EXISTS for CREATE POLICY)
+-- First, create a helper function that bypasses RLS (SECURITY DEFINER)
+-- This avoids infinite recursion when checking admin_roles table
+CREATE OR REPLACE FUNCTION public.is_current_user_admin()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.admin_roles
+    WHERE user_id = auth.uid()
+    AND is_active = true
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_current_user_admin() TO authenticated;
+
+-- Drop policies first if they exist
 DROP POLICY IF EXISTS "Platform admins can view all crowd requests" ON crowd_requests;
+DROP POLICY IF EXISTS "Platform admins can update all crowd requests" ON crowd_requests;
+DROP POLICY IF EXISTS "Platform admins can delete all crowd requests" ON crowd_requests;
 DROP POLICY IF EXISTS "Org owners can view orphaned crowd requests" ON crowd_requests;
 
--- Add policy for platform admins to view ALL crowd requests (regardless of organization)
--- This ensures that platform admins can see orphaned requests with NULL organization_id
+-- Add policy for platform admins using the SECURITY DEFINER function
 CREATE POLICY "Platform admins can view all crowd requests"
   ON crowd_requests
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND (auth.users.raw_user_meta_data->>'role' = 'admin' OR auth.users.raw_user_meta_data->>'role' = 'super_admin')
-    )
-    OR
-    EXISTS (
-      SELECT 1 FROM organizations WHERE owner_id = auth.uid()
-    )
-  );
+  USING (public.is_current_user_admin());
 
--- Also add a policy that allows organization owners to see requests with NULL organization_id
--- These are likely orphaned requests that should be visible for manual assignment
--- This is a safety net for any requests created before organization_id was properly enforced
-CREATE POLICY "Org owners can view orphaned crowd requests"
+CREATE POLICY "Platform admins can update all crowd requests"
   ON crowd_requests
-  FOR SELECT
+  FOR UPDATE
   TO authenticated
-  USING (
-    organization_id IS NULL
-    AND EXISTS (
-      SELECT 1 FROM organizations WHERE owner_id = auth.uid()
-    )
-  );
+  USING (public.is_current_user_admin());
+
+CREATE POLICY "Platform admins can delete all crowd requests"
+  ON crowd_requests
+  FOR DELETE
+  TO authenticated
+  USING (public.is_current_user_admin());
 
 -- Backfill any crowd_requests with NULL organization_id to the default organization
--- This ensures future requests are properly associated
 DO $$
 DECLARE
   default_org_id UUID;
   updated_count INT;
 BEGIN
-  -- Get the M10 DJ Company organization (or the first organization if not found)
+  -- Get the M10 DJ Company organization
   SELECT id INTO default_org_id 
   FROM organizations 
   WHERE slug = 'm10dj' 
@@ -69,14 +77,18 @@ BEGIN
     IF updated_count > 0 THEN
       RAISE NOTICE 'Updated % crowd_requests with default organization_id %', updated_count, default_org_id;
     END IF;
-  ELSE
-    RAISE WARNING 'No default organization found - orphaned crowd_requests will remain with NULL organization_id';
   END IF;
 END $$;
 
 -- Add comments
-COMMENT ON POLICY "Platform admins can view all crowd requests" ON crowd_requests IS 
-  'Allows platform admins and org owners to see all crowd requests for admin management';
+COMMENT ON FUNCTION public.is_current_user_admin() IS 
+  'SECURITY DEFINER function to check if current user is an admin without RLS recursion';
 
-COMMENT ON POLICY "Org owners can view orphaned crowd requests" ON crowd_requests IS 
-  'Allows org owners to see requests with NULL organization_id for manual assignment';
+COMMENT ON POLICY "Platform admins can view all crowd requests" ON crowd_requests IS 
+  'Allows platform admins to see all crowd requests for admin management';
+
+COMMENT ON POLICY "Platform admins can update all crowd requests" ON crowd_requests IS 
+  'Allows platform admins to update any crowd request';
+
+COMMENT ON POLICY "Platform admins can delete all crowd requests" ON crowd_requests IS 
+  'Allows platform admins to delete any crowd request';
