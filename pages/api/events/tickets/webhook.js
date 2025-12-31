@@ -65,7 +65,13 @@ export default async function handler(req, res) {
       
       if (!ticketId) {
         console.error('No ticket_id in session metadata');
-        return res.status(400).json({ error: 'Missing ticket_id in metadata' });
+        // Log error but return 200 to Stripe to prevent webhook disable
+        // Missing metadata is a data issue, not a webhook delivery issue
+        return res.status(200).json({ 
+          received: true,
+          error: 'Missing ticket_id in metadata',
+          warning: 'Event received but could not process due to missing metadata'
+        });
       }
 
       // Update ticket payment status
@@ -79,7 +85,8 @@ export default async function handler(req, res) {
 
       if (!updateResult.success) {
         console.error('Error updating ticket payment:', updateResult.error);
-        return res.status(500).json({ error: 'Failed to update ticket' });
+        // Log error but still return 200 to Stripe to prevent webhook disable
+        // The error is logged for investigation, but we acknowledge receipt
       }
 
       // Send confirmation email with QR code
@@ -88,12 +95,19 @@ export default async function handler(req, res) {
       console.log('Ticket payment confirmed:', ticketId);
     } catch (error) {
       console.error('Error processing webhook:', error);
-      return res.status(500).json({ error: 'Webhook processing failed' });
+      // CRITICAL: Always return 200 to Stripe, even on errors
+      // Stripe requires 200-299 status codes. Returning 500 causes Stripe to retry and eventually disable the webhook
+      // Log the error but acknowledge receipt to prevent webhook disable
+      return res.status(200).json({ 
+        received: true,
+        error: 'Webhook processing encountered an error but event was received',
+        error_message: error.message 
+      });
     }
   }
 
-  // Return a response to acknowledge receipt of the event
-  res.json({ received: true });
+  // Always return 200 to Stripe to acknowledge receipt of the event
+  res.status(200).json({ received: true });
 }
 
 /**

@@ -118,65 +118,75 @@ export async function findSpotifyLink(songTitle, artist) {
       const html = await response.text();
       console.log(`Spotify: Fetched HTML (${html.length} chars), searching for links...`);
       
-      // Try multiple extraction methods
-      // Method 1: Look for embedded JSON data (best for getting track name and artist)
-      const jsonMatch = html.match(/<script[^>]*id="initial-state"[^>]*>(.*?)<\/script>/i);
-      if (jsonMatch) {
-        try {
-          const data = JSON.parse(jsonMatch[1]);
-          const tracks = data?.entities?.tracks || data?.tracks?.items || [];
-          if (tracks.length > 0) {
-            const track = tracks[0];
-            const trackId = track.id || track.uri?.split(':')[2];
-            if (trackId) {
+      // Check if page is mostly empty or just a loading screen (indicates JS-rendered content)
+      const isLikelyJSRendered = html.length < 50000 || 
+                                  html.includes('Loading...') || 
+                                  html.includes('loading') ||
+                                  !html.includes('spotify.com/track');
+      
+      if (isLikelyJSRendered) {
+        console.log('Spotify: HTML appears to be JS-rendered (small size or loading indicators), trying headless browser...');
+      } else {
+        // Try multiple extraction methods
+        // Method 1: Look for embedded JSON data (best for getting track name and artist)
+        const jsonMatch = html.match(/<script[^>]*id="initial-state"[^>]*>(.*?)<\/script>/i);
+        if (jsonMatch) {
+          try {
+            const data = JSON.parse(jsonMatch[1]);
+            const tracks = data?.entities?.tracks || data?.tracks?.items || [];
+            if (tracks.length > 0) {
+              const track = tracks[0];
+              const trackId = track.id || track.uri?.split(':')[2];
+              if (trackId) {
+                foundLink = `https://open.spotify.com/track/${trackId}`;
+                // Extract track name and artist from track data
+                trackName = track.name || track.title || null;
+                artistName = track.artists?.[0]?.name || track.artist?.[0]?.name || null;
+                console.log('✅ Spotify link found via JSON:', foundLink);
+                console.log('✅ Spotify track data:', { trackName, artistName });
+                return { url: foundLink, trackName, artistName };
+              }
+            }
+          } catch (e) {
+            console.log('Spotify: Could not parse JSON data:', e.message);
+          }
+        }
+        
+        // Method 2: Look for track URLs in href attributes
+        const trackPatterns = [
+          /href="(https:\/\/open\.spotify\.com\/track\/[a-zA-Z0-9]{22})"/i,
+          /"uri":"spotify:track:([a-zA-Z0-9]{22})"/i,
+          /spotify\.com\/track\/([a-zA-Z0-9]{22})/i,
+          /\/track\/([a-zA-Z0-9]{22})/i
+        ];
+
+        for (const pattern of trackPatterns) {
+          const match = html.match(pattern);
+          if (match) {
+            const trackId = match[1];
+            if (trackId && trackId.length === 22) {
               foundLink = `https://open.spotify.com/track/${trackId}`;
-              // Extract track name and artist from track data
-              trackName = track.name || track.title || null;
-              artistName = track.artists?.[0]?.name || track.artist?.[0]?.name || null;
-              console.log('✅ Spotify link found via JSON:', foundLink);
-              console.log('✅ Spotify track data:', { trackName, artistName });
+              console.log('✅ Spotify link found via pattern:', foundLink);
+              // Try to extract track name and artist from HTML
+              // Look for track name near the link
+              const trackNameMatch = html.match(new RegExp(`"name":"([^"]+)"[^}]*"uri":"spotify:track:${trackId}`, 'i')) ||
+                                    html.match(new RegExp(`spotify:track:${trackId}[^}]*"name":"([^"]+)"`, 'i'));
+              if (trackNameMatch) {
+                trackName = trackNameMatch[1];
+              }
+              // Look for artist name
+              const artistMatch = html.match(new RegExp(`"artists":\\[\\{[^}]*"name":"([^"]+)"[^}]*\\}[^}]*spotify:track:${trackId}`, 'i')) ||
+                                html.match(new RegExp(`spotify:track:${trackId}[^}]*"artists":\\[\\{[^}]*"name":"([^"]+)"`, 'i'));
+              if (artistMatch) {
+                artistName = artistMatch[1];
+              }
               return { url: foundLink, trackName, artistName };
             }
           }
-        } catch (e) {
-          console.log('Spotify: Could not parse JSON data');
         }
+        
+        console.log('Spotify: No links found in HTML, trying headless browser...');
       }
-      
-      // Method 2: Look for track URLs in href attributes
-      const trackPatterns = [
-        /href="(https:\/\/open\.spotify\.com\/track\/[a-zA-Z0-9]{22})"/i,
-        /"uri":"spotify:track:([a-zA-Z0-9]{22})"/i,
-        /spotify\.com\/track\/([a-zA-Z0-9]{22})/i,
-        /\/track\/([a-zA-Z0-9]{22})/i
-      ];
-
-      for (const pattern of trackPatterns) {
-        const match = html.match(pattern);
-        if (match) {
-          const trackId = match[1];
-          if (trackId && trackId.length === 22) {
-            foundLink = `https://open.spotify.com/track/${trackId}`;
-            console.log('✅ Spotify link found via pattern:', foundLink);
-            // Try to extract track name and artist from HTML
-            // Look for track name near the link
-            const trackNameMatch = html.match(new RegExp(`"name":"([^"]+)"[^}]*"uri":"spotify:track:${trackId}`, 'i')) ||
-                                  html.match(new RegExp(`spotify:track:${trackId}[^}]*"name":"([^"]+)"`, 'i'));
-            if (trackNameMatch) {
-              trackName = trackNameMatch[1];
-            }
-            // Look for artist name
-            const artistMatch = html.match(new RegExp(`"artists":\\[\\{[^}]*"name":"([^"]+)"[^}]*\\}[^}]*spotify:track:${trackId}`, 'i')) ||
-                              html.match(new RegExp(`spotify:track:${trackId}[^}]*"artists":\\[\\{[^}]*"name":"([^"]+)"`, 'i'));
-            if (artistMatch) {
-              artistName = artistMatch[1];
-            }
-            return { url: foundLink, trackName, artistName };
-          }
-        }
-      }
-      
-      console.log('Spotify: No links found in HTML, trying headless browser...');
     } else {
       console.log(`Spotify: Fetch failed (${response.status}), trying headless browser...`);
     }
@@ -612,6 +622,9 @@ export async function findMusicLinks(songTitle, artist, options = {}) {
   let spotifyTrackData = null;
 
   // Search all services in parallel with timeout
+  // Note: Headless browser operations can take longer (15s navigation + 10s selector wait)
+  // So we use a longer timeout for services that might use headless browsers
+  const headlessBrowserTimeout = timeout * 3; // 30 seconds for headless browser operations
   const searchPromises = [];
 
   if (services.includes('spotify')) {
@@ -625,7 +638,7 @@ export async function findMusicLinks(songTitle, artist, options = {}) {
           console.log('Spotify result: Not found');
           return null;
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), headlessBrowserTimeout))
       ]).catch((err) => {
         console.error('Spotify search error:', err.message);
         return null;
@@ -675,7 +688,7 @@ export async function findMusicLinks(songTitle, artist, options = {}) {
           console.log('Tidal result:', url ? 'Found' : 'Not found');
           return url;
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), headlessBrowserTimeout))
       ]).catch((err) => {
         console.error('Tidal search error:', err.message);
         return null;
@@ -693,7 +706,7 @@ export async function findMusicLinks(songTitle, artist, options = {}) {
           console.log('Apple Music result:', url ? 'Found' : 'Not found');
           return url;
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), headlessBrowserTimeout))
       ]).catch((err) => {
         console.error('Apple Music search error:', err.message);
         return null;

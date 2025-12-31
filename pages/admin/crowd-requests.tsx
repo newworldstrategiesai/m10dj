@@ -4068,7 +4068,7 @@ export default function CrowdRequestsPage() {
               {generatingPDF ? (
                 <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
                   <div className="text-center">
-                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600 dark:text-blue-400" />
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-600 dark:text-gray-400" />
                     <p className="text-lg font-semibold mb-2">Generating PDF...</p>
                     <p className="text-sm">This may take a few seconds</p>
                   </div>
@@ -4291,7 +4291,7 @@ export default function CrowdRequestsPage() {
                   <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                        <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        <Zap className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                       </div>
                       <div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -5377,7 +5377,7 @@ export default function CrowdRequestsPage() {
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                          <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          <Globe className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                         </div>
                         <div>
                           <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -5608,10 +5608,10 @@ export default function CrowdRequestsPage() {
                     
                     <div className="space-y-6">
                       <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                        <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-200 mb-2">
                           How Bidding Mode Works
                         </h4>
-                        <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-disc list-inside">
+                        <ul className="text-sm text-gray-800 dark:text-gray-300 space-y-1 list-disc list-inside">
                           <li>Users submit requests and place bids</li>
                           <li>Every 30 minutes, the highest bidder wins</li>
                           <li>Winner is charged, others&apos; authorizations are released</li>
@@ -7270,7 +7270,7 @@ export default function CrowdRequestsPage() {
                                 </span>
                               )}
                               {request.is_custom_audio && request.audio_upload_fee > 0 && (
-                                <span className="text-xs text-blue-600 dark:text-blue-400">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
                                   +${(request.audio_upload_fee / 100).toFixed(2)} audio upload
                                 </span>
                               )}
@@ -7738,7 +7738,7 @@ export default function CrowdRequestsPage() {
                       </span>
                     )}
                     {request.is_custom_audio && request.audio_upload_fee > 0 && (
-                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
                         +${(request.audio_upload_fee / 100).toFixed(2)}
                       </span>
                     )}
@@ -8097,8 +8097,8 @@ export default function CrowdRequestsPage() {
                     {selectedRequest.posted_link && (
                       <div className="mt-3 pt-3 border-t border-purple-300 dark:border-purple-700">
                         <div className="flex items-center gap-2 mb-2">
-                          <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                          <ExternalLink className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                             Original Posted Link
                           </p>
                         </div>
@@ -8106,7 +8106,7 @@ export default function CrowdRequestsPage() {
                           href={selectedRequest.posted_link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline break-all flex items-center gap-1"
+                          className="text-xs text-gray-600 dark:text-gray-400 hover:underline break-all flex items-center gap-1"
                         >
                           {selectedRequest.posted_link}
                           <ExternalLink className="w-3 h-3" />
@@ -8172,7 +8172,7 @@ export default function CrowdRequestsPage() {
                             )}
                           </div>
                         ) : selectedRequest.audio_download_status === 'processing' || downloadingAudio === selectedRequest.id ? (
-                          <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                             <Loader2 className="w-4 h-4 animate-spin" />
                             <span>Downloading audio...</span>
                           </div>
@@ -8279,7 +8279,7 @@ export default function CrowdRequestsPage() {
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Email</p>
                         <a 
                           href={`mailto:${stripeDetails?.customer?.email || selectedRequest.requester_email}`}
-                          className="font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                          className="font-medium text-gray-600 dark:text-gray-400 hover:underline flex items-center gap-1"
                         >
                           <Mail className="w-3 h-3" />
                           {stripeDetails?.customer?.email || selectedRequest.requester_email}
@@ -8294,7 +8294,7 @@ export default function CrowdRequestsPage() {
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Phone</p>
                         <a 
                           href={`tel:${stripeDetails?.customer?.phone || selectedRequest.requester_phone}`}
-                          className="font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                          className="font-medium text-gray-600 dark:text-gray-400 hover:underline flex items-center gap-1"
                         >
                           <Phone className="w-3 h-3" />
                           {stripeDetails?.customer?.phone || selectedRequest.requester_phone}
@@ -8838,13 +8838,13 @@ export default function CrowdRequestsPage() {
                 {/* Customer Timeline */}
                 <div className="bg-gradient-to-br from-gray-50 to-gray-50 dark:from-gray-800 dark:to-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-2 mb-4">
-                    <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <Activity className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">Customer Timeline</p>
                   </div>
                   
                   {loadingSuccessViews ? (
                     <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400" />
+                      <Loader2 className="w-5 h-5 animate-spin text-gray-600 dark:text-gray-400" />
                     </div>
                   ) : (
                     (() => {
@@ -9192,10 +9192,10 @@ export default function CrowdRequestsPage() {
                 </div>
                 
                 <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
                     <strong>Steps to process refund:</strong>
                   </p>
-                  <ol className="list-decimal list-inside space-y-2 text-sm text-blue-700 dark:text-blue-300">
+                  <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 dark:text-gray-300">
                     <li>Click &quot;Open Venmo&quot; below to open Venmo with the refund amount pre-filled</li>
                     {refundRequest.requester_phone && (
                       <li className="ml-4">Venmo will try to find the customer using their phone: {refundRequest.requester_phone}</li>
@@ -9207,7 +9207,7 @@ export default function CrowdRequestsPage() {
                     <li>Return here and click &quot;Mark as Refunded&quot; to update the record</li>
                   </ol>
                   {refundRequest.requester_name && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
                       Customer: <strong>{refundRequest.requester_name}</strong>
                     </p>
                   )}
@@ -9395,7 +9395,7 @@ export default function CrowdRequestsPage() {
                               <p className="text-xs text-gray-500 dark:text-gray-400">Detect songs only (no auto-matching)</p>
                             </div>
                             {!selectedEventId && (
-                              <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                              <CheckCircle className="w-4 h-4 text-gray-600 dark:text-gray-400 flex-shrink-0" />
                             )}
                           </div>
                         </button>
@@ -9466,7 +9466,7 @@ export default function CrowdRequestsPage() {
                                         </div>
                                       </div>
                                       {isSelected && (
-                                        <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                                        <CheckCircle className="w-4 h-4 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
                                       )}
                                     </div>
                                   </button>

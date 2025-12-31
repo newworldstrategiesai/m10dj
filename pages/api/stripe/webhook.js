@@ -526,13 +526,74 @@ export default async function handler(req, res) {
         });
         break;
 
+      case 'charge.succeeded':
+        // Fallback handler for charge.succeeded events
+        // Usually payment_intent.succeeded handles this, but this is a backup
+        const charge = event.data.object;
+        console.log('💰 Charge succeeded:', {
+          id: charge.id,
+          payment_intent: charge.payment_intent,
+          amount: charge.amount / 100,
+          timestamp: new Date().toISOString()
+        });
+        
+        // If we have a payment_intent, try to process it
+        if (charge.payment_intent) {
+          const supabaseForCharge = createClient(supabaseUrl, supabaseKey);
+          const { data: paymentIntent } = await stripe.paymentIntents.retrieve(charge.payment_intent);
+          
+          if (paymentIntent?.metadata?.request_id) {
+            const requestId = paymentIntent.metadata.request_id;
+            console.log(`Processing charge.succeeded for request: ${requestId}`);
+            
+            // Update crowd request if not already paid
+            const { data: existingRequest } = await supabaseForCharge
+              .from('crowd_requests')
+              .select('payment_status')
+              .eq('id', requestId)
+              .single();
+            
+            if (existingRequest && existingRequest.payment_status !== 'paid') {
+              await supabaseForCharge
+                .from('crowd_requests')
+                .update({
+                  payment_status: 'paid',
+                  payment_intent_id: paymentIntent.id,
+                  amount_paid: charge.amount,
+                  paid_at: new Date(paymentIntent.created * 1000).toISOString(),
+                  status: 'acknowledged',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', requestId);
+              
+              console.log(`✅ Updated request ${requestId} from charge.succeeded event`);
+            }
+          }
+        }
+        break;
+
+      case 'checkout.session.expired':
+        // Normal event - sessions expire if user doesn't complete checkout
+        // No action needed, just log for visibility
+        console.log(`ℹ️ Checkout session expired: ${event.data.object.id}`);
+        break;
+
       default:
-        console.log(`Unhandled event type ${event.type}`);
+        console.log(`ℹ️ Unhandled event type: ${event.type}`);
     }
 
-    res.json({ received: true });
+    // Always return 200 to Stripe, even if there were errors
+    // This prevents Stripe from retrying and disabling the webhook
+    res.status(200).json({ received: true });
   } catch (error) {
     console.error('❌ Error handling webhook:', error);
-    res.status(500).json({ error: 'Webhook handler failed' });
+    // CRITICAL: Always return 200 to Stripe, even on errors
+    // Stripe requires 200-299 status codes. Returning 500 causes Stripe to retry and eventually disable the webhook
+    // Log the error but acknowledge receipt to prevent webhook disable
+    res.status(200).json({ 
+      received: true,
+      error: 'Webhook handler encountered an error but event was received',
+      error_message: error.message 
+    });
   }
 }

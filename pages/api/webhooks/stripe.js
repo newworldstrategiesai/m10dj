@@ -74,7 +74,14 @@ export default async function handler(req, res) {
     res.status(200).json({ received: true });
   } catch (error) {
     console.error('❌ Error processing webhook:', error);
-    res.status(500).json({ error: 'Webhook processing failed' });
+    // CRITICAL: Always return 200 to Stripe, even on errors
+    // Stripe requires 200-299 status codes. Returning 500 causes Stripe to retry and eventually disable the webhook
+    // Log the error but acknowledge receipt to prevent webhook disable
+    res.status(200).json({ 
+      received: true,
+      error: 'Webhook processing encountered an error but event was received',
+      error_message: error.message 
+    });
   }
 }
 

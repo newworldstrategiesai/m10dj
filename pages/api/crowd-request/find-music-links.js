@@ -31,10 +31,10 @@ export default async function handler(req, res) {
       env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Check if links already exist in database
+    // Check if links already exist in database, and also get posted_link
     const { data: existingRequest, error: fetchError } = await supabase
       .from('crowd_requests')
-      .select('music_service_links')
+      .select('music_service_links, posted_link')
       .eq('id', requestId)
       .single();
 
@@ -42,6 +42,22 @@ export default async function handler(req, res) {
       console.error('Error fetching request:', fetchError);
       return res.status(500).json({ error: 'Failed to fetch request' });
     }
+
+    // Helper function to detect service from URL
+    const detectServiceFromUrl = (url) => {
+      if (!url) return null;
+      const lowerUrl = url.toLowerCase();
+      if (lowerUrl.includes('spotify.com')) return 'spotify';
+      if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return 'youtube';
+      if (lowerUrl.includes('tidal.com')) return 'tidal';
+      if (lowerUrl.includes('music.apple.com') || lowerUrl.includes('itunes.apple.com')) return 'apple_music';
+      return null;
+    };
+
+    // Preserve the original posted_link if it exists
+    const postedLink = existingRequest?.posted_link;
+    const postedLinkService = detectServiceFromUrl(postedLink);
+    console.log('Posted link detected:', { url: postedLink, service: postedLinkService });
 
     // If links already exist and were found recently (within last 7 days), return cached
     if (existingRequest?.music_service_links?.found_at) {
@@ -59,19 +75,25 @@ export default async function handler(req, res) {
       }
     }
 
+    // Determine which URL to use for extraction (prioritize posted_link if it's YouTube)
+    // If posted_link is YouTube, use it for extraction; otherwise use youtubeUrl from request
+    const youtubeUrlForExtraction = postedLinkService === 'youtube' 
+      ? postedLink 
+      : (youtubeUrl || null);
+
     // Find music links
     // If YouTube URL is provided, use it to extract song info and find other services
     // Otherwise, use songTitle and songArtist
-    console.log(youtubeUrl 
-      ? `Finding music links from YouTube URL: ${youtubeUrl}`
+    console.log(youtubeUrlForExtraction 
+      ? `Finding music links from YouTube URL: ${youtubeUrlForExtraction}`
       : `Finding music links for: "${songTitle}" by "${songArtist}"`
     );
-    console.log('Request body:', { requestId, songTitle, songArtist, youtubeUrl });
+    console.log('Request body:', { requestId, songTitle, songArtist, youtubeUrl: youtubeUrlForExtraction, postedLink });
     
     const links = await findMusicLinks(songTitle, songArtist, {
       timeout: 10000, // 10 second timeout per service (increased from 8s)
       services: ['spotify', 'youtube', 'tidal', 'apple_music'],
-      youtubeUrl: youtubeUrl || null
+      youtubeUrl: youtubeUrlForExtraction
     });
 
     console.log('Links found:', {
@@ -88,6 +110,27 @@ export default async function handler(req, res) {
     if (links.tidal) console.log('Tidal URL:', links.tidal.substring(0, 50) + '...');
     if (links.apple_music) console.log('Apple Music URL:', links.apple_music.substring(0, 50) + '...');
     
+    // Always preserve the original posted_link in the appropriate service field
+    // The original link that the user posted should take priority
+    if (postedLink && postedLinkService) {
+      if (postedLinkService === 'spotify') {
+        links.spotify = postedLink; // Always use the original posted link
+        console.log('✅ Preserved original Spotify link from posted_link');
+      } else if (postedLinkService === 'tidal') {
+        links.tidal = postedLink; // Always use the original posted link
+        console.log('✅ Preserved original Tidal link from posted_link');
+      } else if (postedLinkService === 'apple_music') {
+        links.apple_music = postedLink; // Always use the original posted link
+        console.log('✅ Preserved original Apple Music link from posted_link');
+      } else if (postedLinkService === 'youtube') {
+        // For YouTube, we might have used it for extraction, but ensure it's preserved
+        if (!links.youtube || links.youtube !== postedLink) {
+          links.youtube = postedLink;
+          console.log('✅ Preserved original YouTube link from posted_link');
+        }
+      }
+    }
+
     // Ensure all fields are present in response (exclude normalized fields from links object)
     const responseLinks = {
       spotify: links.spotify || null,
