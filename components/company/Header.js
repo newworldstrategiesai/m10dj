@@ -389,7 +389,11 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
         }
         data-transparent={shouldBeTransparent && !isScrolled ? 'true' : 'false'}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-visible">
+        <div className={`max-w-7xl mx-auto overflow-visible ${
+          isTipJarDomain() 
+            ? 'pl-2 pr-4 sm:px-6 lg:px-8' // TipJar: small left padding on mobile (0.5rem)
+            : 'px-4 sm:px-6 lg:px-8' // Other domains: normal padding
+        }`}>
           <div className={`flex items-center justify-between gap-4 overflow-visible ${
             shouldBeTransparent && !customLogoUrl 
               ? 'min-h-20 sm:min-h-[88px] py-2' 

@@ -1339,6 +1339,7 @@ export function GeneralRequestsPage({
         isCustomAudio: (requestType === 'song_request' && !!audioFileUrl) || false,
         artistRightsConfirmed: (requestType === 'song_request' ? artistRightsConfirmed : false) || false,
         isArtist: (requestType === 'song_request' ? isArtist : false) || false,
+        albumArtUrl: (requestType === 'song_request' ? albumArtUrl : null) || null, // Pass album art URL if available
         sourceDomain: getSourceDomain() // Track where the request originated from
       };
       
@@ -3599,12 +3600,9 @@ export function GeneralRequestsPage({
                         }, 100);
                         return;
                       }
-                      // On mobile, ensure button is visible (but don't prevent submission)
-                      if (window.innerWidth < 640) {
-                        const button = e.currentTarget;
-                        // Quick scroll without blocking submission
-                        button.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
+                      // Don't scroll - let form submit immediately if valid
+                      // Validation errors will handle scrolling in handleSubmit
+                      // Only scroll for step 1 (Continue to Payment) which is handled above
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>

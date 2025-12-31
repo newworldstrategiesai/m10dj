@@ -319,8 +319,23 @@ export default async function handler(req, res) {
       });
     }
 
+    // Determine base URL based on source_domain to keep user on same domain
+    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001';
+    if (crowdRequest.source_domain) {
+      // If request came from tipjar.live, use tipjar.live for success page
+      if (crowdRequest.source_domain === 'tipjar.live' || crowdRequest.source_domain === 'www.tipjar.live') {
+        baseUrl = 'https://tipjar.live';
+      } else if (crowdRequest.source_domain === 'm10djcompany.com' || crowdRequest.source_domain === 'www.m10djcompany.com') {
+        baseUrl = 'https://www.m10djcompany.com';
+      }
+      // For other domains, use the source_domain to construct URL
+      // Note: This assumes the domain is valid and uses HTTPS
+      else if (!crowdRequest.source_domain.includes('localhost')) {
+        baseUrl = `https://${crowdRequest.source_domain.replace(/^www\./, '')}`;
+      }
+    }
+    
     // Determine cancel URL based on whether it's a general request or event-specific
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001';
     const isGeneralRequest = crowdRequest.event_qr_code && crowdRequest.event_qr_code.startsWith('general');
     const cancelUrl = isGeneralRequest 
       ? `${baseUrl}/requests`

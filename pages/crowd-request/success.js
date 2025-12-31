@@ -175,11 +175,17 @@ export default function CrowdRequestSuccessPage() {
   // Fetch album art when request is loaded
   useEffect(() => {
     if (request && request.request_type === 'song_request' && request.song_title) {
-      fetchAlbumArt(request.song_title, request.song_artist).then(art => {
-        if (art) setAlbumArt(art);
-      });
+      // First, check if album art URL is already stored in the database
+      if (request.album_art_url) {
+        setAlbumArt(request.album_art_url);
+      } else {
+        // Fallback to iTunes API if no stored album art
+        fetchAlbumArt(request.song_title, request.song_artist).then(art => {
+          if (art) setAlbumArt(art);
+        });
+      }
     }
-  }, [request?.id, request?.song_title, request?.song_artist]);
+  }, [request?.id, request?.song_title, request?.song_artist, request?.album_art_url]);
 
   // Fetch album art for bundled songs
   useEffect(() => {
@@ -915,7 +921,7 @@ export default function CrowdRequestSuccessPage() {
         
         {/* Sticky Mobile CTA */}
         {request?.event_qr_code && (
-          <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white/95 via-white/90 to-white/80 dark:from-black/95 dark:via-black/90 dark:to-black/80 backdrop-blur-lg border-t border-gray-200 dark:border-neutral-800 safe-area-pb">
+          <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white/95 via-white/90 to-white/80 dark:from-black/95 dark:via-black/90 dark:to-black/80 backdrop-blur-lg border-t border-gray-200 dark:border-neutral-800 safe-area-pb z-50">
             <Link
               href={request.event_qr_code.startsWith('general') ? '/requests' : `/crowd-request/${request.event_qr_code}`}
               className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-300 text-black font-bold text-base rounded-xl shadow-lg hover:shadow-xl shadow-amber-500/30 hover:shadow-amber-400/50 transition-all duration-200"

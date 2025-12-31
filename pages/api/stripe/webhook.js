@@ -175,11 +175,17 @@ export default async function handler(req, res) {
           const customerName = session.customer_details?.name;
           const customerPhone = session.customer_details?.phone;
           
+          // Use the actual payment time from Stripe, not current server time
+          // session.created is a Unix timestamp in seconds, convert to ISO string
+          const paidAt = session.created 
+            ? new Date(session.created * 1000).toISOString()
+            : new Date().toISOString(); // Fallback to current time if created not available
+          
           const updateData = {
             payment_status: 'paid',
             payment_intent_id: session.payment_intent || session.id,
             amount_paid: session.amount_total, // Store in cents
-            paid_at: new Date().toISOString(),
+            paid_at: paidAt, // Use actual payment time from Stripe
             status: 'acknowledged',
             updated_at: new Date().toISOString(),
             payment_method: 'card'
@@ -216,10 +222,15 @@ export default async function handler(req, res) {
             // Also update any bundle requests with the same payment_code
             // Bundle songs should be marked as paid when the main payment succeeds
             if (requestDataBeforeUpdate?.payment_code) {
+              // Use the actual payment time from Stripe for bundle requests too
+              const bundlePaidAt = session.created 
+                ? new Date(session.created * 1000).toISOString()
+                : new Date().toISOString();
+              
               const bundleUpdateData = {
                 payment_status: 'paid',
                 payment_intent_id: session.payment_intent || session.id,
-                paid_at: new Date().toISOString(),
+                paid_at: bundlePaidAt, // Use actual payment time from Stripe
                 updated_at: new Date().toISOString(),
                 payment_method: 'card'
               };

@@ -87,7 +87,15 @@ export default async function handler(req, res) {
     // Update amount_paid if payment was successful
     if (session.payment_status === 'paid' && amountPaid > 0) {
       updateData.amount_paid = amountPaid;
-      updateData.paid_at = new Date().toISOString();
+      // Use the actual payment time from Stripe, not current server time
+      // Prefer payment intent created time (most accurate), fallback to session created time
+      if (paymentIntent?.created) {
+        updateData.paid_at = new Date(paymentIntent.created * 1000).toISOString();
+      } else if (session.created) {
+        updateData.paid_at = new Date(session.created * 1000).toISOString();
+      } else {
+        updateData.paid_at = new Date().toISOString(); // Fallback to current time
+      }
     }
 
     // ALWAYS update customer information from Stripe when available (Stripe is source of truth)

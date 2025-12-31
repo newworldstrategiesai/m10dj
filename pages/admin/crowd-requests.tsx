@@ -8304,6 +8304,22 @@ export default function CrowdRequestsPage() {
                         </a>
                       </div>
                     )}
+                    {selectedRequest.source_domain && (
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Source Domain</p>
+                        <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1">
+                          <Globe className="w-3 h-3 text-purple-500" />
+                          {selectedRequest.source_domain}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {selectedRequest.source_domain === 'tipjar.live' || selectedRequest.source_domain === 'www.tipjar.live'
+                            ? 'Request came from TipJar.live'
+                            : selectedRequest.source_domain === 'm10djcompany.com' || selectedRequest.source_domain === 'www.m10djcompany.com'
+                            ? 'Request came from M10DJCompany.com'
+                            : 'Request origin'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -8831,91 +8847,138 @@ export default function CrowdRequestsPage() {
                       <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400" />
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {/* Request Created */}
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">Request Created</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {new Date(selectedRequest.created_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
+                    (() => {
+                      // Build timeline events array
+                      const timelineEvents: Array<{
+                        type: string;
+                        time: Date;
+                        component: JSX.Element;
+                      }> = [];
 
-                      {/* Payment Made */}
-                      {selectedRequest.paid_at && (
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-gray-500 mt-2"></div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">Payment Made</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {new Date(selectedRequest.paid_at).toLocaleString()}
-                            </p>
-                            {selectedRequest.payment_method && (
-                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
-                                via {selectedRequest.payment_method === 'card' ? 'Stripe' : selectedRequest.payment_method === 'venmo' ? 'Venmo' : selectedRequest.payment_method === 'cashapp' ? 'CashApp' : selectedRequest.payment_method}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Success Page Views */}
-                      {successPageViews.length > 0 ? (
-                        successPageViews.map((view, index) => (
-                          <div key={view.id} className="flex items-start gap-3">
-                            <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
-                              view.is_first_view ? 'bg-purple-500' : 'bg-gray-400'
-                            }`}></div>
+                      // Request Created
+                      timelineEvents.push({
+                        type: 'request_created',
+                        time: new Date(selectedRequest.created_at),
+                        component: (
+                          <div key="request_created" className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-2 h-2 rounded-full bg-green-500 mt-2"></div>
                             <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                                {view.is_first_view ? (
-                                  <>
-                                    <CheckCircle2 className="w-4 h-4 text-purple-500" />
-                                    Success Page Viewed (First Time)
-                                  </>
-                                ) : (
-                                  <>
-                                    <Eye className="w-4 h-4 text-gray-400" />
-                                    Success Page Re-visited
-                                  </>
-                                )}
-                              </p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">Request Created</p>
                               <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {new Date(view.viewed_at).toLocaleString()}
+                                {new Date(selectedRequest.created_at).toLocaleString()}
                               </p>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-gray-300 mt-2"></div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                              Success page not yet viewed
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                        )
+                      });
 
-                      {/* Song Played */}
-                      {selectedRequest.played_at && (
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-orange-500 mt-2"></div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">Song Played</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {new Date(selectedRequest.played_at).toLocaleString()}
-                            </p>
-                          </div>
+                      // Payment Made
+                      if (selectedRequest.paid_at) {
+                        timelineEvents.push({
+                          type: 'payment_made',
+                          time: new Date(selectedRequest.paid_at),
+                          component: (
+                            <div key="payment_made" className="flex items-start gap-3">
+                              <div className="flex-shrink-0 w-2 h-2 rounded-full bg-gray-500 mt-2"></div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">Payment Made</p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {new Date(selectedRequest.paid_at).toLocaleString()}
+                                </p>
+                                {selectedRequest.payment_method && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+                                    via {selectedRequest.payment_method === 'card' ? 'Stripe' : selectedRequest.payment_method === 'venmo' ? 'Venmo' : selectedRequest.payment_method === 'cashapp' ? 'CashApp' : selectedRequest.payment_method}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        });
+                      }
+
+                      // Success Page Views - Show all views
+                      successPageViews.forEach((view) => {
+                        timelineEvents.push({
+                          type: 'success_page_view',
+                          time: new Date(view.viewed_at),
+                          component: (
+                            <div key={view.id} className="flex items-start gap-3">
+                              <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+                                view.is_first_view ? 'bg-purple-500' : 'bg-gray-400'
+                              }`}></div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                                  {view.is_first_view ? (
+                                    <>
+                                      <CheckCircle2 className="w-4 h-4 text-purple-500" />
+                                      Success Page Viewed (First Time)
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="w-4 h-4 text-gray-400" />
+                                      Success Page Re-visited
+                                    </>
+                                  )}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {new Date(view.viewed_at).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        });
+                      });
+
+                      // Song Played
+                      if (selectedRequest.played_at) {
+                        timelineEvents.push({
+                          type: 'song_played',
+                          time: new Date(selectedRequest.played_at),
+                          component: (
+                            <div key="song_played" className="flex items-start gap-3">
+                              <div className="flex-shrink-0 w-2 h-2 rounded-full bg-orange-500 mt-2"></div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">Song Played</p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {new Date(selectedRequest.played_at).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        });
+                      }
+
+                      // Sort by time (oldest first - chronological order)
+                      timelineEvents.sort((a, b) => a.time.getTime() - b.time.getTime());
+
+                      // If no success page views, show message
+                      if (successPageViews.length === 0) {
+                        timelineEvents.push({
+                          type: 'no_success_views',
+                          time: new Date(selectedRequest.created_at),
+                          component: (
+                            <div key="no_success_views" className="flex items-start gap-3">
+                              <div className="flex-shrink-0 w-2 h-2 rounded-full bg-gray-300 mt-2"></div>
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                                  Success page not yet viewed
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        });
+                      }
+
+                      return (
+                        <div className="space-y-3">
+                          {timelineEvents.map(event => event.component)}
                         </div>
-                      )}
-                    </div>
+                      );
+                    })()
                   )}
                 </div>
 

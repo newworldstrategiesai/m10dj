@@ -49,6 +49,7 @@ export default async function handler(req, res) {
     scanId, // QR scan ID from sessionStorage
     sessionId, // QR session ID from sessionStorage
     postedLink, // Original URL if request was created from a posted link
+    albumArtUrl, // Album art URL extracted from music service links
     visitor_id, // Visitor ID for customer journey tracking
     paymentCode: existingPaymentCode, // Optional: for bundle songs to share same payment code
     parentRequestId // Optional: for bundle songs to link to parent request
@@ -369,6 +370,7 @@ export default async function handler(req, res) {
       is_artist: isArtist || false,
       audio_upload_fee: (isCustomAudio && audioFileUrl) ? 10000 : 0, // $100.00 in cents
       posted_link: postedLink || null, // Store original URL if request was created from a posted link
+      album_art_url: albumArtUrl || null, // Store album art URL extracted from music service links
       visitor_id: visitor_id || null, // Link to visitor tracking for customer journey
       source_domain: sourceDomain || null // Track where the request originated from
     };

@@ -64,6 +64,7 @@ export default function CrowdRequestPage() {
   const [organizationId, setOrganizationId] = useState(null); // Organization ID for this event
   const [bundleSize, setBundleSize] = useState(1); // Bundle size: 1, 2, or 3
   const [bundleSongs, setBundleSongs] = useState([]); // Array of {songTitle, songArtist} for bundle songs
+  const [albumArtUrl, setAlbumArtUrl] = useState(null); // Store album art URL from extraction
 
   // Initialize bundle songs array when bundle size changes
   useEffect(() => {
@@ -378,10 +379,14 @@ export default function CrowdRequestPage() {
   };
 
   const extractSongInfo = async (url) => {
-    await extractSongInfoHook(url, setFormData);
+    const extractedData = await extractSongInfoHook(url, setFormData);
     // Store the URL that was used for extraction and mark as extracted
     setExtractedSongUrl(url);
     setIsExtractedFromLink(true);
+    // Store album art if available
+    if (extractedData?.albumArt) {
+      setAlbumArtUrl(extractedData.albumArt);
+    }
     // Keep URL visible in the link field for a moment, then clear it
     // The useEffect will handle hiding the field when song info is populated
     setTimeout(() => {
@@ -552,6 +557,7 @@ export default function CrowdRequestPage() {
         sessionId: sessionId,
         organizationId: organizationId || null, // Include organization ID if determined
         postedLink: extractedSongUrl || null, // Include the original URL if request was created from a posted link
+        albumArtUrl: albumArtUrl || null, // Pass album art URL if available
         sourceDomain: getSourceDomain() // Track where the request originated from
       };
       
@@ -1321,13 +1327,8 @@ export default function CrowdRequestPage() {
                         e.preventDefault();
                         return;
                       }
-                      
-                      // On mobile, ensure button is visible (but don't prevent submission)
-                      if (window.innerWidth < 640) {
-                        const button = e.currentTarget;
-                        // Quick scroll without blocking submission
-                        button.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
+                      // Don't scroll - let form submit immediately if valid
+                      // Validation errors will handle scrolling in handleSubmit
                     }}
                   >
                     {submitting ? (
