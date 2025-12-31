@@ -9,6 +9,8 @@ import { defineAgent, JobContext, getJobContext } from '@livekit/agents';
 import { voice, llm, stt, tts, vad, turnDetection } from '@livekit/agents';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { EmailAssistant } from '../lib/email/email-assistant';
+import { createEmailTools } from '../lib/email/email-tools';
 
 // Environment variables
 const LIVEKIT_URL = process.env.LIVEKIT_URL || '';
@@ -207,13 +209,28 @@ const searchKnowledgeBase = llm.tool({
 });
 
 /**
- * Custom Agent with RAG Support
+ * Custom Agent with RAG Support and Email Capabilities
  */
 class RagAgent extends voice.Agent {
   private sessionId?: string;
   private contactId?: string;
+  private emailAssistant?: EmailAssistant;
 
-  constructor(chatCtx: llm.ChatContext, sessionId?: string, contactId?: string) {
+  constructor(
+    chatCtx: llm.ChatContext, 
+    sessionId?: string, 
+    contactId?: string,
+    emailAssistant?: EmailAssistant
+  ) {
+    // Build tools array
+    const tools = [getContactInfo, searchKnowledgeBase];
+    
+    // Add email tools if EmailAssistant is provided
+    if (emailAssistant) {
+      const emailTools = createEmailTools(emailAssistant);
+      tools.push(...emailTools);
+    }
+
     super({
       chatCtx,
       instructions: `You are a helpful voice AI assistant for M10 DJ Company. You help potential customers with:
@@ -222,13 +239,15 @@ class RagAgent extends voice.Agent {
 - Learning about services
 - Music recommendations
 - Answering questions about events
+${emailAssistant ? '- Sending and reading emails\n- Managing email communications' : ''}
 
-Be conversational, helpful, and professional. Use the available tools to get accurate information about customers and services.`,
-      tools: [getContactInfo, searchKnowledgeBase],
+Be conversational, helpful, and professional. Use the available tools to get accurate information about customers and services.${emailAssistant ? ' You can send and receive emails on behalf of the user.' : ''}`,
+      tools,
     });
 
     this.sessionId = sessionId;
     this.contactId = contactId;
+    this.emailAssistant = emailAssistant;
   }
 
   /**
@@ -301,15 +320,19 @@ export default defineAgent({
     }
 
     // Load contact context if available
+    let organizationId: string | undefined;
+    let productId: string | undefined;
+    
     if (contactId) {
       try {
         const { data: contact } = await supabase
           .from('contacts')
-          .select('first_name, last_name, event_type, event_date')
+          .select('first_name, last_name, event_type, event_date, organization_id')
           .eq('id', contactId)
           .single();
 
         if (contact) {
+          organizationId = contact.organization_id;
           const name = `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
           if (name) {
             initialCtx.addMessage({
@@ -332,6 +355,41 @@ export default defineAgent({
         }
       } catch (error) {
         console.error('Error loading contact context:', error);
+      }
+    }
+
+    // Get organization and product info from metadata or contact
+    if (!organizationId && metadata.organizationId) {
+      organizationId = metadata.organizationId;
+    }
+    productId = metadata.productId || 'm10dj'; // Default to m10dj
+
+    // Initialize EmailAssistant if organization is available
+    let emailAssistant: EmailAssistant | undefined;
+    if (organizationId) {
+      try {
+        // Get or create email address for this organization
+        const emailAddress = metadata.emailAddress || `assistant-${organizationId}@m10djcompany.com`;
+        
+        emailAssistant = new EmailAssistant({
+          organizationId,
+          productId,
+          emailAddress,
+          contactId,
+        });
+
+        await emailAssistant.initialize();
+
+        // Set up email notification callback
+        emailAssistant.onEmailReceived((email) => {
+          console.log(`📧 New email received during voice session: ${email.subject}`);
+          // Could trigger voice notification here if needed
+        });
+
+        console.log(`✅ EmailAssistant initialized for ${emailAddress}`);
+      } catch (error) {
+        console.error('Error initializing EmailAssistant:', error);
+        // Continue without email capabilities
       }
     }
 
@@ -359,8 +417,8 @@ export default defineAgent({
       }),
     });
 
-    // Create agent instance
-    const agent = new RagAgent(initialCtx, sessionId, contactId);
+    // Create agent instance with EmailAssistant
+    const agent = new RagAgent(initialCtx, sessionId, contactId, emailAssistant);
 
     // Start session
     await session.start({
@@ -381,6 +439,12 @@ export default defineAgent({
 
     // Wait for session to end
     await ctx.waitForDisconnect();
+    
+    // Cleanup EmailAssistant
+    if (emailAssistant) {
+      await emailAssistant.cleanup();
+    }
+    
     console.log('✅ Agent session ended:', ctx.job.id);
   },
 });

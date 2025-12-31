@@ -261,6 +261,44 @@ export default async function CityEventTypePage({ params }: PageProps) {
   // Generate structured data if not present
   const finalStructuredData = structured_data || null;
 
+  // Generate ItemList schema for DJ companies (for rich results)
+  const djCompaniesList = allFeaturedDJs && allFeaturedDJs.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `${event_type_display} in ${city_name}, ${state_abbr}`,
+    description: `List of professional ${event_type_display.toLowerCase()} in ${city_name}, ${state_abbr}`,
+    numberOfItems: Math.min(allFeaturedDJs.length, 20), // Limit to top 20 for performance
+    itemListElement: allFeaturedDJs.slice(0, 20).map((dj: any, index: number) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'LocalBusiness',
+        '@id': `https://www.djdash.net/dj/${dj.dj_slug}`,
+        name: dj.dj_name || 'Professional DJ',
+        description: dj.tagline || `${event_type_display} in ${city_name}`,
+        url: `https://www.djdash.net/dj/${dj.dj_slug}`,
+        image: dj.profile_image_url,
+        address: {
+          '@type': 'PostalAddress',
+          addressLocality: dj.city || city_name,
+          addressRegion: dj.state || state_abbr,
+          addressCountry: 'US',
+        },
+        priceRange: dj.starting_price_range,
+        areaServed: {
+          '@type': 'City',
+          name: city_name,
+        },
+        serviceType: `${event_type_display}`,
+        ...(dj.event_types && dj.event_types.length > 0 && {
+          knowsAbout: dj.event_types.map((type: string) => 
+            type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' DJ Services'
+          ),
+        }),
+      },
+    })),
+  } : null;
+
   return (
     <>
       {/* Structured Data (JSON-LD) */}
@@ -268,6 +306,15 @@ export default async function CityEventTypePage({ params }: PageProps) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(finalStructuredData) }}
+        />
+      )}
+      {/* DJ Companies ItemList Schema (for rich results) */}
+      {djCompaniesList && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(djCompaniesList),
+          }}
         />
       )}
       {/* FAQ Structured Data */}

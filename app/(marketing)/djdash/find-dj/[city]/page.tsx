@@ -266,6 +266,44 @@ export default async function FindDJCityPage({ params }: PageProps) {
   // Fetch DJ profiles for this city
   const cityDJs = await getCityDJs(name, stateAbbr);
 
+  // Generate ItemList schema for DJ companies (for rich results)
+  const djCompaniesList = cityDJs && cityDJs.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `DJ Companies in ${name}, ${state}`,
+    description: `List of professional DJ companies and DJs in ${name}, ${state}`,
+    numberOfItems: Math.min(cityDJs.length, 20), // Limit to top 20 for performance
+    itemListElement: cityDJs.slice(0, 20).map((dj: any, index: number) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'LocalBusiness',
+        '@id': `https://www.djdash.net/dj/${dj.dj_slug}`,
+        name: dj.dj_name || 'Professional DJ',
+        description: dj.tagline || `Professional DJ services in ${name}`,
+        url: `https://www.djdash.net/dj/${dj.dj_slug}`,
+        image: dj.profile_image_url,
+        address: {
+          '@type': 'PostalAddress',
+          addressLocality: dj.city || name,
+          addressRegion: dj.state || stateAbbr,
+          addressCountry: 'US',
+        },
+        priceRange: dj.starting_price_range,
+        areaServed: {
+          '@type': 'City',
+          name: name,
+        },
+        serviceType: 'DJ Services',
+        ...(dj.event_types && dj.event_types.length > 0 && {
+          knowsAbout: dj.event_types.map((type: string) => 
+            type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' DJ Services'
+          ),
+        }),
+      },
+    })),
+  } : null;
+
   return (
     <>
       <script
@@ -294,6 +332,14 @@ export default async function FindDJCityPage({ params }: PageProps) {
           }),
         }}
       />
+      {djCompaniesList && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(djCompaniesList),
+          }}
+        />
+      )}
       <div className="min-h-screen bg-white dark:bg-gray-900">
         <DJDashHeader />
         

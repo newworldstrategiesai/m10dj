@@ -1,7 +1,49 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Music } from 'lucide-react';
+
+function PlatformStatsFooter() {
+  const [stats, setStats] = useState<{ djs: string; revenue: string } | null>(null);
+
+  useEffect(() => {
+    // Fetch stats from API
+    fetch('/api/djdash/platform-stats')
+      .then(res => res.json())
+      .then(data => {
+        if (data.totalDJs !== undefined) {
+          const formattedDJs = data.totalDJs >= 1000 
+            ? `${(data.totalDJs / 1000).toFixed(1)}K+`
+            : `${data.totalDJs}+`;
+          const formattedRevenue = data.totalRevenue >= 1000000
+            ? `$${(data.totalRevenue / 1000000).toFixed(1)}M+`
+            : `$${(data.totalRevenue / 1000).toFixed(0)}K+`;
+          setStats({ djs: formattedDJs, revenue: formattedRevenue });
+        } else {
+          setStats({ djs: '1,200+', revenue: '$4.5M+' }); // Fallback
+        }
+      })
+      .catch(() => {
+        setStats({ djs: '1,200+', revenue: '$4.5M+' }); // Fallback on error
+      });
+  }, []);
+
+  if (!stats) {
+    return (
+      <p className="text-gray-400 text-sm">
+        Trusted by 1,200+ pro DJs • $4.5M+ revenue managed • Powered by Stripe
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-gray-400 text-sm">
+      Trusted by {stats.djs} pro DJs • {stats.revenue} revenue managed • Powered by Stripe
+    </p>
+  );
+}
 
 export default function DJDashFooter() {
   const currentYear = new Date().getFullYear();
@@ -86,9 +128,7 @@ export default function DJDashFooter() {
             <p className="text-gray-400 text-sm">
               © {currentYear} DJ Dash. All rights reserved.
             </p>
-            <p className="text-gray-400 text-sm">
-              Trusted by 1,200+ pro DJs • $4.5M+ revenue managed • Powered by Stripe
-            </p>
+            <PlatformStatsFooter />
           </div>
         </div>
       </div>

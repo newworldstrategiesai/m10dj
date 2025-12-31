@@ -5,6 +5,7 @@ import DJDashHeader from '@/components/djdash/Header';
 import DJDashFooter from '@/components/djdash/Footer';
 import FeaturedDJProfiles from '@/components/djdash/FeaturedDJProfiles';
 import CitySearchBar from '@/components/djdash/CitySearchBar';
+import { getPlatformStats, formatStatNumber, formatRevenue, getTrustDescription } from '@/utils/djdash/get-platform-stats';
 import { 
   Search, 
   MapPin, 
@@ -22,57 +23,62 @@ import {
   Shield
 } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'DJ Dash - #1 DJ Directory & Booking Software | Find 1,200+ Professional DJs',
-  description: 'Find the perfect DJ for your wedding, party, or event. Browse 1,200+ verified professional DJs nationwide. Get free quotes, read real reviews, and book instantly. The #1 DJ directory and booking software trusted by thousands.',
-  keywords: [
-    'DJ directory',
-    'find a DJ',
-    'DJ near me',
-    'DJ booking software',
-    'wedding DJ',
-    'party DJ',
-    'event DJ',
-    'professional DJ',
-    'DJ for hire',
-    'hire a DJ',
-    'DJ booking',
-    'wedding DJs',
-    'corporate DJs',
-    'DJ services',
-    'best DJ',
-    'DJ for wedding',
-    'DJ for party',
-    'DJ for event',
-    'DJ CRM',
-    'DJ management software'
-  ],
-  openGraph: {
-    title: 'DJ Dash - #1 DJ Directory & Booking Software | Find Professional DJs',
-    description: 'Find the perfect professional DJ for your wedding, party, or event. Browse 1,200+ verified DJs nationwide. Get free quotes, read real reviews, and book instantly. #1 DJ directory and booking software.',
-    url: 'https://www.djdash.net',
-    siteName: 'DJ Dash',
-    images: [
-      {
-        url: '/assets/DJ-Dash-Logo-Black-1.PNG',
-        width: 1200,
-        height: 630,
-        alt: 'DJ Dash - #1 DJ Directory & Booking Software',
-      },
+// Generate metadata dynamically with real stats
+export async function generateMetadata(): Promise<Metadata> {
+  const platformStats = await getPlatformStats();
+  
+  return {
+    title: `DJ Dash - #1 DJ Directory & Booking Software | Find ${formatStatNumber(platformStats.totalDJs)} Professional DJs`,
+    description: `Find the perfect DJ for your wedding, party, or event. Browse ${formatStatNumber(platformStats.totalDJs)} verified professional DJs nationwide. Get free quotes, read real reviews, and book instantly. The #1 DJ directory and booking software trusted by ${getTrustDescription(platformStats.totalOrganizations)}.`,
+    keywords: [
+      'DJ directory',
+      'find a DJ',
+      'DJ near me',
+      'DJ booking software',
+      'wedding DJ',
+      'party DJ',
+      'event DJ',
+      'professional DJ',
+      'DJ for hire',
+      'hire a DJ',
+      'DJ booking',
+      'wedding DJs',
+      'corporate DJs',
+      'DJ services',
+      'best DJ',
+      'DJ for wedding',
+      'DJ for party',
+      'DJ for event',
+      'DJ CRM',
+      'DJ management software'
     ],
-    locale: 'en_US',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'DJ Dash - #1 DJ Directory & Booking Software | Find Professional DJs',
-    description: 'Find the perfect professional DJ for your wedding, party, or event. Browse 1,200+ verified DJs nationwide. Get free quotes and book instantly.',
-    images: ['/assets/DJ-Dash-Logo-Black-1.PNG'],
-  },
-  alternates: {
-    canonical: 'https://www.djdash.net',
-  },
-};
+    openGraph: {
+      title: 'DJ Dash - #1 DJ Directory & Booking Software | Find Professional DJs',
+      description: `Find the perfect professional DJ for your wedding, party, or event. Browse ${formatStatNumber(platformStats.totalDJs)} verified DJs nationwide. Get free quotes, read real reviews, and book instantly. #1 DJ directory and booking software.`,
+      url: 'https://www.djdash.net',
+      siteName: 'DJ Dash',
+      images: [
+        {
+          url: '/assets/DJ-Dash-Logo-Black-1.PNG',
+          width: 1200,
+          height: 630,
+          alt: 'DJ Dash - #1 DJ Directory & Booking Software',
+        },
+      ],
+      locale: 'en_US',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'DJ Dash - #1 DJ Directory & Booking Software | Find Professional DJs',
+      description: `Find the perfect professional DJ for your wedding, party, or event. Browse ${formatStatNumber(platformStats.totalDJs)} verified DJs nationwide. Get free quotes and book instantly.`,
+      images: ['/assets/DJ-Dash-Logo-Black-1.PNG'],
+    },
+    alternates: {
+      canonical: 'https://www.djdash.net',
+    },
+  };
+}
 
 // Fetch featured DJ profiles for marketplace display
 async function getFeaturedDJProfiles() {
@@ -207,6 +213,7 @@ async function getFeaturedDJProfiles() {
 
 export default async function HomePage() {
   const featuredDJs = await getFeaturedDJProfiles();
+  const platformStats = await getPlatformStats();
 
   return (
     <>
@@ -225,7 +232,7 @@ export default async function HomePage() {
               width: 300,
               height: 300
             },
-            description: 'The #1 DJ directory and booking software. Find 1,200+ verified professional DJs for weddings, parties, and events nationwide.',
+            description: `The #1 DJ directory and booking software. Find ${formatStatNumber(platformStats.totalDJs)} verified professional DJs for weddings, parties, and events nationwide.`,
             sameAs: [
               'https://www.facebook.com/djdash',
               'https://www.twitter.com/djdash',
@@ -238,8 +245,8 @@ export default async function HomePage() {
             },
             aggregateRating: {
               '@type': 'AggregateRating',
-              ratingValue: '4.9',
-              reviewCount: '1200',
+              ratingValue: platformStats.averageRating.toString(),
+              reviewCount: platformStats.totalReviews.toString(),
               bestRating: '5',
               worstRating: '1',
             },
@@ -255,7 +262,7 @@ export default async function HomePage() {
             '@type': 'WebSite',
             name: 'DJ Dash',
             url: 'https://www.djdash.net',
-            description: 'Find the perfect professional DJ for your wedding, party, or event. Browse 1,200+ verified DJs nationwide.',
+            description: `Find the perfect professional DJ for your wedding, party, or event. Browse ${formatStatNumber(platformStats.totalDJs)} verified DJs nationwide.`,
             potentialAction: {
               '@type': 'SearchAction',
               target: {
@@ -298,7 +305,7 @@ export default async function HomePage() {
                 name: 'How do I find a DJ near me?',
                 acceptedAnswer: {
                   '@type': 'Answer',
-                  text: 'Use DJ Dash to search for professional DJs in your city. Enter your location in the search bar, browse verified DJ profiles, read reviews, and get free quotes. We have 1,200+ verified professional DJs nationwide.',
+                  text: `Use DJ Dash to search for professional DJs in your city. Enter your location in the search bar, browse verified DJ profiles, read reviews, and get free quotes. We have ${formatStatNumber(platformStats.totalDJs)} verified professional DJs nationwide.`,
                 },
               },
               {
@@ -314,7 +321,7 @@ export default async function HomePage() {
                 name: 'How many DJs are on DJ Dash?',
                 acceptedAnswer: {
                   '@type': 'Answer',
-                  text: 'DJ Dash has over 1,200 verified professional DJs nationwide. All DJs are verified and background checked for your peace of mind.',
+                  text: `DJ Dash has ${formatStatNumber(platformStats.totalDJs)} verified professional DJs nationwide. All DJs are verified and background checked for your peace of mind.`,
                 },
               },
               {
@@ -337,8 +344,8 @@ export default async function HomePage() {
             '@context': 'https://schema.org',
             '@type': 'ItemList',
             name: 'Professional DJ Directory',
-            description: 'Directory of 1,200+ verified professional DJs available for weddings, parties, and events',
-            numberOfItems: 1200,
+            description: `Directory of ${formatStatNumber(platformStats.totalDJs)} verified professional DJs available for weddings, parties, and events`,
+            numberOfItems: platformStats.totalDJs,
             itemListElement: [
               {
                 '@type': 'ListItem',
@@ -378,7 +385,7 @@ export default async function HomePage() {
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-sm mb-6">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">1,200+ Verified Professional DJs</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{formatStatNumber(platformStats.totalDJs)} Verified Professional DJs</span>
               </div>
 
               {/* Main Headline - SEO Optimized */}
@@ -391,7 +398,7 @@ export default async function HomePage() {
                 </h1>
                 
               <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 leading-relaxed mb-8 max-w-3xl mx-auto">
-                Browse 1,200+ verified professional DJs nationwide. Get free quotes, read real reviews, and book instantly. The #1 DJ directory and booking software trusted by thousands.
+                Browse {formatStatNumber(platformStats.totalDJs)} verified professional DJs nationwide. Get free quotes, read real reviews, and book instantly. The #1 DJ directory and booking software trusted by {getTrustDescription(platformStats.totalOrganizations)}.
               </p>
 
               {/* Search Bar - Primary CTA */}
@@ -444,7 +451,7 @@ export default async function HomePage() {
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-                Why Thousands Trust DJ Dash
+                Why {getTrustDescription(platformStats.totalOrganizations).charAt(0).toUpperCase() + getTrustDescription(platformStats.totalOrganizations).slice(1)} Trust DJ Dash
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
                 The #1 platform for finding and booking professional DJs
@@ -456,7 +463,7 @@ export default async function HomePage() {
                 <div className="inline-flex p-4 bg-green-100 dark:bg-green-900/20 rounded-full mb-4">
                   <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
                 </div>
-                <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2">1,200+</div>
+                <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2">{formatStatNumber(platformStats.totalDJs)}</div>
                 <div className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Verified DJs</div>
                 <p className="text-gray-600 dark:text-gray-400">
                   All DJs are verified professionals with background checks
@@ -467,10 +474,10 @@ export default async function HomePage() {
                 <div className="inline-flex p-4 bg-yellow-100 dark:bg-yellow-900/20 rounded-full mb-4">
                   <Star className="w-8 h-8 text-yellow-600 dark:text-yellow-400 fill-current" />
                 </div>
-                <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2">4.9/5</div>
+                <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2">{platformStats.averageRating}/5</div>
                 <div className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Average Rating</div>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Real reviews from verified clients who booked these DJs
+                  {formatStatNumber(platformStats.totalReviews)} real reviews from verified clients who booked these DJs
                 </p>
               </div>
 
@@ -667,9 +674,9 @@ export default async function HomePage() {
           <div className="max-w-7xl mx-auto">
             <div className="grid md:grid-cols-4 gap-8 text-center">
               {[
-                { value: '1,200+', label: 'Professional DJs', icon: Users },
+                { value: formatStatNumber(platformStats.totalDJs), label: 'Professional DJs', icon: Users },
                 { value: '45,000+', label: 'Events Booked', icon: Calendar },
-                { value: '4.9/5', label: 'Average Rating', icon: Star },
+                { value: `${platformStats.averageRating}/5`, label: 'Average Rating', icon: Star },
                 { value: '98%', label: 'Satisfaction Rate', icon: TrendingUp },
               ].map((stat, idx) => (
                 <div key={idx}>
@@ -693,7 +700,7 @@ export default async function HomePage() {
               Ready to Find Your Perfect DJ?
             </h2>
             <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
-              Browse our directory of 1,200+ verified professional DJs. Get free quotes and book instantly.
+              Browse our directory of {formatStatNumber(platformStats.totalDJs)} verified professional DJs. Get free quotes and book instantly.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
