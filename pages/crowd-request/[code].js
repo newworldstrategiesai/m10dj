@@ -65,6 +65,17 @@ export default function CrowdRequestPage() {
   const [bundleSize, setBundleSize] = useState(1); // Bundle size: 1, 2, or 3
   const [bundleSongs, setBundleSongs] = useState([]); // Array of {songTitle, songArtist} for bundle songs
 
+  // Reset bundle size to 1 when custom amount is entered or amount doesn't equal minimum
+  useEffect(() => {
+    const baseAmount = getBaseAmount();
+    // If using custom amount OR amount doesn't equal minimum, reset bundle to 1
+    if (amountType === 'custom' || (baseAmount > 0 && baseAmount !== minimumAmount)) {
+      if (bundleSize > 1) {
+        setBundleSize(1);
+      }
+    }
+  }, [amountType, customAmount, presetAmount, minimumAmount, getBaseAmount, bundleSize]); // Watch for amount changes
+
   // Initialize bundle songs array when bundle size changes
   useEffect(() => {
     if (bundleSize > 1) {
