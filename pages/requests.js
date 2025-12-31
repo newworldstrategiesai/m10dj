@@ -374,17 +374,6 @@ export function GeneralRequestsPage({
     return () => clearTimeout(timer);
   }, []);
 
-  // Reset bundle size to 1 when custom amount is entered or amount doesn't equal minimum
-  useEffect(() => {
-    const baseAmount = getBaseAmount();
-    // If using custom amount OR amount doesn't equal minimum, reset bundle to 1
-    if (amountType === 'custom' || (baseAmount > 0 && baseAmount !== minimumAmount)) {
-      if (bundleSize > 1) {
-        setBundleSize(1);
-      }
-    }
-  }, [amountType, customAmount, presetAmount, minimumAmount, getBaseAmount, bundleSize]); // Watch for amount changes
-
   // Initialize bundle songs array when bundle size changes
   useEffect(() => {
     if (bundleSize > 1) {
@@ -631,6 +620,18 @@ export function GeneralRequestsPage({
     }
     return getPaymentAmountHook();
   }, [shouldUseBidding, biddingSelectedAmount, getPaymentAmountHook]);
+
+  // Reset bundle size to 1 when custom amount is entered or amount doesn't equal minimum
+  // Must be after getBaseAmount is defined
+  useEffect(() => {
+    const baseAmount = getBaseAmount();
+    // If using custom amount OR amount doesn't equal minimum, reset bundle to 1
+    if (amountType === 'custom' || (baseAmount > 0 && baseAmount !== minimumAmount)) {
+      if (bundleSize > 1) {
+        setBundleSize(1);
+      }
+    }
+  }, [amountType, customAmount, presetAmount, minimumAmount, getBaseAmount, bundleSize]); // Watch for amount changes
 
   // Scroll to bundle songs section when bundle is selected and min bid is selected
   // Must be after getBaseAmount is defined
