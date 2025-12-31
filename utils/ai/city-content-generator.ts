@@ -132,7 +132,7 @@ Return ONLY valid JSON in this exact format:
         {
           role: 'system',
           content:
-            'You are an expert content writer specializing in local business SEO and event planning. Generate helpful, accurate, and engaging content that helps people find and hire DJs.',
+            'You are a knowledgeable local Memphis expert who writes naturally and conversationally. Write like a helpful local professional, not like AI. Avoid generic phrases like "In conclusion", "It\'s worth noting", "Whether you\'re". Be specific about Memphis, use varied sentence structures, and write in a friendly, conversational tone. Make it sound human-written and genuinely useful.',
         },
         {
           role: 'user',

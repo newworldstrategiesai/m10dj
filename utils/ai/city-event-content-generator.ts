@@ -136,6 +136,16 @@ export async function generateCityEventContent(
 
 Generate comprehensive, SEO-rich content for a page about ${eventTypeDisplay} in ${cityName}, ${state}.
 
+CRITICAL WRITING REQUIREMENTS:
+- Write naturally and conversationally, like a local Memphis expert
+- Avoid AI-generated phrases: "In conclusion", "It's worth noting", "Whether you're", "When it comes to", "One of the most", etc.
+- Vary sentence structure - mix short punchy sentences with longer descriptive ones
+- Be specific about Memphis: mention real neighborhoods (Downtown, Midtown, East Memphis, Germantown, Collierville), real venues, local music scene
+- Use contractions and casual language where appropriate
+- Write like you're helping a friend, not like a corporate AI
+- Make it useful and practical, not generic
+- Include specific details that show local knowledge
+
 Context:
 - City: ${cityName}, ${state} (${stateAbbr})
 - Event Type: ${eventTypeDisplay} (${eventType})
@@ -242,7 +252,7 @@ Return ONLY valid JSON in this exact format:
         {
           role: 'system',
           content:
-            'You are an expert SEO content writer specializing in local business content optimized for both traditional search engines and AI-powered search engines. Generate comprehensive, accurate, and helpful content that directly answers user questions.',
+            'You are a local Memphis expert and content writer who writes naturally and conversationally. Write like a knowledgeable local professional, not like AI. Avoid generic phrases like "In conclusion", "It\'s worth noting", "Whether you\'re", etc. Use varied sentence structures, be specific about Memphis details, and write in a helpful, conversational tone. Make it sound human-written and useful.',
         },
         {
           role: 'user',
@@ -250,7 +260,7 @@ Return ONLY valid JSON in this exact format:
         },
       ],
       temperature: 0.7,
-      max_tokens: 8000,
+      max_tokens: 4000,
       response_format: { type: 'json_object' },
     });
 

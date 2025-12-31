@@ -165,19 +165,51 @@ async function generateCityEventPage(city: any, eventType: any) {
       product_context: 'djdash',
     };
 
-    // Upsert page
-    const { data, error } = await supabase
+    // Check if page exists first
+    const { data: existingPage, error: checkError } = await supabase
       .from('city_event_pages')
-      .upsert(pageData, {
-        onConflict: 'city_slug,event_type_slug,product_context',
-        ignoreDuplicates: false
-      })
-      .select()
-      .single();
+      .select('id')
+      .eq('city_slug', city.slug)
+      .eq('event_type_slug', eventType.slug)
+      .eq('product_context', 'djdash')
+      .maybeSingle();
+
+    if (checkError) {
+      console.error(`  ❌ Error checking existing page:`, checkError);
+    }
+
+    let data, error;
+    if (existingPage) {
+      // Update existing
+      console.log(`  📝 Updating existing page...`);
+      const result = await supabase
+        .from('city_event_pages')
+        .update(pageData)
+        .eq('id', existingPage.id)
+        .select();
+      data = result.data?.[0];
+      error = result.error;
+    } else {
+      // Insert new
+      console.log(`  ➕ Inserting new page...`);
+      const result = await supabase
+        .from('city_event_pages')
+        .insert(pageData)
+        .select();
+      data = result.data?.[0];
+      error = result.error;
+    }
 
     if (error) {
       console.error(`  ❌ Error saving page:`, error);
+      console.error(`  ❌ Error code:`, error.code);
+      console.error(`  ❌ Error message:`, error.message);
+      console.error(`  ❌ Error details:`, error.details);
       throw error;
+    }
+
+    if (!data) {
+      throw new Error('No data returned from database operation');
     }
 
     console.log(`  ✅ Page saved: ${data.id}`);
