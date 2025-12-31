@@ -15,10 +15,39 @@ function BundleSelector({
   bundleSize, // Selected bundle size: 1, 2, or 3
   setBundleSize,
   requestType,
-  disabled = false
+  disabled = false,
+  amountType = 'preset', // 'preset' or 'custom'
+  customAmount = '' // Raw custom amount string
 }) {
   // Only show for song requests
   if (requestType !== 'song_request') {
+    return null;
+  }
+
+  // For custom amount, check if user actually entered the minimum amount
+  // (not just if the validated amount equals minimum)
+  if (amountType === 'custom') {
+    if (!customAmount || customAmount.trim() === '') {
+      return null; // Don't show if custom amount is empty
+    }
+    const enteredAmount = parseFloat(customAmount) || 0;
+    const enteredAmountInCents = Math.round(enteredAmount * 100);
+    // Only show if the user actually entered the minimum amount (not less, not more)
+    if (enteredAmountInCents !== minimumAmount) {
+      return null; // Don't show if entered amount doesn't equal minimum
+    }
+  }
+
+  // Only show bundles if base amount is set and equals minimum
+  if (!baseAmount || baseAmount < minimumAmount) {
+    return null;
+  }
+
+  // Check if min bid is selected (needed for bundle options 2 and 3)
+  const isMinBidSelected = baseAmount === minimumAmount;
+
+  // Hide entire bundle selector until minimum bid is selected
+  if (!isMinBidSelected) {
     return null;
   }
 
@@ -67,19 +96,6 @@ function BundleSelector({
     { size: 2, label: '2 Songs', price: calculateBundlePrice(2), savings: getBundleSavings(2) },
     { size: 3, label: '3 Songs', price: calculateBundlePrice(3), savings: getBundleSavings(3) }
   ];
-
-  // Only show bundles if base amount is set
-  if (!baseAmount || baseAmount < minimumAmount) {
-    return null;
-  }
-
-  // Check if min bid is selected (needed for bundle options 2 and 3)
-  const isMinBidSelected = baseAmount === minimumAmount;
-
-  // Hide entire bundle selector until minimum bid is selected
-  if (!isMinBidSelected) {
-    return null;
-  }
 
   return (
     <div className="mt-4 sm:mt-6 border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-4 sm:pt-6">

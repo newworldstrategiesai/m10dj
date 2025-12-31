@@ -202,6 +202,8 @@ function PaymentAmountSelector({
             setBundleSize={setBundleSize}
             requestType={requestType}
             disabled={!getBaseAmount() || getBaseAmount() < minimumAmount}
+            amountType={amountType}
+            customAmount={customAmount}
           />
         )}
 

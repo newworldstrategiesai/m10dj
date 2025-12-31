@@ -424,7 +424,11 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                             // Fallback based on domain
                             console.warn('Custom logo failed to load:', customLogoUrl);
                             if (isTipJarDomain()) {
-                              e.target.src = getAssetUrl('/assets/TipJar-Logo-With-Text.png');
+                              // Use white logo for organization pages, green for marketing
+                              const isOrgPage = organizationSlug || organizationId;
+                              e.target.src = isOrgPage 
+                                ? getAssetUrl('/assets/TipJar-Logo-White.png')
+                                : getAssetUrl('/assets/TipJar-Logo-With-Text.png');
                             } else if (isDJDashDomain()) {
                               e.target.src = getAssetUrl('/assets/DJ-Dash-Logo-Black-1.PNG');
                             } else if (isM10DJCompanyDomain()) {
@@ -455,11 +459,17 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     }
                     
                     // Show TipJar logo when on tipjar.live domain
+                    // Use white logo for organization pages, green logo for marketing pages
                     if (isTipJarDomain()) {
+                      const isOrganizationPage = organizationSlug || organizationId;
+                      const logoSrc = isOrganizationPage 
+                        ? getAssetUrl("/assets/TipJar-Logo-White.png")
+                        : getAssetUrl("/assets/TipJar-Logo-With-Text.png");
+                      
                       return (
                         <img
-                          key={`logo-tipjar-${isDarkMode ? 'dark' : 'light'}`}
-                          src={getAssetUrl("/assets/TipJar-Logo-With-Text.png")}
+                          key={`logo-tipjar-${isOrganizationPage ? 'org' : 'marketing'}-${isDarkMode ? 'dark' : 'light'}`}
+                          src={logoSrc}
                           alt="TipJar.Live"
                           className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
                           style={{ display: 'block', objectFit: 'contain' }}

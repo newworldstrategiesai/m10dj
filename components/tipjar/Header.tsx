@@ -13,6 +13,19 @@ export default function TipJarHeader() {
   const pathname = usePathname();
   const isLivePage = pathname?.startsWith('/live/');
   const isPricingPage = pathname?.includes('/pricing') || pathname === '/pricing';
+  // Check if this is an artist/organization page (e.g., /tipjar/m10djcompany)
+  // Marketing pages are: /tipjar, /tipjar/pricing, /tipjar/features, etc.
+  const isArtistPage = pathname?.startsWith('/tipjar/') && 
+    pathname !== '/tipjar' && 
+    !pathname.startsWith('/tipjar/pricing') &&
+    !pathname.startsWith('/tipjar/features') &&
+    !pathname.startsWith('/tipjar/how-it-works') &&
+    !pathname.startsWith('/tipjar/signin') &&
+    !pathname.startsWith('/tipjar/signup') &&
+    !pathname.startsWith('/tipjar/dashboard') &&
+    !pathname.startsWith('/tipjar/onboarding') &&
+    !pathname.startsWith('/tipjar/embed') &&
+    !pathname.startsWith('/tipjar/alerts');
 
   useEffect(() => {
     // On live pages, keep header transparent
@@ -44,30 +57,47 @@ export default function TipJarHeader() {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group">
-            <div className="relative w-10 h-10 group-hover:scale-105 transition-transform">
-              <Image
-                src="/assets/TipJar-Logo-Icon.png"
-                alt="TipJar Logo"
-                width={40}
-                height={40}
-                className="object-contain"
-                priority
-              />
-            </div>
-            <span className={`text-2xl font-bold transition-colors ${
-              isLivePage || isPricingPage || !isScrolled
-                ? 'text-white' 
-                : 'text-gray-900 dark:text-white'
-            }`}>
-              TipJar
-            </span>
-            <span className={`text-sm font-medium transition-colors ${
-              isLivePage || isPricingPage || !isScrolled
-                ? 'text-white font-semibold' 
-                : 'text-gray-600 dark:text-gray-400'
-            }`}>
-              .Live
-            </span>
+            {isArtistPage ? (
+              // Use full white logo for artist pages
+              <div className="relative h-10 md:h-12 group-hover:scale-105 transition-transform">
+                <Image
+                  src="/assets/TipJar-Logo-White.png"
+                  alt="TipJar Logo"
+                  width={120}
+                  height={48}
+                  className="object-contain h-full w-auto"
+                  priority
+                />
+              </div>
+            ) : (
+              // Use icon + text for marketing pages
+              <>
+                <div className="relative w-10 h-10 group-hover:scale-105 transition-transform">
+                  <Image
+                    src="/assets/TipJar-Logo-Icon.png"
+                    alt="TipJar Logo"
+                    width={40}
+                    height={40}
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <span className={`text-2xl font-bold transition-colors ${
+                  isLivePage || isPricingPage || !isScrolled
+                    ? 'text-white' 
+                    : 'text-gray-900 dark:text-white'
+                }`}>
+                  TipJar
+                </span>
+                <span className={`text-sm font-medium transition-colors ${
+                  isLivePage || isPricingPage || !isScrolled
+                    ? 'text-white font-semibold' 
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}>
+                  .Live
+                </span>
+              </>
+            )}
           </Link>
 
           {/* Desktop Navigation */}

@@ -29,7 +29,14 @@ export function useCrowdRequestPayment({
     if (amountType === 'preset') {
       return presetAmount;
     } else {
+      // For custom amount, only return a value if user has actually entered something
+      if (!customAmount || customAmount.trim() === '') {
+        return 0; // Return 0 when custom amount is empty to prevent bundle selector from showing
+      }
       const custom = parseFloat(customAmount) || 0;
+      if (custom <= 0) {
+        return 0; // Return 0 if invalid amount
+      }
       const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
       const validatedCustom = Math.max(custom * 100, minPresetAmount);
       return Math.round(validatedCustom);
