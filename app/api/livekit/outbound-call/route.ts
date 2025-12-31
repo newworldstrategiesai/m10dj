@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { createClient as createServerClient } from '@/utils/supabase/server';
 
 const roomService = new RoomServiceClient(
   process.env.LIVEKIT_URL!.replace('wss://', 'https://'),
@@ -16,34 +16,25 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user (try requireAdmin, but allow service role for function executor)
-    let user;
-    try {
-      user = await requireAdmin(
-        request as any,
-        { 
-          status: (code: number) => ({ 
-            json: (data: any) => NextResponse.json(data, { status: code }) 
-          }), 
-          headersSent: false 
-        } as any
+    // Get authenticated user
+    const supabaseServer = await createServerClient();
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
-    } catch (authError) {
-      // If requireAdmin fails, this might be a service-to-service call from function executor
-      // Check if we have a valid service role key in headers
-      const authHeader = request.headers.get('authorization');
-      if (authHeader?.includes(process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) || '')) {
-        // Service role call - allow it (for function executor)
-        user = { id: 'system', email: 'system@m10dj.com' };
-      } else {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
     }
 
-    const { contactId, phoneNumber, callType = 'follow_up' } = await request.json();
+    const { 
+      contactId, 
+      phoneNumber, 
+      callType = 'follow_up',
+      callReason,
+      agentSettings,
+      userId
+    } = await request.json();
 
     if (!contactId && !phoneNumber) {
       return NextResponse.json(
@@ -99,18 +90,25 @@ export async function POST(request: NextRequest) {
     // Generate token for AI bot
     const botToken = await generateBotToken(roomName);
 
-    // Store call record
+    // Store call record with additional metadata
     const { data: callRecord, error: callError } = await supabase
       .from('voice_calls')
       .insert({
         room_name: roomName,
         contact_id: contactId || null,
         client_phone: targetPhone,
-        admin_phone: process.env.ADMIN_PHONE_NUMBER,
+        admin_phone: process.env.ADMIN_PHONE_NUMBER || user.email || 'unknown',
         direction: 'outbound',
         call_type: callType,
         status: 'ringing',
         started_at: new Date().toISOString(),
+        user_id: userId || user?.id || null,
+        metadata: agentSettings ? JSON.stringify({
+          agentName: agentSettings.agentName,
+          role: agentSettings.role,
+          companyName: agentSettings.companyName,
+          callReason,
+        }) : null,
       })
       .select()
       .single();
@@ -121,8 +119,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Start AI bot in background (non-blocking)
+    // Pass agent settings and call reason to the bot
     if (contact) {
-      startAIVoiceBot(roomName, botToken, contact, callType).catch((error) => {
+      startAIVoiceBot(
+        roomName, 
+        botToken, 
+        contact, 
+        callType,
+        {
+          agentSettings,
+          callReason,
+          userId: userId || user.id,
+        }
+      ).catch((error) => {
         console.error('Error starting AI bot:', error);
       });
     }
@@ -176,7 +185,12 @@ async function startAIVoiceBot(
   roomName: string,
   token: string,
   contact: any,
-  callType: string
+  callType: string,
+  options?: {
+    agentSettings?: any;
+    callReason?: string;
+    userId?: string;
+  }
 ) {
   // This would start a background process that:
   // 1. Connects to LiveKit room
@@ -190,8 +204,14 @@ async function startAIVoiceBot(
   console.log(`AI bot would connect to room: ${roomName}`);
   console.log(`Contact: ${contact.first_name} ${contact.last_name}`);
   console.log(`Call type: ${callType}`);
+  if (options?.agentSettings) {
+    console.log(`Agent settings:`, options.agentSettings);
+  }
+  if (options?.callReason) {
+    console.log(`Call reason: ${options.callReason}`);
+  }
   
-  // TODO: Implement full AI voice bot
+  // TODO: Implement full AI voice bot with agent settings
   // See: utils/livekit/ai-voice-bot.ts for structure
 }
 

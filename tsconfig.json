@@ -42,6 +42,7 @@
     "supabase/functions",
     "supabase/functions/**",
     "agents",
-    "agents/**"
+    "agents/**",
+    "lib/email"
   ]
 }
