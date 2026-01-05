@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { createConnectAccount } from '@/utils/stripe/connect';
 import { stripe } from '@/utils/stripe/config';
+import { getCurrentOrganization } from '@/utils/organization-context';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -22,16 +23,27 @@ export default async function handler(req, res) {
 
     const user = session.user;
 
-    // Get user's organization (include product_context to determine correct domain)
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    let { data: organization, error: orgError } = await supabaseAdmin
-      .from('organizations')
-      .select('id, name, slug, stripe_connect_account_id, product_context')
-      .eq('owner_id', user.id)
-      .single();
+    // Get user's organization using the helper function
+    // This handles both owner and team member cases (venue hierarchy support)
+    let organization = await getCurrentOrganization(supabase);
+    
+    // If not found via helper (which uses RLS), try with admin client as fallback
+    // This handles edge cases where RLS might block but user should have access
+    if (!organization) {
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: orgData, error: orgError } = await supabaseAdmin
+        .from('organizations')
+        .select('id, name, slug, stripe_connect_account_id, product_context')
+        .eq('owner_id', user.id)
+        .single();
+      
+      if (!orgError && orgData) {
+        organization = orgData;
+      }
+    }
 
     // If organization doesn't exist, create one automatically
-    if (orgError || !organization) {
+    if (!organization) {
       console.log('No organization found for user, creating one automatically:', user.id);
       
       // Generate a default organization name from user email or use a generic name
@@ -58,6 +70,7 @@ export default async function handler(req, res) {
       }
       
       // Create organization with trial
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14-day trial
       

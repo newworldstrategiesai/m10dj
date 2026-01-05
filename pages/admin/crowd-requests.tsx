@@ -691,8 +691,8 @@ export default function CrowdRequestsPage() {
         updateData.requests_bidding_minimum_bid = biddingSettings.minimumBid;
         updateData.requests_bidding_starting_bid = biddingSettings.startingBid;
 
-        const { data: updatedOrg, error: orgError } = await supabase
-          .from('organizations')
+        const { data: updatedOrg, error: orgError } = await (supabase
+          .from('organizations') as any)
           .update(updateData)
           .eq('id', organization.id)
           .select()
@@ -726,8 +726,8 @@ export default function CrowdRequestsPage() {
               basicUpdateData.requests_main_heading = pageSettings.mainHeading || null;
             }
             
-            const { data: retryOrg, error: retryError } = await supabase
-              .from('organizations')
+            const { data: retryOrg, error: retryError } = await (supabase
+              .from('organizations') as any)
               .update(basicUpdateData)
               .eq('id', organization.id)
               .select()
@@ -769,20 +769,21 @@ export default function CrowdRequestsPage() {
           .from('organizations')
           .select('*')
           .eq('id', organization.id)
-          .single();
+          .single() as any;
         
         if (refreshError) {
           console.error('Error refreshing organization:', refreshError);
         } else if (refreshedOrg) {
-          setOrganization(refreshedOrg);
+          const org = refreshedOrg as any;
+          setOrganization(org);
           // Update cover photo history from refreshed org
           let history: string[] = [];
-          if (refreshedOrg.requests_cover_photo_history) {
-            if (Array.isArray(refreshedOrg.requests_cover_photo_history)) {
-              history = refreshedOrg.requests_cover_photo_history;
-            } else if (typeof refreshedOrg.requests_cover_photo_history === 'string') {
+          if (org.requests_cover_photo_history) {
+            if (Array.isArray(org.requests_cover_photo_history)) {
+              history = org.requests_cover_photo_history;
+            } else if (typeof org.requests_cover_photo_history === 'string') {
               try {
-                history = JSON.parse(refreshedOrg.requests_cover_photo_history);
+                history = JSON.parse(org.requests_cover_photo_history);
               } catch (e) {
                 console.warn('Failed to parse cover photo history:', e);
                 history = [];
@@ -791,15 +792,15 @@ export default function CrowdRequestsPage() {
           }
           setCoverPhotoHistory(history);
           setHeaderSettings({
-            artistName: refreshedOrg.requests_header_artist_name || '',
-            location: refreshedOrg.requests_header_location || '',
-            date: refreshedOrg.requests_header_date || ''
+            artistName: org.requests_header_artist_name || '',
+            location: org.requests_header_location || '',
+            date: org.requests_header_date || ''
           });
           setCoverPhotoSettings({
-            requests_cover_photo_url: refreshedOrg.requests_cover_photo_url || '',
-            requests_artist_photo_url: refreshedOrg.requests_artist_photo_url || '',
-            requests_venue_photo_url: refreshedOrg.requests_venue_photo_url || '',
-            requests_primary_cover_source: (refreshedOrg.requests_primary_cover_source as 'artist' | 'venue') || 'artist',
+            requests_cover_photo_url: org.requests_cover_photo_url || '',
+            requests_artist_photo_url: org.requests_artist_photo_url || '',
+            requests_venue_photo_url: org.requests_venue_photo_url || '',
+            requests_primary_cover_source: (org.requests_primary_cover_source as 'artist' | 'venue') || 'artist',
           });
           // Helper to load photo history
           const loadPhotoHistory = (historyData: any): string[] => {
@@ -817,28 +818,28 @@ export default function CrowdRequestsPage() {
           };
 
           // Update all photo histories from refreshed org
-          setCoverPhotoHistory(loadPhotoHistory(refreshedOrg.requests_cover_photo_history));
-          setArtistPhotoHistory(loadPhotoHistory(refreshedOrg.requests_artist_photo_history));
-          setVenuePhotoHistory(loadPhotoHistory(refreshedOrg.requests_venue_photo_history));
+          setCoverPhotoHistory(loadPhotoHistory(org.requests_cover_photo_history));
+          setArtistPhotoHistory(loadPhotoHistory(org.requests_artist_photo_history));
+          setVenuePhotoHistory(loadPhotoHistory(org.requests_venue_photo_history));
           
           // Update social links
-          if (refreshedOrg.social_links && Array.isArray(refreshedOrg.social_links)) {
-            setSocialLinks(refreshedOrg.social_links.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)));
+          if (org.social_links && Array.isArray(org.social_links)) {
+            setSocialLinks(org.social_links.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)));
           }
           
           // Update bidding settings
           setBiddingSettings({
-            enabled: (refreshedOrg as any).requests_bidding_enabled || false,
-            minimumBid: (refreshedOrg as any).requests_bidding_minimum_bid || 500,
-            startingBid: (refreshedOrg as any).requests_bidding_starting_bid || 500
+            enabled: org.requests_bidding_enabled || false,
+            minimumBid: org.requests_bidding_minimum_bid || 500,
+            startingBid: org.requests_bidding_starting_bid || 500
           });
           
-          console.log('✅ Organization data refreshed:', refreshedOrg);
+          console.log('✅ Organization data refreshed:', org);
           console.log('🎯 Primary cover source after refresh:', {
-            requests_primary_cover_source: refreshedOrg.requests_primary_cover_source,
-            requests_artist_photo_url: refreshedOrg.requests_artist_photo_url,
-            requests_venue_photo_url: refreshedOrg.requests_venue_photo_url,
-            requests_cover_photo_url: refreshedOrg.requests_cover_photo_url
+            requests_primary_cover_source: org.requests_primary_cover_source,
+            requests_artist_photo_url: org.requests_artist_photo_url,
+            requests_venue_photo_url: org.requests_venue_photo_url,
+            requests_cover_photo_url: org.requests_cover_photo_url
           });
         }
       }
@@ -963,8 +964,8 @@ export default function CrowdRequestsPage() {
             updateData.payment_intent_id = update.payment_intent_id;
           }
           
-          const { error } = await supabase
-            .from('crowd_requests')
+          const { error } = await (supabase
+            .from('crowd_requests') as any)
             .update(updateData)
             .eq('id', update.id);
           
@@ -1071,7 +1072,7 @@ export default function CrowdRequestsPage() {
       
       // Get current user's organization using the helper function
       // This handles both owner and team member cases
-      const org = await getCurrentOrganization(supabase);
+      const org = await getCurrentOrganization(supabase) as any;
 
       if (!org) {
         throw new Error('No organization found');
@@ -1488,7 +1489,7 @@ export default function CrowdRequestsPage() {
             .from('organizations')
             .select('name')
             .eq('owner_id', user.id)
-            .single();
+            .single() as any;
           if (org?.name) {
             artistName = org.name;
           }
@@ -2284,8 +2285,8 @@ export default function CrowdRequestsPage() {
         updateData.played_at = new Date().toISOString();
       }
       
-      const { error } = await supabase
-        .from('crowd_requests')
+      const { error } = await (supabase
+        .from('crowd_requests') as any)
         .update(updateData)
         .eq('id', requestId);
 
@@ -2692,8 +2693,8 @@ export default function CrowdRequestsPage() {
 
     try {
       const updates = Array.from(selectedRequests).map(id => 
-        supabase
-          .from('crowd_requests')
+        (supabase
+          .from('crowd_requests') as any)
           .update({ status: newStatus, updated_at: new Date().toISOString() })
           .eq('id', id)
       );
@@ -3251,14 +3252,14 @@ export default function CrowdRequestsPage() {
         .from('organizations')
         .select('id')
         .eq('owner_id', user.id)
-        .single();
+        .single() as any;
 
       if (!org) {
         throw new Error('No organization found');
       }
 
-      const { error } = await supabase
-        .from('crowd_requests')
+      const { error } = await (supabase
+        .from('crowd_requests') as any)
         .update({ 
           organization_id: org.id,
           updated_at: new Date().toISOString()
@@ -3692,8 +3693,8 @@ export default function CrowdRequestsPage() {
                         const assign = confirm(`Found ${data.without_organization.length} requests without organization. Assign them to your organization?`);
                         if (assign) {
                           for (const req of data.without_organization) {
-                            await supabase
-                              .from('crowd_requests')
+                            await (supabase
+                              .from('crowd_requests') as any)
                               .update({ organization_id: organization.id })
                               .eq('id', req.id);
                           }

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { getAccountStatus } from '@/utils/stripe/connect';
+import { getCurrentOrganization } from '@/utils/organization-context';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,15 +22,25 @@ export default async function handler(req, res) {
 
     const user = session.user;
 
-    // Get user's organization
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: organization, error: orgError } = await supabaseAdmin
-      .from('organizations')
-      .select('id, stripe_connect_account_id, stripe_connect_onboarding_url, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, stripe_connect_details_submitted')
-      .eq('owner_id', user.id)
-      .single();
+    // Get user's organization using the helper function
+    // This handles both owner and team member cases (venue hierarchy support)
+    let organization = await getCurrentOrganization(supabase);
+    
+    // If not found via helper (which uses RLS), try with admin client as fallback
+    if (!organization) {
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: orgData, error: orgError } = await supabaseAdmin
+        .from('organizations')
+        .select('id, stripe_connect_account_id, stripe_connect_onboarding_url, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, stripe_connect_details_submitted')
+        .eq('owner_id', user.id)
+        .single();
+      
+      if (!orgError && orgData) {
+        organization = orgData;
+      }
+    }
 
-    if (orgError || !organization) {
+    if (!organization) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
@@ -44,6 +55,7 @@ export default async function handler(req, res) {
     const accountStatus = await getAccountStatus(organization.stripe_connect_account_id);
 
     // Update organization with latest status
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     await supabaseAdmin
       .from('organizations')
       .update({
