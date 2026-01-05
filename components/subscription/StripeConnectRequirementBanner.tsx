@@ -9,7 +9,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { AlertCircle, CreditCard, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Organization } from '@/utils/organization-context';
@@ -116,17 +115,25 @@ export default function StripeConnectRequirementBanner({
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {action && (
-                <Link href="/onboarding/stripe-setup" className="flex-shrink-0">
-                  <Button
-                    size="sm"
-                    className="h-7 sm:h-8 px-2 sm:px-3 flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs"
-                  >
-                    <CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                    <span className="hidden sm:inline">{action}</span>
-                    <span className="sm:hidden">Setup</span>
-                    <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                  </Button>
-                </Link>
+                <Button
+                  size="sm"
+                  className="h-7 sm:h-8 px-2 sm:px-3 flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs"
+                  onClick={() => {
+                    // Scroll to StripeConnectSetup component if it exists on the page
+                    const setupElement = document.querySelector('[data-stripe-setup]');
+                    if (setupElement) {
+                      setupElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                      // Fallback: try to find the component by class or redirect
+                      window.location.href = '/admin/dashboard-starter';
+                    }
+                  }}
+                >
+                  <CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <span className="hidden sm:inline">{action}</span>
+                  <span className="sm:hidden">Setup</span>
+                  <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                </Button>
               )}
               {isAdmin && (
                 <button

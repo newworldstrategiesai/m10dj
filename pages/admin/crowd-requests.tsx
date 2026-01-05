@@ -63,6 +63,7 @@ import { cn } from '@/utils/cn';
 import { getCoverPhotoUrl } from '@/utils/cover-photo-helper';
 import UpgradePrompt from '@/components/subscription/UpgradePrompt';
 import StripeConnectRequirementBanner from '@/components/subscription/StripeConnectRequirementBanner';
+import StripeConnectSetup from '@/components/subscription/StripeConnectSetup';
 import UsageLimitBanner from '@/components/subscription/UsageLimitBanner';
 import { getCurrentOrganization } from '@/utils/organization-context';
 import SongRecognition from '@/components/audio/SongRecognition';
@@ -3630,6 +3631,9 @@ export default function CrowdRequestsPage() {
       <div className="space-y-6 px-4 lg:px-6">
         {/* Stripe Connect Requirement Banner */}
         <StripeConnectRequirementBanner organization={organization} />
+        
+        {/* Stripe Connect Setup Component */}
+        <StripeConnectSetup />
         
         {/* Usage Limit Banner for Free Tier */}
         {subscriptionTier === 'starter' && subscriptionStatus && usageStats && (
