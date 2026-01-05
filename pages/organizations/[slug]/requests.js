@@ -46,7 +46,7 @@ export default function OrganizationRequestsPage() {
         console.log('📡 Querying Supabase for organization...');
         const { data: org, error: orgError } = await supabase
           .from('organizations')
-          .select('*')
+          .select('*, social_links') // Explicitly select social_links to ensure it's included
           .eq('slug', slug)
           .maybeSingle(); // Use maybeSingle to avoid errors on not found
         
@@ -96,6 +96,8 @@ export default function OrganizationRequestsPage() {
           requests_header_artist_name: org.requests_header_artist_name || org.name || '',
           requests_header_location: org.requests_header_location || '',
           requests_header_date: org.requests_header_date || '',
+          // Explicitly ensure social_links is an array (default to empty array if null/undefined)
+          social_links: Array.isArray(org.social_links) ? org.social_links : (org.social_links ? [org.social_links] : []),
         };
         
         // Force a state update by using a new object reference with timestamp
@@ -127,7 +129,10 @@ export default function OrganizationRequestsPage() {
           date: freshOrg.requests_header_date,
           updated_at: freshOrg.updated_at,
           timestamp: new Date().toISOString(),
-          forceRefresh
+          forceRefresh,
+          hasSocialLinks: !!freshOrg.social_links,
+          socialLinksCount: Array.isArray(freshOrg.social_links) ? freshOrg.social_links.length : 0,
+          socialLinks: freshOrg.social_links
         });
         
         // Also log the full object to verify data
@@ -286,7 +291,7 @@ export default function OrganizationRequestsPage() {
         <meta name="twitter:image:alt" content={organization.requests_header_artist_name || organization.name || 'Request a Song or Shoutout'} />
       </Head>
       <GeneralRequestsPage 
-        key={`${organization.id}-${organization.updated_at || Date.now()}-${organization.requests_header_artist_name || ''}`}
+        key={`${organization.id}-${organization.updated_at || Date.now()}-${organization.requests_header_artist_name || ''}-${JSON.stringify(organization.social_links || [])}`}
         organizationId={organization.id} 
         organizationName={organization.name}
         organizationCoverPhoto={getCoverPhotoUrl(organization, '/assets/DJ-Ben-Murray-Dodge-Poster.png')}
@@ -296,6 +301,8 @@ export default function OrganizationRequestsPage() {
           requests_header_artist_name: organization.requests_header_artist_name || organization.name || '',
           requests_header_location: organization.requests_header_location || '',
           requests_header_date: organization.requests_header_date || '',
+          // Explicitly include social_links to ensure it's passed through
+          social_links: organization.social_links || [],
         }}
         isOwner={isOwner}
         customBranding={organization.white_label_enabled ? {

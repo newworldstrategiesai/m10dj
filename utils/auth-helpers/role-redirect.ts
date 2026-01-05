@@ -64,8 +64,35 @@ export async function getUserRole(): Promise<UserRole | null> {
 
 /**
  * Gets the appropriate redirect URL based on user role
+ * IMPORTANT: This function should use product-based redirects for TipJar/DJ Dash users
  */
 export async function getRoleBasedRedirectUrl(baseUrl: string = ''): Promise<string> {
+  // First, check product context - TipJar/DJ Dash users should use product-based redirects
+  try {
+    const supabase = createClient();
+    const getUserResult = await withTimeout(
+      supabase.auth.getUser(),
+      3000,
+      { data: { user: null }, error: { 
+        message: 'Timeout',
+        name: 'AuthTimeoutError',
+        status: 408,
+        __isAuthError: true
+      } as any }
+    );
+    
+    const { data: { user } } = getUserResult;
+    
+    if (user?.user_metadata?.product_context) {
+      // User has product context - use product-based redirect
+      const { getProductBasedRedirectUrl } = await import('./product-redirect');
+      return await getProductBasedRedirectUrl(baseUrl);
+    }
+  } catch (error) {
+    console.error('Error checking product context:', error);
+    // Fall through to role-based logic
+  }
+
   const userRole = await getUserRole();
   
   if (!userRole) {
@@ -94,27 +121,39 @@ export async function getRoleBasedRedirectUrl(baseUrl: string = ''): Promise<str
     
     const { data: { user } } = getUserResult;
     
-    if (user) {
+      if (user) {
       // Check if user has an organization (SaaS customer)
       // Use maybeSingle() instead of single() to avoid errors when no row exists
-      let organizationResult;
+      let organizationResult: { data: { id: string; product_context?: string | null } | null; error: any } | null = null;
       try {
         const timeoutPromise = new Promise<{ data: null; error: null }>((resolve) => 
           setTimeout(() => resolve({ data: null, error: null }), 3000)
         );
         const queryPromise = supabase
           .from('organizations')
-          .select('id')
+          .select('id, product_context')
           .eq('owner_id', user.id)
           .maybeSingle();
-        organizationResult = await Promise.race([queryPromise, timeoutPromise]);
+        organizationResult = await Promise.race([queryPromise, timeoutPromise]) as { data: { id: string; product_context?: string | null } | null; error: any };
       } catch (error) {
         organizationResult = { data: null, error: null };
       }
 
-      if (organizationResult.data) {
-        // User has an organization - they're a SaaS customer
-        // Send them to onboarding (which will show their dashboard if org exists)
+      if (organizationResult?.data) {
+        // User has an organization - check product context
+        const productContext = organizationResult.data.product_context;
+        
+        // TipJar users should go to TipJar dashboard, not onboarding
+        if (productContext === 'tipjar') {
+          return `${baseUrl}/tipjar/dashboard`;
+        }
+        
+        // DJ Dash users should go to DJ Dash dashboard
+        if (productContext === 'djdash') {
+          return `${baseUrl}/djdash/dashboard`;
+        }
+        
+        // M10 DJ Company users go to onboarding
         return `${baseUrl}/onboarding/welcome`;
       }
       
@@ -122,6 +161,15 @@ export async function getRoleBasedRedirectUrl(baseUrl: string = ''): Promise<str
       // 1. New signup (organization being created) - send to onboarding
       // 2. Event client (not a SaaS customer) - send to client portal
       // For now, send to onboarding to let the trigger create the org
+      // BUT check user metadata for product context first
+      const productContext = user.user_metadata?.product_context;
+      if (productContext === 'tipjar') {
+        return `${baseUrl}/tipjar/onboarding`;
+      }
+      if (productContext === 'djdash') {
+        return `${baseUrl}/djdash/onboarding`;
+      }
+      
       return `${baseUrl}/onboarding/welcome`;
     }
   } catch (error) {
