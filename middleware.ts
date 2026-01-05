@@ -107,6 +107,10 @@ export async function middleware(request: NextRequest) {
     } else if (path.startsWith('/requests')) {
       // Keep requests path as-is (handled by pages router)
       // Don't rewrite, let it fall through
+    } else if (path.startsWith('/organizations/')) {
+      // Keep /organizations/[slug]/requests paths as-is (handled by pages router)
+      // Don't rewrite, let it fall through to pages router
+      rewritePath = '';
     } else if (path === '/bid' || path.startsWith('/bid/')) {
       // Keep /bid path as-is (dedicated bidding page)
       // Don't rewrite, let it fall through to pages router

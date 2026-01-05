@@ -341,27 +341,30 @@ export default function StripeConnectSetup() {
               ) : (
                 <>
                   <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
-                    <strong>Action Required:</strong> Before creating Connect accounts, you need to complete Stripe's platform verification. This is a one-time setup that takes 2-3 minutes.
+                    <strong>Platform Verification Required:</strong> The TipJar platform needs to complete Stripe's one-time platform verification before individual accounts can be set up. This is a platform-level requirement, not something you need to do.
                   </p>
-                  <ol className="text-sm text-yellow-800 dark:text-yellow-200 space-y-2 list-decimal list-inside mb-3">
-                    <li>Click the button below to open your Stripe Dashboard</li>
-                    <li>Complete the platform profile questionnaire and identity verification</li>
-                    <li>Return here and click "Try Again"</li>
-                  </ol>
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                    The platform owner will complete this verification. Once done, you'll be able to set up your payment account automatically through this interface - no manual Stripe Dashboard login required.
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-3">
+                    💡 <strong>Note:</strong> Your request page will continue to work and accept payments. Payment setup can be completed later once platform verification is done.
+                  </p>
                   {errorDetails.helpUrl && (
-                    <a
-                      href={errorDetails.helpUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-colors mb-3"
-                    >
-                      <ArrowRight className="w-4 h-4" />
-                      Open Stripe Dashboard {errorDetails.isTestMode ? '(Test Mode)' : '(Live Mode)'}
-                    </a>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-yellow-300 dark:border-yellow-700">
+                      <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-2">
+                        <strong>For Platform Administrators:</strong> If you're setting up the platform, you can complete verification at:
+                      </p>
+                      <a
+                        href={errorDetails.helpUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-medium rounded transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Stripe Connect Dashboard {errorDetails.isTestMode ? '(Test Mode)' : '(Live Mode)'}
+                      </a>
+                    </div>
                   )}
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                    💡 <strong>Note:</strong> You can skip this step for now and set up payments later. Your request page will still work without payment processing.
-                  </p>
                 </>
               )}
             </div>

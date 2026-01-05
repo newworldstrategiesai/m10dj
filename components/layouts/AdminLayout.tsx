@@ -29,11 +29,28 @@ export default function AdminLayout({ children, title, description, showPageTitl
   const { theme, systemTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [productContext, setProductContext] = useState<string | null>(null);
 
   // Get the actual theme to display (resolve system theme)
   const displayTheme = mounted && theme !== 'system' ? theme : (mounted && systemTheme || 'dark');
 
-  // Determine logo based on theme
+  // Check product context on mount
+  useEffect(() => {
+    const checkProductContext = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.product_context) {
+          setProductContext(user.user_metadata.product_context);
+        }
+      } catch (error) {
+        console.error('Error checking product context:', error);
+      }
+    };
+    checkProductContext();
+  }, [supabase]);
+
+  // Determine logo based on theme and product context
+  // TipJar users should not see M10 DJ Company logos
   const logoSrc = displayTheme === 'dark'
     ? '/assets/m10 dj company logo white.gif'
     : '/assets/m10 dj company logo black.gif';
@@ -71,7 +88,7 @@ export default function AdminLayout({ children, title, description, showPageTitl
   return (
     <>
       <Head>
-        <title>{title ? `${title} - M10 DJ Admin` : 'M10 DJ Admin'}</title>
+        <title>{title ? `${title} - ${productContext === 'tipjar' ? 'TipJar' : 'M10 DJ Admin'}` : (productContext === 'tipjar' ? 'TipJar Admin' : 'M10 DJ Admin')}</title>
         {description && <meta name="description" content={description} />}
         <meta name="robots" content="noindex, nofollow" />
       </Head>
@@ -114,11 +131,15 @@ export default function AdminLayout({ children, title, description, showPageTitl
                     {pageTitle && (
                       <>
                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                          <img
-                            src={mounted ? logoSrc : '/assets/m10 dj company logo black.gif'}
-                            alt="M10 DJ Company Logo"
-                            className="w-10 h-10 object-contain"
-                          />
+                          {productContext === 'tipjar' ? (
+                            <span className="text-2xl font-bold text-[#fcba00]">💸</span>
+                          ) : (
+                            <img
+                              src={mounted ? logoSrc : '/assets/m10 dj company logo black.gif'}
+                              alt="M10 DJ Company Logo"
+                              className="w-10 h-10 object-contain"
+                            />
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
