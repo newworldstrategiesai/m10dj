@@ -12,6 +12,7 @@ import Head from 'next/head';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCoverPhotoUrl } from '../../../utils/cover-photo-helper';
 import GeneralRequestsPage from '../../requests'; // Reuse the existing requests page component
+import TipJarChatWidget from '../../../components/tipjar/TipJarChatWidget';
 
 export default function OrganizationRequestsPage() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function OrganizationRequestsPage() {
         console.log('📡 Querying Supabase for organization...');
         const { data: org, error: orgError } = await supabase
           .from('organizations')
-          .select('*, social_links') // Explicitly select social_links to ensure it's included
+          .select('*, social_links, product_context') // Explicitly select social_links and product_context
           .eq('slug', slug)
           .maybeSingle(); // Use maybeSingle to avoid errors on not found
         
@@ -315,6 +316,15 @@ export default function OrganizationRequestsPage() {
           fontFamily: organization.font_family
         } : null}
       />
+      
+      {/* TipJar Chat Widget - Only show for TipJar organizations */}
+      {organization.product_context === 'tipjar' && (
+        <TipJarChatWidget
+          organizationId={organization.id}
+          organizationName={organization.name}
+          organizationData={organization}
+        />
+      )}
     </>
   );
 }
