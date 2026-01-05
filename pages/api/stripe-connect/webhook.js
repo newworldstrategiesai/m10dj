@@ -83,6 +83,23 @@ async function handleAccountUpdated(account, supabaseAdmin) {
   // Get account status
   const accountStatus = await getAccountStatus(accountId);
 
+  // Get organization to check previous status
+  const { data: organization } = await supabaseAdmin
+    .from('organizations')
+    .select('id, name, owner_id, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, product_context')
+    .eq('stripe_connect_account_id', accountId)
+    .single();
+
+  if (!organization) {
+    console.error(`Organization not found for Stripe account ${accountId}`);
+    return;
+  }
+
+  // Check if account just became active (wasn't complete before, but is now)
+  const wasComplete = organization.stripe_connect_charges_enabled && organization.stripe_connect_payouts_enabled;
+  const isNowComplete = accountStatus.chargesEnabled && accountStatus.payoutsEnabled;
+  const justActivated = !wasComplete && isNowComplete;
+
   // Update organization
   const { error } = await supabaseAdmin
     .from('organizations')
@@ -100,6 +117,99 @@ async function handleAccountUpdated(account, supabaseAdmin) {
   }
 
   console.log(`Updated organization for Stripe account ${accountId}`);
+
+  // Send email notification if account just became active
+  if (justActivated) {
+    try {
+      // Get owner email
+      const { data: owner, error: ownerError } = await supabaseAdmin.auth.admin.getUserById(organization.owner_id);
+      
+      if (!ownerError && owner?.user?.email) {
+        await sendActivationEmail(owner.user.email, organization.name, organization.product_context);
+      }
+    } catch (emailError) {
+      console.error('Error sending activation email:', emailError);
+      // Don't throw - email failure shouldn't break webhook
+    }
+  }
+}
+
+/**
+ * Send email notification when Stripe Connect account is activated
+ */
+async function sendActivationEmail(userEmail, organizationName, productContext) {
+  try {
+    // Determine correct domain and dashboard URL based on product context
+    let baseUrl = 'https://m10djcompany.com';
+    let dashboardUrl = '/admin/dashboard';
+    
+    if (productContext === 'tipjar') {
+      baseUrl = 'https://tipjar.live';
+      dashboardUrl = '/admin/crowd-requests';
+    } else if (productContext === 'djdash') {
+      baseUrl = 'https://djdash.net';
+      dashboardUrl = '/djdash/dashboard';
+    }
+
+    const dashboardLink = `${baseUrl}${dashboardUrl}`;
+
+    // Check if Resend is configured
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      console.warn('Resend API key not configured, skipping activation email');
+      return;
+    }
+
+    const { Resend } = await import('resend');
+    const resend = new Resend(resendApiKey);
+
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0;">
+          <h1 style="margin: 0; font-size: 24px;">🎉 Payment Setup Complete!</h1>
+          <p style="margin: 10px 0 0 0; opacity: 0.9;">Your Stripe account is now active</p>
+        </div>
+        
+        <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
+          <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px;">
+            Great news! Your Stripe Connect account for <strong>${organizationName}</strong> has been activated and is ready to receive payments.
+          </p>
+          
+          <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0 0 10px 0; font-weight: 600; color: #065f46;">✅ What's Active:</p>
+            <ul style="margin: 0; padding-left: 20px; color: #047857;">
+              <li>Payment processing enabled</li>
+              <li>Automatic payouts to your bank account</li>
+              <li>All future payments will be deposited automatically</li>
+            </ul>
+          </div>
+
+          <div style="margin-top: 30px; text-align: center;">
+            <a href="${dashboardLink}" 
+               style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">
+              Go to Dashboard →
+            </a>
+          </div>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 14px;">
+            <p style="margin: 0;">Questions? Contact support at <a href="mailto:support@tipjar.live" style="color: #10b981;">support@tipjar.live</a></p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    await resend.emails.send({
+      from: 'TipJar <payments@tipjar.live>',
+      to: userEmail,
+      subject: '🎉 Your Payment Account is Now Active!',
+      html: emailHtml,
+    });
+
+    console.log(`✅ Activation email sent to: ${userEmail}`);
+  } catch (error) {
+    console.error('Error sending activation email:', error);
+    throw error;
+  }
 }
 
 /**

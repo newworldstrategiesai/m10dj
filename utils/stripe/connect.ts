@@ -76,11 +76,14 @@ export async function createConnectAccount(
     logo?: string;
     primaryColor?: string;
     secondaryColor?: string;
-  }
+  },
+  baseUrl?: string, // Optional baseUrl parameter to override default
+  productContext?: 'tipjar' | 'djdash' | 'm10dj' | null // Product context to set created_via metadata
 ): Promise<Stripe.Account> {
   // Build business profile URL
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
-  const businessProfileUrl = `${baseUrl}/${organizationSlug}/requests`;
+  // Use provided baseUrl, or fall back to environment variable, or default to m10djcompany.com
+  const finalBaseUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
+  const businessProfileUrl = `${finalBaseUrl}/${organizationSlug}/requests`;
 
   // Accounts v2 API structure
   const accountData: any = {
@@ -124,6 +127,7 @@ export async function createConnectAccount(
     metadata: {
       organization_name: organizationName,
       organization_slug: organizationSlug,
+      created_via: productContext === 'tipjar' ? 'tipjar' : productContext === 'djdash' ? 'djdash' : 'm10dj_platform',
     },
     include: [
       'configuration.customer',
@@ -195,7 +199,7 @@ export async function createConnectAccount(
         metadata: {
           organization_name: organizationName,
           organization_slug: organizationSlug,
-          created_via: 'm10dj_platform',
+          created_via: productContext === 'tipjar' ? 'tipjar' : productContext === 'djdash' ? 'djdash' : 'm10dj_platform',
         },
         // Business profile for better onboarding
         business_profile: {

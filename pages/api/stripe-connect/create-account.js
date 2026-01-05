@@ -22,11 +22,11 @@ export default async function handler(req, res) {
 
     const user = session.user;
 
-    // Get user's organization
+    // Get user's organization (include product_context to determine correct domain)
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     let { data: organization, error: orgError } = await supabaseAdmin
       .from('organizations')
-      .select('id, name, slug, stripe_connect_account_id')
+      .select('id, name, slug, stripe_connect_account_id, product_context')
       .eq('owner_id', user.id)
       .single();
 
@@ -61,6 +61,20 @@ export default async function handler(req, res) {
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14-day trial
       
+      // Determine product_context from user metadata or request origin
+      let productContext = user.user_metadata?.product_context || null;
+      if (!productContext) {
+        // Fallback: detect from request origin
+        const origin = req.headers.origin || '';
+        if (origin.includes('tipjar.live')) {
+          productContext = 'tipjar';
+        } else if (origin.includes('djdash.net')) {
+          productContext = 'djdash';
+        } else {
+          productContext = 'm10dj';
+        }
+      }
+      
       const { data: newOrg, error: createError } = await supabaseAdmin
         .from('organizations')
         .insert({
@@ -71,8 +85,9 @@ export default async function handler(req, res) {
           subscription_status: 'trial',
           trial_ends_at: trialEndsAt.toISOString(),
           requests_header_artist_name: defaultName,
+          product_context: productContext,
         })
-        .select('id, name, slug, stripe_connect_account_id')
+        .select('id, name, slug, stripe_connect_account_id, product_context')
         .single();
       
       if (createError || !newOrg) {
@@ -142,10 +157,21 @@ export default async function handler(req, res) {
     
     console.log('Creating Stripe Connect account for:', user.email, organization.name);
     
+    // Determine correct domain based on product context
+    // For TipJar users, use tipjar.live; for others, use m10djcompany.com
+    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.headers.origin || 'http://localhost:3000';
+    
+    // Override based on product context
+    if (organization.product_context === 'tipjar') {
+      baseUrl = 'https://tipjar.live';
+    } else if (organization.product_context === 'djdash') {
+      baseUrl = 'https://djdash.net';
+    } else if (!baseUrl.includes('tipjar.live') && !baseUrl.includes('djdash.net')) {
+      // Default to m10djcompany.com if not already set and not a product-specific domain
+      baseUrl = 'https://m10djcompany.com';
+    }
+    
     // Build business profile URL if organization has a slug
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
-                   req.headers.origin || 
-                   'http://localhost:3000';
     const businessProfileUrl = organization.slug 
       ? `${baseUrl}/${organization.slug}/requests`
       : undefined;
@@ -154,7 +180,9 @@ export default async function handler(req, res) {
       user.email || '', 
       organization.name,
       organization.slug, // Pass slug for business profile URL
-      branding
+      branding,
+      baseUrl, // Pass the correct baseUrl
+      organization.product_context // Pass product context for metadata
     );
     console.log('Stripe Connect account created successfully:', account.id);
 

@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCurrentOrganization, Organization } from '@/utils/organization-context';
-import { CreditCard, CheckCircle, AlertCircle, ArrowRight, Loader2, ExternalLink } from 'lucide-react';
+import { CreditCard, CheckCircle, AlertCircle, ArrowRight, Loader2, ExternalLink, RefreshCw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import BankAccountCollection from './BankAccountCollection';
 
@@ -28,10 +28,44 @@ export default function StripeConnectSetup() {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null);
   const [onboardingUrl, setOnboardingUrl] = useState<string | null>(null);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
     loadStatus();
   }, []);
+
+  useEffect(() => {
+    // Check if user has dismissed this notification
+    if (organization?.id) {
+      const dismissedKey = `stripe_setup_complete_dismissed_${organization.id}`;
+      const dismissed = localStorage.getItem(dismissedKey) === 'true';
+      setIsDismissed(dismissed);
+    }
+  }, [organization?.id]);
+
+  useEffect(() => {
+    // Auto-refresh status every 30 seconds if account exists but not complete
+    if (!connectStatus?.hasAccount || connectStatus.isComplete) {
+      return; // Don't set up interval if no account or already complete
+    }
+
+    const interval = setInterval(() => {
+      loadStatus();
+    }, 30000); // 30 seconds
+    
+    // Also refresh when page becomes visible (user returns from Stripe)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [connectStatus?.hasAccount, connectStatus?.isComplete]);
 
   const loadStatus = async () => {
     try {
@@ -45,9 +79,48 @@ export default function StripeConnectSetup() {
       setOrganization(org);
 
       // Check if organization has Stripe Connect account
-      // Access optional fields with type assertion (fields exist in DB but may not be in type)
       const orgData = org as any;
       const hasAccount = !!orgData.stripe_connect_account_id;
+
+      if (hasAccount) {
+        // Fetch fresh status from Stripe API (this also updates the database)
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            const statusResponse = await fetch('/api/stripe-connect/status', {
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              // Use fresh data from Stripe API
+              setConnectStatus({
+                hasAccount: true,
+                chargesEnabled: statusData.accountStatus?.chargesEnabled || false,
+                payoutsEnabled: statusData.accountStatus?.payoutsEnabled || false,
+                detailsSubmitted: statusData.accountStatus?.detailsSubmitted || false,
+                isComplete: statusData.isComplete || false,
+                accountId: statusData.accountId || org.stripe_connect_account_id,
+              });
+
+              // If not complete, get onboarding URL
+              if (!statusData.isComplete) {
+                await fetchOnboardingUrl();
+              }
+              
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (statusError) {
+          console.error('Error fetching status from API:', statusError);
+          // Fall through to use org data
+        }
+      }
+
+      // Fallback: Use organization data if API call fails
       const chargesEnabled = orgData.stripe_connect_charges_enabled || false;
       const payoutsEnabled = orgData.stripe_connect_payouts_enabled || false;
       const detailsSubmitted = orgData.stripe_connect_details_submitted || false;
@@ -176,8 +249,28 @@ export default function StripeConnectSetup() {
 
   // If setup is complete, show success status
   if (connectStatus.isComplete) {
+    // Don't show if dismissed
+    if (isDismissed) {
+      return null;
+    }
+
+    const handleDismiss = () => {
+      if (organization?.id) {
+        const dismissedKey = `stripe_setup_complete_dismissed_${organization.id}`;
+        localStorage.setItem(dismissedKey, 'true');
+        setIsDismissed(true);
+      }
+    };
+
     return (
-      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6">
+      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6 relative">
+        <button
+          onClick={handleDismiss}
+          className="absolute top-4 right-4 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 transition-colors"
+          aria-label="Dismiss notification"
+        >
+          <X className="h-5 w-5" />
+        </button>
         <div className="flex items-start gap-4">
           <div className="bg-green-100 dark:bg-green-900/50 rounded-lg p-3 flex-shrink-0">
             <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -204,6 +297,11 @@ export default function StripeConnectSetup() {
   if (connectStatus.hasAccount && !connectStatus.isComplete) {
     // If charges are enabled but payouts aren't, offer Financial Connections for bank account
     const needsBankAccount = connectStatus.chargesEnabled && !connectStatus.payoutsEnabled;
+    
+    // Show refresh button to manually check status
+    const handleRefresh = () => {
+      loadStatus();
+    };
     
     return (
       <div className="space-y-4">
@@ -268,23 +366,39 @@ export default function StripeConnectSetup() {
                 </h3>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
                   Your Stripe account is created but needs to be activated. Complete the onboarding process to start receiving payments.
-                </p>
-                <Button
-                  onClick={handleSetup}
-                  disabled={settingUp}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                >
-                  {settingUp ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      Complete Setup <ArrowRight className="h-4 w-4 ml-2" />
-                    </>
+                  {connectStatus.detailsSubmitted && (
+                    <span className="block mt-2 text-xs">
+                      Status: Details submitted - waiting for Stripe approval. This usually takes just a few moments.
+                    </span>
                   )}
-                </Button>
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleSetup}
+                    disabled={settingUp}
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                  >
+                    {settingUp ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Complete Setup <ArrowRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleRefresh}
+                    disabled={loading}
+                    variant="outline"
+                    className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                    title="Refresh status from Stripe"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

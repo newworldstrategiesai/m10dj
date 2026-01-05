@@ -4,8 +4,9 @@
  * Displays a prominent call-to-action for users to upgrade their subscription
  */
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Zap, ArrowRight, Crown, Sparkles, Lock } from 'lucide-react';
+import { Zap, ArrowRight, Crown, Sparkles, Lock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface UpgradePromptProps {
@@ -21,6 +22,25 @@ export default function UpgradePrompt({
   tier = 'professional',
   className = '' 
 }: UpgradePromptProps) {
+  const [isDismissed, setIsDismissed] = useState(false);
+
+  useEffect(() => {
+    // Check if user has dismissed this notification
+    const dismissedKey = `upgrade_prompt_dismissed_${tier}`;
+    const dismissed = localStorage.getItem(dismissedKey) === 'true';
+    setIsDismissed(dismissed);
+  }, [tier]);
+
+  const handleDismiss = () => {
+    const dismissedKey = `upgrade_prompt_dismissed_${tier}`;
+    localStorage.setItem(dismissedKey, 'true');
+    setIsDismissed(true);
+  };
+
+  if (isDismissed) {
+    return null;
+  }
+
   const defaultMessage = featureName 
     ? `Unlock ${featureName} and more with a ${tier === 'enterprise' ? 'Professional or Enterprise' : tier} plan.`
     : `Upgrade your plan to unlock more features and capabilities.`;
@@ -29,7 +49,14 @@ export default function UpgradePrompt({
   const TierIcon = tierIcon;
 
   return (
-    <div className={`bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl p-6 shadow-lg ${className}`}>
+    <div className={`bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl p-6 shadow-lg relative ${className}`}>
+      <button
+        onClick={handleDismiss}
+        className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+        aria-label="Dismiss notification"
+      >
+        <X className="h-5 w-5" />
+      </button>
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1">
           <div className="bg-white/20 rounded-lg p-3 flex-shrink-0">
