@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import ImageUploadInput from '@/components/admin/ImageUploadInput';
 
 interface ArtistLink {
   label: string;
@@ -60,6 +61,7 @@ export default function ArtistPageSettings() {
     artist_page_booking_url: '',
     artist_page_custom_css: ''
   });
+  const [galleryUploadKey, setGalleryUploadKey] = useState(0);
 
   useEffect(() => {
     checkUser();
@@ -134,8 +136,7 @@ export default function ArtistPageSettings() {
     setSuccess(false);
   };
 
-  const handleAddGalleryImage = () => {
-    const url = prompt('Enter image URL:');
+  const handleAddGalleryImage = (url: string) => {
     if (url) {
       setFormData(prev => ({
         ...prev,
@@ -385,49 +386,48 @@ export default function ArtistPageSettings() {
           {/* Media Tab */}
           {activeTab === 'media' && (
             <div className="space-y-6">
-              <div>
-                <Label htmlFor="profile_image">Profile Image URL</Label>
-                <Input
-                  id="profile_image"
-                  value={formData.artist_page_profile_image_url}
-                  onChange={(e) => handleInputChange('artist_page_profile_image_url', e.target.value)}
-                  placeholder="https://..."
-                  className="mt-1"
-                />
-                {formData.artist_page_profile_image_url && (
-                  <img 
-                    src={formData.artist_page_profile_image_url} 
-                    alt="Profile preview" 
-                    className="mt-2 w-32 h-32 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
-                  />
-                )}
-              </div>
+              <ImageUploadInput
+                label="Profile Image"
+                value={formData.artist_page_profile_image_url}
+                onChange={(url) => handleInputChange('artist_page_profile_image_url', url)}
+                recommendedDimensions="400x400px"
+                aspectRatio="1:1"
+                previewClassName="w-32 h-32 rounded-full object-cover"
+                showPreview={true}
+              />
 
-              <div>
-                <Label htmlFor="cover_image">Cover Image URL</Label>
-                <Input
-                  id="cover_image"
-                  value={formData.artist_page_cover_image_url}
-                  onChange={(e) => handleInputChange('artist_page_cover_image_url', e.target.value)}
-                  placeholder="https://..."
-                  className="mt-1"
-                />
-                {formData.artist_page_cover_image_url && (
-                  <img 
-                    src={formData.artist_page_cover_image_url} 
-                    alt="Cover preview" 
-                    className="mt-2 w-full max-w-md h-48 rounded-lg object-cover border-2 border-gray-200 dark:border-gray-700"
-                  />
-                )}
-              </div>
+              <ImageUploadInput
+                label="Cover Image"
+                value={formData.artist_page_cover_image_url}
+                onChange={(url) => handleInputChange('artist_page_cover_image_url', url)}
+                recommendedDimensions="1920x800px"
+                aspectRatio="16:9"
+                previewClassName="w-full max-w-md h-48 object-cover"
+                showPreview={true}
+              />
 
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label>Gallery Images</Label>
-                  <Button onClick={handleAddGalleryImage} variant="outline" size="sm" className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Add Image
-                  </Button>
+                </div>
+                <div className="mb-4">
+                  <ImageUploadInput
+                    key={`gallery-upload-${galleryUploadKey}`}
+                    label="Add Gallery Image"
+                    value=""
+                    onChange={(url) => {
+                      if (url) {
+                        handleAddGalleryImage(url);
+                        // Reset the upload component by changing key
+                        setGalleryUploadKey(prev => prev + 1);
+                      }
+                    }}
+                    recommendedDimensions="800x800px"
+                    aspectRatio="1:1"
+                    previewClassName="hidden"
+                    showPreview={false}
+                    required={false}
+                  />
                 </div>
                 <div className="grid grid-cols-4 gap-4">
                   {formData.artist_page_gallery_images.map((url, index) => (

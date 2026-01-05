@@ -5,6 +5,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
+// Singleton client for client-side operations to prevent multiple GoTrueClient instances
+let clientSideSupabaseInstance: ReturnType<typeof createClient> | null = null;
+
 export interface AdminRole {
   id: string;
   user_id: string;
@@ -39,8 +42,11 @@ export async function isAdminEmail(userEmail: string | null | undefined): Promis
 
     let supabase;
     if (isClient) {
-      // Client-side: use anon key (safe for public access)
-      supabase = createClient(supabaseUrl, supabaseAnonKey);
+      // Client-side: use singleton pattern to prevent multiple GoTrueClient instances
+      if (!clientSideSupabaseInstance) {
+        clientSideSupabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+      }
+      supabase = clientSideSupabaseInstance;
     } else {
       // Server-side: try to use service role key for admin operations
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

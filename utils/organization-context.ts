@@ -66,6 +66,12 @@ export async function getCurrentOrganization(
       .eq('owner_id', user.id)
       .maybeSingle();
 
+    // Log RLS policy errors for debugging (but don't throw - these are expected if user has no org)
+    if (orgError && orgError.code !== 'PGRST116') {
+      // PGRST116 is "not found" which is expected, but other errors might indicate RLS issues
+      console.warn('Error querying organizations by owner_id:', orgError);
+    }
+
     // Second try: user is a team member
     if (orgError || !org) {
       const { data: membership, error: membershipError } = await supabase
@@ -76,6 +82,11 @@ export async function getCurrentOrganization(
         .limit(1)
         .maybeSingle();
 
+      // Log membership query errors for debugging
+      if (membershipError && membershipError.code !== 'PGRST116') {
+        console.warn('Error querying organization_members:', membershipError);
+      }
+
       // Only proceed if we found a membership (no error and data exists)
       if (!membershipError && membership?.organization_id) {
         const { data: memberOrg, error: memberOrgError } = await supabase
@@ -83,6 +94,10 @@ export async function getCurrentOrganization(
           .select('*')
           .eq('id', membership.organization_id)
           .maybeSingle();
+
+        if (memberOrgError && memberOrgError.code !== 'PGRST116') {
+          console.warn('Error querying organization by membership:', memberOrgError);
+        }
 
         if (!memberOrgError && memberOrg) {
           org = memberOrg;

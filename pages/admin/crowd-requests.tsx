@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { 
   QrCode, 
   Music, 
@@ -149,7 +149,7 @@ interface CrowdRequest {
 
 export default function CrowdRequestsPage() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const { toast } = useToast();
 
   const [requests, setRequests] = useState<CrowdRequest[]>([]);
@@ -1069,17 +1069,9 @@ export default function CrowdRequestsPage() {
     try {
       setLoading(true);
       
-      // Get current user's organization
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Not authenticated');
-      }
-
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('owner_id', user.id)
-        .single();
+      // Get current user's organization using the helper function
+      // This handles both owner and team member cases
+      const org = await getCurrentOrganization(supabase);
 
       if (!org) {
         throw new Error('No organization found');

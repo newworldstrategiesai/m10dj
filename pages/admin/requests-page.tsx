@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import ImageUploadInput from '@/components/admin/ImageUploadInput';
 import Link from 'next/link';
 
 interface SocialLink {
@@ -573,118 +574,40 @@ export default function RequestsPageSettings() {
 
                   <div className="space-y-6">
                     {/* Primary Cover Photo */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Primary Cover Photo
-                        <span className="text-gray-500 dark:text-gray-400 font-normal ml-2">(Required)</span>
-                      </label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                        Main hero image displayed at the top of your requests page. Recommended: 1920x800px or larger.
-                      </p>
-                      <input
-                        type="url"
-                        value={coverPhotos.requests_cover_photo_url}
-                        onChange={(e) => handleImageUrlChange('requests_cover_photo_url', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
-                        placeholder="https://example.com/cover-photo.jpg"
-                      />
-                      {coverPhotos.requests_cover_photo_url && (
-                        <div className="mt-4 relative group">
-                          <img
-                            src={coverPhotos.requests_cover_photo_url}
-                            alt="Cover photo preview"
-                            className="w-full h-64 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                            <button
-                              onClick={() => handleImageUrlChange('requests_cover_photo_url', '')}
-                              className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                            >
-                              <X className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <ImageUploadInput
+                      label="Primary Cover Photo (Required)"
+                      value={coverPhotos.requests_cover_photo_url}
+                      onChange={(url) => handleImageUrlChange('requests_cover_photo_url', url)}
+                      recommendedDimensions="1920x800px"
+                      aspectRatio="16:9"
+                      previewClassName="w-full h-64 object-cover"
+                      showPreview={true}
+                      required={true}
+                    />
 
                     {/* Artist Photo */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Artist/DJ Photo
-                        <span className="text-gray-500 dark:text-gray-400 font-normal ml-2">(Optional - Fallback)</span>
-                      </label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                        Used if primary cover photo is not set. Features the artist/DJ.
-                      </p>
-                      <input
-                        type="url"
-                        value={coverPhotos.requests_artist_photo_url}
-                        onChange={(e) => handleImageUrlChange('requests_artist_photo_url', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
-                        placeholder="https://example.com/artist-photo.jpg"
-                      />
-                      {coverPhotos.requests_artist_photo_url && (
-                        <div className="mt-4 relative group">
-                          <img
-                            src={coverPhotos.requests_artist_photo_url}
-                            alt="Artist photo preview"
-                            className="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                            <button
-                              onClick={() => handleImageUrlChange('requests_artist_photo_url', '')}
-                              className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                            >
-                              <X className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <ImageUploadInput
+                      label="Artist/DJ Photo (Optional - Fallback)"
+                      value={coverPhotos.requests_artist_photo_url}
+                      onChange={(url) => handleImageUrlChange('requests_artist_photo_url', url)}
+                      recommendedDimensions="1200x600px"
+                      aspectRatio="2:1"
+                      previewClassName="w-full h-48 object-cover"
+                      showPreview={true}
+                      required={false}
+                    />
 
                     {/* Venue Photo */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Venue Photo
-                        <span className="text-gray-500 dark:text-gray-400 font-normal ml-2">(Optional - Fallback)</span>
-                      </label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                        Used if other cover photos are not set. Features a venue.
-                      </p>
-                      <input
-                        type="url"
-                        value={coverPhotos.requests_venue_photo_url}
-                        onChange={(e) => handleImageUrlChange('requests_venue_photo_url', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
-                        placeholder="https://example.com/venue-photo.jpg"
-                      />
-                      {coverPhotos.requests_venue_photo_url && (
-                        <div className="mt-4 relative group">
-                          <img
-                            src={coverPhotos.requests_venue_photo_url}
-                            alt="Venue photo preview"
-                            className="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                            <button
-                              onClick={() => handleImageUrlChange('requests_venue_photo_url', '')}
-                              className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                            >
-                              <X className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <ImageUploadInput
+                      label="Venue Photo (Optional - Fallback)"
+                      value={coverPhotos.requests_venue_photo_url}
+                      onChange={(url) => handleImageUrlChange('requests_venue_photo_url', url)}
+                      recommendedDimensions="1200x600px"
+                      aspectRatio="2:1"
+                      previewClassName="w-full h-48 object-cover"
+                      showPreview={true}
+                      required={false}
+                    />
                   </div>
                 </div>
               ) : activeTab === 'social' ? (
