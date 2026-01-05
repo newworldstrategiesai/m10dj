@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       // Check if user is TipJar user and redirect to correct domain
-      let signinUrl = `${requestUrl.origin}/signin`;
+      // Always use the full path to avoid redirect loops
+      let signinUrl = `${requestUrl.origin}/tipjar/signin/password_signin`;
       try {
         // Try to get user to check product context (even if auth failed)
         const { data: { user } } = await supabase.auth.getUser();
@@ -30,9 +31,17 @@ export async function GET(request: NextRequest) {
             // Already on tipjar.live, use correct path
             signinUrl = `${requestUrl.origin}/tipjar/signin/password_signin`;
           }
+        } else {
+          // Not a TipJar user, use regular signin
+          signinUrl = `${requestUrl.origin}/signin/password_signin`;
         }
       } catch (e) {
-        // Ignore errors when checking user
+        // If we're on tipjar.live, default to TipJar signin
+        if (requestUrl.hostname.includes('tipjar.live')) {
+          signinUrl = `${requestUrl.origin}/tipjar/signin/password_signin`;
+        } else {
+          signinUrl = `${requestUrl.origin}/signin/password_signin`;
+        }
       }
       
       return NextResponse.redirect(

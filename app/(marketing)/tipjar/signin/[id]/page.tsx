@@ -130,7 +130,7 @@ export default async function TipJarSignIn({
       redirect('/tipjar/dashboard');
     }
   } else if (!user && viewProp === 'update_password') {
-    redirect('/tipjar/signin');
+    redirect('/tipjar/signin/password_signin');
   }
 
   return (

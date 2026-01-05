@@ -33,6 +33,8 @@ export default async function TipJarSignIn({
     : '';
   
   // Server-side redirect to the actual signin page (TipJar-specific)
-  redirect(`/tipjar/signin/${defaultView}${redirectParam}`);
+  // Use NextResponse.redirect to avoid middleware rewrite loops
+  const redirectUrl = `/tipjar/signin/${defaultView}${redirectParam}`;
+  redirect(redirectUrl);
 }
 

@@ -13,6 +13,10 @@ export async function getProductBasedRedirectUrl(baseUrl: string = ''): Promise<
     
     if (error || !user) {
       // No user - redirect to signin
+      // Use full path to avoid middleware rewrite loops
+      if (baseUrl.includes('tipjar.live') || baseUrl === '') {
+        return '/tipjar/signin/password_signin';
+      }
       return `${baseUrl}/signin`;
     }
     
