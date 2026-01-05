@@ -56,6 +56,7 @@ export default async function TipJarSignIn({
   }
 
   // Check if the user is already logged in and redirect to the account page if so
+  // Use a more defensive approach - always default to showing sign in page on any error
   let user = null;
   try {
     const supabase = createClient();
@@ -68,7 +69,7 @@ export default async function TipJarSignIn({
     });
     
     const timeoutPromise = new Promise<{ data: { user: null }, error: { message: string } }>((resolve) => 
-      setTimeout(() => resolve({ data: { user: null }, error: { message: 'Timeout' } }), 2000)
+      setTimeout(() => resolve({ data: { user: null }, error: { message: 'Timeout' } }), 1500)
     );
     
     const result = await Promise.race([getUserPromise, timeoutPromise]);
@@ -78,22 +79,31 @@ export default async function TipJarSignIn({
       error
     } = result || { data: { user: null }, error: null };
     
-    // If we get a refresh token error, ignore it and continue to sign in page
-    if (error && (error?.message?.includes('refresh_token_not_found') || 
-                  error?.message?.includes('Invalid Refresh Token') || 
-                  error?.message === 'Timeout' ||
-                  !error)) {
-      // Clear invalid session and continue to sign in (only if not timeout)
-      if (error?.message && error.message !== 'Timeout') {
+    // Only set user if we have a valid user AND no error (or only timeout/refresh token errors)
+    // Default to null (show sign in page) on any uncertainty
+    if (authUser && (!error || 
+        error?.message?.includes('refresh_token_not_found') || 
+        error?.message?.includes('Invalid Refresh Token') || 
+        error?.message === 'Timeout')) {
+      // If we get a refresh token error, clear session and show sign in
+      if (error && error.message !== 'Timeout' && 
+          (error.message.includes('refresh_token_not_found') || error.message.includes('Invalid Refresh Token'))) {
         try {
           await supabase.auth.signOut();
         } catch (signOutError) {
           // Ignore sign out errors
         }
+        user = null;
+      } else if (!error) {
+        // Only set user if there's no error
+        user = authUser;
+      } else {
+        // Timeout or other error - show sign in page
+        user = null;
       }
-      user = null;
     } else {
-      user = authUser;
+      // No user or error - show sign in page
+      user = null;
     }
   } catch (error) {
     // If there's any other error, just continue to sign in page
@@ -111,7 +121,8 @@ export default async function TipJarSignIn({
       } else {
         // Add timeout and error handling to prevent hanging
         // Use product-based redirect for TipJar (will route to /tipjar/dashboard)
-        const redirectPromise = getProductBasedRedirectUrl().catch((error) => {
+        // Use empty string for baseUrl to get relative paths (works for both local and production)
+        const redirectPromise = getProductBasedRedirectUrl('').catch((error) => {
           console.error('Error getting product-based redirect URL:', error);
           return '/tipjar/dashboard'; // Fallback to TipJar dashboard
         });

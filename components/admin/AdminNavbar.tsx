@@ -51,6 +51,7 @@ export default function AdminNavbar() {
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [user, setUser] = useState<any>(null);
+  const [productContext, setProductContext] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -71,6 +72,22 @@ export default function AdminNavbar() {
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
+    
+    // Get product context
+    if (user?.user_metadata?.product_context) {
+      setProductContext(user.user_metadata.product_context);
+    } else {
+      // Also check organization product context as fallback
+      try {
+        const { getCurrentOrganization } = await import('@/utils/organization-context');
+        const org = await getCurrentOrganization(supabase);
+        if (org?.product_context) {
+          setProductContext(org.product_context);
+        }
+      } catch (error) {
+        console.error('Error checking organization product context:', error);
+      }
+    }
   };
 
   const handleSignOut = async () => {
@@ -93,8 +110,8 @@ export default function AdminNavbar() {
     return router.pathname.startsWith(href);
   };
 
-  // Organized menu groups for DJ business admin
-  const navGroups: NavGroup[] = [
+  // Base menu groups for DJ business admin
+  const allNavGroups: NavGroup[] = [
     {
       label: 'Overview',
       items: [
@@ -151,6 +168,40 @@ export default function AdminNavbar() {
     }
   ];
 
+  // Filter navigation groups based on product context
+  const getNavGroups = (): NavGroup[] => {
+    // TipJar users only see song request related features
+    if (productContext === 'tipjar') {
+      return [
+        {
+          label: 'Song Requests',
+          items: [
+            { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-4 h-4" />, description: 'Manage requests' },
+            { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-4 h-4" />, description: 'Customize page' },
+          ]
+        },
+        {
+          label: 'Financial',
+          items: [
+            { label: 'Payouts', href: '/admin/payouts', icon: <DollarSign className="w-4 h-4" />, description: 'Earnings' },
+            { label: 'Billing', href: '/admin/billing', icon: <CreditCard className="w-4 h-4" />, description: 'Subscription' },
+          ]
+        },
+        {
+          label: 'Settings',
+          items: [
+            { label: 'Settings', href: '/admin/settings', icon: <Settings className="w-4 h-4" />, description: 'Account settings' },
+          ]
+        }
+      ];
+    }
+
+    // M10 DJ Company users see all groups
+    return allNavGroups;
+  };
+
+  const navGroups = getNavGroups();
+
   // Flattened items for mobile/quick access
   const allNavItems = navGroups.flatMap(group => group.items);
 
@@ -170,57 +221,80 @@ export default function AdminNavbar() {
           <div className="flex items-center flex-1 min-w-0 gap-4 relative" style={{ overflow: 'visible' }}>
             {/* Logo */}
             <Link
-              href="/admin/dashboard"
+              href={productContext === 'tipjar' ? '/admin/crowd-requests' : '/admin/dashboard'}
               className="flex items-center gap-2 mr-6 flex-shrink-0 hover:opacity-80 transition-opacity"
             >
               <div className="w-8 h-8 bg-gradient-to-br from-[#fcba00] to-[#d97706] rounded-lg flex items-center justify-center">
-                <Music className="w-5 h-5 text-black" />
+                {productContext === 'tipjar' ? (
+                  <span className="text-xl">💸</span>
+                ) : (
+                  <Music className="w-5 h-5 text-black" />
+                )}
               </div>
               <span className="hidden sm:block font-bold text-lg text-gray-900 dark:text-white">
-                M10 DJ Admin
+                {productContext === 'tipjar' ? 'TipJar' : 'M10 DJ Admin'}
               </span>
             </Link>
 
             {/* Desktop Navigation - Main Items */}
             <div className="hidden lg:flex items-center gap-1 flex-1 min-w-0">
               <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ overflowY: 'visible' }}>
-                {/* Core quick links */}
-                <Link
-                  href="/admin/dashboard"
-                  className={`
-                    px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0
-                    ${isActive('/admin/dashboard')
-                      ? 'bg-[#fcba00] text-black'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }
-                  `}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/admin/contacts"
-                  className={`
-                    px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0
-                    ${isActive('/admin/contacts')
-                      ? 'bg-[#fcba00] text-black'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }
-                  `}
-                >
-                  Contacts
-                </Link>
-                <Link
-                  href="/admin/projects"
-                  className={`
-                    px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0
-                    ${isActive('/admin/projects')
-                      ? 'bg-[#fcba00] text-black'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }
-                  `}
-                >
-                  Projects
-                </Link>
+                {/* Core quick links - Filtered by product context */}
+                {productContext !== 'tipjar' && (
+                  <>
+                    <Link
+                      href="/admin/dashboard"
+                      className={`
+                        px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0
+                        ${isActive('/admin/dashboard')
+                          ? 'bg-[#fcba00] text-black'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }
+                      `}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/admin/contacts"
+                      className={`
+                        px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0
+                        ${isActive('/admin/contacts')
+                          ? 'bg-[#fcba00] text-black'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }
+                      `}
+                    >
+                      Contacts
+                    </Link>
+                    <Link
+                      href="/admin/projects"
+                      className={`
+                        px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0
+                        ${isActive('/admin/projects')
+                          ? 'bg-[#fcba00] text-black'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }
+                      `}
+                    >
+                      Projects
+                    </Link>
+                  </>
+                )}
+                {/* TipJar users see Crowd Requests as main link */}
+                {productContext === 'tipjar' && (
+                  <Link
+                    href="/admin/crowd-requests"
+                    className={`
+                      px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0
+                      ${isActive('/admin/crowd-requests')
+                        ? 'bg-[#fcba00] text-black'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }
+                    `}
+                  >
+                    Crowd Requests
+                  </Link>
+                )}
 
                 {/* Dropdown Menus */}
                 {navGroups.slice(1).map((group) => (

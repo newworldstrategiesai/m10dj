@@ -107,11 +107,18 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    // Only fetch data if user is set AND organization is set (prevents TipJar users from fetching)
+    if (user && organization) {
+      // Double-check: Don't fetch if this is a TipJar user
+      const productContext = user.user_metadata?.product_context;
+      if (productContext === 'tipjar' || organization?.product_context === 'tipjar') {
+        router.push('/admin/crowd-requests');
+        return;
+      }
       fetchDashboardData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, organization]);
 
   const checkAuth = async () => {
     try {
@@ -122,10 +129,11 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Check product context - TipJar users should only see crowd requests
+      // CRITICAL: Check product context FIRST - TipJar users should NEVER see M10 admin dashboard
       const productContext = user.user_metadata?.product_context;
       if (productContext === 'tipjar') {
         // TipJar users go directly to crowd requests (their main admin interface)
+        // Redirect immediately - do NOT fetch any data
         router.push('/admin/crowd-requests');
         return;
       }
@@ -139,18 +147,28 @@ export default function AdminDashboard() {
 
       const isPlatformAdmin = adminEmails.includes(user.email || '');
 
-      // If not platform admin, check their organization subscription tier
-      if (!isPlatformAdmin) {
-        const org = await getCurrentOrganization(supabase);
+      // Get organization for data filtering
+      const org = await getCurrentOrganization(supabase);
+      
+      if (!org && !isPlatformAdmin) {
+        // No organization and not admin - redirect to onboarding
+        router.push('/onboarding/welcome');
+        return;
+      }
+
+      if (org) {
+        setOrganization(org);
         
-        if (org) {
-          setOrganization(org);
-          
-          if (org.subscription_tier === 'starter') {
-            // Redirect starter tier users to simplified dashboard
-            router.push('/admin/dashboard-starter');
-            return;
-          }
+        // Check if this is a TipJar organization (double-check)
+        if (org.product_context === 'tipjar') {
+          router.push('/admin/crowd-requests');
+          return;
+        }
+        
+        if (!isPlatformAdmin && org.subscription_tier === 'starter') {
+          // Redirect starter tier users to simplified dashboard
+          router.push('/admin/dashboard-starter');
+          return;
         }
       }
 
@@ -180,16 +198,55 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      // Total contacts
-      const { count: totalContacts } = await supabase
+      // CRITICAL: Get organization_id first to filter all queries
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const adminEmails = [
+        'admin@m10djcompany.com', 
+        'manager@m10djcompany.com',
+        'djbenmurray@gmail.com'
+      ];
+      const isPlatformAdmin = adminEmails.includes(user.email || '');
+
+      // Get organization for filtering (platform admins see all, others see only their org)
+      const org = await getCurrentOrganization(supabase);
+      const orgId = org?.id;
+
+      // Build base queries
+      let contactsQuery = supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true })
         .is('deleted_at', null);
 
-      // Total projects
-      const { count: totalProjects } = await supabase
+      let eventsQuery = supabase
         .from('events')
         .select('*', { count: 'exact', head: true });
+
+      // CRITICAL: Filter by organization_id for non-admin users
+      if (!isPlatformAdmin && orgId) {
+        contactsQuery = contactsQuery.eq('organization_id', orgId);
+        eventsQuery = eventsQuery.eq('organization_id', orgId);
+      } else if (!isPlatformAdmin && !orgId) {
+        // No organization - return zeros
+        setStats({
+          totalContacts: 0,
+          totalProjects: 0,
+          upcomingEvents: 0,
+          thisMonthRevenue: 0,
+          totalRevenue: 0,
+          outstandingBalance: 0,
+          newLeads: 0,
+          bookedEvents: 0
+        });
+        return;
+      }
+
+      // Total contacts
+      const { count: totalContacts } = await contactsQuery;
+
+      // Total projects
+      const { count: totalProjects } = await eventsQuery;
 
       // Upcoming events (all future events - exclude today and past dates)
       const today = new Date();
@@ -197,51 +254,47 @@ export default function AdminDashboard() {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       
-      const { count: upcomingEvents } = await supabase
+      let upcomingEventsQuery = supabase
         .from('events')
         .select('*', { count: 'exact', head: true })
         .gte('event_date', tomorrow.toISOString().split('T')[0])
         .in('status', ['confirmed', 'in_progress']);
 
+      if (!isPlatformAdmin && orgId) {
+        upcomingEventsQuery = upcomingEventsQuery.eq('organization_id', orgId);
+      }
+
+      const { count: upcomingEvents } = await upcomingEventsQuery;
+
       // Revenue stats - temporarily disabled (payments table not migrated)
       const thisMonthRevenue = 0;
       const totalRevenue = 0;
       const outstandingBalance = 0;
-      
-      // TODO: Re-enable after running payments migration
-      // const startOfMonth = new Date();
-      // startOfMonth.setDate(1);
-      // const { data: payments } = await supabase
-      //   .from('payments')
-      //   .select('total_amount, payment_date, payment_status')
-      //   .eq('payment_status', 'Paid');
 
-      // const thisMonthRevenue = (payments || [])
-      //   .filter(p => new Date(p.payment_date) >= startOfMonth)
-      //   .reduce((sum, p) => sum + (p.total_amount || 0), 0);
-
-      // const totalRevenue = (payments || [])
-      //   .reduce((sum, p) => sum + (p.total_amount || 0), 0);
-
-      // const { data: outstanding } = await supabase
-      //   .from('outstanding_balances')
-      //   .select('balance_due');
-
-      // const outstandingBalance = (outstanding || [])
-      //   .reduce((sum, o) => sum + (o.balance_due || 0), 0);
-
-      // New leads
-      const { count: newLeads } = await supabase
+      // New leads - filtered by organization
+      let newLeadsQuery = supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true })
         .eq('lead_status', 'New')
         .is('deleted_at', null);
 
-      // Booked events
-      const { count: bookedEvents } = await supabase
+      if (!isPlatformAdmin && orgId) {
+        newLeadsQuery = newLeadsQuery.eq('organization_id', orgId);
+      }
+
+      const { count: newLeads } = await newLeadsQuery;
+
+      // Booked events - filtered by organization
+      let bookedEventsQuery = supabase
         .from('events')
         .select('*', { count: 'exact', head: true })
         .in('status', ['confirmed', 'in_progress']);
+
+      if (!isPlatformAdmin && orgId) {
+        bookedEventsQuery = bookedEventsQuery.eq('organization_id', orgId);
+      }
+
+      const { count: bookedEvents } = await bookedEventsQuery;
 
       setStats({
         totalContacts: totalContacts || 0,
@@ -260,19 +313,42 @@ export default function AdminDashboard() {
 
   const fetchUpcomingEvents = async () => {
     try {
+      // CRITICAL: Get organization_id to filter events
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const adminEmails = [
+        'admin@m10djcompany.com', 
+        'manager@m10djcompany.com',
+        'djbenmurray@gmail.com'
+      ];
+      const isPlatformAdmin = adminEmails.includes(user.email || '');
+      const org = await getCurrentOrganization(supabase);
+      const orgId = org?.id;
+
       // Only show events that are tomorrow or later (exclude today and past)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       
-      const { data, error } = await supabase
+      let eventsQuery = supabase
         .from('events')
         .select('*')
         .gte('event_date', tomorrow.toISOString().split('T')[0])
         .in('status', ['confirmed', 'in_progress'])
         .order('event_date', { ascending: true })
         .limit(10);
+
+      // CRITICAL: Filter by organization_id for non-admin users
+      if (!isPlatformAdmin && orgId) {
+        eventsQuery = eventsQuery.eq('organization_id', orgId);
+      } else if (!isPlatformAdmin && !orgId) {
+        setUpcomingEvents([]);
+        return;
+      }
+
+      const { data, error } = await eventsQuery;
 
       if (!error && data) {
         setUpcomingEvents(data);
@@ -284,12 +360,35 @@ export default function AdminDashboard() {
 
   const fetchRecentContacts = async () => {
     try {
-      const { data, error } = await supabase
+      // CRITICAL: Get organization_id to filter contacts
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const adminEmails = [
+        'admin@m10djcompany.com', 
+        'manager@m10djcompany.com',
+        'djbenmurray@gmail.com'
+      ];
+      const isPlatformAdmin = adminEmails.includes(user.email || '');
+      const org = await getCurrentOrganization(supabase);
+      const orgId = org?.id;
+
+      let contactsQuery = supabase
         .from('contacts')
         .select('*')
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(5);
+
+      // CRITICAL: Filter by organization_id for non-admin users
+      if (!isPlatformAdmin && orgId) {
+        contactsQuery = contactsQuery.eq('organization_id', orgId);
+      } else if (!isPlatformAdmin && !orgId) {
+        setRecentContacts([]);
+        return;
+      }
+
+      const { data, error } = await contactsQuery;
 
       if (!error && data) {
         // For each contact, try to find the source (form submission or crowd request)

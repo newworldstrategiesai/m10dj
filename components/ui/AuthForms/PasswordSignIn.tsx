@@ -4,7 +4,7 @@ import Button from '@/components/ui/Button/Button';
 import Link from 'next/link';
 import { signInWithPassword } from '@/utils/auth-helpers/server';
 import { handleRequest } from '@/utils/auth-helpers/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -25,8 +25,13 @@ export default function PasswordSignIn({
   message
 }: PasswordSignInProps) {
   const router = redirectMethod === 'client' ? useRouter() : null;
+  const pathname = usePathname();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Detect if we're in TipJar context from the pathname
+  const isTipJar = pathname?.startsWith('/tipjar') || false;
+  const signinBase = isTipJar ? '/tipjar/signin' : '/signin';
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setIsSubmitting(true); // Disable the button while the request is being handled
@@ -106,6 +111,13 @@ export default function PasswordSignIn({
                 value={encodeURIComponent(redirectTo)}
               />
             )}
+            {isTipJar && (
+              <input
+                type="hidden"
+                name="productContext"
+                value="tipjar"
+              />
+            )}
           </div>
           
           <Button
@@ -122,7 +134,7 @@ export default function PasswordSignIn({
       <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-700">
         <div>
           <Link 
-            href="/signin/forgot_password" 
+            href={`${signinBase}/forgot_password`}
             className="text-sm text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand transition-colors"
           >
             Forgot your password?
@@ -131,7 +143,7 @@ export default function PasswordSignIn({
         {allowEmail && (
           <div>
             <Link 
-              href="/signin/email_signin" 
+              href={`${signinBase}/email_signin`}
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand transition-colors"
             >
               Sign in via magic link
@@ -140,7 +152,7 @@ export default function PasswordSignIn({
         )}
         <div>
           <Link 
-            href="/signin/signup" 
+            href={`${signinBase}/signup`}
             className="text-sm text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand transition-colors"
           >
             Don&apos;t have an account? Sign up

@@ -175,9 +175,22 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
 
   const navItems = getNavItems();
 
-  const bottomNavItems: NavItem[] = [
-    { label: 'Settings', href: '/admin/settings', icon: <Settings className="w-5 h-5" /> },
-  ];
+  // Bottom navigation items - filtered by product context
+  const getBottomNavItems = (): NavItem[] => {
+    // TipJar users only see Settings
+    if (productContext === 'tipjar') {
+      return [
+        { label: 'Settings', href: '/admin/settings', icon: <Settings className="w-5 h-5" /> },
+      ];
+    }
+    
+    // M10 DJ Company users see Settings
+    return [
+      { label: 'Settings', href: '/admin/settings', icon: <Settings className="w-5 h-5" /> },
+    ];
+  };
+
+  const bottomNavItems = getBottomNavItems();
 
   const isActive = (href: string) => {
     if (href === '/admin/dashboard') {

@@ -22,6 +22,7 @@ export interface Organization {
   owner_id: string;
   subscription_tier: 'starter' | 'professional' | 'enterprise' | 'white_label';
   subscription_status: 'trial' | 'active' | 'cancelled' | 'past_due';
+  product_context?: 'tipjar' | 'djdash' | 'm10dj' | null; // Product context for multi-tenant isolation
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   trial_ends_at?: string | null;

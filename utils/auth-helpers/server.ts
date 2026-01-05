@@ -162,6 +162,7 @@ export async function signInWithPassword(formData: FormData) {
   const email = String(formData.get('email')).trim();
   const password = String(formData.get('password')).trim();
   const redirectTo = formData.get('redirect') as string;
+  const productContext = String(formData.get('productContext') || '').trim();
   let redirectPath: string;
 
   const supabase = createClient();
@@ -171,9 +172,8 @@ export async function signInWithPassword(formData: FormData) {
   });
 
   if (error) {
-    // Check if this is a TipJar signin based on product context or referrer
-    const { data: { user } } = await supabase.auth.getUser();
-    const productContext = user?.user_metadata?.product_context;
+    // Use productContext from form data (set by client component based on URL path)
+    // This works even when sign-in fails because we can't check user metadata
     const signinPath = productContext === 'tipjar' 
       ? '/tipjar/signin/password_signin'
       : '/signin/password_signin';
@@ -203,8 +203,13 @@ export async function signInWithPassword(formData: FormData) {
     
     redirectPath = getStatusRedirect(finalRedirectUrl, 'Success!', 'You are now signed in.');
   } else {
+    // Use productContext from form data for error redirect
+    const signinPath = productContext === 'tipjar' 
+      ? '/tipjar/signin/password_signin'
+      : '/signin/password_signin';
+    
     redirectPath = getErrorRedirect(
-      '/signin/password_signin',
+      signinPath,
       'Hmm... Something went wrong.',
       'You could not be signed in.'
     );
