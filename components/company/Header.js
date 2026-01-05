@@ -434,6 +434,10 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
               <div className="flex items-center space-x-2.5">
                 <div className="relative flex-shrink-0 overflow-visible">
                   {(() => {
+                    // Use consistent logo selection to prevent hydration mismatches
+                    // During SSR, use light mode logo; after mount, use actual dark mode state
+                    const effectiveDarkMode = isMounted ? isDarkMode : false;
+                    
                     // Show custom logo if provided (highest priority)
                     if (customLogoUrl) {
                       return (

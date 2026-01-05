@@ -4,7 +4,11 @@
 
 BEGIN;
 
--- Drop existing functions that cause recursion
+-- Drop existing policies that depend on the functions first
+DROP POLICY IF EXISTS "Performers can view parent venue" ON organizations;
+DROP POLICY IF EXISTS "Venues can view child performers" ON organizations;
+
+-- Drop existing functions that cause recursion (now safe since policies are dropped)
 DROP FUNCTION IF EXISTS public.check_performer_parent_access(UUID, UUID);
 DROP FUNCTION IF EXISTS public.check_venue_child_access(UUID, UUID);
 
