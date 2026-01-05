@@ -37,11 +37,16 @@ export function useCrowdRequestPayment({
       if (custom <= 0) {
         return 0; // Return 0 if invalid amount
       }
+      // For tips, allow any amount with no minimum
+      if (requestType === 'tip') {
+        return Math.round(custom * 100);
+      }
+      // For song requests and shoutouts, enforce minimum
       const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
       const validatedCustom = Math.max(custom * 100, minPresetAmount);
       return Math.round(validatedCustom);
     }
-  }, [amountType, presetAmount, customAmount, presetAmounts, minimumAmount]);
+  }, [amountType, presetAmount, customAmount, presetAmounts, minimumAmount, requestType]);
 
   /**
    * Calculate bundle price based on base amount and bundle size

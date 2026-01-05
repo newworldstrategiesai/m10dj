@@ -51,7 +51,7 @@ export default function PasswordSignIn({
             <div>
               <label 
                 htmlFor="email" 
-                className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2"
+                className="block text-sm font-semibold text-white mb-2"
               >
                 Email
               </label>
@@ -71,7 +71,7 @@ export default function PasswordSignIn({
             <div>
               <label 
                 htmlFor="password" 
-                className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2"
+                className="block text-sm font-semibold text-white mb-2"
               >
                 Password
               </label>

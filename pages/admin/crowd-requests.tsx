@@ -245,6 +245,10 @@ export default function CrowdRequestsPage() {
   const [showLinkPaymentModal, setShowLinkPaymentModal] = useState(false);
   const [linkPaymentIntentId, setLinkPaymentIntentId] = useState('');
   const [linkPaymentRequestId, setLinkPaymentRequestId] = useState<string | null>(null);
+  const [editingSongDetails, setEditingSongDetails] = useState(false);
+  const [editedSongTitle, setEditedSongTitle] = useState('');
+  const [editedSongArtist, setEditedSongArtist] = useState('');
+  const [savingSongDetails, setSavingSongDetails] = useState(false);
   
   // QR Code Generator State
   const [qrEventCode, setQrEventCode] = useState('');
@@ -336,6 +340,15 @@ export default function CrowdRequestsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.query.openRequest, requests]);
+
+  // Reset editing state when modal closes or different request is selected
+  useEffect(() => {
+    if (!showDetailModal || !selectedRequest) {
+      setEditingSongDetails(false);
+      setEditedSongTitle('');
+      setEditedSongArtist('');
+    }
+  }, [showDetailModal, selectedRequest?.id]);
 
   // Fetch available events for audio tracking
   const fetchAvailableEvents = async () => {
@@ -2491,6 +2504,82 @@ export default function CrowdRequestsPage() {
       console.error('Error fetching success page views:', error);
     } finally {
       setLoadingSuccessViews(false);
+    }
+  };
+
+  const handleEditSongDetails = () => {
+    if (selectedRequest) {
+      setEditedSongTitle(selectedRequest.song_title || '');
+      setEditedSongArtist(selectedRequest.song_artist || '');
+      setEditingSongDetails(true);
+    }
+  };
+
+  const handleCancelEditSongDetails = () => {
+    setEditingSongDetails(false);
+    setEditedSongTitle('');
+    setEditedSongArtist('');
+  };
+
+  const handleSaveSongDetails = async () => {
+    if (!selectedRequest) return;
+
+    if (!editedSongTitle.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Song title is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingSongDetails(true);
+    try {
+      const response = await fetch('/api/crowd-request/update-song-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: selectedRequest.id,
+          songTitle: editedSongTitle.trim(),
+          songArtist: editedSongArtist.trim() || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update song details');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Song details updated successfully',
+      });
+
+      // Update the selected request in local state
+      setSelectedRequest(prev => prev ? {
+        ...prev,
+        song_title: editedSongTitle.trim(),
+        song_artist: editedSongArtist.trim() || null,
+      } : null);
+
+      // Also update in requests list
+      setRequests(prev => prev.map(r =>
+        r.id === selectedRequest.id
+          ? { ...r, song_title: editedSongTitle.trim(), song_artist: editedSongArtist.trim() || null }
+          : r
+      ));
+
+      setEditingSongDetails(false);
+    } catch (error: any) {
+      console.error('Error updating song details:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update song details',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingSongDetails(false);
     }
   };
 
@@ -8060,14 +8149,84 @@ export default function CrowdRequestsPage() {
                 {/* Song/Shoutout Details */}
                 {selectedRequest.request_type === 'song_request' ? (
                   <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Song Request</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-                      {selectedRequest.song_title || 'Unknown Song'}
-                    </p>
-                    {selectedRequest.song_artist && (
-                      <p className="text-lg text-gray-700 dark:text-gray-300">
-                        by {selectedRequest.song_artist}
-                      </p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Song Request</p>
+                      {!editingSongDetails && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleEditSongDetails}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <Edit3 className="w-3 h-3 mr-1" />
+                          Edit
+                        </Button>
+                      )}
+                    </div>
+                    {editingSongDetails ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Song Title
+                          </label>
+                          <Input
+                            value={editedSongTitle}
+                            onChange={(e) => setEditedSongTitle(e.target.value)}
+                            placeholder="Enter song title"
+                            className="w-full"
+                            disabled={savingSongDetails}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            Artist
+                          </label>
+                          <Input
+                            value={editedSongArtist}
+                            onChange={(e) => setEditedSongArtist(e.target.value)}
+                            placeholder="Enter artist name"
+                            className="w-full"
+                            disabled={savingSongDetails}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={handleSaveSongDetails}
+                            disabled={savingSongDetails || !editedSongTitle.trim()}
+                            className="flex-1"
+                          >
+                            {savingSongDetails ? (
+                              <>
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              'Save'
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCancelEditSongDetails}
+                            disabled={savingSongDetails}
+                            className="flex-1"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                          {selectedRequest.song_title || 'Unknown Song'}
+                        </p>
+                        {selectedRequest.song_artist && (
+                          <p className="text-lg text-gray-700 dark:text-gray-300">
+                            by {selectedRequest.song_artist}
+                          </p>
+                        )}
+                      </>
                     )}
                     {/* Audio Detection Info */}
                     {selectedRequest.matched_song_detection && (

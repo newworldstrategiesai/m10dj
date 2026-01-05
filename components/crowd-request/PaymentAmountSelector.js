@@ -140,36 +140,53 @@ function PaymentAmountSelector({
                     setCustomAmount('');
                     return;
                   }
-                  // Get minimum amount - use minimumAmount prop if provided, otherwise use first preset
-                  // This ensures bidding mode uses the winning bid + $5 minimum
-                  const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
                   const numValue = parseFloat(value);
-                  // Only update if value is valid and >= minimum
-                  if (!isNaN(numValue) && numValue >= minAmount) {
-                    setCustomAmount(value);
-                  } else if (numValue < minAmount && numValue >= 0) {
-                    // Show the value but it will be invalid
-                    setCustomAmount(value);
+                  // For tips, allow any amount >= 0 (no minimum)
+                  if (requestType === 'tip') {
+                    if (!isNaN(numValue) && numValue >= 0) {
+                      setCustomAmount(value);
+                    }
+                  } else {
+                    // For song requests and shoutouts, enforce minimum
+                    // Get minimum amount - use minimumAmount prop if provided, otherwise use first preset
+                    // This ensures bidding mode uses the winning bid + $5 minimum
+                    const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
+                    // Only update if value is valid and >= minimum
+                    if (!isNaN(numValue) && numValue >= minAmount) {
+                      setCustomAmount(value);
+                    } else if (numValue < minAmount && numValue >= 0) {
+                      // Show the value but it will be invalid
+                      setCustomAmount(value);
+                    }
                   }
                 }}
-                min={minimumAmount > 0 ? (minimumAmount / 100).toFixed(2) : (presetAmounts.length > 0 ? (presetAmounts[0].value / 100).toFixed(2) : '0.01')}
+                min={requestType === 'tip' ? '0' : (minimumAmount > 0 ? (minimumAmount / 100).toFixed(2) : (presetAmounts.length > 0 ? (presetAmounts[0].value / 100).toFixed(2) : '0.01'))}
                 step="0.01"
                 inputMode="decimal"
                 className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
                   (() => {
+                    // For tips, never show red border (no minimum)
+                    if (requestType === 'tip') {
+                      return false;
+                    }
                     const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
                     return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
                   })()
                     ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
                     : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
                 } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
-                placeholder={(() => {
+                placeholder={requestType === 'tip' ? '0.00' : (() => {
                   const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
                   return minAmount.toFixed(2);
                 })()}
               />
             </div>
             {(() => {
+              // For tips, don't show minimum messages (no minimum required)
+              if (requestType === 'tip') {
+                return null;
+              }
+              
               const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
               const beatsCurrentBid = isBiddingMode && currentWinningBid > 0 && customAmount && parseFloat(customAmount) * 100 > currentWinningBid;
               

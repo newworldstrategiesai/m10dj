@@ -433,6 +433,10 @@ export default function CrowdRequestPage() {
   // isSongSelectionComplete is now provided by useCrowdRequestValidation hook
   // validateForm is now provided by useCrowdRequestValidation hook
   
+  const validateForm = () => {
+    return validateFormHook(setError);
+  };
+  
   const hasAutoFocusedNameField = useRef(false); // Track if we've already auto-focused the name field
 
   // Auto-focus name field when song selection is complete (only once per session)
@@ -1319,7 +1323,7 @@ export default function CrowdRequestPage() {
                 >
                   <button
                     type="submit"
-                    disabled={submitting || getPaymentAmount() < (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount)}
+                    disabled={submitting || (requestType !== 'tip' && getPaymentAmount() < (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount)) || (requestType === 'tip' && (!getPaymentAmount() || getPaymentAmount() <= 0))}
                     className="w-full btn-primary py-4 sm:py-4 text-base sm:text-lg font-semibold inline-flex items-center justify-center gap-2 min-h-[56px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={(e) => {
                       // Prevent double-submission

@@ -394,13 +394,47 @@ export default async function handler(req, res) {
     
     if (hasConnectAccount) {
       // Use Stripe Connect to route payment to DJ's account with platform fee
-      // Pre-fill customer information if we have it from the form (prevents asking twice)
-      session = await createCheckoutSessionWithPlatformFee(
-        Math.round(amount * 100), // Convert to cents
-        organization.stripe_connect_account_id,
-        `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`,
-        cancelUrl,
-        {
+      // Calculate total amount from line items for platform fee calculation
+      const totalAmountInCents = lineItems.reduce((sum, item) => {
+        return sum + (item.price_data.unit_amount * (item.quantity || 1));
+      }, 0);
+      
+      // Calculate platform fee based on total amount
+      const percentageFee = Math.round((totalAmountInCents * platformFeePercentage) / 100);
+      const applicationFeeAmount = percentageFee + Math.round(platformFeeFixed * 100);
+      
+      // Create checkout session with line items and Connect routing
+      const sessionParams = {
+        payment_method_types: paymentMethodTypes,
+        line_items: lineItems.length > 0 ? lineItems : [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Song Request / Shoutout',
+              },
+              unit_amount: Math.round(amount * 100),
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`,
+        cancel_url: cancelUrl,
+        ...(crowdRequest.requester_email && {
+          customer_email: crowdRequest.requester_email,
+        }),
+        billing_address_collection: 'auto',
+        phone_number_collection: {
+          enabled: !crowdRequest.requester_phone,
+        },
+        payment_intent_data: {
+          application_fee_amount: applicationFeeAmount,
+          transfer_data: {
+            destination: organization.stripe_connect_account_id,
+          },
+        },
+        metadata: {
           request_id: crowdRequest.id,
           request_type: crowdRequest.request_type,
           event_code: crowdRequest.event_qr_code,
@@ -422,27 +456,15 @@ export default async function handler(req, res) {
             charity_donation_amount: charityInfo.amount.toString(),
           }),
         },
-        platformFeePercentage,
-        platformFeeFixed,
-        undefined, // branding (optional)
-        {
-          // Pre-fill customer details from form to avoid asking twice
-          ...(crowdRequest.requester_name && crowdRequest.requester_name !== 'Guest' && {
-            name: crowdRequest.requester_name,
-          }),
-          ...(crowdRequest.requester_email && {
-            email: crowdRequest.requester_email,
-          }),
-          ...(crowdRequest.requester_phone && {
-            phone: crowdRequest.requester_phone,
-          }),
-        }
-      );
+        customer_account: organization.stripe_connect_account_id, // Accounts v2 API
+      };
       
-      // Update session with additional payment method types and customer info
-      // Note: createCheckoutSessionWithPlatformFee creates the base session,
-      // but we may need to update it for payment method types
-      // For now, the function handles the core Connect routing
+      session = await stripe.checkout.sessions.create(sessionParams);
+      
+      console.log(`💰 Created Stripe Connect checkout session for organization ${organization.name}:`);
+      console.log(`   Total: $${(totalAmountInCents / 100).toFixed(2)}`);
+      console.log(`   Platform Fee: $${(applicationFeeAmount / 100).toFixed(2)} (${platformFeePercentage}% + $${platformFeeFixed.toFixed(2)})`);
+      console.log(`   DJ Payout: $${((totalAmountInCents - applicationFeeAmount) / 100).toFixed(2)}`);
       
     } else {
       // Fallback to regular checkout (payment goes to platform account)

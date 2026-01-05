@@ -46,7 +46,7 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
       >
         <div className="grid gap-2">
           <div className="grid gap-1">
-            <label htmlFor="businessName" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="businessName" className="text-sm font-medium text-white">
               DJ Business Name <span className="text-gray-400 text-xs">(optional)</span>
             </label>
             <input
@@ -60,7 +60,7 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
             <p className="text-xs text-gray-500 dark:text-gray-400">
               We&apos;ll use your email if you don&apos;t provide a name
             </p>
-            <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+            <label htmlFor="email" className="text-sm font-medium text-white mt-2">
               Email
             </label>
             <input
@@ -73,7 +73,7 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
               autoCorrect="off"
               className="w-full p-3 rounded-md bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent transition-colors"
             />
-            <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="password" className="text-sm font-medium text-white">
               Password
             </label>
             <input

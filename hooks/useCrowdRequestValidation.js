@@ -21,9 +21,9 @@ export function useCrowdRequestValidation({
         return formData?.recipientName?.trim()?.length > 0 && formData?.recipientMessage?.trim()?.length > 0;
       } else if (requestType === 'tip') {
         // For tips, we only need an amount selected (no form fields required)
+        // Tips have no minimum - allow any amount > 0
         const amount = getPaymentAmount();
-        const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-        return amount && amount >= minPresetAmount;
+        return amount && amount > 0;
       }
       return false;
     } catch (err) {
@@ -60,6 +60,14 @@ export function useCrowdRequestValidation({
         }
       } else if (requestType === 'tip') {
         // For tips, we only validate the amount (no form fields required except name)
+        // Tips have no minimum - just ensure amount > 0
+        const amount = getPaymentAmount();
+        if (!amount || amount <= 0) {
+          setError('Please enter a tip amount');
+          return false;
+        }
+        // Skip minimum validation for tips - allow any amount > 0
+        return true;
       }
 
       // In bidding mode, we still need to validate that a bid amount is selected
@@ -73,12 +81,15 @@ export function useCrowdRequestValidation({
           return false;
         }
       } else {
-        // Regular mode - validate payment amount
-        const amount = getPaymentAmount();
-        const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-        if (!amount || amount < minPresetAmount) {
-          setError(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
-          return false;
+        // Regular mode - validate payment amount (only for non-tip requests)
+        // Tips are already validated above with no minimum
+        if (requestType !== 'tip') {
+          const amount = getPaymentAmount();
+          const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+          if (!amount || amount < minPresetAmount) {
+            setError(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
+            return false;
+          }
         }
       }
 

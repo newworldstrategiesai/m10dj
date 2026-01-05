@@ -1266,10 +1266,17 @@ export function GeneralRequestsPage({
       if (!shouldUseBidding) {
         amount = getPaymentAmount();
         
-        // Validate amount before submission - must be at least minimum preset amount
-        const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-        if (!amount || amount < minPresetAmount) {
-          throw new Error(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
+        // For tips, allow any amount > 0 (no minimum)
+        if (requestType === 'tip') {
+          if (!amount || amount <= 0) {
+            throw new Error('Please enter a tip amount');
+          }
+        } else {
+          // For song requests and shoutouts, validate amount before submission - must be at least minimum preset amount
+          const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+          if (!amount || amount < minPresetAmount) {
+            throw new Error(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
+          }
         }
       }
 
@@ -3429,6 +3436,28 @@ export function GeneralRequestsPage({
                         bundleSize={bundleSize}
                         setBundleSize={setBundleSize}
                       />
+                      {/* Fallback payment options for tips only */}
+                      {(paymentSettings?.cashAppTag || paymentSettings?.venmoUsername) && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 text-center">
+                            Having trouble with card payment? You can also tip via:
+                          </p>
+                          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                            {paymentSettings?.cashAppTag && (
+                              <div className="flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">CashApp:</span>
+                                <span className="text-base font-bold text-green-600 dark:text-green-400">{paymentSettings.cashAppTag}</span>
+                              </div>
+                            )}
+                            {paymentSettings?.venmoUsername && (
+                              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Venmo:</span>
+                                <span className="text-base font-bold text-blue-600 dark:text-blue-400">{paymentSettings.venmoUsername}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
