@@ -7,6 +7,7 @@
 
 import Stripe from 'stripe';
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { getPriceIdsForProduct, getTierFromPriceId } from '@/utils/subscription-pricing';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -78,14 +79,11 @@ export default async function handler(req, res) {
         .eq('id', organization.id);
     }
 
-    // Determine subscription tier from price ID
-    const priceIdToTier = {
-      [process.env.STRIPE_STARTER_PRICE_ID]: 'starter',
-      [process.env.STRIPE_PROFESSIONAL_PRICE_ID]: 'professional',
-      [process.env.STRIPE_ENTERPRISE_PRICE_ID]: 'enterprise',
-    };
-
-    const subscriptionTier = priceIdToTier[priceId] || 'starter';
+    // Get product context from organization or user metadata
+    const productContext = organization.product_context || user.user_metadata?.product_context || 'tipjar';
+    
+    // Determine subscription tier from price ID using product-specific pricing
+    const subscriptionTier = getTierFromPriceId(priceId, productContext);
 
     // Handle Starter plan ($0) - skip Stripe checkout and activate directly
     if (subscriptionTier === 'starter') {

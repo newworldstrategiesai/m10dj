@@ -111,10 +111,28 @@ export default async function handler(req, res) {
     if (crowdRequest.organization_id) {
       const { data: orgData } = await supabase
         .from('organizations')
-        .select('*, stripe_connect_account_id, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, platform_fee_percentage, platform_fee_fixed')
+        .select('*, stripe_connect_account_id, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, platform_fee_percentage, platform_fee_fixed, subscription_tier, subscription_status, is_platform_owner')
         .eq('id', crowdRequest.organization_id)
         .single();
       organization = orgData;
+      
+      // Feature Gating: Check payment processing access
+      if (organization && !organization.is_platform_owner) {
+        const { canProcessPayments } = await import('@/utils/feature-gating');
+        const paymentAccess = canProcessPayments(
+          organization.subscription_tier,
+          organization.subscription_status
+        );
+        
+        if (!paymentAccess.allowed) {
+          return res.status(403).json({
+            error: 'Payment processing not available',
+            message: paymentAccess.reason || 'Payment processing is only available on Pro plans. Upgrade to accept tips and payments.',
+            upgradeRequired: true,
+            upgradeTier: paymentAccess.upgradeRequired,
+          });
+        }
+      }
     }
 
     // Calculate charity donation if enabled

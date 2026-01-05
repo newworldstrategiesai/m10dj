@@ -433,25 +433,25 @@ function PlanStep({ formData, updateFormData, onNext, onBack, organization }: an
   const plans = [
     {
       id: 'starter',
-      name: 'Starter',
+      name: 'Free Forever',
       price: 0,
-      description: 'Perfect for DJs just getting started',
-      features: ['5 events per month', 'Basic features', 'Email support', 'Platform fees: 5% + $0.50']
+      description: 'Perfect for trying out TipJar',
+      features: ['10 song requests/month', 'Basic request management', 'QR code generation', 'Community support']
     },
     {
       id: 'professional',
-      name: 'Professional',
-      price: 49,
-      description: 'For established DJs who want to grow',
-      features: ['Unlimited events', 'Full CRM & analytics', 'Advanced features', 'Priority support', 'Platform fees: 3.5% + $0.30'],
+      name: 'Pro',
+      price: 29,
+      description: 'Most Popular - For active DJs',
+      features: ['Unlimited song requests', 'Full payment processing', 'Cash App Pay integration', 'Basic analytics', 'Custom branding', 'Priority support'],
       popular: true
     },
     {
       id: 'enterprise',
-      name: 'Enterprise',
-      price: 149,
-      description: 'For high-volume DJ companies',
-      features: ['Everything in Professional', 'White-label branding', 'API access', 'Multi-user accounts', 'Platform fees: 2.5% + $0.20']
+      name: 'Embed Pro',
+      price: 49,
+      description: 'For professional DJ businesses',
+      features: ['Everything in Pro', 'Custom domain widget', 'White-label options', 'Advanced analytics', 'API access', 'Dedicated support']
     }
   ];
 
@@ -599,9 +599,9 @@ function CompleteStep({ formData, organization }: any) {
 
   const getPriceIdForPlan = (planId: string | null) => {
     const planMap: Record<string, string> = {
-      starter: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID || 'price_starter',
-      professional: process.env.NEXT_PUBLIC_STRIPE_PROFESSIONAL_PRICE_ID || 'price_professional',
-      enterprise: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
+      starter: process.env.NEXT_PUBLIC_TIPJAR_STARTER_PRICE_ID || 'price_starter',
+      professional: process.env.NEXT_PUBLIC_TIPJAR_PROFESSIONAL_PRICE_ID || 'price_professional',
+      enterprise: process.env.NEXT_PUBLIC_TIPJAR_ENTERPRISE_PRICE_ID || 'price_enterprise',
     };
     return planMap[planId || ''] || planMap.starter;
   };

@@ -122,6 +122,14 @@ export default function AdminDashboard() {
         return;
       }
 
+      // Check product context - TipJar users should only see crowd requests
+      const productContext = user.user_metadata?.product_context;
+      if (productContext === 'tipjar') {
+        // TipJar users go directly to crowd requests (their main admin interface)
+        router.push('/admin/crowd-requests');
+        return;
+      }
+
       // Check if user is platform admin
       const adminEmails = [
         'admin@m10djcompany.com', 

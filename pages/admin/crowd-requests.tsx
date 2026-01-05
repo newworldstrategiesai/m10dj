@@ -63,6 +63,7 @@ import { cn } from '@/utils/cn';
 import { getCoverPhotoUrl } from '@/utils/cover-photo-helper';
 import UpgradePrompt from '@/components/subscription/UpgradePrompt';
 import StripeConnectRequirementBanner from '@/components/subscription/StripeConnectRequirementBanner';
+import UsageLimitBanner from '@/components/subscription/UsageLimitBanner';
 import { getCurrentOrganization } from '@/utils/organization-context';
 import SongRecognition from '@/components/audio/SongRecognition';
 import MusicServiceLinks from '@/components/admin/MusicServiceLinks';
@@ -3566,6 +3567,8 @@ export default function CrowdRequestsPage() {
 
   // Check subscription tier for upgrade prompts
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'trial' | 'active' | 'cancelled' | 'past_due' | null>(null);
+  const [usageStats, setUsageStats] = useState<{ currentUsage: number; limit: number } | null>(null);
   
   useEffect(() => {
     async function checkTier() {
@@ -3573,6 +3576,7 @@ export default function CrowdRequestsPage() {
         const org = await getCurrentOrganization(supabase);
         if (org) {
           setSubscriptionTier(org.subscription_tier);
+          setSubscriptionStatus(org.subscription_status);
           setOrganization(org);
           
           // Load social links
@@ -3586,6 +3590,33 @@ export default function CrowdRequestsPage() {
             minimumBid: (org as any).requests_bidding_minimum_bid || 500,
             startingBid: (org as any).requests_bidding_starting_bid || 500
           });
+
+          // Load usage stats for Free tier
+          if (org.subscription_tier === 'starter' && org.id) {
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const { count } = await supabase
+              .from('crowd_requests')
+              .select('*', { count: 'exact', head: true })
+              .eq('organization_id', org.id)
+              .in('request_type', ['song_request', 'shoutout'])
+              .gte('created_at', startOfMonth.toISOString());
+
+            const currentUsage = count || 0;
+            const limit = 10; // Free tier limit
+
+            setUsageStats({
+              currentUsage,
+              limit,
+            });
+          } else {
+            // Pro+ tier has unlimited
+            setUsageStats({
+              currentUsage: 0,
+              limit: -1, // Unlimited
+            });
+          }
         }
       } catch (error) {
         console.error('Error checking subscription tier:', error);
@@ -3600,11 +3631,22 @@ export default function CrowdRequestsPage() {
         {/* Stripe Connect Requirement Banner */}
         <StripeConnectRequirementBanner organization={organization} />
         
+        {/* Usage Limit Banner for Free Tier */}
+        {subscriptionTier === 'starter' && subscriptionStatus && usageStats && (
+          <UsageLimitBanner
+            currentUsage={usageStats.currentUsage}
+            limit={usageStats.limit}
+            subscriptionTier={subscriptionTier as 'starter'}
+            subscriptionStatus={subscriptionStatus}
+            featureName="requests"
+          />
+        )}
+        
         {/* Upgrade Prompt for Starter Tier */}
         {subscriptionTier === 'starter' && (
           <UpgradePrompt 
-            message="Unlock unlimited events, full CRM, invoicing, and advanced analytics with Professional plan."
-            featureName="Full Business Management"
+            message="Unlock unlimited requests, full payment processing, and advanced features with Pro plan."
+            featureName="Unlimited Requests & Payments"
             tier="professional"
             className="mb-4"
           />

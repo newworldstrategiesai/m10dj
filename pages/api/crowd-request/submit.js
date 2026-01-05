@@ -384,6 +384,87 @@ export default async function handler(req, res) {
     // Add organization_id if we have it
     if (organizationIdToUse) {
       insertData.organization_id = organizationIdToUse;
+      
+      // Feature Gating: Check subscription limits and payment processing access
+      try {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('id, subscription_tier, subscription_status, is_platform_owner')
+          .eq('id', organizationIdToUse)
+          .single();
+        
+        if (org) {
+          // Platform owners bypass all restrictions
+          if (!org.is_platform_owner) {
+            // Import feature gating utilities
+            const { canCreateSongRequest, canProcessPayments, getRequestLimit } = await import('@/utils/feature-gating');
+            
+            // Check request creation limit (only for song requests and shoutouts, not tips)
+            if (requestType === 'song_request' || requestType === 'shoutout') {
+              // Count requests this month for this organization
+              const now = new Date();
+              const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+              
+              const { count: requestCount } = await supabase
+                .from('crowd_requests')
+                .select('*', { count: 'exact', head: true })
+                .eq('organization_id', organizationIdToUse)
+                .in('request_type', ['song_request', 'shoutout'])
+                .gte('created_at', startOfMonth.toISOString());
+              
+              const currentUsage = requestCount || 0;
+              const requestAccess = await canCreateSongRequest(
+                currentUsage,
+                org.subscription_tier,
+                org.subscription_status
+              );
+              
+              if (!requestAccess.allowed) {
+                return res.status(403).json({
+                  error: 'Request limit reached',
+                  message: requestAccess.reason,
+                  upgradeRequired: true,
+                  upgradeTier: requestAccess.upgradeRequired,
+                  currentUsage,
+                  limit: getRequestLimit(org.subscription_tier),
+                });
+              }
+            }
+            
+            // Check payment processing access (for tips and requests with payment)
+            if (amount > 0 && requestType === 'tip') {
+              const paymentAccess = canProcessPayments(org.subscription_tier, org.subscription_status);
+              
+              if (!paymentAccess.allowed) {
+                return res.status(403).json({
+                  error: 'Payment processing not available',
+                  message: paymentAccess.reason,
+                  upgradeRequired: true,
+                  upgradeTier: paymentAccess.upgradeRequired,
+                });
+              }
+            }
+            
+            // For song requests and shoutouts with payment, also check payment access
+            if (amount > 0 && (requestType === 'song_request' || requestType === 'shoutout')) {
+              const paymentAccess = canProcessPayments(org.subscription_tier, org.subscription_status);
+              
+              if (!paymentAccess.allowed) {
+                // Free tier can create requests, but cannot process payments
+                // Set amount to 0 to allow the request without payment
+                console.log(`⚠️ Free tier organization cannot process payments. Setting amount to 0 for request.`);
+                insertData.amount_requested = 0;
+                // Note: The request will be created but payment will not be processed
+                // Frontend should handle this by not showing payment options for Free tier
+              }
+            }
+          }
+        }
+      } catch (featureGateError) {
+        console.error('⚠️ Error checking feature gates:', featureGateError);
+        // Don't block the request if feature gating check fails
+        // This ensures the system remains functional even if feature gating has issues
+      }
     }
     
     // Log the data being inserted for debugging

@@ -69,6 +69,91 @@ export default async function handler(req, res) {
         const supabase = createClient(supabaseUrl, supabaseKey);
         const leadId = session.metadata?.lead_id || session.metadata?.leadId;
         const requestId = session.metadata?.request_id;
+        const organizationId = session.metadata?.organization_id;
+
+        // Handle subscription checkout
+        if (session.mode === 'subscription' && organizationId && session.subscription) {
+          console.log('📦 Subscription checkout completed:', {
+            sessionId: session.id,
+            subscriptionId: session.subscription,
+            organizationId: organizationId,
+            subscriptionTier: session.metadata?.subscription_tier,
+            timestamp: new Date().toISOString()
+          });
+
+          try {
+            // Retrieve subscription details from Stripe
+            const subscription = await stripe.subscriptions.retrieve(session.subscription);
+            
+            // Determine subscription tier from metadata or price
+            let subscriptionTier = session.metadata?.subscription_tier || 'starter';
+            if (!subscriptionTier && subscription.items?.data?.[0]?.price?.id) {
+              // Fallback: determine tier from price ID
+              const priceId = subscription.items.data[0].price.id;
+              const { getTierFromPriceId } = await import('../../../utils/subscription-pricing');
+              // Get product context from organization
+              const { data: org } = await supabase
+                .from('organizations')
+                .select('product_context')
+                .eq('id', organizationId)
+                .single();
+              const productContext = org?.product_context || 'tipjar';
+              subscriptionTier = getTierFromPriceId(priceId, productContext);
+            }
+
+            // Map Stripe subscription status to our status
+            let subscriptionStatus = 'active';
+            if (subscription.status === 'trialing') {
+              subscriptionStatus = 'trial';
+            } else if (subscription.status === 'active') {
+              subscriptionStatus = 'active';
+            } else if (subscription.status === 'past_due' || subscription.status === 'unpaid') {
+              subscriptionStatus = 'past_due';
+            } else if (subscription.status === 'canceled' || subscription.status === 'incomplete_expired') {
+              subscriptionStatus = 'cancelled';
+            }
+
+            // Update organization with subscription details
+            const updateData = {
+              subscription_tier: subscriptionTier,
+              subscription_status: subscriptionStatus,
+              stripe_subscription_id: subscription.id,
+              updated_at: new Date().toISOString(),
+            };
+
+            // Set trial_ends_at if in trial period
+            if (subscription.trial_end) {
+              updateData.trial_ends_at = new Date(subscription.trial_end * 1000).toISOString();
+            } else if (subscriptionStatus === 'active') {
+              // Clear trial_ends_at if subscription is active and not in trial
+              updateData.trial_ends_at = null;
+            }
+
+            // Ensure stripe_customer_id is set
+            if (session.customer && typeof session.customer === 'string') {
+              updateData.stripe_customer_id = session.customer;
+            } else if (subscription.customer && typeof subscription.customer === 'string') {
+              updateData.stripe_customer_id = subscription.customer;
+            }
+
+            const { error: updateError } = await supabase
+              .from('organizations')
+              .update(updateData)
+              .eq('id', organizationId);
+
+            if (updateError) {
+              console.error('❌ Error updating organization subscription:', updateError);
+            } else {
+              console.log(`✅ Organization ${organizationId} subscription updated:`, {
+                tier: subscriptionTier,
+                status: subscriptionStatus,
+                subscriptionId: subscription.id
+              });
+            }
+          } catch (err) {
+            console.error('❌ Error processing subscription checkout:', err);
+          }
+        }
 
         // Handle quote/lead payment from checkout session
         if (leadId) {
@@ -576,6 +661,225 @@ export default async function handler(req, res) {
         // Normal event - sessions expire if user doesn't complete checkout
         // No action needed, just log for visibility
         console.log(`ℹ️ Checkout session expired: ${event.data.object.id}`);
+        break;
+
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+        // Handle subscription lifecycle events
+        const subscription = event.data.object;
+        console.log(`📦 Subscription ${event.type}:`, {
+          subscriptionId: subscription.id,
+          customerId: subscription.customer,
+          status: subscription.status,
+          timestamp: new Date().toISOString()
+        });
+
+        try {
+          const supabaseForSubscription = createClient(supabaseUrl, supabaseKey);
+
+          // Find organization by Stripe customer ID
+          const { data: org, error: orgError } = await supabaseForSubscription
+            .from('organizations')
+            .select('id, product_context')
+            .eq('stripe_customer_id', subscription.customer)
+            .single();
+
+          if (orgError || !org) {
+            console.error('⚠️ Organization not found for subscription:', subscription.customer);
+            break;
+          }
+
+          // Determine subscription tier from price ID
+          const priceId = subscription.items?.data?.[0]?.price?.id;
+          if (!priceId) {
+            console.error('⚠️ No price ID found in subscription');
+            break;
+          }
+
+          const { getTierFromPriceId } = await import('../../../utils/subscription-pricing');
+          const productContext = org.product_context || 'tipjar';
+          const subscriptionTier = getTierFromPriceId(priceId, productContext);
+
+          // Map Stripe subscription status to our status
+          let subscriptionStatus = 'active';
+          if (subscription.status === 'trialing') {
+            subscriptionStatus = 'trial';
+          } else if (subscription.status === 'active') {
+            subscriptionStatus = 'active';
+          } else if (subscription.status === 'past_due' || subscription.status === 'unpaid') {
+            subscriptionStatus = 'past_due';
+          } else if (subscription.status === 'canceled' || subscription.status === 'incomplete_expired') {
+            subscriptionStatus = 'cancelled';
+          }
+
+          // Update organization
+          const updateData = {
+            subscription_tier: subscriptionTier,
+            subscription_status: subscriptionStatus,
+            stripe_subscription_id: subscription.id,
+            updated_at: new Date().toISOString(),
+          };
+
+          // Set trial_ends_at if in trial period
+          if (subscription.trial_end) {
+            updateData.trial_ends_at = new Date(subscription.trial_end * 1000).toISOString();
+          } else if (subscriptionStatus === 'active') {
+            // Clear trial_ends_at if subscription is active and not in trial
+            updateData.trial_ends_at = null;
+          }
+
+          const { error: updateError } = await supabaseForSubscription
+            .from('organizations')
+            .update(updateData)
+            .eq('id', org.id);
+
+          if (updateError) {
+            console.error('❌ Error updating organization subscription:', updateError);
+          } else {
+            console.log(`✅ Organization ${org.id} subscription updated:`, {
+              tier: subscriptionTier,
+              status: subscriptionStatus
+            });
+          }
+        } catch (err) {
+          console.error('❌ Error processing subscription event:', err);
+        }
+        break;
+
+      case 'customer.subscription.deleted':
+        // Handle subscription cancellation
+        const deletedSubscription = event.data.object;
+        console.log(`🗑️ Subscription deleted:`, {
+          subscriptionId: deletedSubscription.id,
+          customerId: deletedSubscription.customer,
+          timestamp: new Date().toISOString()
+        });
+
+        try {
+          const supabaseForDeleted = createClient(supabaseUrl, supabaseKey);
+
+          // Find organization by Stripe customer ID or subscription ID
+          const { data: org, error: orgError } = await supabaseForDeleted
+            .from('organizations')
+            .select('id')
+            .or(`stripe_customer_id.eq.${deletedSubscription.customer},stripe_subscription_id.eq.${deletedSubscription.id}`)
+            .single();
+
+          if (orgError || !org) {
+            console.error('⚠️ Organization not found for deleted subscription:', deletedSubscription.customer);
+            break;
+          }
+
+          // Update organization to cancelled status
+          const { error: updateError } = await supabaseForDeleted
+            .from('organizations')
+            .update({
+              subscription_status: 'cancelled',
+              stripe_subscription_id: null, // Clear subscription ID
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', org.id);
+
+          if (updateError) {
+            console.error('❌ Error updating organization for deleted subscription:', updateError);
+          } else {
+            console.log(`✅ Organization ${org.id} subscription marked as cancelled`);
+          }
+        } catch (err) {
+          console.error('❌ Error processing subscription deletion:', err);
+        }
+        break;
+
+      case 'invoice.payment_succeeded':
+        // Handle successful invoice payment (renewals, etc.)
+        const invoice = event.data.object;
+        if (invoice.subscription) {
+          console.log(`💰 Invoice payment succeeded for subscription:`, {
+            invoiceId: invoice.id,
+            subscriptionId: invoice.subscription,
+            amount: invoice.amount_paid / 100,
+            timestamp: new Date().toISOString()
+          });
+
+          try {
+            const supabaseForInvoice = createClient(supabaseUrl, supabaseKey);
+
+            // Find organization by subscription ID
+            const { data: org, error: orgError } = await supabaseForInvoice
+              .from('organizations')
+              .select('id')
+              .eq('stripe_subscription_id', invoice.subscription)
+              .single();
+
+            if (orgError || !org) {
+              console.error('⚠️ Organization not found for invoice:', invoice.subscription);
+              break;
+            }
+
+            // Ensure subscription is marked as active
+            const { error: updateError } = await supabaseForInvoice
+              .from('organizations')
+              .update({
+                subscription_status: 'active',
+                trial_ends_at: null, // Clear trial_ends_at on successful payment
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', org.id);
+
+            if (updateError) {
+              console.error('❌ Error updating organization for invoice payment:', updateError);
+            } else {
+              console.log(`✅ Organization ${org.id} subscription confirmed active`);
+            }
+          } catch (err) {
+            console.error('❌ Error processing invoice payment:', err);
+          }
+        }
+        break;
+
+      case 'invoice.payment_failed':
+        // Handle failed invoice payment
+        const failedInvoice = event.data.object;
+        if (failedInvoice.subscription) {
+          console.log(`❌ Invoice payment failed for subscription:`, {
+            invoiceId: failedInvoice.id,
+            subscriptionId: failedInvoice.subscription,
+            timestamp: new Date().toISOString()
+          });
+
+          try {
+            const supabaseForFailedInvoice = createClient(supabaseUrl, supabaseKey);
+
+            // Find organization by subscription ID
+            const { data: org, error: orgError } = await supabaseForFailedInvoice
+              .from('organizations')
+              .select('id')
+              .eq('stripe_subscription_id', failedInvoice.subscription)
+              .single();
+
+            if (orgError || !org) {
+              console.error('⚠️ Organization not found for failed invoice:', failedInvoice.subscription);
+              break;
+            }
+
+            // Mark subscription as past_due
+            const { error: updateError } = await supabaseForFailedInvoice
+              .from('organizations')
+              .update({
+                subscription_status: 'past_due',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', org.id);
+
+            if (updateError) {
+              console.error('❌ Error updating organization for failed invoice:', updateError);
+            } else {
+              console.log(`⚠️ Organization ${org.id} subscription marked as past_due`);
+            }
+          } catch (err) {
+            console.error('❌ Error processing failed invoice:', err);
+          }
+        }
         break;
 
       default:

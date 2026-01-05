@@ -23,7 +23,8 @@ import {
   QrCode,
   Ticket,
   Moon,
-  Sun
+  Sun,
+  CreditCard
 } from 'lucide-react';
 
 interface NavItem {
@@ -83,6 +84,8 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     ? '/assets/m10 dj company logo white.gif'
     : '/assets/m10 dj company logo black.gif';
 
+  const [productContext, setProductContext] = useState<string | null>(null);
+
   const checkSubscriptionTier = async () => {
     try {
       const { createClientComponentClient } = await import('@supabase/auth-helpers-nextjs');
@@ -90,6 +93,10 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) return;
+
+      // Check product context
+      const userProductContext = user.user_metadata?.product_context;
+      setProductContext(userProductContext || null);
 
       // Check if platform admin
       const adminEmails = [
@@ -134,8 +141,18 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     { label: 'Social Media', href: '/admin/instagram', icon: <Instagram className="w-5 h-5" /> },
   ];
 
-  // Filter navigation based on subscription tier
+  // Filter navigation based on subscription tier and product context
   const getNavItems = (): NavItem[] => {
+    // TipJar users only see crowd requests and related features
+    if (productContext === 'tipjar') {
+      return [
+        { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
+        { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
+        { label: 'Payouts', href: '/admin/payouts', icon: <DollarSign className="w-5 h-5" /> },
+        { label: 'Billing', href: '/admin/billing', icon: <CreditCard className="w-5 h-5" /> },
+      ];
+    }
+
     // Platform admins and paid tiers see everything
     if (isPlatformAdmin || subscriptionTier === 'professional' || subscriptionTier === 'enterprise' || subscriptionTier === 'white_label') {
       return allNavItems;
@@ -148,6 +165,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
         { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
         { label: 'Payouts', href: '/admin/payouts', icon: <DollarSign className="w-5 h-5" /> },
+        { label: 'Billing', href: '/admin/billing', icon: <CreditCard className="w-5 h-5" /> },
       ];
     }
 
@@ -225,13 +243,17 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         <div className={`h-16 flex items-center justify-center border-b ${
           displayTheme === 'dark' ? 'border-gray-700' : 'border-gray-300'
         }`}>
-          <Link href="/admin/dashboard" className="flex items-center gap-3 px-4">
+          <Link href={productContext === 'tipjar' ? '/admin/crowd-requests' : '/admin/dashboard'} className="flex items-center gap-3 px-4">
             <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-              <img
-                src={logoSrc}
-                alt="M10 DJ Company Logo"
-                className="w-8 h-8 object-contain"
-              />
+              {productContext === 'tipjar' ? (
+                <span className="text-2xl font-bold text-[#fcba00]">💸</span>
+              ) : (
+                <img
+                  src={logoSrc}
+                  alt="M10 DJ Company Logo"
+                  className="w-8 h-8 object-contain"
+                />
+              )}
             </div>
             <span
               className={`
@@ -240,7 +262,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
                 ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'}
               `}
             >
-              M10 DJ
+              {productContext === 'tipjar' ? 'TipJar' : 'M10 DJ'}
             </span>
           </Link>
         </div>
