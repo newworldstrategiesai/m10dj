@@ -124,9 +124,14 @@ export async function getRoleBasedRedirectUrl(baseUrl: string = ''): Promise<str
       if (user) {
       // Check if user has an organization (SaaS customer)
       // Use maybeSingle() instead of single() to avoid errors when no row exists
-      let organizationResult: { data: { id: string; product_context?: string | null } | null; error: any } | null = null;
+      type OrganizationResult = { 
+        data: { id: string; product_context?: string | null } | null; 
+        error: any;
+      };
+      
+      let organizationResult: OrganizationResult | null = null;
       try {
-        const timeoutPromise = new Promise<{ data: null; error: null }>((resolve) => 
+        const timeoutPromise = new Promise<OrganizationResult>((resolve) => 
           setTimeout(() => resolve({ data: null, error: null }), 3000)
         );
         const queryPromise = supabase
@@ -134,7 +139,7 @@ export async function getRoleBasedRedirectUrl(baseUrl: string = ''): Promise<str
           .select('id, product_context')
           .eq('owner_id', user.id)
           .maybeSingle();
-        organizationResult = await Promise.race([queryPromise, timeoutPromise]) as { data: { id: string; product_context?: string | null } | null; error: any };
+        organizationResult = await Promise.race([queryPromise, timeoutPromise]) as OrganizationResult;
       } catch (error) {
         organizationResult = { data: null, error: null };
       }

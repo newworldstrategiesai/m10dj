@@ -80,7 +80,10 @@ export default function PayoutsPage() {
 
       const org = await getCurrentOrganization(supabase);
       if (!org) {
-        router.push('/onboarding/request-page');
+        // If organization fetch failed, show error message instead of redirecting
+        // This allows users to retry or see what went wrong
+        setError('Unable to load organization. Please refresh the page or try again later.');
+        setLoading(false);
         return;
       }
 
@@ -212,14 +215,53 @@ export default function PayoutsPage() {
   }
 
   if (!organization) {
-    return null;
+    // Show error message if organization failed to load
+    return (
+      <AdminLayout>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
+          <div className="max-w-4xl mx-auto">
+            {error ? (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                  <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h2 className="text-xl font-bold text-red-900 dark:text-red-100 mb-2">
+                      Error Loading Organization
+                    </h2>
+                    <p className="text-red-700 dark:text-red-300 mb-4">
+                      {error}
+                    </p>
+                    <Button
+                      onClick={() => {
+                        setError(null);
+                        setLoading(true);
+                        checkAuthAndLoad();
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-400">Loading organization...</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </AdminLayout>
+    );
   }
 
-      // Check if Stripe Connect is set up
-      // Access optional fields with type assertion
-      const orgData = organization as any;
-      const hasConnect = orgData.stripe_connect_account_id && 
-                    orgData.stripe_connect_payouts_enabled;
+  // Check if Stripe Connect is set up
+  // Access optional fields with type assertion
+  const orgData = organization as any;
+  const hasConnect = orgData.stripe_connect_account_id && 
+                orgData.stripe_connect_payouts_enabled;
 
   if (!hasConnect) {
     return (

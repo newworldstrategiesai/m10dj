@@ -37,6 +37,10 @@ export interface Organization {
   requests_header_artist_name?: string | null;
   requests_header_location?: string | null;
   requests_header_date?: string | null;
+  organization_type?: 'individual' | 'venue' | 'performer' | null; // Type of organization for venue hierarchy
+  parent_organization_id?: string | null; // For performer organizations, references the parent venue
+  performer_slug?: string | null; // Unique slug for performer within their parent venue
+  is_active?: boolean | null; // Whether the organization is active
   created_at: string;
   updated_at: string;
 }
@@ -60,24 +64,25 @@ export async function getCurrentOrganization(
       .from('organizations')
       .select('*')
       .eq('owner_id', user.id)
-      .single();
+      .maybeSingle();
 
     // Second try: user is a team member
     if (orgError || !org) {
-      const { data: membership } = await supabase
+      const { data: membership, error: membershipError } = await supabase
         .from('organization_members')
         .select('organization_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (membership?.organization_id) {
+      // Only proceed if we found a membership (no error and data exists)
+      if (!membershipError && membership?.organization_id) {
         const { data: memberOrg, error: memberOrgError } = await supabase
           .from('organizations')
           .select('*')
           .eq('id', membership.organization_id)
-          .single();
+          .maybeSingle();
 
         if (!memberOrgError && memberOrg) {
           org = memberOrg;

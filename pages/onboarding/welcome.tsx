@@ -27,6 +27,51 @@ export default function OnboardingWelcomePage() {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
 
+  // Check product context and redirect TipJar/DJ Dash users away from this page
+  useEffect(() => {
+    const checkProductContext = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.product_context === 'tipjar') {
+          // TipJar users should never be on m10djcompany.com onboarding
+          // Redirect to TipJar dashboard or onboarding
+          const org = await getCurrentOrganization(supabase);
+          if (org) {
+            router.push('/tipjar/dashboard');
+          } else {
+            router.push('/tipjar/onboarding');
+          }
+          return;
+        }
+        if (user?.user_metadata?.product_context === 'djdash') {
+          // DJ Dash users should never be on m10djcompany.com onboarding
+          const org = await getCurrentOrganization(supabase);
+          if (org) {
+            router.push('/djdash/dashboard');
+          } else {
+            router.push('/djdash/onboarding');
+          }
+          return;
+        }
+        
+        // Also check organization product_context as fallback
+        const org = await getCurrentOrganization(supabase);
+        if (org?.product_context === 'tipjar') {
+          router.push('/tipjar/dashboard');
+          return;
+        }
+        if (org?.product_context === 'djdash') {
+          router.push('/djdash/dashboard');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking product context:', error);
+      }
+    };
+    
+    checkProductContext();
+  }, [supabase, router]);
+
   const loadOrganization = useCallback(async () => {
     try {
       // Check if user exists (even if email not confirmed)

@@ -50,24 +50,25 @@ export async function getCurrentOrganization(
       .from('organizations')
       .select('*')
       .eq('owner_id', user.id)
-      .single();
+      .maybeSingle();
 
     // Second try: user is a team member
     if (orgError || !org) {
-      const { data: membership } = await supabase
+      const { data: membership, error: membershipError } = await supabase
         .from('organization_members')
         .select('organization_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (membership?.organization_id) {
+      // Only proceed if we found a membership (no error and data exists)
+      if (!membershipError && membership?.organization_id) {
         const { data: memberOrg, error: memberOrgError } = await supabase
           .from('organizations')
           .select('*')
           .eq('id', membership.organization_id)
-          .single();
+          .maybeSingle();
 
         if (!memberOrgError && memberOrg) {
           org = memberOrg;
@@ -125,19 +126,20 @@ export async function requireOrganization(
     .from('organizations')
     .select('id')
     .eq('owner_id', userId)
-    .single();
+    .maybeSingle();
 
   // Second try: user is a team member
   if (error || !org) {
-    const { data: membership } = await supabase
+    const { data: membership, error: membershipError } = await supabase
       .from('organization_members')
       .select('organization_id')
       .eq('user_id', userId)
       .eq('is_active', true)
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (membership?.organization_id) {
+    // Only return if we found a membership (no error and data exists)
+    if (!membershipError && membership?.organization_id) {
       return membership.organization_id;
     }
   }

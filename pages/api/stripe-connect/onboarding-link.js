@@ -21,11 +21,11 @@ export default async function handler(req, res) {
 
     const user = session.user;
 
-    // Get user's organization
+    // Get user's organization (include product_context to determine correct domain)
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     let { data: organization, error: orgError } = await supabaseAdmin
       .from('organizations')
-      .select('id, stripe_connect_account_id')
+      .select('id, stripe_connect_account_id, product_context')
       .eq('owner_id', user.id)
       .single();
 
@@ -48,10 +48,19 @@ export default async function handler(req, res) {
       });
     }
 
-    // Get base URL from request or environment
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
-                   req.headers.origin || 
-                   'http://localhost:3000';
+    // Determine correct base URL based on product context
+    // This ensures TipJar users always return to tipjar.live, not m10djcompany.com
+    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.headers.origin || 'http://localhost:3000';
+    
+    // Override based on product context to ensure correct domain
+    if (organization.product_context === 'tipjar') {
+      baseUrl = 'https://tipjar.live';
+    } else if (organization.product_context === 'djdash') {
+      baseUrl = 'https://djdash.net';
+    } else if (!baseUrl.includes('tipjar.live') && !baseUrl.includes('djdash.net')) {
+      // Default to m10djcompany.com if not already set and not a product-specific domain
+      baseUrl = 'https://m10djcompany.com';
+    }
 
     // Create account onboarding link
     // According to Stripe docs:

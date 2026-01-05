@@ -81,15 +81,16 @@ export async function getUserRole(
     }
     
     // Check members table
-    const { data: member } = await supabase
+    const { data: member, error: memberError } = await supabase
       .from('organization_members')
       .select('role')
       .eq('organization_id', organizationId)
       .eq('user_id', userId)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
     
-    if (member?.role) {
+    // Only return role if we found a membership (no error and data exists)
+    if (!memberError && member?.role) {
       return member.role as OrganizationRole;
     }
     

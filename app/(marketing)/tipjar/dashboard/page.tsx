@@ -43,6 +43,14 @@ export default async function TipJarDashboard() {
   if (!organization) {
     redirect('/tipjar/onboarding');
   }
+
+  // If this is a venue organization, redirect to venue dashboard
+  if (organization.organization_type === 'venue') {
+    redirect('/tipjar/dashboard/venue');
+  }
+
+  // If this is a performer organization, show performer dashboard
+  // (For now, show regular dashboard, but could customize later)
   
   // Fetch crowd requests stats
   let totalTips = 0;

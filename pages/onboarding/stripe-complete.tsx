@@ -10,21 +10,133 @@ import Head from 'next/head';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { CheckCircle, Loader2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { getCurrentOrganization } from '@/utils/organization-context';
 
 export default function StripeCompletePage() {
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<'checking' | 'complete' | 'pending' | 'error'>('checking');
+  const [dashboardUrl, setDashboardUrl] = useState<string>('/onboarding/welcome');
 
   useEffect(() => {
-    checkStatus();
+    // Check if TipJar user is on wrong domain and redirect IMMEDIATELY
+    // This must run first before any other logic
+    checkAndRedirectDomain();
   }, []);
+
+  useEffect(() => {
+    // Only run these after domain check (or if no redirect needed)
+    if (typeof window !== 'undefined' && !window.location.hostname.includes('m10djcompany.com')) {
+      checkStatus();
+      determineDashboardUrl();
+    }
+  }, []);
+
+  async function checkAndRedirectDomain() {
+    // Only redirect if we're in the browser (client-side)
+    if (typeof window === 'undefined') return;
+    
+    // If we're on m10djcompany.com, check if we should redirect
+    if (!window.location.hostname.includes('m10djcompany.com')) {
+      return; // Already on correct domain
+    }
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const productContext = user.user_metadata?.product_context;
+        
+        // If TipJar user is on m10djcompany.com, redirect to tipjar.live IMMEDIATELY
+        if (productContext === 'tipjar') {
+          const currentPath = window.location.pathname;
+          const searchParams = window.location.search;
+          window.location.replace(`https://tipjar.live${currentPath}${searchParams}`);
+          return;
+        }
+        
+        // If DJ Dash user is on m10djcompany.com, redirect to djdash.net
+        if (productContext === 'djdash') {
+          const currentPath = window.location.pathname;
+          const searchParams = window.location.search;
+          window.location.replace(`https://djdash.net${currentPath}${searchParams}`);
+          return;
+        }
+      }
+      
+      // Also check organization product_context as fallback (even if user metadata doesn't have it)
+      try {
+        const org = await getCurrentOrganization(supabase);
+        if (org?.product_context === 'tipjar') {
+          const currentPath = window.location.pathname;
+          const searchParams = window.location.search;
+          window.location.replace(`https://tipjar.live${currentPath}${searchParams}`);
+          return;
+        }
+        
+        if (org?.product_context === 'djdash') {
+          const currentPath = window.location.pathname;
+          const searchParams = window.location.search;
+          window.location.replace(`https://djdash.net${currentPath}${searchParams}`);
+          return;
+        }
+      } catch (orgError) {
+        // If we can't get org, continue (might be a new user)
+        console.error('Error getting organization for domain redirect:', orgError);
+      }
+    } catch (error) {
+      console.error('Error checking domain redirect:', error);
+    }
+  }
+
+  async function determineDashboardUrl() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Check product context from user metadata
+        const productContext = user.user_metadata?.product_context;
+        
+        if (productContext === 'tipjar') {
+          setDashboardUrl('/admin/crowd-requests');
+          return;
+        }
+        
+        if (productContext === 'djdash') {
+          setDashboardUrl('/djdash/dashboard');
+          return;
+        }
+        
+        // Check organization product_context as fallback
+        const org = await getCurrentOrganization(supabase);
+        if (org?.product_context === 'tipjar') {
+          setDashboardUrl('/admin/crowd-requests');
+          return;
+        }
+        
+        if (org?.product_context === 'djdash') {
+          setDashboardUrl('/djdash/dashboard');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error determining dashboard URL:', error);
+    }
+  }
 
   async function checkStatus() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        // Check if TipJar user before redirecting
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.user_metadata?.product_context === 'tipjar') {
+            router.push('/tipjar/signin/password_signin');
+            return;
+          }
+        } catch (e) {
+          // Fall through to default
+        }
         router.push('/signin');
         return;
       }
@@ -95,7 +207,7 @@ export default function StripeCompletePage() {
             </p>
             <div className="space-y-4">
               <Link
-                href="/onboarding/welcome"
+                href={dashboardUrl}
                 className="block w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
               >
                 Continue to Dashboard
@@ -129,7 +241,7 @@ export default function StripeCompletePage() {
             Your payment setup is being processed. This usually takes just a few moments. You'll receive an email when it's complete.
           </p>
           <Link
-            href="/onboarding/welcome"
+            href={dashboardUrl}
             className="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
           >
             Return to Dashboard

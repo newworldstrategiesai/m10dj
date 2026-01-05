@@ -133,7 +133,7 @@ export default function TipJarHeader() {
               How It Works
             </Link>
             <Link
-              href="/signin"
+              href="/tipjar/signin/password_signin"
               className={`font-semibold transition-colors ${
                 isLivePage || isPricingPage || !isScrolled
                   ? 'text-white hover:text-emerald-200'
@@ -207,7 +207,7 @@ export default function TipJarHeader() {
                 How It Works
               </Link>
               <Link
-                href="/signin"
+                href="/tipjar/signin/password_signin"
                 className="font-medium text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400"
                 onClick={() => setIsMobileMenuOpen(false)}
               >

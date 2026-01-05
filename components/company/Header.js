@@ -21,8 +21,16 @@ const getAssetUrl = (path) => {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
     return `${siteUrl}${path}`;
   }
-  // Client-side: use current origin to create absolute URL (works for both m10djcompany.com and tipjar.live)
-  // This ensures assets load correctly when accessed from different domains
+  // Client-side: use relative paths for localhost (development) to avoid Next.js Image remotePatterns issues
+  // For production domains, use absolute URLs to ensure assets load across different domains
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  if (isLocalhost) {
+    // Return relative path for localhost - Next.js Image will treat it as a local image
+    return path.startsWith('/') ? path : `/${path}`;
+  }
+  
+  // For production domains, use absolute URL (works for both m10djcompany.com and tipjar.live)
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path; // Already absolute
   }

@@ -115,9 +115,102 @@ export async function middleware(request: NextRequest) {
       // Keep /bid path as-is (dedicated bidding page)
       // Don't rewrite, let it fall through to pages router
     } else {
-      // Check if this is a slug-based path (e.g., /m10djcompany or /m10djcompany/requests)
-      // Extract slug and sub-path from path
-      const pathParts = path.replace(/^\//, '').split('/');
+      // Extract path parts for routing
+      const pathParts = path.replace(/^\//, '').split('/').filter(Boolean);
+      
+      // Check for nested venue/performer paths: /[venue-slug]/[performer-slug]
+      if (pathParts.length >= 2) {
+        const [venueSlug, performerSlug, ...rest] = pathParts;
+        
+        // Lookup venue organization
+        try {
+          const { data: venueOrg } = await supabase
+            .from('organizations')
+            .select('id, name, slug, organization_type')
+            .eq('slug', venueSlug)
+            .eq('organization_type', 'venue')
+            .single();
+          
+          if (venueOrg) {
+            // Lookup performer organization
+            const { data: performerOrg } = await supabase
+              .from('organizations')
+              .select('id, name, slug, parent_organization_id, performer_slug')
+              .eq('parent_organization_id', venueOrg.id)
+              .eq('performer_slug', performerSlug)
+              .eq('is_active', true)
+              .single();
+            
+            if (performerOrg) {
+              // Route to performer page
+              if (rest.length === 0 || (rest.length === 1 && rest[0] === '')) {
+                // Performer landing page: /[venue-slug]/[performer-slug]
+                rewritePath = `/tipjar/${venueSlug}/${performerSlug}`;
+              } else if (rest[0] === 'requests') {
+                // Performer requests page: /[venue-slug]/[performer-slug]/requests
+                rewritePath = `/organizations/${performerOrg.slug}/requests`;
+              } else {
+                // Other performer pages
+                rewritePath = `/tipjar/${venueSlug}/${performerSlug}/${rest.join('/')}`;
+              }
+              
+              // Set headers for organization context
+              const response = await updateSession(request);
+              const rewriteResponse = NextResponse.rewrite(new URL(rewritePath, request.url));
+              rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+              rewriteResponse.headers.set('x-product', 'tipjar');
+              rewriteResponse.headers.set('x-venue-id', venueOrg.id);
+              rewriteResponse.headers.set('x-performer-id', performerOrg.id);
+              rewriteResponse.headers.set('x-organization-id', performerOrg.id);
+              response.headers.forEach((value, key) => {
+                if (key.startsWith('x-') || key === 'set-cookie') {
+                  rewriteResponse.headers.set(key, value);
+                }
+              });
+              return rewriteResponse;
+            }
+          }
+        } catch (error) {
+          // If lookup fails, continue with normal routing
+          console.error('Error checking venue/performer:', error);
+        }
+      }
+      
+      // Check for venue-only path (venue landing page): /[venue-slug]
+      if (pathParts.length === 1) {
+        const [slug] = pathParts;
+        
+        try {
+          const { data: venueOrg } = await supabase
+            .from('organizations')
+            .select('id, name, slug, organization_type')
+            .eq('slug', slug)
+            .eq('organization_type', 'venue')
+            .single();
+          
+          if (venueOrg) {
+            // Route to venue landing page
+            rewritePath = `/tipjar/venue/${slug}`;
+            
+            const response = await updateSession(request);
+            const rewriteResponse = NextResponse.rewrite(new URL(rewritePath, request.url));
+            rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+            rewriteResponse.headers.set('x-product', 'tipjar');
+            rewriteResponse.headers.set('x-venue-id', venueOrg.id);
+            response.headers.forEach((value, key) => {
+              if (key.startsWith('x-') || key === 'set-cookie') {
+                rewriteResponse.headers.set(key, value);
+              }
+            });
+            return rewriteResponse;
+          }
+        } catch (error) {
+          // If lookup fails, continue with normal routing
+          console.error('Error checking venue:', error);
+        }
+      }
+      
+      // Fallback to existing slug-based routing
       const slug = pathParts[0];
       const subPath = pathParts[1];
       
@@ -262,6 +355,9 @@ export async function middleware(request: NextRequest) {
       tipjarUrl.search = url.search;
       return NextResponse.redirect(tipjarUrl);
     }
+    
+    // Note: /onboarding/* pages will handle domain redirects client-side
+    // based on user product_context (see pages/onboarding/stripe-complete.tsx)
     
     const response = await updateSession(request);
     response.headers.set('x-pathname', request.nextUrl.pathname);
