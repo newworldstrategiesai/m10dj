@@ -9,7 +9,7 @@ import { scrollToContact } from '../../utils/scroll-helpers';
 import ContactFormModal from './ContactFormModal';
 import SocialAccountSelector from '../ui/SocialAccountSelector';
 import dynamic from 'next/dynamic';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '../../utils/supabase/client';
 
 // Dynamically import ThemeToggle to avoid SSR issues
 const ThemeToggle = dynamic(() => import('./ThemeToggle'), { ssr: false });
@@ -76,6 +76,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
   const [selectedSocialPlatform, setSelectedSocialPlatform] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   
   // Check if we're on a quote page and extract quote ID
   const isQuotePage = router.pathname?.includes('/quote/') && router.query?.id;
@@ -97,8 +98,11 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
     : 'border-gray-200 dark:border-gray-700';
 
   useEffect(() => {
+    // Mark as mounted to prevent hydration mismatches
+    setIsMounted(true);
+    
     // Check if user is logged in
-    const supabase = createClientComponentClient();
+    const supabase = createClient();
     
     const checkUser = async () => {
       try {
@@ -517,9 +521,9 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                               // Fallback if GIF doesn't load, try JPG version
                               const currentSrc = e.target.src;
                               if (currentSrc.includes('white.gif')) {
-                                e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
+                                e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
                               } else if (currentSrc.includes('black.gif')) {
-                                e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
+                                e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
                               }
                             }}
                           />
@@ -593,8 +597,8 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       if (shouldBeTransparent) {
                         return (
                           <img
-                            key={`transparent-logo-m10-${isDarkMode ? 'dark' : 'light'}`}
-                            src={isDarkMode 
+                            key={`transparent-logo-m10-${effectiveDarkMode ? 'dark' : 'light'}`}
+                            src={effectiveDarkMode 
                               ? getAssetUrl("/assets/m10 dj company logo white.gif")
                               : getAssetUrl("/assets/m10 dj company logo black.gif")}
                             alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
@@ -603,9 +607,9 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                             onError={(e) => {
                               const currentSrc = e.target.src;
                               if (currentSrc.includes('white.gif')) {
-                                e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
+                                e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
                               } else if (currentSrc.includes('black.gif')) {
-                                e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
+                                e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
                               }
                             }}
                           />
@@ -614,8 +618,8 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       
                       return (
                         <Image
-                          key={`logo-m10-${isDarkMode ? 'dark' : 'light'}`}
-                          src={isDarkMode 
+                          key={`logo-m10-${effectiveDarkMode ? 'dark' : 'light'}`}
+                          src={effectiveDarkMode 
                             ? getAssetUrl("/assets/m10 dj company logo white.gif")
                             : getAssetUrl("/assets/m10 dj company logo black.gif")}
                           alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
@@ -646,8 +650,8 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       if (shouldBeTransparent) {
                         return (
                           <img
-                            key={`transparent-logo-m10-default-${isDarkMode ? 'dark' : 'light'}`}
-                            src={isDarkMode 
+                            key={`transparent-logo-m10-default-${effectiveDarkMode ? 'dark' : 'light'}`}
+                            src={effectiveDarkMode 
                               ? getAssetUrl("/assets/m10 dj company logo white.gif")
                               : getAssetUrl("/assets/m10 dj company logo black.gif")}
                             alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
@@ -656,9 +660,9 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                             onError={(e) => {
                               const currentSrc = e.target.src;
                               if (currentSrc.includes('white.gif')) {
-                                e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
+                                e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
                               } else if (currentSrc.includes('black.gif')) {
-                                e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
+                                e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
                               }
                             }}
                           />
@@ -667,8 +671,8 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       
                       return (
                         <Image
-                          key={`logo-m10-default-${isDarkMode ? 'dark' : 'light'}`}
-                          src={isDarkMode 
+                          key={`logo-m10-default-${effectiveDarkMode ? 'dark' : 'light'}`}
+                          src={effectiveDarkMode 
                             ? getAssetUrl("/assets/m10 dj company logo white.gif")
                             : getAssetUrl("/assets/m10 dj company logo black.gif")}
                           alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
