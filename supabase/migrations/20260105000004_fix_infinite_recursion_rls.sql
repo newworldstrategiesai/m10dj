@@ -173,20 +173,19 @@ DROP POLICY IF EXISTS "Users can update organization_members" ON organization_me
 DROP POLICY IF EXISTS "Users can delete organization_members" ON organization_members;
 
 -- Create a helper function to check if user can view organization members
+-- This function must NOT query organization_members to avoid recursion
 CREATE OR REPLACE FUNCTION public.check_can_view_organization_members(user_id UUID, org_id UUID)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SET row_security = off
 STABLE
 AS $$
 DECLARE
   can_view BOOLEAN;
 BEGIN
-  -- Disable RLS for this function
-  SET LOCAL row_security = off;
-  
-  -- Check if user owns the organization
+  -- Check if user owns the organization (this is safe, no recursion)
   SELECT EXISTS (
     SELECT 1
     FROM public.organizations
@@ -194,19 +193,8 @@ BEGIN
     AND owner_id = check_can_view_organization_members.user_id
   ) INTO can_view;
   
-  IF can_view THEN
-    RETURN true;
-  END IF;
-  
-  -- Check if user is a member of the organization
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.organization_members
-    WHERE organization_id = org_id
-    AND user_id = check_can_view_organization_members.user_id
-    AND is_active = true
-  ) INTO can_view;
-  
+  -- Note: We don't check organization_members here to avoid recursion
+  -- The policy itself will handle the user_id = auth.uid() case
   RETURN can_view;
 END;
 $$;
@@ -215,19 +203,18 @@ GRANT EXECUTE ON FUNCTION public.check_can_view_organization_members(UUID, UUID)
 GRANT EXECUTE ON FUNCTION public.check_can_view_organization_members(UUID, UUID) TO anon;
 
 -- Create a helper function to check if user is admin/owner of organization
+-- This function queries organization_members but uses row_security = off at function level
 CREATE OR REPLACE FUNCTION public.check_user_is_org_admin(user_id UUID, org_id UUID)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SET row_security = off
 STABLE
 AS $$
 DECLARE
   is_admin BOOLEAN;
 BEGIN
-  -- Disable RLS for this function
-  SET LOCAL row_security = off;
-  
   -- Check if user owns the organization
   SELECT EXISTS (
     SELECT 1
@@ -241,6 +228,7 @@ BEGIN
   END IF;
   
   -- Check if user is an admin/owner member
+  -- Using row_security = off at function level should prevent recursion
   SELECT EXISTS (
     SELECT 1
     FROM public.organization_members
@@ -257,13 +245,16 @@ $$;
 GRANT EXECUTE ON FUNCTION public.check_user_is_org_admin(UUID, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_user_is_org_admin(UUID, UUID) TO anon;
 
--- Recreate organization_members SELECT policy using the helper function
+-- Recreate organization_members SELECT policy
+-- Use a simpler approach that avoids recursion by checking ownership first
 CREATE POLICY "Users can view members of their organizations"
   ON organization_members
   FOR SELECT
   TO authenticated
   USING (
+    -- User can always see their own membership (no recursion)
     user_id = auth.uid()
+    -- User can see members if they own the organization (checked via organizations table, no recursion)
     OR public.check_can_view_organization_members(auth.uid(), organization_id)
   );
 
