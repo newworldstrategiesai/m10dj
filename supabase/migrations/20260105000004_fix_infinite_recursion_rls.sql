@@ -288,6 +288,38 @@ CREATE POLICY "Users can view organizations they are members of"
     public.check_user_organization_membership(auth.uid(), id)
   );
 
+-- Recreate "Performers can view parent venue" policy using the helper function
+CREATE POLICY "Performers can view parent venue"
+  ON organizations
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.check_performer_parent_access(id, auth.uid())
+  );
+
+-- Recreate "Venues can view child performers" policy using the helper function
+CREATE POLICY "Venues can view child performers"
+  ON organizations
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.check_venue_child_access(id, auth.uid())
+  );
+
+-- Fix "Venues can update child performers" policy to use helper function
+DROP POLICY IF EXISTS "Venues can update child performers" ON organizations;
+
+CREATE POLICY "Venues can update child performers"
+  ON organizations
+  FOR UPDATE
+  TO authenticated
+  USING (
+    public.check_venue_child_access(id, auth.uid())
+  )
+  WITH CHECK (
+    public.check_venue_child_access(id, auth.uid())
+  );
+
 -- Verify all policies exist
 DO $$
 BEGIN
