@@ -30,7 +30,10 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient();
-    const callbackURL = getURL('/auth/callback');
+    // Use the request origin to ensure email confirmation redirects to the correct domain
+    // If user signs up from tipjar.live, confirmation should redirect to tipjar.live
+    const requestOrigin = new URL(request.url).origin;
+    const callbackURL = `${requestOrigin}/auth/callback`;
 
     // Sign up the user with TipJar product context
     const { error, data } = await supabase.auth.signUp({

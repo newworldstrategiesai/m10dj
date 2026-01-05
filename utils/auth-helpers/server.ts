@@ -171,16 +171,36 @@ export async function signInWithPassword(formData: FormData) {
   });
 
   if (error) {
+    // Check if this is a TipJar signin based on product context or referrer
+    const { data: { user } } = await supabase.auth.getUser();
+    const productContext = user?.user_metadata?.product_context;
+    const signinPath = productContext === 'tipjar' 
+      ? '/tipjar/signin/password_signin'
+      : '/signin/password_signin';
+    
     redirectPath = getErrorRedirect(
-      '/signin/password_signin',
+      signinPath,
       'Sign in failed.',
       error.message
     );
   } else if (data.user) {
     cookieStore.set('preferredSignInView', 'password_signin', { path: '/' });
     
-    // Use redirect parameter if provided, otherwise use role-based redirect
-    const finalRedirectUrl = redirectTo ? decodeURIComponent(redirectTo) : await getRoleBasedRedirectUrl();
+    // Check product context to determine redirect
+    const productContext = data.user.user_metadata?.product_context;
+    let finalRedirectUrl: string;
+    
+    if (redirectTo) {
+      finalRedirectUrl = decodeURIComponent(redirectTo);
+    } else if (productContext === 'tipjar') {
+      // Use product-based redirect for TipJar users
+      const { getProductBasedRedirectUrl } = await import('./product-redirect');
+      finalRedirectUrl = await getProductBasedRedirectUrl();
+    } else {
+      // Use role-based redirect for other users
+      finalRedirectUrl = await getRoleBasedRedirectUrl();
+    }
+    
     redirectPath = getStatusRedirect(finalRedirectUrl, 'Success!', 'You are now signed in.');
   } else {
     redirectPath = getErrorRedirect(

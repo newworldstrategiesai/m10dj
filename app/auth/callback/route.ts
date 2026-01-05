@@ -17,9 +17,27 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
+      // Check if user is TipJar user and redirect to correct domain
+      let signinUrl = `${requestUrl.origin}/signin`;
+      try {
+        // Try to get user to check product context (even if auth failed)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.product_context === 'tipjar') {
+          if (requestUrl.hostname.includes('m10djcompany.com')) {
+            // Redirect to tipjar.live signin page
+            signinUrl = 'https://tipjar.live/tipjar/signin/password_signin';
+          } else {
+            // Already on tipjar.live, use correct path
+            signinUrl = `${requestUrl.origin}/tipjar/signin/password_signin`;
+          }
+        }
+      } catch (e) {
+        // Ignore errors when checking user
+      }
+      
       return NextResponse.redirect(
         getErrorRedirect(
-          `${requestUrl.origin}/signin`,
+          signinUrl,
           error.name,
           "Sorry, we weren't able to log you in. Please try again."
         )
@@ -87,7 +105,29 @@ export async function GET(request: NextRequest) {
   }
 
   // Get product-based redirect URL (checks product context, falls back to role-based)
-  const redirectUrl = await getProductBasedRedirectUrl(requestUrl.origin);
+  let redirectUrl = await getProductBasedRedirectUrl(requestUrl.origin);
+  
+  // Ensure TipJar users are redirected to tipjar.live domain, not m10djcompany.com
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.user_metadata?.product_context === 'tipjar') {
+      // Check if we're on the wrong domain (m10djcompany.com instead of tipjar.live)
+      if (requestUrl.hostname.includes('m10djcompany.com')) {
+        // Extract the path from redirectUrl (it might be a full URL or just a path)
+        const urlPath = redirectUrl.includes('http') 
+          ? new URL(redirectUrl).pathname 
+          : redirectUrl.startsWith('/') 
+            ? redirectUrl 
+            : `/${redirectUrl}`;
+        // Redirect to tipjar.live with the correct path
+        redirectUrl = `https://tipjar.live${urlPath}`;
+      }
+      // If already on tipjar.live, redirectUrl should already be correct
+    }
+  } catch (error) {
+    console.error('Error checking product context for redirect:', error);
+    // Fall through with original redirectUrl
+  }
   
   // URL to redirect to after sign in process completes
   return NextResponse.redirect(

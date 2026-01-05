@@ -117,7 +117,7 @@ export default async function TipJarSignIn({
         });
         
         const timeoutPromise = new Promise<string>((resolve) => 
-          setTimeout(() => resolve('/account'), 3000)
+          setTimeout(() => resolve('/tipjar/dashboard'), 3000)
         );
         
         redirectUrl = await Promise.race([redirectPromise, timeoutPromise]);
@@ -125,9 +125,9 @@ export default async function TipJarSignIn({
       
       redirect(redirectUrl);
     } catch (error) {
-      // If redirect URL fails, just go to account page
+      // If redirect URL fails, redirect to TipJar dashboard
       console.error('Error in redirect logic:', error);
-      redirect('/account');
+      redirect('/tipjar/dashboard');
     }
   } else if (!user && viewProp === 'update_password') {
     redirect('/tipjar/signin');
