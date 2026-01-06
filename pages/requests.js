@@ -1829,10 +1829,54 @@ export function GeneralRequestsPage({
         .from-\\[\\#fcba00\\] { --tw-gradient-from: var(--accent-color) !important; }
         .to-\\[\\#fcba00\\] { --tw-gradient-to: var(--accent-color) !important; }
         .via-\\[\\#fcba00\\] { --tw-gradient-via: var(--accent-color) !important; }
+        
+        /* Theme mode forcing */
+        ${organizationData?.requests_theme_mode === 'light' ? `
+          .requests-page-container,
+          .requests-page-container * {
+            color-scheme: light;
+          }
+          .requests-page-container .dark\\:bg-black { background-color: transparent !important; }
+          .requests-page-container .dark\\:from-black { --tw-gradient-from: transparent !important; }
+          .requests-page-container .dark\\:via-black { --tw-gradient-via: transparent !important; }
+          .requests-page-container .dark\\:to-black { --tw-gradient-to: transparent !important; }
+          .requests-page-container .dark\\:bg-gray-900 { background-color: rgb(249, 250, 251) !important; }
+          .requests-page-container .dark\\:bg-gray-800 { background-color: white !important; }
+          .requests-page-container .dark\\:bg-black\\/80 { background-color: rgba(255, 255, 255, 0.8) !important; }
+          .requests-page-container .dark\\:text-white { color: rgb(17, 24, 39) !important; }
+          .requests-page-container .dark\\:text-gray-100 { color: rgb(31, 41, 55) !important; }
+          .requests-page-container .dark\\:text-gray-200 { color: rgb(55, 65, 81) !important; }
+          .requests-page-container .dark\\:text-gray-300 { color: rgb(75, 85, 99) !important; }
+          .requests-page-container .dark\\:text-gray-400 { color: rgb(107, 114, 128) !important; }
+          .requests-page-container .dark\\:border-gray-700 { border-color: rgb(229, 231, 235) !important; }
+          .requests-page-container .dark\\:border-gray-800 { border-color: rgb(229, 231, 235) !important; }
+        ` : ''}
+        ${organizationData?.requests_theme_mode === 'dark' ? `
+          .requests-page-container,
+          .requests-page-container * {
+            color-scheme: dark;
+          }
+          .requests-page-container { background-color: black !important; }
+          .requests-page-container .bg-gray-50 { background-color: rgb(17, 24, 39) !important; }
+          .requests-page-container .bg-white { background-color: rgb(31, 41, 55) !important; }
+          .requests-page-container .bg-white\\/80 { background-color: rgba(0, 0, 0, 0.8) !important; }
+          .requests-page-container .from-gray-50 { --tw-gradient-from: black !important; }
+          .requests-page-container .via-brand\\/5 { --tw-gradient-via: black !important; }
+          .requests-page-container .to-gray-50 { --tw-gradient-to: black !important; }
+          .requests-page-container .text-gray-900 { color: white !important; }
+          .requests-page-container .text-gray-800 { color: rgb(243, 244, 246) !important; }
+          .requests-page-container .text-gray-700 { color: rgb(209, 213, 219) !important; }
+          .requests-page-container .text-gray-600 { color: rgb(156, 163, 175) !important; }
+          .requests-page-container .text-gray-500 { color: rgb(156, 163, 175) !important; }
+          .requests-page-container .border-gray-200 { border-color: rgb(55, 65, 81) !important; }
+          .requests-page-container .border-gray-300 { border-color: rgb(55, 65, 81) !important; }
+        ` : ''}
       `}</style>
 
       <div 
-        className="min-h-screen bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 dark:from-black dark:via-black dark:to-black relative overflow-x-hidden md:flex"
+        className={`requests-page-container min-h-screen bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 dark:from-black dark:via-black dark:to-black relative overflow-x-hidden md:flex ${
+          organizationData?.requests_theme_mode === 'dark' ? 'force-dark' : organizationData?.requests_theme_mode === 'light' ? 'force-light' : ''
+        }`}
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',

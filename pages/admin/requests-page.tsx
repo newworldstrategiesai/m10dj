@@ -87,6 +87,9 @@ export default function RequestsPageSettings() {
   // Accent color customization (available to all users)
   const [accentColor, setAccentColor] = useState('#fcba00');
   
+  // Theme mode (light/dark/system)
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('dark');
+  
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   
   // Header fields
@@ -210,6 +213,9 @@ export default function RequestsPageSettings() {
         
         // Set accent color
         setAccentColor(org.requests_accent_color || '#fcba00');
+        
+        // Set theme mode
+        setThemeMode(org.requests_theme_mode || 'dark');
         
         // Parse social links - if none exist, show default fallback links for editing
         const defaultSocialLinks: SocialLink[] = [
@@ -353,6 +359,8 @@ export default function RequestsPageSettings() {
           requests_header_logo_url: canCustomizeHeaderLogo ? (headerLogoUrl || null) : null,
           // Accent color (available to all users)
           requests_accent_color: accentColor || '#fcba00',
+          // Theme mode
+          requests_theme_mode: themeMode,
           // Social links
           social_links: validSocialLinks,
           // Bidding settings
@@ -822,6 +830,120 @@ export default function RequestsPageSettings() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                    
+                    {/* Theme Mode */}
+                    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                        Theme Mode
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        Choose whether your requests page appears in light or dark mode
+                      </p>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        {/* Light Mode */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setThemeMode('light');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`relative p-4 rounded-lg border-2 transition-all ${
+                            themeMode === 'light'
+                              ? 'border-[var(--accent-color)] bg-white dark:bg-gray-100 ring-2 ring-[var(--accent-color)]/30'
+                              : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-100 hover:border-gray-300'
+                          }`}
+                          style={themeMode === 'light' ? { borderColor: accentColor } : {}}
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-12 h-8 rounded bg-gray-100 border border-gray-200 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                            <span className="text-sm font-medium text-gray-900">Light</span>
+                          </div>
+                          {themeMode === 'light' && (
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                        </button>
+                        
+                        {/* Dark Mode */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setThemeMode('dark');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`relative p-4 rounded-lg border-2 transition-all ${
+                            themeMode === 'dark'
+                              ? 'border-[var(--accent-color)] bg-gray-900 ring-2 ring-[var(--accent-color)]/30'
+                              : 'border-gray-600 bg-gray-900 hover:border-gray-500'
+                          }`}
+                          style={themeMode === 'dark' ? { borderColor: accentColor } : {}}
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-12 h-8 rounded bg-gray-800 border border-gray-700 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                              </svg>
+                            </div>
+                            <span className="text-sm font-medium text-white">Dark</span>
+                          </div>
+                          {themeMode === 'dark' && (
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                        </button>
+                        
+                        {/* System Mode */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setThemeMode('system');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`relative p-4 rounded-lg border-2 transition-all ${
+                            themeMode === 'system'
+                              ? 'border-[var(--accent-color)] bg-gradient-to-r from-white to-gray-900 ring-2 ring-[var(--accent-color)]/30'
+                              : 'border-gray-300 dark:border-gray-600 bg-gradient-to-r from-white to-gray-900 hover:border-gray-400'
+                          }`}
+                          style={themeMode === 'system' ? { borderColor: accentColor } : {}}
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-12 h-8 rounded bg-gradient-to-r from-gray-100 to-gray-800 border border-gray-400 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <span className="text-sm font-medium text-gray-600">System</span>
+                          </div>
+                          {themeMode === 'system' && (
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                        </button>
+                      </div>
+                      
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                        {themeMode === 'light' && '☀️ Your page will always display in light mode'}
+                        {themeMode === 'dark' && '🌙 Your page will always display in dark mode'}
+                        {themeMode === 'system' && '💻 Your page will match the visitor\'s device preference'}
+                      </p>
                     </div>
                     
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
