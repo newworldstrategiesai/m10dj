@@ -69,6 +69,7 @@ export default function RequestsPageSettings() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'design' | 'content' | 'payments' | 'features' | 'advanced'>('design');
   const [previewDevice, setPreviewDevice] = useState<'mobile' | 'tablet' | 'desktop'>('mobile');
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [biddingEnabled, setBiddingEnabled] = useState(false);
   const [minimumBid, setMinimumBid] = useState(500); // In cents
   const [startingBid, setStartingBid] = useState(500); // In cents - default starting bid (never $0)
@@ -507,7 +508,7 @@ export default function RequestsPageSettings() {
 
   return (
     <AdminPageLayout title="Requests Page Settings" description="Customize your public song requests page with cover photos and social links">
-      <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 lg:pb-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-28 lg:pb-8">
           {/* Header - Mobile optimized */}
           <div className="mb-4 sm:mb-8">
             <Link
@@ -2283,25 +2284,95 @@ export default function RequestsPageSettings() {
           </div>
         </div>
         
-        {/* Mobile Floating Save Button */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 z-50">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full inline-flex items-center justify-center px-6 py-3 bg-[#fcba00] text-black rounded-xl hover:bg-[#d99f00] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg text-base"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-5 h-5 mr-2" />
-                Save Changes
-              </>
-            )}
-          </button>
+        {/* Mobile Floating Preview + Save */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
+          {/* Expandable Preview Panel */}
+          {showMobilePreview && (
+            <div className="bg-gray-900 border-t border-gray-700 p-3 animate-in slide-in-from-bottom duration-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white text-sm font-medium flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-[#fcba00]" />
+                  Live Preview
+                </span>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={requestsPageUrl}
+                    target="_blank"
+                    className="px-3 py-1.5 bg-[#fcba00] text-black rounded-lg text-xs font-medium"
+                    onClick={() => {
+                      window.open(`/requests?t=${Date.now()}`, '_blank');
+                      return false;
+                    }}
+                  >
+                    Open Full
+                  </Link>
+                  <button
+                    onClick={() => setShowMobilePreview(false)}
+                    className="p-1.5 text-gray-400 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              {/* Mini iPhone Preview */}
+              <div className="flex justify-center">
+                <div 
+                  className="relative bg-black rounded-[24px] p-1.5 shadow-xl"
+                  style={{ width: '160px', height: '320px', border: '2px solid #333' }}
+                >
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-16 h-4 bg-black rounded-full z-10" />
+                  <div className="relative bg-black rounded-[20px] overflow-hidden w-full h-full">
+                    <iframe
+                      src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
+                      className="border-0 bg-black"
+                      style={{ 
+                        transform: 'scale(0.42)',
+                        transformOrigin: 'top left',
+                        width: '375px',
+                        height: '750px',
+                        borderRadius: '20px'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Bottom Action Bar */}
+          <div className="p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 flex gap-2">
+            {/* Preview Toggle */}
+            <button
+              onClick={() => setShowMobilePreview(!showMobilePreview)}
+              className={`px-4 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
+                showMobilePreview 
+                  ? 'bg-gray-800 text-white' 
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              <Eye className="w-4 h-4" />
+              {showMobilePreview ? 'Hide' : 'Preview'}
+            </button>
+            
+            {/* Save Button */}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 inline-flex items-center justify-center px-6 py-3 bg-[#fcba00] text-black rounded-xl hover:bg-[#d99f00] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg text-base"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-5 h-5 mr-2" />
+                  Save
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </AdminPageLayout>
   );
