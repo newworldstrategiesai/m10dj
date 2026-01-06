@@ -835,8 +835,18 @@ export default function RequestsPageSettings() {
                           min="1"
                           value={minimumAmount / 100}
                           onChange={(e) => {
-                            const value = Math.round(parseFloat(e.target.value) * 100) || 100;
-                            setMinimumAmount(Math.max(100, value));
+                            const newMin = Math.max(100, Math.round(parseFloat(e.target.value) * 100) || 100);
+                            setMinimumAmount(newMin);
+                            
+                            // Auto-adjust preset amounts if minimum changes
+                            const currentMin = Math.min(...presetAmounts);
+                            if (newMin !== currentMin) {
+                              // Calculate the difference and shift all presets
+                              const diff = newMin - currentMin;
+                              const newPresets = presetAmounts.map(amount => amount + diff);
+                              setPresetAmounts(newPresets);
+                            }
+                            
                             setError(null);
                             setSuccess(false);
                           }}
@@ -844,6 +854,9 @@ export default function RequestsPageSettings() {
                           placeholder="10"
                         />
                       </div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                        💡 Changing the minimum will automatically adjust the quick amount buttons
+                      </p>
                     </div>
 
                     {/* Preset Amounts */}
