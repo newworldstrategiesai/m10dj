@@ -41,10 +41,10 @@ export function useCrowdRequestPayment({
       if (requestType === 'tip') {
         return Math.round(custom * 100);
       }
-      // For song requests and shoutouts, enforce minimum
-      const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-      const validatedCustom = Math.max(custom * 100, minPresetAmount);
-      return Math.round(validatedCustom);
+      // For song requests and shoutouts, return the actual typed value (don't clamp to minimum)
+      // The minimum validation is handled visually in the UI and on form submit
+      // This allows users to see the actual amount they typed, even if it's below minimum
+      return Math.round(custom * 100);
     }
   }, [amountType, presetAmount, customAmount, presetAmounts, minimumAmount, requestType]);
 
