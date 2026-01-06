@@ -167,8 +167,8 @@ export default function RequestsPageSettings() {
   // Handle tab from URL query parameter
   useEffect(() => {
     const { tab } = router.query;
-    if (tab === 'social' || tab === 'cover' || tab === 'payments' || tab === 'bidding' || tab === 'header' || tab === 'labels' || tab === 'features' || tab === 'seo') {
-      setActiveTab(tab as any);
+    if (tab === 'design' || tab === 'content' || tab === 'payments' || tab === 'features' || tab === 'advanced') {
+      setActiveTab(tab as typeof activeTab);
     }
   }, [router.query]);
 
@@ -439,7 +439,7 @@ export default function RequestsPageSettings() {
       order: socialLinks.length + 1,
     };
     setSocialLinks([...socialLinks, newLink]);
-    setActiveTab('social');
+    setActiveTab('design'); // Social links are now part of Design tab
   };
 
   const removeSocialLink = (index: number) => {
