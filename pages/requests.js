@@ -173,6 +173,18 @@ export function GeneralRequestsPage({
   allowedRequestTypes = null, // Array of allowed request types (e.g., ['song_request']). If null, all types allowed.
   minimalHeader = false // Use minimal header (for bid page)
 } = {}) {
+  const router = useRouter();
+  
+  // Read preview parameters from URL (for admin preview)
+  const previewAccentColor = router.query.accentColor ? decodeURIComponent(router.query.accentColor) : null;
+  const previewButtonStyle = router.query.buttonStyle || null;
+  const previewThemeMode = router.query.themeMode || null;
+  
+  // Use preview values if available, otherwise use organization data
+  const effectiveAccentColor = previewAccentColor || organizationData?.requests_accent_color || '#fcba00';
+  const effectiveButtonStyle = previewButtonStyle || organizationData?.requests_button_style || 'gradient';
+  const effectiveThemeMode = previewThemeMode || organizationData?.requests_theme_mode || 'dark';
+  
   // Log when organizationData changes
   useEffect(() => {
     console.log('🎨 [GENERAL REQUESTS] GeneralRequestsPage organizationData changed:', {
@@ -1809,9 +1821,9 @@ export function GeneralRequestsPage({
         dangerouslySetInnerHTML={{ 
           __html: `
             :root {
-              --accent-color: ${organizationData?.requests_accent_color || '#fcba00'};
-              --accent-color-hover: ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + 'dd' : '#d99f00'};
-              --accent-color-light: ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + '20' : '#fcba0020'};
+              --accent-color: ${effectiveAccentColor};
+              --accent-color-hover: ${effectiveAccentColor}dd;
+              --accent-color-light: ${effectiveAccentColor}20;
             }
             
             .bg-brand { background-color: var(--accent-color) !important; }
@@ -1831,7 +1843,7 @@ export function GeneralRequestsPage({
             .via-\\[\\#fcba00\\] { --tw-gradient-via: var(--accent-color) !important; }
             
             /* Button styles */
-            ${organizationData?.requests_button_style === 'flat' ? `
+            ${effectiveButtonStyle === 'flat' ? `
               .requests-page-container .btn-primary,
               .requests-page-container button[type="submit"],
               .requests-page-container .bg-gradient-to-r {
@@ -1847,17 +1859,17 @@ export function GeneralRequestsPage({
             ` : `
               .requests-page-container .btn-primary,
               .requests-page-container button[type="submit"] {
-                background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-hover) 50%, ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + '99' : '#fcba0099'} 100%) !important;
-                box-shadow: 0 4px 14px ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + '40' : '#fcba0040'} !important;
+                background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-hover) 50%, ${effectiveAccentColor}99 100%) !important;
+                box-shadow: 0 4px 14px ${effectiveAccentColor}40 !important;
               }
               .requests-page-container .btn-primary:hover,
               .requests-page-container button[type="submit"]:hover {
-                box-shadow: 0 6px 20px ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + '60' : '#fcba0060'} !important;
+                box-shadow: 0 6px 20px ${effectiveAccentColor}60 !important;
                 transform: translateY(-1px);
               }
             `}
             
-            ${organizationData?.requests_theme_mode === 'light' ? `
+            ${effectiveThemeMode === 'light' ? `
               .requests-page-container, .requests-page-container * { color-scheme: light; }
               .requests-page-container .dark\\:bg-black { background-color: transparent !important; }
               .requests-page-container .dark\\:from-black { --tw-gradient-from: transparent !important; }
@@ -1874,7 +1886,7 @@ export function GeneralRequestsPage({
               .requests-page-container .dark\\:border-gray-700 { border-color: rgb(229, 231, 235) !important; }
               .requests-page-container .dark\\:border-gray-800 { border-color: rgb(229, 231, 235) !important; }
             ` : ''}
-            ${organizationData?.requests_theme_mode === 'dark' ? `
+            ${effectiveThemeMode === 'dark' ? `
               .requests-page-container, .requests-page-container * { color-scheme: dark; }
               .requests-page-container { background-color: black !important; }
               .requests-page-container .bg-gray-50 { background-color: rgb(17, 24, 39) !important; }
@@ -1897,13 +1909,13 @@ export function GeneralRequestsPage({
 
       <div 
         className={`requests-page-container min-h-screen bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 dark:from-black dark:via-black dark:to-black relative overflow-x-hidden md:flex ${
-          organizationData?.requests_theme_mode === 'dark' ? 'force-dark' : organizationData?.requests_theme_mode === 'light' ? 'force-light' : ''
+          effectiveThemeMode === 'dark' ? 'force-dark' : effectiveThemeMode === 'light' ? 'force-light' : ''
         }`}
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           WebkitScrollbar: { display: 'none' },
-          '--accent-color': organizationData?.requests_accent_color || '#fcba00',
+          '--accent-color': effectiveAccentColor,
           ...(customBranding?.whiteLabelEnabled ? {
             backgroundColor: customBranding.backgroundColor,
             color: customBranding.textColor,
@@ -2093,7 +2105,7 @@ export function GeneralRequestsPage({
               style={{ 
                 backgroundColor: customBranding?.whiteLabelEnabled 
                   ? `${customBranding.primaryColor}20` 
-                  : `${organizationData?.requests_accent_color || '#fcba00'}20`
+                  : `${effectiveAccentColor}20`
               }}
             ></div>
             <div 

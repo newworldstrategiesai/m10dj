@@ -408,7 +408,7 @@ export default function RequestsPageSettings() {
       setTimeout(() => {
         const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
         if (iframe) {
-          iframe.src = `/requests?preview=true&t=${newTimestamp}`;
+          iframe.src = `/requests?preview=true&t=${newTimestamp}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`;
         }
       }, 1000);
     } catch (error: any) {
@@ -2161,7 +2161,7 @@ export default function RequestsPageSettings() {
                       // Force iframe refresh by updating timestamp
                       const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
                       if (iframe) {
-                        iframe.src = `/requests?preview=true&t=${Date.now()}`;
+                        iframe.src = `/requests?preview=true&t=${Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`;
                       }
                     }}
                     className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
@@ -2195,7 +2195,7 @@ export default function RequestsPageSettings() {
                       >
                         <iframe
                           id="live-preview-iframe"
-                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
+                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
                           className="border-0 bg-black"
                           style={{ 
                             transform: 'scale(0.57)',
@@ -2231,7 +2231,7 @@ export default function RequestsPageSettings() {
                       >
                         <iframe
                           id="live-preview-iframe"
-                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
+                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
                           className="border-0 bg-black"
                           style={{ 
                             transform: 'scale(0.41)',
@@ -2267,7 +2267,7 @@ export default function RequestsPageSettings() {
                       <div className="relative bg-black overflow-hidden" style={{ height: 'calc(100% - 32px)' }}>
                         <iframe
                           id="live-preview-iframe"
-                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
+                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
                           className="border-0 bg-black"
                           style={{ 
                             transform: 'scale(0.296)',
