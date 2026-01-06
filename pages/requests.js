@@ -265,10 +265,48 @@ export function GeneralRequestsPage({
   
   // Get the video URL from organization data (if set)
   // This allows each organization to have their own animated header
-  const headerVideoUrl = organizationData?.requests_header_video_url || null;
+  // CRITICAL: Only use video URL if it's explicitly set for THIS organization
+  // Reject any video URLs that look like M10 defaults (djbenmurray, m10djcompany, etc.)
+  let headerVideoUrl = organizationData?.requests_header_video_url || null;
+  
+  // Detect domain context
+  const isTipJarDomain = typeof window !== 'undefined' && 
+    (window.location.hostname === 'tipjar.live' || window.location.hostname === 'www.tipjar.live');
+  const isM10Domain = typeof window !== 'undefined' && 
+    (window.location.hostname === 'm10djcompany.com' || window.location.hostname === 'www.m10djcompany.com');
+  const isM10Organization = organizationData?.slug === 'm10djcompany' || organizationData?.name?.toLowerCase().includes('m10');
+  
+  // Security check: Block M10-specific video URLs from appearing on other organizations' pages
+  if (headerVideoUrl) {
+    const videoUrlLower = headerVideoUrl.toLowerCase();
+    const isM10Video = videoUrlLower.includes('djbenmurray') || 
+                       videoUrlLower.includes('m10djcompany') ||
+                       videoUrlLower.includes('m10-dj-company') ||
+                       videoUrlLower.includes('ben-murray') ||
+                       videoUrlLower.includes('dj-ben-murray');
+    
+    // Only allow M10 videos on M10 domains OR if this is actually the M10 organization
+    const shouldBlockM10Video = isM10Video && !isM10Domain && !isM10Organization;
+    
+    // On TipJar domain, never show M10 videos unless it's actually the M10 organization
+    const shouldBlockOnTipJar = isTipJarDomain && isM10Video && !isM10Organization;
+    
+    if (shouldBlockM10Video || shouldBlockOnTipJar) {
+      console.warn('🚫 [REQUESTS] Blocked M10-specific video URL from non-M10 organization:', {
+        videoUrl: headerVideoUrl,
+        organizationId: organizationData?.id,
+        organizationName: organizationData?.name,
+        organizationSlug: organizationData?.slug,
+        isTipJarDomain,
+        isM10Domain,
+        isM10Organization
+      });
+      headerVideoUrl = null; // Force fallback to animated gradient
+    }
+  }
   
   // Determine what to show as background:
-  // 1. Custom video if set
+  // 1. Custom video if set (and not blocked)
   // 2. Custom cover photo if set (not the default placeholder)
   // 3. Animated gradient with accent color (default for TipJar pages)
   const hasCustomVideo = !!headerVideoUrl;
