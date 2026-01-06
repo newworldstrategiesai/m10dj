@@ -4,8 +4,9 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, X, Loader2, Video } from 'lucide-react';
+import { Upload, X, Loader2, Video, FolderOpen } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import MediaLibraryModal from './MediaLibraryModal';
 
 interface VideoUploadInputProps {
   label: string;
@@ -31,6 +32,7 @@ export default function VideoUploadInput({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [showLibrary, setShowLibrary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClientComponentClient();
 
@@ -180,7 +182,7 @@ export default function VideoUploadInput({
           type="url"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="https://example.com/video.mp4 or upload below"
+          placeholder="Paste URL or select from library"
           className="flex-1"
           disabled={uploading}
         />
@@ -193,6 +195,16 @@ export default function VideoUploadInput({
           id={`video-upload-${label}`}
           disabled={uploading}
         />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setShowLibrary(true)}
+          disabled={uploading}
+          className="gap-2"
+          title="Select from library"
+        >
+          <FolderOpen className="w-4 h-4" />
+        </Button>
         <Button
           type="button"
           variant="outline"
@@ -251,6 +263,18 @@ export default function VideoUploadInput({
       <p className="text-xs text-gray-500 dark:text-gray-400">
         Max file size: {maxSizeMB}MB. Accepted formats: MP4, WebM, MOV
       </p>
+      
+      {/* Media Library Modal */}
+      <MediaLibraryModal
+        isOpen={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        onSelect={(url) => {
+          onChange(url);
+          setError(null);
+        }}
+        mediaType="video"
+        title="Select Video"
+      />
     </div>
   );
 }

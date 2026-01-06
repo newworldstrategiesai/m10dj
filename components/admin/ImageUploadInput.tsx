@@ -4,8 +4,9 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, X, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Loader2, Image as ImageIcon, FolderOpen } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import MediaLibraryModal from './MediaLibraryModal';
 
 interface ImageUploadInputProps {
   label: string;
@@ -36,6 +37,7 @@ export default function ImageUploadInput({
 }: ImageUploadInputProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLibrary, setShowLibrary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClientComponentClient();
 
@@ -175,7 +177,7 @@ export default function ImageUploadInput({
           type="url"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="https://example.com/image.jpg or upload below"
+          placeholder="Paste URL or select from library"
           className="flex-1"
           disabled={uploading}
         />
@@ -188,6 +190,16 @@ export default function ImageUploadInput({
           id={`image-upload-${label}`}
           disabled={uploading}
         />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setShowLibrary(true)}
+          disabled={uploading}
+          className="gap-2"
+          title="Select from library"
+        >
+          <FolderOpen className="w-4 h-4" />
+        </Button>
         <Button
           type="button"
           variant="outline"
@@ -208,6 +220,18 @@ export default function ImageUploadInput({
           )}
         </Button>
       </div>
+      
+      {/* Media Library Modal */}
+      <MediaLibraryModal
+        isOpen={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        onSelect={(url) => {
+          onChange(url);
+          setError(null);
+        }}
+        mediaType="image"
+        title="Select Image"
+      />
 
       {error && (
         <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
