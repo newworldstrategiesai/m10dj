@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useTheme } from 'next-themes';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
   Home,
@@ -50,12 +51,27 @@ interface NavItem {
 export default function AdminNavbar() {
   const router = useRouter();
   const supabase = createClientComponentClient();
+  const { theme, systemTheme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [productContext, setProductContext] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Initialize mounted state for theme detection
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Get the actual theme to display (resolve system theme)
+  const displayTheme = mounted && theme !== 'system' ? theme : (mounted && systemTheme || 'dark');
+
+  // Determine logo based on theme - theme-aware M10 logo GIFs
+  const logoSrc = displayTheme === 'dark'
+    ? '/assets/m10 dj company logo white.gif'
+    : '/assets/m10 dj company logo black.gif';
 
   useEffect(() => {
     checkUser();
@@ -219,16 +235,20 @@ export default function AdminNavbar() {
         <div className="flex items-center justify-between h-12 gap-3" style={{ overflow: 'visible' }}>
           {/* Left: Logo & Main Nav */}
           <div className="flex items-center flex-1 min-w-0 gap-4 relative" style={{ overflow: 'visible' }}>
-            {/* Logo */}
+            {/* Logo - Theme-aware M10 logo for M10 context, emoji for TipJar */}
             <Link
               href={productContext === 'tipjar' ? '/admin/crowd-requests' : '/admin/dashboard'}
               className="flex items-center gap-2 mr-6 flex-shrink-0 hover:opacity-80 transition-opacity"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-[#fcba00] to-[#d97706] rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
                 {productContext === 'tipjar' ? (
-                  <span className="text-xl">💸</span>
+                  <span className="text-2xl">💸</span>
                 ) : (
-                  <Music className="w-5 h-5 text-black" />
+                  <img
+                    src={logoSrc}
+                    alt="M10 DJ Company Logo"
+                    className="w-8 h-8 object-contain"
+                  />
                 )}
               </div>
               <span className="hidden sm:block font-bold text-lg text-gray-900 dark:text-white">
