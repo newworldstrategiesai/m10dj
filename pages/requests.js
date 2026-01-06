@@ -1952,6 +1952,71 @@ export function GeneralRequestsPage({
             .to-\\[\\#fcba00\\] { --tw-gradient-to: var(--accent-color) !important; }
             .via-\\[\\#fcba00\\] { --tw-gradient-via: var(--accent-color) !important; }
             
+            /* Brand color variants - all mapped to accent color */
+            .bg-brand-50 { background-color: ${effectiveAccentColor}10 !important; }
+            .bg-brand-100 { background-color: ${effectiveAccentColor}20 !important; }
+            .bg-brand-200 { background-color: ${effectiveAccentColor}30 !important; }
+            .bg-brand-300 { background-color: ${effectiveAccentColor}50 !important; }
+            .bg-brand-400 { background-color: ${effectiveAccentColor}80 !important; }
+            .bg-brand-500 { background-color: var(--accent-color) !important; }
+            .bg-brand-600 { background-color: var(--accent-color) !important; }
+            .bg-brand-700 { background-color: var(--accent-color-hover) !important; }
+            .bg-brand-800 { background-color: var(--accent-color-hover) !important; }
+            .bg-brand-900 { background-color: ${effectiveAccentColor}ee !important; }
+            
+            .text-brand-300 { color: ${effectiveAccentColor}90 !important; }
+            .text-brand-400 { color: ${effectiveAccentColor}bb !important; }
+            .text-brand-500 { color: var(--accent-color) !important; }
+            .text-brand-600 { color: var(--accent-color) !important; }
+            .text-brand-700 { color: var(--accent-color-hover) !important; }
+            .text-brand-800 { color: var(--accent-color-hover) !important; }
+            
+            .border-brand-500 { border-color: var(--accent-color) !important; }
+            .border-brand-600 { border-color: var(--accent-color) !important; }
+            
+            .ring-brand-500 { --tw-ring-color: var(--accent-color) !important; }
+            .focus\\:ring-brand-500:focus { --tw-ring-color: var(--accent-color) !important; }
+            .focus\\:border-brand-500:focus { border-color: var(--accent-color) !important; }
+            
+            .shadow-brand-500\\/20 { --tw-shadow-color: ${effectiveAccentColor}33 !important; }
+            .shadow-brand-500\\/40 { --tw-shadow-color: ${effectiveAccentColor}66 !important; }
+            .shadow-brand-500\\/60 { --tw-shadow-color: ${effectiveAccentColor}99 !important; }
+            .focus\\:shadow-brand-500\\/20:focus { --tw-shadow-color: ${effectiveAccentColor}33 !important; }
+            
+            /* Gradient classes with brand colors */
+            .from-brand-500 { --tw-gradient-from: var(--accent-color) !important; }
+            .from-brand-600 { --tw-gradient-from: var(--accent-color) !important; }
+            .from-brand-700 { --tw-gradient-from: var(--accent-color-hover) !important; }
+            .via-brand-500 { --tw-gradient-via: var(--accent-color) !important; }
+            .via-brand-600 { --tw-gradient-via: var(--accent-color) !important; }
+            .to-brand-500 { --tw-gradient-to: var(--accent-color) !important; }
+            .to-brand-600 { --tw-gradient-to: var(--accent-color) !important; }
+            .to-brand-700 { --tw-gradient-to: var(--accent-color-hover) !important; }
+            
+            /* Hover variants */
+            .hover\\:bg-brand:hover { background-color: var(--accent-color-hover) !important; }
+            .hover\\:bg-brand-500:hover { background-color: var(--accent-color-hover) !important; }
+            .hover\\:bg-brand-600:hover { background-color: var(--accent-color-hover) !important; }
+            .hover\\:bg-brand-700:hover { background-color: var(--accent-color) !important; }
+            .hover\\:text-brand:hover { color: var(--accent-color-hover) !important; }
+            .hover\\:border-brand:hover { border-color: var(--accent-color) !important; }
+            .hover\\:border-brand\\/50:hover { border-color: ${effectiveAccentColor}80 !important; }
+            .hover\\:shadow-brand-500\\/60:hover { --tw-shadow-color: ${effectiveAccentColor}99 !important; }
+            
+            .hover\\:from-brand-500:hover { --tw-gradient-from: var(--accent-color) !important; }
+            .hover\\:from-brand-600:hover { --tw-gradient-from: var(--accent-color) !important; }
+            .hover\\:via-brand-400:hover { --tw-gradient-via: ${effectiveAccentColor}cc !important; }
+            .hover\\:to-brand-600:hover { --tw-gradient-to: var(--accent-color) !important; }
+            
+            .group-hover\\:bg-brand\\/10 { background-color: ${effectiveAccentColor}1a !important; }
+            .group-hover\\:text-brand { color: var(--accent-color) !important; }
+            
+            /* File input styling */
+            .file\\:bg-brand-600::file-selector-button { background-color: var(--accent-color) !important; }
+            .file\\:bg-brand-700::file-selector-button { background-color: var(--accent-color-hover) !important; }
+            .hover\\:file\\:bg-brand-700:hover::file-selector-button { background-color: var(--accent-color-hover) !important; }
+            .hover\\:file\\:bg-brand-600:hover::file-selector-button { background-color: var(--accent-color) !important; }
+            
             /* Animated gradient background */
             @keyframes gradient-shift {
               0% { background-position: 0% 50%; }
