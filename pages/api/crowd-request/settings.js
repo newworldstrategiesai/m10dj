@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       // Direct organization ID provided
       const { data: org } = await supabase
         .from('organizations')
-        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
         .eq('id', organizationId)
         .single();
       organization = org;
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       // Organization slug provided (from URL)
       const { data: org } = await supabase
         .from('organizations')
-        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
         .eq('slug', organizationSlug)
         .single();
       organization = org;
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       // Try to get default organization (first one) for backward compatibility
       const { data: defaultOrg } = await supabase
         .from('organizations')
-        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
         .limit(1)
         .single();
       organization = defaultOrg;
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
           .from('admin_settings')
           .select('setting_key, setting_value')
           .eq('user_id', organization.owner_id)
-          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_venmo_phone_number', 'crowd_request_fast_track_fee', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent']);
+          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_venmo_phone_number', 'crowd_request_fast_track_fee', 'crowd_request_next_fee', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent']);
         
         if (methodSettings) {
           methodSettings.forEach(s => {
@@ -85,11 +85,20 @@ export default async function handler(req, res) {
         || paymentMethodSettings['crowd_request_venmo_username'] 
         || (isM10Organization ? (process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray') : null);
       
+      // For fees: use organization-specific values first, then admin_settings, then defaults
+      const fastTrackFee = organization.requests_fast_track_fee 
+        || parseInt(paymentMethodSettings['crowd_request_fast_track_fee']) 
+        || 1000;
+      const nextFee = organization.requests_next_fee 
+        || parseInt(paymentMethodSettings['crowd_request_next_fee']) 
+        || 2000;
+      
       return res.status(200).json({
         cashAppTag,
         venmoUsername,
         venmoPhoneNumber: paymentMethodSettings['crowd_request_venmo_phone_number'] || process.env.VENMO_PHONE_NUMBER || null,
-        fastTrackFee: parseInt(paymentMethodSettings['crowd_request_fast_track_fee']) || 1000,
+        fastTrackFee,
+        nextFee,
         minimumAmount: orgMinimum,
         presetAmounts: orgPresets,
         bundleDiscountEnabled: paymentMethodSettings['crowd_request_bundle_discount_enabled'] === 'true' || paymentMethodSettings['crowd_request_bundle_discount_enabled'] === undefined,
@@ -114,7 +123,7 @@ export default async function handler(req, res) {
           .from('admin_settings')
           .select('setting_key, setting_value, updated_at, user_id')
           .eq('user_id', orgData.owner_id) // Get settings for organization owner
-          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_venmo_phone_number', 'crowd_request_fast_track_fee', 'crowd_request_minimum_amount', 'minimum_tip_amount', 'crowd_request_preset_amounts', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent'])
+          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_venmo_phone_number', 'crowd_request_fast_track_fee', 'crowd_request_next_fee', 'crowd_request_minimum_amount', 'minimum_tip_amount', 'crowd_request_preset_amounts', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent'])
           .order('updated_at', { ascending: false });
 
         if (!settingsError && allSettings && allSettings.length > 0) {
@@ -144,7 +153,7 @@ export default async function handler(req, res) {
           .from('admin_settings')
           .select('setting_key, setting_value, updated_at, user_id')
           .in('user_id', adminUserIds)
-          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_venmo_phone_number', 'crowd_request_fast_track_fee', 'crowd_request_minimum_amount', 'minimum_tip_amount', 'crowd_request_preset_amounts', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent'])
+          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_venmo_phone_number', 'crowd_request_fast_track_fee', 'crowd_request_next_fee', 'crowd_request_minimum_amount', 'minimum_tip_amount', 'crowd_request_preset_amounts', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent'])
           .order('updated_at', { ascending: false });
 
         if (!settingsError && allSettings && allSettings.length > 0) {
@@ -175,11 +184,14 @@ export default async function handler(req, res) {
     if (settings.length === 0) {
       const defaultMinimum = 1000; // Default $10.00 (1000 cents)
       // Only M10 DJ Company gets personal payment defaults; other orgs get null (must configure their own)
+      const fastTrackFee = organization?.requests_fast_track_fee || 1000;
+      const nextFee = organization?.requests_next_fee || 2000;
       return res.status(200).json({
         cashAppTag: organization?.requests_cashapp_tag || (isM10Organization ? (process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray') : null),
         venmoUsername: organization?.requests_venmo_username || (isM10Organization ? (process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray') : null),
         venmoPhoneNumber: process.env.VENMO_PHONE_NUMBER || null, // Include phone number for Venmo deep links
-        fastTrackFee: 1000,
+        fastTrackFee,
+        nextFee,
         minimumAmount: defaultMinimum,
         presetAmounts: generateDefaultPresets(defaultMinimum)
       });
@@ -193,7 +205,12 @@ export default async function handler(req, res) {
       || settings.find(s => s.setting_key === 'crowd_request_venmo_username')?.setting_value 
       || (isM10Organization ? (process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray') : null);
     const venmoPhoneNumber = settings.find(s => s.setting_key === 'crowd_request_venmo_phone_number')?.setting_value || process.env.VENMO_PHONE_NUMBER || null;
-    const fastTrackFee = settings.find(s => s.setting_key === 'crowd_request_fast_track_fee')?.setting_value || '1000';
+    
+    // For fees: use organization-specific values first, then admin_settings, then defaults
+    const fastTrackFee = organization?.requests_fast_track_fee 
+      || parseInt(settings.find(s => s.setting_key === 'crowd_request_fast_track_fee')?.setting_value || '1000');
+    const nextFee = organization?.requests_next_fee 
+      || parseInt(settings.find(s => s.setting_key === 'crowd_request_next_fee')?.setting_value || '2000');
     // Check for minimum_tip_amount first (newer key), then fall back to crowd_request_minimum_amount (legacy), then default to $10.00
     const minimumAmountSetting = settings.find(s => s.setting_key === 'minimum_tip_amount')?.setting_value 
       || settings.find(s => s.setting_key === 'crowd_request_minimum_amount')?.setting_value 
@@ -229,7 +246,8 @@ export default async function handler(req, res) {
       cashAppTag,
       venmoUsername,
       venmoPhoneNumber, // Include phone number for Venmo deep links
-      fastTrackFee: parseInt(fastTrackFee),
+      fastTrackFee,
+      nextFee,
       minimumAmount: minimumAmount,
       presetAmounts,
       bundleDiscountEnabled: bundleDiscountEnabled === 'true',
@@ -244,6 +262,7 @@ export default async function handler(req, res) {
       venmoUsername: null,
       venmoPhoneNumber: null,
       fastTrackFee: 1000,
+      nextFee: 2000,
       minimumAmount: defaultMinimum,
       presetAmounts: [1000, 1500, 2000, 2500], // $10, $15, $20, $25
       bundleDiscountEnabled: true,

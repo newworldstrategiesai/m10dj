@@ -79,6 +79,10 @@ export default function RequestsPageSettings() {
   const [presetAmounts, setPresetAmounts] = useState([1000, 1500, 2000, 2500]); // In cents
   const [amountsSortOrder, setAmountsSortOrder] = useState<'desc' | 'asc'>('desc');
   
+  // Priority placement fees
+  const [fastTrackFee, setFastTrackFee] = useState(1000); // In cents, default $10
+  const [nextFee, setNextFee] = useState(2000); // In cents, default $20
+  
   const [coverPhotos, setCoverPhotos] = useState({
     requests_cover_photo_url: '',
     requests_artist_photo_url: '',
@@ -250,6 +254,10 @@ export default function RequestsPageSettings() {
         setPresetAmounts(org.requests_preset_amounts || [1000, 1500, 2000, 2500]);
         setAmountsSortOrder(org.requests_amounts_sort_order || 'desc');
         
+        // Set priority placement fees
+        setFastTrackFee(org.requests_fast_track_fee || 1000);
+        setNextFee(org.requests_next_fee || 2000);
+        
         // Set payment usernames for tips section
         setCashAppTag(org.requests_cashapp_tag || '');
         setVenmoUsername(org.requests_venmo_username || '');
@@ -390,6 +398,9 @@ export default function RequestsPageSettings() {
           requests_minimum_amount: minimumAmount,
           requests_preset_amounts: presetAmounts,
           requests_amounts_sort_order: amountsSortOrder,
+          // Priority placement fees
+          requests_fast_track_fee: fastTrackFee,
+          requests_next_fee: nextFee,
           // Payment usernames for tips section
           requests_cashapp_tag: cashAppTag || null,
           requests_venmo_username: venmoUsername || null,
@@ -1368,6 +1379,78 @@ export default function RequestsPageSettings() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                         Minimum: ${(minimumAmount / 100).toFixed(0)}
                       </p>
+                    </div>
+                    
+                    {/* Priority Placement Fees Section */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Priority Placement Fees
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        Set the fees for Fast-Track and Next Song options. These are added to the base payment amount.
+                      </p>
+                      
+                      <div className="space-y-4">
+                        {/* Fast-Track Fee */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Fast-Track Fee
+                          </label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            Fee for playing the song immediately (in dollars)
+                          </p>
+                          <div className="relative w-full sm:w-48">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={(fastTrackFee / 100).toFixed(2)}
+                              onChange={(e) => {
+                                const value = Math.round(parseFloat(e.target.value) * 100) || 0;
+                                setFastTrackFee(Math.max(0, value));
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                              placeholder="10.00"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            Current: ${(fastTrackFee / 100).toFixed(2)} (stored as {fastTrackFee} cents)
+                          </p>
+                        </div>
+                        
+                        {/* Next Song Fee */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Next Song Fee
+                          </label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            Fee for jumping the song to the front of the queue (in dollars)
+                          </p>
+                          <div className="relative w-full sm:w-48">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={(nextFee / 100).toFixed(2)}
+                              onChange={(e) => {
+                                const value = Math.round(parseFloat(e.target.value) * 100) || 0;
+                                setNextFee(Math.max(0, value));
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                              placeholder="20.00"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            Current: ${(nextFee / 100).toFixed(2)} (stored as {nextFee} cents)
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     
                     {/* Alternative Payment Methods Section */}
