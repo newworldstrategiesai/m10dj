@@ -62,6 +62,7 @@ export default function RequestsPageSettings() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'cover' | 'social' | 'bidding' | 'header' | 'labels' | 'features' | 'seo'>('cover');
+  const [previewDevice, setPreviewDevice] = useState<'mobile' | 'tablet' | 'desktop'>('mobile');
   const [biddingEnabled, setBiddingEnabled] = useState(false);
   const [minimumBid, setMinimumBid] = useState(500); // In cents
   const [startingBid, setStartingBid] = useState(500); // In cents - default starting bid (never $0)
@@ -1494,7 +1495,48 @@ export default function RequestsPageSettings() {
                   <Eye className="w-5 h-5 text-[#fcba00]" />
                   Live Preview
                 </h3>
-                <div className="flex gap-2 mb-4">
+                
+                {/* Device selector */}
+                <div className="flex items-center justify-center gap-1 mb-3 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDevice('mobile')}
+                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      previewDevice === 'mobile'
+                        ? 'bg-[#fcba00] text-black shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                    title="Mobile (375px)"
+                  >
+                    📱 Mobile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDevice('tablet')}
+                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      previewDevice === 'tablet'
+                        ? 'bg-[#fcba00] text-black shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                    title="Tablet (768px)"
+                  >
+                    📱 Tablet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDevice('desktop')}
+                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      previewDevice === 'desktop'
+                        ? 'bg-[#fcba00] text-black shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                    title="Desktop (1280px)"
+                  >
+                    🖥️ Desktop
+                  </button>
+                </div>
+                
+                <div className="flex gap-2 mb-3">
                   <Link
                     href={requestsPageUrl}
                     target="_blank"
@@ -1523,19 +1565,34 @@ export default function RequestsPageSettings() {
                 </div>
                 
                 {/* Live iframe preview - renders the actual page */}
-                <div className="border-2 border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-black" style={{ height: '500px' }}>
-                  <iframe
-                    id="live-preview-iframe"
-                    src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
-                    className="w-full h-full border-0"
-                    style={{ 
-                      transform: 'scale(0.5)', 
-                      transformOrigin: 'top left',
-                      width: '200%',
-                      height: '200%'
+                <div 
+                  className="border-2 border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-gray-900 flex justify-center"
+                  style={{ height: '600px' }}
+                >
+                  <div
+                    className="relative bg-black transition-all duration-300"
+                    style={{
+                      width: previewDevice === 'mobile' ? '375px' : previewDevice === 'tablet' ? '100%' : '100%',
+                      height: '100%',
+                      maxWidth: '100%'
                     }}
-                    title="Live Preview"
-                  />
+                  >
+                    <iframe
+                      id="live-preview-iframe"
+                      src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
+                      className="border-0 bg-black"
+                      style={{ 
+                        transform: previewDevice === 'desktop' ? 'scale(0.35)' : previewDevice === 'tablet' ? 'scale(0.45)' : 'scale(0.52)',
+                        transformOrigin: 'top center',
+                        width: previewDevice === 'desktop' ? '1280px' : previewDevice === 'tablet' ? '768px' : '375px',
+                        height: previewDevice === 'desktop' ? '1714px' : previewDevice === 'tablet' ? '1333px' : '1154px',
+                        position: 'absolute',
+                        left: '50%',
+                        marginLeft: previewDevice === 'desktop' ? '-640px' : previewDevice === 'tablet' ? '-384px' : '-187.5px'
+                      }}
+                      title="Live Preview"
+                    />
+                  </div>
                 </div>
                 
                 <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1.5 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
