@@ -3013,8 +3013,13 @@ export function GeneralRequestsPage({
                                 minimumBid={dynamicMinimumAmount || 500}
                               />
                             ) : (
-                              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-center">
-                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                              <div className="rounded-lg p-4 text-center" style={{
+                                backgroundColor: effectiveThemeMode === 'dark' ? `${effectiveAccentColor}20` : `${effectiveAccentColor}10`,
+                                border: `1px solid ${effectiveAccentColor}40`
+                              }}>
+                                <p className="text-sm" style={{ 
+                                  color: effectiveThemeMode === 'dark' ? `${effectiveAccentColor}` : `${effectiveAccentColor}dd`
+                                }}>
                                   Loading bidding options...
                                 </p>
                               </div>
@@ -3054,14 +3059,21 @@ export function GeneralRequestsPage({
                           const minBid = dynamicMinimumAmount || 500;
                           if (!bidAmount || bidAmount < minBid) {
                             return (
-                              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg p-3 mb-3">
+                              <div className="rounded-lg p-3 mb-3" style={{
+                                backgroundColor: effectiveThemeMode === 'dark' ? `${effectiveAccentColor}20` : `${effectiveAccentColor}10`,
+                                border: `2px solid ${effectiveAccentColor}`
+                              }}>
                                 <div className="flex items-start gap-2">
-                                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: effectiveAccentColor }} />
                                   <div className="flex-1">
-                                    <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
+                                    <p className="text-sm font-semibold mb-1" style={{ 
+                                      color: effectiveThemeMode === 'dark' ? '#fff' : '#000'
+                                    }}>
                                       Bid Amount Required
                                     </p>
-                                    <p className="text-xs text-yellow-800 dark:text-yellow-300">
+                                    <p className="text-xs" style={{ 
+                                      color: effectiveThemeMode === 'dark' ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'
+                                    }}>
                                       Please select a bid amount above. Minimum bid is <span className="font-bold">${((minBid || 500) / 100).toFixed(2)}</span>
                                     </p>
                                   </div>
