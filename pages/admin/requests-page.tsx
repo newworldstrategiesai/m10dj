@@ -1091,7 +1091,6 @@ export default function RequestsPageSettings() {
                     </div>
                   </div>
                   </div>
-                  </div>
                   
                   {/* Social Links Section - Part of Design tab */}
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -1228,8 +1227,8 @@ export default function RequestsPageSettings() {
                       ))}
                     </div>
                   )}
-                    </div>
                   </div>
+                </div>
                 </div>
               ) : activeTab === 'payments' ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
