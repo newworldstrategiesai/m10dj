@@ -1566,33 +1566,114 @@ export default function RequestsPageSettings() {
                 
                 {/* Live iframe preview - renders the actual page */}
                 <div 
-                  className="border-2 border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-gray-900 flex justify-center"
-                  style={{ height: '600px' }}
+                  className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-900 flex justify-center items-start py-4"
+                  style={{ height: previewDevice === 'mobile' ? '580px' : previewDevice === 'tablet' ? '500px' : '450px' }}
                 >
-                  <div
-                    className="relative bg-black transition-all duration-300"
-                    style={{
-                      width: previewDevice === 'mobile' ? '375px' : previewDevice === 'tablet' ? '100%' : '100%',
-                      height: '100%',
-                      maxWidth: '100%'
-                    }}
-                  >
-                    <iframe
-                      id="live-preview-iframe"
-                      src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
-                      className="border-0 bg-black"
+                  {previewDevice === 'mobile' ? (
+                    // iPhone frame for mobile preview
+                    <div 
+                      className="relative bg-gray-900 rounded-[40px] p-2 shadow-2xl"
                       style={{ 
-                        transform: previewDevice === 'desktop' ? 'scale(0.35)' : previewDevice === 'tablet' ? 'scale(0.45)' : 'scale(0.52)',
-                        transformOrigin: 'top center',
-                        width: previewDevice === 'desktop' ? '1280px' : previewDevice === 'tablet' ? '768px' : '375px',
-                        height: previewDevice === 'desktop' ? '1714px' : previewDevice === 'tablet' ? '1333px' : '1154px',
-                        position: 'absolute',
-                        left: '50%',
-                        marginLeft: previewDevice === 'desktop' ? '-640px' : previewDevice === 'tablet' ? '-384px' : '-187.5px'
+                        width: '220px',
+                        height: '450px',
+                        border: '3px solid #1a1a1a'
                       }}
-                      title="Live Preview"
-                    />
-                  </div>
+                    >
+                      {/* Dynamic Island / Notch */}
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-10" />
+                      
+                      {/* Screen */}
+                      <div 
+                        className="relative bg-black rounded-[32px] overflow-hidden"
+                        style={{ width: '100%', height: '100%' }}
+                      >
+                        <iframe
+                          id="live-preview-iframe"
+                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
+                          className="border-0 bg-black"
+                          style={{ 
+                            transform: 'scale(0.57)',
+                            transformOrigin: 'top left',
+                            width: '375px',
+                            height: '812px',
+                            borderRadius: '32px'
+                          }}
+                          title="Live Preview"
+                        />
+                      </div>
+                      
+                      {/* Home indicator */}
+                      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-20 h-1 bg-gray-600 rounded-full" />
+                    </div>
+                  ) : previewDevice === 'tablet' ? (
+                    // iPad frame for tablet preview
+                    <div 
+                      className="relative bg-gray-800 rounded-[20px] p-2 shadow-2xl"
+                      style={{ 
+                        width: '320px',
+                        height: '430px',
+                        border: '3px solid #2a2a2a'
+                      }}
+                    >
+                      {/* Camera */}
+                      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-700 rounded-full z-10" />
+                      
+                      {/* Screen */}
+                      <div 
+                        className="relative bg-black rounded-[12px] overflow-hidden"
+                        style={{ width: '100%', height: '100%' }}
+                      >
+                        <iframe
+                          id="live-preview-iframe"
+                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
+                          className="border-0 bg-black"
+                          style={{ 
+                            transform: 'scale(0.41)',
+                            transformOrigin: 'top left',
+                            width: '768px',
+                            height: '1024px'
+                          }}
+                          title="Live Preview"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    // Desktop browser frame
+                    <div 
+                      className="relative bg-gray-700 rounded-lg shadow-2xl overflow-hidden"
+                      style={{ width: '100%', maxWidth: '380px', height: '400px' }}
+                    >
+                      {/* Browser chrome */}
+                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-800 border-b border-gray-600">
+                        <div className="flex gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                        </div>
+                        <div className="flex-1 mx-2">
+                          <div className="bg-gray-600 rounded px-2 py-0.5 text-[10px] text-gray-400 truncate">
+                            tipjar.live/requests
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Browser content */}
+                      <div className="relative bg-black overflow-hidden" style={{ height: 'calc(100% - 32px)' }}>
+                        <iframe
+                          id="live-preview-iframe"
+                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
+                          className="border-0 bg-black"
+                          style={{ 
+                            transform: 'scale(0.296)',
+                            transformOrigin: 'top left',
+                            width: '1280px',
+                            height: '1200px'
+                          }}
+                          title="Live Preview"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1.5 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
