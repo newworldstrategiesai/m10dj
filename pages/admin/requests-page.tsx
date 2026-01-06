@@ -507,38 +507,37 @@ export default function RequestsPageSettings() {
 
   return (
     <AdminPageLayout title="Requests Page Settings" description="Customize your public song requests page with cover photos and social links">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <div className="mb-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 lg:pb-8">
+          {/* Header - Mobile optimized */}
+          <div className="mb-4 sm:mb-8">
             <Link
               href="/admin/dashboard"
-              className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 text-sm"
+              className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3 sm:mb-4 text-sm"
             >
-              ← Back to Dashboard
+              ← Back
             </Link>
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                  <Music className="w-8 h-8 text-[#fcba00]" />
-                  Requests Page Settings
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
+                  <Music className="w-6 h-6 sm:w-8 sm:h-8 text-[#fcba00] flex-shrink-0" />
+                  <span className="truncate">Requests Page</span>
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-2">
-                  Customize your public song requests page - headers, labels, features, and more
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
+                  Customize your public requests page
                 </p>
               </div>
-                <Link
-                  href={requestsPageUrl}
-                  target="_blank"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
-                  onClick={() => {
-                    // Force refresh the page by adding a timestamp to bypass any caching
-                    window.open(`/organizations/${organization.slug}/requests?t=${Date.now()}`, '_blank');
-                    return false;
-                  }}
-                >
-                  <Eye className="w-4 h-4" />
-                  Preview Page
-                </Link>
+              <Link
+                href={requestsPageUrl}
+                target="_blank"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#fcba00] text-black rounded-lg hover:bg-[#d99f00] transition-colors text-sm font-medium w-full sm:w-auto"
+                onClick={() => {
+                  window.open(`/organizations/${organization.slug}/requests?t=${Date.now()}`, '_blank');
+                  return false;
+                }}
+              >
+                <Eye className="w-4 h-4" />
+                View Live Page
+              </Link>
             </div>
           </div>
 
@@ -557,95 +556,49 @@ export default function RequestsPageSettings() {
             </div>
           )}
 
-          {/* Reorganized Navigation - Cleaner 5-tab structure */}
-          <div className="mb-6">
-            <div className="border-b border-gray-200 dark:border-gray-700">
-              <nav className="-mb-px flex space-x-6 overflow-x-auto">
+          {/* Mobile-optimized Tab Navigation */}
+          <div className="mb-4 sm:mb-6 -mx-3 sm:mx-0">
+            <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg sm:rounded-xl overflow-x-auto mx-3 sm:mx-0">
+              {[
+                { id: 'design', label: 'Design', icon: Palette },
+                { id: 'content', label: 'Content', icon: Type },
+                { id: 'payments', label: 'Payments', icon: DollarSign },
+                { id: 'features', label: 'Features', icon: ToggleLeft },
+                { id: 'advanced', label: 'More', icon: Settings },
+              ].map((tab) => (
                 <button
-                  onClick={() => setActiveTab('design')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
-                    activeTab === 'design'
-                      ? 'border-[#fcba00] text-[#fcba00]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 min-w-0 py-2 sm:py-2.5 px-2 sm:px-4 rounded-md sm:rounded-lg font-medium text-xs sm:text-sm transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-white dark:bg-gray-900 text-[#fcba00] shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Palette className="w-5 h-5" />
-                    Design
-                  </div>
+                  <tab.icon className="w-4 h-4 mx-auto sm:hidden" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden text-[10px] block mt-0.5">{tab.label}</span>
                 </button>
-                <button
-                  onClick={() => setActiveTab('content')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
-                    activeTab === 'content'
-                      ? 'border-[#fcba00] text-[#fcba00]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Type className="w-5 h-5" />
-                    Content
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('payments')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
-                    activeTab === 'payments'
-                      ? 'border-[#fcba00] text-[#fcba00]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5" />
-                    Payments
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('features')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
-                    activeTab === 'features'
-                      ? 'border-[#fcba00] text-[#fcba00]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <ToggleLeft className="w-5 h-5" />
-                    Features
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('advanced')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
-                    activeTab === 'advanced'
-                      ? 'border-[#fcba00] text-[#fcba00]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Advanced
-                  </div>
-                </button>
-              </nav>
+              ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2">
               {/* ===== DESIGN TAB ===== */}
               {activeTab === 'design' ? (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Branding Section */}
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-[#fcba00]" />
+                  <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#fcba00]" />
                         Branding & Style
                       </h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Colors, theme, buttons, and visual identity</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">Colors, theme, and visual identity</p>
                     </div>
-                    <div className="p-6 space-y-6">
+                    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                     {/* Custom Header Logo Section */}
                     <div className={`p-4 rounded-lg border-2 ${
                       canCustomizeHeaderLogo 
@@ -1093,26 +1046,26 @@ export default function RequestsPageSettings() {
                   </div>
                   
                   {/* Social Links Section - Part of Design tab */}
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Globe className="w-5 h-5 text-[#fcba00]" />
+                  <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-[#fcba00] flex-shrink-0" />
                             Social Links
                           </h2>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Links shown on your page</p>
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 hidden sm:block">Links shown on your page</p>
                         </div>
                         <button
                           onClick={addSocialLink}
-                          className="inline-flex items-center px-4 py-2 bg-[#fcba00] text-black rounded-lg hover:bg-[#d99f00] transition-colors font-medium text-sm"
+                          className="inline-flex items-center px-3 sm:px-4 py-2 bg-[#fcba00] text-black rounded-lg hover:bg-[#d99f00] transition-colors font-medium text-xs sm:text-sm flex-shrink-0"
                         >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Link
+                          <Plus className="w-4 h-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Add Link</span>
                         </button>
                       </div>
                     </div>
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                   {socialLinks.length === 0 ? (
                     <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                       <Globe className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
@@ -1231,8 +1184,8 @@ export default function RequestsPageSettings() {
                 </div>
                 </div>
               ) : activeTab === 'payments' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
                     Payment Amount Settings
                   </h2>
                   
@@ -1245,7 +1198,7 @@ export default function RequestsPageSettings() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                         The minimum amount users can pay for requests and tips
                       </p>
-                      <div className="relative w-48">
+                      <div className="relative w-full sm:w-48">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                         <input
                           type="number"
@@ -1546,8 +1499,8 @@ export default function RequestsPageSettings() {
                   </div>
                 </div>
               ) : activeTab === 'content' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
                     Header Settings
                   </h2>
                   <div className="space-y-6">
@@ -1950,8 +1903,8 @@ export default function RequestsPageSettings() {
                   </div>
                 </div>
               ) : activeTab === 'features' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
                     Feature Toggles
                   </h2>
                   <div className="space-y-6">
@@ -2017,8 +1970,8 @@ export default function RequestsPageSettings() {
                   </div>
                 </div>
               ) : activeTab === 'advanced' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
                     SEO & Metadata
                   </h2>
                   <div className="space-y-6">
@@ -2076,12 +2029,12 @@ export default function RequestsPageSettings() {
               ) : null}
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Quick Preview */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 sticky top-8">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-[#fcba00]" />
+            {/* Sidebar - Hidden on mobile, shown on desktop */}
+            <div className="hidden lg:block space-y-6">
+              {/* Quick Preview - Desktop only */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 sticky top-8">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
+                  <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-[#fcba00]" />
                   Live Preview
                 </h3>
                 
@@ -2090,38 +2043,38 @@ export default function RequestsPageSettings() {
                   <button
                     type="button"
                     onClick={() => setPreviewDevice('mobile')}
-                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex-1 px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                       previewDevice === 'mobile'
                         ? 'bg-[#fcba00] text-black shadow-sm'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                     title="Mobile (375px)"
                   >
-                    📱 Mobile
+                    📱
                   </button>
                   <button
                     type="button"
                     onClick={() => setPreviewDevice('tablet')}
-                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex-1 px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                       previewDevice === 'tablet'
                         ? 'bg-[#fcba00] text-black shadow-sm'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                     title="Tablet (768px)"
                   >
-                    📱 Tablet
+                    📱
                   </button>
                   <button
                     type="button"
                     onClick={() => setPreviewDevice('desktop')}
-                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex-1 px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                       previewDevice === 'desktop'
                         ? 'bg-[#fcba00] text-black shadow-sm'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                     title="Desktop (1280px)"
                   >
-                    🖥️ Desktop
+                    🖥️
                   </button>
                 </div>
                 
@@ -2141,7 +2094,6 @@ export default function RequestsPageSettings() {
                   <button
                     type="button"
                     onClick={() => {
-                      // Force iframe refresh by updating timestamp
                       const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
                       if (iframe) {
                         iframe.src = `/requests?preview=true&t=${Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`;
@@ -2149,7 +2101,7 @@ export default function RequestsPageSettings() {
                     }}
                     className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
                   >
-                    ↻ Refresh
+                    ↻
                   </button>
                 </div>
                 
@@ -2307,8 +2259,8 @@ export default function RequestsPageSettings() {
                 </ul>
               </div>
 
-              {/* Save Button - Sticky */}
-              <div className="sticky top-8">
+              {/* Save Button - Desktop Sidebar Only */}
+              <div className="sticky top-8 hidden lg:block">
                 <button
                   onClick={handleSave}
                   disabled={saving}
@@ -2329,6 +2281,27 @@ export default function RequestsPageSettings() {
               </div>
             </div>
           </div>
+        </div>
+        
+        {/* Mobile Floating Save Button */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 z-50">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full inline-flex items-center justify-center px-6 py-3 bg-[#fcba00] text-black rounded-xl hover:bg-[#d99f00] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg text-base"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5 mr-2" />
+                Save Changes
+              </>
+            )}
+          </button>
         </div>
       </AdminPageLayout>
   );
