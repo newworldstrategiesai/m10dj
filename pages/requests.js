@@ -1971,8 +1971,16 @@ export function GeneralRequestsPage({
             .text-brand-700 { color: var(--accent-color-hover) !important; }
             .text-brand-800 { color: var(--accent-color-hover) !important; }
             
+            .border-brand-200 { border-color: ${effectiveAccentColor}30 !important; }
+            .border-brand-300 { border-color: ${effectiveAccentColor}50 !important; }
             .border-brand-500 { border-color: var(--accent-color) !important; }
             .border-brand-600 { border-color: var(--accent-color) !important; }
+            .border-brand-700 { border-color: var(--accent-color-hover) !important; }
+            
+            /* Border variants with opacity */
+            .border-brand-200\\/50 { border-color: ${effectiveAccentColor}80 !important; }
+            .border-brand-300\\/50 { border-color: ${effectiveAccentColor}80 !important; }
+            .border-brand-700\\/30 { border-color: ${effectiveAccentColor}4d !important; }
             
             .ring-brand-500 { --tw-ring-color: var(--accent-color) !important; }
             .focus\\:ring-brand-500:focus { --tw-ring-color: var(--accent-color) !important; }
@@ -1984,14 +1992,31 @@ export function GeneralRequestsPage({
             .focus\\:shadow-brand-500\\/20:focus { --tw-shadow-color: ${effectiveAccentColor}33 !important; }
             
             /* Gradient classes with brand colors */
+            .from-brand-50 { --tw-gradient-from: ${effectiveAccentColor}10 !important; }
+            .from-brand-100 { --tw-gradient-from: ${effectiveAccentColor}20 !important; }
+            .from-brand-200 { --tw-gradient-from: ${effectiveAccentColor}30 !important; }
             .from-brand-500 { --tw-gradient-from: var(--accent-color) !important; }
             .from-brand-600 { --tw-gradient-from: var(--accent-color) !important; }
             .from-brand-700 { --tw-gradient-from: var(--accent-color-hover) !important; }
+            .from-brand-800 { --tw-gradient-from: var(--accent-color-hover) !important; }
+            .from-brand-900 { --tw-gradient-from: ${effectiveAccentColor}ee !important; }
+            .via-brand-100 { --tw-gradient-via: ${effectiveAccentColor}20 !important; }
             .via-brand-500 { --tw-gradient-via: var(--accent-color) !important; }
             .via-brand-600 { --tw-gradient-via: var(--accent-color) !important; }
+            .to-brand-200 { --tw-gradient-to: ${effectiveAccentColor}30 !important; }
             .to-brand-500 { --tw-gradient-to: var(--accent-color) !important; }
             .to-brand-600 { --tw-gradient-to: var(--accent-color) !important; }
             .to-brand-700 { --tw-gradient-to: var(--accent-color-hover) !important; }
+            
+            /* Gradient variants with opacity */
+            .from-brand-50\\/50 { --tw-gradient-from: ${effectiveAccentColor}80 !important; }
+            .from-brand-100\\/50 { --tw-gradient-from: ${effectiveAccentColor}80 !important; }
+            .from-brand-200\\/30 { --tw-gradient-from: ${effectiveAccentColor}4d !important; }
+            .from-brand-800\\/20 { --tw-gradient-from: ${effectiveAccentColor}33 !important; }
+            .from-brand-900\\/20 { --tw-gradient-from: ${effectiveAccentColor}33 !important; }
+            .via-brand-100\\/50 { --tw-gradient-via: ${effectiveAccentColor}80 !important; }
+            .to-brand-200\\/30 { --tw-gradient-to: ${effectiveAccentColor}4d !important; }
+            .to-brand-700\\/20 { --tw-gradient-to: ${effectiveAccentColor}33 !important; }
             
             /* Hover variants */
             .hover\\:bg-brand:hover { background-color: var(--accent-color-hover) !important; }

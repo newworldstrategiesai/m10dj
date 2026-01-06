@@ -234,8 +234,8 @@ function PaymentAmountSelector({
             <label 
               className={`group relative flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 cursor-pointer touch-manipulation ${
                 isFastTrack
-                  ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 shadow-lg shadow-orange-500/20'
-                  : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-orange-300'
+                  ? 'border-brand-500 bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-900/30 dark:to-brand-800/20 shadow-lg shadow-brand-500/20'
+                  : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-brand-300'
               }`}
               onClick={(e) => {
                 e.preventDefault();
@@ -258,7 +258,7 @@ function PaymentAmountSelector({
               />
               <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                 isFastTrack
-                  ? 'border-orange-500 bg-orange-500'
+                  ? 'border-brand-500 bg-brand-500'
                   : 'border-gray-300 dark:border-gray-600'
               }`}>
                 {isFastTrack && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white"></div>}
@@ -266,21 +266,21 @@ function PaymentAmountSelector({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1 sm:gap-2">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFastTrack ? 'text-orange-500' : 'text-gray-400'}`} />
+                    <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFastTrack ? 'text-brand-500' : 'text-gray-400'}`} />
                     <span className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-white">
                       Fast-Track
                     </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-orange-600 dark:text-orange-400 whitespace-nowrap">
+                  <span className="text-xs sm:text-sm font-bold text-brand-600 dark:text-brand-400 whitespace-nowrap">
                     +${((fastTrackFee * bundleSize) / 100).toFixed(2)}
                     {bundleSize > 1 && (
-                      <span className="text-[10px] text-orange-500 dark:text-orange-400 ml-1">
+                      <span className="text-[10px] text-brand-500 dark:text-brand-400 ml-1">
                         ({bundleSize}x)
                       </span>
                     )}
                   </span>
                 </div>
-                <p className="text-[10px] sm:text-xs text-orange-600 dark:text-orange-400 font-medium mt-0.5">
+                <p className="text-[10px] sm:text-xs text-brand-600 dark:text-brand-400 font-medium mt-0.5">
                   ⚡ Your song will be played next!
                 </p>
               </div>
@@ -353,13 +353,13 @@ function PaymentAmountSelector({
             {isFastTrack && requestType === 'song_request' && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-orange-500" />
+                  <Zap className="w-4 h-4 text-brand-500" />
                   Fast-Track Fee:
                 </span>
-                <span className="font-bold text-sm sm:text-base bg-gradient-to-r from-orange-600 to-amber-600 dark:from-orange-400 dark:to-amber-400 bg-clip-text text-transparent">
+                <span className="font-bold text-sm sm:text-base bg-gradient-to-r from-brand-600 to-brand-700 dark:from-brand-400 dark:to-brand-500 bg-clip-text text-transparent">
                   +${((fastTrackFee * bundleSize) / 100).toFixed(2)}
                   {bundleSize > 1 && (
-                    <span className="text-xs text-orange-500 dark:text-orange-400 ml-1">
+                    <span className="text-xs text-brand-500 dark:text-brand-400 ml-1">
                       ({bundleSize}x)
                     </span>
                   )}
