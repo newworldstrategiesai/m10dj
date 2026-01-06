@@ -28,13 +28,13 @@ export default async function handler(req, res) {
     
     // If not found via helper (which uses RLS), try with admin client as fallback
     if (!organization) {
-      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
       const { data: orgData, error: orgError } = await supabaseAdmin
-        .from('organizations')
-        .select('id, stripe_connect_account_id, stripe_connect_onboarding_url, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, stripe_connect_details_submitted')
-        .eq('owner_id', user.id)
-        .single();
-      
+      .from('organizations')
+      .select('id, stripe_connect_account_id, stripe_connect_onboarding_url, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, stripe_connect_details_submitted')
+      .eq('owner_id', user.id)
+      .single();
+
       if (!orgError && orgData) {
         organization = orgData;
       }

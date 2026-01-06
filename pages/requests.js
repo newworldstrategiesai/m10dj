@@ -46,24 +46,77 @@ export default function RequestsPageWrapper() {
   useEffect(() => {
     async function loadDefaultOrganization() {
       try {
-        console.log('🔄 [REQUESTS] Loading default organization for /requests route...');
+        console.log('🔄 [REQUESTS] Loading organization for /requests route...');
         
-        // Load the default organization (M10 DJ Company with slug 'm10djcompany')
-        // You can change this to load a different default organization
-        const { data: org, error } = await supabase
-          .from('organizations')
-          .select('*')
-          .eq('slug', 'm10djcompany')
-          .single();
-
-        if (error) {
-          console.error('❌ [REQUESTS] Error loading organization:', error);
-          // Continue without organization data - will use defaults
+        // First, try to get the logged-in user's organization
+        const { data: { user } } = await supabase.auth.getUser();
+        let org = null;
+        
+        if (user) {
+          // Try to load user's organization by owner_id
+          const { data: userOrg, error: userOrgError } = await supabase
+            .from('organizations')
+            .select('*')
+            .eq('owner_id', user.id)
+            .maybeSingle();
+          
+          if (!userOrgError && userOrg) {
+            org = userOrg;
+            console.log('✅ [REQUESTS] Loaded user organization:', org.slug);
+          } else {
+            // If user has no organization, check if they're a member
+            const { data: memberOrg, error: memberError } = await supabase
+              .from('organization_members')
+              .select('organization_id, organizations(*)')
+              .eq('user_id', user.id)
+              .eq('is_active', true)
+              .limit(1)
+              .maybeSingle();
+            
+            if (!memberError && memberOrg?.organizations) {
+              org = memberOrg.organizations;
+              console.log('✅ [REQUESTS] Loaded member organization:', org.slug);
+            }
+          }
+        }
+        
+        // Fallback: If no user org found, use M10 DJ Company for m10djcompany.com domain
+        // For tipjar.live, this should not happen - users should have their own orgs
+        if (!org) {
+          const isM10Domain = typeof window !== 'undefined' && 
+            (window.location.hostname === 'm10djcompany.com' || 
+             window.location.hostname === 'www.m10djcompany.com');
+          
+          if (isM10Domain) {
+            console.log('🔄 [REQUESTS] No user org found, loading M10 DJ Company default...');
+            const { data: defaultOrg, error } = await supabase
+              .from('organizations')
+              .select('*')
+              .eq('slug', 'm10djcompany')
+              .single();
+            
+            if (!error && defaultOrg) {
+              org = defaultOrg;
+            }
+          } else {
+            console.warn('⚠️ [REQUESTS] No organization found for user on tipjar.live');
+          }
+        }
+        
+        if (!org) {
+          console.error('❌ [REQUESTS] No organization found');
           setLoading(false);
           return;
         }
 
-        if (org && (org.subscription_status === 'active' || org.subscription_status === 'trial')) {
+        if (org.subscription_status !== 'active' && org.subscription_status !== 'trial') {
+          console.warn('⚠️ [REQUESTS] Organization not active:', org.subscription_status);
+          setLoading(false);
+          return;
+        }
+        
+        // Process organization data
+        if (org) {
           // Auto-fix: If requests_header_artist_name is missing, set it to organization name
           // This ensures the header displays correctly for organizations created before this fix
           if (!org.requests_header_artist_name && org.name) {

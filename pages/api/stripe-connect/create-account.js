@@ -30,12 +30,12 @@ export default async function handler(req, res) {
     // If not found via helper (which uses RLS), try with admin client as fallback
     // This handles edge cases where RLS might block but user should have access
     if (!organization) {
-      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
       const { data: orgData, error: orgError } = await supabaseAdmin
-        .from('organizations')
-        .select('id, name, slug, stripe_connect_account_id, product_context')
-        .eq('owner_id', user.id)
-        .single();
+      .from('organizations')
+      .select('id, name, slug, stripe_connect_account_id, product_context')
+      .eq('owner_id', user.id)
+      .single();
       
       if (!orgError && orgData) {
         organization = orgData;

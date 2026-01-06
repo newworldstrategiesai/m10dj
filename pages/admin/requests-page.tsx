@@ -1570,6 +1570,68 @@ export default function RequestsPageSettings() {
                     </div>
                   </div>
                   
+                  {/* Custom URL Slug Section */}
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <LinkIcon className="w-5 h-5 text-gray-400" />
+                      Custom URL
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="custom_slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Your Page URL
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">tipjar.live/</span>
+                          <Input
+                            id="custom_slug"
+                            value={organization?.slug || ''}
+                            onChange={async (e) => {
+                              const newSlug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                              if (newSlug && organization) {
+                                try {
+                                  const { error } = await supabase
+                                    .from('organizations')
+                                    .update({ slug: newSlug })
+                                    .eq('id', organization.id);
+                                  
+                                  if (!error) {
+                                    setOrganization((prev: any) => prev ? { ...prev, slug: newSlug } : prev);
+                                    setSuccess(true);
+                                    setTimeout(() => setSuccess(false), 3000);
+                                  } else {
+                                    setError('Slug already taken or invalid');
+                                  }
+                                } catch (err: any) {
+                                  setError(err.message || 'Failed to update slug');
+                                }
+                              }
+                            }}
+                            placeholder="your-custom-slug"
+                            className="flex-1"
+                            pattern="[a-z0-9-]+"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Choose a custom URL for your requests page. Only lowercase letters, numbers, and hyphens allowed.
+                        </p>
+                        {organization?.slug && (
+                          <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <p className="text-sm text-blue-900 dark:text-blue-200 font-medium mb-1">Your page URL:</p>
+                            <a
+                              href={`https://tipjar.live/${organization.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                            >
+                              https://tipjar.live/{organization.slug}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
                   {/* Labels & Text Section - Part of Content tab */}
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-8 mb-4 flex items-center gap-2">
                     <Type className="w-5 h-5 text-gray-400" />

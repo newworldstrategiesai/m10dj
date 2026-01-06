@@ -598,17 +598,17 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     
                     // Only show M10 logo on M10 DJ Company domain
                     if (isM10DJCompanyDomain()) {
-                      if (shouldBeTransparent) {
-                        return (
-                          <img
+                    if (shouldBeTransparent) {
+                      return (
+                        <img
                             key={`transparent-logo-m10-${effectiveDarkMode ? 'dark' : 'light'}`}
                             src={effectiveDarkMode 
-                              ? getAssetUrl("/assets/m10 dj company logo white.gif")
-                              : getAssetUrl("/assets/m10 dj company logo black.gif")}
-                            alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
-                            className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
-                            style={{ display: 'block', objectFit: 'contain' }}
-                            onError={(e) => {
+                            ? getAssetUrl("/assets/m10 dj company logo white.gif")
+                            : getAssetUrl("/assets/m10 dj company logo black.gif")}
+                          alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
+                          className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
+                          style={{ display: 'block', objectFit: 'contain' }}
+                          onError={(e) => {
                               const currentSrc = e.target.src;
                               if (currentSrc.includes('white.gif')) {
                                 e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
@@ -667,34 +667,34 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                                 e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
                               } else if (currentSrc.includes('black.gif')) {
                                 e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
-                              }
-                            }}
-                          />
-                        );
-                      }
-                      
-                      return (
-                        <Image
-                          key={`logo-m10-default-${effectiveDarkMode ? 'dark' : 'light'}`}
-                          src={effectiveDarkMode 
-                            ? getAssetUrl("/assets/m10 dj company logo white.gif")
-                            : getAssetUrl("/assets/m10 dj company logo black.gif")}
-                          alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
-                          width={150}
-                          height={68}
-                          className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
-                          style={{ objectFit: 'contain' }}
-                          priority
-                          onError={(e) => {
-                            const currentSrc = e.target.src;
-                            if (currentSrc.includes('white.gif')) {
-                              e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
-                            } else if (currentSrc.includes('black.gif')) {
-                              e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
                             }
                           }}
                         />
                       );
+                    }
+                    
+                    return (
+                      <Image
+                          key={`logo-m10-default-${effectiveDarkMode ? 'dark' : 'light'}`}
+                          src={effectiveDarkMode 
+                          ? getAssetUrl("/assets/m10 dj company logo white.gif")
+                          : getAssetUrl("/assets/m10 dj company logo black.gif")}
+                        alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
+                        width={150}
+                        height={68}
+                        className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
+                        style={{ objectFit: 'contain' }}
+                        priority
+                        onError={(e) => {
+                          const currentSrc = e.target.src;
+                          if (currentSrc.includes('white.gif')) {
+                            e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
+                          } else if (currentSrc.includes('black.gif')) {
+                            e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
+                          }
+                        }}
+                      />
+                    );
                     }
                     
                     // No logo for unknown domains (should not happen in production)
