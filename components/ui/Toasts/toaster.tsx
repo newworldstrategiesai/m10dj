@@ -69,6 +69,9 @@ export function Toaster() {
       setTimeout(() => {
         if (!isMounted || !pathname) return;
         
+        // At this point, pathname is guaranteed to be a string
+        const currentPathname: string = pathname;
+        
         const newSearchParams = new URLSearchParams(searchParams.toString());
         const paramsToRemove = [
           'error',
@@ -78,7 +81,7 @@ export function Toaster() {
         ];
         paramsToRemove.forEach((param) => newSearchParams.delete(param));
         const newParamsString = newSearchParams.toString();
-        const redirectPath: string = newParamsString ? `${pathname}?${newParamsString}` : pathname;
+        const redirectPath = newParamsString ? `${currentPathname}?${newParamsString}` : currentPathname;
         router.replace(redirectPath, { scroll: false });
       }, 100);
     }
