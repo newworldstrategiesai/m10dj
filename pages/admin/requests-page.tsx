@@ -229,10 +229,11 @@ export default function RequestsPageSettings() {
         // Set button style
         setButtonStyle(org.requests_button_style || 'gradient');
         
-        // Parse social links - if none exist, show default fallback links for editing
+        // Parse social links - if none exist, show empty defaults for editing
+        // Each organization starts fresh without pre-populated links
         const defaultSocialLinks: SocialLink[] = [
-          { platform: 'instagram', url: 'https://instagram.com/djbenmurray', label: 'Instagram', enabled: true, order: 0 },
-          { platform: 'facebook', url: 'https://facebook.com/djbenmurray', label: 'Facebook', enabled: true, order: 1 },
+          { platform: 'instagram', url: '', label: 'Instagram', enabled: true, order: 0 },
+          { platform: 'facebook', url: '', label: 'Facebook', enabled: true, order: 1 },
         ];
         const links = org.social_links && Array.isArray(org.social_links) && org.social_links.length > 0
           ? org.social_links as SocialLink[]
@@ -414,7 +415,7 @@ export default function RequestsPageSettings() {
       setTimeout(() => {
         const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
         if (iframe) {
-          iframe.src = `/requests?preview=true&t=${newTimestamp}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`;
+          iframe.src = `/${organization.slug}/requests?preview=true&t=${newTimestamp}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`;
         }
       }, 1000);
     } catch (error: any) {
@@ -504,7 +505,8 @@ export default function RequestsPageSettings() {
     );
   }
 
-  const requestsPageUrl = `/organizations/${organization.slug}/requests?t=${Date.now()}`;
+  // Use direct slug-based URL for cleaner TipJar links
+  const requestsPageUrl = `/${organization.slug}/requests?t=${Date.now()}`;
 
   return (
     <AdminPageLayout title="Requests Page Settings" description="Customize your public song requests page with cover photos and social links">
@@ -532,7 +534,7 @@ export default function RequestsPageSettings() {
                 target="_blank"
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#fcba00] text-black rounded-lg hover:bg-[#d99f00] transition-colors text-sm font-medium w-full sm:w-auto"
                 onClick={() => {
-                  window.open(`/organizations/${organization.slug}/requests?t=${Date.now()}`, '_blank');
+                  window.open(`/${organization.slug}/requests?t=${Date.now()}`, '_blank');
                   return false;
                 }}
               >
@@ -1570,68 +1572,6 @@ export default function RequestsPageSettings() {
                     </div>
                   </div>
                   
-                  {/* Custom URL Slug Section */}
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                      <LinkIcon className="w-5 h-5 text-gray-400" />
-                      Custom URL
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="custom_slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Your Page URL
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">tipjar.live/</span>
-                          <Input
-                            id="custom_slug"
-                            value={organization?.slug || ''}
-                            onChange={async (e) => {
-                              const newSlug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
-                              if (newSlug && organization) {
-                                try {
-                                  const { error } = await supabase
-                                    .from('organizations')
-                                    .update({ slug: newSlug })
-                                    .eq('id', organization.id);
-                                  
-                                  if (!error) {
-                                    setOrganization((prev: any) => prev ? { ...prev, slug: newSlug } : prev);
-                                    setSuccess(true);
-                                    setTimeout(() => setSuccess(false), 3000);
-                                  } else {
-                                    setError('Slug already taken or invalid');
-                                  }
-                                } catch (err: any) {
-                                  setError(err.message || 'Failed to update slug');
-                                }
-                              }
-                            }}
-                            placeholder="your-custom-slug"
-                            className="flex-1"
-                            pattern="[a-z0-9-]+"
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                          Choose a custom URL for your requests page. Only lowercase letters, numbers, and hyphens allowed.
-                        </p>
-                        {organization?.slug && (
-                          <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                            <p className="text-sm text-blue-900 dark:text-blue-200 font-medium mb-1">Your page URL:</p>
-                            <a
-                              href={`https://tipjar.live/${organization.slug}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
-                            >
-                              https://tipjar.live/{organization.slug}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
                   {/* Labels & Text Section - Part of Content tab */}
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-8 mb-4 flex items-center gap-2">
                     <Type className="w-5 h-5 text-gray-400" />
@@ -2033,10 +1973,90 @@ export default function RequestsPageSettings() {
                   </div>
                 </div>
               ) : activeTab === 'advanced' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
-                    SEO & Metadata
-                  </h2>
+                <div className="space-y-6">
+                  {/* Custom URL Section */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6 flex items-center gap-2">
+                      <LinkIcon className="w-5 h-5 text-[#fcba00]" />
+                      Your Page URL
+                    </h2>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="custom_slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Custom URL Slug
+                        </Label>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                          <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">tipjar.live/</span>
+                          <Input
+                            id="custom_slug"
+                            value={organization?.slug || ''}
+                            onChange={async (e) => {
+                              const newSlug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                              if (newSlug !== organization?.slug) {
+                                // Update local state immediately for UI feedback
+                                setOrganization((prev: any) => prev ? { ...prev, slug: newSlug } : prev);
+                              }
+                            }}
+                            onBlur={async (e) => {
+                              const newSlug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                              if (newSlug && newSlug.length >= 3 && newSlug !== organization?.slug) {
+                                try {
+                                  const { data: { session } } = await supabase.auth.getSession();
+                                  const response = await fetch('/api/organizations/update-slug', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${session?.access_token}`
+                                    },
+                                    body: JSON.stringify({ slug: newSlug })
+                                  });
+                                  
+                                  const result = await response.json();
+                                  
+                                  if (!response.ok) {
+                                    setError(result.error || 'Failed to update URL');
+                                    // Revert to original slug
+                                    fetchOrganization();
+                                  } else {
+                                    setSuccess(true);
+                                    setTimeout(() => setSuccess(false), 3000);
+                                  }
+                                } catch (err: any) {
+                                  setError(err.message || 'Failed to update URL');
+                                  fetchOrganization();
+                                }
+                              }
+                            }}
+                            placeholder="your-custom-slug"
+                            className="flex-1"
+                            pattern="[a-z0-9-]+"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Choose a custom URL for your requests page. Only lowercase letters, numbers, and hyphens allowed. Minimum 3 characters.
+                        </p>
+                        {organization?.slug && (
+                          <div className="mt-4 p-3 bg-gradient-to-r from-[#fcba00]/10 to-[#fcba00]/5 border border-[#fcba00]/30 rounded-lg">
+                            <p className="text-sm text-gray-900 dark:text-white font-medium mb-1">Your live page URL:</p>
+                            <a
+                              href={`https://tipjar.live/${organization.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-[#fcba00] hover:text-[#d99f00] hover:underline break-all font-mono"
+                            >
+                              https://tipjar.live/{organization.slug}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SEO & Metadata Section */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
+                      SEO & Metadata
+                    </h2>
                   <div className="space-y-6">
                     <div>
                       <Label htmlFor="page_title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -2088,6 +2108,7 @@ export default function RequestsPageSettings() {
                       </p>
                     </div>
                   </div>
+                </div>
                 </div>
               ) : null}
             </div>
@@ -2158,8 +2179,8 @@ export default function RequestsPageSettings() {
                     type="button"
                     onClick={() => {
                       const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
-                      if (iframe) {
-                        iframe.src = `/requests?preview=true&t=${Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`;
+                      if (iframe && organization?.slug) {
+                        iframe.src = `/${organization.slug}/requests?preview=true&t=${Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`;
                       }
                     }}
                     className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
@@ -2193,7 +2214,7 @@ export default function RequestsPageSettings() {
                       >
                         <iframe
                           id="live-preview-iframe"
-                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
+                          src={`/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
                           className="border-0 bg-black"
                           style={{ 
                             transform: 'scale(0.57)',
@@ -2229,7 +2250,7 @@ export default function RequestsPageSettings() {
                       >
                         <iframe
                           id="live-preview-iframe"
-                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
+                          src={`/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
                           className="border-0 bg-black"
                           style={{ 
                             transform: 'scale(0.41)',
@@ -2256,7 +2277,7 @@ export default function RequestsPageSettings() {
                         </div>
                         <div className="flex-1 mx-2">
                           <div className="bg-gray-600 rounded px-2 py-0.5 text-[10px] text-gray-400 truncate">
-                            tipjar.live/requests
+                            tipjar.live/{organization?.slug || 'your-page'}
                           </div>
                         </div>
                       </div>
@@ -2265,7 +2286,7 @@ export default function RequestsPageSettings() {
                       <div className="relative bg-black overflow-hidden" style={{ height: 'calc(100% - 32px)' }}>
                         <iframe
                           id="live-preview-iframe"
-                          src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
+                          src={`/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
                           className="border-0 bg-black"
                           style={{ 
                             transform: 'scale(0.296)',
@@ -2385,7 +2406,7 @@ export default function RequestsPageSettings() {
                   <div className="absolute top-1 left-1/2 -translate-x-1/2 w-16 h-4 bg-black rounded-full z-10" />
                   <div className="relative bg-black rounded-[20px] overflow-hidden w-full h-full">
                     <iframe
-                      src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
+                      src={`/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
                       className="border-0 bg-black"
                       style={{ 
                         transform: 'scale(0.42)',

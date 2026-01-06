@@ -44,81 +44,96 @@ export default function RequestsPageWrapper() {
   const [startTime] = useState(() => Date.now());
 
   useEffect(() => {
-    async function loadDefaultOrganization() {
+    async function loadOrganizationByContext() {
       try {
-        console.log('🔄 [REQUESTS] Loading organization for /requests route...');
+        // Detect which domain we're on
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+        const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('localhost');
+        const isM10Domain = hostname.includes('m10djcompany.com');
         
-        // First, try to get the logged-in user's organization
-        const { data: { user } } = await supabase.auth.getUser();
-        let org = null;
+        console.log('🔄 [REQUESTS] Loading organization for /requests route...', {
+          hostname,
+          isTipJarDomain,
+          isM10Domain
+        });
         
-        if (user) {
-          // Try to load user's organization by owner_id
-          const { data: userOrg, error: userOrgError } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('owner_id', user.id)
-            .maybeSingle();
+        let targetSlug = null;
+        
+        if (isM10Domain) {
+          // On m10djcompany.com - always show M10 DJ Company
+          targetSlug = 'm10djcompany';
+          console.log('🏢 [REQUESTS] M10 domain detected, loading m10djcompany');
+        } else if (isTipJarDomain) {
+          // On tipjar.live - check for logged in user's organization
+          const { data: { user } } = await supabase.auth.getUser();
           
-          if (!userOrgError && userOrg) {
-            org = userOrg;
-            console.log('✅ [REQUESTS] Loaded user organization:', org.slug);
-          } else {
-            // If user has no organization, check if they're a member
-            const { data: memberOrg, error: memberError } = await supabase
+          if (user) {
+            // Find the user's organization
+            const { data: membership } = await supabase
               .from('organization_members')
-              .select('organization_id, organizations(*)')
+              .select('organization_id')
               .eq('user_id', user.id)
               .eq('is_active', true)
-              .limit(1)
-              .maybeSingle();
-            
-            if (!memberError && memberOrg?.organizations) {
-              org = memberOrg.organizations;
-              console.log('✅ [REQUESTS] Loaded member organization:', org.slug);
-            }
-          }
-        }
-        
-        // Fallback: If no user org found, use M10 DJ Company for m10djcompany.com domain
-        // For tipjar.live, this should not happen - users should have their own orgs
-        if (!org) {
-          const isM10Domain = typeof window !== 'undefined' && 
-            (window.location.hostname === 'm10djcompany.com' || 
-             window.location.hostname === 'www.m10djcompany.com');
-          
-          if (isM10Domain) {
-            console.log('🔄 [REQUESTS] No user org found, loading M10 DJ Company default...');
-            const { data: defaultOrg, error } = await supabase
-              .from('organizations')
-              .select('*')
-              .eq('slug', 'm10djcompany')
               .single();
             
-            if (!error && defaultOrg) {
-              org = defaultOrg;
+            if (membership) {
+              const { data: org } = await supabase
+                .from('organizations')
+                .select('slug')
+                .eq('id', membership.organization_id)
+                .single();
+              
+              if (org?.slug) {
+                // Redirect to their specific page
+                console.log('🔀 [REQUESTS] TipJar user detected, redirecting to their page:', org.slug);
+                router.replace(`/${org.slug}/requests`);
+                return;
+              }
             }
-          } else {
-            console.warn('⚠️ [REQUESTS] No organization found for user on tipjar.live');
+            
+            // Check if user owns an organization directly
+            const { data: ownedOrg } = await supabase
+              .from('organizations')
+              .select('slug')
+              .eq('owner_id', user.id)
+              .single();
+            
+            if (ownedOrg?.slug) {
+              console.log('🔀 [REQUESTS] TipJar owner detected, redirecting to their page:', ownedOrg.slug);
+              router.replace(`/${ownedOrg.slug}/requests`);
+              return;
+            }
           }
+          
+          // No logged in user or no organization - show a landing/signup page or default
+          console.log('👤 [REQUESTS] TipJar domain, no user org found, showing default');
+          // For now, fall back to m10djcompany as demo, but ideally show a signup prompt
+          targetSlug = 'm10djcompany';
+        } else {
+          // Unknown domain - default to m10djcompany
+          targetSlug = 'm10djcompany';
         }
         
-        if (!org) {
-          console.error('❌ [REQUESTS] No organization found');
+        if (!targetSlug) {
+          setLoading(false);
+          return;
+        }
+        
+        // Load the target organization
+        const { data: org, error } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('slug', targetSlug)
+          .single();
+
+        if (error) {
+          console.error('❌ [REQUESTS] Error loading organization:', error);
           setLoading(false);
           return;
         }
 
-        if (org.subscription_status !== 'active' && org.subscription_status !== 'trial') {
-          console.warn('⚠️ [REQUESTS] Organization not active:', org.subscription_status);
-          setLoading(false);
-          return;
-        }
-        
-        // Process organization data
-        if (org) {
+        if (org && (org.subscription_status === 'active' || org.subscription_status === 'trial')) {
           // Auto-fix: If requests_header_artist_name is missing, set it to organization name
-          // This ensures the header displays correctly for organizations created before this fix
           if (!org.requests_header_artist_name && org.name) {
             try {
               const { error: updateError } = await supabase
@@ -127,13 +142,11 @@ export default function RequestsPageWrapper() {
                 .eq('id', org.id);
               
               if (!updateError) {
-                // Update the org object for this request
                 org.requests_header_artist_name = org.name;
                 console.log('✅ [REQUESTS] Auto-set requests_header_artist_name to:', org.name);
               }
             } catch (updateError) {
               console.error('❌ [REQUESTS] Error auto-setting requests_header_artist_name:', updateError);
-              // Continue anyway - the page will fall back to using org.name
             }
           }
           
@@ -141,6 +154,7 @@ export default function RequestsPageWrapper() {
           console.log('✅ [REQUESTS] Organization loaded:', {
             id: org.id,
             name: org.name,
+            slug: org.slug,
             artist_name: org.requests_header_artist_name
           });
         }
@@ -151,16 +165,12 @@ export default function RequestsPageWrapper() {
       }
     }
 
-    loadDefaultOrganization();
+    loadOrganizationByContext();
     
-    // Set up interval to refresh organization data every 5 seconds
-    // This ensures live page updates are visible within 5 seconds after admin changes
-    const refreshInterval = setInterval(() => {
-      loadDefaultOrganization();
-    }, 5000);
-
-    return () => clearInterval(refreshInterval);
-  }, [supabase]);
+    // Note: We don't set up a polling interval here because it would cause
+    // redirect loops. The slug-based page ([slug]/requests.js) handles its own polling.
+    // For the /requests page, data is loaded once on mount.
+  }, [supabase, router]);
 
   // Ensure loader shows for minimum time to prevent flash
   useEffect(() => {
