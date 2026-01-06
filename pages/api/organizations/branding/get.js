@@ -20,10 +20,11 @@ export default async function handler(req, res) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     
     let organization;
+    let orgError = null;
     
     // If organizationId is provided, use it; otherwise try slug
     if (organizationId) {
-      const { data, error: orgError } = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from('organizations')
         .select(`
           id,
@@ -42,12 +43,13 @@ export default async function handler(req, res) {
         .single();
       
       organization = data;
+      orgError = error;
       if (orgError) {
         return res.status(404).json({ error: 'Organization not found' });
       }
     } else if (slug) {
       // Public access by slug (for public request pages)
-      const { data, error: orgError } = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from('organizations')
         .select(`
           id,
@@ -66,6 +68,7 @@ export default async function handler(req, res) {
         .single();
       
       organization = data;
+      orgError = error;
       if (orgError) {
         return res.status(404).json({ error: 'Organization not found' });
       }
@@ -80,7 +83,7 @@ export default async function handler(req, res) {
 
       const user = session.user;
 
-      const { data, error: orgError } = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from('organizations')
         .select(`
           id,
@@ -99,6 +102,7 @@ export default async function handler(req, res) {
         .single();
       
       organization = data;
+      orgError = error;
       if (orgError) {
         return res.status(404).json({ error: 'Organization not found' });
       }
