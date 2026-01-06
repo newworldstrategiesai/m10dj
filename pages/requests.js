@@ -100,10 +100,11 @@ export default function RequestsPageWrapper() {
 
     loadDefaultOrganization();
     
-    // Set up interval to refresh organization data every 10 seconds
+    // Set up interval to refresh organization data every 5 seconds
+    // This ensures live page updates are visible within 5 seconds after admin changes
     const refreshInterval = setInterval(() => {
       loadDefaultOrganization();
-    }, 10000);
+    }, 5000);
 
     return () => clearInterval(refreshInterval);
   }, [supabase]);
@@ -134,9 +135,12 @@ export default function RequestsPageWrapper() {
     );
   }
 
+  // Use a stable key that doesn't change on every render to prevent duplicate headers
+  const stableKey = organization?.id || 'default';
+  
   return (
     <GeneralRequestsPage
-      key={`${organization?.id || 'default'}-${organization?.updated_at || Date.now()}`}
+      key={stableKey}
       organizationId={organization?.id || null}
       organizationName={organization?.name || null}
       organizationCoverPhoto={getCoverPhotoUrl(organization, DEFAULT_COVER_PHOTO)}
@@ -184,11 +188,21 @@ export function GeneralRequestsPage({
   // Use default cover photo if none is provided - always show a cover photo
   const coverPhoto = organizationCoverPhoto || DEFAULT_COVER_PHOTO;
   
-  // Log cover photo for debugging
+  // Get the video URL from organization data (if set)
+  // This allows each organization to have their own animated header
+  const headerVideoUrl = organizationData?.requests_header_video_url || null;
+  
+  // Show video if the organization has a custom video URL set
+  // If no video URL is set, fall back to showing the cover photo
+  const showVideo = !!headerVideoUrl;
+  
+  // Log cover photo and video for debugging
   useEffect(() => {
-    console.log('🖼️ [GENERAL REQUESTS] Cover photo:', {
+    console.log('🖼️ [GENERAL REQUESTS] Cover photo & video:', {
       organizationCoverPhoto,
       coverPhoto,
+      headerVideoUrl,
+      showVideo,
       fromOrganizationData: organizationData?.requests_cover_photo_url || organizationData?.requests_artist_photo_url || organizationData?.requests_venue_photo_url,
       primaryCoverSource: organizationData?.requests_primary_cover_source,
       hasArtist: !!organizationData?.requests_artist_photo_url,
@@ -196,7 +210,7 @@ export function GeneralRequestsPage({
       artistUrl: organizationData?.requests_artist_photo_url,
       venueUrl: organizationData?.requests_venue_photo_url
     });
-  }, [organizationCoverPhoto, coverPhoto, organizationData]);
+  }, [organizationCoverPhoto, coverPhoto, headerVideoUrl, showVideo, organizationData]);
   // Determine default request type - if allowedRequestTypes is set, use first allowed type
   const defaultRequestType = allowedRequestTypes && allowedRequestTypes.length > 0
     ? allowedRequestTypes[0]
@@ -1804,9 +1818,10 @@ export function GeneralRequestsPage({
         }}
       >
         {/* Desktop Video Sidebar - Fixed position, stays stationary while content scrolls */}
+        {/* Shows video only if no custom cover photo is set, otherwise shows the cover photo */}
         {!embedMode && !showPaymentMethods && (
           <div className="hidden md:block md:fixed md:left-0 md:top-0 md:w-[400px] lg:w-[450px] xl:w-[500px] md:h-screen md:overflow-hidden bg-black z-40">
-            {!videoFailed ? (
+            {showVideo && !videoFailed ? (
             <video
                 ref={desktopVideoRef}
               className="absolute inset-0 w-full h-full object-cover"
@@ -1826,7 +1841,7 @@ export function GeneralRequestsPage({
                   }
                 }}
             >
-              <source src={`${siteUrl}/assets/djbenmurraylogo.mp4`} type="video/mp4" />
+              <source src={headerVideoUrl} type="video/mp4" />
               {/* Fallback message if video fails to load */}
               <p className="text-white text-center p-4">Video unavailable</p>
             </video>
@@ -1906,10 +1921,34 @@ export function GeneralRequestsPage({
         )}
         
         {/* Header - Fixed position overlaying video sidebar on desktop */}
+        {/* Header component is already fixed w-full, use CSS to override positioning on desktop */}
+        {/* Use a unique key to prevent duplicate renders when organizationData changes */}
         {!embedMode && !showPaymentMethods && !minimalHeader && (
-          <div className="fixed top-0 left-0 right-0 z-50 md:right-auto md:left-4 md:top-4">
-            <Header customLogoUrl={customBranding?.customLogoUrl} transparent={true} socialLinks={organizationData?.social_links} isOwner={isOwner} organizationSlug={organizationData?.slug} organizationId={organizationId} />
-          </div>
+          <>
+            <style jsx global>{`
+              /* Override Header positioning on desktop for requests page */
+              @media (min-width: 768px) {
+                body:has([data-requests-header-wrapper]) header[data-transparent] {
+                  width: auto !important;
+                  left: 1rem !important;
+                  right: auto !important;
+                  top: 1rem !important;
+                  max-width: calc(100vw - 2rem) !important;
+                }
+              }
+            `}</style>
+            <div data-requests-header-wrapper key={`header-${organizationId || 'default'}`}>
+              <Header 
+                key={`header-component-${organizationId || 'default'}`}
+                customLogoUrl={customBranding?.customLogoUrl} 
+                transparent={true} 
+                socialLinks={organizationData?.social_links} 
+                isOwner={isOwner} 
+                organizationSlug={organizationData?.slug} 
+                organizationId={organizationId} 
+              />
+            </div>
+          </>
         )}
         
         {/* Main Content Area - Add left margin on desktop to account for fixed video sidebar */}
@@ -1981,7 +2020,8 @@ export function GeneralRequestsPage({
             }}
           >
             {/* Mobile Video Background - Only shown on mobile */}
-            {!videoFailed ? (
+            {/* Shows video only if no custom cover photo is set, otherwise shows the cover photo */}
+            {showVideo && !videoFailed ? (
             <video
                 ref={mobileVideoRef}
               className="absolute inset-0 w-full h-full object-cover md:hidden"
@@ -2001,7 +2041,7 @@ export function GeneralRequestsPage({
                   }
                 }}
             >
-              <source src={`${siteUrl}/assets/djbenmurraylogo.mp4`} type="video/mp4" />
+              <source src={headerVideoUrl} type="video/mp4" />
               {/* Fallback message if video fails to load */}
               <p className="text-white text-center p-4">Video unavailable</p>
             </video>
@@ -2023,12 +2063,14 @@ export function GeneralRequestsPage({
             }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '20px' }}>
               {/* Top content section */}
               <div className={`flex flex-col items-center justify-center ${minimalHeader ? '' : 'flex-1'}`}>
-                {/* Artist Name - Hidden visually (video has logo on both mobile and desktop), kept for SEO */}
+                {/* Artist Name - Show when using cover photo (no video), hide when video is playing (video has logo) */}
                 <h1 
                   className={`font-black text-white drop-shadow-2xl uppercase tracking-tight ${
                     minimalHeader
                       ? 'text-xl sm:text-2xl mb-1'
-                      : 'sr-only'
+                      : !showVideo
+                        ? 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-2 sm:mb-4'
+                        : 'sr-only'
                   }`}
                   style={{
                     fontFamily: 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
@@ -2040,7 +2082,8 @@ export function GeneralRequestsPage({
                     const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'DJ';
                     console.log('🎨 Rendering artist name:', artistName, 'from organizationData:', {
                       requests_header_artist_name: organizationData?.requests_header_artist_name,
-                      name: organizationData?.name
+                      name: organizationData?.name,
+                      showVideo
                     });
                     return artistName.toUpperCase();
                   })()}

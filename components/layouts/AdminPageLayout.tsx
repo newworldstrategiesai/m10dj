@@ -24,8 +24,8 @@ export default function AdminPageLayout({ children, title, description }: AdminP
       </Head>
 
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <AdminNavbar />
-        <main className="w-full">
+        {/* AdminNavbar is rendered in _app.js for admin routes, don't duplicate it here */}
+        <main className="w-full pt-16">
           {children}
         </main>
       </div>

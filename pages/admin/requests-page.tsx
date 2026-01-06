@@ -69,7 +69,8 @@ export default function RequestsPageSettings() {
   const [coverPhotos, setCoverPhotos] = useState({
     requests_cover_photo_url: '',
     requests_artist_photo_url: '',
-    requests_venue_photo_url: ''
+    requests_venue_photo_url: '',
+    requests_header_video_url: ''
   });
   
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
@@ -179,7 +180,8 @@ export default function RequestsPageSettings() {
         setCoverPhotos({
           requests_cover_photo_url: org.requests_cover_photo_url || '',
           requests_artist_photo_url: org.requests_artist_photo_url || '',
-          requests_venue_photo_url: org.requests_venue_photo_url || ''
+          requests_venue_photo_url: org.requests_venue_photo_url || '',
+          requests_header_video_url: org.requests_header_video_url || ''
         });
         
         // Parse social links
@@ -304,10 +306,11 @@ export default function RequestsPageSettings() {
       const { error: updateError } = await supabase
         .from('organizations')
         .update({
-          // Cover photos
+          // Cover photos and video
           requests_cover_photo_url: coverPhotos.requests_cover_photo_url || null,
           requests_artist_photo_url: coverPhotos.requests_artist_photo_url || null,
           requests_venue_photo_url: coverPhotos.requests_venue_photo_url || null,
+          requests_header_video_url: coverPhotos.requests_header_video_url || null,
           // Social links
           social_links: validSocialLinks,
           // Bidding settings
@@ -331,7 +334,12 @@ export default function RequestsPageSettings() {
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+
+      // Refresh the local organization data to reflect changes in the preview
       fetchOrganization();
+
+      // Also update the URL with a new timestamp to ensure the live page loads fresh data
+      setOrganization(prev => prev ? { ...prev, _lastUpdated: Date.now() } : prev);
     } catch (error: any) {
       console.error('Error saving settings:', error);
       setError(error.message || 'Failed to save settings');
@@ -415,7 +423,7 @@ export default function RequestsPageSettings() {
     );
   }
 
-  const requestsPageUrl = `/organizations/${organization.slug}/requests`;
+  const requestsPageUrl = `/organizations/${organization.slug}/requests?t=${Date.now()}`;
 
   return (
     <AdminPageLayout title="Requests Page Settings" description="Customize your public song requests page with cover photos and social links">
@@ -438,14 +446,19 @@ export default function RequestsPageSettings() {
                   Customize your public song requests page - headers, labels, features, and more
                 </p>
               </div>
-              <Link
-                href={requestsPageUrl}
-                target="_blank"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
-              >
-                <Eye className="w-4 h-4" />
-                Preview Page
-              </Link>
+                <Link
+                  href={requestsPageUrl}
+                  target="_blank"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                  onClick={() => {
+                    // Force refresh the page by adding a timestamp to bypass any caching
+                    window.open(`/organizations/${organization.slug}/requests?t=${Date.now()}`, '_blank');
+                    return false;
+                  }}
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview Page
+                </Link>
             </div>
           </div>
 
@@ -608,6 +621,54 @@ export default function RequestsPageSettings() {
                       showPreview={true}
                       required={false}
                     />
+
+                    {/* Header Video URL */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <Label htmlFor="video-url" className="text-sm font-medium text-gray-900 dark:text-white">
+                            Header Video (Optional)
+                          </Label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            MP4 video URL for animated header. If set, this plays instead of the cover photo.
+                          </p>
+                        </div>
+                        {coverPhotos.requests_header_video_url && (
+                          <button
+                            type="button"
+                            onClick={() => handleImageUrlChange('requests_header_video_url', '')}
+                            className="text-red-500 hover:text-red-600 text-sm flex items-center gap-1"
+                          >
+                            <X className="w-4 h-4" />
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <Input
+                        id="video-url"
+                        type="url"
+                        value={coverPhotos.requests_header_video_url}
+                        onChange={(e) => handleImageUrlChange('requests_header_video_url', e.target.value)}
+                        placeholder="https://example.com/your-video.mp4"
+                        className="w-full"
+                      />
+                      {coverPhotos.requests_header_video_url && (
+                        <div className="mt-4">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Preview:</p>
+                          <video
+                            src={coverPhotos.requests_header_video_url}
+                            className="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                          />
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                        💡 Tip: Use a looping video with your logo or branding for the best effect. Recommended: 720p or 1080p MP4.
+                      </p>
+                    </div>
                   </div>
                 </div>
               ) : activeTab === 'social' ? (
@@ -1420,61 +1481,114 @@ export default function RequestsPageSettings() {
                   href={requestsPageUrl}
                   target="_blank"
                   className="block w-full text-center px-4 py-3 bg-[#fcba00] hover:bg-[#d99f00] text-black rounded-lg transition-colors text-sm font-medium mb-4 shadow-md"
+                  onClick={() => {
+                    // Force refresh the page by adding a timestamp to bypass any caching
+                    window.open(`/organizations/${organization.slug}/requests?t=${Date.now()}`, '_blank');
+                    return false;
+                  }}
                 >
                   <ExternalLink className="w-4 h-4 inline mr-2" />
                   View Live Page
                 </Link>
-                {(coverPhotos.requests_cover_photo_url || coverPhotos.requests_artist_photo_url || coverPhotos.requests_venue_photo_url) ? (
-                  <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden mb-4 border-2 border-gray-200 dark:border-gray-600 shadow-inner">
-                    <img
-                      src={coverPhotos.requests_cover_photo_url || coverPhotos.requests_artist_photo_url || coverPhotos.requests_venue_photo_url}
-                      alt="Cover preview"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className="aspect-video bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg overflow-hidden mb-4 border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
-                    <div className="text-center">
-                      <ImageIcon className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
-                      <p className="text-xs text-gray-500 dark:text-gray-400">No cover photo set</p>
-                    </div>
-                  </div>
-                )}
                 
-                {/* Social Links Preview */}
-                {socialLinks.length > 0 && (
-                  <div className="mb-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Social Links Preview:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {socialLinks
-                        .filter(link => link.enabled)
-                        .map((link, index) => (
-                          <div
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-400"
-                          >
-                            {link.label}
-                          </div>
-                        ))}
+                {/* Accurate Preview - Matches actual page layout */}
+                <div className="border-2 border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-gradient-to-b from-gray-900 via-black to-black">
+                  {/* Hero Section Preview */}
+                  <div className="relative h-48 overflow-hidden">
+                    {/* Show video if set, otherwise show cover photo */}
+                    {coverPhotos.requests_header_video_url ? (
+                      <video
+                        src={coverPhotos.requests_header_video_url}
+                        className="w-full h-full object-cover"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                      />
+                    ) : (coverPhotos.requests_cover_photo_url || coverPhotos.requests_artist_photo_url || coverPhotos.requests_venue_photo_url) ? (
+                      <img
+                        src={coverPhotos.requests_cover_photo_url || coverPhotos.requests_artist_photo_url || coverPhotos.requests_venue_photo_url}
+                        alt="Cover preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-purple-900/30 to-pink-900/30 flex items-center justify-center">
+                        <ImageIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                      </div>
+                    )}
+                    
+                    {/* Overlay content preview - Only show when not using video (video has its own branding) */}
+                    {!coverPhotos.requests_header_video_url && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 text-white">
+                      {headerFields.requests_header_artist_name && (
+                        <h2 className="text-lg font-bold mb-1 drop-shadow-lg">
+                          {headerFields.requests_header_artist_name.toUpperCase()}
+                        </h2>
+                      )}
+                      {headerFields.requests_header_location && (
+                        <p className="text-sm text-white/90 mb-1 drop-shadow-md">
+                          {headerFields.requests_header_location}
+                        </p>
+                      )}
+                      {headerFields.requests_header_date && (
+                        <p className="text-xs text-white/80 drop-shadow-sm">
+                          {headerFields.requests_header_date}
+                        </p>
+                      )}
                     </div>
+                    )}
+                    
+                    {/* Social Links Preview at bottom */}
+                    {socialLinks.filter(link => link.enabled).length > 0 && (
+                      <div className="absolute bottom-2 flex items-center justify-center gap-2">
+                        {socialLinks
+                          .filter(link => link.enabled)
+                          .sort((a, b) => (a.order || 0) - (b.order || 0))
+                          .slice(0, 4)
+                          .map((link, index) => (
+                            <div
+                              key={index}
+                              className="w-6 h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"
+                              title={link.label}
+                            >
+                              <span className="text-[10px] text-white">🔗</span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                  
+                  {/* Main Heading Preview */}
+                  <div className="bg-black/50 px-4 py-3 border-t border-white/10">
+                    <p className="text-sm text-white font-semibold text-center">
+                      {headerFields.requests_main_heading || 'What would you like to request?'}
+                    </p>
+                  </div>
+                  
+                  {/* Request Form Preview Placeholder */}
+                  <div className="bg-gray-800/50 px-4 py-4 space-y-2">
+                    <div className="h-8 bg-white/10 rounded"></div>
+                    <div className="h-8 bg-white/10 rounded"></div>
+                    <div className="h-16 bg-white/10 rounded"></div>
+                    <div className="h-10 bg-[#fcba00]/20 rounded"></div>
+                  </div>
+                </div>
                 
-                <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1.5 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1.5 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
                   <p className="flex items-start gap-1.5">
                     <span className="text-[#fcba00] mt-0.5">•</span>
-                    <span>Cover photos display in hero section</span>
+                    <span>Preview shows actual page layout</span>
                   </p>
                   <p className="flex items-start gap-1.5">
                     <span className="text-[#fcba00] mt-0.5">•</span>
-                    <span>Social links appear at bottom of hero</span>
+                    <span>Header text overlays cover photo</span>
                   </p>
                   <p className="flex items-start gap-1.5">
                     <span className="text-[#fcba00] mt-0.5">•</span>
-                    <span>Navbar becomes transparent automatically</span>
+                    <span>Navbar is transparent on live page</span>
                   </p>
                 </div>
               </div>
