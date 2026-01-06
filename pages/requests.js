@@ -1830,6 +1830,33 @@ export function GeneralRequestsPage({
             .to-\\[\\#fcba00\\] { --tw-gradient-to: var(--accent-color) !important; }
             .via-\\[\\#fcba00\\] { --tw-gradient-via: var(--accent-color) !important; }
             
+            /* Button styles */
+            ${organizationData?.requests_button_style === 'flat' ? `
+              .requests-page-container .btn-primary,
+              .requests-page-container button[type="submit"],
+              .requests-page-container .bg-gradient-to-r {
+                background: var(--accent-color) !important;
+                background-image: none !important;
+                box-shadow: none !important;
+              }
+              .requests-page-container .btn-primary:hover,
+              .requests-page-container button[type="submit"]:hover {
+                background: var(--accent-color-hover) !important;
+                filter: brightness(0.9);
+              }
+            ` : `
+              .requests-page-container .btn-primary,
+              .requests-page-container button[type="submit"] {
+                background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-hover) 50%, ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + '99' : '#fcba0099'} 100%) !important;
+                box-shadow: 0 4px 14px ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + '40' : '#fcba0040'} !important;
+              }
+              .requests-page-container .btn-primary:hover,
+              .requests-page-container button[type="submit"]:hover {
+                box-shadow: 0 6px 20px ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + '60' : '#fcba0060'} !important;
+                transform: translateY(-1px);
+              }
+            `}
+            
             ${organizationData?.requests_theme_mode === 'light' ? `
               .requests-page-container, .requests-page-container * { color-scheme: light; }
               .requests-page-container .dark\\:bg-black { background-color: transparent !important; }

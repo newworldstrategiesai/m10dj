@@ -90,6 +90,9 @@ export default function RequestsPageSettings() {
   // Theme mode (light/dark/system)
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('dark');
   
+  // Button style (gradient/flat)
+  const [buttonStyle, setButtonStyle] = useState<'gradient' | 'flat'>('gradient');
+  
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   
   // Header fields
@@ -216,6 +219,9 @@ export default function RequestsPageSettings() {
         
         // Set theme mode
         setThemeMode(org.requests_theme_mode || 'dark');
+        
+        // Set button style
+        setButtonStyle(org.requests_button_style || 'gradient');
         
         // Parse social links - if none exist, show default fallback links for editing
         const defaultSocialLinks: SocialLink[] = [
@@ -361,6 +367,8 @@ export default function RequestsPageSettings() {
           requests_accent_color: accentColor || '#fcba00',
           // Theme mode
           requests_theme_mode: themeMode,
+          // Button style
+          requests_button_style: buttonStyle,
           // Social links
           social_links: validSocialLinks,
           // Bidding settings
@@ -944,6 +952,89 @@ export default function RequestsPageSettings() {
                         {themeMode === 'dark' && '🌙 Your page will always display in dark mode'}
                         {themeMode === 'system' && '💻 Your page will match the visitor\'s device preference'}
                       </p>
+                    </div>
+                    
+                    {/* Button Style */}
+                    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                        Button Style
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        Choose how your buttons appear on the requests page
+                      </p>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Gradient */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setButtonStyle('gradient');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`relative p-4 rounded-lg border-2 transition-all ${
+                            buttonStyle === 'gradient'
+                              ? 'border-[var(--accent-color)] ring-2 ring-[var(--accent-color)]/30'
+                              : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                          } bg-white dark:bg-gray-800`}
+                          style={buttonStyle === 'gradient' ? { borderColor: accentColor } : {}}
+                        >
+                          <div className="flex flex-col items-center gap-3">
+                            <div 
+                              className="px-6 py-2.5 rounded-lg text-white font-medium text-sm"
+                              style={{ 
+                                background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}cc 50%, ${accentColor}99 100%)`,
+                                boxShadow: `0 4px 14px ${accentColor}40`
+                              }}
+                            >
+                              Sample Button
+                            </div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">Gradient</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Shimmery, premium look</span>
+                          </div>
+                          {buttonStyle === 'gradient' && (
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                        </button>
+                        
+                        {/* Flat */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setButtonStyle('flat');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`relative p-4 rounded-lg border-2 transition-all ${
+                            buttonStyle === 'flat'
+                              ? 'border-[var(--accent-color)] ring-2 ring-[var(--accent-color)]/30'
+                              : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                          } bg-white dark:bg-gray-800`}
+                          style={buttonStyle === 'flat' ? { borderColor: accentColor } : {}}
+                        >
+                          <div className="flex flex-col items-center gap-3">
+                            <div 
+                              className="px-6 py-2.5 rounded-lg text-white font-medium text-sm"
+                              style={{ backgroundColor: accentColor }}
+                            >
+                              Sample Button
+                            </div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">Flat</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Clean, minimal look</span>
+                          </div>
+                          {buttonStyle === 'flat' && (
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                        </button>
+                      </div>
                     </div>
                     
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
