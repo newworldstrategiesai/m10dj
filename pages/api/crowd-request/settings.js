@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       // Direct organization ID provided
       const { data: org } = await supabase
         .from('organizations')
-        .select('id, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username')
         .eq('id', organizationId)
         .single();
       organization = org;
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       // Organization slug provided (from URL)
       const { data: org } = await supabase
         .from('organizations')
-        .select('id, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username')
         .eq('slug', organizationSlug)
         .single();
       organization = org;
@@ -41,11 +41,14 @@ export default async function handler(req, res) {
       // Try to get default organization (first one) for backward compatibility
       const { data: defaultOrg } = await supabase
         .from('organizations')
-        .select('id, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username')
         .limit(1)
         .single();
       organization = defaultOrg;
     }
+    
+    // Determine if this is M10 DJ Company (the only org that should use Ben's personal payment info as default)
+    const isM10Organization = organization?.slug === 'm10djcompany';
     
     // Check if organization has its own payment settings
     if (organization && (organization.requests_minimum_amount || organization.requests_preset_amounts)) {
@@ -74,9 +77,17 @@ export default async function handler(req, res) {
         }
       }
       
+      // For payment usernames: use organization-specific values first, then admin_settings, then only M10 gets personal defaults
+      const cashAppTag = organization.requests_cashapp_tag 
+        || paymentMethodSettings['crowd_request_cashapp_tag'] 
+        || (isM10Organization ? (process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray') : null);
+      const venmoUsername = organization.requests_venmo_username 
+        || paymentMethodSettings['crowd_request_venmo_username'] 
+        || (isM10Organization ? (process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray') : null);
+      
       return res.status(200).json({
-        cashAppTag: paymentMethodSettings['crowd_request_cashapp_tag'] || process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray',
-        venmoUsername: paymentMethodSettings['crowd_request_venmo_username'] || process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray',
+        cashAppTag,
+        venmoUsername,
         venmoPhoneNumber: paymentMethodSettings['crowd_request_venmo_phone_number'] || process.env.VENMO_PHONE_NUMBER || null,
         fastTrackFee: parseInt(paymentMethodSettings['crowd_request_fast_track_fee']) || 1000,
         minimumAmount: orgMinimum,
@@ -163,9 +174,10 @@ export default async function handler(req, res) {
     // If no settings found, return defaults
     if (settings.length === 0) {
       const defaultMinimum = 1000; // Default $10.00 (1000 cents)
+      // Only M10 DJ Company gets personal payment defaults; other orgs get null (must configure their own)
       return res.status(200).json({
-        cashAppTag: process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray',
-        venmoUsername: process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray',
+        cashAppTag: organization?.requests_cashapp_tag || (isM10Organization ? (process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray') : null),
+        venmoUsername: organization?.requests_venmo_username || (isM10Organization ? (process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray') : null),
         venmoPhoneNumber: process.env.VENMO_PHONE_NUMBER || null, // Include phone number for Venmo deep links
         fastTrackFee: 1000,
         minimumAmount: defaultMinimum,
@@ -173,9 +185,13 @@ export default async function handler(req, res) {
       });
     }
 
-    // Parse settings
-    const cashAppTag = settings.find(s => s.setting_key === 'crowd_request_cashapp_tag')?.setting_value || process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray';
-    const venmoUsername = settings.find(s => s.setting_key === 'crowd_request_venmo_username')?.setting_value || process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray';
+    // Parse settings - use organization-specific values first, then admin_settings, then only M10 gets personal defaults
+    const cashAppTag = organization?.requests_cashapp_tag 
+      || settings.find(s => s.setting_key === 'crowd_request_cashapp_tag')?.setting_value 
+      || (isM10Organization ? (process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray') : null);
+    const venmoUsername = organization?.requests_venmo_username 
+      || settings.find(s => s.setting_key === 'crowd_request_venmo_username')?.setting_value 
+      || (isM10Organization ? (process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray') : null);
     const venmoPhoneNumber = settings.find(s => s.setting_key === 'crowd_request_venmo_phone_number')?.setting_value || process.env.VENMO_PHONE_NUMBER || null;
     const fastTrackFee = settings.find(s => s.setting_key === 'crowd_request_fast_track_fee')?.setting_value || '1000';
     // Check for minimum_tip_amount first (newer key), then fall back to crowd_request_minimum_amount (legacy), then default to $10.00
@@ -222,13 +238,14 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('❌ Error fetching payment settings:', error);
     const defaultMinimum = 1000; // Default $10.00 (1000 cents)
+    // On error, return null for payment usernames - don't expose personal defaults
     return res.status(200).json({
-      cashAppTag: process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray',
-      venmoUsername: process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray',
-      venmoPhoneNumber: process.env.VENMO_PHONE_NUMBER || null, // Include phone number for Venmo deep links
+      cashAppTag: null,
+      venmoUsername: null,
+      venmoPhoneNumber: null,
       fastTrackFee: 1000,
       minimumAmount: defaultMinimum,
-      presetAmounts: generateDefaultPresets(defaultMinimum), // $10, $15, $20, $25
+      presetAmounts: [1000, 1500, 2000, 2500], // $10, $15, $20, $25
       bundleDiscountEnabled: true,
       bundleDiscountPercent: 10
     });

@@ -99,6 +99,10 @@ export default function RequestsPageSettings() {
   // Button style (gradient/flat)
   const [buttonStyle, setButtonStyle] = useState<'gradient' | 'flat'>('gradient');
   
+  // Payment usernames for tips section
+  const [cashAppTag, setCashAppTag] = useState('');
+  const [venmoUsername, setVenmoUsername] = useState('');
+  
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   
   // Header fields
@@ -246,6 +250,10 @@ export default function RequestsPageSettings() {
         setPresetAmounts(org.requests_preset_amounts || [1000, 1500, 2000, 2500]);
         setAmountsSortOrder(org.requests_amounts_sort_order || 'desc');
         
+        // Set payment usernames for tips section
+        setCashAppTag(org.requests_cashapp_tag || '');
+        setVenmoUsername(org.requests_venmo_username || '');
+        
         // Set header fields
         setHeaderFields({
           requests_header_artist_name: org.requests_header_artist_name || org.name || '',
@@ -382,6 +390,9 @@ export default function RequestsPageSettings() {
           requests_minimum_amount: minimumAmount,
           requests_preset_amounts: presetAmounts,
           requests_amounts_sort_order: amountsSortOrder,
+          // Payment usernames for tips section
+          requests_cashapp_tag: cashAppTag || null,
+          requests_venmo_username: venmoUsername || null,
           // Header fields
           ...headerFields,
           // Label fields
@@ -1357,6 +1368,77 @@ export default function RequestsPageSettings() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                         Minimum: ${(minimumAmount / 100).toFixed(0)}
                       </p>
+                    </div>
+                    
+                    {/* Alternative Payment Methods Section */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Alternative Payment Methods
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        These usernames are shown on the Tip tab as backup payment options. Leave blank to hide this section.
+                      </p>
+                      
+                      <div className="space-y-4">
+                        {/* CashApp Tag */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            CashApp Tag
+                          </label>
+                          <div className="relative w-full sm:w-64">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                            <input
+                              type="text"
+                              value={cashAppTag.replace(/^\$/, '')}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/^\$/, '');
+                                setCashAppTag(value ? `$${value}` : '');
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              placeholder="YourCashAppTag"
+                              className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            Example: $YourName
+                          </p>
+                        </div>
+                        
+                        {/* Venmo Username */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Venmo Username
+                          </label>
+                          <div className="relative w-full sm:w-64">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">@</span>
+                            <input
+                              type="text"
+                              value={venmoUsername.replace(/^@/, '')}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/^@/, '');
+                                setVenmoUsername(value ? `@${value}` : '');
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              placeholder="YourVenmoUsername"
+                              className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            Example: @YourName
+                          </p>
+                        </div>
+                        
+                        {/* Info box */}
+                        {(!cashAppTag && !venmoUsername) && (
+                          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                            <p className="text-sm text-amber-800 dark:text-amber-200">
+                              💡 Add your CashApp or Venmo to give customers an alternative way to tip you if they have trouble with card payments.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Bidding Mode Section - Merged into Payments tab */}

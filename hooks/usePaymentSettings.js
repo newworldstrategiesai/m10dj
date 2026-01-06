@@ -6,9 +6,11 @@ import { useState, useEffect } from 'react';
  */
 export function usePaymentSettings(options = {}) {
   const { organizationId = null, organizationSlug = null } = options;
+  // Default to null - each organization should set their own payment usernames
+  // We don't want to show personal defaults on TipJar SaaS pages
   const [paymentSettings, setPaymentSettings] = useState({
-    cashAppTag: '$DJbenmurray',
-    venmoUsername: '@djbenmurray'
+    cashAppTag: null,
+    venmoUsername: null
   });
   const [fastTrackFee, setFastTrackFee] = useState(1000);
   const [nextFee, setNextFee] = useState(2000);
