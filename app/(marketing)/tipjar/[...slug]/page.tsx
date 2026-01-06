@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import TipJarHeader from '@/components/tipjar/Header';
 import TipJarFooter from '@/components/tipjar/Footer';
@@ -157,29 +157,9 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
       notFound();
     }
 
-    // If artist page is not enabled, redirect to requests page
-    if (!performerOrg.artist_page_enabled) {
-      const requestsUrl = `/${venueSlug}/${performerSlug}/requests`;
-      return (
-        <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
-          <div className="text-center px-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Artist Page Not Available
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              The artist page for {performerOrg.name} is not currently enabled.
-            </p>
-            <Link 
-              href={requestsUrl}
-              className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
-            >
-              <Music className="w-5 h-5 mr-2" />
-              Go to Requests Page
-            </Link>
-          </div>
-        </div>
-      );
-    }
+    // Artist pages are not yet implemented - redirect all /tipjar/[venue]/[performer] to requests page
+    // This ensures users always see the requests page instead of an error
+    redirect(`/${venueSlug}/${performerSlug}/requests`);
 
     const links = (performerOrg.artist_page_links as any[]) || [];
     const galleryImages = performerOrg.artist_page_gallery_images || [];
@@ -456,30 +436,9 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
     notFound();
   }
 
-  // If artist page is not enabled, redirect to requests page or show a message
-  if (!org.artist_page_enabled) {
-    // Redirect to the requests page for this organization
-    const requestsUrl = `/${slug}/requests`;
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
-        <div className="text-center px-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Artist Page Not Available
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            The artist page for {org.name} is not currently enabled.
-          </p>
-          <Link 
-            href={requestsUrl}
-            className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
-          >
-            <Music className="w-5 h-5 mr-2" />
-            Go to Requests Page
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  // Artist pages are not yet implemented - redirect all /tipjar/[slug] to requests page
+  // This ensures users always see the requests page instead of an error
+  redirect(`/${slug}/requests`);
 
   const links = (org.artist_page_links as any[]) || [];
   const galleryImages = org.artist_page_gallery_images || [];
