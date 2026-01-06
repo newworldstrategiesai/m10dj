@@ -184,10 +184,14 @@ export default function RequestsPageSettings() {
           requests_header_video_url: org.requests_header_video_url || ''
         });
         
-        // Parse social links
-        const links = org.social_links && Array.isArray(org.social_links) 
+        // Parse social links - if none exist, show default fallback links for editing
+        const defaultSocialLinks: SocialLink[] = [
+          { platform: 'instagram', url: 'https://instagram.com/djbenmurray', label: 'Instagram', enabled: true, order: 0 },
+          { platform: 'facebook', url: 'https://facebook.com/djbenmurray', label: 'Facebook', enabled: true, order: 1 },
+        ];
+        const links = org.social_links && Array.isArray(org.social_links) && org.social_links.length > 0
           ? org.social_links as SocialLink[]
-          : [];
+          : defaultSocialLinks;
         setSocialLinks(links.sort((a, b) => (a.order || 0) - (b.order || 0)));
         
         // Set bidding settings
@@ -342,7 +346,11 @@ export default function RequestsPageSettings() {
       setOrganization(prev => prev ? { ...prev, _lastUpdated: Date.now() } : prev);
     } catch (error: any) {
       console.error('Error saving settings:', error);
-      setError(error.message || 'Failed to save settings');
+      // Log more details for debugging
+      if (error.code) console.error('Error code:', error.code);
+      if (error.details) console.error('Error details:', error.details);
+      if (error.hint) console.error('Error hint:', error.hint);
+      setError(error.message || error.details || 'Failed to save settings');
     } finally {
       setSaving(false);
     }

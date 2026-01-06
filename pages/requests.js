@@ -203,12 +203,14 @@ export function GeneralRequestsPage({
       coverPhoto,
       headerVideoUrl,
       showVideo,
+      rawVideoUrl: organizationData?.requests_header_video_url,
       fromOrganizationData: organizationData?.requests_cover_photo_url || organizationData?.requests_artist_photo_url || organizationData?.requests_venue_photo_url,
       primaryCoverSource: organizationData?.requests_primary_cover_source,
       hasArtist: !!organizationData?.requests_artist_photo_url,
       hasVenue: !!organizationData?.requests_venue_photo_url,
       artistUrl: organizationData?.requests_artist_photo_url,
-      venueUrl: organizationData?.requests_venue_photo_url
+      venueUrl: organizationData?.requests_venue_photo_url,
+      allOrgKeys: organizationData ? Object.keys(organizationData) : []
     });
   }, [organizationCoverPhoto, coverPhoto, headerVideoUrl, showVideo, organizationData]);
   // Determine default request type - if allowedRequestTypes is set, use first allowed type
