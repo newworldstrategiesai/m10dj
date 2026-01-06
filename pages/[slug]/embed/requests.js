@@ -78,6 +78,8 @@ export default function OrganizationEmbedRequestsPage() {
       <GeneralRequestsPage
         organizationId={organization.id}
         organizationName={organization.name}
+        organizationData={organization}
+        organizationCoverPhoto={organization?.requests_cover_photo_url || organization?.requests_artist_photo_url || organization?.requests_venue_photo_url || null}
         embedMode={true}
       />
     </>

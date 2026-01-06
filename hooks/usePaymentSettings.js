@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
  * Custom hook for fetching and managing payment settings
  * Centralizes payment settings logic
  */
-export function usePaymentSettings() {
+export function usePaymentSettings(options = {}) {
+  const { organizationId = null, organizationSlug = null } = options;
   const [paymentSettings, setPaymentSettings] = useState({
     cashAppTag: '$DJbenmurray',
     venmoUsername: '@djbenmurray'
@@ -25,12 +26,19 @@ export function usePaymentSettings() {
 
   useEffect(() => {
     fetchPaymentSettings();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, organizationSlug]);
 
   const fetchPaymentSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/crowd-request/settings');
+      const params = new URLSearchParams();
+      if (organizationId) params.set('organizationId', organizationId);
+      if (organizationSlug) params.set('organizationSlug', organizationSlug);
+      const url = params.toString()
+        ? `/api/crowd-request/settings?${params.toString()}`
+        : '/api/crowd-request/settings';
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         if (data.cashAppTag) setPaymentSettings(prev => ({ ...prev, cashAppTag: data.cashAppTag }));

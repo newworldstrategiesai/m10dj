@@ -275,6 +275,7 @@ export function GeneralRequestsPage({
   const isM10Domain = typeof window !== 'undefined' && 
     (window.location.hostname === 'm10djcompany.com' || window.location.hostname === 'www.m10djcompany.com');
   const isM10Organization = organizationData?.slug === 'm10djcompany' || organizationData?.name?.toLowerCase().includes('m10');
+  const allowSocialAccountSelector = isM10Domain || isM10Organization;
   
   // Security check: Block M10-specific video URLs from appearing on other organizations' pages
   if (headerVideoUrl) {
@@ -462,7 +463,10 @@ export function GeneralRequestsPage({
     bundleDiscountEnabled,
     bundleDiscount: bundleDiscountPercent,
     loading: settingsLoading
-  } = usePaymentSettings();
+  } = usePaymentSettings({ 
+    organizationId: organizationId ? String(organizationId) : null,
+    organizationSlug: organizationData?.slug ? String(organizationData.slug) : null
+  });
 
   // Track QR code scan for public requests page
   useQRScanTracking('public', organizationId);
@@ -2456,7 +2460,9 @@ export function GeneralRequestsPage({
                         const platform = link.platform?.toLowerCase();
                         const isSelectable = platform === 'instagram' || platform === 'facebook';
                         
-                        if (isSelectable) {
+                        // Only allow the “account selector” behavior on M10; for TipJar/DJDash SaaS pages,
+                        // social links should always follow the admin-configured URL.
+                        if (isSelectable && allowSocialAccountSelector) {
                           return (
                             <button
                               key={index}
@@ -2489,33 +2495,36 @@ export function GeneralRequestsPage({
                       })}
                   </div>
                 ) : (
-                  // Default fallback social links
-                  <div className="flex items-center justify-center gap-3">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleSocialClick(e, 'instagram');
-                      }}
-                      className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer border-0 bg-transparent p-0"
-                      aria-label="Instagram"
-                    >
-                      <Instagram className="w-5 h-5" strokeWidth={2} fill="none" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleSocialClick(e, 'facebook');
-                      }}
-                      className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer border-0 bg-transparent p-0"
-                      aria-label="Facebook"
-                    >
-                      <Facebook className="w-5 h-5" strokeWidth={2} fill="none" />
-                    </button>
-                  </div>
+                  // No fallback social links for SaaS pages (prevents cross-brand leaks).
+                  // If user hasn't configured links, hide the section.
+                  (allowSocialAccountSelector ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleSocialClick(e, 'instagram');
+                        }}
+                        className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer border-0 bg-transparent p-0"
+                        aria-label="Instagram"
+                      >
+                        <Instagram className="w-5 h-5" strokeWidth={2} fill="none" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleSocialClick(e, 'facebook');
+                        }}
+                        className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer border-0 bg-transparent p-0"
+                        aria-label="Facebook"
+                      >
+                        <Facebook className="w-5 h-5" strokeWidth={2} fill="none" />
+                      </button>
+                    </div>
+                  ) : null)
                 )}
               </div>
               )}

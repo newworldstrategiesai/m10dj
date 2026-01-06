@@ -252,6 +252,16 @@ export default function OrganizationRequestsPage() {
         </Head>
       )}
       <Head>
+        <title>{organization?.requests_page_title || `Request a Song or Shoutout | ${organization?.name || 'TipJar.Live'}`}</title>
+        <meta
+          name="description"
+          content={
+            organization?.requests_page_description ||
+            (organization?.requests_header_artist_name
+              ? `Request a song or shoutout for ${organization.requests_header_artist_name}`
+              : `Request a song or shoutout for ${organization?.name || 'your event'}`)
+          }
+        />
         {(() => {
           const siteUrl = typeof window !== 'undefined' 
             ? window.location.origin 
@@ -279,6 +289,7 @@ export default function OrganizationRequestsPage() {
           
           return (
             <>
+              <meta name="description" content={pageDescription} />
               <meta property="og:type" content="website" />
               <meta property="og:url" content={currentUrl} />
               <meta property="og:title" content={pageTitle} />
