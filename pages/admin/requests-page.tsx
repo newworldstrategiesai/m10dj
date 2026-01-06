@@ -342,8 +342,17 @@ export default function RequestsPageSettings() {
       // Refresh the local organization data to reflect changes in the preview
       fetchOrganization();
 
-      // Also update the URL with a new timestamp to ensure the live page loads fresh data
-      setOrganization(prev => prev ? { ...prev, _lastUpdated: Date.now() } : prev);
+      // Update timestamp to trigger iframe refresh
+      const newTimestamp = Date.now();
+      setOrganization(prev => prev ? { ...prev, _lastUpdated: newTimestamp } : prev);
+      
+      // Auto-refresh the preview iframe after a short delay (to allow database to update)
+      setTimeout(() => {
+        const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
+        if (iframe) {
+          iframe.src = `/requests?preview=true&t=${newTimestamp}`;
+        }
+      }, 1000);
     } catch (error: any) {
       console.error('Error saving settings:', error);
       // Log more details for debugging
@@ -1485,118 +1494,62 @@ export default function RequestsPageSettings() {
                   <Eye className="w-5 h-5 text-[#fcba00]" />
                   Live Preview
                 </h3>
-                <Link
-                  href={requestsPageUrl}
-                  target="_blank"
-                  className="block w-full text-center px-4 py-3 bg-[#fcba00] hover:bg-[#d99f00] text-black rounded-lg transition-colors text-sm font-medium mb-4 shadow-md"
-                  onClick={() => {
-                    // Force refresh the page by adding a timestamp to bypass any caching
-                    window.open(`/organizations/${organization.slug}/requests?t=${Date.now()}`, '_blank');
-                    return false;
-                  }}
-                >
-                  <ExternalLink className="w-4 h-4 inline mr-2" />
-                  View Live Page
-                </Link>
+                <div className="flex gap-2 mb-4">
+                  <Link
+                    href={requestsPageUrl}
+                    target="_blank"
+                    className="flex-1 text-center px-3 py-2 bg-[#fcba00] hover:bg-[#d99f00] text-black rounded-lg transition-colors text-sm font-medium shadow-md"
+                    onClick={() => {
+                      window.open(`/requests?t=${Date.now()}`, '_blank');
+                      return false;
+                    }}
+                  >
+                    <ExternalLink className="w-4 h-4 inline mr-1" />
+                    Open
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Force iframe refresh by updating timestamp
+                      const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
+                      if (iframe) {
+                        iframe.src = `/requests?preview=true&t=${Date.now()}`;
+                      }
+                    }}
+                    className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    ↻ Refresh
+                  </button>
+                </div>
                 
-                {/* Accurate Preview - Matches actual page layout */}
-                <div className="border-2 border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-gradient-to-b from-gray-900 via-black to-black">
-                  {/* Hero Section Preview */}
-                  <div className="relative h-48 overflow-hidden">
-                    {/* Show video if set, otherwise show cover photo */}
-                    {coverPhotos.requests_header_video_url ? (
-                      <video
-                        src={coverPhotos.requests_header_video_url}
-                        className="w-full h-full object-cover"
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                      />
-                    ) : (coverPhotos.requests_cover_photo_url || coverPhotos.requests_artist_photo_url || coverPhotos.requests_venue_photo_url) ? (
-                      <img
-                        src={coverPhotos.requests_cover_photo_url || coverPhotos.requests_artist_photo_url || coverPhotos.requests_venue_photo_url}
-                        alt="Cover preview"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-900/30 to-pink-900/30 flex items-center justify-center">
-                        <ImageIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-                      </div>
-                    )}
-                    
-                    {/* Overlay content preview - Only show when not using video (video has its own branding) */}
-                    {!coverPhotos.requests_header_video_url && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 text-white">
-                      {headerFields.requests_header_artist_name && (
-                        <h2 className="text-lg font-bold mb-1 drop-shadow-lg">
-                          {headerFields.requests_header_artist_name.toUpperCase()}
-                        </h2>
-                      )}
-                      {headerFields.requests_header_location && (
-                        <p className="text-sm text-white/90 mb-1 drop-shadow-md">
-                          {headerFields.requests_header_location}
-                        </p>
-                      )}
-                      {headerFields.requests_header_date && (
-                        <p className="text-xs text-white/80 drop-shadow-sm">
-                          {headerFields.requests_header_date}
-                        </p>
-                      )}
-                    </div>
-                    )}
-                    
-                    {/* Social Links Preview at bottom */}
-                    {socialLinks.filter(link => link.enabled).length > 0 && (
-                      <div className="absolute bottom-2 flex items-center justify-center gap-2">
-                        {socialLinks
-                          .filter(link => link.enabled)
-                          .sort((a, b) => (a.order || 0) - (b.order || 0))
-                          .slice(0, 4)
-                          .map((link, index) => (
-                            <div
-                              key={index}
-                              className="w-6 h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"
-                              title={link.label}
-                            >
-                              <span className="text-[10px] text-white">🔗</span>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Main Heading Preview */}
-                  <div className="bg-black/50 px-4 py-3 border-t border-white/10">
-                    <p className="text-sm text-white font-semibold text-center">
-                      {headerFields.requests_main_heading || 'What would you like to request?'}
-                    </p>
-                  </div>
-                  
-                  {/* Request Form Preview Placeholder */}
-                  <div className="bg-gray-800/50 px-4 py-4 space-y-2">
-                    <div className="h-8 bg-white/10 rounded"></div>
-                    <div className="h-8 bg-white/10 rounded"></div>
-                    <div className="h-16 bg-white/10 rounded"></div>
-                    <div className="h-10 bg-[#fcba00]/20 rounded"></div>
-                  </div>
+                {/* Live iframe preview - renders the actual page */}
+                <div className="border-2 border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-black" style={{ height: '500px' }}>
+                  <iframe
+                    id="live-preview-iframe"
+                    src={`/requests?preview=true&t=${organization?._lastUpdated || Date.now()}`}
+                    className="w-full h-full border-0"
+                    style={{ 
+                      transform: 'scale(0.5)', 
+                      transformOrigin: 'top left',
+                      width: '200%',
+                      height: '200%'
+                    }}
+                    title="Live Preview"
+                  />
                 </div>
                 
                 <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1.5 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
                   <p className="flex items-start gap-1.5">
                     <span className="text-[#fcba00] mt-0.5">•</span>
-                    <span>Preview shows actual page layout</span>
+                    <span>This is the actual live page (scaled 50%)</span>
                   </p>
                   <p className="flex items-start gap-1.5">
                     <span className="text-[#fcba00] mt-0.5">•</span>
-                    <span>Header text overlays cover photo</span>
+                    <span>Click "Refresh" after saving to see changes</span>
                   </p>
                   <p className="flex items-start gap-1.5">
                     <span className="text-[#fcba00] mt-0.5">•</span>
-                    <span>Navbar is transparent on live page</span>
+                    <span>Live page updates within 5 seconds of save</span>
                   </p>
                 </div>
               </div>
