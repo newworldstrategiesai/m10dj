@@ -84,10 +84,20 @@ export default function FullScreenLoader({
 
   if (!mounted || !shouldRender) return null;
 
-  // Use white logo in dark mode, regular logo in light mode
-  const logoSrc = isDarkMode 
-    ? '/assets/m10 dj company logo white.gif'
-    : '/M10-Rotating-Logo.gif';
+  // Pick a product-appropriate loader logo (prevents cross-brand leaks on shared deployment)
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const isTipJarDomain = hostname === 'tipjar.live' || hostname === 'www.tipjar.live';
+  const isDJDashDomain = hostname === 'djdash.net' || hostname === 'www.djdash.net';
+  const isM10Domain = hostname === 'm10djcompany.com' || hostname === 'www.m10djcompany.com';
+
+  // Use TipJar assets on TipJar, DJDash assets on DJDash; default to M10 on M10/unknown
+  const logoSrc = isTipJarDomain
+    ? (isDarkMode ? '/assets/TipJar-Logo-White.png' : '/assets/TipJar-Logo-With-Text.png')
+    : isDJDashDomain
+      ? '/assets/DJ-Dash-Logo-Black-1.PNG'
+      : isM10Domain
+        ? (isDarkMode ? '/assets/m10 dj company logo white.gif' : '/assets/m10 dj company logo black.gif')
+        : (isDarkMode ? '/assets/m10 dj company logo white.gif' : '/assets/m10 dj company logo black.gif');
   
   // Bright backdrop for light mode, dark backdrop for dark mode
   const backdropClass = isDarkMode
@@ -130,7 +140,7 @@ export default function FullScreenLoader({
         <div className="relative w-64 h-64 md:w-96 md:h-96">
           <img
             src={logoSrc}
-            alt="M10 DJ Company Loading Animation"
+            alt={isTipJarDomain ? 'TipJar.Live Loading' : isDJDashDomain ? 'DJDash Loading' : 'Loading'}
             className="w-full h-full object-contain"
             loading="eager"
           />

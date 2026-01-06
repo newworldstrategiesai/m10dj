@@ -279,26 +279,31 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
   };
 
   // Default fallback social links
-  const defaultSocialLinks = [
-    {
-      platform: 'instagram',
-      url: 'https://instagram.com/m10djcompany',
-      label: 'Instagram',
-      enabled: true,
-      order: 1
-    },
-    {
-      platform: 'facebook',
-      url: 'https://facebook.com/m10djcompany',
-      label: 'Facebook',
-      enabled: true,
-      order: 2
-    }
-  ];
+  // IMPORTANT: Never leak cross-brand social links on TipJar/DJDash.
+  const defaultSocialLinks = isM10DJCompanyDomain()
+    ? [
+        {
+          platform: 'instagram',
+          url: 'https://instagram.com/m10djcompany',
+          label: 'Instagram',
+          enabled: true,
+          order: 1
+        },
+        {
+          platform: 'facebook',
+          url: 'https://facebook.com/m10djcompany',
+          label: 'Facebook',
+          enabled: true,
+          order: 2
+        }
+      ]
+    : [];
 
   // Helper function to get social URL with user preference
   const getSocialUrl = (platform, defaultUrl) => {
     if (platform === 'instagram' || platform === 'facebook') {
+      // Only allow the account-selector behavior on M10; TipJar/DJDash should open saved URLs directly.
+      if (!isM10DJCompanyDomain()) return defaultUrl;
       const saved = typeof window !== 'undefined' 
         ? localStorage.getItem(`${platform}_account_preference`)
         : null;

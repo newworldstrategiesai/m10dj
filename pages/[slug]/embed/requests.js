@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 // Organization will be loaded via API
-import GeneralRequestsPage from '../../requests';
+import { GeneralRequestsPage } from '../../requests';
 
 export default function OrganizationEmbedRequestsPage() {
   const router = useRouter();

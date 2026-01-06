@@ -13,7 +13,7 @@ import Header from '../../components/company/Header';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCoverPhotoUrl } from '../../utils/cover-photo-helper';
 // Organization will be loaded via API
-import GeneralRequestsPage from '../requests';
+import { GeneralRequestsPage } from '../requests';
 
 export default function OrganizationRequestsPage() {
   const router = useRouter();

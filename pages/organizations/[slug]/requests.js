@@ -11,7 +11,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCoverPhotoUrl } from '../../../utils/cover-photo-helper';
-import GeneralRequestsPage from '../../requests'; // Reuse the existing requests page component
+import { GeneralRequestsPage } from '../../requests'; // Reuse the existing requests page component (named export)
 import TipJarChatWidget from '../../../components/tipjar/TipJarChatWidget';
 
 export default function OrganizationRequestsPage() {
