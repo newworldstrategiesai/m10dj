@@ -62,11 +62,16 @@ export default function RequestsPageSettings() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'cover' | 'social' | 'bidding' | 'header' | 'labels' | 'features' | 'seo'>('cover');
+  const [activeTab, setActiveTab] = useState<'cover' | 'social' | 'payments' | 'bidding' | 'header' | 'labels' | 'features' | 'seo'>('cover');
   const [previewDevice, setPreviewDevice] = useState<'mobile' | 'tablet' | 'desktop'>('mobile');
   const [biddingEnabled, setBiddingEnabled] = useState(false);
   const [minimumBid, setMinimumBid] = useState(500); // In cents
   const [startingBid, setStartingBid] = useState(500); // In cents - default starting bid (never $0)
+  
+  // Payment amount settings
+  const [minimumAmount, setMinimumAmount] = useState(1000); // In cents, default $10
+  const [presetAmounts, setPresetAmounts] = useState([1000, 1500, 2000, 2500]); // In cents
+  const [amountsSortOrder, setAmountsSortOrder] = useState<'desc' | 'asc'>('desc');
   
   const [coverPhotos, setCoverPhotos] = useState({
     requests_cover_photo_url: '',
@@ -140,7 +145,7 @@ export default function RequestsPageSettings() {
   // Handle tab from URL query parameter
   useEffect(() => {
     const { tab } = router.query;
-    if (tab === 'social' || tab === 'cover' || tab === 'bidding' || tab === 'header' || tab === 'labels' || tab === 'features' || tab === 'seo') {
+    if (tab === 'social' || tab === 'cover' || tab === 'payments' || tab === 'bidding' || tab === 'header' || tab === 'labels' || tab === 'features' || tab === 'seo') {
       setActiveTab(tab as any);
     }
   }, [router.query]);
@@ -200,6 +205,11 @@ export default function RequestsPageSettings() {
         setBiddingEnabled(org.requests_bidding_enabled || false);
         setMinimumBid(org.requests_bidding_minimum_bid || 500);
         setStartingBid(org.requests_bidding_starting_bid || 500); // Default to $5.00 if not set
+        
+        // Set payment amount settings
+        setMinimumAmount(org.requests_minimum_amount || 1000);
+        setPresetAmounts(org.requests_preset_amounts || [1000, 1500, 2000, 2500]);
+        setAmountsSortOrder(org.requests_amounts_sort_order || 'desc');
         
         // Set header fields
         setHeaderFields({
@@ -323,6 +333,10 @@ export default function RequestsPageSettings() {
           requests_bidding_enabled: biddingEnabled,
           requests_bidding_minimum_bid: minimumBid,
           requests_bidding_starting_bid: startingBid,
+          // Payment amount settings
+          requests_minimum_amount: minimumAmount,
+          requests_preset_amounts: presetAmounts,
+          requests_amounts_sort_order: amountsSortOrder,
           // Header fields
           ...headerFields,
           // Label fields
@@ -346,7 +360,7 @@ export default function RequestsPageSettings() {
 
       // Update timestamp to trigger iframe refresh
       const newTimestamp = Date.now();
-      setOrganization(prev => prev ? { ...prev, _lastUpdated: newTimestamp } : prev);
+      setOrganization((prev: any) => prev ? { ...prev, _lastUpdated: newTimestamp } : prev);
       
       // Auto-refresh the preview iframe after a short delay (to allow database to update)
       setTimeout(() => {
@@ -524,6 +538,19 @@ export default function RequestsPageSettings() {
                   <div className="flex items-center gap-2">
                     <Globe className="w-5 h-5" />
                     Social Links
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('payments')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'payments'
+                      ? 'border-[#fcba00] text-[#fcba00]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Music className="w-5 h-5" />
+                    Payments
                   </div>
                 </button>
                 <button
@@ -784,6 +811,171 @@ export default function RequestsPageSettings() {
                       ))}
                     </div>
                   )}
+                </div>
+              ) : activeTab === 'payments' ? (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                    Payment Amount Settings
+                  </h2>
+                  
+                  <div className="space-y-6">
+                    {/* Minimum Amount */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Minimum Tip Amount
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        The minimum amount users can pay for requests and tips
+                      </p>
+                      <div className="relative w-48">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                        <input
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={minimumAmount / 100}
+                          onChange={(e) => {
+                            const value = Math.round(parseFloat(e.target.value) * 100) || 100;
+                            setMinimumAmount(Math.max(100, value));
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                          placeholder="10"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preset Amounts */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Quick Amount Buttons
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        These are the preset amounts shown as buttons on the request page
+                      </p>
+                      <div className="space-y-3">
+                        {presetAmounts.map((amount, index) => (
+                          <div key={index} className="flex items-center gap-3">
+                            <span className="text-sm text-gray-500 w-16">Button {index + 1}:</span>
+                            <div className="relative w-32">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                              <input
+                                type="number"
+                                step="1"
+                                min="1"
+                                value={amount / 100}
+                                onChange={(e) => {
+                                  const value = Math.round(parseFloat(e.target.value) * 100) || 100;
+                                  const newPresets = [...presetAmounts];
+                                  newPresets[index] = Math.max(100, value);
+                                  setPresetAmounts(newPresets);
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                              />
+                            </div>
+                            {presetAmounts.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newPresets = presetAmounts.filter((_, i) => i !== index);
+                                  setPresetAmounts(newPresets);
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {presetAmounts.length < 6 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const lastAmount = presetAmounts[presetAmounts.length - 1] || 1000;
+                              setPresetAmounts([...presetAmounts, lastAmount + 500]);
+                              setError(null);
+                              setSuccess(false);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-[#fcba00] hover:bg-[#fcba00]/10 rounded-lg transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Amount Button
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sort Order */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Button Display Order
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        How the amount buttons are ordered on the request page
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAmountsSortOrder('desc');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
+                            amountsSortOrder === 'desc'
+                              ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                          }`}
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                          Highest First
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAmountsSortOrder('asc');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
+                            amountsSortOrder === 'asc'
+                              ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                          }`}
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                          Lowest First
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        Preview
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {[...presetAmounts]
+                          .sort((a, b) => amountsSortOrder === 'desc' ? b - a : a - b)
+                          .map((amount, index) => (
+                            <div
+                              key={index}
+                              className="px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-medium"
+                            >
+                              ${(amount / 100).toFixed(0)}
+                            </div>
+                          ))}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                        Minimum: ${(minimumAmount / 100).toFixed(0)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ) : activeTab === 'bidding' ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -1649,7 +1841,7 @@ export default function RequestsPageSettings() {
                   </p>
                   <p className="flex items-start gap-1.5">
                     <span className="text-[#fcba00] mt-0.5">•</span>
-                    <span>Click "Refresh" after saving to see changes</span>
+                    <span>Click &quot;Refresh&quot; after saving to see changes</span>
                   </p>
                   <p className="flex items-start gap-1.5">
                     <span className="text-[#fcba00] mt-0.5">•</span>

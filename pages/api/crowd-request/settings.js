@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       // Direct organization ID provided
       const { data: org } = await supabase
         .from('organizations')
-        .select('id')
+        .select('id, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order')
         .eq('id', organizationId)
         .single();
       organization = org;
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       // Organization slug provided (from URL)
       const { data: org } = await supabase
         .from('organizations')
-        .select('id')
+        .select('id, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order')
         .eq('slug', organizationSlug)
         .single();
       organization = org;
@@ -41,10 +41,49 @@ export default async function handler(req, res) {
       // Try to get default organization (first one) for backward compatibility
       const { data: defaultOrg } = await supabase
         .from('organizations')
-        .select('id')
+        .select('id, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order')
         .limit(1)
         .single();
       organization = defaultOrg;
+    }
+    
+    // Check if organization has its own payment settings
+    if (organization && (organization.requests_minimum_amount || organization.requests_preset_amounts)) {
+      const orgMinimum = organization.requests_minimum_amount || 1000;
+      let orgPresets = organization.requests_preset_amounts || [1000, 1500, 2000, 2500];
+      const sortOrder = organization.requests_amounts_sort_order || 'desc';
+      
+      // Sort presets according to preference
+      if (Array.isArray(orgPresets)) {
+        orgPresets = [...orgPresets].sort((a, b) => sortOrder === 'desc' ? b - a : a - b);
+      }
+      
+      // Still need to get payment method settings (CashApp, Venmo) from admin_settings
+      let paymentMethodSettings = {};
+      if (organization.owner_id) {
+        const { data: methodSettings } = await supabase
+          .from('admin_settings')
+          .select('setting_key, setting_value')
+          .eq('user_id', organization.owner_id)
+          .in('setting_key', ['crowd_request_cashapp_tag', 'crowd_request_venmo_username', 'crowd_request_venmo_phone_number', 'crowd_request_fast_track_fee', 'crowd_request_bundle_discount_enabled', 'crowd_request_bundle_discount_percent']);
+        
+        if (methodSettings) {
+          methodSettings.forEach(s => {
+            paymentMethodSettings[s.setting_key] = s.setting_value;
+          });
+        }
+      }
+      
+      return res.status(200).json({
+        cashAppTag: paymentMethodSettings['crowd_request_cashapp_tag'] || process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray',
+        venmoUsername: paymentMethodSettings['crowd_request_venmo_username'] || process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray',
+        venmoPhoneNumber: paymentMethodSettings['crowd_request_venmo_phone_number'] || process.env.VENMO_PHONE_NUMBER || null,
+        fastTrackFee: parseInt(paymentMethodSettings['crowd_request_fast_track_fee']) || 1000,
+        minimumAmount: orgMinimum,
+        presetAmounts: orgPresets,
+        bundleDiscountEnabled: paymentMethodSettings['crowd_request_bundle_discount_enabled'] === 'true' || paymentMethodSettings['crowd_request_bundle_discount_enabled'] === undefined,
+        bundleDiscountPercent: parseInt(paymentMethodSettings['crowd_request_bundle_discount_percent']) || 10
+      });
     }
 
     let settings = [];
