@@ -2065,31 +2065,42 @@ export function GeneralRequestsPage({
             }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '20px' }}>
               {/* Top content section */}
               <div className={`flex flex-col items-center justify-center ${minimalHeader ? '' : 'flex-1'}`}>
-                {/* Artist Name - Show when using cover photo (no video), hide when video is playing (video has logo) */}
-                <h1 
-                  className={`font-black text-white drop-shadow-2xl uppercase tracking-tight ${
-                    minimalHeader
-                      ? 'text-xl sm:text-2xl mb-1'
-                      : !showVideo
-                        ? 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-2 sm:mb-4'
-                        : 'sr-only'
-                  }`}
-                  style={{
-                    fontFamily: 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
-                    letterSpacing: '0.05em',
-                    textShadow: '3px 3px 6px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.5)'
-                  }}
-                >
-                  {(() => {
-                    const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'DJ';
-                    console.log('🎨 Rendering artist name:', artistName, 'from organizationData:', {
-                      requests_header_artist_name: organizationData?.requests_header_artist_name,
-                      name: organizationData?.name,
-                      showVideo
-                    });
-                    return artistName.toUpperCase();
-                  })()}
-                </h1>
+                {/* Artist Name - Show based on settings. If video playing and showArtistNameOverVideo is false, hide it */}
+                {(() => {
+                  // Determine if we should show the artist name
+                  // Default to true - show name unless explicitly disabled AND video is playing
+                  const showArtistNameOverVideo = organizationData?.requests_show_artist_name_over_video !== false;
+                  const shouldHideName = showVideo && !showArtistNameOverVideo;
+                  
+                  return (
+                    <h1 
+                      className={`font-black text-white drop-shadow-2xl uppercase tracking-tight ${
+                        minimalHeader
+                          ? 'text-xl sm:text-2xl mb-1'
+                          : shouldHideName
+                            ? 'sr-only'
+                            : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-2 sm:mb-4'
+                      }`}
+                      style={{
+                        fontFamily: 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
+                        letterSpacing: '0.05em',
+                        textShadow: '3px 3px 6px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.5)'
+                      }}
+                    >
+                      {(() => {
+                        const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'DJ';
+                        console.log('🎨 Rendering artist name:', artistName, 'from organizationData:', {
+                          requests_header_artist_name: organizationData?.requests_header_artist_name,
+                          name: organizationData?.name,
+                          showVideo,
+                          showArtistNameOverVideo,
+                          shouldHideName
+                        });
+                        return artistName.toUpperCase();
+                      })()}
+                    </h1>
+                  );
+                })()}
                 
                 {/* Location - Only show if value exists and not minimal header */}
                 {!minimalHeader && organizationData?.requests_header_location && (

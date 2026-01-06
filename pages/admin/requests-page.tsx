@@ -117,6 +117,9 @@ export default function RequestsPageSettings() {
     requests_step_2_text: ''
   });
   
+  // Show artist name over video header toggle
+  const [showArtistNameOverVideo, setShowArtistNameOverVideo] = useState(true);
+  
   // Feature toggles
   const [featureToggles, setFeatureToggles] = useState({
     requests_show_audio_upload: true,
@@ -190,6 +193,9 @@ export default function RequestsPageSettings() {
           requests_venue_photo_url: org.requests_venue_photo_url || '',
           requests_header_video_url: org.requests_header_video_url || ''
         });
+        
+        // Set whether to show artist name over video (defaults to true for new users)
+        setShowArtistNameOverVideo(org.requests_show_artist_name_over_video !== false);
         
         // Parse social links - if none exist, show default fallback links for editing
         const defaultSocialLinks: SocialLink[] = [
@@ -327,6 +333,8 @@ export default function RequestsPageSettings() {
           requests_artist_photo_url: coverPhotos.requests_artist_photo_url || null,
           requests_venue_photo_url: coverPhotos.requests_venue_photo_url || null,
           requests_header_video_url: coverPhotos.requests_header_video_url || null,
+          // Show artist name over video setting
+          requests_show_artist_name_over_video: showArtistNameOverVideo,
           // Social links
           social_links: validSocialLinks,
           // Bidding settings
@@ -679,6 +687,30 @@ export default function RequestsPageSettings() {
                         showPreview={true}
                         helpText="Animated header video. If set, this plays instead of the cover photo. Use a looping video with your logo for best effect."
                       />
+                      
+                      {/* Show Artist Name Over Video Toggle - only show when video is set */}
+                      {coverPhotos.requests_header_video_url && (
+                        <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label className="text-sm font-medium text-gray-900 dark:text-white">
+                                Show Artist Name Over Video
+                              </label>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Turn this off if your video already contains your name or logo
+                              </p>
+                            </div>
+                            <Switch
+                              checked={showArtistNameOverVideo}
+                              onCheckedChange={(checked) => {
+                                setShowArtistNameOverVideo(checked);
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
