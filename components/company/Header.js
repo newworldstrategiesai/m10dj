@@ -86,6 +86,9 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
   const isRequestsPage = router.pathname?.includes('/requests') || router.pathname?.includes('/organizations') && router.pathname?.includes('/requests');
   const shouldBeTransparent = transparent || isRequestsPage;
   
+  // On TipJar domain, hide M10 DJ Company-specific navigation entirely
+  const shouldHideM10Navigation = isTipJarDomain() || isDJDashDomain() || isRequestsPage;
+  
   // Helper classes for mobile menu styling based on transparency
   const mobileMenuTextClass = shouldBeTransparent && !isScrolled 
     ? 'text-white hover:text-brand' 
@@ -704,8 +707,8 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
               </div>
             </Link>
 
-            {/* Desktop Navigation - Hide on requests page */}
-            {!isRequestsPage && (
+            {/* Desktop Navigation - Hide on TipJar/DJDash domains and requests pages */}
+            {!shouldHideM10Navigation && (
               <nav className="hidden lg:flex items-center space-x-6">
                 {/* Public Navigation - Hide on quote pages */}
                 {!(isQuotePage && quoteId && isValidQuote) && (
@@ -825,8 +828,8 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
               </nav>
             )}
 
-            {/* Contact Info & CTA - Hide on quote pages and requests page */}
-            {!(isQuotePage && quoteId && isValidQuote) && !isRequestsPage && (
+            {/* Contact Info & CTA - Hide on quote pages, TipJar, and requests pages */}
+            {!(isQuotePage && quoteId && isValidQuote) && !shouldHideM10Navigation && (
               <div className="hidden lg:flex items-center space-x-4">
                 {/* Social Links */}
                 {headerSocialLinks && headerSocialLinks.length > 0 && (
@@ -929,35 +932,39 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
               </div>
             )}
 
-            {/* CTA Button - Always show on desktop, including requests page */}
-            <div className="hidden lg:flex items-center relative z-50">
-              <button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('Get Quote button clicked, opening modal');
-                  // trackLead('quote_request_start', { source: 'header_desktop' });
-                  setIsContactModalOpen(true);
-                }}
-                className="btn-primary whitespace-nowrap relative z-50 cursor-pointer"
-                type="button"
-                style={{ pointerEvents: 'auto' }}
-              >
-                Get Quote
-              </button>
-            </div>
+            {/* CTA Button - Show on M10 domain only */}
+            {!shouldHideM10Navigation && (
+              <div className="hidden lg:flex items-center relative z-50">
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Get Quote button clicked, opening modal');
+                    // trackLead('quote_request_start', { source: 'header_desktop' });
+                    setIsContactModalOpen(true);
+                  }}
+                  className="btn-primary whitespace-nowrap relative z-50 cursor-pointer"
+                  type="button"
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  Get Quote
+                </button>
+              </div>
+            )}
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Show on M10 domain OR if owner on requests page */}
+            {(!shouldHideM10Navigation || (isRequestsPage && isOwner) || (isQuotePage && quoteId && isValidQuote)) && (
               <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`lg:hidden p-2 transition-colors rounded-lg ${
-                shouldBeTransparent && !isScrolled
-                  ? 'text-white hover:text-brand hover:bg-white/10'
-                  : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-gray-100 dark:hover:bg-black/50'
-              }`}
-            >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`lg:hidden p-2 transition-colors rounded-lg ${
+                  shouldBeTransparent && !isScrolled
+                    ? 'text-white hover:text-brand hover:bg-white/10'
+                    : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-gray-100 dark:hover:bg-black/50'
+                }`}
+              >
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1081,8 +1088,8 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                   </div>
                 )}
                 
-                {/* Public Navigation - Hide on quote pages and when owner is logged in on requests page */}
-                {!(isQuotePage && quoteId && isValidQuote) && !(isRequestsPage && isOwner) && (
+                {/* Public Navigation - Hide on TipJar/DJDash, quote pages, and when owner is logged in */}
+                {!(isQuotePage && quoteId && isValidQuote) && !shouldHideM10Navigation && (
                   <>
                     <Link 
                       href="/" 

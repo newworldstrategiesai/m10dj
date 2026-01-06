@@ -229,15 +229,11 @@ export default function RequestsPageSettings() {
         // Set button style
         setButtonStyle(org.requests_button_style || 'gradient');
         
-        // Parse social links - if none exist, show empty defaults for editing
-        // Each organization starts fresh without pre-populated links
-        const defaultSocialLinks: SocialLink[] = [
-          { platform: 'instagram', url: '', label: 'Instagram', enabled: true, order: 0 },
-          { platform: 'facebook', url: '', label: 'Facebook', enabled: true, order: 1 },
-        ];
+        // Parse social links - if none exist, start with empty array
+        // User can add their own links via the UI
         const links = org.social_links && Array.isArray(org.social_links) && org.social_links.length > 0
           ? org.social_links as SocialLink[]
-          : defaultSocialLinks;
+          : [];
         setSocialLinks(links.sort((a, b) => (a.order || 0) - (b.order || 0)));
         
         // Set bidding settings
@@ -1572,337 +1568,11 @@ export default function RequestsPageSettings() {
                     </div>
                   </div>
                   
-                  {/* Labels & Text Section - Part of Content tab */}
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-8 mb-4 flex items-center gap-2">
-                    <Type className="w-5 h-5 text-gray-400" />
-                    Labels & Placeholders
-                  </h3>
-                  <div className="space-y-6">
-                    <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Request Type Labels</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="song_request_label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Song Request Label
-                          </Label>
-                          <Input
-                            id="song_request_label"
-                            value={labelFields.requests_song_request_label}
-                            onChange={(e) => handleLabelFieldChange('requests_song_request_label', e.target.value)}
-                            placeholder="Song Request"
-                            className="w-full"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="shoutout_label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Shoutout Label
-                          </Label>
-                          <Input
-                            id="shoutout_label"
-                            value={labelFields.requests_shoutout_label}
-                            onChange={(e) => handleLabelFieldChange('requests_shoutout_label', e.target.value)}
-                            placeholder="Shoutout"
-                            className="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Song Request Fields</h3>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="song_title_label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Song Title Label
-                            </Label>
-                            <Input
-                              id="song_title_label"
-                              value={labelFields.requests_song_title_label}
-                              onChange={(e) => handleLabelFieldChange('requests_song_title_label', e.target.value)}
-                              placeholder="Song Title"
-                              className="w-full"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="song_title_placeholder" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Song Title Placeholder
-                            </Label>
-                            <Input
-                              id="song_title_placeholder"
-                              value={labelFields.requests_song_title_placeholder}
-                              onChange={(e) => handleLabelFieldChange('requests_song_title_placeholder', e.target.value)}
-                              placeholder="Enter song title"
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="artist_name_label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Artist Name Label
-                            </Label>
-                            <Input
-                              id="artist_name_label"
-                              value={labelFields.requests_artist_name_label}
-                              onChange={(e) => handleLabelFieldChange('requests_artist_name_label', e.target.value)}
-                              placeholder="Artist Name"
-                              className="w-full"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="artist_name_placeholder" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Artist Name Placeholder
-                            </Label>
-                            <Input
-                              id="artist_name_placeholder"
-                              value={labelFields.requests_artist_name_placeholder}
-                              onChange={(e) => handleLabelFieldChange('requests_artist_name_placeholder', e.target.value)}
-                              placeholder="Enter artist name"
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Shoutout Fields</h3>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="recipient_name_label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Recipient Name Label
-                            </Label>
-                            <Input
-                              id="recipient_name_label"
-                              value={labelFields.requests_recipient_name_label}
-                              onChange={(e) => handleLabelFieldChange('requests_recipient_name_label', e.target.value)}
-                              placeholder="Recipient Name"
-                              className="w-full"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="recipient_name_placeholder" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Recipient Name Placeholder
-                            </Label>
-                            <Input
-                              id="recipient_name_placeholder"
-                              value={labelFields.requests_recipient_name_placeholder}
-                              onChange={(e) => handleLabelFieldChange('requests_recipient_name_placeholder', e.target.value)}
-                              placeholder="Who is this shoutout for?"
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="message_label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Message Label
-                            </Label>
-                            <Input
-                              id="message_label"
-                              value={labelFields.requests_message_label}
-                              onChange={(e) => handleLabelFieldChange('requests_message_label', e.target.value)}
-                              placeholder="Message"
-                              className="w-full"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="message_placeholder" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Message Placeholder
-                            </Label>
-                            <Input
-                              id="message_placeholder"
-                              value={labelFields.requests_message_placeholder}
-                              onChange={(e) => handleLabelFieldChange('requests_message_placeholder', e.target.value)}
-                              placeholder="What would you like to say?"
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Music Link Section</h3>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="music_link_label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Music Link Label
-                          </Label>
-                          <Input
-                            id="music_link_label"
-                            value={labelFields.requests_music_link_label}
-                            onChange={(e) => handleLabelFieldChange('requests_music_link_label', e.target.value)}
-                            placeholder="Paste Music Link (Optional)"
-                            className="w-full"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="music_link_placeholder" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Music Link Placeholder
-                          </Label>
-                          <Input
-                            id="music_link_placeholder"
-                            value={labelFields.requests_music_link_placeholder}
-                            onChange={(e) => handleLabelFieldChange('requests_music_link_placeholder', e.target.value)}
-                            placeholder="Paste YouTube, Spotify, SoundCloud, Tidal, or Apple Music link"
-                            className="w-full"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="music_link_help_text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Music Link Help Text
-                          </Label>
-                          <Input
-                            id="music_link_help_text"
-                            value={labelFields.requests_music_link_help_text}
-                            onChange={(e) => handleLabelFieldChange('requests_music_link_help_text', e.target.value)}
-                            placeholder="We'll automatically fill in the song title and artist name"
-                            className="w-full"
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="manual_entry_divider" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Manual Entry Divider Text
-                            </Label>
-                            <Input
-                              id="manual_entry_divider"
-                              value={labelFields.requests_manual_entry_divider}
-                              onChange={(e) => handleLabelFieldChange('requests_manual_entry_divider', e.target.value)}
-                              placeholder="Or enter manually"
-                              className="w-full"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="start_over_text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Start Over Text
-                            </Label>
-                            <Input
-                              id="start_over_text"
-                              value={labelFields.requests_start_over_text}
-                              onChange={(e) => handleLabelFieldChange('requests_start_over_text', e.target.value)}
-                              placeholder="Start over"
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Audio Upload Section</h3>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="audio_upload_label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Audio Upload Label
-                          </Label>
-                          <Input
-                            id="audio_upload_label"
-                            value={labelFields.requests_audio_upload_label}
-                            onChange={(e) => handleLabelFieldChange('requests_audio_upload_label', e.target.value)}
-                            placeholder="Upload Your Own Audio File"
-                            className="w-full"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="audio_upload_description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Audio Upload Description
-                          </Label>
-                          <Textarea
-                            id="audio_upload_description"
-                            value={labelFields.requests_audio_upload_description}
-                            onChange={(e) => handleLabelFieldChange('requests_audio_upload_description', e.target.value)}
-                            placeholder="Upload your own audio file to be played. This is perfect for upcoming artists or custom tracks. ($100 per file)"
-                            className="w-full min-h-[80px]"
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="artist_rights_text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Artist Rights Text
-                            </Label>
-                            <Input
-                              id="artist_rights_text"
-                              value={labelFields.requests_artist_rights_text}
-                              onChange={(e) => handleLabelFieldChange('requests_artist_rights_text', e.target.value)}
-                              placeholder="I confirm that I own the rights to this music or have permission to use it"
-                              className="w-full"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="is_artist_text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Is Artist Text
-                            </Label>
-                            <Input
-                              id="is_artist_text"
-                              value={labelFields.requests_is_artist_text}
-                              onChange={(e) => handleLabelFieldChange('requests_is_artist_text', e.target.value)}
-                              placeholder="I am the artist (this is for promotion, not just a play)"
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <Label htmlFor="audio_fee_text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Audio Fee Text
-                          </Label>
-                          <Input
-                            id="audio_fee_text"
-                            value={labelFields.requests_audio_fee_text}
-                            onChange={(e) => handleLabelFieldChange('requests_audio_fee_text', e.target.value)}
-                            placeholder="+$100.00 for audio upload"
-                            className="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Buttons & Steps</h3>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="submit_button_text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Submit Button Text
-                          </Label>
-                          <Input
-                            id="submit_button_text"
-                            value={labelFields.requests_submit_button_text}
-                            onChange={(e) => handleLabelFieldChange('requests_submit_button_text', e.target.value)}
-                            placeholder="Submit Request"
-                            className="w-full"
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="step_1_text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Step 1 Text
-                            </Label>
-                            <Input
-                              id="step_1_text"
-                              value={labelFields.requests_step_1_text}
-                              onChange={(e) => handleLabelFieldChange('requests_step_1_text', e.target.value)}
-                              placeholder="Step 1 of 2: Choose your request"
-                              className="w-full"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="step_2_text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Step 2 Text
-                            </Label>
-                            <Input
-                              id="step_2_text"
-                              value={labelFields.requests_step_2_text}
-                              onChange={(e) => handleLabelFieldChange('requests_step_2_text', e.target.value)}
-                              placeholder="Step 2 of 2: Payment"
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  {/* Note about standard labels */}
+                  <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">ℹ️ Standard Labels:</span> Form field labels use consistent, industry-standard terminology to ensure the best user experience.
+                    </p>
                   </div>
                 </div>
               ) : activeTab === 'features' ? (
@@ -1910,15 +1580,11 @@ export default function RequestsPageSettings() {
                   <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
                     Feature Toggles
                   </h2>
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                          Show Audio Upload Option
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Display the audio file upload option on the requests page
-                        </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Show Audio Upload Option</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Display the audio file upload option on the requests page</p>
                       </div>
                       <Switch
                         checked={featureToggles.requests_show_audio_upload}
@@ -1926,14 +1592,10 @@ export default function RequestsPageSettings() {
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                          Show Fast Track Option
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Allow users to pay extra to play their request immediately
-                        </p>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Show Fast Track Option</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to pay extra to play their request immediately</p>
                       </div>
                       <Switch
                         checked={featureToggles.requests_show_fast_track}
@@ -1941,14 +1603,10 @@ export default function RequestsPageSettings() {
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                          Show Next Song Option
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Allow users to pay extra to play their request as the next song
-                        </p>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Show Next Song Option</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to pay extra to play their request as the next song</p>
                       </div>
                       <Switch
                         checked={featureToggles.requests_show_next_song}
@@ -1956,14 +1614,10 @@ export default function RequestsPageSettings() {
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                          Show Bundle Discount
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Display bundle discount options for multiple song requests
-                        </p>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Show Bundle Discount</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Display bundle discount options for multiple song requests</p>
                       </div>
                       <Switch
                         checked={featureToggles.requests_show_bundle_discount}
@@ -2109,7 +1763,7 @@ export default function RequestsPageSettings() {
                     </div>
                   </div>
                 </div>
-                </div>
+              </div>
               ) : null}
             </div>
 
@@ -2168,7 +1822,7 @@ export default function RequestsPageSettings() {
                     target="_blank"
                     className="flex-1 text-center px-3 py-2 bg-[#fcba00] hover:bg-[#d99f00] text-black rounded-lg transition-colors text-sm font-medium shadow-md"
                     onClick={() => {
-                      window.open(`/requests?t=${Date.now()}`, '_blank');
+                      window.open(requestsPageUrl, '_blank');
                       return false;
                     }}
                   >
@@ -2383,7 +2037,7 @@ export default function RequestsPageSettings() {
                     target="_blank"
                     className="px-3 py-1.5 bg-[#fcba00] text-black rounded-lg text-xs font-medium"
                     onClick={() => {
-                      window.open(`/requests?t=${Date.now()}`, '_blank');
+                      window.open(requestsPageUrl, '_blank');
                       return false;
                     }}
                   >

@@ -267,9 +267,14 @@ export function GeneralRequestsPage({
   // This allows each organization to have their own animated header
   const headerVideoUrl = organizationData?.requests_header_video_url || null;
   
-  // Show video if the organization has a custom video URL set
-  // If no video URL is set, fall back to showing the cover photo
-  const showVideo = !!headerVideoUrl;
+  // Determine what to show as background:
+  // 1. Custom video if set
+  // 2. Custom cover photo if set (not the default placeholder)
+  // 3. Animated gradient with accent color (default for TipJar pages)
+  const hasCustomVideo = !!headerVideoUrl;
+  const hasCustomCoverPhoto = coverPhoto && coverPhoto !== DEFAULT_COVER_PHOTO && !coverPhoto.includes('DJ-Ben-Murray');
+  const showVideo = hasCustomVideo;
+  const showAnimatedGradient = !hasCustomVideo && !hasCustomCoverPhoto;
   
   // Log cover photo and video for debugging
   useEffect(() => {
@@ -1905,6 +1910,55 @@ export function GeneralRequestsPage({
             .to-\\[\\#fcba00\\] { --tw-gradient-to: var(--accent-color) !important; }
             .via-\\[\\#fcba00\\] { --tw-gradient-via: var(--accent-color) !important; }
             
+            /* Animated gradient background */
+            @keyframes gradient-shift {
+              0% { background-position: 0% 50%; }
+              50% { background-position: 100% 50%; }
+              100% { background-position: 0% 50%; }
+            }
+            
+            @keyframes pulse-glow {
+              0%, 100% { opacity: 0.6; }
+              50% { opacity: 0.9; }
+            }
+            
+            .animated-gradient-bg {
+              background: linear-gradient(
+                135deg,
+                ${effectiveAccentColor}22 0%,
+                ${effectiveAccentColor}44 25%,
+                #000 50%,
+                ${effectiveAccentColor}33 75%,
+                ${effectiveAccentColor}22 100%
+              );
+              background-size: 400% 400%;
+              animation: gradient-shift 15s ease infinite;
+            }
+            
+            .animated-gradient-bg::before {
+              content: '';
+              position: absolute;
+              inset: 0;
+              background: radial-gradient(
+                ellipse at 30% 20%,
+                ${effectiveAccentColor}30 0%,
+                transparent 50%
+              );
+              animation: pulse-glow 4s ease-in-out infinite;
+            }
+            
+            .animated-gradient-bg::after {
+              content: '';
+              position: absolute;
+              inset: 0;
+              background: radial-gradient(
+                ellipse at 70% 80%,
+                ${effectiveAccentColor}25 0%,
+                transparent 45%
+              );
+              animation: pulse-glow 4s ease-in-out infinite 2s;
+            }
+            
             /* Button styles */
             ${effectiveButtonStyle === 'flat' ? `
               .requests-page-container .btn-primary,
@@ -1993,29 +2047,44 @@ export function GeneralRequestsPage({
         {!embedMode && !showPaymentMethods && (
           <div className="hidden md:block md:fixed md:left-0 md:top-0 md:w-[400px] lg:w-[450px] xl:w-[500px] md:h-screen md:overflow-hidden bg-black z-40">
             {showVideo && !videoFailed ? (
-            <video
+              <video
                 ref={desktopVideoRef}
-              className="absolute inset-0 w-full h-full object-cover"
-              autoPlay
-              loop
-              muted
-              playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
                 webkit-playsinline="true"
                 x-webkit-airplay="deny"
                 disablePictureInPicture
-              poster={coverPhoto}
-              style={{ objectPosition: 'center center' }}
+                poster={coverPhoto}
+                style={{ objectPosition: 'center center' }}
                 onLoadedData={() => {
-                  // Programmatically play when video data is loaded (Safari fix)
                   if (desktopVideoRef.current) {
                     desktopVideoRef.current.play().catch(() => setVideoFailed(true));
                   }
                 }}
-            >
-              <source src={headerVideoUrl} type="video/mp4" />
-              {/* Fallback message if video fails to load */}
-              <p className="text-white text-center p-4">Video unavailable</p>
-            </video>
+              >
+                <source src={headerVideoUrl} type="video/mp4" />
+                <p className="text-white text-center p-4">Video unavailable</p>
+              </video>
+            ) : showAnimatedGradient ? (
+              /* Animated gradient with artist name - Default TipJar background */
+              <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden">
+                {/* Artist name as centered watermark */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div 
+                    className="text-white/[0.08] text-[12rem] font-black uppercase tracking-wider select-none pointer-events-none"
+                    style={{
+                      fontFamily: 'Impact, "Arial Black", sans-serif',
+                      transform: 'rotate(-12deg) scale(1.5)',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {organizationData?.requests_header_artist_name || organizationData?.name || 'TipJar'}
+                  </div>
+                </div>
+              </div>
             ) : (
               <div 
                 className="absolute inset-0 w-full h-full bg-cover bg-center"
@@ -2195,32 +2264,32 @@ export function GeneralRequestsPage({
               zIndex: 0
             }}
           >
-            {/* Mobile Video Background - Only shown on mobile */}
-            {/* Shows video only if no custom cover photo is set, otherwise shows the cover photo */}
+            {/* Mobile Background - video, animated gradient, or cover photo */}
             {showVideo && !videoFailed ? (
-            <video
+              <video
                 ref={mobileVideoRef}
-              className="absolute inset-0 w-full h-full object-cover md:hidden"
-              autoPlay
-              loop
-              muted
-              playsInline
+                className="absolute inset-0 w-full h-full object-cover md:hidden"
+                autoPlay
+                loop
+                muted
+                playsInline
                 webkit-playsinline="true"
                 x-webkit-airplay="deny"
                 disablePictureInPicture
-              poster={coverPhoto}
-              style={{ zIndex: 0, objectPosition: 'center 40%' }}
+                poster={coverPhoto}
+                style={{ zIndex: 0, objectPosition: 'center 40%' }}
                 onLoadedData={() => {
-                  // Programmatically play when video data is loaded (Safari fix)
                   if (mobileVideoRef.current) {
                     mobileVideoRef.current.play().catch(() => setVideoFailed(true));
                   }
                 }}
-            >
-              <source src={headerVideoUrl} type="video/mp4" />
-              {/* Fallback message if video fails to load */}
-              <p className="text-white text-center p-4">Video unavailable</p>
-            </video>
+              >
+                <source src={headerVideoUrl} type="video/mp4" />
+                <p className="text-white text-center p-4">Video unavailable</p>
+              </video>
+            ) : showAnimatedGradient ? (
+              /* Animated gradient - Default TipJar background for mobile */
+              <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden md:hidden" style={{ zIndex: 0 }} />
             ) : (
               <div 
                 className="absolute inset-0 w-full h-full bg-cover bg-center md:hidden"
