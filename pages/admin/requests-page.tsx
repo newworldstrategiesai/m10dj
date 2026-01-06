@@ -30,6 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import ImageUploadInput from '@/components/admin/ImageUploadInput';
+import VideoUploadInput from '@/components/admin/VideoUploadInput';
 import Link from 'next/link';
 
 interface SocialLink {
@@ -640,52 +641,17 @@ export default function RequestsPageSettings() {
                       required={false}
                     />
 
-                    {/* Header Video URL */}
+                    {/* Header Video Upload */}
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <Label htmlFor="video-url" className="text-sm font-medium text-gray-900 dark:text-white">
-                            Header Video (Optional)
-                          </Label>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            MP4 video URL for animated header. If set, this plays instead of the cover photo.
-                          </p>
-                        </div>
-                        {coverPhotos.requests_header_video_url && (
-                          <button
-                            type="button"
-                            onClick={() => handleImageUrlChange('requests_header_video_url', '')}
-                            className="text-red-500 hover:text-red-600 text-sm flex items-center gap-1"
-                          >
-                            <X className="w-4 h-4" />
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                      <Input
-                        id="video-url"
-                        type="url"
+                      <VideoUploadInput
+                        label="Header Video (Optional)"
                         value={coverPhotos.requests_header_video_url}
-                        onChange={(e) => handleImageUrlChange('requests_header_video_url', e.target.value)}
-                        placeholder="https://example.com/your-video.mp4"
-                        className="w-full"
+                        onChange={(url) => handleImageUrlChange('requests_header_video_url', url)}
+                        maxSizeMB={100}
+                        previewClassName="w-full h-48 object-cover"
+                        showPreview={true}
+                        helpText="Animated header video. If set, this plays instead of the cover photo. Use a looping video with your logo for best effect."
                       />
-                      {coverPhotos.requests_header_video_url && (
-                        <div className="mt-4">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Preview:</p>
-                          <video
-                            src={coverPhotos.requests_header_video_url}
-                            className="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                          />
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                        💡 Tip: Use a looping video with your logo or branding for the best effect. Recommended: 720p or 1080p MP4.
-                      </p>
                     </div>
                   </div>
                 </div>
