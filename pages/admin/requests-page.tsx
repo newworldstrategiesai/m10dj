@@ -80,6 +80,10 @@ export default function RequestsPageSettings() {
     requests_header_video_url: ''
   });
   
+  // Custom header logo (premium feature)
+  const [headerLogoUrl, setHeaderLogoUrl] = useState('');
+  const [canCustomizeHeaderLogo, setCanCustomizeHeaderLogo] = useState(false);
+  
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   
   // Header fields
@@ -196,6 +200,10 @@ export default function RequestsPageSettings() {
         
         // Set whether to show artist name over video (defaults to true for new users)
         setShowArtistNameOverVideo(org.requests_show_artist_name_over_video !== false);
+        
+        // Set custom header logo settings
+        setHeaderLogoUrl(org.requests_header_logo_url || '');
+        setCanCustomizeHeaderLogo(org.can_customize_header_logo || false);
         
         // Parse social links - if none exist, show default fallback links for editing
         const defaultSocialLinks: SocialLink[] = [
@@ -335,6 +343,8 @@ export default function RequestsPageSettings() {
           requests_header_video_url: coverPhotos.requests_header_video_url || null,
           // Show artist name over video setting
           requests_show_artist_name_over_video: showArtistNameOverVideo,
+          // Custom header logo (only save if user can customize)
+          requests_header_logo_url: canCustomizeHeaderLogo ? (headerLogoUrl || null) : null,
           // Social links
           social_links: validSocialLinks,
           // Bidding settings
@@ -636,10 +646,78 @@ export default function RequestsPageSettings() {
               {activeTab === 'cover' ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                    Cover Photos
+                    Cover Photos & Branding
                   </h2>
 
                   <div className="space-y-6">
+                    {/* Custom Header Logo Section */}
+                    <div className={`p-4 rounded-lg border-2 ${
+                      canCustomizeHeaderLogo 
+                        ? 'border-[#fcba00]/30 bg-[#fcba00]/5 dark:bg-[#fcba00]/10' 
+                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'
+                    }`}>
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            Custom Header Logo
+                            {!canCustomizeHeaderLogo && (
+                              <span className="text-xs px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-medium">
+                                Premium
+                              </span>
+                            )}
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {canCustomizeHeaderLogo 
+                              ? 'Replace the TipJar logo with your own branding'
+                              : 'Upgrade to customize the header logo with your own branding'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {canCustomizeHeaderLogo ? (
+                        <ImageUploadInput
+                          label="Header Logo"
+                          value={headerLogoUrl}
+                          onChange={(url) => {
+                            setHeaderLogoUrl(url);
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          recommendedDimensions="200x80px"
+                          aspectRatio="2.5:1"
+                          maxSizeMB={2}
+                          previewClassName="h-16 w-auto object-contain bg-gray-900 rounded-lg p-2"
+                          showPreview={true}
+                          required={false}
+                        />
+                      ) : (
+                        <div className="text-center py-6">
+                          <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center">
+                            <ImageIcon className="w-8 h-8 text-white" />
+                          </div>
+                          <p className="text-gray-600 dark:text-gray-400 mb-4">
+                            Custom branding is available on premium plans
+                          </p>
+                          <button
+                            type="button"
+                            className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium hover:from-amber-600 hover:to-orange-600 transition-all"
+                            onClick={() => {
+                              // TODO: Open upgrade modal or redirect to pricing
+                              alert('Contact support to upgrade your plan and unlock custom branding!');
+                            }}
+                          >
+                            Upgrade to Unlock
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        Background Media
+                      </h3>
+                    </div>
+
                     {/* Primary Cover Photo */}
                     <ImageUploadInput
                       label="Primary Cover Photo (Required)"

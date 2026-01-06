@@ -1942,7 +1942,12 @@ export function GeneralRequestsPage({
             <div data-requests-header-wrapper key={`header-${organizationId || 'default'}`}>
               <Header 
                 key={`header-component-${organizationId || 'default'}`}
-                customLogoUrl={customBranding?.customLogoUrl} 
+                customLogoUrl={
+                  // Use requests page custom logo if set and user can customize
+                  (organizationData?.can_customize_header_logo && organizationData?.requests_header_logo_url) 
+                    ? organizationData.requests_header_logo_url 
+                    : customBranding?.customLogoUrl
+                } 
                 transparent={true} 
                 socialLinks={organizationData?.social_links} 
                 isOwner={isOwner} 
