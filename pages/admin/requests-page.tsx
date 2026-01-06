@@ -23,7 +23,12 @@ import {
   Type,
   ToggleLeft,
   Search,
-  FileText
+  FileText,
+  Palette,
+  DollarSign,
+  Sparkles,
+  Video,
+  Link as LinkIcon
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,7 +67,7 @@ export default function RequestsPageSettings() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'cover' | 'social' | 'payments' | 'bidding' | 'header' | 'labels' | 'features' | 'seo'>('cover');
+  const [activeTab, setActiveTab] = useState<'design' | 'content' | 'payments' | 'features' | 'advanced'>('design');
   const [previewDevice, setPreviewDevice] = useState<'mobile' | 'tablet' | 'desktop'>('mobile');
   const [biddingEnabled, setBiddingEnabled] = useState(false);
   const [minimumBid, setMinimumBid] = useState(500); // In cents
@@ -552,91 +557,52 @@ export default function RequestsPageSettings() {
             </div>
           )}
 
-          {/* Tabs */}
+          {/* Reorganized Navigation - Cleaner 5-tab structure */}
           <div className="mb-6">
             <div className="border-b border-gray-200 dark:border-gray-700">
-              <nav className="-mb-px flex space-x-4 overflow-x-auto">
+              <nav className="-mb-px flex space-x-6 overflow-x-auto">
                 <button
-                  onClick={() => setActiveTab('cover')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === 'cover'
+                  onClick={() => setActiveTab('design')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                    activeTab === 'design'
                       ? 'border-[#fcba00] text-[#fcba00]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5" />
-                    Cover Photos
+                    <Palette className="w-5 h-5" />
+                    Design
                   </div>
                 </button>
                 <button
-                  onClick={() => setActiveTab('social')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === 'social'
-                      ? 'border-[#fcba00] text-[#fcba00]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-5 h-5" />
-                    Social Links
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('payments')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === 'payments'
-                      ? 'border-[#fcba00] text-[#fcba00]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Music className="w-5 h-5" />
-                    Payments
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('bidding')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === 'bidding'
-                      ? 'border-[#fcba00] text-[#fcba00]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Bidding Mode
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('header')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === 'header'
-                      ? 'border-[#fcba00] text-[#fcba00]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
-                    Header
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('labels')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === 'labels'
+                  onClick={() => setActiveTab('content')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                    activeTab === 'content'
                       ? 'border-[#fcba00] text-[#fcba00]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <Type className="w-5 h-5" />
-                    Labels & Text
+                    Content
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('payments')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                    activeTab === 'payments'
+                      ? 'border-[#fcba00] text-[#fcba00]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Payments
                   </div>
                 </button>
                 <button
                   onClick={() => setActiveTab('features')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                     activeTab === 'features'
                       ? 'border-[#fcba00] text-[#fcba00]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
@@ -648,16 +614,16 @@ export default function RequestsPageSettings() {
                   </div>
                 </button>
                 <button
-                  onClick={() => setActiveTab('seo')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === 'seo'
+                  onClick={() => setActiveTab('advanced')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                    activeTab === 'advanced'
                       ? 'border-[#fcba00] text-[#fcba00]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Search className="w-5 h-5" />
-                    SEO & Metadata
+                    <Settings className="w-5 h-5" />
+                    Advanced
                   </div>
                 </button>
               </nav>
@@ -667,13 +633,19 @@ export default function RequestsPageSettings() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2">
-              {activeTab === 'cover' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                    Cover Photos & Branding
-                  </h2>
-
-                  <div className="space-y-6">
+              {/* ===== DESIGN TAB ===== */}
+              {activeTab === 'design' ? (
+                <div className="space-y-6">
+                  {/* Branding Section */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-[#fcba00]" />
+                        Branding & Style
+                      </h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Colors, theme, buttons, and visual identity</p>
+                    </div>
+                    <div className="p-6 space-y-6">
                     {/* Custom Header Logo Section */}
                     <div className={`p-4 rounded-lg border-2 ${
                       canCustomizeHeaderLogo 
@@ -1038,9 +1010,11 @@ export default function RequestsPageSettings() {
                     </div>
                     
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                        <Video className="w-5 h-5 text-gray-400" />
                         Background Media
                       </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Cover photos and video header</p>
                     </div>
 
                     {/* Primary Cover Photo */}
@@ -1116,22 +1090,30 @@ export default function RequestsPageSettings() {
                       )}
                     </div>
                   </div>
-                </div>
-              ) : activeTab === 'social' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                      Social Links
-                    </h2>
-                    <button
-                      onClick={addSocialLink}
-                      className="inline-flex items-center px-4 py-2 bg-[#fcba00] text-black rounded-lg hover:bg-[#d99f00] transition-colors font-medium text-sm"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Link
-                    </button>
                   </div>
-
+                  </div>
+                  
+                  {/* Social Links Section - Part of Design tab */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Globe className="w-5 h-5 text-[#fcba00]" />
+                            Social Links
+                          </h2>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Links shown on your page</p>
+                        </div>
+                        <button
+                          onClick={addSocialLink}
+                          className="inline-flex items-center px-4 py-2 bg-[#fcba00] text-black rounded-lg hover:bg-[#d99f00] transition-colors font-medium text-sm"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Link
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-6">
                   {socialLinks.length === 0 ? (
                     <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                       <Globe className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
@@ -1246,6 +1228,8 @@ export default function RequestsPageSettings() {
                       ))}
                     </div>
                   )}
+                    </div>
+                  </div>
                 </div>
               ) : activeTab === 'payments' ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -1423,15 +1407,15 @@ export default function RequestsPageSettings() {
                         Minimum: ${(minimumAmount / 100).toFixed(0)}
                       </p>
                     </div>
-                  </div>
-                </div>
-              ) : activeTab === 'bidding' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                    Bidding War Mode
-                  </h2>
-                  
-                  <div className="space-y-6">
+                    
+                    {/* Bidding Mode Section - Merged into Payments tab */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-purple-500" />
+                        Bidding War Mode
+                      </h3>
+                    </div>
+                    
                     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                       <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">
                         How Bidding Mode Works
@@ -1562,7 +1546,7 @@ export default function RequestsPageSettings() {
                     )}
                   </div>
                 </div>
-              ) : activeTab === 'header' ? (
+              ) : activeTab === 'content' ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
                     Header Settings
@@ -1632,12 +1616,12 @@ export default function RequestsPageSettings() {
                       </p>
                     </div>
                   </div>
-                </div>
-              ) : activeTab === 'labels' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                    Labels & Text
-                  </h2>
+                  
+                  {/* Labels & Text Section - Part of Content tab */}
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-8 mb-4 flex items-center gap-2">
+                    <Type className="w-5 h-5 text-gray-400" />
+                    Labels & Placeholders
+                  </h3>
                   <div className="space-y-6">
                     <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Request Type Labels</h3>
@@ -2033,7 +2017,7 @@ export default function RequestsPageSettings() {
                     </div>
                   </div>
                 </div>
-              ) : activeTab === 'seo' ? (
+              ) : activeTab === 'advanced' ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
                     SEO & Metadata
