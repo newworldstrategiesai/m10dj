@@ -1804,12 +1804,40 @@ export function GeneralRequestsPage({
         `}} />
       </Head>
 
+      {/* Accent Color CSS Variables - Available to all users */}
+      <style jsx global>{`
+        :root {
+          --accent-color: ${organizationData?.requests_accent_color || '#fcba00'};
+          --accent-color-hover: ${organizationData?.requests_accent_color ? `${organizationData.requests_accent_color}dd` : '#d99f00'};
+          --accent-color-light: ${organizationData?.requests_accent_color ? `${organizationData.requests_accent_color}20` : '#fcba0020'};
+        }
+        
+        /* Override brand color with accent color */
+        .bg-brand { background-color: var(--accent-color) !important; }
+        .bg-\\[\\#fcba00\\] { background-color: var(--accent-color) !important; }
+        .text-brand { color: var(--accent-color) !important; }
+        .text-\\[\\#fcba00\\] { color: var(--accent-color) !important; }
+        .border-brand { border-color: var(--accent-color) !important; }
+        .border-\\[\\#fcba00\\] { border-color: var(--accent-color) !important; }
+        .ring-brand { --tw-ring-color: var(--accent-color) !important; }
+        .ring-\\[\\#fcba00\\] { --tw-ring-color: var(--accent-color) !important; }
+        .focus\\:ring-brand:focus { --tw-ring-color: var(--accent-color) !important; }
+        .focus\\:ring-\\[\\#fcba00\\]:focus { --tw-ring-color: var(--accent-color) !important; }
+        .hover\\:bg-\\[\\#d99f00\\]:hover { background-color: var(--accent-color-hover) !important; }
+        
+        /* Gradient overrides */
+        .from-\\[\\#fcba00\\] { --tw-gradient-from: var(--accent-color) !important; }
+        .to-\\[\\#fcba00\\] { --tw-gradient-to: var(--accent-color) !important; }
+        .via-\\[\\#fcba00\\] { --tw-gradient-via: var(--accent-color) !important; }
+      `}</style>
+
       <div 
         className="min-h-screen bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 dark:from-black dark:via-black dark:to-black relative overflow-x-hidden md:flex"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           WebkitScrollbar: { display: 'none' },
+          '--accent-color': organizationData?.requests_accent_color || '#fcba00',
           ...(customBranding?.whiteLabelEnabled ? {
             backgroundColor: customBranding.backgroundColor,
             color: customBranding.textColor,
@@ -1999,7 +2027,7 @@ export function GeneralRequestsPage({
               style={{ 
                 backgroundColor: customBranding?.whiteLabelEnabled 
                   ? `${customBranding.primaryColor}20` 
-                  : 'rgba(252, 186, 0, 0.14)'
+                  : `${organizationData?.requests_accent_color || '#fcba00'}20`
               }}
             ></div>
             <div 

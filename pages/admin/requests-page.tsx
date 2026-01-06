@@ -84,6 +84,9 @@ export default function RequestsPageSettings() {
   const [headerLogoUrl, setHeaderLogoUrl] = useState('');
   const [canCustomizeHeaderLogo, setCanCustomizeHeaderLogo] = useState(false);
   
+  // Accent color customization (available to all users)
+  const [accentColor, setAccentColor] = useState('#fcba00');
+  
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   
   // Header fields
@@ -204,6 +207,9 @@ export default function RequestsPageSettings() {
         // Set custom header logo settings
         setHeaderLogoUrl(org.requests_header_logo_url || '');
         setCanCustomizeHeaderLogo(org.can_customize_header_logo || false);
+        
+        // Set accent color
+        setAccentColor(org.requests_accent_color || '#fcba00');
         
         // Parse social links - if none exist, show default fallback links for editing
         const defaultSocialLinks: SocialLink[] = [
@@ -345,6 +351,8 @@ export default function RequestsPageSettings() {
           requests_show_artist_name_over_video: showArtistNameOverVideo,
           // Custom header logo (only save if user can customize)
           requests_header_logo_url: canCustomizeHeaderLogo ? (headerLogoUrl || null) : null,
+          // Accent color (available to all users)
+          requests_accent_color: accentColor || '#fcba00',
           // Social links
           social_links: validSocialLinks,
           // Bidding settings
@@ -710,6 +718,110 @@ export default function RequestsPageSettings() {
                           </button>
                         </div>
                       )}
+                    </div>
+                    
+                    {/* Accent Color */}
+                    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                            Accent Color
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            Your brand color used for buttons, highlights, and accents
+                          </p>
+                          
+                          <div className="flex items-center gap-4">
+                            {/* Color picker */}
+                            <div className="relative">
+                              <input
+                                type="color"
+                                value={accentColor}
+                                onChange={(e) => {
+                                  setAccentColor(e.target.value);
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="w-16 h-16 rounded-lg cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                                style={{ padding: 0 }}
+                              />
+                            </div>
+                            
+                            {/* Hex input */}
+                            <div>
+                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Hex Code</label>
+                              <input
+                                type="text"
+                                value={accentColor}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                                    setAccentColor(value);
+                                    setError(null);
+                                    setSuccess(false);
+                                  }
+                                }}
+                                className="w-28 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                                placeholder="#fcba00"
+                              />
+                            </div>
+                            
+                            {/* Preview */}
+                            <div className="flex-1">
+                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Preview</label>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  className="px-4 py-2 rounded-lg text-white font-medium text-sm"
+                                  style={{ backgroundColor: accentColor }}
+                                >
+                                  Sample Button
+                                </button>
+                                <span 
+                                  className="font-medium"
+                                  style={{ color: accentColor }}
+                                >
+                                  Accent Text
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Quick presets */}
+                          <div className="mt-4">
+                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2">Quick Presets</label>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { color: '#fcba00', name: 'Gold' },
+                                { color: '#10b981', name: 'Green' },
+                                { color: '#3b82f6', name: 'Blue' },
+                                { color: '#8b5cf6', name: 'Purple' },
+                                { color: '#ec4899', name: 'Pink' },
+                                { color: '#ef4444', name: 'Red' },
+                                { color: '#f97316', name: 'Orange' },
+                                { color: '#14b8a6', name: 'Teal' },
+                              ].map(({ color, name }) => (
+                                <button
+                                  key={color}
+                                  type="button"
+                                  onClick={() => {
+                                    setAccentColor(color);
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                  className={`w-8 h-8 rounded-full border-2 transition-all ${
+                                    accentColor === color 
+                                      ? 'border-gray-900 dark:border-white scale-110' 
+                                      : 'border-transparent hover:scale-105'
+                                  }`}
+                                  style={{ backgroundColor: color }}
+                                  title={name}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
