@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/Toasts/toast';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getUserFriendlyError } from '@/utils/user-friendly-errors';
 
 export function Toaster() {
@@ -18,15 +18,37 @@ export function Toaster() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  
+  // Track which status/error messages we've already shown to prevent infinite loops
+  const processedRef = useRef<Set<string>>(new Set());
+  // Track if component is mounted to prevent state updates after unmount
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    if (!searchParams) return;
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (!searchParams || !isMounted) return;
     
     const status = searchParams.get('status');
     const status_description = searchParams.get('status_description');
     const error = searchParams.get('error');
     const error_description = searchParams.get('error_description');
+    
+    // Create a unique key for this toast to prevent showing duplicates
+    const toastKey = `${status || error}-${status_description || error_description}-${pathname}`;
+    
+    // Skip if we've already processed this exact toast
+    if (processedRef.current.has(toastKey)) {
+      return;
+    }
+    
     if (error || status) {
+      // Mark as processed BEFORE showing toast to prevent race conditions
+      processedRef.current.add(toastKey);
+      
       if (error) {
         const friendlyError = getUserFriendlyError(error_description || error);
         toast({
@@ -40,21 +62,27 @@ export function Toaster() {
           description: status_description,
         });
       }
+      
       // Clear any 'error', 'status', 'status_description', and 'error_description' search params
       // so that the toast doesn't show up again on refresh, but leave any other search params
-      // intact.
-      const newSearchParams = new URLSearchParams(searchParams.toString());
-      const paramsToRemove = [
-        'error',
-        'status',
-        'status_description',
-        'error_description'
-      ];
-      paramsToRemove.forEach((param) => newSearchParams.delete(param));
-      const redirectPath = `${pathname}?${newSearchParams.toString()}`;
-      router.replace(redirectPath, { scroll: false });
+      // intact. Use setTimeout to avoid blocking the current render cycle.
+      setTimeout(() => {
+        if (!isMounted) return;
+        
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        const paramsToRemove = [
+          'error',
+          'status',
+          'status_description',
+          'error_description'
+        ];
+        paramsToRemove.forEach((param) => newSearchParams.delete(param));
+        const newParamsString = newSearchParams.toString();
+        const redirectPath = newParamsString ? `${pathname}?${newParamsString}` : pathname;
+        router.replace(redirectPath, { scroll: false });
+      }, 100);
     }
-  }, [searchParams]);
+  }, [searchParams, pathname, isMounted, toast, router]);
 
   return (
     <ToastProvider>
