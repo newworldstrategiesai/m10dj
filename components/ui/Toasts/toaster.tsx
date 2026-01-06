@@ -67,7 +67,7 @@ export function Toaster() {
       // so that the toast doesn't show up again on refresh, but leave any other search params
       // intact. Use setTimeout to avoid blocking the current render cycle.
       setTimeout(() => {
-        if (!isMounted) return;
+        if (!isMounted || !pathname) return;
         
         const newSearchParams = new URLSearchParams(searchParams.toString());
         const paramsToRemove = [
@@ -78,7 +78,7 @@ export function Toaster() {
         ];
         paramsToRemove.forEach((param) => newSearchParams.delete(param));
         const newParamsString = newSearchParams.toString();
-        const redirectPath = newParamsString ? `${pathname}?${newParamsString}` : pathname;
+        const redirectPath: string = newParamsString ? `${pathname}?${newParamsString}` : pathname;
         router.replace(redirectPath, { scroll: false });
       }, 100);
     }
