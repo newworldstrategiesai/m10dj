@@ -1805,73 +1805,68 @@ export function GeneralRequestsPage({
       </Head>
 
       {/* Accent Color CSS Variables - Available to all users */}
-      <style jsx global>{`
-        :root {
-          --accent-color: ${organizationData?.requests_accent_color || '#fcba00'};
-          --accent-color-hover: ${organizationData?.requests_accent_color ? `${organizationData.requests_accent_color}dd` : '#d99f00'};
-          --accent-color-light: ${organizationData?.requests_accent_color ? `${organizationData.requests_accent_color}20` : '#fcba0020'};
-        }
-        
-        /* Override brand color with accent color */
-        .bg-brand { background-color: var(--accent-color) !important; }
-        .bg-\\[\\#fcba00\\] { background-color: var(--accent-color) !important; }
-        .text-brand { color: var(--accent-color) !important; }
-        .text-\\[\\#fcba00\\] { color: var(--accent-color) !important; }
-        .border-brand { border-color: var(--accent-color) !important; }
-        .border-\\[\\#fcba00\\] { border-color: var(--accent-color) !important; }
-        .ring-brand { --tw-ring-color: var(--accent-color) !important; }
-        .ring-\\[\\#fcba00\\] { --tw-ring-color: var(--accent-color) !important; }
-        .focus\\:ring-brand:focus { --tw-ring-color: var(--accent-color) !important; }
-        .focus\\:ring-\\[\\#fcba00\\]:focus { --tw-ring-color: var(--accent-color) !important; }
-        .hover\\:bg-\\[\\#d99f00\\]:hover { background-color: var(--accent-color-hover) !important; }
-        
-        /* Gradient overrides */
-        .from-\\[\\#fcba00\\] { --tw-gradient-from: var(--accent-color) !important; }
-        .to-\\[\\#fcba00\\] { --tw-gradient-to: var(--accent-color) !important; }
-        .via-\\[\\#fcba00\\] { --tw-gradient-via: var(--accent-color) !important; }
-        
-        /* Theme mode forcing */
-        ${organizationData?.requests_theme_mode === 'light' ? `
-          .requests-page-container,
-          .requests-page-container * {
-            color-scheme: light;
-          }
-          .requests-page-container .dark\\:bg-black { background-color: transparent !important; }
-          .requests-page-container .dark\\:from-black { --tw-gradient-from: transparent !important; }
-          .requests-page-container .dark\\:via-black { --tw-gradient-via: transparent !important; }
-          .requests-page-container .dark\\:to-black { --tw-gradient-to: transparent !important; }
-          .requests-page-container .dark\\:bg-gray-900 { background-color: rgb(249, 250, 251) !important; }
-          .requests-page-container .dark\\:bg-gray-800 { background-color: white !important; }
-          .requests-page-container .dark\\:bg-black\\/80 { background-color: rgba(255, 255, 255, 0.8) !important; }
-          .requests-page-container .dark\\:text-white { color: rgb(17, 24, 39) !important; }
-          .requests-page-container .dark\\:text-gray-100 { color: rgb(31, 41, 55) !important; }
-          .requests-page-container .dark\\:text-gray-200 { color: rgb(55, 65, 81) !important; }
-          .requests-page-container .dark\\:text-gray-300 { color: rgb(75, 85, 99) !important; }
-          .requests-page-container .dark\\:text-gray-400 { color: rgb(107, 114, 128) !important; }
-          .requests-page-container .dark\\:border-gray-700 { border-color: rgb(229, 231, 235) !important; }
-          .requests-page-container .dark\\:border-gray-800 { border-color: rgb(229, 231, 235) !important; }
-        ` : ''}
-        ${organizationData?.requests_theme_mode === 'dark' ? `
-          .requests-page-container,
-          .requests-page-container * {
-            color-scheme: dark;
-          }
-          .requests-page-container { background-color: black !important; }
-          .requests-page-container .bg-gray-50 { background-color: rgb(17, 24, 39) !important; }
-          .requests-page-container .bg-white { background-color: rgb(31, 41, 55) !important; }
-          .requests-page-container .bg-white\\/80 { background-color: rgba(0, 0, 0, 0.8) !important; }
-          .requests-page-container .from-gray-50 { --tw-gradient-from: black !important; }
-          .requests-page-container .via-brand\\/5 { --tw-gradient-via: black !important; }
-          .requests-page-container .to-gray-50 { --tw-gradient-to: black !important; }
-          .requests-page-container .text-gray-900 { color: white !important; }
-          .requests-page-container .text-gray-800 { color: rgb(243, 244, 246) !important; }
-          .requests-page-container .text-gray-700 { color: rgb(209, 213, 219) !important; }
-          .requests-page-container .text-gray-600 { color: rgb(156, 163, 175) !important; }
-          .requests-page-container .text-gray-500 { color: rgb(156, 163, 175) !important; }
-          .requests-page-container .border-gray-200 { border-color: rgb(55, 65, 81) !important; }
-          .requests-page-container .border-gray-300 { border-color: rgb(55, 65, 81) !important; }
-        ` : ''}
-      `}</style>
+      <style 
+        dangerouslySetInnerHTML={{ 
+          __html: `
+            :root {
+              --accent-color: ${organizationData?.requests_accent_color || '#fcba00'};
+              --accent-color-hover: ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + 'dd' : '#d99f00'};
+              --accent-color-light: ${organizationData?.requests_accent_color ? organizationData.requests_accent_color + '20' : '#fcba0020'};
+            }
+            
+            .bg-brand { background-color: var(--accent-color) !important; }
+            .bg-\\[\\#fcba00\\] { background-color: var(--accent-color) !important; }
+            .text-brand { color: var(--accent-color) !important; }
+            .text-\\[\\#fcba00\\] { color: var(--accent-color) !important; }
+            .border-brand { border-color: var(--accent-color) !important; }
+            .border-\\[\\#fcba00\\] { border-color: var(--accent-color) !important; }
+            .ring-brand { --tw-ring-color: var(--accent-color) !important; }
+            .ring-\\[\\#fcba00\\] { --tw-ring-color: var(--accent-color) !important; }
+            .focus\\:ring-brand:focus { --tw-ring-color: var(--accent-color) !important; }
+            .focus\\:ring-\\[\\#fcba00\\]:focus { --tw-ring-color: var(--accent-color) !important; }
+            .hover\\:bg-\\[\\#d99f00\\]:hover { background-color: var(--accent-color-hover) !important; }
+            
+            .from-\\[\\#fcba00\\] { --tw-gradient-from: var(--accent-color) !important; }
+            .to-\\[\\#fcba00\\] { --tw-gradient-to: var(--accent-color) !important; }
+            .via-\\[\\#fcba00\\] { --tw-gradient-via: var(--accent-color) !important; }
+            
+            ${organizationData?.requests_theme_mode === 'light' ? `
+              .requests-page-container, .requests-page-container * { color-scheme: light; }
+              .requests-page-container .dark\\:bg-black { background-color: transparent !important; }
+              .requests-page-container .dark\\:from-black { --tw-gradient-from: transparent !important; }
+              .requests-page-container .dark\\:via-black { --tw-gradient-via: transparent !important; }
+              .requests-page-container .dark\\:to-black { --tw-gradient-to: transparent !important; }
+              .requests-page-container .dark\\:bg-gray-900 { background-color: rgb(249, 250, 251) !important; }
+              .requests-page-container .dark\\:bg-gray-800 { background-color: white !important; }
+              .requests-page-container .dark\\:bg-black\\/80 { background-color: rgba(255, 255, 255, 0.8) !important; }
+              .requests-page-container .dark\\:text-white { color: rgb(17, 24, 39) !important; }
+              .requests-page-container .dark\\:text-gray-100 { color: rgb(31, 41, 55) !important; }
+              .requests-page-container .dark\\:text-gray-200 { color: rgb(55, 65, 81) !important; }
+              .requests-page-container .dark\\:text-gray-300 { color: rgb(75, 85, 99) !important; }
+              .requests-page-container .dark\\:text-gray-400 { color: rgb(107, 114, 128) !important; }
+              .requests-page-container .dark\\:border-gray-700 { border-color: rgb(229, 231, 235) !important; }
+              .requests-page-container .dark\\:border-gray-800 { border-color: rgb(229, 231, 235) !important; }
+            ` : ''}
+            ${organizationData?.requests_theme_mode === 'dark' ? `
+              .requests-page-container, .requests-page-container * { color-scheme: dark; }
+              .requests-page-container { background-color: black !important; }
+              .requests-page-container .bg-gray-50 { background-color: rgb(17, 24, 39) !important; }
+              .requests-page-container .bg-white { background-color: rgb(31, 41, 55) !important; }
+              .requests-page-container .bg-white\\/80 { background-color: rgba(0, 0, 0, 0.8) !important; }
+              .requests-page-container .from-gray-50 { --tw-gradient-from: black !important; }
+              .requests-page-container .via-brand\\/5 { --tw-gradient-via: black !important; }
+              .requests-page-container .to-gray-50 { --tw-gradient-to: black !important; }
+              .requests-page-container .text-gray-900 { color: white !important; }
+              .requests-page-container .text-gray-800 { color: rgb(243, 244, 246) !important; }
+              .requests-page-container .text-gray-700 { color: rgb(209, 213, 219) !important; }
+              .requests-page-container .text-gray-600 { color: rgb(156, 163, 175) !important; }
+              .requests-page-container .text-gray-500 { color: rgb(156, 163, 175) !important; }
+              .requests-page-container .border-gray-200 { border-color: rgb(55, 65, 81) !important; }
+              .requests-page-container .border-gray-300 { border-color: rgb(55, 65, 81) !important; }
+            ` : ''}
+          ` 
+        }} 
+      />
 
       <div 
         className={`requests-page-container min-h-screen bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 dark:from-black dark:via-black dark:to-black relative overflow-x-hidden md:flex ${
