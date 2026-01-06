@@ -3045,6 +3045,8 @@ export function GeneralRequestsPage({
                               getBaseAmount={getBaseAmount}
                               getPaymentAmount={getPaymentAmount}
                               hidePriorityOptions={false}
+                              showFastTrack={organizationData?.requests_show_fast_track !== false}
+                              showNextSong={organizationData?.requests_show_next_song !== false}
                               isBiddingMode={false}
                               currentWinningBid={0}
                               bundleSize={bundleSize}
@@ -3791,6 +3793,8 @@ export function GeneralRequestsPage({
                         nextFee={0}
                         getBaseAmount={getBaseAmount}
                         getPaymentAmount={getPaymentAmount}
+                        showFastTrack={false}
+                        showNextSong={false}
                         bundleSize={bundleSize}
                         setBundleSize={setBundleSize}
                       />
@@ -3889,6 +3893,8 @@ export function GeneralRequestsPage({
                           nextFee={0}
                           getBaseAmount={getBaseAmount}
                           getPaymentAmount={getPaymentAmount}
+                          showFastTrack={false}
+                          showNextSong={false}
                           bundleSize={bundleSize}
                           setBundleSize={setBundleSize}
                         />
@@ -3919,6 +3925,8 @@ export function GeneralRequestsPage({
                           nextFee={nextFee}
                           getBaseAmount={getBaseAmount}
                           getPaymentAmount={getPaymentAmount}
+                          showFastTrack={organizationData?.requests_show_fast_track !== false}
+                          showNextSong={organizationData?.requests_show_next_song !== false}
                           bundleSize={bundleSize}
                           setBundleSize={setBundleSize}
                         />

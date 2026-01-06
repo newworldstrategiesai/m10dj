@@ -21,6 +21,8 @@ function PaymentAmountSelector({
   getBaseAmount,
   getPaymentAmount,
   hidePriorityOptions = false, // Hide fast track and next options (for bidding mode)
+  showFastTrack = true, // Show fast track option (from organization settings)
+  showNextSong = true, // Show next song option (from organization settings)
   isBiddingMode = false, // Indicates if this is in bidding mode
   currentWinningBid = 0, // Current winning bid amount in cents (for bidding mode)
   bundleSize = 1, // Bundle size: 1, 2, or 3
@@ -225,9 +227,10 @@ function PaymentAmountSelector({
         )}
 
         {/* Fast-Track and Next Options (only for song requests) - Compact Radio Style */}
-        {requestType === 'song_request' && !hidePriorityOptions && (
+        {requestType === 'song_request' && !hidePriorityOptions && (showFastTrack || showNextSong) && (
           <div className="border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-3 sm:pt-4 mt-3 sm:mt-4 space-y-2 sm:space-y-3">
             {/* Fast-Track Option - More Compact */}
+            {showFastTrack && (
             <label 
               className={`group relative flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 cursor-pointer touch-manipulation ${
                 isFastTrack
@@ -282,8 +285,10 @@ function PaymentAmountSelector({
                 </p>
               </div>
             </label>
+            )}
             
             {/* Next Option - More Compact */}
+            {showNextSong && (
             <label 
               className={`group relative flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 cursor-pointer touch-manipulation ${
                 isNext
@@ -333,6 +338,7 @@ function PaymentAmountSelector({
                 </p>
               </div>
             </label>
+            )}
           </div>
         )}
 
