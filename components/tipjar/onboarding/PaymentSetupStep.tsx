@@ -261,7 +261,7 @@ export default function PaymentSetupStep({
         {showSkipOption && (
           <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
             <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              <strong>Note:</strong> You won't be able to receive tips until payments are enabled. You can set this up later in your dashboard.
+              <strong>Note:</strong> You can start accepting payments now, but they'll be held in the platform account until you set up Stripe Connect. Set up banking later in your dashboard to receive automatic payouts.
             </p>
           </div>
         )}

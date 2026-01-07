@@ -375,13 +375,9 @@ export default async function handler(req, res) {
     // This ensures your business operations are never disrupted
     const isPlatformOwner = organization?.is_platform_owner || false;
     
-    // For non-platform owners without Connect, require setup
-    if (!isPlatformOwner && !hasConnectAccount) {
-      return res.status(400).json({ 
-        error: 'Please set up Stripe Connect to receive payments. Visit your dashboard to complete setup.',
-        requires_connect: true 
-      });
-    }
+    // Note: We allow payments to go through even without Stripe Connect set up
+    // Payments will route to the platform account, and users can set up banking later
+    // Manual payouts will be required until Stripe Connect is configured
     
     // Import Connect helpers (if needed)
     let createCheckoutSessionWithPlatformFee, calculatePlatformFee;
@@ -460,6 +456,8 @@ export default async function handler(req, res) {
           organization_name: organization.name,
           is_fast_track: isFastTrackRequest ? 'true' : 'false',
           is_next: isNextRequest ? 'true' : 'false',
+          payment_routing: 'platform_account', // Track that this payment went to platform account
+          requires_manual_payout: 'true', // Indicates manual payout needed until Connect is set up
           ...(crowdRequest.request_type === 'song_request' && {
             song_title: crowdRequest.song_title || '',
             song_artist: crowdRequest.song_artist || '',
@@ -486,8 +484,11 @@ export default async function handler(req, res) {
       
     } else {
       // Fallback to regular checkout (payment goes to platform account)
-      // This is for organizations without Connect set up yet
-      console.log(`⚠️ Organization ${organization?.name || 'Unknown'} does not have Stripe Connect set up. Payment will go to platform account.`);
+      // This allows users to accept payments before setting up Stripe Connect
+      // Payments will be held in the platform account until Stripe Connect is configured
+      // Users can set up banking later and receive payouts after setup
+      console.log(`⚠️ Organization ${organization?.name || 'Unknown'} (${organization?.id || 'Unknown ID'}) does not have Stripe Connect set up. Payment will go to platform account for manual payout.`);
+      console.log(`   💡 User can set up Stripe Connect later in their dashboard to receive automatic payouts.`);
       
       session = await stripe.checkout.sessions.create({
       payment_method_types: paymentMethodTypes, // Card includes Apple Pay automatically on supported devices
