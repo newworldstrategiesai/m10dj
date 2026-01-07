@@ -4432,7 +4432,7 @@ export function GeneralRequestsPage({
                   }}
                 >
                   <button
-                    type={currentStep === 1 ? "button" : "submit"}
+                    type="button"
                     disabled={(() => {
                       if (submitting) return true;
                       if (currentStep >= 2) {
