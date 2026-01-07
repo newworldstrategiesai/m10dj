@@ -4439,9 +4439,18 @@ export function GeneralRequestsPage({
                       // Find the form and ensure it submits
                       const form = e.target.closest('form');
                       if (form) {
-                        // Let the form's onSubmit handle it naturally
-                        // Don't prevent default - allow form submission
-                        logger.info('[Submit Button] Form found, allowing natural submission');
+                        // For reliability, explicitly trigger form submission
+                        // This ensures handleSubmit is called even if natural submission fails
+                        logger.info('[Submit Button] Form found, explicitly triggering submission');
+                        // Don't prevent default - let both onClick and form submit work
+                        // But also explicitly call handleSubmit as a backup
+                        setTimeout(() => {
+                          // If form submission didn't trigger handleSubmit within 100ms, call it directly
+                          if (!submitting) {
+                            logger.warn('[Submit Button] Form submission may not have triggered, calling handleSubmit directly');
+                            handleSubmit(e);
+                          }
+                        }, 100);
                       } else {
                         logger.error('[Submit Button] Form not found! Manually calling handleSubmit');
                         // Fallback: call handleSubmit directly if form not found
