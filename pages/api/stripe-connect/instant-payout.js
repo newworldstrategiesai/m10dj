@@ -31,7 +31,6 @@ export default async function handler(req, res) {
     }
 
     // Get organization and verify Stripe Connect account
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const { data: organization, error: orgError } = await supabaseAdmin
       .from('organizations')
       .select('id, name, product_context, stripe_connect_account_id, stripe_connect_payouts_enabled, instant_payout_enabled, instant_payout_fee_percentage, tipjar_instant_payout_fee_percentage, tipjar_instant_payout_fee_fixed')
