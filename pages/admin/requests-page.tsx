@@ -98,7 +98,8 @@ export default function RequestsPageSettings() {
   const [canCustomizeHeaderLogo, setCanCustomizeHeaderLogo] = useState(false);
   
   // Accent color customization (available to all users)
-  const [accentColor, setAccentColor] = useState('#fcba00');
+  // Default to TipJar green, will be updated when organization loads
+  const [accentColor, setAccentColor] = useState('#10b981');
   
   // Theme mode (light/dark/system)
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('dark');
@@ -603,8 +604,8 @@ export default function RequestsPageSettings() {
         requests_subtitle_kerning: subtitleKerning || 0,
         // Custom header logo (only save if user can customize)
         requests_header_logo_url: canCustomizeHeaderLogo ? (headerLogoUrl || null) : null,
-        // Accent color (available to all users)
-        requests_accent_color: accentColor || '#fcba00',
+        // Accent color (available to all users) - use product-aware default
+        requests_accent_color: accentColor || (organization?.product_context === 'tipjar' ? '#10b981' : '#fcba00'),
         // Theme mode
         requests_theme_mode: themeMode,
         // Button style
