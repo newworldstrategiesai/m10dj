@@ -4450,16 +4450,7 @@ export function GeneralRequestsPage({
                     type="button"
                     disabled={(() => {
                       if (submitting) return true;
-                      if (currentStep >= 2) {
-                        // In bidding mode, don't disable based on amount - let validation handle it
-                        if (shouldUseBidding) {
-                          return false; // Allow click, validation will show error if needed
-                        }
-                        // Regular payment mode - check amount
-                        const amount = getPaymentAmount();
-                        const minAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-                        return !amount || amount < minAmount;
-                      }
+                      // Don't disable based on amount validation - let handleSubmit show errors
                       return false;
                     })()}
                     className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-2xl shadow-brand-500/40 hover:shadow-brand-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
