@@ -100,6 +100,10 @@ export async function middleware(request: NextRequest) {
       rewritePath = '/tipjar/dashboard/go-live';
     } else if (path.startsWith('/dashboard/')) {
       rewritePath = path.replace('/dashboard', '/tipjar/dashboard');
+    } else if (path.startsWith('/auth/')) {
+      // Auth routes (confirm, callback, reset_password) are in app router
+      // Keep as-is, don't rewrite - these should work directly at /auth/*
+      rewritePath = '';
     } else if (path.startsWith('/admin/')) {
       // Admin routes are in pages router, keep as-is
       // Don't rewrite, let it fall through to pages router
