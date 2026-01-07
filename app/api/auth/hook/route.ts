@@ -348,10 +348,17 @@ function getProductAccentColor(productContext: ProductContext): string {
   }
 }
 
-// Detect product context from redirect URL or user metadata
+// Detect product context from user metadata or redirect URL
 function detectProductContext(redirectTo?: string, userMetadata?: any): ProductContext {
-  // Check redirect URL first
+  // PRIORITY 1: Check user metadata first (set during signup, most reliable)
+  if (userMetadata?.product_context) {
+    console.log('[Auth Hook] Product context from user_metadata:', userMetadata.product_context);
+    return userMetadata.product_context as ProductContext;
+  }
+
+  // PRIORITY 2: Check redirect URL (fallback)
   if (redirectTo) {
+    console.log('[Auth Hook] Checking redirect_to for product context:', redirectTo);
     if (redirectTo.includes('tipjar.live') || redirectTo.includes('/tipjar/')) {
       return 'tipjar';
     }
@@ -363,12 +370,8 @@ function detectProductContext(redirectTo?: string, userMetadata?: any): ProductC
     }
   }
 
-  // Check user metadata
-  if (userMetadata?.product_context) {
-    return userMetadata.product_context as ProductContext;
-  }
-
   // Default to tipjar
+  console.log('[Auth Hook] Using default product context: tipjar');
   return 'tipjar';
 }
 
@@ -429,11 +432,14 @@ export async function POST(request: NextRequest) {
     console.log('[Auth Hook] Received event:', { 
       email_action_type, 
       user_email: user?.email, 
-      redirect_to 
+      redirect_to,
+      user_metadata: user?.user_metadata,
+      product_context_from_metadata: user?.user_metadata?.product_context
     });
 
     // Detect product context
     const productContext = detectProductContext(redirect_to, user?.user_metadata);
+    console.log('[Auth Hook] Detected product context:', productContext);
     const fromEmail = getProductFromEmail(productContext);
     const productName = getProductName(productContext);
     const productDomain = getProductBaseUrl(productContext).replace('https://', '');
