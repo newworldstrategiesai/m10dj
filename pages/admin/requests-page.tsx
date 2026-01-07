@@ -345,8 +345,9 @@ export default function RequestsPageSettings() {
         setHeaderLogoUrl(org.requests_header_logo_url || '');
         setCanCustomizeHeaderLogo(org.can_customize_header_logo || false);
         
-        // Set accent color
-        setAccentColor(org.requests_accent_color || '#fcba00');
+        // Set accent color - default based on product context
+        const defaultAccentColor = org.product_context === 'tipjar' ? '#10b981' : '#fcba00';
+        setAccentColor(org.requests_accent_color || defaultAccentColor);
         
         // Set theme mode
         setThemeMode(org.requests_theme_mode || 'dark');

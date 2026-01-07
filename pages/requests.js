@@ -258,7 +258,9 @@ export function GeneralRequestsPage({
   const previewArtistNameShadowColor = router.query.artistNameShadowColor || null;
   
   // Use preview values if available, otherwise use organization data
-  const effectiveAccentColor = previewAccentColor || organizationData?.requests_accent_color || '#fcba00';
+  // Default accent color based on product context: TipJar = green, others = gold
+  const defaultAccentColor = organizationData?.product_context === 'tipjar' ? '#10b981' : '#fcba00';
+  const effectiveAccentColor = previewAccentColor || organizationData?.requests_accent_color || defaultAccentColor;
   const effectiveButtonStyle = previewButtonStyle || organizationData?.requests_button_style || 'gradient';
   const effectiveThemeMode = previewThemeMode || organizationData?.requests_theme_mode || 'dark';
   

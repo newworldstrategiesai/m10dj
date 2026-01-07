@@ -323,7 +323,7 @@ export default function OrganizationRequestsPage() {
           organizationId={organization.id}
           organizationName={organization.name}
           organizationData={organization}
-          accentColor={organization.requests_accent_color || '#fcba00'}
+          accentColor={organization.requests_accent_color || (organization.product_context === 'tipjar' ? '#10b981' : '#fcba00')}
           themeMode={organization.requests_theme_mode || 'dark'}
         />
       )}
