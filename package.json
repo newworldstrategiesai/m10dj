@@ -32,6 +32,7 @@
     "audit:sync:md": "node scripts/sync-audit.js --markdown"
   },
   "dependencies": {
+    "@livekit/agents": "^1.1.0",
     "@livekit/components-react": "^2.9.17",
     "@openai/agents": "^0.3.0",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -74,7 +75,6 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "libphonenumber-js": "^1.12.10",
-    "@livekit/agents": "^1.1.0",
     "livekit-server-sdk": "^2.5.0",
     "lucide-react": "^0.330.0",
     "next": "13.5.6",
@@ -91,6 +91,7 @@
     "react-resizable-panels": "^3.0.6",
     "recharts": "^3.4.1",
     "resend": "^4.7.0",
+    "standardwebhooks": "^1.0.0",
     "stripe": "^14.25.0",
     "tailwind-merge": "^2.3.0",
     "tailwindcss": "^3.4.18",

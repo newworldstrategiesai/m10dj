@@ -20,70 +20,31 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { Webhook } from 'standardwebhooks';
 import { getProductFromEmail, getProductName, getProductBaseUrl, ProductContext } from '@/lib/email/product-email-config';
 
-// Verify the webhook signature from Supabase using standardwebhooks format
-function verifySupabaseSignature(payload: string, headers: Record<string, string>, secret: string): boolean {
+// Verify the webhook signature from Supabase using standardwebhooks library
+function verifySupabaseWebhook(payload: string, headers: Record<string, string>, secret: string): { verified: boolean; data?: any } {
   if (!secret) {
     console.warn('[Auth Hook] Missing secret');
-    return process.env.NODE_ENV === 'development'; // Allow in dev without signature
+    return { verified: process.env.NODE_ENV === 'development' };
   }
 
   try {
-    // Supabase uses standardwebhooks format (v1,whsec_<base64_secret>)
-    // Extract the base64 secret if it has the prefix
-    const secretKey = secret.replace(/^v1,whsec_/, '');
+    // Extract the base64 secret (remove v1,whsec_ prefix if present)
+    const hookSecret = secret.replace(/^v1,whsec_/, '');
     
-    // Get webhook signature from headers - check multiple possible header names
-    const signature = headers['webhook-signature'] || 
-                     headers['x-webhook-signature'] ||
-                     headers['x-supabase-signature'] ||
-                     headers['svix-signature'] ||
-                     headers['x-svix-signature'];
+    // Create webhook instance with the secret
+    const wh = new Webhook(hookSecret);
     
-    if (!signature) {
-      console.warn('[Auth Hook] Missing webhook signature in headers');
-      console.warn('[Auth Hook] Available headers:', Object.keys(headers).join(', '));
-      return process.env.NODE_ENV === 'development';
-    }
+    // Verify and parse the payload
+    const data = wh.verify(payload, headers);
     
-    console.log('[Auth Hook] Found webhook signature:', signature.substring(0, 50) + '...');
-
-    // Parse signature (format: "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=,t=1234567890")
-    const sigParts = signature.split(',');
-    const timestamp = sigParts.find((p: string) => p.startsWith('t='))?.replace('t=', '');
-    const sig = sigParts.find((p: string) => !p.startsWith('v1') && !p.startsWith('t='));
-    
-    if (!timestamp || !sig) {
-      console.warn('[Auth Hook] Invalid signature format');
-      return process.env.NODE_ENV === 'development';
-    }
-
-    // Verify timestamp is recent (within 5 minutes)
-    const now = Math.floor(Date.now() / 1000);
-    const timestampNum = parseInt(timestamp, 10);
-    if (Math.abs(now - timestampNum) > 300) {
-      console.warn('[Auth Hook] Signature timestamp too old');
-      return false;
-    }
-
-    // Create signed content: timestamp.payload
-    const signedContent = `${timestamp}.${payload}`;
-    
-    // Compute expected signature
-    const hmac = crypto.createHmac('sha256', Buffer.from(secretKey, 'base64'));
-    hmac.update(signedContent);
-    const expectedSig = hmac.digest('base64');
-    
-    // Compare signatures
-    return crypto.timingSafeEqual(
-      Buffer.from(expectedSig),
-      Buffer.from(sig)
-    );
-  } catch (error) {
-    console.error('[Auth Hook] Signature verification error:', error);
-    return process.env.NODE_ENV === 'development';
+    console.log('[Auth Hook] Webhook signature verified successfully');
+    return { verified: true, data };
+  } catch (error: any) {
+    console.error('[Auth Hook] Webhook verification failed:', error.message);
+    return { verified: false };
   }
 }
 
@@ -424,69 +385,35 @@ export async function POST(request: NextRequest) {
     });
     
     console.log('[Auth Hook] Request headers:', Object.keys(headers));
-    console.log('[Auth Hook] All header values:', JSON.stringify(headers, null, 2));
-    console.log('[Auth Hook] Authorization header:', headers['authorization'] ? 'Present' : 'Missing');
-    console.log('[Auth Hook] Webhook signature header:', headers['webhook-signature'] || headers['x-webhook-signature'] || headers['x-supabase-signature'] || 'Missing');
+    console.log('[Auth Hook] Webhook-Id:', headers['webhook-id'] || 'Missing');
+    console.log('[Auth Hook] Webhook-Timestamp:', headers['webhook-timestamp'] || 'Missing');
+    console.log('[Auth Hook] Webhook-Signature:', headers['webhook-signature'] ? 'Present' : 'Missing');
 
     const secret = process.env.SUPABASE_AUTH_HOOK_SECRET || '';
-    const authHeader = request.headers.get('authorization');
     
-    // For Supabase Send Email Hook, verify using webhook signature (standardwebhooks format)
-    // Supabase signs the request with the secret configured in the hook settings
-    let isAuthorized = false;
-    
-    if (secret) {
-      // Primary: Webhook signature verification (Supabase uses standardwebhooks)
-      isAuthorized = verifySupabaseSignature(bodyText, headers, secret);
-      
-      if (!isAuthorized) {
-        console.log('[Auth Hook] Webhook signature verification failed');
-        
-        // Fallback: Check if Authorization Bearer token is provided (some Supabase configs use this)
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-          const providedSecret = authHeader.replace('Bearer ', '').trim();
-          const normalizedProvided = providedSecret.replace(/^v1,whsec_/, '');
-          const normalizedConfig = secret.replace(/^v1,whsec_/, '');
-          isAuthorized = providedSecret === secret || normalizedProvided === normalizedConfig || providedSecret === normalizedConfig;
-          
-          if (isAuthorized) {
-            console.log('[Auth Hook] Authorization Bearer token verified');
-          } else {
-            console.log('[Auth Hook] Bearer token provided but does not match secret');
-          }
-        }
-      } else {
-        console.log('[Auth Hook] Webhook signature verified successfully');
-      }
-    }
+    // Verify webhook using standardwebhooks library (same as Supabase's example)
+    const { verified, data: verifiedData } = verifySupabaseWebhook(bodyText, headers, secret);
     
     // In development, allow requests without auth for testing
-    if (!isAuthorized && process.env.NODE_ENV === 'development') {
+    if (!verified && process.env.NODE_ENV === 'development') {
       console.warn('[Auth Hook] Development mode: Allowing request without valid authorization');
-      isAuthorized = true;
-    }
-
-    if (!isAuthorized) {
-      console.error('[Auth Hook] Invalid authorization - missing or invalid token/signature');
+    } else if (!verified) {
+      console.error('[Auth Hook] Invalid authorization - webhook verification failed');
       console.error('[Auth Hook] Expected secret configured:', secret ? 'Yes' : 'No');
-      if (secret) {
-        console.error('[Auth Hook] Expected secret (first 10 chars):', secret.substring(0, 10) + '...');
-      }
-      console.error('[Auth Hook] Authorization header received:', authHeader ? 'Yes' : 'No');
-      if (authHeader) {
-        console.error('[Auth Hook] Authorization header value (first 20 chars):', authHeader.substring(0, 20) + '...');
-      }
       console.error('[Auth Hook] All headers:', Object.keys(headers).join(', '));
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     console.log('[Auth Hook] Authorization successful');
 
+    // Use verified data if available, otherwise fall back to parsed body
+    const payload = verifiedData || body;
+    
     // Parse the hook payload (Supabase Auth Hook format)
     const {
       user,
       email_data,
-    } = body;
+    } = payload;
     
     // Extract fields from email_data
     const {
