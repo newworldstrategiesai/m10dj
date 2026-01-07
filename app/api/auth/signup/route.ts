@@ -1,10 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { getURL } from '@/utils/helpers';
+import { getProductBaseUrl } from '@/lib/email/product-email-config';
 
 function isValidEmail(email: string) {
   const regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
   return regex.test(email);
+}
+
+/**
+ * Detect product context from request (domain or path)
+ */
+function detectProductContext(request: NextRequest): 'tipjar' | 'djdash' | 'm10dj' {
+  const hostname = request.headers.get('host') || '';
+  const hostnameLower = hostname.toLowerCase();
+  const pathname = request.nextUrl.pathname;
+
+  // Check domain first
+  if (hostnameLower.includes('tipjar.live') || hostnameLower.includes('tipjar')) {
+    return 'tipjar';
+  }
+  if (hostnameLower.includes('djdash.net') || hostnameLower.includes('djdash')) {
+    return 'djdash';
+  }
+  if (hostnameLower.includes('m10djcompany.com') || hostnameLower.includes('m10dj')) {
+    return 'm10dj';
+  }
+
+  // Check path as fallback
+  if (pathname.startsWith('/tipjar/')) {
+    return 'tipjar';
+  }
+  if (pathname.startsWith('/djdash/')) {
+    return 'djdash';
+  }
+
+  // Default to tipjar for shared signup endpoint
+  return 'tipjar';
 }
 
 export async function POST(request: NextRequest) {
@@ -15,10 +47,26 @@ export async function POST(request: NextRequest) {
     const password = String(formData.get('password') || '').trim();
     const businessName = String(formData.get('businessName') || '').trim();
 
+    // Detect product context from request
+    const productContext = detectProductContext(request);
+    
+    // Get product-specific base URL for callback
+    const productBaseUrl = getProductBaseUrl(productContext);
+    const callbackURL = `${productBaseUrl}/auth/callback`;
+
+    // Determine signup page path based on product
+    const signupPath = productContext === 'tipjar' ? '/tipjar/signup' :
+                      productContext === 'djdash' ? '/djdash/signup' :
+                      '/signup';
+    
+    const signinPath = productContext === 'tipjar' ? '/tipjar/signin/password_signin' :
+                      productContext === 'djdash' ? '/djdash/signin/password_signin' :
+                      '/signin/password_signin';
+
     // Validate email
     if (!email || !isValidEmail(email)) {
       return NextResponse.redirect(
-        new URL(`/tipjar/signup?error=${encodeURIComponent('Invalid email address. Please try again.')}`, request.url),
+        new URL(`${signupPath}?error=${encodeURIComponent('Invalid email address. Please try again.')}`, request.url),
         { status: 303 }
       );
     }
@@ -26,18 +74,14 @@ export async function POST(request: NextRequest) {
     // Validate password
     if (!password || password.length < 8) {
       return NextResponse.redirect(
-        new URL(`/tipjar/signup?error=${encodeURIComponent('Password must be at least 8 characters.')}`, request.url),
+        new URL(`${signupPath}?error=${encodeURIComponent('Password must be at least 8 characters.')}`, request.url),
         { status: 303 }
       );
     }
 
     const supabase = createClient();
-    // Use the request origin to ensure email confirmation redirects to the correct domain
-    // If user signs up from tipjar.live, confirmation should redirect to tipjar.live
-    const requestOrigin = new URL(request.url).origin;
-    const callbackURL = `${requestOrigin}/auth/callback`;
-
-    // Sign up the user with TipJar product context
+    
+    // Sign up the user with product-specific context
     const { error, data } = await supabase.auth.signUp({
       email,
       password,
@@ -45,7 +89,7 @@ export async function POST(request: NextRequest) {
         emailRedirectTo: callbackURL,
         data: {
           organization_name: businessName || undefined,
-          product_context: 'tipjar', // Mark user as TipJar signup
+          product_context: productContext, // Set product context based on signup source
         }
       }
     });
@@ -62,39 +106,45 @@ export async function POST(request: NextRequest) {
       if (isExistingUser) {
         // Redirect to sign in with helpful message and pre-filled email
         return NextResponse.redirect(
-          new URL(`/tipjar/signin/password_signin?email=${encodeURIComponent(email)}&message=${encodeURIComponent('An account with this email already exists. Please sign in instead.')}`, request.url),
+          new URL(`${signinPath}?email=${encodeURIComponent(email)}&message=${encodeURIComponent('An account with this email already exists. Please sign in instead.')}`, request.url),
           { status: 303 }
         );
       }
       
       return NextResponse.redirect(
-        new URL(`/tipjar/signup?error=${encodeURIComponent(error.message)}`, request.url),
+        new URL(`${signupPath}?error=${encodeURIComponent(error.message)}`, request.url),
         { status: 303 }
       );
     }
 
     if (data.user) {
       if (data.session) {
-        // User is signed in immediately - redirect to TipJar dashboard
-        // The product context is already set in metadata, so future redirects will use it
-        return NextResponse.redirect(new URL('/tipjar/dashboard', request.url), { status: 303 });
+        // User is signed in immediately - redirect to product-specific dashboard
+        const dashboardPath = productContext === 'tipjar' ? '/tipjar/dashboard' :
+                             productContext === 'djdash' ? '/djdash/dashboard' :
+                             '/onboarding/welcome';
+        return NextResponse.redirect(new URL(dashboardPath, request.url), { status: 303 });
       } else {
         // Email confirmation required
         return NextResponse.redirect(
-          new URL(`/tipjar/signup?success=${encodeURIComponent('Account created! Please check your email to confirm your account.')}`, request.url),
+          new URL(`${signupPath}?success=${encodeURIComponent('Account created! Please check your email to confirm your account.')}`, request.url),
           { status: 303 }
         );
       }
     }
 
     return NextResponse.redirect(
-      new URL(`/tipjar/signup?error=${encodeURIComponent('Something went wrong. Please try again.')}`, request.url),
+      new URL(`${signupPath}?error=${encodeURIComponent('Something went wrong. Please try again.')}`, request.url),
       { status: 303 }
     );
   } catch (error: any) {
     console.error('Signup error:', error);
+    const productContext = detectProductContext(request);
+    const signupPath = productContext === 'tipjar' ? '/tipjar/signup' :
+                      productContext === 'djdash' ? '/djdash/signup' :
+                      '/signup';
     return NextResponse.redirect(
-      new URL(`/tipjar/signup?error=${encodeURIComponent(error.message || 'An error occurred. Please try again.')}`, request.url),
+      new URL(`${signupPath}?error=${encodeURIComponent(error.message || 'An error occurred. Please try again.')}`, request.url),
       { status: 303 }
     );
   }
