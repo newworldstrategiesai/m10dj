@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       } else {
         // Email confirmation required
         return NextResponse.redirect(
-          new URL(`${signupPath}?success=${encodeURIComponent('Account created! Please check your email to confirm your account.')}`, request.url),
+          new URL(`${signupPath}?success=true`, request.url),
           { status: 303 }
         );
       }

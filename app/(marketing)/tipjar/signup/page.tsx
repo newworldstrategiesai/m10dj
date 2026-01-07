@@ -94,29 +94,86 @@ export default function SignupPage({
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
                 Start Collecting Tips & Song Requests
               </h1>
-              <p className="text-gray-600 dark:text-gray-300 mb-8">
-                No credit card required. Start free, upgrade when you&apos;re making money.
-              </p>
-              
-              {searchParams?.error && (
-                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <div className="flex items-start">
-                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-600 dark:text-red-400">{searchParams.error}</p>
-                  </div>
-                </div>
+              {!searchParams?.success && (
+                <>
+                  <p className="text-gray-600 dark:text-gray-300 mb-8">
+                    No credit card required. Start free, upgrade when you&apos;re making money.
+                  </p>
+                  
+                  {searchParams?.error && (
+                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                      <div className="flex items-start">
+                        <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-red-600 dark:text-red-400">{searchParams.error}</p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               
-              {searchParams?.success && (
-                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                  <div className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-green-600 dark:text-green-400">{searchParams.success}</p>
+              {searchParams?.success ? (
+                // Success State - Show helpful next steps
+                <div className="space-y-6">
+                  <div className="text-center mb-8">
+                    <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                      <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                      Account Created Successfully! 🎉
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      We've sent a confirmation email to your inbox
+                    </p>
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                      <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center mr-2 text-sm">1</span>
+                      Check Your Email
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 ml-8">
+                      Look for an email from <strong className="text-gray-900 dark:text-white">noreply@tipjar.live</strong> with the subject "Confirm your TipJar account"
+                    </p>
+                    
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                      <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center mr-2 text-sm">2</span>
+                      Click the Confirmation Link
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 ml-8">
+                      Click the "Confirm Email Address" button in the email to verify your account. This link expires in 24 hours.
+                    </p>
+                    
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                      <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center mr-2 text-sm">3</span>
+                      Complete Your Setup
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 ml-8">
+                      After confirming, you'll be taken through a quick onboarding to set up your tip page
+                    </p>
+                  </div>
+
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      <strong>Didn't receive the email?</strong> Check your spam folder or{' '}
+                      <Link href="/tipjar/signin" className="underline font-semibold">
+                        try signing in
+                      </Link>
+                      {' '}if you already confirmed your account.
+                    </p>
+                  </div>
+
+                  <div className="pt-4">
+                    <Link
+                      href="/tipjar/signin"
+                      className="block w-full text-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    >
+                      Go to Sign In
+                    </Link>
                   </div>
                 </div>
-              )}
-              
-              <form action="/api/auth/signup" method="POST" className="space-y-6">
+              ) : (
+                // Signup Form
+                <form action="/api/auth/signup" method="POST" className="space-y-6">
                 <div>
                   <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Business Name <span className="text-gray-400 text-xs">(optional)</span>
@@ -223,6 +280,7 @@ export default function SignupPage({
                   </p>
                 </div>
               </form>
+              )}
             </div>
             
             {/* Benefits Sidebar */}
