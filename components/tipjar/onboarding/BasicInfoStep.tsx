@@ -32,16 +32,20 @@ export default function BasicInfoStep({
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [checkingSlug, setCheckingSlug] = useState(false);
   const [errors, setErrors] = useState<{ displayName?: string; slug?: string }>({});
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const confettiTriggered = useRef(false);
 
-  // Generate slug from display name
+  // Generate slug from display name (only if slug hasn't been manually edited)
   useEffect(() => {
-    if (displayName && !slug) {
+    if (displayName && !slugManuallyEdited) {
       const generated = generateSlugFromName(displayName);
-      setSlug(generated);
-      onDataUpdate({ slug: generated });
+      // Only update if the generated slug is different from current
+      if (generated !== slug) {
+        setSlug(generated);
+        onDataUpdate({ slug: generated });
+      }
     }
-  }, [displayName]);
+  }, [displayName, slugManuallyEdited]);
 
   // Check slug availability
   useEffect(() => {
@@ -204,6 +208,7 @@ export default function BasicInfoStep({
                 onChange={(e) => {
                   const newSlug = generateSlugFromName(e.target.value);
                   setSlug(newSlug);
+                  setSlugManuallyEdited(true); // Mark as manually edited
                   onDataUpdate({ slug: newSlug });
                   setErrors({ ...errors, slug: undefined });
                 }}

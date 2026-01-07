@@ -49,13 +49,14 @@ export default function TipJarOnboardingWizard({
         slug: organization.slug || '',
         paymentSetup: organization.stripe_connect_account_id ? 'completed' : 'pending'
       }));
-    } else if (user?.email) {
-      // Auto-suggest display name from email
+    } else if (user?.email && !onboardingData.displayName) {
+      // Auto-suggest display name from email ONLY if display name is not already set
+      // Don't set slug here - let BasicInfoStep generate it from display name
       const emailPrefix = user.email.split('@')[0];
       setOnboardingData(prev => ({
         ...prev,
-        displayName: emailPrefix || '',
-        slug: generateSlugFromName(emailPrefix)
+        displayName: emailPrefix || ''
+        // Don't set slug - it will be generated from display name in BasicInfoStep
       }));
     }
   }, [organization, user]);
