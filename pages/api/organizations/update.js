@@ -86,19 +86,25 @@ export default async function handler(req, res) {
     // Also update user metadata with display name if provided
     if (requests_header_artist_name !== undefined && requests_header_artist_name) {
       try {
-        const { error: userUpdateError } = await supabase.auth.admin.updateUserById(
-          user.id,
-          {
-            user_metadata: {
-              ...user.user_metadata,
-              display_name: requests_header_artist_name,
-              full_name: requests_header_artist_name
+        // Get current user metadata to preserve existing values
+        const { data: currentUser, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(user.id);
+        if (getUserError) {
+          console.error('Error fetching user for metadata update:', getUserError);
+        } else {
+          const { error: userUpdateError } = await supabaseAdmin.auth.admin.updateUserById(
+            user.id,
+            {
+              user_metadata: {
+                ...(currentUser?.user?.user_metadata || {}),
+                display_name: requests_header_artist_name,
+                full_name: requests_header_artist_name
+              }
             }
+          );
+          if (userUpdateError) {
+            console.error('Error updating user metadata with display name:', userUpdateError);
+            // Non-critical, continue anyway
           }
-        );
-        if (userUpdateError) {
-          console.error('Error updating user metadata with display name:', userUpdateError);
-          // Non-critical, continue anyway
         }
       } catch (error) {
         console.error('Error updating user metadata:', error);
