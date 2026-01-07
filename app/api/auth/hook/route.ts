@@ -429,6 +429,7 @@ export async function POST(request: NextRequest) {
     console.log('[Auth Hook] Webhook signature header:', headers['webhook-signature'] || headers['x-webhook-signature'] || headers['x-supabase-signature'] || 'Missing');
 
     const secret = process.env.SUPABASE_AUTH_HOOK_SECRET || '';
+    const authHeader = request.headers.get('authorization');
     
     // For Supabase Send Email Hook, verify using webhook signature (standardwebhooks format)
     // Supabase signs the request with the secret configured in the hook settings
@@ -442,7 +443,6 @@ export async function POST(request: NextRequest) {
         console.log('[Auth Hook] Webhook signature verification failed');
         
         // Fallback: Check if Authorization Bearer token is provided (some Supabase configs use this)
-        const authHeader = request.headers.get('authorization');
         if (authHeader && authHeader.startsWith('Bearer ')) {
           const providedSecret = authHeader.replace('Bearer ', '').trim();
           const normalizedProvided = providedSecret.replace(/^v1,whsec_/, '');
