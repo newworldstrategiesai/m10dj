@@ -8,9 +8,89 @@ import { getProductBasedRedirectUrl } from '@/utils/auth-helpers/product-redirec
 export async function GET(request: NextRequest) {
   // The `/auth/callback` route is required for the server-side auth flow implemented
   // by the `@supabase/ssr` package. It exchanges an auth code for the user's session.
+  // It also handles token_hash from custom email hooks.
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
+  const tokenHash = requestUrl.searchParams.get('token_hash');
+  const type = requestUrl.searchParams.get('type') || 'signup';
   const supabase = createClient();
+
+  // Handle token_hash from custom email hooks (email confirmation, password reset, etc.)
+  if (tokenHash && !code) {
+    try {
+      // Verify token_hash using Supabase's verifyOtp method
+      // Note: verifyOtp requires email, but for token_hash we need to verify differently
+      // For custom email hooks, we can verify by calling Supabase's API directly
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration missing');
+      }
+
+      // Verify the token_hash by calling Supabase's verify endpoint
+      const verifyResponse = await fetch(`${supabaseUrl}/auth/v1/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          token_hash: tokenHash,
+          type: type,
+        }),
+      });
+
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json();
+        console.error('[Auth Callback] Token verification error:', errorData);
+        
+        const isTipJar = requestUrl.hostname.includes('tipjar');
+        let errorRedirectPath: string;
+        
+        switch (type) {
+          case 'recovery':
+            errorRedirectPath = isTipJar
+              ? `${requestUrl.origin}/tipjar/signin/forgot_password`
+              : `${requestUrl.origin}/signin/forgot_password`;
+            break;
+          default:
+            errorRedirectPath = isTipJar
+              ? `${requestUrl.origin}/tipjar/signin/password_signin`
+              : `${requestUrl.origin}/signin/password_signin`;
+            break;
+        }
+        
+        return NextResponse.redirect(
+          getErrorRedirect(
+            errorRedirectPath,
+            errorData.error || 'verification_failed',
+            errorData.error_description || errorData.msg || 'Invalid or expired confirmation link. Please request a new one.'
+          )
+        );
+      }
+
+      // Token verified successfully - Supabase should have set the session via cookies
+      // The verify endpoint returns a session, which should be set in cookies automatically
+      // Now continue with the normal flow below
+    } catch (error: any) {
+      console.error('[Auth Callback] Token verification error:', error);
+      
+      const isTipJar = requestUrl.hostname.includes('tipjar');
+      const errorRedirectPath = isTipJar
+        ? `${requestUrl.origin}/tipjar/signin/password_signin`
+        : `${requestUrl.origin}/signin/password_signin`;
+      
+      return NextResponse.redirect(
+        getErrorRedirect(
+          errorRedirectPath,
+          'verification_error',
+          'Something went wrong verifying your confirmation link. Please try again.'
+        )
+      );
+    }
+  }
 
   if (code) {
 
