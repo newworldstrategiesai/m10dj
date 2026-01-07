@@ -118,6 +118,32 @@ async function handleAccountUpdated(account, supabaseAdmin) {
 
   console.log(`Updated organization for Stripe account ${accountId}`);
 
+  // If Connect was just activated, transfer any accumulated funds from platform account
+  if (justActivated) {
+    try {
+      const { transferAccumulatedFunds } = await import('@/utils/stripe/manual-payouts');
+      console.log(`🔄 Transferring accumulated funds for organization ${organization.id}...`);
+      
+      const transferResult = await transferAccumulatedFunds(
+        organization.id,
+        accountId,
+        organization.platform_fee_percentage,
+        organization.platform_fee_fixed
+      );
+
+      if (transferResult.success && transferResult.totalPayments > 0) {
+        console.log(`✅ Transferred $${(transferResult.transferredAmount / 100).toFixed(2)} for ${transferResult.totalPayments} payments`);
+      } else if (transferResult.totalPayments === 0) {
+        console.log(`ℹ️ No accumulated funds to transfer for organization ${organization.id}`);
+      } else {
+        console.error(`❌ Failed to transfer accumulated funds:`, transferResult.error);
+      }
+    } catch (error) {
+      console.error('Error transferring accumulated funds in webhook:', error);
+      // Don't fail the webhook if transfer fails - user can still proceed
+    }
+  }
+
   // Send email notification if account just became active
   if (justActivated) {
     try {

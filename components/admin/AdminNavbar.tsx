@@ -46,6 +46,7 @@ interface NavItem {
   icon: React.ReactNode;
   badge?: number;
   description?: string;
+  adminOnly?: boolean; // If true, only show for platform admins
 }
 
 export default function AdminNavbar() {
@@ -53,6 +54,7 @@ export default function AdminNavbar() {
   const supabase = createClientComponentClient();
   const { theme, systemTheme } = useTheme();
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [productContext, setProductContext] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -75,6 +77,7 @@ export default function AdminNavbar() {
 
   useEffect(() => {
     checkUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -88,6 +91,12 @@ export default function AdminNavbar() {
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
+    
+    // Check if user is platform admin
+    if (user?.email) {
+      const { isPlatformAdmin } = await import('@/utils/auth-helpers/platform-admin');
+      setIsAdmin(isPlatformAdmin(user.email));
+    }
     
     // Get product context
     if (user?.user_metadata?.product_context) {
@@ -148,6 +157,7 @@ export default function AdminNavbar() {
         { label: 'Contracts', href: '/admin/contracts', icon: <FileText className="w-4 h-4" />, description: 'Agreements' },
         { label: 'Invoices', href: '/admin/invoices', icon: <CreditCard className="w-4 h-4" />, description: 'Billing' },
         { label: 'Financial', href: '/admin/financial', icon: <BarChart3 className="w-4 h-4" />, description: 'Analytics' },
+        { label: 'Manual Payouts', href: '/admin/manual-payouts', icon: <DollarSign className="w-4 h-4" />, description: 'Platform admin only', adminOnly: true },
       ]
     },
     {
@@ -184,7 +194,7 @@ export default function AdminNavbar() {
     }
   ];
 
-  // Filter navigation groups based on product context
+  // Filter navigation groups based on product context and admin status
   const getNavGroups = (): NavGroup[] => {
     // TipJar users only see song request related features
     if (productContext === 'tipjar') {
@@ -212,8 +222,11 @@ export default function AdminNavbar() {
       ];
     }
 
-    // M10 DJ Company users see all groups
-    return allNavGroups;
+    // M10 DJ Company users see all groups, but filter admin-only items
+    return allNavGroups.map(group => ({
+      ...group,
+      items: group.items.filter(item => !item.adminOnly || isAdmin)
+    }));
   };
 
   const navGroups = getNavGroups();
