@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
     // Get user's organization using the helper function
     // This handles both owner and team member cases (venue hierarchy support)
-    let organization: any = await getCurrentOrganization(supabase);
+    let organization = await getCurrentOrganization(supabase);
     
     // If not found via helper (which uses RLS), try with admin client as fallback
     if (!organization) {

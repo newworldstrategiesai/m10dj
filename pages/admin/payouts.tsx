@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/Toasts/use-toast';
+import { calculateTipJarInstantPayoutFee } from '@/utils/stripe/tipjar-instant-payout';
 
 interface PaymentBalance {
   available: number;
@@ -380,7 +381,18 @@ export default function PayoutsPage() {
                 Request Instant Payout
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Get your money immediately (1.5% fee for US, minimum $0.50). Available for instant payout: {formatCurrency(instantAvailableAmount)}
+                {organization?.product_context === 'tipjar' ? (
+                  <>
+                    Get your money immediately. TipJar instant payouts include Stripe's fee (1.5%) plus TipJar's processing fee (1% + $0.25).
+                  </>
+                ) : (
+                  <>
+                    Get your money immediately (1.5% fee for US, minimum $0.50).
+                  </>
+                )}
+                <span className="block mt-2 font-medium">
+                  Available for instant payout: {formatCurrency(instantAvailableAmount)}
+                </span>
                 {availableAmount > instantAvailableAmount && (
                   <span className="block mt-1 text-xs text-gray-500">
                     Standard balance: {formatCurrency(availableAmount)} (available for standard payouts)
@@ -394,7 +406,7 @@ export default function PayoutsPage() {
                     placeholder="Amount (e.g., 50.00)"
                     value={instantPayoutAmount}
                     onChange={(e) => setInstantPayoutAmount(e.target.value)}
-                    min="0.50"
+                    min={organization?.product_context === 'tipjar' ? "0.75" : "0.50"}
                     step="0.01"
                     max={instantAvailableAmount.toFixed(2)}
                     className="w-full"
@@ -418,6 +430,52 @@ export default function PayoutsPage() {
                   )}
                 </Button>
               </div>
+              {instantPayoutAmount && parseFloat(instantPayoutAmount) > 0 && organization?.product_context === 'tipjar' && (() => {
+                const requestedAmount = parseFloat(instantPayoutAmount);
+                if (isNaN(requestedAmount) || requestedAmount <= 0) return null;
+                
+                // Calculate fees using the same logic as the API
+                // Note: The actual Stripe fee will be slightly less because it's calculated on (amount - tipjarFee)
+                // But for display purposes, we show the estimate
+                const tipjarFeePercentage = 1.0; // 1%
+                const tipjarFeeFixed = 0.25; // $0.25
+                const stripeFeePercentage = 1.50; // 1.5%
+                
+                // Calculate TipJar fee on requested amount
+                const tipjarFee = (requestedAmount * tipjarFeePercentage / 100) + tipjarFeeFixed;
+                
+                // Calculate what Stripe fee would be on the reduced amount (for accuracy)
+                const amountAfterTipJarFee = requestedAmount - tipjarFee;
+                const stripeFeeOnReduced = Math.max(amountAfterTipJarFee * stripeFeePercentage / 100, 0.50);
+                
+                // Total fees
+                const totalFee = stripeFeeOnReduced + tipjarFee;
+                const payoutAmount = Math.max(requestedAmount - totalFee, 0);
+                
+                return (
+                  <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">Fee Breakdown:</p>
+                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex justify-between">
+                        <span>Requested Amount:</span>
+                        <span className="font-medium">{formatCurrency(requestedAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Stripe Fee (1.5%):</span>
+                        <span className="text-red-600 dark:text-red-400">-{formatCurrency(stripeFeeOnReduced)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>TipJar Fee (1% + $0.25):</span>
+                        <span className="text-red-600 dark:text-red-400">-{formatCurrency(tipjarFee)}</span>
+                      </div>
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between font-semibold text-gray-900 dark:text-white">
+                        <span>You'll Receive:</span>
+                        <span className="text-green-600 dark:text-green-400">{formatCurrency(payoutAmount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                 Instant payouts arrive within 30 minutes. Standard payouts are free and arrive in 2-7 business days.
               </p>
