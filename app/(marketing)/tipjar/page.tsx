@@ -135,15 +135,16 @@ export default function TipJarHomePage() {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
-                  <Link href="/signup">
-                    <Button 
-                      size="lg" 
-                      className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-8 py-6 h-auto shadow-xl hover:shadow-2xl transition-all"
-                    >
+                  <Button 
+                    size="lg" 
+                    asChild
+                    className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-8 py-6 h-auto shadow-xl hover:shadow-2xl transition-all"
+                  >
+                    <Link href="/signup">
                       Start Free Trial
                       <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                   <Link href="/how-it-works">
                     <Button 
                       size="lg" 
@@ -470,11 +471,11 @@ export default function TipJarHomePage() {
                   <span className="text-gray-600 dark:text-gray-300">QR code generation</span>
                 </li>
               </ul>
-              <Link href="/signup" className="block">
-                <Button variant="outline" className="w-full border-2 border-gray-300 dark:border-gray-600">
+              <Button variant="outline" asChild className="w-full border-2 border-gray-300 dark:border-gray-600">
+                <Link href="/signup" className="block">
                   Get Started Free
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
             
             {/* Pro Plan - Featured */}
@@ -509,11 +510,11 @@ export default function TipJarHomePage() {
                   <span>Analytics dashboard</span>
                 </li>
               </ul>
-              <Link href="/signup" className="block">
-                <Button className="w-full bg-white text-emerald-600 hover:bg-gray-100 font-semibold">
+              <Button asChild className="w-full bg-white text-emerald-600 hover:bg-gray-100 font-semibold">
+                <Link href="/signup" className="block">
                   Start Free Trial
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
             
             {/* Embed Pro Plan */}
@@ -541,11 +542,11 @@ export default function TipJarHomePage() {
                   <span className="text-gray-600 dark:text-gray-300">Advanced analytics</span>
                 </li>
               </ul>
-              <Link href="/signup" className="block">
-                <Button variant="outline" className="w-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+              <Button variant="outline" asChild className="w-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                <Link href="/signup" className="block">
                   Start Free Trial
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
           
@@ -581,15 +582,16 @@ export default function TipJarHomePage() {
               Join 1,200+ DJs who are making more money with TipJar. Setup takes 2 minutes. No credit card required.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/signup">
-                <Button 
-                  size="lg" 
-                  className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-10 py-7 h-auto shadow-2xl hover:shadow-3xl transition-all"
-                >
+              <Button 
+                size="lg" 
+                asChild
+                className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-10 py-7 h-auto shadow-2xl hover:shadow-3xl transition-all"
+              >
+                <Link href="/signup">
                   Start Free Trial
                   <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <Link href="/how-it-works">
                 <Button 
                   size="lg" 

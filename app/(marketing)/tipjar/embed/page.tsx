@@ -283,14 +283,15 @@ export default function EmbedPage() {
           <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
             Start collecting tips and song requests with QR codes. Setup takes 2 minutes.
           </p>
-          <Link href="/signup">
-            <Button 
-              size="lg" 
-              className="bg-white text-tipjar-primary-600 hover:bg-gray-100 font-semibold uppercase tracking-wider text-lg px-8 py-6"
-            >
+          <Button 
+            size="lg" 
+            asChild
+            className="bg-white text-tipjar-primary-600 hover:bg-gray-100 font-semibold uppercase tracking-wider text-lg px-8 py-6"
+          >
+            <Link href="/signup">
               Get Started Free <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </section>
       <TipJarFooter />

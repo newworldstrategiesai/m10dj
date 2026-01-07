@@ -447,15 +447,16 @@ export default function PricingPage() {
             Start your free trial today—no credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/signup">
-              <Button 
-                size="lg" 
-                className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-8 py-6 shadow-xl hover:shadow-2xl transition-all"
-              >
+            <Button 
+              size="lg" 
+              asChild
+              className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-8 py-6 shadow-xl hover:shadow-2xl transition-all"
+            >
+              <Link href="/signup">
                 Start Free Trial
                 <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <Link href="/how-it-works">
               <Button 
                 size="lg" 

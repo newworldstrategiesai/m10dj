@@ -663,15 +663,16 @@ export default function HowItWorksPage() {
               Join 1,200+ DJs who are making more money with TipJar. Setup takes 2 minutes. No credit card required.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/signup">
-                <Button 
-                  size="lg" 
-                  className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-10 py-7 h-auto shadow-2xl hover:shadow-3xl transition-all"
-                >
+              <Button 
+                size="lg" 
+                asChild
+                className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold text-lg px-10 py-7 h-auto shadow-2xl hover:shadow-3xl transition-all"
+              >
+                <Link href="/signup">
                   Start Free Trial
                   <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <Link href="/pricing">
                 <Button 
                   size="lg" 

@@ -167,11 +167,11 @@ export default async function AcceptInvitePage({ params }: AcceptInvitePageProps
                           Sign In
                         </Button>
                       </Link>
-                      <Link href={`/tipjar/signup?redirect=/tipjar/accept-invite/${params.token}`} className="flex-1">
-                        <Button className="w-full" variant="outline">
+                      <Button className="w-full" variant="outline" asChild>
+                        <Link href={`/tipjar/signup?redirect=/tipjar/accept-invite/${params.token}`} className="flex-1">
                           Create Account
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 ) : (

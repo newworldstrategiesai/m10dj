@@ -142,17 +142,18 @@ export default function TipJarHeader() {
             >
               Sign In
             </Link>
-            <Link href="/signup">
-              <Button
-                className={`font-semibold ${
-                  isLivePage || isPricingPage || !isScrolled
-                    ? 'bg-white text-emerald-600 hover:bg-gray-100 dark:bg-white dark:text-emerald-600 dark:hover:bg-gray-100'
-                    : 'bg-gradient-to-r from-emerald-600 to-green-500 text-white hover:from-emerald-700 hover:to-green-600'
-                }`}
-              >
+            <Button
+              asChild
+              className={`font-semibold ${
+                isLivePage || isPricingPage || !isScrolled
+                  ? 'bg-white text-emerald-600 hover:bg-gray-100 dark:bg-white dark:text-emerald-600 dark:hover:bg-gray-100'
+                  : 'bg-gradient-to-r from-emerald-600 to-green-500 text-white hover:from-emerald-700 hover:to-green-600'
+              }`}
+            >
+              <Link href="/signup">
                 Start Free
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -213,11 +214,14 @@ export default function TipJarHeader() {
               >
                 Sign In
               </Link>
-              <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button className="w-full bg-gradient-to-r from-emerald-600 to-green-500 text-white font-semibold">
+              <Button 
+                asChild
+                className="w-full bg-gradient-to-r from-emerald-600 to-green-500 text-white font-semibold"
+              >
+                <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>
                   Start Free
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
         )}
