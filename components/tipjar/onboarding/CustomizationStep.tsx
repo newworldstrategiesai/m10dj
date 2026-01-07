@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, Palette, DollarSign } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Palette, DollarSign, Zap, Music } from 'lucide-react';
 import { OnboardingData } from '../OnboardingWizard';
 import { triggerQuickConfetti, triggerConfetti } from '@/utils/confetti';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface CustomizationStepProps {
   data: OnboardingData;
@@ -43,7 +45,24 @@ export default function CustomizationStep({
   const [minimumBid, setMinimumBid] = useState<number>(
     data.minimumBid || 5.00
   );
-  const [errors, setErrors] = useState<{ accentColor?: string; minimumBid?: string }>({});
+  const [showFastTrack, setShowFastTrack] = useState<boolean>(
+    data.showFastTrack !== undefined ? data.showFastTrack : true
+  );
+  const [fastTrackFee, setFastTrackFee] = useState<number>(
+    data.fastTrackFee ? data.fastTrackFee / 100 : 10.00
+  );
+  const [showNextSong, setShowNextSong] = useState<boolean>(
+    data.showNextSong !== undefined ? data.showNextSong : true
+  );
+  const [nextFee, setNextFee] = useState<number>(
+    data.nextFee ? data.nextFee / 100 : 20.00
+  );
+  const [errors, setErrors] = useState<{ 
+    accentColor?: string; 
+    minimumBid?: string;
+    fastTrackFee?: string;
+    nextFee?: string;
+  }>({});
 
   useEffect(() => {
     // Initialize from organization if available
@@ -55,11 +74,28 @@ export default function CustomizationStep({
       if (organization.requests_bidding_minimum_bid) {
         setMinimumBid(organization.requests_bidding_minimum_bid / 100);
       }
+      
+      // Fast Track settings
+      setShowFastTrack(organization.requests_show_fast_track !== false);
+      if (organization.requests_fast_track_fee) {
+        setFastTrackFee(organization.requests_fast_track_fee / 100);
+      }
+      
+      // Next Song settings
+      setShowNextSong(organization.requests_show_next_song !== false);
+      if (organization.requests_next_fee) {
+        setNextFee(organization.requests_next_fee / 100);
+      }
     }
   }, [organization]);
 
   function validate(): boolean {
-    const newErrors: { accentColor?: string; minimumBid?: string } = {};
+    const newErrors: { 
+      accentColor?: string; 
+      minimumBid?: string;
+      fastTrackFee?: string;
+      nextFee?: string;
+    } = {};
 
     if (!accentColor || !accentColor.match(/^#[0-9A-Fa-f]{6}$/)) {
       newErrors.accentColor = 'Please select a valid color';
@@ -71,6 +107,14 @@ export default function CustomizationStep({
       newErrors.minimumBid = 'Minimum bid cannot exceed $1,000.00';
     }
 
+    if (showFastTrack && (fastTrackFee < 0 || fastTrackFee > 1000)) {
+      newErrors.fastTrackFee = 'Fast Track fee must be between $0.00 and $1,000.00';
+    }
+
+    if (showNextSong && (nextFee < 0 || nextFee > 1000)) {
+      newErrors.nextFee = 'Next Song fee must be between $0.00 and $1,000.00';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -79,10 +123,16 @@ export default function CustomizationStep({
     if (validate()) {
       // Convert dollars to cents for storage
       const minimumBidCents = Math.round(minimumBid * 100);
+      const fastTrackFeeCents = Math.round(fastTrackFee * 100);
+      const nextFeeCents = Math.round(nextFee * 100);
       
       onDataUpdate({
         accentColor: accentColor,
-        minimumBid: minimumBidCents
+        minimumBid: minimumBidCents,
+        showFastTrack: showFastTrack,
+        fastTrackFee: fastTrackFeeCents,
+        showNextSong: showNextSong,
+        nextFee: nextFeeCents
       });
 
       // Save to organization immediately
@@ -93,7 +143,11 @@ export default function CustomizationStep({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               requests_accent_color: accentColor,
-              requests_bidding_minimum_bid: minimumBidCents
+              requests_bidding_minimum_bid: minimumBidCents,
+              requests_show_fast_track: showFastTrack,
+              requests_fast_track_fee: fastTrackFeeCents,
+              requests_show_next_song: showNextSong,
+              requests_next_fee: nextFeeCents
             })
           });
           if (!response.ok) {
@@ -258,6 +312,112 @@ export default function CustomizationStep({
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             Recommended: $5.00 - $10.00. This ensures quality requests and helps cover processing fees.
           </p>
+        </div>
+
+        {/* Fast Track Add-on Section */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex-1">
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                <Zap className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
+                Fast Track Add-on
+              </label>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Allow customers to pay extra to have their song played next in the queue.
+              </p>
+            </div>
+            <Switch
+              checked={showFastTrack}
+              onCheckedChange={(checked) => {
+                setShowFastTrack(checked);
+                setErrors({ ...errors, fastTrackFee: undefined });
+              }}
+            />
+          </div>
+
+          {showFastTrack && (
+            <div className="mt-4 pl-7">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Fast Track Fee
+              </label>
+              <div className="flex items-center gap-3">
+                <span className="text-xl font-bold text-gray-700 dark:text-gray-300">$</span>
+                <input
+                  type="number"
+                  value={fastTrackFee}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setFastTrackFee(value);
+                    setErrors({ ...errors, fastTrackFee: undefined });
+                  }}
+                  min="0"
+                  max="1000"
+                  step="0.01"
+                  placeholder="10.00"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold"
+                />
+              </div>
+              {errors.fastTrackFee && (
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.fastTrackFee}</p>
+              )}
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Recommended: $10.00 - $20.00. This fee allows songs to jump ahead in the queue.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Next Song Add-on Section */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex-1">
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                <Music className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
+                Next Song Add-on
+              </label>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Allow customers to pay extra to have their song played immediately (jumps to front of queue).
+              </p>
+            </div>
+            <Switch
+              checked={showNextSong}
+              onCheckedChange={(checked) => {
+                setShowNextSong(checked);
+                setErrors({ ...errors, nextFee: undefined });
+              }}
+            />
+          </div>
+
+          {showNextSong && (
+            <div className="mt-4 pl-7">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Next Song Fee
+              </label>
+              <div className="flex items-center gap-3">
+                <span className="text-xl font-bold text-gray-700 dark:text-gray-300">$</span>
+                <input
+                  type="number"
+                  value={nextFee}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setNextFee(value);
+                    setErrors({ ...errors, nextFee: undefined });
+                  }}
+                  min="0"
+                  max="1000"
+                  step="0.01"
+                  placeholder="20.00"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold"
+                />
+              </div>
+              {errors.nextFee && (
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.nextFee}</p>
+              )}
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Recommended: $20.00 - $50.00. This premium fee ensures immediate playback.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

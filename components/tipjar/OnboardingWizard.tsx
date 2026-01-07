@@ -17,6 +17,10 @@ export interface OnboardingData {
   paymentSetup: 'completed' | 'skipped' | 'pending';
   accentColor?: string;
   minimumBid?: number; // In cents
+  showFastTrack?: boolean;
+  fastTrackFee?: number; // In cents
+  showNextSong?: boolean;
+  nextFee?: number; // In cents
 }
 
 interface TipJarOnboardingWizardProps {
@@ -109,6 +113,18 @@ export default function TipJarOnboardingWizard({
         }
         if (onboardingData.minimumBid !== undefined) {
           updateData.requests_bidding_minimum_bid = onboardingData.minimumBid;
+        }
+        if (onboardingData.showFastTrack !== undefined) {
+          updateData.requests_show_fast_track = onboardingData.showFastTrack;
+        }
+        if (onboardingData.fastTrackFee !== undefined) {
+          updateData.requests_fast_track_fee = onboardingData.fastTrackFee;
+        }
+        if (onboardingData.showNextSong !== undefined) {
+          updateData.requests_show_next_song = onboardingData.showNextSong;
+        }
+        if (onboardingData.nextFee !== undefined) {
+          updateData.requests_next_fee = onboardingData.nextFee;
         }
 
         const { error: updateError } = await supabase

@@ -25,7 +25,18 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { name, slug, requests_header_artist_name, requests_header_location } = req.body;
+    const { 
+      name, 
+      slug, 
+      requests_header_artist_name, 
+      requests_header_location,
+      requests_accent_color,
+      requests_bidding_minimum_bid,
+      requests_show_fast_track,
+      requests_fast_track_fee,
+      requests_show_next_song,
+      requests_next_fee
+    } = req.body;
 
     // Get current organization
     const organization = await getCurrentOrganization(supabase);
@@ -68,6 +79,24 @@ export default async function handler(req, res) {
     }
     if (requests_header_location !== undefined) {
       updateData.requests_header_location = requests_header_location;
+    }
+    if (requests_accent_color !== undefined) {
+      updateData.requests_accent_color = requests_accent_color;
+    }
+    if (requests_bidding_minimum_bid !== undefined) {
+      updateData.requests_bidding_minimum_bid = requests_bidding_minimum_bid;
+    }
+    if (requests_show_fast_track !== undefined) {
+      updateData.requests_show_fast_track = requests_show_fast_track;
+    }
+    if (requests_fast_track_fee !== undefined) {
+      updateData.requests_fast_track_fee = requests_fast_track_fee;
+    }
+    if (requests_show_next_song !== undefined) {
+      updateData.requests_show_next_song = requests_show_next_song;
+    }
+    if (requests_next_fee !== undefined) {
+      updateData.requests_next_fee = requests_next_fee;
     }
 
     // Update organization
