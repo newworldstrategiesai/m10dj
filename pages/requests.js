@@ -891,18 +891,25 @@ export function GeneralRequestsPage({
   // Calculate minimum bid amount based on current winning bid (only for bidding mode)
   const dynamicMinimumAmount = useMemo(() => {
     if (!shouldUseBidding) return null;
-    // Minimum bid must be at least $5 above winning bid (or $5 if no bids yet)
-    // Always add $5 to the winning bid, even if it's 0
-    const minAmount = currentWinningBid > 0 ? currentWinningBid + 500 : 500;
+    
+    // Get the organization's minimum bid setting, default to 500 cents ($5) if not set
+    const orgMinimumBid = organizationData?.requests_bidding_minimum_bid || 500;
+    
+    // Minimum bid must be at least the organization's minimum bid above winning bid
+    // If no winning bid, use the organization's minimum bid
+    // If there's a winning bid, add the organization's minimum bid increment to it
+    const minAmount = currentWinningBid > 0 ? currentWinningBid + orgMinimumBid : orgMinimumBid;
+    
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       console.log('[requests.js] dynamicMinimumAmount calculated:', {
         shouldUseBidding,
         currentWinningBid: currentWinningBid / 100,
+        orgMinimumBid: orgMinimumBid / 100,
         minAmount: minAmount / 100
       });
     }
     return minAmount;
-  }, [shouldUseBidding, currentWinningBid]);
+  }, [shouldUseBidding, currentWinningBid, organizationData?.requests_bidding_minimum_bid]);
 
   // Debug log when values change for BiddingAmountSelector
   useEffect(() => {
@@ -920,19 +927,22 @@ export function GeneralRequestsPage({
   const dynamicBidPresets = useMemo(() => {
     if (!shouldUseBidding) return null;
     
-    // CRITICAL: Ensure minBid is always >= currentWinningBid + $5
+    // Get the organization's minimum bid setting, default to 500 cents ($5) if not set
+    const orgMinimumBid = organizationData?.requests_bidding_minimum_bid || 500;
+    
+    // CRITICAL: Ensure minBid is always >= currentWinningBid + orgMinimumBid
     // This prevents buttons from showing amounts lower than the winning bid
     const safeMinBid = Math.max(
-      dynamicMinimumAmount || 500,
-      currentWinningBid > 0 ? currentWinningBid + 500 : 500
+      dynamicMinimumAmount || orgMinimumBid,
+      currentWinningBid > 0 ? currentWinningBid + orgMinimumBid : orgMinimumBid
     );
     
     const presets = [
       { value: safeMinBid, label: `$${(safeMinBid / 100).toFixed(2)}` },
-      { value: safeMinBid + 500, label: `$${((safeMinBid + 500) / 100).toFixed(2)}` }, // +$5
-      { value: safeMinBid + 1000, label: `$${((safeMinBid + 1000) / 100).toFixed(2)}` }, // +$10
-      { value: safeMinBid + 2000, label: `$${((safeMinBid + 2000) / 100).toFixed(2)}` }, // +$20
-      { value: safeMinBid + 5000, label: `$${((safeMinBid + 5000) / 100).toFixed(2)}` } // +$50
+      { value: safeMinBid + orgMinimumBid, label: `$${((safeMinBid + orgMinimumBid) / 100).toFixed(2)}` }, // +orgMinimumBid
+      { value: safeMinBid + (orgMinimumBid * 2), label: `$${((safeMinBid + (orgMinimumBid * 2)) / 100).toFixed(2)}` }, // +2x orgMinimumBid
+      { value: safeMinBid + (orgMinimumBid * 4), label: `$${((safeMinBid + (orgMinimumBid * 4)) / 100).toFixed(2)}` }, // +4x orgMinimumBid
+      { value: safeMinBid + (orgMinimumBid * 10), label: `$${((safeMinBid + (orgMinimumBid * 10)) / 100).toFixed(2)}` } // +10x orgMinimumBid
     ];
     
     // CRITICAL: Filter out any amounts that are less than or equal to the winning bid
@@ -942,7 +952,7 @@ export function GeneralRequestsPage({
     // Ensure we always have at least one preset option
     if (filtered.length === 0) {
       // If all presets were filtered out, add one that's definitely above the winning bid
-      const minValidBid = currentWinningBid > 0 ? currentWinningBid + 100 : 500; // At least $1 above winning bid, or $5 if no bids yet
+      const minValidBid = currentWinningBid > 0 ? currentWinningBid + orgMinimumBid : orgMinimumBid;
       filtered.push({ value: minValidBid, label: `$${(minValidBid / 100).toFixed(2)}` });
     }
     
@@ -959,7 +969,7 @@ export function GeneralRequestsPage({
     }
     
     return filtered;
-  }, [shouldUseBidding, currentWinningBid, dynamicMinimumAmount]);
+  }, [shouldUseBidding, currentWinningBid, dynamicMinimumAmount, organizationData?.requests_bidding_minimum_bid]);
   
   // Use validation hook - pass isExtractedFromLink to make artist optional when extracted
   const { isSongSelectionComplete, validateForm: validateFormHook } = useCrowdRequestValidation({

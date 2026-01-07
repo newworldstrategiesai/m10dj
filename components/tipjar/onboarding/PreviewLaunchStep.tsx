@@ -100,22 +100,22 @@ export default function PreviewLaunchStep({
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 sm:p-12">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 lg:p-12">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="flex justify-center mb-3 sm:mb-4">
             <div className="relative">
               <div className="absolute inset-0 bg-purple-200 dark:bg-purple-900 rounded-full blur-2xl opacity-50 animate-pulse" />
-              <div className="relative bg-gradient-to-br from-purple-500 to-purple-600 rounded-full p-6">
-                <Sparkles className="w-12 h-12 text-white" />
+              <div className="relative bg-gradient-to-br from-purple-500 to-purple-600 rounded-full p-4 sm:p-6">
+                <Sparkles className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
               </div>
             </div>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
             View Your Live Page
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-400">
             Step {currentStep} of {totalSteps} • See how your page looks to customers
           </p>
         </div>
@@ -156,23 +156,23 @@ export default function PreviewLaunchStep({
             
             {/* Preview iframe */}
             {slugSaved && pageUrl ? (
-              <div className="relative w-full border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-800" style={{ aspectRatio: '9/16', minHeight: '600px', maxHeight: '80vh' }}>
+              <div className="relative w-full border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-800" style={{ aspectRatio: '9/16', minHeight: '400px', maxHeight: '70vh' }}>
                 <iframe
                   src={pageUrl}
                   className="w-full h-full border-0"
                   title="Preview of your TipJar requests page"
                   allow="payment; camera; microphone"
-                  style={{ minHeight: '600px' }}
+                  style={{ minHeight: '400px' }}
                   onError={() => {
                     console.error('Failed to load preview iframe');
                   }}
                 />
               </div>
             ) : (
-              <div className="relative w-full border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-800 flex items-center justify-center" style={{ aspectRatio: '9/16', minHeight: '600px', maxHeight: '80vh' }}>
-                <div className="text-center p-8">
-                  <Loader2 className="w-12 h-12 text-purple-600 dark:text-purple-400 animate-spin mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">
+              <div className="relative w-full border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-800 flex items-center justify-center" style={{ aspectRatio: '9/16', minHeight: '400px', maxHeight: '70vh' }}>
+                <div className="text-center p-4 sm:p-8">
+                  <Loader2 className="w-8 h-8 sm:w-12 sm:h-12 text-purple-600 dark:text-purple-400 animate-spin mx-auto mb-3 sm:mb-4" />
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
                     {saving ? 'Setting up your page...' : 'Preparing your live page...'}
                   </p>
                 </div>
@@ -243,36 +243,36 @@ export default function PreviewLaunchStep({
         </div>
 
         {/* Navigation */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button
             onClick={onBack}
-            disabled={loading}
-            className="flex-1 sm:flex-initial px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            disabled={loading || saving}
+            className="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back
+            <span>Back</span>
           </button>
           <div className="flex flex-col sm:flex-row gap-3 flex-1">
             <a
               href="/admin/crowd-requests"
-              className="flex-1 px-6 py-3 border border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400 font-semibold rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 border border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400 font-semibold rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               <ExternalLink className="w-4 h-4" />
-              Open Dashboard
+              <span>Open Dashboard</span>
             </a>
             <button
               onClick={handleComplete}
               disabled={loading || saving}
-              className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               {(loading || saving) ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {saving ? 'Saving...' : 'Completing...'}
+                  <span>{saving ? 'Saving...' : 'Completing...'}</span>
                 </>
               ) : (
                 <>
-                  Complete Setup
+                  <span>Complete Setup</span>
                   <CheckCircle className="w-4 h-4" />
                 </>
               )}

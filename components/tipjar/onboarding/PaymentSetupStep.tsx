@@ -123,14 +123,14 @@ export default function PaymentSetupStep({
   const showSkipOption = paymentSetup !== 'completed';
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 sm:p-12">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 lg:p-12">
         {/* Header */}
-        <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
             Set up payments
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Step {currentStep} of {totalSteps} • Takes about 2 minutes
           </p>
         </div>
@@ -218,11 +218,11 @@ export default function PaymentSetupStep({
         )}
 
         {/* Navigation - Payment can be skipped, no back button */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           {showSkipOption && (
             <button
               onClick={onSkip}
-              className="flex-1 sm:flex-initial px-6 py-3 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+              className="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium text-sm sm:text-base"
             >
               Skip for now
             </button>
@@ -231,25 +231,25 @@ export default function PaymentSetupStep({
           {paymentSetup === 'completed' ? (
             <button
               onClick={onNext}
-              className="flex-1 sm:flex-initial px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-initial px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
             >
-              Continue
+              <span>Continue</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
             <button
               onClick={handleSetupPayments}
               disabled={loading}
-              className="flex-1 sm:flex-initial px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-initial px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Setting up...
+                  <span>Setting up...</span>
                 </>
               ) : (
                 <>
-                  Set up payments now
+                  <span>Set up payments now</span>
                   <ExternalLink className="w-4 h-4" />
                 </>
               )}

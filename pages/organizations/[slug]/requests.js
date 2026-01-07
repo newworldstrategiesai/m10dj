@@ -304,6 +304,8 @@ export default function OrganizationRequestsPage() {
           requests_header_date: organization.requests_header_date || '',
           // Explicitly include social_links to ensure it's passed through
           social_links: organization.social_links || [],
+          // Ensure bidding minimum bid is included
+          requests_bidding_minimum_bid: organization.requests_bidding_minimum_bid,
         }}
         isOwner={isOwner}
         customBranding={organization.white_label_enabled ? {

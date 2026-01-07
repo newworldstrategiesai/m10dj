@@ -177,14 +177,14 @@ export default function BasicInfoStep({
   const pageUrl = slug ? `tipjar.live/${slug}` : 'tipjar.live/...';
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 sm:p-12">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 lg:p-12">
         {/* Header */}
-        <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
             Tell us about yourself
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Step {currentStep} of {totalSteps} • This takes about 30 seconds
           </p>
         </div>
@@ -226,40 +226,44 @@ export default function BasicInfoStep({
             <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
               Your Page URL
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={slug}
-                onChange={(e) => {
-                  const newSlug = generateSlugFromName(e.target.value);
-                  setSlug(newSlug);
-                  setSlugManuallyEdited(true); // Mark as manually edited
-                  onDataUpdate({ slug: newSlug });
-                  setErrors({ ...errors, slug: undefined });
-                }}
-                className={`flex-1 px-4 py-2 rounded-lg border ${
-                  errors.slug
-                    ? 'border-red-500 focus:ring-red-500'
-                    : slugAvailable === false
-                    ? 'border-red-500 focus:ring-red-500'
-                    : slugAvailable === true
-                    ? 'border-green-500 focus:ring-green-500'
-                    : 'border-gray-300 dark:border-gray-700 focus:ring-purple-500'
-                } bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2`}
-                placeholder="yourname"
-              />
-              <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                .tipjar.live
-              </span>
-              {checkingSlug && (
-                <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-              )}
-              {!checkingSlug && slugAvailable === true && slug.length >= 3 && (
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              )}
-              {!checkingSlug && slugAvailable === false && (
-                <AlertCircle className="w-5 h-5 text-red-500" />
-              )}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 min-w-0">
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => {
+                    const newSlug = generateSlugFromName(e.target.value);
+                    setSlug(newSlug);
+                    setSlugManuallyEdited(true); // Mark as manually edited
+                    onDataUpdate({ slug: newSlug });
+                    setErrors({ ...errors, slug: undefined });
+                  }}
+                  className={`flex-1 min-w-0 px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
+                    errors.slug
+                      ? 'border-red-500 focus:ring-red-500'
+                      : slugAvailable === false
+                      ? 'border-red-500 focus:ring-red-500'
+                      : slugAvailable === true
+                      ? 'border-green-500 focus:ring-green-500'
+                      : 'border-gray-300 dark:border-gray-700 focus:ring-purple-500'
+                  } bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2`}
+                  placeholder="yourname"
+                />
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
+                  .tipjar.live
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0 justify-end sm:justify-start">
+                {checkingSlug && (
+                  <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                )}
+                {!checkingSlug && slugAvailable === true && slug.length >= 3 && (
+                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                )}
+                {!checkingSlug && slugAvailable === false && (
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                )}
+              </div>
             </div>
             {errors.slug && (
               <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
@@ -295,13 +299,13 @@ export default function BasicInfoStep({
         </div>
 
         {/* Navigation - No back button on step 2 to prevent exiting */}
-        <div className="flex gap-4 justify-end">
+        <div className="flex gap-3 sm:gap-4 justify-end">
           <button
             onClick={handleNext}
             disabled={!displayName.trim() || checkingSlug || slugAvailable === false}
-            className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
           >
-            Continue
+            <span>Continue</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
