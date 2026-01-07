@@ -456,11 +456,16 @@ export async function POST(request: NextRequest) {
     const accentColor = getProductAccentColor(productContext);
     const productBaseUrl = getProductBaseUrl(productContext);
 
-    // Import Resend
-    const { Resend } = await import('resend');
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    // Choose email provider based on product context
+    // Mailgun for TipJar and DJDash, Resend for M10DJ
+    const useMailgun = productContext === 'tipjar' || productContext === 'djdash';
 
-    if (!process.env.RESEND_API_KEY) {
+    if (useMailgun && !process.env.MAILGUN_API_KEY) {
+      console.error('[Auth Hook] MAILGUN_API_KEY not configured');
+      return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
+    }
+
+    if (!useMailgun && !process.env.RESEND_API_KEY) {
       console.error('[Auth Hook] RESEND_API_KEY not configured');
       return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
     }
@@ -533,27 +538,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No recipient email' }, { status: 400 });
     }
 
-    // Send email via Resend
-    const result = await resend.emails.send({
-      from: fromEmail,
-      to: recipientEmail,
-      subject,
-      html: emailContent.html,
-      text: emailContent.text,
-    });
+    // Send email via appropriate provider
+    let emailId: string | undefined;
+    
+    if (useMailgun) {
+      // Send via Mailgun
+      const mailgunDomain = productContext === 'tipjar' 
+        ? (process.env.MAILGUN_DOMAIN_TIPJAR || 'tipjar.live')
+        : (process.env.MAILGUN_DOMAIN_DJDASH || 'djdash.net');
+      
+      const formData = new FormData();
+      formData.append('from', fromEmail);
+      formData.append('to', recipientEmail);
+      formData.append('subject', subject);
+      formData.append('html', emailContent.html);
+      formData.append('text', emailContent.text);
 
-    if (result.error) {
-      console.error('[Auth Hook] Error sending email:', result.error);
-      return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+      const mailgunResponse = await fetch(
+        `https://api.mailgun.net/v3/${mailgunDomain}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${Buffer.from(`api:${process.env.MAILGUN_API_KEY}`).toString('base64')}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!mailgunResponse.ok) {
+        const errorText = await mailgunResponse.text();
+        console.error('[Auth Hook] Mailgun error:', errorText);
+        return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+      }
+
+      const mailgunResult = await mailgunResponse.json();
+      emailId = mailgunResult.id;
+      
+      console.log(`[Auth Hook] Email sent via Mailgun: ${emailId}`);
+    } else {
+      // Send via Resend (M10DJ)
+      const { Resend } = await import('resend');
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      const result = await resend.emails.send({
+        from: fromEmail,
+        to: recipientEmail,
+        subject,
+        html: emailContent.html,
+        text: emailContent.text,
+      });
+
+      if (result.error) {
+        console.error('[Auth Hook] Resend error:', result.error);
+        return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+      }
+
+      emailId = result.data?.id;
+      console.log(`[Auth Hook] Email sent via Resend: ${emailId}`);
     }
 
-    console.log(`[Auth Hook] Email sent successfully: ${result.data?.id}`);
     console.log(`  Type: ${email_action_type}`);
     console.log(`  To: ${recipientEmail}`);
     console.log(`  From: ${fromEmail}`);
     console.log(`  Product: ${productContext}`);
+    console.log(`  Provider: ${useMailgun ? 'Mailgun' : 'Resend'}`);
 
-    return NextResponse.json({ success: true, email_id: result.data?.id });
+    return NextResponse.json({ success: true, email_id: emailId });
 
   } catch (error: any) {
     console.error('[Auth Hook] Error:', error);
