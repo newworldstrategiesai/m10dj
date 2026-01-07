@@ -1577,7 +1577,7 @@ export function GeneralRequestsPage({
       // Only validate and get payment amount if NOT in bidding mode
       if (!shouldUseBidding) {
         amount = getPaymentAmount();
-        
+
         // For tips, allow any amount > 0 (no minimum)
         if (requestType === 'tip') {
           if (!amount || amount <= 0) {
@@ -1589,6 +1589,21 @@ export function GeneralRequestsPage({
           if (!amount || amount < minPresetAmount) {
             throw new Error(`Minimum payment is $${(minPresetAmount / 100).toFixed(2)}`);
           }
+        }
+      } else {
+        // In bidding mode, ensure a bid amount is selected
+        if (!biddingSelectedAmount || biddingSelectedAmount <= 0) {
+          throw new Error('Please select a bid amount');
+        }
+
+        // Validate bidding amount meets minimum requirements
+        const minBid = dynamicMinimumAmount || 500;
+        const winningBid = currentWinningBid || 0;
+        if (biddingSelectedAmount < minBid) {
+          throw new Error(`Minimum bid is $${(minBid / 100).toFixed(2)}`);
+        }
+        if (biddingSelectedAmount <= winningBid) {
+          throw new Error(`Your bid must be greater than the current winning bid of $${(winningBid / 100).toFixed(2)}`);
         }
       }
 
@@ -4436,20 +4451,12 @@ export function GeneralRequestsPage({
                     disabled={(() => {
                       if (submitting) return true;
                       if (currentStep >= 2) {
-                        const amount = getPaymentAmount();
-                        // In bidding mode, check against dynamic minimum bid
+                        // In bidding mode, don't disable based on amount - let validation handle it
                         if (shouldUseBidding) {
-                          const minBid = dynamicMinimumAmount || 500;
-                          const isDisabled = !amount || amount < minBid;
-                          console.log('[requests.js] Continue button check (bidding):', {
-                            amount: amount ? amount / 100 : null,
-                            minBid: minBid / 100,
-                            biddingSelectedAmount: biddingSelectedAmount ? biddingSelectedAmount / 100 : null,
-                            disabled: isDisabled
-                          });
-                          return isDisabled;
+                          return false; // Allow click, validation will show error if needed
                         }
-                        // Regular payment mode
+                        // Regular payment mode - check amount
+                        const amount = getPaymentAmount();
                         const minAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
                         return !amount || amount < minAmount;
                       }
