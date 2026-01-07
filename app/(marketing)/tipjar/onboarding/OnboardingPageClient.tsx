@@ -24,12 +24,56 @@ export default function OnboardingPageClient({
   // Wait for organization to be created if it doesn't exist
   useEffect(() => {
     async function waitForOrganization() {
-      if (initialOrganization || !user?.id) return;
+      if (initialOrganization || !user?.id) {
+        setLoading(false);
+        return;
+      }
 
       setChecking(true);
-      let attempts = 0;
-      const maxAttempts = 20; // 1 minute max
+      
+      // Step 1: Check immediately (don't wait)
+      try {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('owner_id', user.id)
+          .maybeSingle();
 
+        if (org) {
+          setOrganization(org);
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking organization:', error);
+      }
+
+      // Step 2: If not found, try to create it immediately
+      try {
+        const response = await fetch('/api/organizations/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: user.email?.split('@')[0] || 'My TipJar Page'
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.organization) {
+            setOrganization(data.organization);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error creating organization:', error);
+      }
+
+      // Step 3: If still not found, poll with shorter intervals
+      // (Organization might be created by trigger with slight delay)
+      let attempts = 0;
+      const maxAttempts = 6; // Reduced from 20 - only 3 seconds total now
       const checkInterval = setInterval(async () => {
         attempts++;
         
@@ -45,23 +89,7 @@ export default function OnboardingPageClient({
             setLoading(false);
             clearInterval(checkInterval);
           } else if (attempts >= maxAttempts) {
-            // Create organization if it doesn't exist after max attempts
-            try {
-              const response = await fetch('/api/organizations/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  name: user.email?.split('@')[0] || 'My TipJar Page'
-                })
-              });
-
-              if (response.ok) {
-                const data = await response.json();
-                setOrganization(data.organization);
-              }
-            } catch (error) {
-              console.error('Error creating organization:', error);
-            }
+            // Give up after max attempts - show wizard anyway (it can handle no org)
             setLoading(false);
             clearInterval(checkInterval);
           }
@@ -72,7 +100,7 @@ export default function OnboardingPageClient({
             clearInterval(checkInterval);
           }
         }
-      }, 3000);
+      }, 500); // 500ms intervals instead of 3000ms
 
       return () => clearInterval(checkInterval);
     }
@@ -95,4 +123,3 @@ export default function OnboardingPageClient({
 
   return <TipJarOnboardingWizard user={user} organization={organization} />;
 }
-
