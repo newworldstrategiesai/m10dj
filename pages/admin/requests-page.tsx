@@ -63,6 +63,7 @@ export default function RequestsPageSettings() {
   const supabase = createClientComponentClient();
   const [user, setUser] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
+  const [originalSlug, setOriginalSlug] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -78,6 +79,7 @@ export default function RequestsPageSettings() {
   const [minimumAmount, setMinimumAmount] = useState(1000); // In cents, default $10
   const [presetAmounts, setPresetAmounts] = useState([1000, 1500, 2000, 2500]); // In cents
   const [amountsSortOrder, setAmountsSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [defaultPresetAmount, setDefaultPresetAmount] = useState<number | null>(null); // In cents, null means use max preset
   
   // Priority placement fees
   const [fastTrackFee, setFastTrackFee] = useState(1000); // In cents, default $10
@@ -147,6 +149,24 @@ export default function RequestsPageSettings() {
   // Show artist name over video header toggle
   const [showArtistNameOverVideo, setShowArtistNameOverVideo] = useState(true);
   
+  // Artist name font
+  const [artistNameFont, setArtistNameFont] = useState('Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
+  
+  // Artist name text transform
+  const [artistNameTextTransform, setArtistNameTextTransform] = useState<'uppercase' | 'lowercase' | 'none'>('uppercase');
+  
+  // Artist name stroke (outline) controls
+  const [artistNameStrokeEnabled, setArtistNameStrokeEnabled] = useState(false);
+  const [artistNameStrokeWidth, setArtistNameStrokeWidth] = useState(2);
+  const [artistNameStrokeColor, setArtistNameStrokeColor] = useState('#000000');
+  
+  // Artist name drop shadow controls
+  const [artistNameShadowEnabled, setArtistNameShadowEnabled] = useState(true);
+  const [artistNameShadowXOffset, setArtistNameShadowXOffset] = useState(3);
+  const [artistNameShadowYOffset, setArtistNameShadowYOffset] = useState(3);
+  const [artistNameShadowBlur, setArtistNameShadowBlur] = useState(6);
+  const [artistNameShadowColor, setArtistNameShadowColor] = useState('rgba(0, 0, 0, 0.8)');
+  
   // Feature toggles
   const [featureToggles, setFeatureToggles] = useState({
     requests_show_audio_upload: true,
@@ -214,6 +234,7 @@ export default function RequestsPageSettings() {
 
       if (org) {
         setOrganization(org);
+        setOriginalSlug(org.slug || ''); // Store original slug for comparison
         setCoverPhotos({
           requests_cover_photo_url: org.requests_cover_photo_url || '',
           requests_artist_photo_url: org.requests_artist_photo_url || '',
@@ -223,6 +244,24 @@ export default function RequestsPageSettings() {
         
         // Set whether to show artist name over video (defaults to true for new users)
         setShowArtistNameOverVideo(org.requests_show_artist_name_over_video !== false);
+        
+        // Set artist name font
+        setArtistNameFont(org.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
+        
+        // Set artist name text transform
+        setArtistNameTextTransform(org.requests_artist_name_text_transform || 'uppercase');
+        
+        // Set artist name stroke settings
+        setArtistNameStrokeEnabled(org.requests_artist_name_stroke_enabled || false);
+        setArtistNameStrokeWidth(org.requests_artist_name_stroke_width || 2);
+        setArtistNameStrokeColor(org.requests_artist_name_stroke_color || '#000000');
+        
+        // Set artist name shadow settings
+        setArtistNameShadowEnabled(org.requests_artist_name_shadow_enabled !== false); // Default to true
+        setArtistNameShadowXOffset(org.requests_artist_name_shadow_x_offset || 3);
+        setArtistNameShadowYOffset(org.requests_artist_name_shadow_y_offset || 3);
+        setArtistNameShadowBlur(org.requests_artist_name_shadow_blur || 6);
+        setArtistNameShadowColor(org.requests_artist_name_shadow_color || 'rgba(0, 0, 0, 0.8)');
         
         // Set custom header logo settings
         setHeaderLogoUrl(org.requests_header_logo_url || '');
@@ -253,6 +292,7 @@ export default function RequestsPageSettings() {
         setMinimumAmount(org.requests_minimum_amount || 1000);
         setPresetAmounts(org.requests_preset_amounts || [1000, 1500, 2000, 2500]);
         setAmountsSortOrder(org.requests_amounts_sort_order || 'desc');
+        setDefaultPresetAmount(org.requests_default_preset_amount || null);
         
         // Set priority placement fees
         setFastTrackFee(org.requests_fast_track_fee || 1000);
@@ -370,49 +410,98 @@ export default function RequestsPageSettings() {
           label: link.label.trim(),
         }));
 
+      // Prepare update data
+      const updateData: any = {
+        // Cover photos and video
+        requests_cover_photo_url: coverPhotos.requests_cover_photo_url || null,
+        requests_artist_photo_url: coverPhotos.requests_artist_photo_url || null,
+        requests_venue_photo_url: coverPhotos.requests_venue_photo_url || null,
+        requests_header_video_url: coverPhotos.requests_header_video_url || null,
+        // Show artist name over video setting
+        requests_show_artist_name_over_video: showArtistNameOverVideo,
+        // Artist name font
+        requests_artist_name_font: artistNameFont || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
+        // Artist name text transform
+        requests_artist_name_text_transform: artistNameTextTransform || 'uppercase',
+        // Artist name stroke settings
+        requests_artist_name_stroke_enabled: artistNameStrokeEnabled,
+        requests_artist_name_stroke_width: artistNameStrokeWidth || 2,
+        requests_artist_name_stroke_color: artistNameStrokeColor || '#000000',
+        // Artist name shadow settings
+        requests_artist_name_shadow_enabled: artistNameShadowEnabled,
+        requests_artist_name_shadow_x_offset: artistNameShadowXOffset || 3,
+        requests_artist_name_shadow_y_offset: artistNameShadowYOffset || 3,
+        requests_artist_name_shadow_blur: artistNameShadowBlur || 6,
+        requests_artist_name_shadow_color: artistNameShadowColor || 'rgba(0, 0, 0, 0.8)',
+        // Custom header logo (only save if user can customize)
+        requests_header_logo_url: canCustomizeHeaderLogo ? (headerLogoUrl || null) : null,
+        // Accent color (available to all users)
+        requests_accent_color: accentColor || '#fcba00',
+        // Theme mode
+        requests_theme_mode: themeMode,
+        // Button style
+        requests_button_style: buttonStyle,
+        // Social links
+        social_links: validSocialLinks,
+        // Bidding settings
+        requests_bidding_enabled: biddingEnabled,
+        requests_bidding_minimum_bid: minimumBid,
+        requests_bidding_starting_bid: startingBid,
+        // Payment amount settings
+        requests_minimum_amount: minimumAmount,
+        requests_preset_amounts: presetAmounts,
+        requests_amounts_sort_order: amountsSortOrder,
+        requests_default_preset_amount: defaultPresetAmount,
+        // Priority placement fees
+        requests_fast_track_fee: fastTrackFee,
+        requests_next_fee: nextFee,
+        // Payment usernames for tips section
+        requests_cashapp_tag: cashAppTag || null,
+        requests_venmo_username: venmoUsername || null,
+        // Header fields
+        ...headerFields,
+        // Label fields
+        ...labelFields,
+        // Feature toggles
+        ...featureToggles,
+        // SEO fields
+        ...seoFields,
+      };
+
+      // Update slug if it changed (validate and update via API if needed)
+      const currentSlug = organization?.slug || '';
+      const normalizedSlug = currentSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+      
+      if (normalizedSlug && normalizedSlug !== originalSlug && normalizedSlug.length >= 3) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const response = await fetch('/api/organizations/update-slug', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify({ slug: normalizedSlug })
+          });
+
+          if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || 'Failed to update URL slug');
+          }
+
+          // Update original slug to new value
+          setOriginalSlug(normalizedSlug);
+          setOrganization((prev: any) => prev ? { ...prev, slug: normalizedSlug } : prev);
+        } catch (slugError: any) {
+          throw new Error(`Failed to update URL slug: ${slugError.message}`);
+        }
+      } else if (normalizedSlug && normalizedSlug.length < 3) {
+        throw new Error('URL slug must be at least 3 characters long');
+      }
+
       const { error: updateError } = await supabase
         .from('organizations')
-        .update({
-          // Cover photos and video
-          requests_cover_photo_url: coverPhotos.requests_cover_photo_url || null,
-          requests_artist_photo_url: coverPhotos.requests_artist_photo_url || null,
-          requests_venue_photo_url: coverPhotos.requests_venue_photo_url || null,
-          requests_header_video_url: coverPhotos.requests_header_video_url || null,
-          // Show artist name over video setting
-          requests_show_artist_name_over_video: showArtistNameOverVideo,
-          // Custom header logo (only save if user can customize)
-          requests_header_logo_url: canCustomizeHeaderLogo ? (headerLogoUrl || null) : null,
-          // Accent color (available to all users)
-          requests_accent_color: accentColor || '#fcba00',
-          // Theme mode
-          requests_theme_mode: themeMode,
-          // Button style
-          requests_button_style: buttonStyle,
-          // Social links
-          social_links: validSocialLinks,
-          // Bidding settings
-          requests_bidding_enabled: biddingEnabled,
-          requests_bidding_minimum_bid: minimumBid,
-          requests_bidding_starting_bid: startingBid,
-          // Payment amount settings
-          requests_minimum_amount: minimumAmount,
-          requests_preset_amounts: presetAmounts,
-          requests_amounts_sort_order: amountsSortOrder,
-          // Priority placement fees
-          requests_fast_track_fee: fastTrackFee,
-          requests_next_fee: nextFee,
-          // Payment usernames for tips section
-          requests_cashapp_tag: cashAppTag || null,
-          requests_venmo_username: venmoUsername || null,
-          // Header fields
-          ...headerFields,
-          // Label fields
-          ...labelFields,
-          // Feature toggles
-          ...featureToggles,
-          // SEO fields
-          ...seoFields,
-        })
+        .update(updateData)
         .eq('id', organization.id);
 
       if (updateError) {
@@ -1359,6 +1448,55 @@ export default function RequestsPageSettings() {
                       </div>
                     </div>
 
+                    {/* Default Selected Button */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Default Selected Button
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        Which amount button should be pre-selected when the page loads
+                      </p>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="defaultPresetAmount"
+                            checked={defaultPresetAmount === null}
+                            onChange={() => {
+                              setDefaultPresetAmount(null);
+                              setError(null);
+                              setSuccess(false);
+                            }}
+                            className="w-4 h-4 text-[#fcba00] focus:ring-[#fcba00] focus:ring-offset-0"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            Auto (Highest Amount)
+                          </span>
+                        </label>
+                        {presetAmounts.map((amount, index) => (
+                          <label key={index} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="defaultPresetAmount"
+                              checked={defaultPresetAmount === amount}
+                              onChange={() => {
+                                setDefaultPresetAmount(amount);
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              className="w-4 h-4 text-[#fcba00] focus:ring-[#fcba00] focus:ring-offset-0"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              ${(amount / 100).toFixed(0)}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                        💡 &quot;Auto&quot; will select the highest preset amount by default
+                      </p>
+                    </div>
+
                     {/* Preview */}
                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                       <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -1682,6 +1820,299 @@ export default function RequestsPageSettings() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                         The name displayed prominently at the top of your requests page
                       </p>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="artist_name_font" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Display Name Font
+                      </Label>
+                      <select
+                        id="artist_name_font"
+                        value={artistNameFont}
+                        onChange={(e) => {
+                          setArtistNameFont(e.target.value);
+                          setError(null);
+                          setSuccess(false);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                      >
+                        <option value='Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif'>Impact (Bold)</option>
+                        <option value='"Arial Black", Arial, sans-serif'>Arial Black</option>
+                        <option value='"Helvetica Neue", Helvetica, Arial, sans-serif'>Helvetica Neue</option>
+                        <option value='"Oswald", sans-serif'>Oswald (Condensed)</option>
+                        <option value='"Montserrat", sans-serif'>Montserrat</option>
+                        <option value='"Poppins", sans-serif'>Poppins</option>
+                        <option value='"Roboto", sans-serif'>Roboto</option>
+                        <option value='"Bebas Neue", sans-serif'>Bebas Neue (Bold)</option>
+                        <option value='"Anton", sans-serif'>Anton (Condensed)</option>
+                        <option value='"Raleway", sans-serif'>Raleway</option>
+                        <option value='"Playfair Display", serif'>Playfair Display (Elegant)</option>
+                        <option value='"Lora", serif'>Lora (Serif)</option>
+                        <option value='"Courier New", monospace'>Courier New (Monospace)</option>
+                      </select>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        Choose the font style for your display name
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Display Name Casing
+                      </Label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setArtistNameTextTransform('uppercase');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                            artistNameTextTransform === 'uppercase'
+                              ? 'bg-[#fcba00] text-black shadow-sm'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          ALL CAPS
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setArtistNameTextTransform('lowercase');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                            artistNameTextTransform === 'lowercase'
+                              ? 'bg-[#fcba00] text-black shadow-sm'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          all lowercase
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setArtistNameTextTransform('none');
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                            artistNameTextTransform === 'none'
+                              ? 'bg-[#fcba00] text-black shadow-sm'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          Normal Case
+                        </button>
+                      </div>
+                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Preview:</p>
+                        <h1 
+                          className="font-black text-gray-900 dark:text-white tracking-tight text-3xl"
+                          style={{ 
+                            fontFamily: artistNameFont,
+                            textTransform: artistNameTextTransform,
+                            WebkitTextStroke: artistNameStrokeEnabled ? `${artistNameStrokeWidth}px ${artistNameStrokeColor}` : 'none',
+                            WebkitTextFillColor: artistNameStrokeEnabled ? 'transparent' : undefined,
+                            textShadow: artistNameShadowEnabled 
+                              ? `${artistNameShadowXOffset}px ${artistNameShadowYOffset}px ${artistNameShadowBlur}px ${artistNameShadowColor}`
+                              : 'none'
+                          } as React.CSSProperties}
+                        >
+                          {(() => {
+                            const previewText = headerFields.requests_header_artist_name || organization?.name || 'Your Display Name';
+                            // Apply the transform for preview
+                            if (artistNameTextTransform === 'uppercase') {
+                              return previewText.toUpperCase();
+                            } else if (artistNameTextTransform === 'lowercase') {
+                              return previewText.toLowerCase();
+                            }
+                            return previewText;
+                          })()}
+                        </h1>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        Choose how the display name is cased
+                      </p>
+                    </div>
+                    
+                    {/* Stroke (Outline) Controls */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Text Stroke (Outline)
+                        </Label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={artistNameStrokeEnabled}
+                            onChange={(e) => {
+                              setArtistNameStrokeEnabled(e.target.checked);
+                              setError(null);
+                              setSuccess(false);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#fcba00] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#fcba00]"></div>
+                        </label>
+                      </div>
+                      {artistNameStrokeEnabled && (
+                        <div className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                          <div>
+                            <Label htmlFor="stroke_width" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              Stroke Width: {artistNameStrokeWidth}px
+                            </Label>
+                            <input
+                              id="stroke_width"
+                              type="range"
+                              min="1"
+                              max="10"
+                              value={artistNameStrokeWidth}
+                              onChange={(e) => {
+                                setArtistNameStrokeWidth(parseInt(e.target.value));
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="stroke_color" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              Stroke Color
+                            </Label>
+                            <div className="flex items-center gap-3">
+                              <input
+                                id="stroke_color"
+                                type="color"
+                                value={artistNameStrokeColor}
+                                onChange={(e) => {
+                                  setArtistNameStrokeColor(e.target.value);
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                              />
+                              <input
+                                type="text"
+                                value={artistNameStrokeColor}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                                    setArtistNameStrokeColor(value);
+                                    setError(null);
+                                    setSuccess(false);
+                                  }
+                                }}
+                                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                                placeholder="#000000"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Drop Shadow Controls */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Drop Shadow
+                        </Label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={artistNameShadowEnabled}
+                            onChange={(e) => {
+                              setArtistNameShadowEnabled(e.target.checked);
+                              setError(null);
+                              setSuccess(false);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#fcba00] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#fcba00]"></div>
+                        </label>
+                      </div>
+                      {artistNameShadowEnabled && (
+                        <div className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor="shadow_x" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                X Offset: {artistNameShadowXOffset}px
+                              </Label>
+                              <input
+                                id="shadow_x"
+                                type="range"
+                                min="-20"
+                                max="20"
+                                value={artistNameShadowXOffset}
+                                onChange={(e) => {
+                                  setArtistNameShadowXOffset(parseInt(e.target.value));
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="shadow_y" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Y Offset: {artistNameShadowYOffset}px
+                              </Label>
+                              <input
+                                id="shadow_y"
+                                type="range"
+                                min="-20"
+                                max="20"
+                                value={artistNameShadowYOffset}
+                                onChange={(e) => {
+                                  setArtistNameShadowYOffset(parseInt(e.target.value));
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Label htmlFor="shadow_blur" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              Blur: {artistNameShadowBlur}px
+                            </Label>
+                            <input
+                              id="shadow_blur"
+                              type="range"
+                              min="0"
+                              max="30"
+                              value={artistNameShadowBlur}
+                              onChange={(e) => {
+                                setArtistNameShadowBlur(parseInt(e.target.value));
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="shadow_color" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              Shadow Color
+                            </Label>
+                            <input
+                              id="shadow_color"
+                              type="text"
+                              value={artistNameShadowColor}
+                              onChange={(e) => {
+                                setArtistNameShadowColor(e.target.value);
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                              placeholder="rgba(0, 0, 0, 0.8)"
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Use rgba() format, e.g., rgba(0, 0, 0, 0.8)
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     <div>
@@ -2082,41 +2513,82 @@ export default function RequestsPageSettings() {
                       </div>
                     </div>
                   ) : (
-                    // Desktop browser frame
-                    <div 
-                      className="relative bg-gray-700 rounded-lg shadow-2xl overflow-hidden"
-                      style={{ width: '100%', maxWidth: '380px', height: '400px' }}
-                    >
-                      {/* Browser chrome */}
-                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-800 border-b border-gray-600">
-                        <div className="flex gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                          <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-                          <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                        </div>
-                        <div className="flex-1 mx-2">
-                          <div className="bg-gray-600 rounded px-2 py-0.5 text-[10px] text-gray-400 truncate">
-                            tipjar.live/{organization?.slug || 'your-page'}
+                    // Desktop: iPhone frame with animated background
+                    <>
+                      <style dangerouslySetInnerHTML={{ __html: `
+                        @keyframes gradientShift {
+                          0% { background-position: 0% 50%; }
+                          50% { background-position: 100% 50%; }
+                          100% { background-position: 0% 50%; }
+                        }
+                        @keyframes float {
+                          0%, 100% { transform: translateY(0px); }
+                          50% { transform: translateY(-10px); }
+                        }
+                        .desktop-preview-bg {
+                          background: linear-gradient(135deg, ${accentColor}15 0%, ${accentColor}05 25%, transparent 50%, ${accentColor}05 75%, ${accentColor}15 100%);
+                          background-size: 200% 200%;
+                          animation: gradientShift 8s ease infinite;
+                        }
+                        .floating-phone {
+                          animation: float 3s ease-in-out infinite;
+                        }
+                      `}} />
+                      <div 
+                        className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-lg desktop-preview-bg"
+                        style={{ minHeight: '580px' }}
+                      >
+                        {/* Floating iPhone frame */}
+                        <div className="relative z-10 floating-phone">
+                          {/* iPhone frame */}
+                          <div 
+                            className="relative bg-gray-900 rounded-[40px] p-2 shadow-2xl"
+                            style={{ 
+                              width: '280px',
+                              height: '570px',
+                              border: '4px solid #1a1a1a',
+                              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 0, 0, 0.3)'
+                            }}
+                          >
+                            {/* Dynamic Island / Notch */}
+                            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-10" />
+                            
+                            {/* Screen */}
+                            <div 
+                              className="relative bg-black rounded-[32px] overflow-hidden"
+                              style={{ width: '100%', height: '100%' }}
+                            >
+                              <iframe
+                                id="live-preview-iframe"
+                                src={`/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
+                                className="border-0 bg-black"
+                                style={{ 
+                                  transform: 'scale(0.73)',
+                                  transformOrigin: 'top left',
+                                  width: '375px',
+                                  height: '812px',
+                                  borderRadius: '32px'
+                                }}
+                                title="Live Preview"
+                              />
+                            </div>
+                            
+                            {/* Home indicator */}
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-24 h-1 bg-gray-600 rounded-full" />
                           </div>
                         </div>
-                      </div>
-                      
-                      {/* Browser content */}
-                      <div className="relative bg-black overflow-hidden" style={{ height: 'calc(100% - 32px)' }}>
-                        <iframe
-                          id="live-preview-iframe"
-                          src={`/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
-                          className="border-0 bg-black"
-                          style={{ 
-                            transform: 'scale(0.296)',
-                            transformOrigin: 'top left',
-                            width: '1280px',
-                            height: '1200px'
+                        
+                        {/* Subtle glow effect behind phone */}
+                        <div 
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            background: `radial-gradient(circle at center, ${accentColor}20 0%, transparent 70%)`,
+                            filter: 'blur(40px)',
+                            zIndex: 1
                           }}
-                          title="Live Preview"
                         />
                       </div>
-                    </div>
+                    </>
                   )}
                 </div>
                 

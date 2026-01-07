@@ -252,7 +252,14 @@ export default function OrganizationRequestsPage() {
         </Head>
       )}
       <Head>
-        <title>{organization?.requests_page_title || `Request a Song or Shoutout | ${organization?.name || 'TipJar.Live'}`}</title>
+        <title>
+          {organization?.requests_page_title || 
+            (typeof window !== 'undefined' && (window.location.hostname === 'tipjar.live' || window.location.hostname === 'www.tipjar.live')
+              ? `TipJar.Live | ${organization?.requests_header_artist_name || organization?.name || 'Requests'}`
+              : `Request a Song or Shoutout | ${organization?.name || 'TipJar.Live'}`
+            )
+          }
+        </title>
         <meta
           name="description"
           content={

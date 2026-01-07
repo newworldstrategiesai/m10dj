@@ -350,6 +350,10 @@ export function GeneralRequestsPage({
   const handleRequestTypeChange = (newType) => {
     if (!allowedRequestTypes || allowedRequestTypes.includes(newType)) {
       setRequestType(newType);
+      // When switching to "Tip Me", default to custom amount input
+      if (newType === 'tip') {
+        setAmountType('custom');
+      }
     }
   };
   const [formData, setFormData] = useState({
@@ -460,6 +464,7 @@ export function GeneralRequestsPage({
     nextFee,
     minimumAmount,
     presetAmounts,
+    defaultPresetAmount,
     bundleDiscountEnabled,
     bundleDiscount: bundleDiscountPercent,
     loading: settingsLoading
@@ -694,15 +699,28 @@ export function GeneralRequestsPage({
     return () => clearTimeout(timer);
   }, []);
 
-  // Set initial preset amount when settings load - default to max (first) amount
-  // Note: presetAmounts array is now reversed in PaymentAmountSelector, so max is first
+  // Set initial preset amount when settings load
+  // Use organization's default preset amount if set, otherwise use max preset amount
   useEffect(() => {
     if (presetAmounts.length > 0 && presetAmount === CROWD_REQUEST_CONSTANTS.DEFAULT_PRESET_AMOUNT) {
-      // Set to the maximum preset amount (first one in array, since array is reversed in UI)
-      const maxPreset = presetAmounts[presetAmounts.length - 1];
-      setPresetAmount(maxPreset.value);
+      // Check if organization has a default preset amount set
+      if (defaultPresetAmount !== null && defaultPresetAmount !== undefined) {
+        // Verify the default preset amount exists in the preset amounts array
+        const defaultExists = presetAmounts.some(p => p.value === defaultPresetAmount);
+        if (defaultExists) {
+          setPresetAmount(defaultPresetAmount);
+        } else {
+          // If default doesn't exist in presets, fall back to max
+          const maxPreset = presetAmounts[presetAmounts.length - 1];
+          setPresetAmount(maxPreset.value);
+        }
+      } else {
+        // No default set, use the maximum preset amount (last one in array, since array is reversed in UI)
+        const maxPreset = presetAmounts[presetAmounts.length - 1];
+        setPresetAmount(maxPreset.value);
+      }
     }
-  }, [presetAmounts, presetAmount]);
+  }, [presetAmounts, presetAmount, defaultPresetAmount]);
 
   // Use song extraction hook
   const { extractingSong, extractionError, extractedData, extractSongInfo: extractSongInfoHook } = useSongExtraction();
@@ -1785,7 +1803,20 @@ export function GeneralRequestsPage({
   };
 
   const ogImageUrl = getAbsoluteImageUrl(coverPhoto);
-  const pageTitle = organizationData?.requests_page_title || 'Request a Song or Shoutout | M10 DJ Company';
+  
+  // Determine default page title based on domain and organization
+  const getDefaultPageTitle = () => {
+    if (isTipJarDomain) {
+      // For TipJar pages, use "TipJar.Live | Display Name" format
+      const displayName = organizationData?.requests_header_artist_name || organizationData?.name || 'Requests';
+      return `TipJar.Live | ${displayName}`;
+    } else {
+      // For M10 DJ Company pages, use M10 branding
+      return 'Request a Song or Shoutout | M10 DJ Company';
+    }
+  };
+  
+  const pageTitle = organizationData?.requests_page_title || getDefaultPageTitle();
   const pageDescription = organizationData?.requests_page_description || 
     (organizationData?.requests_header_artist_name 
       ? `Request a song or shoutout for ${organizationData.requests_header_artist_name}`
@@ -1794,10 +1825,42 @@ export function GeneralRequestsPage({
     ? window.location.href 
     : `${siteUrl}/requests`;
 
+  // Map font names to Google Fonts links
+  const getGoogleFontLink = (fontFamily) => {
+    const fontMap = {
+      '"Oswald", sans-serif': 'Oswald:wght@400;500;600;700',
+      '"Montserrat", sans-serif': 'Montserrat:wght@400;500;600;700;800;900',
+      '"Poppins", sans-serif': 'Poppins:wght@400;500;600;700;800;900',
+      '"Roboto", sans-serif': 'Roboto:wght@400;500;700;900',
+      '"Bebas Neue", sans-serif': 'Bebas+Neue',
+      '"Anton", sans-serif': 'Anton',
+      '"Raleway", sans-serif': 'Raleway:wght@400;500;600;700;800;900',
+      '"Playfair Display", serif': 'Playfair+Display:wght@400;500;600;700;800;900',
+      '"Lora", serif': 'Lora:wght@400;500;600;700',
+    };
+    
+    const selectedFont = organizationData?.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
+    const fontKey = Object.keys(fontMap).find(key => selectedFont.includes(key.replace(/"/g, '')));
+    
+    if (fontKey) {
+      return `https://fonts.googleapis.com/css2?family=${fontMap[fontKey]}&display=swap`;
+    }
+    return null;
+  };
+
+  const googleFontLink = getGoogleFontLink(organizationData?.requests_artist_name_font);
+
   return (
     <>
       <Head>
         <title>{pageTitle}</title>
+        {googleFontLink && (
+          <>
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+            <link href={googleFontLink} rel="stylesheet" />
+          </>
+        )}
         <meta name="description" content={pageDescription} />
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
@@ -1812,7 +1875,7 @@ export function GeneralRequestsPage({
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content={organizationData?.requests_header_artist_name || 'Request a Song or Shoutout'} />
-        <meta property="og:site_name" content={organizationName || 'M10 DJ Company'} />
+        <meta property="og:site_name" content={isTipJarDomain ? (organizationData?.requests_header_artist_name || organizationData?.name || 'TipJar.Live') : (organizationName || 'M10 DJ Company')} />
         <meta property="og:locale" content="en_US" />
         
         {/* Twitter Card */}
@@ -2177,7 +2240,7 @@ export function GeneralRequestsPage({
         {/* Desktop Video Sidebar - Fixed position, stays stationary while content scrolls */}
         {/* Shows video only if no custom cover photo is set, otherwise shows the cover photo */}
         {!embedMode && !showPaymentMethods && (
-          <div className="hidden md:block md:fixed md:left-0 md:top-0 md:w-[400px] lg:w-[450px] xl:w-[500px] md:h-screen md:overflow-hidden bg-black z-40">
+          <div className="hidden md:block desktop-video-sidebar md:fixed md:left-0 md:top-0 md:w-[400px] lg:w-[450px] xl:w-[500px] md:h-screen md:overflow-hidden bg-black z-40">
             {showVideo && !videoFailed ? (
               <video
                 ref={desktopVideoRef}
@@ -2206,14 +2269,33 @@ export function GeneralRequestsPage({
                 {/* Artist name as centered watermark */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div 
-                    className="text-white/[0.08] text-[12rem] font-black uppercase tracking-wider select-none pointer-events-none"
+                    className="text-white/[0.08] text-[12rem] font-black tracking-wider select-none pointer-events-none"
                     style={{
-                      fontFamily: 'Impact, "Arial Black", sans-serif',
+                      fontFamily: organizationData?.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
+                      textTransform: organizationData?.requests_artist_name_text_transform || 'uppercase',
+                      WebkitTextStroke: organizationData?.requests_artist_name_stroke_enabled 
+                        ? `${organizationData.requests_artist_name_stroke_width || 2}px ${organizationData.requests_artist_name_stroke_color || '#000000'}` 
+                        : 'none',
+                      WebkitTextFillColor: organizationData?.requests_artist_name_stroke_enabled ? 'transparent' : undefined,
+                      textShadow: organizationData?.requests_artist_name_shadow_enabled !== false
+                        ? `${organizationData?.requests_artist_name_shadow_x_offset || 3}px ${organizationData?.requests_artist_name_shadow_y_offset || 3}px ${organizationData?.requests_artist_name_shadow_blur || 6}px ${organizationData?.requests_artist_name_shadow_color || 'rgba(0, 0, 0, 0.8)'}`
+                        : 'none',
                       transform: 'rotate(-12deg) scale(1.5)',
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {organizationData?.requests_header_artist_name || organizationData?.name || 'TipJar'}
+                    {(() => {
+                      const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'TipJar';
+                      const textTransform = organizationData?.requests_artist_name_text_transform || 'uppercase';
+                      
+                      // Apply text transform
+                      if (textTransform === 'uppercase') {
+                        return artistName.toUpperCase();
+                      } else if (textTransform === 'lowercase') {
+                        return artistName.toLowerCase();
+                      }
+                      return artistName; // Normal case
+                    })()}
                   </div>
                 </div>
               </div>
@@ -2329,7 +2411,162 @@ export function GeneralRequestsPage({
         )}
         
         {/* Main Content Area - Add left margin on desktop to account for fixed video sidebar */}
-        <div className="flex-1 min-w-0 relative md:ml-[400px] lg:ml-[450px] xl:ml-[500px]">
+        <div className="flex-1 min-w-0 relative md:ml-[400px] lg:ml-[450px] xl:ml-[500px] desktop-content-wrapper">
+          {/* Desktop iPhone Frame Wrapper with Animated Background */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes gradientShiftDesktop {
+              0% { background-position: 0% 50%; }
+              50% { background-position: 100% 50%; }
+              100% { background-position: 0% 50%; }
+            }
+            @keyframes floatDesktop {
+              0%, 100% { transform: translateY(0px); }
+              50% { transform: translateY(-8px); }
+            }
+            .desktop-iphone-wrapper {
+              display: none;
+            }
+            @media (min-width: 768px) {
+              /* Hide video sidebar when showing iPhone frame view */
+              .desktop-video-sidebar {
+                display: none !important;
+              }
+              
+              .desktop-iphone-wrapper {
+                display: flex;
+                position: fixed;
+                inset: 0;
+                align-items: center;
+                justify-content: center;
+                pointer-events: none;
+                z-index: 50;
+              }
+              .desktop-iphone-bg {
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(135deg, var(--accent-color, #fcba00)15 0%, var(--accent-color, #fcba00)05 25%, transparent 50%, var(--accent-color, #fcba00)05 75%, var(--accent-color, #fcba00)15 100%);
+                background-size: 200% 200%;
+                animation: gradientShiftDesktop 8s ease infinite;
+              }
+              .desktop-iphone-frame {
+                position: relative;
+                width: 420px;
+                height: 855px;
+                background: #1a1a1a;
+                border-radius: 60px;
+                padding: 8px;
+                border: 6px solid #0a0a0a;
+                box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 50px rgba(0, 0, 0, 0.4);
+                animation: floatDesktop 4s ease-in-out infinite;
+                z-index: 55;
+              }
+              .desktop-iphone-screen {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                background: #000;
+                border-radius: 48px;
+                overflow: hidden;
+                /* Clip content to screen boundaries */
+                clip-path: inset(0);
+              }
+              /* Create a positioning reference for content */
+              .desktop-iphone-screen::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 404px;
+                height: 839px;
+                pointer-events: none;
+                z-index: 1;
+              }
+              /* Position content inside iPhone frame - match admin preview exactly */
+              /* Use more specific selector to override any conflicting styles */
+              .requests-page-container > div.desktop-content-wrapper,
+              .requests-page-container > div.flex-1 {
+                margin-left: 0 !important;
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+                position: fixed !important;
+                /* Position at iPhone screen top-left corner */
+                /* iPhone frame: 420px x 855px, centered at 50vh 50vw */
+                /* Frame top-left: 50vh - 427.5px, 50vw - 210px */
+                /* Screen (with 8px padding): top = 50vh - 427.5px + 8px = 50vh - 419.5px */
+                /* Screen left = 50vw - 210px + 8px = 50vw - 202px */
+                top: calc(50vh - 419.5px) !important;
+                left: calc(50vw - 202px) !important;
+                transform: scale(0.73) !important;
+                transform-origin: top left !important;
+                width: 375px !important;
+                max-width: 375px !important;
+                height: 812px !important;
+                max-height: 812px !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                padding: 0 !important;
+                z-index: 60 !important;
+                pointer-events: auto !important;
+                border-radius: 0 !important;
+                background: #000 !important;
+                /* Ensure no other positioning interferes */
+                bottom: auto !important;
+                right: auto !important;
+                /* Reset any transforms from parent */
+                will-change: transform !important;
+                /* Clip content to iPhone screen boundaries */
+                clip-path: inset(0) !important;
+                contain: layout style paint !important;
+              }
+              /* Ensure content fits within iPhone screen */
+              .requests-page-container > div.flex-1 > * {
+                width: 100% !important;
+                max-width: 100% !important;
+                position: relative;
+                z-index: 60;
+                pointer-events: auto;
+              }
+            }
+          `}} />
+          <div className="desktop-iphone-wrapper">
+            <div className="desktop-iphone-bg" />
+            <div className="desktop-iphone-frame">
+              <div className="desktop-iphone-screen">
+                {/* Dynamic Island / Notch */}
+                <div style={{
+                  position: 'absolute',
+                  top: '10px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '140px',
+                  height: '35px',
+                  background: '#000',
+                  borderRadius: '20px',
+                  zIndex: 20
+                }} />
+              </div>
+              {/* Home indicator */}
+              <div style={{
+                position: 'absolute',
+                bottom: '10px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '120px',
+                height: '4px',
+                background: '#666',
+                borderRadius: '4px'
+              }} />
+            </div>
+            {/* Subtle glow effect behind phone */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: `radial-gradient(circle at center, var(--accent-color, #fcba00)20 0%, transparent 70%)`,
+              filter: 'blur(60px)',
+              zIndex: 5,
+              pointerEvents: 'none'
+            }} />
+          </div>
         {/* Apply custom branding styles */}
         {customBranding?.whiteLabelEnabled && (
           <style jsx global>{`
@@ -2449,7 +2686,7 @@ export function GeneralRequestsPage({
                   
                   return (
                     <h1 
-                      className={`font-black text-white drop-shadow-2xl uppercase tracking-tight ${
+                      className={`font-black text-white tracking-tight ${
                         minimalHeader
                           ? 'text-xl sm:text-2xl mb-1'
                           : shouldHideName
@@ -2457,21 +2694,38 @@ export function GeneralRequestsPage({
                             : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-2 sm:mb-4'
                       }`}
                       style={{
-                        fontFamily: 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
+                        fontFamily: organizationData?.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
+                        textTransform: organizationData?.requests_artist_name_text_transform || 'uppercase',
                         letterSpacing: '0.05em',
-                        textShadow: '3px 3px 6px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.5)'
+                        WebkitTextStroke: organizationData?.requests_artist_name_stroke_enabled 
+                          ? `${organizationData.requests_artist_name_stroke_width || 2}px ${organizationData.requests_artist_name_stroke_color || '#000000'}` 
+                          : 'none',
+                        WebkitTextFillColor: organizationData?.requests_artist_name_stroke_enabled ? 'transparent' : undefined,
+                        textShadow: organizationData?.requests_artist_name_shadow_enabled !== false
+                          ? `${organizationData?.requests_artist_name_shadow_x_offset || 3}px ${organizationData?.requests_artist_name_shadow_y_offset || 3}px ${organizationData?.requests_artist_name_shadow_blur || 6}px ${organizationData?.requests_artist_name_shadow_color || 'rgba(0, 0, 0, 0.8)'}`
+                          : 'none'
                       }}
                     >
                       {(() => {
                         const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'DJ';
+                        const textTransform = organizationData?.requests_artist_name_text_transform || 'uppercase';
+                        
                         console.log('🎨 Rendering artist name:', artistName, 'from organizationData:', {
                           requests_header_artist_name: organizationData?.requests_header_artist_name,
                           name: organizationData?.name,
+                          textTransform,
                           showVideo,
                           showArtistNameOverVideo,
                           shouldHideName
                         });
-                        return artistName.toUpperCase();
+                        
+                        // Apply text transform
+                        if (textTransform === 'uppercase') {
+                          return artistName.toUpperCase();
+                        } else if (textTransform === 'lowercase') {
+                          return artistName.toLowerCase();
+                        }
+                        return artistName; // Normal case
                       })()}
                     </h1>
                   );

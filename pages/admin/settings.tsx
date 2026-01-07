@@ -29,6 +29,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
 import Link from 'next/link';
@@ -42,6 +50,10 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [organization, setOrganization] = useState<any>(null);
+  const [organizationName, setOrganizationName] = useState('');
+  const [showSlugUpdateDialog, setShowSlugUpdateDialog] = useState(false);
+  const [suggestedSlug, setSuggestedSlug] = useState('');
+  const [pendingNameUpdate, setPendingNameUpdate] = useState<string | null>(null);
 
   // Settings state
   const [settings, setSettings] = useState({
@@ -90,6 +102,7 @@ export default function SettingsPage() {
       const org = await getCurrentOrganization(supabase);
       if (org) {
         setOrganization(org);
+        setOrganizationName(org.name || '');
       }
 
       // Fetch user preferences (if stored)
@@ -141,6 +154,17 @@ export default function SettingsPage() {
     }
   };
 
+  // Helper function to generate slug from name
+  const generateSlugFromName = (name: string): string => {
+    if (!name) return '';
+    // Remove special characters, convert to lowercase, replace spaces with hyphens
+    let slug = name.toLowerCase().replace(/[^a-z0-9\s]+/g, '');
+    slug = slug.replace(/\s+/g, '-');
+    slug = slug.replace(/-+/g, '-'); // Replace multiple hyphens with single
+    slug = slug.replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    return slug;
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -158,6 +182,24 @@ export default function SettingsPage() {
         });
 
       if (error) throw error;
+
+      // Check if organization name changed
+      if (organization && organizationName && organizationName !== organization.name) {
+        // Generate suggested slug from new name
+        const newSlug = generateSlugFromName(organizationName);
+        
+        // If slug would change, show dialog to confirm
+        if (newSlug && newSlug !== organization.slug) {
+          setSuggestedSlug(newSlug);
+          setPendingNameUpdate(organizationName);
+          setShowSlugUpdateDialog(true);
+          setSaving(false);
+          return; // Don't save yet, wait for user decision
+        } else {
+          // Name changed but slug wouldn't change, just update name
+          await updateOrganizationName(organizationName, null);
+        }
+      }
 
       // Save admin settings (minimum tip amount)
       const { data: { session } } = await supabase.auth.getSession();
@@ -193,6 +235,110 @@ export default function SettingsPage() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Helper function to update organization name and optionally slug
+  const updateOrganizationName = async (newName: string, newSlug: string | null) => {
+    const updateData: any = {
+      name: newName,
+      updated_at: new Date().toISOString()
+    };
+
+    if (newSlug) {
+      // Check if slug is already taken by another organization
+      const { data: existingOrg } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', newSlug)
+        .neq('id', organization.id)
+        .single();
+
+      if (existingOrg) {
+        throw new Error(`The slug "${newSlug}" is already taken. Please choose a different name or update the slug manually.`);
+      }
+
+      updateData.slug = newSlug;
+    }
+
+    const { error: orgError } = await supabase
+      .from('organizations')
+      .update(updateData)
+      .eq('id', organization.id);
+
+    if (orgError) {
+      console.error('Error updating organization:', orgError);
+      throw new Error('Failed to update organization');
+    }
+
+    // Update local organization state
+    setOrganization({ ...organization, name: newName, ...(newSlug && { slug: newSlug }) });
+  };
+
+  // Handle slug update dialog confirmation
+  const handleSlugUpdateConfirm = async (updateSlug: boolean) => {
+    try {
+      setSaving(true);
+      setShowSlugUpdateDialog(false);
+
+      if (!pendingNameUpdate) return;
+
+      const slugToUse = updateSlug ? suggestedSlug : null;
+      await updateOrganizationName(pendingNameUpdate, slugToUse);
+
+      // Continue with rest of save process
+      const { minimumTipAmount } = settings;
+      
+      // Save admin settings (minimum tip amount)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const response = await fetch('/api/admin-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            settingKey: 'minimum_tip_amount',
+            settingValue: minimumTipAmount
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save admin settings');
+        }
+      }
+
+      toast({
+        title: "Settings Saved",
+        description: updateSlug 
+          ? `Organization name and URL slug updated. Your new URL is: /${suggestedSlug}/requests`
+          : "Organization name updated. URL slug unchanged.",
+      });
+
+      setPendingNameUpdate(null);
+      setSuggestedSlug('');
+    } catch (error: any) {
+      console.error('Error updating organization:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update organization. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle slug update dialog cancellation
+  const handleSlugUpdateCancel = () => {
+    setShowSlugUpdateDialog(false);
+    setPendingNameUpdate(null);
+    setSuggestedSlug('');
+    // Revert organization name to original
+    if (organization) {
+      setOrganizationName(organization.name);
     }
   };
 
@@ -238,8 +384,17 @@ export default function SettingsPage() {
                 </div>
                 {organization && (
                   <div>
-                    <Label>Organization</Label>
-                    <Input value={organization.name || ''} disabled className="mt-1" />
+                    <Label htmlFor="organizationName">Organization Name</Label>
+                    <Input 
+                      id="organizationName"
+                      value={organizationName}
+                      onChange={(e) => setOrganizationName(e.target.value)}
+                      className="mt-1"
+                      placeholder="Your Organization Name"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      The name of your organization displayed across the platform
+                    </p>
                   </div>
                 )}
               </div>
@@ -526,6 +681,64 @@ export default function SettingsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Slug Update Dialog */}
+      <Dialog open={showSlugUpdateDialog} onOpenChange={setShowSlugUpdateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update URL Slug?</DialogTitle>
+            <DialogDescription>
+              You've changed your organization name. Would you like to update your URL slug to match?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Current URL
+              </Label>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 font-mono">
+                tipjar.live/{organization?.slug}/requests
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                New URL (if updated)
+              </Label>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 font-mono">
+                tipjar.live/{suggestedSlug}/requests
+              </p>
+            </div>
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+              <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                ⚠️ <strong>Important:</strong> If you update the slug, your old URL will no longer work. 
+                Make sure to update any links or QR codes that point to your requests page.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSlugUpdateCancel}
+              disabled={saving}
+            >
+              Keep Current Slug
+            </Button>
+            <Button
+              onClick={() => handleSlugUpdateConfirm(false)}
+              disabled={saving}
+              variant="outline"
+            >
+              Update Name Only
+            </Button>
+            <Button
+              onClick={() => handleSlugUpdateConfirm(true)}
+              disabled={saving}
+            >
+              Update Name & Slug
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
     </PageLoadingWrapper>
   );

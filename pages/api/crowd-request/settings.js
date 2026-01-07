@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       // Direct organization ID provided
       const { data: org } = await supabase
         .from('organizations')
-        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_default_preset_amount, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
         .eq('id', organizationId)
         .single();
       organization = org;
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       // Organization slug provided (from URL)
       const { data: org } = await supabase
         .from('organizations')
-        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_default_preset_amount, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
         .eq('slug', organizationSlug)
         .single();
       organization = org;
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       // Try to get default organization (first one) for backward compatibility
       const { data: defaultOrg } = await supabase
         .from('organizations')
-        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_default_preset_amount, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
         .limit(1)
         .single();
       organization = defaultOrg;
@@ -101,6 +101,7 @@ export default async function handler(req, res) {
         nextFee,
         minimumAmount: orgMinimum,
         presetAmounts: orgPresets,
+        defaultPresetAmount: organization.requests_default_preset_amount || null,
         bundleDiscountEnabled: paymentMethodSettings['crowd_request_bundle_discount_enabled'] === 'true' || paymentMethodSettings['crowd_request_bundle_discount_enabled'] === undefined,
         bundleDiscountPercent: parseInt(paymentMethodSettings['crowd_request_bundle_discount_percent']) || 10
       });

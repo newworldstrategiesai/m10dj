@@ -446,7 +446,61 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                     // During SSR, use light mode logo; after mount, use actual dark mode state
                     const effectiveDarkMode = isMounted ? isDarkMode : false;
                     
-                    // Show custom logo if provided (highest priority)
+                    // Show TipJar logo when on tipjar.live domain (check domain FIRST)
+                    // Use white logo for organization pages, green logo for marketing pages
+                    if (isTipJarDomain()) {
+                      // Only use custom logo if it's explicitly set and not an M10 logo
+                      const isM10Logo = customLogoUrl && (
+                        customLogoUrl.includes('m10') || 
+                        customLogoUrl.includes('m10djcompany') || 
+                        customLogoUrl.includes('djbenmurray')
+                      );
+                      
+                      if (customLogoUrl && !isM10Logo) {
+                        // Use custom logo if provided and it's not an M10 logo
+                        return (
+                          <img
+                            key={`logo-custom-${isDarkMode ? 'dark' : 'light'}`}
+                            src={customLogoUrl}
+                            alt="Organization Logo"
+                            className="w-9 h-9 sm:w-[45px] sm:h-[45px] rounded-lg transition-transform group-hover:scale-105 object-contain"
+                            style={{ display: 'block', maxWidth: '100%', height: 'auto' }}
+                            onError={(e) => {
+                              // Fallback to TipJar logo if custom logo fails
+                              console.warn('Custom logo failed to load, using TipJar logo:', customLogoUrl);
+                              const isOrgPage = organizationSlug || organizationId;
+                              e.target.src = isOrgPage 
+                                ? getAssetUrl('/assets/TipJar-Logo-White.png')
+                                : getAssetUrl('/assets/TipJar-Logo-With-Text.png');
+                              e.target.className = 'h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105';
+                            }}
+                          />
+                        );
+                      }
+                      
+                      // Always show TipJar logo on TipJar domain (unless valid custom logo above)
+                      const isOrganizationPage = organizationSlug || organizationId;
+                      const logoSrc = isOrganizationPage 
+                        ? getAssetUrl("/assets/TipJar-Logo-White.png")
+                        : getAssetUrl("/assets/TipJar-Logo-With-Text.png");
+                      
+                      return (
+                        <img
+                          key={`logo-tipjar-${isOrganizationPage ? 'org' : 'marketing'}-${isDarkMode ? 'dark' : 'light'}`}
+                          src={logoSrc}
+                          alt="TipJar.Live"
+                          className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
+                          style={{ display: 'block', objectFit: 'contain' }}
+                          onError={(e) => {
+                            // Fallback to icon if full logo doesn't load
+                            console.warn('TipJar logo failed to load, trying icon');
+                            e.target.src = getAssetUrl('/assets/TipJar-Logo-Icon.png');
+                          }}
+                        />
+                      );
+                    }
+                    
+                    // Show custom logo if provided (for non-TipJar domains)
                     if (customLogoUrl) {
                       return (
                         <img
@@ -458,13 +512,7 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                           onError={(e) => {
                             // Fallback based on domain
                             console.warn('Custom logo failed to load:', customLogoUrl);
-                            if (isTipJarDomain()) {
-                              // Use white logo for organization pages, green for marketing
-                              const isOrgPage = organizationSlug || organizationId;
-                              e.target.src = isOrgPage 
-                                ? getAssetUrl('/assets/TipJar-Logo-White.png')
-                                : getAssetUrl('/assets/TipJar-Logo-With-Text.png');
-                            } else if (isDJDashDomain()) {
+                            if (isDJDashDomain()) {
                               e.target.src = getAssetUrl('/assets/DJ-Dash-Logo-Black-1.PNG');
                             } else if (isM10DJCompanyDomain()) {
                               e.target.style.display = 'none';
@@ -488,30 +536,6 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                           onError={(e) => {
                             console.warn('DJ Dash logo failed to load');
                             e.target.style.display = 'none';
-                          }}
-                        />
-                      );
-                    }
-                    
-                    // Show TipJar logo when on tipjar.live domain
-                    // Use white logo for organization pages, green logo for marketing pages
-                    if (isTipJarDomain()) {
-                      const isOrganizationPage = organizationSlug || organizationId;
-                      const logoSrc = isOrganizationPage 
-                        ? getAssetUrl("/assets/TipJar-Logo-White.png")
-                        : getAssetUrl("/assets/TipJar-Logo-With-Text.png");
-                      
-                      return (
-                        <img
-                          key={`logo-tipjar-${isOrganizationPage ? 'org' : 'marketing'}-${isDarkMode ? 'dark' : 'light'}`}
-                          src={logoSrc}
-                          alt="TipJar.Live"
-                          className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
-                          style={{ display: 'block', objectFit: 'contain' }}
-                          onError={(e) => {
-                            // Fallback to icon if full logo doesn't load
-                            console.warn('TipJar logo failed to load, trying icon');
-                            e.target.src = getAssetUrl('/assets/TipJar-Logo-Icon.png');
                           }}
                         />
                       );

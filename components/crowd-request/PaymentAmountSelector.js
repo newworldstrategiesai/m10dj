@@ -1,5 +1,5 @@
-import React from 'react';
-import { Gift, DollarSign, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Gift, DollarSign, Zap, ChevronUp, ChevronDown } from 'lucide-react';
 import BundleSelector from './BundleSelector';
 
 function PaymentAmountSelector({
@@ -28,6 +28,55 @@ function PaymentAmountSelector({
   bundleSize = 1, // Bundle size: 1, 2, or 3
   setBundleSize = () => {} // Function to set bundle size
 }) {
+  // Detect mobile device
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      ) || window.innerWidth <= 768;
+      setIsMobile(isMobileDevice);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  // Helper function to update custom amount
+  const updateCustomAmount = (value) => {
+    // Allow empty string for clearing
+    if (value === '') {
+      setCustomAmount('');
+      return;
+    }
+    const numValue = parseFloat(value);
+    // For tips, allow any amount >= 0 (no minimum)
+    if (requestType === 'tip') {
+      if (!isNaN(numValue) && numValue >= 0) {
+        setCustomAmount(value);
+      }
+    } else {
+      // For song requests and shoutouts, enforce minimum
+      const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
+      // Only update if value is valid and >= minimum
+      if (!isNaN(numValue) && numValue >= minAmount) {
+        setCustomAmount(value);
+      } else if (numValue < minAmount && numValue >= 0) {
+        // Show the value but it will be invalid
+        setCustomAmount(value);
+      }
+    }
+  };
+  
+  // Helper function to increment/decrement amount
+  const adjustAmount = (delta) => {
+    const currentValue = parseFloat(customAmount) || 0;
+    const minAmount = requestType === 'tip' ? 0 : (minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0));
+    const newValue = Math.max(minAmount, currentValue + delta);
+    updateCustomAmount(newValue.toFixed(2));
+  };
   return (
     <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/80 dark:bg-black/80 rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
       <h2 className="text-base sm:text-lg md:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2">
@@ -130,59 +179,101 @@ function PaymentAmountSelector({
             <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
               Enter Amount (USD)
             </label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-              <input
-                type="number"
-                value={customAmount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Allow empty string for clearing
-                  if (value === '') {
-                    setCustomAmount('');
-                    return;
-                  }
-                  const numValue = parseFloat(value);
-                  // For tips, allow any amount >= 0 (no minimum)
-                  if (requestType === 'tip') {
-                    if (!isNaN(numValue) && numValue >= 0) {
-                      setCustomAmount(value);
-                    }
-                  } else {
-                    // For song requests and shoutouts, enforce minimum
-                    // Get minimum amount - use minimumAmount prop if provided, otherwise use first preset
-                    // This ensures bidding mode uses the winning bid + $5 minimum
+            {isMobile && amountType === 'custom' ? (
+              // Mobile: Native-like wheel picker with stepper controls (only visible when custom amount is selected)
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl p-2 border-2 border-gray-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => adjustAmount(-1)}
+                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation"
+                    aria-label="Decrease by $1"
+                  >
+                    <ChevronDown className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                  </button>
+                  
+                  <div className="flex-1 relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="number"
+                      value={customAmount}
+                      onChange={(e) => updateCustomAmount(e.target.value)}
+                      min={requestType === 'tip' ? '0' : (minimumAmount > 0 ? (minimumAmount / 100).toFixed(2) : (presetAmounts.length > 0 ? (presetAmounts[0].value / 100).toFixed(2) : '0.01'))}
+                      step="0.01"
+                      inputMode="decimal"
+                      className={`w-full pl-10 pr-3 py-3 text-center text-lg font-bold rounded-lg border-2 ${
+                        (() => {
+                          if (requestType === 'tip') return false;
+                          const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
+                          return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
+                        })()
+                          ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
+                          : 'border-brand-500 dark:border-brand-500 bg-white dark:bg-gray-700'
+                      } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
+                      placeholder={requestType === 'tip' ? '0.00' : (() => {
+                        const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
+                        return minAmount.toFixed(2);
+                      })()}
+                    />
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => adjustAmount(1)}
+                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation"
+                    aria-label="Increase by $1"
+                  >
+                    <ChevronUp className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                  </button>
+                </div>
+                
+                {/* Quick increment buttons for mobile */}
+                <div className="grid grid-cols-4 gap-2">
+                  {[5, 10, 25, 50].map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => {
+                        const currentValue = parseFloat(customAmount) || 0;
+                        updateCustomAmount((currentValue + amount).toFixed(2));
+                      }}
+                      className="py-2 px-3 text-sm font-semibold rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-700 touch-manipulation"
+                    >
+                      +${amount}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              // Desktop: Standard text input
+              <div className="relative">
+                <DollarSign className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                <input
+                  type="number"
+                  value={customAmount}
+                  onChange={(e) => updateCustomAmount(e.target.value)}
+                  min={requestType === 'tip' ? '0' : (minimumAmount > 0 ? (minimumAmount / 100).toFixed(2) : (presetAmounts.length > 0 ? (presetAmounts[0].value / 100).toFixed(2) : '0.01'))}
+                  step="0.01"
+                  inputMode="decimal"
+                  className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
+                    (() => {
+                      // For tips, never show red border (no minimum)
+                      if (requestType === 'tip') {
+                        return false;
+                      }
+                      const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
+                      return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
+                    })()
+                      ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
+                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
+                  } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
+                  placeholder={requestType === 'tip' ? '0.00' : (() => {
                     const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
-                    // Only update if value is valid and >= minimum
-                    if (!isNaN(numValue) && numValue >= minAmount) {
-                      setCustomAmount(value);
-                    } else if (numValue < minAmount && numValue >= 0) {
-                      // Show the value but it will be invalid
-                      setCustomAmount(value);
-                    }
-                  }
-                }}
-                min={requestType === 'tip' ? '0' : (minimumAmount > 0 ? (minimumAmount / 100).toFixed(2) : (presetAmounts.length > 0 ? (presetAmounts[0].value / 100).toFixed(2) : '0.01'))}
-                step="0.01"
-                inputMode="decimal"
-                className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
-                  (() => {
-                    // For tips, never show red border (no minimum)
-                    if (requestType === 'tip') {
-                      return false;
-                    }
-                    const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
-                    return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
-                  })()
-                    ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
-                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
-                } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
-                placeholder={requestType === 'tip' ? '0.00' : (() => {
-                  const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
-                  return minAmount.toFixed(2);
-                })()}
-              />
-            </div>
+                    return minAmount.toFixed(2);
+                  })()}
+                />
+              </div>
+            )}
             {(() => {
               // For tips, don't show minimum messages (no minimum required)
               if (requestType === 'tip') {
