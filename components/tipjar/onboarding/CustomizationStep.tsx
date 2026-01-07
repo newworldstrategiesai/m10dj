@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, Palette, DollarSign, Zap, Music } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Palette, DollarSign, Zap, Music, HelpCircle } from 'lucide-react';
 import { OnboardingData } from '../OnboardingWizard';
 import { triggerQuickConfetti, triggerConfetti } from '@/utils/confetti';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface CustomizationStepProps {
   data: OnboardingData;
@@ -179,16 +180,36 @@ export default function CustomizationStep({
       </div>
 
       {/* Form */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 space-y-8">
-        {/* Accent Color Section */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-4">
-            <Palette className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
-            Accent Color
-          </label>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Choose a color that matches your brand. This will be used for buttons, links, and highlights.
-          </p>
+      <TooltipProvider>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 space-y-8">
+          {/* Accent Color Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                <Palette className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
+                Accent Color
+              </label>
+              {/* Desktop: Tooltip on hover */}
+              <div className="hidden sm:block">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="w-4 h-4 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-sm">
+                      Your accent color appears on buttons, links, progress bars, and other interactive elements throughout your request page. Choose a color that matches your brand identity.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+            {/* Mobile: Always show help text */}
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-4">
+              Choose a color that matches your brand. This will be used for buttons, links, and highlights.
+            </p>
+            <p className="sm:hidden text-xs text-gray-500 dark:text-gray-400 mb-4 italic">
+              💡 Your accent color appears on buttons, links, and interactive elements throughout your page.
+            </p>
 
           {/* Preset Colors */}
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 mb-4">
@@ -277,15 +298,34 @@ export default function CustomizationStep({
           )}
         </div>
 
-        {/* Minimum Bid Section */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-4">
-            <DollarSign className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
-            Minimum Bid Amount
-          </label>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Set the minimum amount customers must bid for song requests (if bidding is enabled).
-          </p>
+          {/* Minimum Bid Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                <DollarSign className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
+                Minimum Bid Amount
+              </label>
+              {/* Desktop: Tooltip on hover */}
+              <div className="hidden sm:block">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="w-4 h-4 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-sm">
+                      The minimum amount customers must bid when requesting songs through the bidding system. This helps ensure quality requests and covers processing fees. Only applies if bidding mode is enabled.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+            {/* Mobile: Always show help text */}
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-4">
+              Set the minimum amount customers must bid for song requests (if bidding is enabled).
+            </p>
+            <p className="sm:hidden text-xs text-gray-500 dark:text-gray-400 mb-4 italic">
+              💡 This minimum applies when bidding mode is enabled. Helps ensure quality requests and covers processing fees.
+            </p>
 
           <div className="flex items-center gap-3">
             <span className="text-2xl font-bold text-gray-700 dark:text-gray-300">$</span>
@@ -314,32 +354,66 @@ export default function CustomizationStep({
           </p>
         </div>
 
-        {/* Fast Track Add-on Section */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                <Zap className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
-                Fast Track Add-on
-              </label>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Allow customers to pay extra to have their song played next in the queue.
-              </p>
+          {/* Fast Track Add-on Section */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                    <Zap className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
+                    Fast Track Add-on
+                  </label>
+                  {/* Desktop: Tooltip on hover */}
+                  <div className="hidden sm:block">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-4 h-4 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          When enabled, customers can pay an additional fee to have their song played next in the queue (after the current song). This is a popular option for customers who want priority placement without paying for immediate playback.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+                {/* Mobile: Always show help text */}
+                <p className="text-sm text-gray-600 dark:text-gray-400 sm:mb-0">
+                  Allow customers to pay extra to have their song played next in the queue.
+                </p>
+                <p className="sm:hidden text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+                  💡 Customers pay extra to play next (after current song). Popular for priority without immediate playback.
+                </p>
+              </div>
+              <Switch
+                checked={showFastTrack}
+                onCheckedChange={(checked) => {
+                  setShowFastTrack(checked);
+                  setErrors({ ...errors, fastTrackFee: undefined });
+                }}
+              />
             </div>
-            <Switch
-              checked={showFastTrack}
-              onCheckedChange={(checked) => {
-                setShowFastTrack(checked);
-                setErrors({ ...errors, fastTrackFee: undefined });
-              }}
-            />
-          </div>
 
-          {showFastTrack && (
-            <div className="mt-4 pl-7">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Fast Track Fee
-              </label>
+            {showFastTrack && (
+              <div className="mt-4 pl-7">
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Fast Track Fee
+                  </label>
+                  {/* Desktop: Tooltip on hover */}
+                  <div className="hidden sm:block">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          The price customers pay for Fast Track. Recommended: $10-$20. This fee is added on top of the base request amount.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
               <div className="flex items-center gap-3">
                 <span className="text-xl font-bold text-gray-700 dark:text-gray-300">$</span>
                 <input
@@ -367,32 +441,66 @@ export default function CustomizationStep({
           )}
         </div>
 
-        {/* Next Song Add-on Section */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                <Music className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
-                Next Song Add-on
-              </label>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Allow customers to pay extra to have their song played immediately (jumps to front of queue).
-              </p>
+          {/* Next Song Add-on Section */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                    <Music className="inline w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
+                    Next Song Add-on
+                  </label>
+                  {/* Desktop: Tooltip on hover */}
+                  <div className="hidden sm:block">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-4 h-4 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          When enabled, customers can pay a premium fee to have their song played immediately, jumping to the very front of the queue. This is the highest priority option and typically costs more than Fast Track.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+                {/* Mobile: Always show help text */}
+                <p className="text-sm text-gray-600 dark:text-gray-400 sm:mb-0">
+                  Allow customers to pay extra to have their song played immediately (jumps to front of queue).
+                </p>
+                <p className="sm:hidden text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+                  💡 Premium option: customers pay extra for immediate playback, jumping to the front of the queue.
+                </p>
+              </div>
+              <Switch
+                checked={showNextSong}
+                onCheckedChange={(checked) => {
+                  setShowNextSong(checked);
+                  setErrors({ ...errors, nextFee: undefined });
+                }}
+              />
             </div>
-            <Switch
-              checked={showNextSong}
-              onCheckedChange={(checked) => {
-                setShowNextSong(checked);
-                setErrors({ ...errors, nextFee: undefined });
-              }}
-            />
-          </div>
 
-          {showNextSong && (
-            <div className="mt-4 pl-7">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Next Song Fee
-              </label>
+            {showNextSong && (
+              <div className="mt-4 pl-7">
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Next Song Fee
+                  </label>
+                  {/* Desktop: Tooltip on hover */}
+                  <div className="hidden sm:block">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          The price customers pay for Next Song (immediate playback). Recommended: $20-$50. This premium fee is added on top of the base request amount.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
               <div className="flex items-center gap-3">
                 <span className="text-xl font-bold text-gray-700 dark:text-gray-300">$</span>
                 <input
@@ -416,10 +524,11 @@ export default function CustomizationStep({
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Recommended: $20.00 - $50.00. This premium fee ensures immediate playback.
               </p>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
 
       {/* Navigation Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 mt-8">
