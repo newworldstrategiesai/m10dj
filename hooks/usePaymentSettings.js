@@ -44,8 +44,13 @@ export function usePaymentSettings(options = {}) {
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        if (data.cashAppTag) setPaymentSettings(prev => ({ ...prev, cashAppTag: data.cashAppTag }));
-        if (data.venmoUsername) setPaymentSettings(prev => ({ ...prev, venmoUsername: data.venmoUsername }));
+        // Always update payment settings, even if null or empty string
+        // This ensures the UI reflects what's saved in the database
+        setPaymentSettings(prev => ({
+          ...prev,
+          cashAppTag: data.cashAppTag || null,
+          venmoUsername: data.venmoUsername || null
+        }));
         if (data.fastTrackFee) setFastTrackFee(data.fastTrackFee);
         if (data.nextFee) setNextFee(data.nextFee);
         if (data.minimumAmount) setMinimumAmount(data.minimumAmount);

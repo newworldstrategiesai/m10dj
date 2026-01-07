@@ -120,15 +120,15 @@ export default async function TipJarSignIn({
         redirectUrl = decodeURIComponent(searchParams.redirect);
       } else {
         // Add timeout and error handling to prevent hanging
-        // Use product-based redirect for TipJar (will route to /tipjar/dashboard)
+        // Use product-based redirect for TipJar (will route to /admin/crowd-requests)
         // Use empty string for baseUrl to get relative paths (works for both local and production)
         const redirectPromise = getProductBasedRedirectUrl('').catch((error) => {
           console.error('Error getting product-based redirect URL:', error);
-          return '/tipjar/dashboard'; // Fallback to TipJar dashboard
+          return '/admin/crowd-requests'; // Fallback to crowd requests admin page
         });
         
         const timeoutPromise = new Promise<string>((resolve) => 
-          setTimeout(() => resolve('/tipjar/dashboard'), 3000)
+          setTimeout(() => resolve('/admin/crowd-requests'), 3000)
         );
         
         redirectUrl = await Promise.race([redirectPromise, timeoutPromise]);
@@ -136,9 +136,9 @@ export default async function TipJarSignIn({
       
       redirect(redirectUrl);
     } catch (error) {
-      // If redirect URL fails, redirect to TipJar dashboard
+      // If redirect URL fails, redirect to crowd requests admin page
       console.error('Error in redirect logic:', error);
-      redirect('/tipjar/dashboard');
+      redirect('/admin/crowd-requests');
     }
   } else if (!user && viewProp === 'update_password') {
     redirect('/tipjar/signin/password_signin');

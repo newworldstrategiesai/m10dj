@@ -317,12 +317,14 @@ export default function OrganizationRequestsPage() {
         } : null}
       />
       
-      {/* TipJar Chat Widget - Only show for TipJar organizations */}
-      {organization.product_context === 'tipjar' && (
+      {/* TipJar Chat Widget - Only show for TipJar organizations if enabled */}
+      {organization.product_context === 'tipjar' && organization.requests_assistant_enabled !== false && (
         <TipJarChatWidget
           organizationId={organization.id}
           organizationName={organization.name}
           organizationData={organization}
+          accentColor={organization.requests_accent_color || '#fcba00'}
+          themeMode={organization.requests_theme_mode || 'dark'}
         />
       )}
     </>

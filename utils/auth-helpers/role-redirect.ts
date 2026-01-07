@@ -148,9 +148,9 @@ export async function getRoleBasedRedirectUrl(baseUrl: string = ''): Promise<str
         // User has an organization - check product context
         const productContext = organizationResult.data.product_context;
         
-        // TipJar users should go to TipJar dashboard, not onboarding
+        // TipJar users should go to crowd requests admin page, not onboarding
         if (productContext === 'tipjar') {
-          return `${baseUrl}/tipjar/dashboard`;
+          return `${baseUrl}/admin/crowd-requests`;
         }
         
         // DJ Dash users should go to DJ Dash dashboard

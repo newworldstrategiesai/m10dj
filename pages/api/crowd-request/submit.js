@@ -56,20 +56,20 @@ export default async function handler(req, res) {
   } = req.body;
 
   // Validate required fields
-  // Note: requesterName is now required - users must provide their name
+  // Note: requesterName is required for song requests and shoutouts, but optional for tips
   // Note: amount can be 0 for bidding mode requests (payment happens when bid is placed)
   if (!eventCode || !requestType || amount === undefined || amount === null) {
     return res.status(400).json({ error: 'Missing required fields' });
-  }
-  
-  // Requester name is required
-  if (!requesterName || !requesterName.trim()) {
-    return res.status(400).json({ error: 'Requester name is required' });
   }
 
   // Validate request type
   if (!['song_request', 'shoutout', 'tip'].includes(requestType)) {
     return res.status(400).json({ error: 'Invalid request type' });
+  }
+  
+  // Requester name is required for song requests and shoutouts, but optional for tips
+  if (requestType !== 'tip' && (!requesterName || !requesterName.trim())) {
+    return res.status(400).json({ error: 'Requester name is required' });
   }
 
   if (requestType === 'song_request' && !songTitle) {

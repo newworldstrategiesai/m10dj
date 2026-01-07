@@ -4178,19 +4178,19 @@ export function GeneralRequestsPage({
                         setBundleSize={setBundleSize}
                       />
                       {/* Fallback payment options for tips only */}
-                      {(paymentSettings?.cashAppTag || paymentSettings?.venmoUsername) && (
+                      {((paymentSettings?.cashAppTag && paymentSettings.cashAppTag.trim()) || (paymentSettings?.venmoUsername && paymentSettings.venmoUsername.trim())) && (
                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                           <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 text-center">
                             Having trouble with card payment? You can also tip via:
                           </p>
                           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                            {paymentSettings?.cashAppTag && (
+                            {paymentSettings?.cashAppTag && paymentSettings.cashAppTag.trim() && (
                               <div className="flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">CashApp:</span>
                                 <span className="text-base font-bold text-green-600 dark:text-green-400">{paymentSettings.cashAppTag}</span>
                               </div>
                             )}
-                            {paymentSettings?.venmoUsername && (
+                            {paymentSettings?.venmoUsername && paymentSettings.venmoUsername.trim() && (
                               <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Venmo:</span>
                                 <span className="text-base font-bold text-blue-600 dark:text-blue-400">{paymentSettings.venmoUsername}</span>
@@ -4202,12 +4202,12 @@ export function GeneralRequestsPage({
                     </div>
                   )}
 
-                  {/* Requester Information - Required for payment verification */}
-                  {/* Always show name field - it's required for all request types and must remain visible after auto-advance to step 2 */}
+                  {/* Requester Information - Optional for tips, required for song requests and shoutouts */}
+                  {/* Always show name field - it's optional for tips but required for other request types */}
                   <div className="mt-2 sm:mt-3 md:mt-4 space-y-2 sm:space-y-3">
                     <div>
                       <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Your Name <span className="text-red-500">*</span>
+                        Your Name {requestType !== 'tip' && <span className="text-red-500">*</span>}
                       </label>
                       <input
                         type="text"
@@ -4215,8 +4215,8 @@ export function GeneralRequestsPage({
                         value={formData.requesterName}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                        placeholder="Enter your name"
-                        required
+                        placeholder={requestType === 'tip' ? "Enter your name (optional)" : "Enter your name"}
+                        required={requestType !== 'tip'}
                         autoComplete="name"
                       />
                       {/* Only show help text when there's a name validation error */}

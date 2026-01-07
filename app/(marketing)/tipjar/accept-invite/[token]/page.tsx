@@ -60,7 +60,7 @@ export default async function AcceptInvitePage({ params }: AcceptInvitePageProps
       .single();
 
     if (performerOrg) {
-      redirect('/tipjar/dashboard');
+      redirect('/admin/crowd-requests');
     }
   }
 
@@ -239,8 +239,8 @@ async function acceptInvitationAction(formData: FormData) {
     const data = await response.json();
 
     if (response.ok && data.success) {
-      // Redirect to dashboard
-      redirect('/tipjar/dashboard');
+      // Redirect to crowd requests admin page
+      redirect('/admin/crowd-requests');
     } else {
       // Handle error - could redirect to error page or show message
       redirect(`/tipjar/accept-invite/${token}?error=${encodeURIComponent(data.error || 'Failed to accept invitation')}`);

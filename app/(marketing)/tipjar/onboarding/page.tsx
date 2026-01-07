@@ -29,9 +29,9 @@ export default async function TipJarOnboardingPage() {
   // Check if organization exists
   const organization = await getCurrentOrganization(supabase);
 
-  // If organization exists, redirect to dashboard
+  // If organization exists, redirect to crowd requests admin page
   if (organization) {
-    redirect('/tipjar/dashboard');
+    redirect('/admin/crowd-requests');
   }
 
   // Organization is being created or missing
@@ -82,7 +82,7 @@ export default async function TipJarOnboardingPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 If this page doesn't refresh automatically, click the button below:
               </p>
-              <form action="/tipjar/dashboard" method="get">
+              <form action="/admin/crowd-requests" method="get">
                 <button
                   type="submit"
                   className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
@@ -109,10 +109,10 @@ export default async function TipJarOnboardingPage() {
                   return;
                 }
                 
-                // Try to fetch dashboard - if it works, org exists
-                fetch('/tipjar/dashboard', { method: 'HEAD' })
+                // Try to fetch admin page - if it works, org exists
+                fetch('/admin/crowd-requests', { method: 'HEAD' })
                   .then(() => {
-                    window.location.href = '/tipjar/dashboard';
+                    window.location.href = '/admin/crowd-requests';
                   })
                   .catch(() => {
                     // Still loading, continue waiting

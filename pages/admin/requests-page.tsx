@@ -28,7 +28,8 @@ import {
   DollarSign,
   Sparkles,
   Video,
-  Link as LinkIcon
+  Link as LinkIcon,
+  MessageCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -68,7 +69,7 @@ export default function RequestsPageSettings() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'design' | 'content' | 'payments' | 'features' | 'advanced'>('design');
+  const [activeTab, setActiveTab] = useState<'design' | 'content' | 'payments' | 'features' | 'assistant' | 'advanced'>('design');
   const [previewDevice, setPreviewDevice] = useState<'mobile' | 'tablet' | 'desktop'>('mobile');
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [biddingEnabled, setBiddingEnabled] = useState(false);
@@ -207,6 +208,9 @@ export default function RequestsPageSettings() {
     requests_show_next_song: true,
     requests_show_bundle_discount: true
   });
+
+  // Assistant settings
+  const [assistantEnabled, setAssistantEnabled] = useState(true);
   
   // SEO fields
   const [seoFields, setSeoFields] = useState({
@@ -228,7 +232,7 @@ export default function RequestsPageSettings() {
   // Handle tab from URL query parameter
   useEffect(() => {
     const { tab } = router.query;
-    if (tab === 'design' || tab === 'content' || tab === 'payments' || tab === 'features' || tab === 'advanced') {
+    if (tab === 'design' || tab === 'content' || tab === 'payments' || tab === 'features' || tab === 'assistant' || tab === 'advanced') {
       setActiveTab(tab as typeof activeTab);
     }
   }, [router.query]);
@@ -367,6 +371,9 @@ export default function RequestsPageSettings() {
         // Set payment usernames for tips section
         setCashAppTag(org.requests_cashapp_tag || '');
         setVenmoUsername(org.requests_venmo_username || '');
+        
+        // Set assistant enabled setting (defaults to true for new users)
+        setAssistantEnabled(org.requests_assistant_enabled !== false);
         
         // Set header fields
         setHeaderFields({
@@ -600,6 +607,8 @@ export default function RequestsPageSettings() {
         // Payment usernames for tips section
         requests_cashapp_tag: cashAppTag || null,
         requests_venmo_username: venmoUsername || null,
+        // Assistant settings
+        requests_assistant_enabled: assistantEnabled,
         // Header fields
         ...headerFields,
         // Label fields
@@ -813,6 +822,7 @@ export default function RequestsPageSettings() {
                 { id: 'content', label: 'Content', icon: Type },
                 { id: 'payments', label: 'Payments', icon: DollarSign },
                 { id: 'features', label: 'Features', icon: ToggleLeft },
+                { id: 'assistant', label: 'Assistant', icon: MessageCircle },
                 { id: 'advanced', label: 'More', icon: Settings },
               ].map((tab) => (
                 <button
@@ -2873,6 +2883,39 @@ export default function RequestsPageSettings() {
                         onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_bundle_discount', checked)}
                       />
                     </div>
+                  </div>
+                </div>
+              ) : activeTab === 'assistant' ? (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
+                    Assistant Settings
+                  </h2>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white mb-1">Enable Assistant Widget</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Show the AI assistant chat widget on your requests page to help customers with questions
+                        </p>
+                      </div>
+                      <Switch
+                        checked={assistantEnabled}
+                        onCheckedChange={(checked) => {
+                          setAssistantEnabled(checked);
+                          setError(null);
+                          setSuccess(false);
+                        }}
+                      />
+                    </div>
+                    
+                    {assistantEnabled && (
+                      <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          <strong>About the Assistant:</strong> The assistant helps customers with questions about your business and how to use TipJar. 
+                          It uses AI to answer questions using information from your page settings, including your display name, location, and social media links.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : activeTab === 'advanced' ? (

@@ -356,7 +356,7 @@ export async function updatePassword(formData: FormData) {
     
     if (productContext === 'tipjar') {
       redirectPath = getStatusRedirect(
-        '/tipjar/dashboard',
+        '/admin/crowd-requests',
         'Success!',
         'Your password has been updated.'
       );
