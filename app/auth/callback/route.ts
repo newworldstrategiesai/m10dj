@@ -113,6 +113,38 @@ export async function GET(request: NextRequest) {
     // Fall through to default redirect
   }
 
+  // For TipJar users, check if onboarding is complete
+  // If not, redirect directly to onboarding wizard
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.user_metadata?.product_context === 'tipjar') {
+      // Import getCurrentOrganization to check onboarding status
+      const { getCurrentOrganization } = await import('@/utils/organization-context');
+      const organization = await getCurrentOrganization(supabase);
+      
+      // If organization doesn't exist or doesn't have display name, send to onboarding wizard
+      // This ensures new users go straight into the wizard after email confirmation
+      if (!organization || !organization.requests_header_artist_name || !organization.requests_header_artist_name.trim()) {
+        // Ensure we redirect to tipjar.live domain
+        let onboardingUrl = `${requestUrl.origin}/tipjar/onboarding`;
+        if (requestUrl.hostname.includes('m10djcompany.com')) {
+          onboardingUrl = 'https://tipjar.live/tipjar/onboarding';
+        }
+        
+        return NextResponse.redirect(
+          getStatusRedirect(
+            onboardingUrl,
+            'Email confirmed! 🎉',
+            'Let\'s finish setting up your TipJar page - this will only take 2 minutes!'
+          )
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error checking TipJar onboarding status:', error);
+    // Fall through to default redirect
+  }
+
   // Get product-based redirect URL (checks product context, falls back to role-based)
   let redirectUrl = await getProductBasedRedirectUrl(requestUrl.origin);
   

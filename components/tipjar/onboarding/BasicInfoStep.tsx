@@ -111,7 +111,7 @@ export default function BasicInfoStep({
     return Object.keys(newErrors).length === 0;
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (validate()) {
       // Trigger confetti celebration for completing basic info
       if (!confettiTriggered.current) {
@@ -119,6 +119,21 @@ export default function BasicInfoStep({
           colors: ['#9333ea', '#ec4899', '#3b82f6', '#10b981']
         });
         confettiTriggered.current = true;
+      }
+
+      // Track step completion
+      try {
+        await fetch('/api/organizations/update-onboarding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stepId: 'basic_info',
+            completed: true
+          })
+        });
+      } catch (error) {
+        console.error('Failed to track step completion:', error);
+        // Non-critical, continue anyway
       }
 
       onDataUpdate({
@@ -249,19 +264,12 @@ export default function BasicInfoStep({
           </p>
         </div>
 
-        {/* Navigation */}
-        <div className="flex gap-4">
-          <button
-            onClick={onBack}
-            className="flex-1 sm:flex-initial px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
+        {/* Navigation - No back button on step 2 to prevent exiting */}
+        <div className="flex gap-4 justify-end">
           <button
             onClick={handleNext}
             disabled={!displayName.trim() || checkingSlug || slugAvailable === false}
-            className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             Continue
             <ArrowRight className="w-4 h-4" />

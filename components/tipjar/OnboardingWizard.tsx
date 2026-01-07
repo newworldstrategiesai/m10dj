@@ -97,11 +97,28 @@ export default function TipJarOnboardingWizard({
             slug: onboardingData.slug,
             requests_header_artist_name: onboardingData.displayName,
             requests_header_location: onboardingData.location || null,
+            onboarding_completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', organization.id);
 
         if (updateError) throw updateError;
+
+        // Mark onboarding steps as complete
+        try {
+          await fetch('/api/organizations/update-onboarding', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              allStepsCompleted: true,
+              stepId: 'display_name',
+              completed: true
+            })
+          });
+        } catch (error) {
+          console.error('Failed to track onboarding completion:', error);
+          // Non-critical, continue anyway
+        }
       }
 
       // Redirect to admin dashboard
@@ -187,9 +204,9 @@ export default function TipJarOnboardingWizard({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <div className="h-full w-full bg-gradient-to-br from-purple-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 overflow-y-auto">
       {/* Progress Bar */}
-      <div className="w-full bg-gray-200 dark:bg-gray-800 h-1">
+      <div className="w-full bg-gray-200 dark:bg-gray-800 h-1 sticky top-0 z-10">
         <div
           className="bg-purple-600 dark:bg-purple-500 h-1 transition-all duration-300"
           style={{ width: `${progress}%` }}
@@ -197,8 +214,10 @@ export default function TipJarOnboardingWizard({
       </div>
 
       {/* Wizard Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {renderStep()}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 min-h-full flex items-center">
+        <div className="w-full">
+          {renderStep()}
+        </div>
       </div>
     </div>
   );

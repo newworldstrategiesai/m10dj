@@ -66,6 +66,7 @@ import StripeConnectRequirementBanner from '@/components/subscription/StripeConn
 import StripeConnectSetup from '@/components/subscription/StripeConnectSetup';
 import UsageLimitBanner from '@/components/subscription/UsageLimitBanner';
 import { getCurrentOrganization } from '@/utils/organization-context';
+import OnboardingReminder from '@/components/tipjar/OnboardingReminder';
 import SongRecognition from '@/components/audio/SongRecognition';
 import MusicServiceLinks from '@/components/admin/MusicServiceLinks';
 import { DecoratedQRCode } from '@/components/ui/DecoratedQRCode';
@@ -3696,6 +3697,11 @@ export default function CrowdRequestsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6 px-4 lg:px-6">
+        {/* Onboarding Reminder - Shows if critical tasks incomplete */}
+        {organization && (
+          <OnboardingReminder organization={organization} />
+        )}
+        
         {/* Stripe Connect Requirement Banner */}
         <StripeConnectRequirementBanner organization={organization} />
         

@@ -58,6 +58,21 @@ export default function PaymentSetupStep({
             });
             confettiTriggered.current = true;
           }
+
+          // Track payment setup completion
+          try {
+            await fetch('/api/organizations/update-onboarding', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                stepId: 'payment_setup',
+                completed: true
+              })
+            });
+          } catch (error) {
+            console.error('Failed to track payment setup completion:', error);
+            // Non-critical, continue anyway
+          }
         }
       }
     } catch (err) {
@@ -202,20 +217,12 @@ export default function PaymentSetupStep({
           </div>
         )}
 
-        {/* Navigation */}
+        {/* Navigation - Payment can be skipped, no back button */}
         <div className="flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={onBack}
-            className="flex-1 sm:flex-initial px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-
           {showSkipOption && (
             <button
               onClick={onSkip}
-              className="flex-1 sm:flex-initial px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex-1 sm:flex-initial px-6 py-3 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
             >
               Skip for now
             </button>
@@ -224,7 +231,7 @@ export default function PaymentSetupStep({
           {paymentSetup === 'completed' ? (
             <button
               onClick={onNext}
-              className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-initial px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
             >
               Continue
               <ArrowRight className="w-4 h-4" />
@@ -233,7 +240,7 @@ export default function PaymentSetupStep({
             <button
               onClick={handleSetupPayments}
               disabled={loading}
-              className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-initial px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
