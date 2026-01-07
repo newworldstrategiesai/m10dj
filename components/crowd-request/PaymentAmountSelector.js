@@ -226,23 +226,6 @@ function PaymentAmountSelector({
                     <ChevronUp className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                   </button>
                 </div>
-                
-                {/* Quick increment buttons for mobile */}
-                <div className="grid grid-cols-4 gap-2">
-                  {[5, 10, 25, 50].map((amount) => (
-                    <button
-                      key={amount}
-                      type="button"
-                      onClick={() => {
-                        const currentValue = parseFloat(customAmount) || 0;
-                        updateCustomAmount((currentValue + amount).toFixed(2));
-                      }}
-                      className="py-2 px-3 text-sm font-semibold rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-700 touch-manipulation"
-                    >
-                      +${amount}
-                    </button>
-                  ))}
-                </div>
               </div>
             ) : (
               // Desktop: Standard text input

@@ -149,6 +149,9 @@ export default function RequestsPageSettings() {
   // Show artist name over video header toggle
   const [showArtistNameOverVideo, setShowArtistNameOverVideo] = useState(true);
   
+  // Show subtitle (location) toggle
+  const [showSubtitle, setShowSubtitle] = useState(true);
+  
   // Artist name font
   const [artistNameFont, setArtistNameFont] = useState('Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
   
@@ -166,6 +169,36 @@ export default function RequestsPageSettings() {
   const [artistNameShadowYOffset, setArtistNameShadowYOffset] = useState(3);
   const [artistNameShadowBlur, setArtistNameShadowBlur] = useState(6);
   const [artistNameShadowColor, setArtistNameShadowColor] = useState('rgba(0, 0, 0, 0.8)');
+  
+  // Artist name color
+  const [artistNameColor, setArtistNameColor] = useState('#ffffff');
+  
+  // Artist name kerning (letter-spacing)
+  const [artistNameKerning, setArtistNameKerning] = useState(0); // In pixels
+  
+  // Subtitle (location) font
+  const [subtitleFont, setSubtitleFont] = useState('Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
+  
+  // Subtitle text transform
+  const [subtitleTextTransform, setSubtitleTextTransform] = useState<'uppercase' | 'lowercase' | 'none'>('none');
+  
+  // Subtitle stroke (outline) controls
+  const [subtitleStrokeEnabled, setSubtitleStrokeEnabled] = useState(false);
+  const [subtitleStrokeWidth, setSubtitleStrokeWidth] = useState(2);
+  const [subtitleStrokeColor, setSubtitleStrokeColor] = useState('#000000');
+  
+  // Subtitle drop shadow controls
+  const [subtitleShadowEnabled, setSubtitleShadowEnabled] = useState(true);
+  const [subtitleShadowXOffset, setSubtitleShadowXOffset] = useState(3);
+  const [subtitleShadowYOffset, setSubtitleShadowYOffset] = useState(3);
+  const [subtitleShadowBlur, setSubtitleShadowBlur] = useState(6);
+  const [subtitleShadowColor, setSubtitleShadowColor] = useState('rgba(0, 0, 0, 0.8)');
+  
+  // Subtitle color
+  const [subtitleColor, setSubtitleColor] = useState('#ffffff');
+  
+  // Subtitle kerning (letter-spacing)
+  const [subtitleKerning, setSubtitleKerning] = useState(0); // In pixels
   
   // Feature toggles
   const [featureToggles, setFeatureToggles] = useState({
@@ -245,6 +278,9 @@ export default function RequestsPageSettings() {
         // Set whether to show artist name over video (defaults to true for new users)
         setShowArtistNameOverVideo(org.requests_show_artist_name_over_video !== false);
         
+        // Set whether to show subtitle (defaults to true for new users)
+        setShowSubtitle(org.requests_show_subtitle !== false);
+        
         // Set artist name font
         setArtistNameFont(org.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
         
@@ -262,6 +298,36 @@ export default function RequestsPageSettings() {
         setArtistNameShadowYOffset(org.requests_artist_name_shadow_y_offset || 3);
         setArtistNameShadowBlur(org.requests_artist_name_shadow_blur || 6);
         setArtistNameShadowColor(org.requests_artist_name_shadow_color || 'rgba(0, 0, 0, 0.8)');
+        
+        // Set artist name color
+        setArtistNameColor(org.requests_artist_name_color || '#ffffff');
+        
+        // Set artist name kerning (letter-spacing)
+        setArtistNameKerning(org.requests_artist_name_kerning || 0);
+        
+        // Set subtitle font
+        setSubtitleFont(org.requests_subtitle_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
+        
+        // Set subtitle text transform
+        setSubtitleTextTransform(org.requests_subtitle_text_transform || 'none');
+        
+        // Set subtitle stroke settings
+        setSubtitleStrokeEnabled(org.requests_subtitle_stroke_enabled || false);
+        setSubtitleStrokeWidth(org.requests_subtitle_stroke_width || 2);
+        setSubtitleStrokeColor(org.requests_subtitle_stroke_color || '#000000');
+        
+        // Set subtitle shadow settings
+        setSubtitleShadowEnabled(org.requests_subtitle_shadow_enabled !== false); // Default to true
+        setSubtitleShadowXOffset(org.requests_subtitle_shadow_x_offset || 3);
+        setSubtitleShadowYOffset(org.requests_subtitle_shadow_y_offset || 3);
+        setSubtitleShadowBlur(org.requests_subtitle_shadow_blur || 6);
+        setSubtitleShadowColor(org.requests_subtitle_shadow_color || 'rgba(0, 0, 0, 0.8)');
+        
+        // Set subtitle color
+        setSubtitleColor(org.requests_subtitle_color || '#ffffff');
+        
+        // Set subtitle kerning (letter-spacing)
+        setSubtitleKerning(org.requests_subtitle_kerning || 0);
         
         // Set custom header logo settings
         setHeaderLogoUrl(org.requests_header_logo_url || '');
@@ -390,6 +456,58 @@ export default function RequestsPageSettings() {
     setSuccess(false);
   };
 
+  // Function to get the preview URL with all display name styling parameters
+  const getPreviewUrl = () => {
+    if (!organization?.slug) return '';
+    
+    // Build URL with all display name styling parameters
+    const params = new URLSearchParams({
+      preview: 'true',
+      t: String(organization._lastUpdated || Date.now()),
+      accentColor: accentColor,
+      buttonStyle: buttonStyle,
+      themeMode: themeMode,
+      // Display name styling parameters
+      artistNameFont: encodeURIComponent(artistNameFont),
+      artistNameTextTransform: artistNameTextTransform,
+      artistNameColor: artistNameColor,
+      artistNameKerning: String(artistNameKerning),
+      artistNameStrokeEnabled: String(artistNameStrokeEnabled),
+      artistNameStrokeWidth: String(artistNameStrokeWidth),
+      artistNameStrokeColor: artistNameStrokeColor,
+      artistNameShadowEnabled: String(artistNameShadowEnabled),
+      artistNameShadowXOffset: String(artistNameShadowXOffset),
+      artistNameShadowYOffset: String(artistNameShadowYOffset),
+      artistNameShadowBlur: String(artistNameShadowBlur),
+      artistNameShadowColor: artistNameShadowColor,
+      // Subtitle styling parameters
+      subtitleFont: encodeURIComponent(subtitleFont),
+      subtitleTextTransform: subtitleTextTransform,
+      subtitleColor: subtitleColor,
+      subtitleKerning: String(subtitleKerning),
+      subtitleStrokeEnabled: String(subtitleStrokeEnabled),
+      subtitleStrokeWidth: String(subtitleStrokeWidth),
+      subtitleStrokeColor: subtitleStrokeColor,
+      subtitleShadowEnabled: String(subtitleShadowEnabled),
+      subtitleShadowXOffset: String(subtitleShadowXOffset),
+      subtitleShadowYOffset: String(subtitleShadowYOffset),
+      subtitleShadowBlur: String(subtitleShadowBlur),
+      subtitleShadowColor: subtitleShadowColor,
+    });
+    
+    return `/${organization.slug}/requests?${params.toString()}`;
+  };
+
+  // Function to update the preview iframe with current display name styling
+  const updatePreviewIframe = () => {
+    if (!organization?.slug) return;
+    
+    const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
+    if (!iframe) return;
+    
+    iframe.src = getPreviewUrl();
+  };
+
   const handleSave = async () => {
     if (!organization) {
       setError('No organization found');
@@ -419,6 +537,8 @@ export default function RequestsPageSettings() {
         requests_header_video_url: coverPhotos.requests_header_video_url || null,
         // Show artist name over video setting
         requests_show_artist_name_over_video: showArtistNameOverVideo,
+        // Show subtitle setting
+        requests_show_subtitle: showSubtitle,
         // Artist name font
         requests_artist_name_font: artistNameFont || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
         // Artist name text transform
@@ -433,6 +553,28 @@ export default function RequestsPageSettings() {
         requests_artist_name_shadow_y_offset: artistNameShadowYOffset || 3,
         requests_artist_name_shadow_blur: artistNameShadowBlur || 6,
         requests_artist_name_shadow_color: artistNameShadowColor || 'rgba(0, 0, 0, 0.8)',
+        // Artist name color
+        requests_artist_name_color: artistNameColor || '#ffffff',
+        // Artist name kerning (letter-spacing)
+        requests_artist_name_kerning: artistNameKerning || 0,
+        // Subtitle font
+        requests_subtitle_font: subtitleFont || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
+        // Subtitle text transform
+        requests_subtitle_text_transform: subtitleTextTransform || 'none',
+        // Subtitle stroke settings
+        requests_subtitle_stroke_enabled: subtitleStrokeEnabled,
+        requests_subtitle_stroke_width: subtitleStrokeWidth || 2,
+        requests_subtitle_stroke_color: subtitleStrokeColor || '#000000',
+        // Subtitle shadow settings
+        requests_subtitle_shadow_enabled: subtitleShadowEnabled,
+        requests_subtitle_shadow_x_offset: subtitleShadowXOffset || 3,
+        requests_subtitle_shadow_y_offset: subtitleShadowYOffset || 3,
+        requests_subtitle_shadow_blur: subtitleShadowBlur || 6,
+        requests_subtitle_shadow_color: subtitleShadowColor || 'rgba(0, 0, 0, 0.8)',
+        // Subtitle color
+        requests_subtitle_color: subtitleColor || '#ffffff',
+        // Subtitle kerning (letter-spacing)
+        requests_subtitle_kerning: subtitleKerning || 0,
         // Custom header logo (only save if user can customize)
         requests_header_logo_url: canCustomizeHeaderLogo ? (headerLogoUrl || null) : null,
         // Accent color (available to all users)
@@ -520,10 +662,7 @@ export default function RequestsPageSettings() {
       
       // Auto-refresh the preview iframe after a short delay (to allow database to update)
       setTimeout(() => {
-        const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
-        if (iframe) {
-          iframe.src = `/${organization.slug}/requests?preview=true&t=${newTimestamp}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`;
-        }
+        updatePreviewIframe();
       }, 1000);
     } catch (error: any) {
       console.error('Error saving settings:', error);
@@ -1833,6 +1972,8 @@ export default function RequestsPageSettings() {
                           setArtistNameFont(e.target.value);
                           setError(null);
                           setSuccess(false);
+                          // Update preview iframe in real-time
+                          setTimeout(() => updatePreviewIframe(), 100);
                         }}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
                       >
@@ -1866,6 +2007,8 @@ export default function RequestsPageSettings() {
                             setArtistNameTextTransform('uppercase');
                             setError(null);
                             setSuccess(false);
+                            // Update preview iframe in real-time
+                            setTimeout(() => updatePreviewIframe(), 100);
                           }}
                           className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                             artistNameTextTransform === 'uppercase'
@@ -1881,6 +2024,8 @@ export default function RequestsPageSettings() {
                             setArtistNameTextTransform('lowercase');
                             setError(null);
                             setSuccess(false);
+                            // Update preview iframe in real-time
+                            setTimeout(() => updatePreviewIframe(), 100);
                           }}
                           className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                             artistNameTextTransform === 'lowercase'
@@ -1896,6 +2041,8 @@ export default function RequestsPageSettings() {
                             setArtistNameTextTransform('none');
                             setError(null);
                             setSuccess(false);
+                            // Update preview iframe in real-time
+                            setTimeout(() => updatePreviewIframe(), 100);
                           }}
                           className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                             artistNameTextTransform === 'none'
@@ -1913,6 +2060,8 @@ export default function RequestsPageSettings() {
                           style={{ 
                             fontFamily: artistNameFont,
                             textTransform: artistNameTextTransform,
+                            color: artistNameColor,
+                            letterSpacing: `${artistNameKerning}px`,
                             WebkitTextStroke: artistNameStrokeEnabled ? `${artistNameStrokeWidth}px ${artistNameStrokeColor}` : 'none',
                             WebkitTextFillColor: artistNameStrokeEnabled ? 'transparent' : undefined,
                             textShadow: artistNameShadowEnabled 
@@ -1937,6 +2086,78 @@ export default function RequestsPageSettings() {
                       </p>
                     </div>
                     
+                    {/* Display Name Color */}
+                    <div>
+                      <Label htmlFor="artist_name_color" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Display Name Color
+                      </Label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          id="artist_name_color"
+                          type="color"
+                          value={artistNameColor}
+                          onChange={(e) => {
+                            setArtistNameColor(e.target.value);
+                            setError(null);
+                            setSuccess(false);
+                            // Update preview iframe in real-time
+                            setTimeout(() => updatePreviewIframe(), 100);
+                          }}
+                          className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                        />
+                        <input
+                          type="text"
+                          value={artistNameColor}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                              setArtistNameColor(value);
+                              setError(null);
+                              setSuccess(false);
+                              // Update preview iframe in real-time
+                              setTimeout(() => updatePreviewIframe(), 100);
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                          placeholder="#ffffff"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        Choose the color of the display name text
+                      </p>
+                    </div>
+                    
+                    {/* Display Name Kerning (Letter Spacing) */}
+                    <div>
+                      <Label htmlFor="artist_name_kerning" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Letter Spacing (Kerning): {artistNameKerning}px
+                      </Label>
+                      <input
+                        id="artist_name_kerning"
+                        type="range"
+                        min="-5"
+                        max="20"
+                        step="0.5"
+                        value={artistNameKerning}
+                        onChange={(e) => {
+                          setArtistNameKerning(parseFloat(e.target.value));
+                          setError(null);
+                          setSuccess(false);
+                          // Update preview iframe in real-time
+                          setTimeout(() => updatePreviewIframe(), 100);
+                        }}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <span>Tighter</span>
+                        <span>Normal</span>
+                        <span>Wider</span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        Adjust the spacing between letters
+                      </p>
+                    </div>
+                    
                     {/* Stroke (Outline) Controls */}
                     <div>
                       <div className="flex items-center justify-between mb-3">
@@ -1951,6 +2172,8 @@ export default function RequestsPageSettings() {
                               setArtistNameStrokeEnabled(e.target.checked);
                               setError(null);
                               setSuccess(false);
+                              // Update preview iframe in real-time
+                              setTimeout(() => updatePreviewIframe(), 100);
                             }}
                             className="sr-only peer"
                           />
@@ -1973,6 +2196,8 @@ export default function RequestsPageSettings() {
                                 setArtistNameStrokeWidth(parseInt(e.target.value));
                                 setError(null);
                                 setSuccess(false);
+                                // Update preview iframe in real-time
+                                setTimeout(() => updatePreviewIframe(), 100);
                               }}
                               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
                             />
@@ -1990,6 +2215,8 @@ export default function RequestsPageSettings() {
                                   setArtistNameStrokeColor(e.target.value);
                                   setError(null);
                                   setSuccess(false);
+                                  // Update preview iframe in real-time
+                                  setTimeout(() => updatePreviewIframe(), 100);
                                 }}
                                 className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
                               />
@@ -2002,6 +2229,8 @@ export default function RequestsPageSettings() {
                                     setArtistNameStrokeColor(value);
                                     setError(null);
                                     setSuccess(false);
+                                    // Update preview iframe in real-time
+                                    setTimeout(() => updatePreviewIframe(), 100);
                                   }
                                 }}
                                 className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
@@ -2027,6 +2256,8 @@ export default function RequestsPageSettings() {
                               setArtistNameShadowEnabled(e.target.checked);
                               setError(null);
                               setSuccess(false);
+                              // Update preview iframe in real-time
+                              setTimeout(() => updatePreviewIframe(), 100);
                             }}
                             className="sr-only peer"
                           />
@@ -2050,6 +2281,8 @@ export default function RequestsPageSettings() {
                                   setArtistNameShadowXOffset(parseInt(e.target.value));
                                   setError(null);
                                   setSuccess(false);
+                                  // Update preview iframe in real-time
+                                  setTimeout(() => updatePreviewIframe(), 100);
                                 }}
                                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
                               />
@@ -2068,6 +2301,8 @@ export default function RequestsPageSettings() {
                                   setArtistNameShadowYOffset(parseInt(e.target.value));
                                   setError(null);
                                   setSuccess(false);
+                                  // Update preview iframe in real-time
+                                  setTimeout(() => updatePreviewIframe(), 100);
                                 }}
                                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
                               />
@@ -2087,6 +2322,8 @@ export default function RequestsPageSettings() {
                                 setArtistNameShadowBlur(parseInt(e.target.value));
                                 setError(null);
                                 setSuccess(false);
+                                // Update preview iframe in real-time
+                                setTimeout(() => updatePreviewIframe(), 100);
                               }}
                               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
                             />
@@ -2103,6 +2340,8 @@ export default function RequestsPageSettings() {
                                 setArtistNameShadowColor(e.target.value);
                                 setError(null);
                                 setSuccess(false);
+                                // Update preview iframe in real-time
+                                setTimeout(() => updatePreviewIframe(), 100);
                               }}
                               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
                               placeholder="rgba(0, 0, 0, 0.8)"
@@ -2112,6 +2351,420 @@ export default function RequestsPageSettings() {
                             </p>
                           </div>
                         </div>
+                      )}
+                    </div>
+                    
+                    {/* Subtitle (Location) Styling Controls */}
+                    <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            Subtitle (Location) Styling
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Customize how the location/subtitle appears below the display name
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Label htmlFor="show_subtitle" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Show Subtitle
+                          </Label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              id="show_subtitle"
+                              checked={showSubtitle}
+                              onChange={(e) => {
+                                setShowSubtitle(e.target.checked);
+                                setError(null);
+                                setSuccess(false);
+                                setTimeout(() => updatePreviewIframe(), 100);
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#fcba00] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#fcba00]"></div>
+                          </label>
+                        </div>
+                      </div>
+                      
+                      {showSubtitle && (
+                        <>
+                      {/* Subtitle Font */}
+                      <div className="mb-6">
+                        <Label htmlFor="subtitle_font" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Subtitle Font
+                        </Label>
+                        <select
+                          id="subtitle_font"
+                          value={subtitleFont}
+                          onChange={(e) => {
+                            setSubtitleFont(e.target.value);
+                            setError(null);
+                            setSuccess(false);
+                            setTimeout(() => updatePreviewIframe(), 100);
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                        >
+                          <option value='Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif'>Impact (Bold)</option>
+                          <option value='"Arial Black", Arial, sans-serif'>Arial Black</option>
+                          <option value='"Helvetica Neue", Helvetica, Arial, sans-serif'>Helvetica Neue</option>
+                          <option value='"Oswald", sans-serif'>Oswald (Condensed)</option>
+                          <option value='"Montserrat", sans-serif'>Montserrat</option>
+                          <option value='"Roboto", sans-serif'>Roboto</option>
+                          <option value='"Open Sans", sans-serif'>Open Sans</option>
+                          <option value='"Lato", sans-serif'>Lato</option>
+                          <option value='"Raleway", sans-serif'>Raleway</option>
+                          <option value='"Playfair Display", serif'>Playfair Display</option>
+                          <option value='"Lora", serif'>Lora</option>
+                        </select>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Choose the font style for your subtitle
+                        </p>
+                      </div>
+                      
+                      {/* Subtitle Casing */}
+                      <div className="mb-6">
+                        <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Subtitle Casing
+                        </Label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubtitleTextTransform('uppercase');
+                              setError(null);
+                              setSuccess(false);
+                              setTimeout(() => updatePreviewIframe(), 100);
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                              subtitleTextTransform === 'uppercase'
+                                ? 'bg-[#fcba00] text-black shadow-sm'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            ALL CAPS
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubtitleTextTransform('lowercase');
+                              setError(null);
+                              setSuccess(false);
+                              setTimeout(() => updatePreviewIframe(), 100);
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                              subtitleTextTransform === 'lowercase'
+                                ? 'bg-[#fcba00] text-black shadow-sm'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            all lowercase
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubtitleTextTransform('none');
+                              setError(null);
+                              setSuccess(false);
+                              setTimeout(() => updatePreviewIframe(), 100);
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                              subtitleTextTransform === 'none'
+                                ? 'bg-[#fcba00] text-black shadow-sm'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            Normal Case
+                          </button>
+                        </div>
+                        <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Preview:</p>
+                          <p 
+                            className="font-black text-gray-900 dark:text-white tracking-tight text-2xl"
+                            style={{ 
+                              fontFamily: subtitleFont,
+                              textTransform: subtitleTextTransform,
+                              color: subtitleColor,
+                              letterSpacing: `${subtitleKerning}px`,
+                              WebkitTextStroke: subtitleStrokeEnabled ? `${subtitleStrokeWidth}px ${subtitleStrokeColor}` : 'none',
+                              WebkitTextFillColor: subtitleStrokeEnabled ? 'transparent' : undefined,
+                              textShadow: subtitleShadowEnabled 
+                                ? `${subtitleShadowXOffset}px ${subtitleShadowYOffset}px ${subtitleShadowBlur}px ${subtitleShadowColor}`
+                                : 'none'
+                            } as React.CSSProperties}
+                          >
+                            {(() => {
+                              const previewText = headerFields.requests_header_location || 'Memphis, TN';
+                              if (subtitleTextTransform === 'uppercase') {
+                                return previewText.toUpperCase();
+                              } else if (subtitleTextTransform === 'lowercase') {
+                                return previewText.toLowerCase();
+                              }
+                              return previewText;
+                            })()}
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Choose how the subtitle is cased
+                        </p>
+                      </div>
+                      
+                      {/* Subtitle Color */}
+                      <div className="mb-6">
+                        <Label htmlFor="subtitle_color" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Subtitle Color
+                        </Label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            id="subtitle_color"
+                            type="color"
+                            value={subtitleColor}
+                            onChange={(e) => {
+                              setSubtitleColor(e.target.value);
+                              setError(null);
+                              setSuccess(false);
+                              setTimeout(() => updatePreviewIframe(), 100);
+                            }}
+                            className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                          />
+                          <input
+                            type="text"
+                            value={subtitleColor}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                                setSubtitleColor(value);
+                                setError(null);
+                                setSuccess(false);
+                                setTimeout(() => updatePreviewIframe(), 100);
+                              }
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                            placeholder="#ffffff"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Choose the color of the subtitle text
+                        </p>
+                      </div>
+                      
+                      {/* Subtitle Kerning */}
+                      <div className="mb-6">
+                        <Label htmlFor="subtitle_kerning" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Letter Spacing (Kerning): {subtitleKerning}px
+                        </Label>
+                        <input
+                          id="subtitle_kerning"
+                          type="range"
+                          min="-5"
+                          max="20"
+                          step="0.5"
+                          value={subtitleKerning}
+                          onChange={(e) => {
+                            setSubtitleKerning(parseFloat(e.target.value));
+                            setError(null);
+                            setSuccess(false);
+                            setTimeout(() => updatePreviewIframe(), 100);
+                          }}
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <span>Tighter</span>
+                          <span>Normal</span>
+                          <span>Wider</span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Adjust the spacing between letters
+                        </p>
+                      </div>
+                      
+                      {/* Subtitle Stroke Controls */}
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Text Stroke (Outline)
+                          </Label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={subtitleStrokeEnabled}
+                              onChange={(e) => {
+                                setSubtitleStrokeEnabled(e.target.checked);
+                                setError(null);
+                                setSuccess(false);
+                                setTimeout(() => updatePreviewIframe(), 100);
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#fcba00] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#fcba00]"></div>
+                          </label>
+                        </div>
+                        {subtitleStrokeEnabled && (
+                          <div className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                            <div>
+                              <Label htmlFor="subtitle_stroke_width" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Stroke Width: {subtitleStrokeWidth}px
+                              </Label>
+                              <input
+                                id="subtitle_stroke_width"
+                                type="range"
+                                min="1"
+                                max="10"
+                                value={subtitleStrokeWidth}
+                                onChange={(e) => {
+                                  setSubtitleStrokeWidth(parseInt(e.target.value));
+                                  setError(null);
+                                  setSuccess(false);
+                                  setTimeout(() => updatePreviewIframe(), 100);
+                                }}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="subtitle_stroke_color" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Stroke Color
+                              </Label>
+                              <div className="flex items-center gap-3">
+                                <input
+                                  id="subtitle_stroke_color"
+                                  type="color"
+                                  value={subtitleStrokeColor}
+                                  onChange={(e) => {
+                                    setSubtitleStrokeColor(e.target.value);
+                                    setError(null);
+                                    setSuccess(false);
+                                    setTimeout(() => updatePreviewIframe(), 100);
+                                  }}
+                                  className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                                />
+                                <input
+                                  type="text"
+                                  value={subtitleStrokeColor}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                                      setSubtitleStrokeColor(value);
+                                      setError(null);
+                                      setSuccess(false);
+                                      setTimeout(() => updatePreviewIframe(), 100);
+                                    }
+                                  }}
+                                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                                  placeholder="#000000"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Subtitle Drop Shadow Controls */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Drop Shadow
+                          </Label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={subtitleShadowEnabled}
+                              onChange={(e) => {
+                                setSubtitleShadowEnabled(e.target.checked);
+                                setError(null);
+                                setSuccess(false);
+                                setTimeout(() => updatePreviewIframe(), 100);
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#fcba00] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#fcba00]"></div>
+                          </label>
+                        </div>
+                        {subtitleShadowEnabled && (
+                          <div className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label htmlFor="subtitle_shadow_x" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                  X Offset: {subtitleShadowXOffset}px
+                                </Label>
+                                <input
+                                  id="subtitle_shadow_x"
+                                  type="range"
+                                  min="-20"
+                                  max="20"
+                                  value={subtitleShadowXOffset}
+                                  onChange={(e) => {
+                                    setSubtitleShadowXOffset(parseInt(e.target.value));
+                                    setError(null);
+                                    setSuccess(false);
+                                    setTimeout(() => updatePreviewIframe(), 100);
+                                  }}
+                                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="subtitle_shadow_y" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                  Y Offset: {subtitleShadowYOffset}px
+                                </Label>
+                                <input
+                                  id="subtitle_shadow_y"
+                                  type="range"
+                                  min="-20"
+                                  max="20"
+                                  value={subtitleShadowYOffset}
+                                  onChange={(e) => {
+                                    setSubtitleShadowYOffset(parseInt(e.target.value));
+                                    setError(null);
+                                    setSuccess(false);
+                                    setTimeout(() => updatePreviewIframe(), 100);
+                                  }}
+                                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label htmlFor="subtitle_shadow_blur" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Blur: {subtitleShadowBlur}px
+                              </Label>
+                              <input
+                                id="subtitle_shadow_blur"
+                                type="range"
+                                min="0"
+                                max="30"
+                                value={subtitleShadowBlur}
+                                onChange={(e) => {
+                                  setSubtitleShadowBlur(parseInt(e.target.value));
+                                  setError(null);
+                                  setSuccess(false);
+                                  setTimeout(() => updatePreviewIframe(), 100);
+                                }}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#fcba00]"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="subtitle_shadow_color" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Shadow Color
+                              </Label>
+                              <input
+                                id="subtitle_shadow_color"
+                                type="text"
+                                value={subtitleShadowColor}
+                                onChange={(e) => {
+                                  setSubtitleShadowColor(e.target.value);
+                                  setError(null);
+                                  setSuccess(false);
+                                  setTimeout(() => updatePreviewIframe(), 100);
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                                placeholder="rgba(0, 0, 0, 0.8)"
+                              />
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Use rgba() format, e.g., rgba(0, 0, 0, 0.8)
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                        </>
                       )}
                     </div>
                     
@@ -2430,7 +3083,9 @@ export default function RequestsPageSettings() {
                     onClick={() => {
                       const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
                       if (iframe && organization?.slug) {
-                        iframe.src = `/${organization.slug}/requests?preview=true&t=${Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`;
+                        // Update timestamp and refresh
+                        setOrganization((prev: any) => prev ? { ...prev, _lastUpdated: Date.now() } : prev);
+                        setTimeout(() => updatePreviewIframe(), 100);
                       }
                     }}
                     className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
@@ -2464,7 +3119,7 @@ export default function RequestsPageSettings() {
                       >
                         <iframe
                           id="live-preview-iframe"
-                          src={`/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
+                          src={getPreviewUrl()}
                           className="border-0 bg-black"
                           style={{ 
                             transform: 'scale(0.57)',
@@ -2500,7 +3155,7 @@ export default function RequestsPageSettings() {
                       >
                         <iframe
                           id="live-preview-iframe"
-                          src={`/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
+                          src={getPreviewUrl()}
                           className="border-0 bg-black"
                           style={{ 
                             transform: 'scale(0.41)',

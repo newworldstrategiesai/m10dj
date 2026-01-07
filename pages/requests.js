@@ -243,10 +243,66 @@ export function GeneralRequestsPage({
   const previewButtonStyle = router.query.buttonStyle || null;
   const previewThemeMode = router.query.themeMode || null;
   
+  // Read display name styling parameters from URL (for admin preview)
+  const previewArtistNameFont = router.query.artistNameFont ? decodeURIComponent(router.query.artistNameFont) : null;
+  const previewArtistNameTextTransform = router.query.artistNameTextTransform || null;
+  const previewArtistNameColor = router.query.artistNameColor || null;
+  const previewArtistNameKerning = router.query.artistNameKerning ? parseFloat(router.query.artistNameKerning) : null;
+  const previewArtistNameStrokeEnabled = router.query.artistNameStrokeEnabled === 'true';
+  const previewArtistNameStrokeWidth = router.query.artistNameStrokeWidth ? parseInt(router.query.artistNameStrokeWidth) : null;
+  const previewArtistNameStrokeColor = router.query.artistNameStrokeColor || null;
+  const previewArtistNameShadowEnabled = router.query.artistNameShadowEnabled !== 'false'; // Default to true if not specified
+  const previewArtistNameShadowXOffset = router.query.artistNameShadowXOffset ? parseInt(router.query.artistNameShadowXOffset) : null;
+  const previewArtistNameShadowYOffset = router.query.artistNameShadowYOffset ? parseInt(router.query.artistNameShadowYOffset) : null;
+  const previewArtistNameShadowBlur = router.query.artistNameShadowBlur ? parseInt(router.query.artistNameShadowBlur) : null;
+  const previewArtistNameShadowColor = router.query.artistNameShadowColor || null;
+  
   // Use preview values if available, otherwise use organization data
   const effectiveAccentColor = previewAccentColor || organizationData?.requests_accent_color || '#fcba00';
   const effectiveButtonStyle = previewButtonStyle || organizationData?.requests_button_style || 'gradient';
   const effectiveThemeMode = previewThemeMode || organizationData?.requests_theme_mode || 'dark';
+  
+  // Use preview values for display name styling if available, otherwise use organization data
+  const effectiveArtistNameFont = previewArtistNameFont || organizationData?.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
+  const effectiveArtistNameTextTransform = previewArtistNameTextTransform || organizationData?.requests_artist_name_text_transform || 'uppercase';
+  const effectiveArtistNameColor = previewArtistNameColor || organizationData?.requests_artist_name_color || '#ffffff';
+  const effectiveArtistNameKerning = previewArtistNameKerning !== null ? previewArtistNameKerning : (organizationData?.requests_artist_name_kerning || 0);
+  const effectiveArtistNameStrokeEnabled = previewArtistNameStrokeWidth !== null ? previewArtistNameStrokeEnabled : (organizationData?.requests_artist_name_stroke_enabled || false);
+  const effectiveArtistNameStrokeWidth = previewArtistNameStrokeWidth !== null ? previewArtistNameStrokeWidth : (organizationData?.requests_artist_name_stroke_width || 2);
+  const effectiveArtistNameStrokeColor = previewArtistNameStrokeColor || organizationData?.requests_artist_name_stroke_color || '#000000';
+  const effectiveArtistNameShadowEnabled = previewArtistNameShadowXOffset !== null ? previewArtistNameShadowEnabled : (organizationData?.requests_artist_name_shadow_enabled !== false);
+  const effectiveArtistNameShadowXOffset = previewArtistNameShadowXOffset !== null ? previewArtistNameShadowXOffset : (organizationData?.requests_artist_name_shadow_x_offset || 3);
+  const effectiveArtistNameShadowYOffset = previewArtistNameShadowYOffset !== null ? previewArtistNameShadowYOffset : (organizationData?.requests_artist_name_shadow_y_offset || 3);
+  const effectiveArtistNameShadowBlur = previewArtistNameShadowBlur !== null ? previewArtistNameShadowBlur : (organizationData?.requests_artist_name_shadow_blur || 6);
+  const effectiveArtistNameShadowColor = previewArtistNameShadowColor || organizationData?.requests_artist_name_shadow_color || 'rgba(0, 0, 0, 0.8)';
+  
+  // Read subtitle styling parameters from URL (for admin preview)
+  const previewSubtitleFont = router.query.subtitleFont ? decodeURIComponent(router.query.subtitleFont) : null;
+  const previewSubtitleTextTransform = router.query.subtitleTextTransform || null;
+  const previewSubtitleColor = router.query.subtitleColor || null;
+  const previewSubtitleKerning = router.query.subtitleKerning ? parseFloat(router.query.subtitleKerning) : null;
+  const previewSubtitleStrokeEnabled = router.query.subtitleStrokeEnabled === 'true';
+  const previewSubtitleStrokeWidth = router.query.subtitleStrokeWidth ? parseInt(router.query.subtitleStrokeWidth) : null;
+  const previewSubtitleStrokeColor = router.query.subtitleStrokeColor || null;
+  const previewSubtitleShadowEnabled = router.query.subtitleShadowEnabled !== 'false';
+  const previewSubtitleShadowXOffset = router.query.subtitleShadowXOffset ? parseInt(router.query.subtitleShadowXOffset) : null;
+  const previewSubtitleShadowYOffset = router.query.subtitleShadowYOffset ? parseInt(router.query.subtitleShadowYOffset) : null;
+  const previewSubtitleShadowBlur = router.query.subtitleShadowBlur ? parseInt(router.query.subtitleShadowBlur) : null;
+  const previewSubtitleShadowColor = router.query.subtitleShadowColor || null;
+  
+  // Use preview values for subtitle styling if available, otherwise use organization data
+  const effectiveSubtitleFont = previewSubtitleFont || organizationData?.requests_subtitle_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
+  const effectiveSubtitleTextTransform = previewSubtitleTextTransform || organizationData?.requests_subtitle_text_transform || 'none';
+  const effectiveSubtitleColor = previewSubtitleColor || organizationData?.requests_subtitle_color || '#ffffff';
+  const effectiveSubtitleKerning = previewSubtitleKerning !== null ? previewSubtitleKerning : (organizationData?.requests_subtitle_kerning || 0);
+  const effectiveSubtitleStrokeEnabled = previewSubtitleStrokeWidth !== null ? previewSubtitleStrokeEnabled : (organizationData?.requests_subtitle_stroke_enabled || false);
+  const effectiveSubtitleStrokeWidth = previewSubtitleStrokeWidth !== null ? previewSubtitleStrokeWidth : (organizationData?.requests_subtitle_stroke_width || 2);
+  const effectiveSubtitleStrokeColor = previewSubtitleStrokeColor || organizationData?.requests_subtitle_stroke_color || '#000000';
+  const effectiveSubtitleShadowEnabled = previewSubtitleShadowXOffset !== null ? previewSubtitleShadowEnabled : (organizationData?.requests_subtitle_shadow_enabled !== false);
+  const effectiveSubtitleShadowXOffset = previewSubtitleShadowXOffset !== null ? previewSubtitleShadowXOffset : (organizationData?.requests_subtitle_shadow_x_offset || 3);
+  const effectiveSubtitleShadowYOffset = previewSubtitleShadowYOffset !== null ? previewSubtitleShadowYOffset : (organizationData?.requests_subtitle_shadow_y_offset || 3);
+  const effectiveSubtitleShadowBlur = previewSubtitleShadowBlur !== null ? previewSubtitleShadowBlur : (organizationData?.requests_subtitle_shadow_blur || 6);
+  const effectiveSubtitleShadowColor = previewSubtitleShadowColor || organizationData?.requests_subtitle_shadow_color || 'rgba(0, 0, 0, 0.8)';
   
   // Log when organizationData changes
   useEffect(() => {
@@ -1839,7 +1895,7 @@ export function GeneralRequestsPage({
       '"Lora", serif': 'Lora:wght@400;500;600;700',
     };
     
-    const selectedFont = organizationData?.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
+    const selectedFont = fontFamily || effectiveArtistNameFont;
     const fontKey = Object.keys(fontMap).find(key => selectedFont.includes(key.replace(/"/g, '')));
     
     if (fontKey) {
@@ -1848,17 +1904,23 @@ export function GeneralRequestsPage({
     return null;
   };
 
-  const googleFontLink = getGoogleFontLink(organizationData?.requests_artist_name_font);
+  // Get Google Font links for both display name and subtitle
+  const artistNameFontLink = getGoogleFontLink(effectiveArtistNameFont);
+  const subtitleFontLink = getGoogleFontLink(effectiveSubtitleFont);
+  // Combine unique font links
+  const googleFontLinks = [artistNameFontLink, subtitleFontLink].filter((link, index, self) => link && self.indexOf(link) === index);
 
   return (
     <>
       <Head>
         <title>{pageTitle}</title>
-        {googleFontLink && (
+        {googleFontLinks.length > 0 && (
           <>
             <link rel="preconnect" href="https://fonts.googleapis.com" />
             <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-            <link href={googleFontLink} rel="stylesheet" />
+            {googleFontLinks.map((link, index) => (
+              <link key={index} href={link} rel="stylesheet" />
+            ))}
           </>
         )}
         <meta name="description" content={pageDescription} />
@@ -1915,6 +1977,24 @@ export function GeneralRequestsPage({
             box-shadow: none !important;
             border: none !important;
             border-bottom: none !important;
+          }
+          /* On desktop/tablet, keep header transparent even when scrolled */
+          @media (min-width: 768px) {
+            header[data-transparent="true"] {
+              background-color: transparent !important;
+              background: transparent !important;
+              backdrop-filter: none !important;
+              -webkit-backdrop-filter: none !important;
+              box-shadow: none !important;
+              border: none !important;
+              border-bottom: none !important;
+            }
+            /* Override any scroll-based background classes */
+            header[data-transparent="true"].bg-white\\/80,
+            header[data-transparent="true"].dark\\:bg-black\\/80 {
+              background-color: transparent !important;
+              background: transparent !important;
+            }
           }
           /* Prevent scrollbar from appearing and causing layout shift */
           /* Force scrollbar to always be present but invisible to prevent layout shift */
@@ -2201,6 +2281,9 @@ export function GeneralRequestsPage({
             ${effectiveThemeMode === 'dark' ? `
               .requests-page-container, .requests-page-container * { color-scheme: dark; }
               .requests-page-container { background-color: black !important; }
+              @media (min-width: 768px) {
+                .requests-page-container { background-color: transparent !important; }
+              }
               .requests-page-container .bg-gray-50 { background-color: rgb(17, 24, 39) !important; }
               .requests-page-container .bg-white { background-color: rgb(31, 41, 55) !important; }
               .requests-page-container .bg-white\\/80 { background-color: rgba(0, 0, 0, 0.8) !important; }
@@ -2271,14 +2354,16 @@ export function GeneralRequestsPage({
                   <div 
                     className="text-white/[0.08] text-[12rem] font-black tracking-wider select-none pointer-events-none"
                     style={{
-                      fontFamily: organizationData?.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
-                      textTransform: organizationData?.requests_artist_name_text_transform || 'uppercase',
-                      WebkitTextStroke: organizationData?.requests_artist_name_stroke_enabled 
-                        ? `${organizationData.requests_artist_name_stroke_width || 2}px ${organizationData.requests_artist_name_stroke_color || '#000000'}` 
+                      fontFamily: effectiveArtistNameFont,
+                      textTransform: effectiveArtistNameTextTransform,
+                      color: effectiveArtistNameColor,
+                      letterSpacing: `${effectiveArtistNameKerning}px`,
+                      WebkitTextStroke: effectiveArtistNameStrokeEnabled 
+                        ? `${effectiveArtistNameStrokeWidth}px ${effectiveArtistNameStrokeColor}` 
                         : 'none',
-                      WebkitTextFillColor: organizationData?.requests_artist_name_stroke_enabled ? 'transparent' : undefined,
-                      textShadow: organizationData?.requests_artist_name_shadow_enabled !== false
-                        ? `${organizationData?.requests_artist_name_shadow_x_offset || 3}px ${organizationData?.requests_artist_name_shadow_y_offset || 3}px ${organizationData?.requests_artist_name_shadow_blur || 6}px ${organizationData?.requests_artist_name_shadow_color || 'rgba(0, 0, 0, 0.8)'}`
+                      WebkitTextFillColor: effectiveArtistNameStrokeEnabled ? 'transparent' : undefined,
+                      textShadow: effectiveArtistNameShadowEnabled
+                        ? `${effectiveArtistNameShadowXOffset}px ${effectiveArtistNameShadowYOffset}px ${effectiveArtistNameShadowBlur}px ${effectiveArtistNameShadowColor}`
                         : 'none',
                       transform: 'rotate(-12deg) scale(1.5)',
                       whiteSpace: 'nowrap'
@@ -2286,12 +2371,11 @@ export function GeneralRequestsPage({
                   >
                     {(() => {
                       const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'TipJar';
-                      const textTransform = organizationData?.requests_artist_name_text_transform || 'uppercase';
                       
                       // Apply text transform
-                      if (textTransform === 'uppercase') {
+                      if (effectiveArtistNameTextTransform === 'uppercase') {
                         return artistName.toUpperCase();
-                      } else if (textTransform === 'lowercase') {
+                      } else if (effectiveArtistNameTextTransform === 'lowercase') {
                         return artistName.toLowerCase();
                       }
                       return artistName; // Normal case
@@ -2410,163 +2494,94 @@ export function GeneralRequestsPage({
           </>
         )}
         
-        {/* Main Content Area - Add left margin on desktop to account for fixed video sidebar */}
-        <div className="flex-1 min-w-0 relative md:ml-[400px] lg:ml-[450px] xl:ml-[500px] desktop-content-wrapper">
-          {/* Desktop iPhone Frame Wrapper with Animated Background */}
+        {/* Main Content Area - Centered on desktop with animated background */}
+        <div className="flex-1 min-w-0 relative desktop-content-wrapper">
+          {/* Desktop Animated Background and Centered Layout */}
           <style dangerouslySetInnerHTML={{ __html: `
             @keyframes gradientShiftDesktop {
               0% { background-position: 0% 50%; }
               50% { background-position: 100% 50%; }
               100% { background-position: 0% 50%; }
             }
-            @keyframes floatDesktop {
-              0%, 100% { transform: translateY(0px); }
-              50% { transform: translateY(-8px); }
-            }
-            .desktop-iphone-wrapper {
-              display: none;
-            }
             @media (min-width: 768px) {
-              /* Hide video sidebar when showing iPhone frame view */
+              /* Hide video sidebar on desktop */
               .desktop-video-sidebar {
                 display: none !important;
               }
               
-              .desktop-iphone-wrapper {
-                display: flex;
-                position: fixed;
-                inset: 0;
-                align-items: center;
-                justify-content: center;
-                pointer-events: none;
-                z-index: 50;
+              /* Make animated gradient background full screen on desktop */
+              .animated-gradient-bg {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                z-index: 0 !important;
               }
-              .desktop-iphone-bg {
-                position: absolute;
-                inset: 0;
-                background: linear-gradient(135deg, var(--accent-color, #fcba00)15 0%, var(--accent-color, #fcba00)05 25%, transparent 50%, var(--accent-color, #fcba00)05 75%, var(--accent-color, #fcba00)15 100%);
-                background-size: 200% 200%;
-                animation: gradientShiftDesktop 8s ease infinite;
+              
+              /* Ensure container background is transparent so animation shows through */
+              .requests-page-container {
+                background: transparent !important;
+                background-color: transparent !important;
+                background-image: none !important;
+                position: relative !important;
               }
-              .desktop-iphone-frame {
-                position: relative;
-                width: 420px;
-                height: 855px;
-                background: #1a1a1a;
-                border-radius: 60px;
-                padding: 8px;
-                border: 6px solid #0a0a0a;
-                box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 50px rgba(0, 0, 0, 0.4);
-                animation: floatDesktop 4s ease-in-out infinite;
-                z-index: 55;
+              
+              /* Override all background gradients and colors on desktop */
+              .requests-page-container.bg-gradient-to-br,
+              .requests-page-container[class*="bg-gradient"],
+              .requests-page-container[class*="from-"],
+              .requests-page-container[class*="via-"],
+              .requests-page-container[class*="to-"] {
+                background: transparent !important;
+                background-color: transparent !important;
+                background-image: none !important;
               }
-              .desktop-iphone-screen {
-                position: relative;
-                width: 100%;
-                height: 100%;
-                background: #000;
-                border-radius: 48px;
-                overflow: hidden;
-                /* Clip content to screen boundaries */
-                clip-path: inset(0);
-              }
-              /* Create a positioning reference for content */
-              .desktop-iphone-screen::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 404px;
-                height: 839px;
-                pointer-events: none;
-                z-index: 1;
-              }
-              /* Position content inside iPhone frame - match admin preview exactly */
-              /* Use more specific selector to override any conflicting styles */
+              
+              /* Center content and constrain to mobile width */
               .requests-page-container > div.desktop-content-wrapper,
               .requests-page-container > div.flex-1 {
-                margin-left: 0 !important;
-                margin-top: 0 !important;
-                margin-bottom: 0 !important;
-                position: fixed !important;
-                /* Position at iPhone screen top-left corner */
-                /* iPhone frame: 420px x 855px, centered at 50vh 50vw */
-                /* Frame top-left: 50vh - 427.5px, 50vw - 210px */
-                /* Screen (with 8px padding): top = 50vh - 427.5px + 8px = 50vh - 419.5px */
-                /* Screen left = 50vw - 210px + 8px = 50vw - 202px */
-                top: calc(50vh - 419.5px) !important;
-                left: calc(50vw - 202px) !important;
-                transform: scale(0.73) !important;
-                transform-origin: top left !important;
-                width: 375px !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
                 max-width: 375px !important;
-                height: 812px !important;
-                max-height: 812px !important;
-                overflow-y: auto !important;
-                overflow-x: hidden !important;
-                padding: 0 !important;
-                z-index: 60 !important;
-                pointer-events: auto !important;
-                border-radius: 0 !important;
-                background: #000 !important;
-                /* Ensure no other positioning interferes */
-                bottom: auto !important;
-                right: auto !important;
-                /* Reset any transforms from parent */
-                will-change: transform !important;
-                /* Clip content to iPhone screen boundaries */
-                clip-path: inset(0) !important;
-                contain: layout style paint !important;
-              }
-              /* Ensure content fits within iPhone screen */
-              .requests-page-container > div.flex-1 > * {
                 width: 100% !important;
+                position: relative !important;
+                z-index: 10 !important;
+                background: transparent !important;
+                transform: none !important;
+                border-radius: 0 !important;
+                clip-path: none !important;
+                mask-image: none !important;
+                -webkit-mask-image: none !important;
+                contain: none !important;
+                isolation: auto !important;
+                overflow: visible !important;
+                height: auto !important;
+                min-height: 100vh !important;
+                padding: 0 !important;
+              }
+              
+              /* Ensure content inside is properly sized */
+              .requests-page-container > div.flex-1 > * {
                 max-width: 100% !important;
-                position: relative;
-                z-index: 60;
-                pointer-events: auto;
+                width: 100% !important;
+              }
+              
+              /* Ensure hero section doesn't clip location subtitle on desktop */
+              .requests-page-container > div.flex-1 > div[class*="relative w-full"] {
+                overflow: visible !important;
+                min-height: auto !important;
+              }
+              
+              /* Ensure content overlay doesn't clip location subtitle */
+              .requests-page-container > div.flex-1 > div[class*="relative w-full"] > div[class*="relative z-20"] {
+                overflow: visible !important;
+                min-height: auto !important;
               }
             }
           `}} />
-          <div className="desktop-iphone-wrapper">
-            <div className="desktop-iphone-bg" />
-            <div className="desktop-iphone-frame">
-              <div className="desktop-iphone-screen">
-                {/* Dynamic Island / Notch */}
-                <div style={{
-                  position: 'absolute',
-                  top: '10px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '140px',
-                  height: '35px',
-                  background: '#000',
-                  borderRadius: '20px',
-                  zIndex: 20
-                }} />
-              </div>
-              {/* Home indicator */}
-              <div style={{
-                position: 'absolute',
-                bottom: '10px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '120px',
-                height: '4px',
-                background: '#666',
-                borderRadius: '4px'
-              }} />
-            </div>
-            {/* Subtle glow effect behind phone */}
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              background: `radial-gradient(circle at center, var(--accent-color, #fcba00)20 0%, transparent 70%)`,
-              filter: 'blur(60px)',
-              zIndex: 5,
-              pointerEvents: 'none'
-            }} />
-          </div>
         {/* Apply custom branding styles */}
         {customBranding?.whiteLabelEnabled && (
           <style jsx global>{`
@@ -2624,10 +2639,10 @@ export function GeneralRequestsPage({
         {/* Hero Section with Text Fallback */}
         {!embedMode && !showPaymentMethods && (
           <div 
-            className={`relative w-full overflow-hidden top-0 bg-gradient-to-b from-gray-900 via-black to-black ${
+            className={`relative w-full overflow-visible top-0 ${
               minimalHeader 
                 ? 'h-[120px] sm:h-[140px] min-h-[100px] sm:min-h-[120px]' 
-                : 'h-[40vh] sm:h-[50vh] md:h-[200px] lg:h-[220px] min-h-[250px] sm:min-h-[350px] md:min-h-[180px] max-h-[600px] md:max-h-[250px]'
+                : 'h-[40vh] sm:h-[50vh] md:min-h-[280px] lg:min-h-[300px] min-h-[250px] sm:min-h-[350px] max-h-[600px]'
             }`}
             style={{ 
               zIndex: 0
@@ -2657,8 +2672,8 @@ export function GeneralRequestsPage({
                 <p className="text-white text-center p-4">Video unavailable</p>
               </video>
             ) : showAnimatedGradient ? (
-              /* Animated gradient - Default TipJar background for mobile */
-              <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden md:hidden" style={{ zIndex: 0 }} />
+              /* Animated gradient - Default TipJar background for mobile and desktop */
+              <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden" style={{ zIndex: 0 }} />
             ) : (
               <div 
                 className="absolute inset-0 w-full h-full bg-cover bg-center md:hidden"
@@ -2666,15 +2681,11 @@ export function GeneralRequestsPage({
               />
             )}
             
-            {/* Desktop Background - Simplified since video is in sidebar */}
-            <div 
-              className="absolute inset-0 hidden md:block bg-gradient-to-b from-gray-900 via-black to-black"
-              style={{ zIndex: 0 }}
-            />
+            {/* Desktop Background - removed black gradient to show animated background */}
             {/* Content overlay */}
-            <div className={`relative z-20 h-full flex flex-col justify-between items-center text-center px-4 ${
+            <div             className={`relative z-20 h-full flex flex-col justify-between items-center text-center px-4 ${
               minimalHeader ? 'justify-center' : ''
-            }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '20px' }}>
+            }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '20px', overflow: 'visible' }}>
               {/* Top content section */}
               <div className={`flex flex-col items-center justify-center ${minimalHeader ? '' : 'flex-1'}`}>
                 {/* Artist Name - Show based on settings. If video playing and showArtistNameOverVideo is false, hide it */}
@@ -2694,35 +2705,35 @@ export function GeneralRequestsPage({
                             : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-2 sm:mb-4'
                       }`}
                       style={{
-                        fontFamily: organizationData?.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
-                        textTransform: organizationData?.requests_artist_name_text_transform || 'uppercase',
-                        letterSpacing: '0.05em',
-                        WebkitTextStroke: organizationData?.requests_artist_name_stroke_enabled 
-                          ? `${organizationData.requests_artist_name_stroke_width || 2}px ${organizationData.requests_artist_name_stroke_color || '#000000'}` 
+                        fontFamily: effectiveArtistNameFont,
+                        textTransform: effectiveArtistNameTextTransform,
+                        color: effectiveArtistNameColor,
+                        letterSpacing: `${effectiveArtistNameKerning}px`,
+                        WebkitTextStroke: effectiveArtistNameStrokeEnabled 
+                          ? `${effectiveArtistNameStrokeWidth}px ${effectiveArtistNameStrokeColor}` 
                           : 'none',
-                        WebkitTextFillColor: organizationData?.requests_artist_name_stroke_enabled ? 'transparent' : undefined,
-                        textShadow: organizationData?.requests_artist_name_shadow_enabled !== false
-                          ? `${organizationData?.requests_artist_name_shadow_x_offset || 3}px ${organizationData?.requests_artist_name_shadow_y_offset || 3}px ${organizationData?.requests_artist_name_shadow_blur || 6}px ${organizationData?.requests_artist_name_shadow_color || 'rgba(0, 0, 0, 0.8)'}`
+                        WebkitTextFillColor: effectiveArtistNameStrokeEnabled ? 'transparent' : undefined,
+                        textShadow: effectiveArtistNameShadowEnabled
+                          ? `${effectiveArtistNameShadowXOffset}px ${effectiveArtistNameShadowYOffset}px ${effectiveArtistNameShadowBlur}px ${effectiveArtistNameShadowColor}`
                           : 'none'
                       }}
                     >
                       {(() => {
                         const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'DJ';
-                        const textTransform = organizationData?.requests_artist_name_text_transform || 'uppercase';
                         
                         console.log('🎨 Rendering artist name:', artistName, 'from organizationData:', {
                           requests_header_artist_name: organizationData?.requests_header_artist_name,
                           name: organizationData?.name,
-                          textTransform,
+                          textTransform: effectiveArtistNameTextTransform,
                           showVideo,
                           showArtistNameOverVideo,
                           shouldHideName
                         });
                         
                         // Apply text transform
-                        if (textTransform === 'uppercase') {
+                        if (effectiveArtistNameTextTransform === 'uppercase') {
                           return artistName.toUpperCase();
-                        } else if (textTransform === 'lowercase') {
+                        } else if (effectiveArtistNameTextTransform === 'lowercase') {
                           return artistName.toLowerCase();
                         }
                         return artistName; // Normal case
@@ -2731,10 +2742,34 @@ export function GeneralRequestsPage({
                   );
                 })()}
                 
-                {/* Location - Only show if value exists and not minimal header */}
-                {!minimalHeader && organizationData?.requests_header_location && (
-                  <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl text-white/90 mb-3 sm:mb-4 drop-shadow-lg">
-                    {organizationData.requests_header_location}
+                {/* Location - Only show if value exists, show subtitle is enabled, and not minimal header */}
+                {!minimalHeader && organizationData?.requests_header_location && organizationData?.requests_show_subtitle !== false && (
+                  <p 
+                    className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-3 sm:mb-4"
+                    style={{
+                      fontFamily: effectiveSubtitleFont,
+                      textTransform: effectiveSubtitleTextTransform,
+                      color: effectiveSubtitleColor,
+                      letterSpacing: `${effectiveSubtitleKerning}px`,
+                      WebkitTextStroke: effectiveSubtitleStrokeEnabled 
+                        ? `${effectiveSubtitleStrokeWidth}px ${effectiveSubtitleStrokeColor}` 
+                        : 'none',
+                      WebkitTextFillColor: effectiveSubtitleStrokeEnabled ? 'transparent' : undefined,
+                      textShadow: effectiveSubtitleShadowEnabled
+                        ? `${effectiveSubtitleShadowXOffset}px ${effectiveSubtitleShadowYOffset}px ${effectiveSubtitleShadowBlur}px ${effectiveSubtitleShadowColor}`
+                        : 'none'
+                    }}
+                  >
+                    {(() => {
+                      const locationText = organizationData.requests_header_location;
+                      // Apply text transform
+                      if (effectiveSubtitleTextTransform === 'uppercase') {
+                        return locationText.toUpperCase();
+                      } else if (effectiveSubtitleTextTransform === 'lowercase') {
+                        return locationText.toLowerCase();
+                      }
+                      return locationText; // Normal case
+                    })()}
                   </p>
                 )}
                 

@@ -401,20 +401,18 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
         }`}
         style={
           shouldBeTransparent
-            ? !isScrolled
-              ? {
-                  backgroundColor: 'transparent',
-                  background: 'transparent',
-                  backdropFilter: 'none',
-                  WebkitBackdropFilter: 'none',
-                  boxShadow: 'none',
-                  border: 'none',
-                  borderBottom: 'none',
-                }
-              : undefined
+            ? {
+                backgroundColor: 'transparent',
+                background: 'transparent',
+                backdropFilter: 'none',
+                WebkitBackdropFilter: 'none',
+                boxShadow: 'none',
+                border: 'none',
+                borderBottom: 'none',
+              }
             : undefined
         }
-        data-transparent={shouldBeTransparent && !isScrolled ? 'true' : 'false'}
+        data-transparent={shouldBeTransparent ? 'true' : 'false'}
       >
         <div className={`max-w-7xl mx-auto overflow-visible ${
           isTipJarDomain() 
