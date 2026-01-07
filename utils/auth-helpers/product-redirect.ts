@@ -26,10 +26,10 @@ export async function getProductBasedRedirectUrl(baseUrl: string = ''): Promise<
     switch (productContext) {
       case 'tipjar':
         // TipJar users go to crowd requests admin page
-        // Check if organization exists, if not redirect to onboarding
+        // Check if organization exists and onboarding is complete
         const tipjarOrg = await getCurrentOrganization(supabase);
-        if (!tipjarOrg) {
-          // Organization being created or missing - redirect to onboarding
+        if (!tipjarOrg || !tipjarOrg.requests_header_artist_name || !tipjarOrg.requests_header_artist_name.trim()) {
+          // Organization missing or onboarding incomplete - redirect to onboarding
           return `${baseUrl}/tipjar/onboarding`;
         }
         return `${baseUrl}/admin/crowd-requests`;

@@ -73,7 +73,22 @@ export async function GET(request: NextRequest) {
 
       // Token verified successfully - Supabase should have set the session via cookies
       // The verify endpoint returns a session, which should be set in cookies automatically
-      // Now continue with the normal flow below
+      
+      // For signup confirmations, redirect to success page with "Go to Sign In" button
+      if (type === 'signup') {
+        const isTipJar = requestUrl.hostname.includes('tipjar');
+        if (isTipJar) {
+          const confirmedUrl = requestUrl.hostname.includes('m10djcompany.com')
+            ? 'https://tipjar.live/tipjar/auth/confirmed'
+            : `${requestUrl.origin}/tipjar/auth/confirmed`;
+          return NextResponse.redirect(confirmedUrl);
+        } else {
+          // For other products, continue with normal flow
+          // (could create similar success pages for djdash/m10dj if needed)
+        }
+      }
+      
+      // For other types (recovery, magiclink, etc.), continue with normal flow below
     } catch (error: any) {
       console.error('[Auth Callback] Token verification error:', error);
       
