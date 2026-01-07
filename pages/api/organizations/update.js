@@ -83,6 +83,29 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to update organization' });
     }
 
+    // Also update user metadata with display name if provided
+    if (requests_header_artist_name !== undefined && requests_header_artist_name) {
+      try {
+        const { error: userUpdateError } = await supabase.auth.admin.updateUserById(
+          user.id,
+          {
+            user_metadata: {
+              ...user.user_metadata,
+              display_name: requests_header_artist_name,
+              full_name: requests_header_artist_name
+            }
+          }
+        );
+        if (userUpdateError) {
+          console.error('Error updating user metadata with display name:', userUpdateError);
+          // Non-critical, continue anyway
+        }
+      } catch (error) {
+        console.error('Error updating user metadata:', error);
+        // Non-critical, continue anyway
+      }
+    }
+
     return res.status(200).json({ 
       organization: updatedOrg,
       message: 'Organization updated successfully' 

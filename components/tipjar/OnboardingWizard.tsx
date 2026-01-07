@@ -105,6 +105,25 @@ export default function TipJarOnboardingWizard({
 
         if (updateError) throw updateError;
 
+        // Also save display name to user metadata
+        if (onboardingData.displayName && user?.id) {
+          try {
+            const { error: userUpdateError } = await supabase.auth.updateUser({
+              data: {
+                display_name: onboardingData.displayName,
+                full_name: onboardingData.displayName
+              }
+            });
+            if (userUpdateError) {
+              console.error('Failed to update user metadata with display name:', userUpdateError);
+              // Non-critical, continue anyway
+            }
+          } catch (error) {
+            console.error('Error updating user metadata:', error);
+            // Non-critical, continue anyway
+          }
+        }
+
         // Mark onboarding steps as complete
         try {
           await fetch('/api/organizations/update-onboarding', {
