@@ -548,7 +548,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[Auth Hook] Email sent successfully: ${result.data?.id}`);
-    console.log(`  Type: ${type}`);
+    console.log(`  Type: ${email_action_type}`);
     console.log(`  To: ${recipientEmail}`);
     console.log(`  From: ${fromEmail}`);
     console.log(`  Product: ${productContext}`);
