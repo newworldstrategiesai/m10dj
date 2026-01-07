@@ -1,0 +1,274 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, ArrowRight, MapPin, CheckCircle, AlertCircle } from 'lucide-react';
+import { OnboardingData } from '../OnboardingWizard';
+import { triggerQuickConfetti } from '@/utils/confetti';
+
+interface BasicInfoStepProps {
+  data: OnboardingData;
+  onDataUpdate: (updates: Partial<OnboardingData>) => void;
+  onNext: () => void;
+  onBack: () => void;
+  progress: number;
+  currentStep: number;
+  totalSteps: number;
+  organization?: any;
+}
+
+export default function BasicInfoStep({
+  data,
+  onDataUpdate,
+  onNext,
+  onBack,
+  progress,
+  currentStep,
+  totalSteps,
+  organization
+}: BasicInfoStepProps) {
+  const [displayName, setDisplayName] = useState(data.displayName || '');
+  const [location, setLocation] = useState(data.location || '');
+  const [slug, setSlug] = useState(data.slug || '');
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+  const [checkingSlug, setCheckingSlug] = useState(false);
+  const [errors, setErrors] = useState<{ displayName?: string; slug?: string }>({});
+  const confettiTriggered = useRef(false);
+
+  // Generate slug from display name
+  useEffect(() => {
+    if (displayName && !slug) {
+      const generated = generateSlugFromName(displayName);
+      setSlug(generated);
+      onDataUpdate({ slug: generated });
+    }
+  }, [displayName]);
+
+  // Check slug availability
+  useEffect(() => {
+    if (slug && slug.length >= 3) {
+      const timeoutId = setTimeout(() => {
+        checkSlugAvailability(slug);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    } else if (slug) {
+      setSlugAvailable(null);
+    }
+  }, [slug]);
+
+  function generateSlugFromName(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .substring(0, 50);
+  }
+
+  async function checkSlugAvailability(slugToCheck: string) {
+    if (!slugToCheck || slugToCheck.length < 3) {
+      setSlugAvailable(null);
+      return;
+    }
+
+    // Don't check if it's the current organization's slug
+    if (organization?.slug === slugToCheck) {
+      setSlugAvailable(true);
+      return;
+    }
+
+    setCheckingSlug(true);
+    try {
+      const response = await fetch(`/api/organizations/check-slug?slug=${encodeURIComponent(slugToCheck)}`);
+      const data = await response.json();
+      setSlugAvailable(!data.exists);
+    } catch (error) {
+      console.error('Error checking slug:', error);
+      setSlugAvailable(null);
+    } finally {
+      setCheckingSlug(false);
+    }
+  }
+
+  function validate(): boolean {
+    const newErrors: { displayName?: string; slug?: string } = {};
+
+    if (!displayName.trim()) {
+      newErrors.displayName = 'Display name is required';
+    } else if (displayName.trim().length < 2) {
+      newErrors.displayName = 'Display name must be at least 2 characters';
+    } else if (displayName.trim().length > 50) {
+      newErrors.displayName = 'Display name must be less than 50 characters';
+    }
+
+    if (!slug.trim()) {
+      newErrors.slug = 'URL slug is required';
+    } else if (slug.trim().length < 3) {
+      newErrors.slug = 'URL slug must be at least 3 characters';
+    } else if (slugAvailable === false) {
+      newErrors.slug = 'This URL is already taken. Please choose another.';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  function handleNext() {
+    if (validate()) {
+      // Trigger confetti celebration for completing basic info
+      if (!confettiTriggered.current) {
+        triggerQuickConfetti({
+          colors: ['#9333ea', '#ec4899', '#3b82f6', '#10b981']
+        });
+        confettiTriggered.current = true;
+      }
+
+      onDataUpdate({
+        displayName: displayName.trim(),
+        location: location.trim(),
+        slug: slug.trim()
+      });
+      onNext();
+    }
+  }
+
+  const pageUrl = slug ? `tipjar.live/${slug}` : 'tipjar.live/...';
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 sm:p-12">
+        {/* Header */}
+        <div className="mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Tell us about yourself
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Step {currentStep} of {totalSteps} • This takes about 30 seconds
+          </p>
+        </div>
+
+        {/* Display Name Field */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            What should we call you? <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => {
+              setDisplayName(e.target.value);
+              setErrors({ ...errors, displayName: undefined });
+            }}
+            placeholder="DJ Name or Artist Name"
+            className={`w-full px-4 py-3 rounded-lg border ${
+              errors.displayName
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-gray-300 dark:border-gray-700 focus:ring-purple-500'
+            } bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2`}
+            maxLength={50}
+          />
+          {errors.displayName && (
+            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              {errors.displayName}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            This appears on your public requests page
+          </p>
+        </div>
+
+        {/* URL Slug Preview */}
+        {displayName && slug && (
+          <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+              Your Page URL
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={slug}
+                onChange={(e) => {
+                  const newSlug = generateSlugFromName(e.target.value);
+                  setSlug(newSlug);
+                  onDataUpdate({ slug: newSlug });
+                  setErrors({ ...errors, slug: undefined });
+                }}
+                className={`flex-1 px-4 py-2 rounded-lg border ${
+                  errors.slug
+                    ? 'border-red-500 focus:ring-red-500'
+                    : slugAvailable === false
+                    ? 'border-red-500 focus:ring-red-500'
+                    : slugAvailable === true
+                    ? 'border-green-500 focus:ring-green-500'
+                    : 'border-gray-300 dark:border-gray-700 focus:ring-purple-500'
+                } bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2`}
+                placeholder="yourname"
+              />
+              <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                .tipjar.live
+              </span>
+              {checkingSlug && (
+                <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              )}
+              {!checkingSlug && slugAvailable === true && slug.length >= 3 && (
+                <CheckCircle className="w-5 h-5 text-green-500" />
+              )}
+              {!checkingSlug && slugAvailable === false && (
+                <AlertCircle className="w-5 h-5 text-red-500" />
+              )}
+            </div>
+            {errors.slug && (
+              <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />
+                {errors.slug}
+              </p>
+            )}
+            <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+              Your page will be available at: <span className="font-mono font-semibold text-purple-600 dark:text-purple-400">{pageUrl}</span>
+            </p>
+          </div>
+        )}
+
+        {/* Location Field (Optional) */}
+        <div className="mb-8">
+          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            <MapPin className="w-4 h-4 inline mr-1" />
+            Where do you perform? <span className="text-gray-500 text-xs font-normal">(Optional)</span>
+          </label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => {
+              setLocation(e.target.value);
+              onDataUpdate({ location: e.target.value });
+            }}
+            placeholder="Memphis, TN"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Helps customers find you locally
+          </p>
+        </div>
+
+        {/* Navigation */}
+        <div className="flex gap-4">
+          <button
+            onClick={onBack}
+            className="flex-1 sm:flex-initial px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={!displayName.trim() || checkingSlug || slugAvailable === false}
+            className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            Continue
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

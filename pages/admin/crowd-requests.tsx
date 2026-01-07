@@ -1400,14 +1400,51 @@ export default function CrowdRequestsPage() {
   };
 
   const generateQRCode = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    // Safety check: ensure organization is loaded
+    if (!organization) {
+      toast({
+        title: 'Error',
+        description: 'Organization not loaded. Please refresh the page.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Determine base URL based on product context
+    let baseUrl: string;
+    const productContext = organization.product_context || 'tipjar';
+    
+    switch (productContext) {
+      case 'tipjar':
+        baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
+        break;
+      case 'djdash':
+        baseUrl = process.env.NEXT_PUBLIC_DJDASH_URL || 'https://djdash.net';
+        break;
+      case 'm10dj':
+        baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://m10djcompany.com';
+        break;
+      default:
+        // Fallback to current domain for unknown product contexts
+        baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    }
+
     let requestUrl: string;
     let qrCodeUrl: string;
 
     if (qrType === 'public') {
       // Generate QR for public requests page
-      // Add ?qr=1 to automatically mark scans as QR code scans
-      requestUrl = `${baseUrl}/requests?qr=1`;
+      // Use organization slug for TipJar/DJDash, generic /requests for M10
+      if (organization.slug && (productContext === 'tipjar' || productContext === 'djdash')) {
+        // TipJar and DJ Dash use slug-based URLs: tipjar.live/{slug}/requests
+        requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
+      } else if (organization.slug && productContext === 'm10dj') {
+        // M10 DJ Company can also use slug-based URLs if available
+        requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
+      } else {
+        // Fallback: M10 DJ Company uses generic /requests path if no slug
+        requestUrl = `${baseUrl}/requests?qr=1`;
+      }
       qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(requestUrl)}`;
       setGeneratedPublicQR(qrCodeUrl);
       setGeneratedQR(null);
@@ -1435,12 +1472,49 @@ export default function CrowdRequestsPage() {
   };
 
   const copyQRUrl = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    // Safety check: ensure organization is loaded
+    if (!organization) {
+      toast({
+        title: 'Error',
+        description: 'Organization not loaded. Please refresh the page.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Determine base URL based on product context
+    let baseUrl: string;
+    const productContext = organization.product_context || 'tipjar';
+    
+    switch (productContext) {
+      case 'tipjar':
+        baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
+        break;
+      case 'djdash':
+        baseUrl = process.env.NEXT_PUBLIC_DJDASH_URL || 'https://djdash.net';
+        break;
+      case 'm10dj':
+        baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://m10djcompany.com';
+        break;
+      default:
+        // Fallback to current domain for unknown product contexts
+        baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    }
+
     let requestUrl: string;
     
     if (qrType === 'public') {
-      // Add ?qr=1 to automatically mark scans as QR code scans
-      requestUrl = `${baseUrl}/requests?qr=1`;
+      // Use organization slug for TipJar/DJDash, generic /requests for M10
+      if (organization.slug && (productContext === 'tipjar' || productContext === 'djdash')) {
+        // TipJar and DJ Dash use slug-based URLs: tipjar.live/{slug}/requests
+        requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
+      } else if (organization.slug && productContext === 'm10dj') {
+        // M10 DJ Company can also use slug-based URLs if available
+        requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
+      } else {
+        // Fallback: M10 DJ Company uses generic /requests path if no slug
+        requestUrl = `${baseUrl}/requests?qr=1`;
+      }
     } else {
       if (!qrEventCode.trim()) return;
       // Add ?qr=1 to automatically mark scans as QR code scans
@@ -4076,7 +4150,32 @@ export default function CrowdRequestsPage() {
                           Public Requests URL:
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded break-all">
-                          {process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/requests?qr=1
+                          {(() => {
+                            // Determine base URL based on product context
+                            let baseUrl: string;
+                            const productContext = organization?.product_context || 'tipjar';
+                            
+                            switch (productContext) {
+                              case 'tipjar':
+                                baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
+                                break;
+                              case 'djdash':
+                                baseUrl = process.env.NEXT_PUBLIC_DJDASH_URL || 'https://djdash.net';
+                                break;
+                              case 'm10dj':
+                                baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://m10djcompany.com';
+                                break;
+                              default:
+                                baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+                            }
+
+                            // Use organization slug for TipJar/DJDash, generic /requests for M10
+                            if (organization?.slug && (productContext === 'tipjar' || productContext === 'djdash')) {
+                              return `${baseUrl}/${organization.slug}/requests?qr=1`;
+                            } else {
+                              return `${baseUrl}/requests?qr=1`;
+                            }
+                          })()}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                           Scan this QR code or share the URL above. This page is publicly accessible to anyone.
