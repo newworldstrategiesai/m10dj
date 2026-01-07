@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import WelcomeStep from './onboarding/WelcomeStep';
 import BasicInfoStep from './onboarding/BasicInfoStep';
 import PaymentSetupStep from './onboarding/PaymentSetupStep';
+import CustomizationStep from './onboarding/CustomizationStep';
 import QRCodeScreenshotStep from './onboarding/QRCodeScreenshotStep';
 import PreviewLaunchStep from './onboarding/PreviewLaunchStep';
 
@@ -14,6 +15,8 @@ export interface OnboardingData {
   location: string;
   slug: string;
   paymentSetup: 'completed' | 'skipped' | 'pending';
+  accentColor?: string;
+  minimumBid?: number; // In cents
 }
 
 interface TipJarOnboardingWizardProps {
@@ -36,7 +39,7 @@ export default function TipJarOnboardingWizard({
     paymentSetup: 'pending'
   });
 
-  const totalSteps = 5;
+  const totalSteps = 6;
   const progress = (currentStep / totalSteps) * 100;
 
   // Load existing organization data if available
@@ -91,16 +94,26 @@ export default function TipJarOnboardingWizard({
     try {
       // Save organization data
       if (organization?.id) {
+        const updateData: any = {
+          name: onboardingData.displayName,
+          slug: onboardingData.slug,
+          requests_header_artist_name: onboardingData.displayName,
+          requests_header_location: onboardingData.location || null,
+          onboarding_completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        // Add customization settings if provided
+        if (onboardingData.accentColor) {
+          updateData.requests_accent_color = onboardingData.accentColor;
+        }
+        if (onboardingData.minimumBid !== undefined) {
+          updateData.requests_bidding_minimum_bid = onboardingData.minimumBid;
+        }
+
         const { error: updateError } = await supabase
           .from('organizations')
-          .update({
-            name: onboardingData.displayName,
-            slug: onboardingData.slug,
-            requests_header_artist_name: onboardingData.displayName,
-            requests_header_location: onboardingData.location || null,
-            onboarding_completed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', organization.id);
 
         if (updateError) throw updateError;
@@ -195,6 +208,19 @@ export default function TipJarOnboardingWizard({
         );
       case 4:
         return (
+          <CustomizationStep
+            data={onboardingData}
+            onDataUpdate={handleDataUpdate}
+            onNext={handleNext}
+            onBack={handleBack}
+            progress={progress}
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            organization={organization}
+          />
+        );
+      case 5:
+        return (
           <QRCodeScreenshotStep
             data={onboardingData}
             onNext={handleNext}
@@ -205,7 +231,7 @@ export default function TipJarOnboardingWizard({
             organization={organization}
           />
         );
-      case 5:
+      case 6:
         return (
           <PreviewLaunchStep
             data={onboardingData}
