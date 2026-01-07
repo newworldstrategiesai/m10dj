@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, CheckCircle, Copy, ExternalLink, Download, Sparkles, QrCode, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, ExternalLink, Sparkles, Loader2, CheckCircle } from 'lucide-react';
 import { OnboardingData } from '../OnboardingWizard';
-import { triggerConfetti } from '@/utils/confetti';
 
 interface PreviewLaunchStepProps {
   data: OnboardingData;
@@ -27,41 +26,14 @@ export default function PreviewLaunchStep({
   organization
 }: PreviewLaunchStepProps) {
   const [pageUrl, setPageUrl] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const confettiTriggered = useRef(false);
-
-  // Trigger confetti celebration when step loads (onboarding complete!)
-  useEffect(() => {
-    if (!confettiTriggered.current && pageUrl) {
-      // Delay confetti slightly for better visual effect
-      setTimeout(() => {
-        triggerConfetti({
-          duration: 4000,
-          colors: ['#9333ea', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444']
-        });
-        confettiTriggered.current = true;
-      }, 300);
-    }
-  }, [pageUrl]);
 
   useEffect(() => {
     if (data.slug || organization?.slug) {
       const slug = data.slug || organization?.slug;
       const url = `https://tipjar.live/${slug}/requests`;
       setPageUrl(url);
-      // Generate QR code URL (using a simple QR code API)
-      setQrCodeUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`);
     }
   }, [data.slug, organization?.slug]);
-
-  function handleCopy() {
-    if (pageUrl) {
-      navigator.clipboard.writeText(pageUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  }
 
   function handleViewLive() {
     if (pageUrl) {
@@ -94,9 +66,9 @@ export default function PreviewLaunchStep({
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-5xl mx-auto">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 sm:p-12">
-        {/* Success Header */}
+        {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="relative">
@@ -107,86 +79,52 @@ export default function PreviewLaunchStep({
             </div>
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            You're all set! 🎉
+            View Your Live Page
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            Your requests page is live and ready to share
+            Step {currentStep} of {totalSteps} • See how your page looks to customers
           </p>
         </div>
 
-        {/* Preview Card */}
+        {/* Full Page Preview */}
         {pageUrl && (
-          <div className="mb-8 p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl border border-purple-200 dark:border-purple-800">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Your Page URL
-            </h3>
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              <div className="flex-1 flex items-center gap-2 px-4 py-3 bg-white dark:bg-gray-900 rounded-lg border border-purple-200 dark:border-purple-700">
-                <span className="font-mono text-sm text-gray-900 dark:text-white truncate">
-                  {pageUrl}
-                </span>
-              </div>
-              <button
-                onClick={handleCopy}
-                className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 flex-shrink-0"
-              >
-                {copied ? (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    Copy
-                  </>
-                )}
-              </button>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
+          <div className="mb-8 p-6 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Your Live Requests Page
+              </h3>
               <button
                 onClick={handleViewLive}
-                className="flex-1 px-4 py-3 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-white font-semibold rounded-lg border border-gray-300 dark:border-gray-700 transition-colors flex items-center justify-center gap-2"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 text-sm"
               >
                 <ExternalLink className="w-4 h-4" />
-                View Live Page
+                Open in New Tab
               </button>
+            </div>
+            
+            {/* Preview iframe */}
+            <div className="relative w-full border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-800" style={{ aspectRatio: '9/16', minHeight: '600px', maxHeight: '80vh' }}>
+              <iframe
+                src={pageUrl}
+                className="w-full h-full border-0"
+                title="Preview of your TipJar requests page"
+                allow="payment; camera; microphone"
+                style={{ minHeight: '600px' }}
+              />
+            </div>
+
+            {/* URL Display */}
+            <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                Page URL
+              </p>
+              <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
+                {pageUrl}
+              </p>
             </div>
           </div>
         )}
 
-        {/* QR Code */}
-        {qrCodeUrl && (
-          <div className="mb-8 p-6 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
-              QR Code for Easy Sharing
-            </h3>
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <img
-                  src={qrCodeUrl}
-                  alt="QR Code"
-                  className="w-48 h-48"
-                />
-              </div>
-            </div>
-            <div className="text-center">
-              <button
-                onClick={() => {
-                  // Download QR code
-                  const link = document.createElement('a');
-                  link.href = qrCodeUrl;
-                  link.download = `tipjar-qr-${data.slug}.png`;
-                  link.click();
-                }}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Download QR Code
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Next Steps */}
         <div className="mb-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">

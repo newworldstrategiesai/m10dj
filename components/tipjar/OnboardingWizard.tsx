@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import WelcomeStep from './onboarding/WelcomeStep';
 import BasicInfoStep from './onboarding/BasicInfoStep';
 import PaymentSetupStep from './onboarding/PaymentSetupStep';
+import QRCodeScreenshotStep from './onboarding/QRCodeScreenshotStep';
 import PreviewLaunchStep from './onboarding/PreviewLaunchStep';
 
 export interface OnboardingData {
@@ -35,7 +36,7 @@ export default function TipJarOnboardingWizard({
     paymentSetup: 'pending'
   });
 
-  const totalSteps = 4;
+  const totalSteps = 5;
   const progress = (currentStep / totalSteps) * 100;
 
   // Load existing organization data if available
@@ -156,6 +157,18 @@ export default function TipJarOnboardingWizard({
           />
         );
       case 4:
+        return (
+          <QRCodeScreenshotStep
+            data={onboardingData}
+            onNext={handleNext}
+            onBack={handleBack}
+            progress={progress}
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            organization={organization}
+          />
+        );
+      case 5:
         return (
           <PreviewLaunchStep
             data={onboardingData}
