@@ -4436,27 +4436,12 @@ export function GeneralRequestsPage({
                         return;
                       }
                       
-                      // Find the form and ensure it submits
-                      const form = e.target.closest('form');
-                      if (form) {
-                        // For reliability, explicitly trigger form submission
-                        // This ensures handleSubmit is called even if natural submission fails
-                        logger.info('[Submit Button] Form found, explicitly triggering submission');
-                        // Don't prevent default - let both onClick and form submit work
-                        // But also explicitly call handleSubmit as a backup
-                        setTimeout(() => {
-                          // If form submission didn't trigger handleSubmit within 100ms, call it directly
-                          if (!submitting) {
-                            logger.warn('[Submit Button] Form submission may not have triggered, calling handleSubmit directly');
-                            handleSubmit(e);
-                          }
-                        }, 100);
-                      } else {
-                        logger.error('[Submit Button] Form not found! Manually calling handleSubmit');
-                        // Fallback: call handleSubmit directly if form not found
-                        e.preventDefault();
-                        handleSubmit(e);
-                      }
+                      // For step 2, explicitly call handleSubmit to ensure it always works
+                      // This is more reliable than relying on form's onSubmit which might not fire
+                      logger.info('[Submit Button] Step 2: Explicitly calling handleSubmit');
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSubmit(e);
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
