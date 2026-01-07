@@ -18,14 +18,16 @@ export async function POST(request: NextRequest) {
     // Validate email
     if (!email || !isValidEmail(email)) {
       return NextResponse.redirect(
-        new URL(`/tipjar/signup?error=${encodeURIComponent('Invalid email address. Please try again.')}`, request.url)
+        new URL(`/tipjar/signup?error=${encodeURIComponent('Invalid email address. Please try again.')}`, request.url),
+        { status: 303 }
       );
     }
 
     // Validate password
     if (!password || password.length < 8) {
       return NextResponse.redirect(
-        new URL(`/tipjar/signup?error=${encodeURIComponent('Password must be at least 8 characters.')}`, request.url)
+        new URL(`/tipjar/signup?error=${encodeURIComponent('Password must be at least 8 characters.')}`, request.url),
+        { status: 303 }
       );
     }
 
@@ -60,12 +62,14 @@ export async function POST(request: NextRequest) {
       if (isExistingUser) {
         // Redirect to sign in with helpful message and pre-filled email
         return NextResponse.redirect(
-          new URL(`/tipjar/signin/password_signin?email=${encodeURIComponent(email)}&message=${encodeURIComponent('An account with this email already exists. Please sign in instead.')}`, request.url)
+          new URL(`/tipjar/signin/password_signin?email=${encodeURIComponent(email)}&message=${encodeURIComponent('An account with this email already exists. Please sign in instead.')}`, request.url),
+          { status: 303 }
         );
       }
       
       return NextResponse.redirect(
-        new URL(`/tipjar/signup?error=${encodeURIComponent(error.message)}`, request.url)
+        new URL(`/tipjar/signup?error=${encodeURIComponent(error.message)}`, request.url),
+        { status: 303 }
       );
     }
 
@@ -73,22 +77,25 @@ export async function POST(request: NextRequest) {
       if (data.session) {
         // User is signed in immediately - redirect to TipJar dashboard
         // The product context is already set in metadata, so future redirects will use it
-        return NextResponse.redirect(new URL('/tipjar/dashboard', request.url));
+        return NextResponse.redirect(new URL('/tipjar/dashboard', request.url), { status: 303 });
       } else {
         // Email confirmation required
         return NextResponse.redirect(
-          new URL(`/tipjar/signup?success=${encodeURIComponent('Account created! Please check your email to confirm your account.')}`, request.url)
+          new URL(`/tipjar/signup?success=${encodeURIComponent('Account created! Please check your email to confirm your account.')}`, request.url),
+          { status: 303 }
         );
       }
     }
 
     return NextResponse.redirect(
-      new URL(`/tipjar/signup?error=${encodeURIComponent('Something went wrong. Please try again.')}`, request.url)
+      new URL(`/tipjar/signup?error=${encodeURIComponent('Something went wrong. Please try again.')}`, request.url),
+      { status: 303 }
     );
   } catch (error: any) {
     console.error('Signup error:', error);
     return NextResponse.redirect(
-      new URL(`/tipjar/signup?error=${encodeURIComponent(error.message || 'An error occurred. Please try again.')}`, request.url)
+      new URL(`/tipjar/signup?error=${encodeURIComponent(error.message || 'An error occurred. Please try again.')}`, request.url),
+      { status: 303 }
     );
   }
 }
