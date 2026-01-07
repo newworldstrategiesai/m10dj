@@ -99,10 +99,10 @@ export default function TipJarOnboardingWizard({
       // Save organization data
       if (organization?.id) {
         const updateData: any = {
-          name: onboardingData.displayName,
-          slug: onboardingData.slug,
-          requests_header_artist_name: onboardingData.displayName,
-          requests_header_location: onboardingData.location || null,
+          name: onboardingData.displayName || organization.name,
+          slug: onboardingData.slug || organization.slug,
+          requests_header_artist_name: onboardingData.displayName || organization.requests_header_artist_name || organization.name,
+          requests_header_location: onboardingData.location || organization.requests_header_location || null,
           onboarding_completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -127,14 +127,22 @@ export default function TipJarOnboardingWizard({
           updateData.requests_next_fee = onboardingData.nextFee;
         }
 
-        const { error: updateError } = await supabase
-          .from('organizations')
-          .update(updateData)
-          .eq('id', organization.id);
+        // Use the API endpoint to save, which handles validation and user metadata
+        const response = await fetch('/api/organizations/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        });
 
-        if (updateError) throw updateError;
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to save organization data');
+        }
 
-        // Also save display name to user metadata
+        // Wait a moment for database propagation before redirecting
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Also save display name to user metadata (backup, API also does this)
         if (onboardingData.displayName && user?.id) {
           try {
             const { error: userUpdateError } = await supabase.auth.updateUser({
@@ -174,7 +182,7 @@ export default function TipJarOnboardingWizard({
       router.push('/admin/crowd-requests?onboarding=complete');
     } catch (error) {
       console.error('Error completing onboarding:', error);
-      // Still redirect even if save fails
+      // Still redirect even if save fails (user can fix in dashboard)
       router.push('/admin/crowd-requests');
     } finally {
       setLoading(false);

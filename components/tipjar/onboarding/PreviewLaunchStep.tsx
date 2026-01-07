@@ -26,42 +26,76 @@ export default function PreviewLaunchStep({
   organization
 }: PreviewLaunchStepProps) {
   const [pageUrl, setPageUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [slugSaved, setSlugSaved] = useState(false);
 
+  // Ensure we have the slug saved before showing the preview URL
   useEffect(() => {
-    if (data.slug || organization?.slug) {
-      const slug = data.slug || organization?.slug;
-      const url = `https://tipjar.live/${slug}/requests`;
-      setPageUrl(url);
+    const slug = data.slug || organization?.slug;
+    if (slug) {
+      // If we have a slug in data but not in organization, we need to save it first
+      if (data.slug && (!organization?.slug || organization.slug !== data.slug)) {
+        // Slug hasn't been saved yet - save it now
+        saveSlugIfNeeded();
+      } else {
+        // Slug is already saved, we can show the URL
+        const url = `https://tipjar.live/${slug}/requests`;
+        setPageUrl(url);
+        setSlugSaved(true);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.slug, organization?.slug]);
 
+  async function saveSlugIfNeeded() {
+    if (!organization?.id || !data.slug) return;
+    
+    setSaving(true);
+    try {
+      const response = await fetch('/api/organizations/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.displayName || organization.name,
+          slug: data.slug,
+          requests_header_artist_name: data.displayName || organization.requests_header_artist_name || organization.name,
+          requests_header_location: data.location || organization.requests_header_location || null
+        })
+      });
+      
+      if (response.ok) {
+        // Wait a moment for database to propagate
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const url = `https://tipjar.live/${data.slug}/requests`;
+        setPageUrl(url);
+        setSlugSaved(true);
+      } else {
+        console.error('Failed to save organization slug');
+      }
+    } catch (error) {
+      console.error('Error saving organization slug:', error);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function handleViewLive() {
-    if (pageUrl) {
+    if (pageUrl && slugSaved) {
       window.open(pageUrl, '_blank');
+    } else if (data.slug) {
+      // Try to save first, then open
+      saveSlugIfNeeded().then(() => {
+        if (data.slug) {
+          const url = `https://tipjar.live/${data.slug}/requests`;
+          window.open(url, '_blank');
+        }
+      });
     }
   }
 
   async function handleComplete() {
-    // Save organization updates before completing
-    if (data.displayName || data.location) {
-      try {
-        const response = await fetch('/api/organizations/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: data.displayName,
-            slug: data.slug,
-            requests_header_artist_name: data.displayName,
-            requests_header_location: data.location || null
-          })
-        });
-        if (!response.ok) {
-          console.error('Failed to save organization data');
-        }
-      } catch (error) {
-        console.error('Error saving organization data:', error);
-      }
-    }
+    // No need to save here - OnboardingWizard.handleComplete already saves everything
+    // Just call the parent's onComplete
     onComplete();
   }
 
@@ -87,7 +121,7 @@ export default function PreviewLaunchStep({
         </div>
 
         {/* Full Page Preview */}
-        {pageUrl && (
+        {data.slug && (
           <div className="mb-8 p-6 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -95,33 +129,75 @@ export default function PreviewLaunchStep({
               </h3>
               <button
                 onClick={handleViewLive}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 text-sm"
+                disabled={saving || !slugSaved}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center gap-2 text-sm"
               >
-                <ExternalLink className="w-4 h-4" />
-                Open in New Tab
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-4 h-4" />
+                    {slugSaved ? 'Open in New Tab' : 'Preparing Your Page...'}
+                  </>
+                )}
               </button>
             </div>
             
+            {!slugSaved && !saving && (
+              <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  ⏳ Setting up your page... This will be ready in just a moment.
+                </p>
+              </div>
+            )}
+            
             {/* Preview iframe */}
-            <div className="relative w-full border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-800" style={{ aspectRatio: '9/16', minHeight: '600px', maxHeight: '80vh' }}>
-              <iframe
-                src={pageUrl}
-                className="w-full h-full border-0"
-                title="Preview of your TipJar requests page"
-                allow="payment; camera; microphone"
-                style={{ minHeight: '600px' }}
-              />
-            </div>
+            {slugSaved && pageUrl ? (
+              <div className="relative w-full border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-800" style={{ aspectRatio: '9/16', minHeight: '600px', maxHeight: '80vh' }}>
+                <iframe
+                  src={pageUrl}
+                  className="w-full h-full border-0"
+                  title="Preview of your TipJar requests page"
+                  allow="payment; camera; microphone"
+                  style={{ minHeight: '600px' }}
+                  onError={() => {
+                    console.error('Failed to load preview iframe');
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="relative w-full border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-800 flex items-center justify-center" style={{ aspectRatio: '9/16', minHeight: '600px', maxHeight: '80vh' }}>
+                <div className="text-center p-8">
+                  <Loader2 className="w-12 h-12 text-purple-600 dark:text-purple-400 animate-spin mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {saving ? 'Setting up your page...' : 'Preparing your live page...'}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* URL Display */}
-            <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                Page URL
-              </p>
-              <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
-                {pageUrl}
-              </p>
-            </div>
+            {(slugSaved || data.slug) && (
+              <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                  Page URL
+                </p>
+                <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
+                  {pageUrl || `https://tipjar.live/${data.slug}/requests`}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {!data.slug && (
+          <div className="mb-8 p-6 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+            <p className="text-yellow-800 dark:text-yellow-200">
+              ⚠️ Please go back and complete the basic info step to set up your page URL.
+            </p>
           </div>
         )}
 
@@ -186,13 +262,13 @@ export default function PreviewLaunchStep({
             </a>
             <button
               onClick={handleComplete}
-              disabled={loading}
+              disabled={loading || saving}
               className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? (
+              {(loading || saving) ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  {saving ? 'Saving...' : 'Completing...'}
                 </>
               ) : (
                 <>

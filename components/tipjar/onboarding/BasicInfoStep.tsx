@@ -125,6 +125,31 @@ export default function BasicInfoStep({
         confettiTriggered.current = true;
       }
 
+      // Save organization data IMMEDIATELY so the slug is available for later steps
+      if (organization?.id) {
+        try {
+          const response = await fetch('/api/organizations/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: displayName.trim(),
+              slug: slug.trim(),
+              requests_header_artist_name: displayName.trim(),
+              requests_header_location: location.trim() || null
+            })
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            console.error('Failed to save organization data:', error);
+            // Still continue, but log the error
+          }
+        } catch (error) {
+          console.error('Error saving organization data:', error);
+          // Non-critical, continue anyway
+        }
+      }
+
       // Track step completion
       try {
         await fetch('/api/organizations/update-onboarding', {
