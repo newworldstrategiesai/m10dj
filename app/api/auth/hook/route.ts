@@ -412,18 +412,59 @@ export async function POST(request: NextRequest) {
     const bodyText = await request.text();
     const body = JSON.parse(bodyText);
 
-    // Verify webhook signature
+    // Log headers for debugging
     const headers: Record<string, string> = {};
     request.headers.forEach((value, key) => {
       headers[key.toLowerCase()] = value;
     });
     
-    const secret = process.env.SUPABASE_AUTH_HOOK_SECRET || '';
+    console.log('[Auth Hook] Request headers:', Object.keys(headers));
+    console.log('[Auth Hook] Authorization header:', headers['authorization'] ? 'Present' : 'Missing');
+    console.log('[Auth Hook] Webhook signature header:', headers['webhook-signature'] || headers['x-webhook-signature'] || headers['x-supabase-signature'] || 'Missing');
 
-    if (!verifySupabaseSignature(bodyText, headers, secret)) {
-      console.error('[Auth Hook] Invalid signature');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    // Verify authorization - Send Email Hook uses Bearer token in Authorization header
+    const authHeader = request.headers.get('authorization');
+    const secret = process.env.SUPABASE_AUTH_HOOK_SECRET || '';
+    
+    // For Send Email Hook, Supabase sends secret as Bearer token
+    // Extract secret from Bearer token or check webhook signature as fallback
+    let isAuthorized = false;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const providedSecret = authHeader.replace('Bearer ', '').trim();
+      // Check if the provided secret matches our configured secret
+      // Remove any prefixes like "v1,whsec_" for comparison
+      const normalizedProvided = providedSecret.replace(/^v1,whsec_/, '');
+      const normalizedConfig = secret.replace(/^v1,whsec_/, '');
+      isAuthorized = providedSecret === secret || normalizedProvided === normalizedConfig || providedSecret === normalizedConfig;
+      
+      if (!isAuthorized) {
+        console.log('[Auth Hook] Bearer token provided but does not match secret');
+      }
     }
+    
+    // Fallback to webhook signature verification if Bearer token not provided or doesn't match
+    if (!isAuthorized && secret) {
+      isAuthorized = verifySupabaseSignature(bodyText, headers, secret);
+      
+      if (!isAuthorized) {
+        console.log('[Auth Hook] Webhook signature verification failed');
+      }
+    }
+    
+    // In development, allow requests without auth for testing
+    if (!isAuthorized && process.env.NODE_ENV === 'development') {
+      console.warn('[Auth Hook] Development mode: Allowing request without valid authorization');
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      console.error('[Auth Hook] Invalid authorization - missing or invalid token/signature');
+      console.error('[Auth Hook] Expected secret (first 10 chars):', secret.substring(0, 10) + '...');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    console.log('[Auth Hook] Authorization successful');
 
     // Parse the hook payload (Supabase Auth Hook format)
     const {
