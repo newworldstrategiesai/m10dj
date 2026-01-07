@@ -23,28 +23,62 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getProductFromEmail, getProductName, getProductBaseUrl, ProductContext } from '@/lib/email/product-email-config';
 
-// Verify the webhook signature from Supabase
-function verifySupabaseSignature(payload: string, signature: string | null, secret: string): boolean {
-  if (!signature || !secret) {
-    console.warn('[Auth Hook] Missing signature or secret');
+// Verify the webhook signature from Supabase using standardwebhooks format
+function verifySupabaseSignature(payload: string, headers: Record<string, string>, secret: string): boolean {
+  if (!secret) {
+    console.warn('[Auth Hook] Missing secret');
     return process.env.NODE_ENV === 'development'; // Allow in dev without signature
   }
 
   try {
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(payload);
-    const expectedSignature = hmac.digest('hex');
+    // Supabase uses standardwebhooks format (v1,whsec_<base64_secret>)
+    // Extract the base64 secret if it has the prefix
+    const secretKey = secret.replace(/^v1,whsec_/, '');
     
-    // Supabase may send signature with or without prefix
-    const providedSignature = signature.replace(/^sha256=/, '');
+    // Get webhook signature from headers
+    const signature = headers['webhook-signature'] || 
+                     headers['x-webhook-signature'] ||
+                     headers['x-supabase-signature'];
     
+    if (!signature) {
+      console.warn('[Auth Hook] Missing webhook signature in headers');
+      return process.env.NODE_ENV === 'development';
+    }
+
+    // Parse signature (format: "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=,t=1234567890")
+    const sigParts = signature.split(',');
+    const timestamp = sigParts.find((p: string) => p.startsWith('t='))?.replace('t=', '');
+    const sig = sigParts.find((p: string) => !p.startsWith('v1') && !p.startsWith('t='));
+    
+    if (!timestamp || !sig) {
+      console.warn('[Auth Hook] Invalid signature format');
+      return process.env.NODE_ENV === 'development';
+    }
+
+    // Verify timestamp is recent (within 5 minutes)
+    const now = Math.floor(Date.now() / 1000);
+    const timestampNum = parseInt(timestamp, 10);
+    if (Math.abs(now - timestampNum) > 300) {
+      console.warn('[Auth Hook] Signature timestamp too old');
+      return false;
+    }
+
+    // Create signed content: timestamp.payload
+    const signedContent = `${timestamp}.${payload}`;
+    
+    // Compute expected signature
+    const hmac = crypto.createHmac('sha256', Buffer.from(secretKey, 'base64'));
+    hmac.update(signedContent);
+    const expectedSig = hmac.digest('base64');
+    
+    // Compare signatures
     return crypto.timingSafeEqual(
-      Buffer.from(expectedSignature),
-      Buffer.from(providedSignature)
+      Buffer.from(expectedSig),
+      Buffer.from(sig)
     );
   } catch (error) {
     console.error('[Auth Hook] Signature verification error:', error);
-    return false;
+    return process.env.NODE_ENV === 'development';
   }
 }
 
@@ -379,31 +413,40 @@ export async function POST(request: NextRequest) {
     const body = JSON.parse(bodyText);
 
     // Verify webhook signature
-    const signature = request.headers.get('x-supabase-signature') || 
-                     request.headers.get('authorization')?.replace('Bearer ', '');
+    const headers: Record<string, string> = {};
+    request.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
+    
     const secret = process.env.SUPABASE_AUTH_HOOK_SECRET || '';
 
-    if (!verifySupabaseSignature(bodyText, signature, secret)) {
+    if (!verifySupabaseSignature(bodyText, headers, secret)) {
       console.error('[Auth Hook] Invalid signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    // Parse the hook payload
-    // Supabase sends different formats depending on hook type
+    // Parse the hook payload (Supabase Auth Hook format)
     const {
-      type,
-      email,
-      email_data,
       user,
-      redirect_to,
+      email_data,
+    } = body;
+    
+    // Extract fields from email_data
+    const {
       token,
       token_hash,
-      confirmation_url,
-      recovery_url,
-      email_change_url,
-    } = body;
+      redirect_to,
+      email_action_type,
+      site_url,
+      token_new,
+      token_hash_new,
+    } = email_data || {};
 
-    console.log('[Auth Hook] Received event:', { type, email, redirect_to });
+    console.log('[Auth Hook] Received event:', { 
+      email_action_type, 
+      user_email: user?.email, 
+      redirect_to 
+    });
 
     // Detect product context
     const productContext = detectProductContext(redirect_to, user?.user_metadata);
@@ -411,6 +454,7 @@ export async function POST(request: NextRequest) {
     const productName = getProductName(productContext);
     const productDomain = getProductBaseUrl(productContext).replace('https://', '');
     const accentColor = getProductAccentColor(productContext);
+    const productBaseUrl = getProductBaseUrl(productContext);
 
     // Import Resend
     const { Resend } = await import('resend');
@@ -425,48 +469,65 @@ export async function POST(request: NextRequest) {
     let subject: string;
     let actionUrl: string;
 
-    // Handle different event types
-    switch (type) {
+    // Handle different email action types
+    switch (email_action_type) {
       case 'signup':
-      case 'email_confirmation':
-        actionUrl = confirmation_url || email_data?.confirmation_url || '';
+        // Build confirmation URL with token hash
+        actionUrl = `${productBaseUrl}/auth/confirm?token_hash=${token_hash}&type=signup`;
+        if (redirect_to) {
+          actionUrl += `&redirect_to=${encodeURIComponent(redirect_to)}`;
+        }
         emailContent = generateSignupConfirmationEmail(productName, productDomain, actionUrl, accentColor);
         subject = `Confirm your ${productName} account`;
         break;
 
       case 'recovery':
-      case 'password_recovery':
-        actionUrl = recovery_url || email_data?.recovery_url || '';
+        // Build password reset URL with token hash
+        actionUrl = `${productBaseUrl}/auth/confirm?token_hash=${token_hash}&type=recovery`;
+        if (redirect_to) {
+          actionUrl += `&redirect_to=${encodeURIComponent(redirect_to)}`;
+        }
         emailContent = generatePasswordResetEmail(productName, productDomain, actionUrl, accentColor);
         subject = `Reset your ${productName} password`;
         break;
 
       case 'magiclink':
-      case 'magic_link':
-        actionUrl = confirmation_url || email_data?.confirmation_url || '';
+        // Build magic link URL with token hash
+        actionUrl = `${productBaseUrl}/auth/confirm?token_hash=${token_hash}&type=magiclink`;
+        if (redirect_to) {
+          actionUrl += `&redirect_to=${encodeURIComponent(redirect_to)}`;
+        }
         emailContent = generateMagicLinkEmail(productName, productDomain, actionUrl, accentColor);
         subject = `Sign in to ${productName}`;
         break;
 
       case 'email_change':
-        actionUrl = email_change_url || email_data?.email_change_url || '';
+        // Build email change confirmation URL
+        actionUrl = `${productBaseUrl}/auth/confirm?token_hash=${token_hash}&type=email_change`;
+        if (redirect_to) {
+          actionUrl += `&redirect_to=${encodeURIComponent(redirect_to)}`;
+        }
         emailContent = generateSignupConfirmationEmail(productName, productDomain, actionUrl, accentColor);
         subject = `Confirm your new email for ${productName}`;
         break;
 
       case 'invite':
-        actionUrl = confirmation_url || email_data?.confirmation_url || '';
+        // Build invitation URL with token hash
+        actionUrl = `${productBaseUrl}/auth/confirm?token_hash=${token_hash}&type=invite`;
+        if (redirect_to) {
+          actionUrl += `&redirect_to=${encodeURIComponent(redirect_to)}`;
+        }
         emailContent = generateSignupConfirmationEmail(productName, productDomain, actionUrl, accentColor);
         subject = `You've been invited to ${productName}`;
         break;
 
       default:
-        console.log('[Auth Hook] Unknown event type:', type);
-        return NextResponse.json({ error: 'Unknown event type' }, { status: 400 });
+        console.log('[Auth Hook] Unknown email action type:', email_action_type);
+        return NextResponse.json({ error: 'Unknown email action type' }, { status: 400 });
     }
 
     // Get recipient email
-    const recipientEmail = email || email_data?.email || user?.email;
+    const recipientEmail = user?.email;
     if (!recipientEmail) {
       console.error('[Auth Hook] No recipient email found');
       return NextResponse.json({ error: 'No recipient email' }, { status: 400 });
