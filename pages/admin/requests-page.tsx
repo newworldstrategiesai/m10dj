@@ -109,6 +109,14 @@ export default function RequestsPageSettings() {
   // Payment usernames for tips section
   const [cashAppTag, setCashAppTag] = useState('');
   const [venmoUsername, setVenmoUsername] = useState('');
+  const [venmoPhoneNumber, setVenmoPhoneNumber] = useState('');
+  
+  // Payment method enabled settings
+  const [paymentMethodEnabled, setPaymentMethodEnabled] = useState({
+    card: true,
+    cashapp: true,
+    venmo: true
+  });
   
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   
@@ -371,6 +379,16 @@ export default function RequestsPageSettings() {
         // Set payment usernames for tips section
         setCashAppTag(org.requests_cashapp_tag || '');
         setVenmoUsername(org.requests_venmo_username || '');
+        setVenmoPhoneNumber(org.requests_venmo_phone_number || '');
+        
+        // Set payment method enabled settings
+        // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
+        const hasVenmoUsername = !!(org.requests_venmo_username || '');
+        setPaymentMethodEnabled({
+          card: org.requests_payment_method_card_enabled !== false,
+          cashapp: org.requests_payment_method_cashapp_enabled !== false, // CashApp goes through Stripe, doesn't need tag
+          venmo: hasVenmoUsername ? (org.requests_payment_method_venmo_enabled !== false) : false
+        });
         
         // Set assistant enabled setting (defaults to true for new users)
         setAssistantEnabled(org.requests_assistant_enabled !== false);
@@ -607,6 +625,11 @@ export default function RequestsPageSettings() {
         // Payment usernames for tips section
         requests_cashapp_tag: cashAppTag || null,
         requests_venmo_username: venmoUsername || null,
+        requests_venmo_phone_number: venmoPhoneNumber || null,
+        // Payment method enabled settings
+        requests_payment_method_card_enabled: paymentMethodEnabled.card,
+        requests_payment_method_cashapp_enabled: paymentMethodEnabled.cashapp,
+        requests_payment_method_venmo_enabled: paymentMethodEnabled.venmo,
         // Assistant settings
         requests_assistant_enabled: assistantEnabled,
         // Header fields
@@ -1441,7 +1464,6 @@ export default function RequestsPageSettings() {
                   )}
                   </div>
                 </div>
-                </div>
               ) : activeTab === 'payments' ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
@@ -1787,7 +1809,14 @@ export default function RequestsPageSettings() {
                               value={venmoUsername.replace(/^@/, '')}
                               onChange={(e) => {
                                 const value = e.target.value.replace(/^@/, '');
-                                setVenmoUsername(value ? `@${value}` : '');
+                                const newUsername = value ? `@${value}` : '';
+                                setVenmoUsername(newUsername);
+                                // Auto-enable Venmo if username is entered, disable if cleared
+                                if (newUsername && !paymentMethodEnabled.venmo) {
+                                  setPaymentMethodEnabled(prev => ({ ...prev, venmo: true }));
+                                } else if (!newUsername && paymentMethodEnabled.venmo) {
+                                  setPaymentMethodEnabled(prev => ({ ...prev, venmo: false }));
+                                }
                                 setError(null);
                                 setSuccess(false);
                               }}
@@ -1800,8 +1829,123 @@ export default function RequestsPageSettings() {
                           </p>
                         </div>
                         
-                        {/* Info box */}
-                        {(!cashAppTag && !venmoUsername) && (
+                        {/* Venmo Phone Number */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Venmo Phone Number (Optional - Recommended)
+                          </label>
+                          <input
+                            type="tel"
+                            value={venmoPhoneNumber}
+                            onChange={(e) => {
+                              // Only allow digits
+                              const digits = e.target.value.replace(/\D/g, '');
+                              setVenmoPhoneNumber(digits);
+                              setError(null);
+                              setSuccess(false);
+                            }}
+                            placeholder="9014977001"
+                            maxLength={10}
+                            className="w-full sm:w-64 pl-4 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                          />
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            Your Venmo phone number (10 digits, no dashes). This prevents customers from needing to verify your phone number when making payments. If provided, the deep link will use your phone number instead of username, which is more reliable.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Payment Method Visibility Toggles */}
+                      <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          Payment Method Buttons
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                          Choose which payment method buttons appear on the payment selection screen after users submit a request.
+                        </p>
+                        
+                        <div className="space-y-4">
+                          {/* Card/Stripe Toggle */}
+                          <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="flex-1">
+                              <label className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+                                Card Payment (Stripe)
+                              </label>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Secure credit/debit card payments via Stripe
+                              </p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={paymentMethodEnabled.card}
+                                onChange={(e) => {
+                                  setPaymentMethodEnabled(prev => ({ ...prev, card: e.target.checked }));
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#fcba00] dark:peer-focus:ring-[#fcba00] rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#fcba00]"></div>
+                            </label>
+                          </div>
+                          
+                          {/* CashApp Toggle */}
+                          <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="flex-1">
+                              <label className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+                                CashApp Payment
+                              </label>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Payments processed via Stripe Checkout (CashApp tag above is only for manual/fallback payments)
+                              </p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={paymentMethodEnabled.cashapp}
+                                onChange={(e) => {
+                                  setPaymentMethodEnabled(prev => ({ ...prev, cashapp: e.target.checked }));
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#fcba00] dark:peer-focus:ring-[#fcba00] rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#fcba00]"></div>
+                            </label>
+                          </div>
+                          
+                          {/* Venmo Toggle */}
+                          <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="flex-1">
+                              <label className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+                                Venmo Payment
+                              </label>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {venmoUsername ? `Shows Venmo button with ${venmoUsername}` : 'Enter Venmo username above to enable'}
+                              </p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={paymentMethodEnabled.venmo && !!venmoUsername}
+                                onChange={(e) => {
+                                  if (venmoUsername) {
+                                    setPaymentMethodEnabled(prev => ({ ...prev, venmo: e.target.checked }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }
+                                }}
+                                disabled={!venmoUsername}
+                                className="sr-only peer"
+                              />
+                              <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#fcba00] dark:peer-focus:ring-[#fcba00] rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#fcba00] ${!venmoUsername ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Info box */}
+                      {(!cashAppTag && !venmoUsername) && (
                           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
                             <p className="text-sm text-amber-800 dark:text-amber-200">
                               💡 Add your CashApp or Venmo to give customers an alternative way to tip you if they have trouble with card payments.
@@ -2997,7 +3141,6 @@ export default function RequestsPageSettings() {
                       </div>
                     </div>
                   </div>
-
                   {/* SEO & Metadata Section */}
                   <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
                     <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">

@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       // Direct organization ID provided
       const { data: org } = await supabase
         .from('organizations')
-        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_default_preset_amount, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_default_preset_amount, requests_cashapp_tag, requests_venmo_username, requests_venmo_phone_number, requests_fast_track_fee, requests_next_fee')
         .eq('id', organizationId)
         .single();
       organization = org;
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       // Organization slug provided (from URL)
       const { data: org } = await supabase
         .from('organizations')
-        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_default_preset_amount, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_default_preset_amount, requests_cashapp_tag, requests_venmo_username, requests_venmo_phone_number, requests_fast_track_fee, requests_next_fee')
         .eq('slug', organizationSlug)
         .single();
       organization = org;
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       // Try to get default organization (first one) for backward compatibility
       const { data: defaultOrg } = await supabase
         .from('organizations')
-        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_default_preset_amount, requests_cashapp_tag, requests_venmo_username, requests_fast_track_fee, requests_next_fee')
+        .select('id, slug, owner_id, requests_minimum_amount, requests_preset_amounts, requests_amounts_sort_order, requests_default_preset_amount, requests_cashapp_tag, requests_venmo_username, requests_venmo_phone_number, requests_fast_track_fee, requests_next_fee')
         .limit(1)
         .single();
       organization = defaultOrg;
@@ -96,14 +96,22 @@ export default async function handler(req, res) {
       return res.status(200).json({
         cashAppTag,
         venmoUsername,
-        venmoPhoneNumber: paymentMethodSettings['crowd_request_venmo_phone_number'] || process.env.VENMO_PHONE_NUMBER || null,
+        venmoPhoneNumber: organization.requests_venmo_phone_number 
+          || paymentMethodSettings['crowd_request_venmo_phone_number'] 
+          || process.env.VENMO_PHONE_NUMBER 
+          || null,
         fastTrackFee,
         nextFee,
         minimumAmount: orgMinimum,
         presetAmounts: orgPresets,
         defaultPresetAmount: organization.requests_default_preset_amount || null,
         bundleDiscountEnabled: paymentMethodSettings['crowd_request_bundle_discount_enabled'] === 'true' || paymentMethodSettings['crowd_request_bundle_discount_enabled'] === undefined,
-        bundleDiscountPercent: parseInt(paymentMethodSettings['crowd_request_bundle_discount_percent']) || 10
+        bundleDiscountPercent: parseInt(paymentMethodSettings['crowd_request_bundle_discount_percent']) || 10,
+        // Payment method enabled flags
+        // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
+        paymentMethodCardEnabled: organization.requests_payment_method_card_enabled !== false,
+        paymentMethodCashappEnabled: organization.requests_payment_method_cashapp_enabled !== false, // CashApp goes through Stripe, doesn't need tag
+        paymentMethodVenmoEnabled: venmoUsername ? (organization.requests_payment_method_venmo_enabled !== false) : false
       });
     }
 
@@ -187,14 +195,20 @@ export default async function handler(req, res) {
       // Only M10 DJ Company gets personal payment defaults; other orgs get null (must configure their own)
       const fastTrackFee = organization?.requests_fast_track_fee || 1000;
       const nextFee = organization?.requests_next_fee || 2000;
+      const orgVenmoUsername = organization?.requests_venmo_username || (isM10Organization ? (process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray') : null);
       return res.status(200).json({
         cashAppTag: organization?.requests_cashapp_tag || (isM10Organization ? (process.env.NEXT_PUBLIC_CASHAPP_TAG || '$DJbenmurray') : null),
-        venmoUsername: organization?.requests_venmo_username || (isM10Organization ? (process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray') : null),
-        venmoPhoneNumber: process.env.VENMO_PHONE_NUMBER || null, // Include phone number for Venmo deep links
+        venmoUsername: orgVenmoUsername,
+        venmoPhoneNumber: organization?.requests_venmo_phone_number || process.env.VENMO_PHONE_NUMBER || null, // Include phone number for Venmo deep links
         fastTrackFee,
         nextFee,
         minimumAmount: defaultMinimum,
-        presetAmounts: generateDefaultPresets(defaultMinimum)
+        presetAmounts: generateDefaultPresets(defaultMinimum),
+        // Payment method enabled flags
+        // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
+        paymentMethodCardEnabled: organization?.requests_payment_method_card_enabled !== false,
+        paymentMethodCashappEnabled: organization?.requests_payment_method_cashapp_enabled !== false, // CashApp goes through Stripe, doesn't need tag
+        paymentMethodVenmoEnabled: orgVenmoUsername ? (organization?.requests_payment_method_venmo_enabled !== false) : false
       });
     }
 
@@ -205,7 +219,10 @@ export default async function handler(req, res) {
     const venmoUsername = organization?.requests_venmo_username 
       || settings.find(s => s.setting_key === 'crowd_request_venmo_username')?.setting_value 
       || (isM10Organization ? (process.env.NEXT_PUBLIC_VENMO_USERNAME || '@djbenmurray') : null);
-    const venmoPhoneNumber = settings.find(s => s.setting_key === 'crowd_request_venmo_phone_number')?.setting_value || process.env.VENMO_PHONE_NUMBER || null;
+    const venmoPhoneNumber = organization?.requests_venmo_phone_number 
+      || settings.find(s => s.setting_key === 'crowd_request_venmo_phone_number')?.setting_value 
+      || process.env.VENMO_PHONE_NUMBER 
+      || null;
     
     // For fees: use organization-specific values first, then admin_settings, then defaults
     const fastTrackFee = organization?.requests_fast_track_fee 
@@ -252,7 +269,12 @@ export default async function handler(req, res) {
       minimumAmount: minimumAmount,
       presetAmounts,
       bundleDiscountEnabled: bundleDiscountEnabled === 'true',
-      bundleDiscountPercent: parseInt(bundleDiscountPercent) || 10
+      bundleDiscountPercent: parseInt(bundleDiscountPercent) || 10,
+      // Payment method enabled flags
+      // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
+      paymentMethodCardEnabled: organization?.requests_payment_method_card_enabled !== false,
+      paymentMethodCashappEnabled: organization?.requests_payment_method_cashapp_enabled !== false, // CashApp goes through Stripe, doesn't need tag
+      paymentMethodVenmoEnabled: venmoUsername ? (organization?.requests_payment_method_venmo_enabled !== false) : false
     });
   } catch (error) {
     console.error('❌ Error fetching payment settings:', error);
@@ -267,7 +289,11 @@ export default async function handler(req, res) {
       minimumAmount: defaultMinimum,
       presetAmounts: [1000, 1500, 2000, 2500], // $10, $15, $20, $25
       bundleDiscountEnabled: true,
-      bundleDiscountPercent: 10
+      bundleDiscountPercent: 10,
+      // Payment method enabled flags (defaults on error)
+      paymentMethodCardEnabled: true,
+      paymentMethodCashappEnabled: false, // CashApp disabled by default unless tag is configured
+      paymentMethodVenmoEnabled: false // Venmo disabled by default unless username is configured
     });
   }
 }

@@ -2422,7 +2422,9 @@ export function GeneralRequestsPage({
                     const platform = link.platform?.toLowerCase();
                     const isSelectable = platform === 'instagram' || platform === 'facebook';
                     
-                    if (isSelectable) {
+                    // Only use account selector for M10 domains/organizations
+                    // For TipJar users, use the actual URL from social_links directly
+                    if (isSelectable && allowSocialAccountSelector) {
                       return (
                         <button
                           key={`desktop-social-${index}`}
@@ -2440,6 +2442,7 @@ export function GeneralRequestsPage({
                       );
                     }
                     
+                    // For TipJar users or non-selectable platforms, use direct link
                     return (
                       <a
                         key={`desktop-social-${index}`}
@@ -4353,15 +4356,17 @@ export function GeneralRequestsPage({
                       return false;
                     })()}
                     className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-2xl shadow-brand-500/40 hover:shadow-brand-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       // Prevent double-submission
                       if (submitting) {
                         e.preventDefault();
+                        e.stopPropagation();
                         return;
                       }
                       
                       if (currentStep === 1) {
                         e.preventDefault();
+                        e.stopPropagation();
                         // Clear any previous errors and go to payment step
                         setError('');
                         setCurrentStep(2);
@@ -4374,9 +4379,14 @@ export function GeneralRequestsPage({
                         }, 100);
                         return;
                       }
-                      // Don't scroll - let form submit immediately if valid
-                      // Validation errors will handle scrolling in handleSubmit
-                      // Only scroll for step 1 (Continue to Payment) which is handled above
+                      
+                      // For step 2, explicitly trigger form submission
+                      // This ensures handleSubmit is called even if form submission is blocked
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      // Manually call handleSubmit
+                      await handleSubmit(e);
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>

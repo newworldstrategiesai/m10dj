@@ -852,3 +852,4 @@ ADD COLUMN IF NOT EXISTS booking_territory TEXT[]; -- Cities/states they book fo
 **Status:** Brainstorming Phase
 
 
+

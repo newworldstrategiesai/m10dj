@@ -494,6 +494,8 @@ function PaymentMethodSelection({
         </div>
       ) : (
         <div className="space-y-3">
+          {/* CashApp Button - Only show if enabled */}
+          {paymentSettings?.paymentMethodCashappEnabled !== false && (
           <button
             type="button"
             onClick={handleCashAppClick}
@@ -512,7 +514,10 @@ function PaymentMethodSelection({
               </span>
             </div>
           </button>
+          )}
 
+          {/* Venmo Button - Only show if enabled AND username is configured */}
+          {paymentSettings?.paymentMethodVenmoEnabled !== false && paymentSettings?.venmoUsername && (
           <button
             type="button"
             onClick={handleVenmoClick}
@@ -530,7 +535,10 @@ function PaymentMethodSelection({
               </span>
             </div>
           </button>
+          )}
 
+          {/* Card/Stripe Button - Only show if enabled */}
+          {paymentSettings?.paymentMethodCardEnabled !== false && (
           <button
             type="button"
             onClick={() => onPaymentMethodSelected('card')}
@@ -547,7 +555,10 @@ function PaymentMethodSelection({
               </span>
             </div>
           </button>
+          )}
 
+          {/* Apple Pay Button - Only show if card is enabled */}
+          {paymentSettings?.paymentMethodCardEnabled !== false && (
           <button
             type="button"
             onClick={() => handleProceedWithPayment('card')}
@@ -563,6 +574,7 @@ function PaymentMethodSelection({
               </span>
             </div>
           </button>
+          )}
 
           {/* Add More Songs Link - Only show for song requests */}
           {requestType === 'song_request' && bundleDiscountEnabled && bundleDiscount > 0 && (
