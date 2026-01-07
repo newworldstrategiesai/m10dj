@@ -47,7 +47,7 @@ export default function OrganizationRequestsPage() {
         console.log('📡 Querying Supabase for organization...');
         const { data: org, error: orgError } = await supabase
           .from('organizations')
-          .select('*, social_links, product_context') // Explicitly select social_links and product_context
+          .select('*, social_links, product_context, requests_assistant_enabled, requests_accent_color, requests_theme_mode') // Explicitly select fields needed for chat widget
           .eq('slug', slug)
           .maybeSingle(); // Use maybeSingle to avoid errors on not found
         
@@ -320,15 +320,25 @@ export default function OrganizationRequestsPage() {
       />
       
       {/* TipJar Chat Widget - Only show for TipJar organizations if enabled */}
-      {organization.product_context === 'tipjar' && organization.requests_assistant_enabled !== false && (
-        <TipJarChatWidget
-          organizationId={organization.id}
-          organizationName={organization.name}
-          organizationData={organization}
-          accentColor={organization.requests_accent_color || (organization.product_context === 'tipjar' ? '#10b981' : '#fcba00')}
-          themeMode={organization.requests_theme_mode || 'dark'}
-        />
-      )}
+      {(() => {
+        // Check if this is a TipJar page - either by product_context or domain
+        const isTipJarPage = organization.product_context === 'tipjar' || 
+          (typeof window !== 'undefined' && (
+            window.location.hostname.includes('tipjar.live') || 
+            window.location.hostname.includes('www.tipjar.live')
+          ));
+        const isAssistantEnabled = organization.requests_assistant_enabled !== false;
+        
+        return isTipJarPage && isAssistantEnabled ? (
+          <TipJarChatWidget
+            organizationId={organization.id}
+            organizationName={organization.name}
+            organizationData={organization}
+            accentColor={organization.requests_accent_color || (isTipJarPage ? '#10b981' : '#fcba00')}
+            themeMode={organization.requests_theme_mode || 'dark'}
+          />
+        ) : null;
+      })()}
     </>
   );
 }

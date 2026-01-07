@@ -306,6 +306,80 @@ export function GeneralRequestsPage({
   const effectiveSubtitleShadowBlur = previewSubtitleShadowBlur !== null ? previewSubtitleShadowBlur : (organizationData?.requests_subtitle_shadow_blur || 6);
   const effectiveSubtitleShadowColor = previewSubtitleShadowColor || organizationData?.requests_subtitle_shadow_color || 'rgba(0, 0, 0, 0.8)';
   
+  // Helper function to generate text-shadow outline effect (preserves fill color)
+  const generateTextShadowOutline = (strokeEnabled, strokeWidth, strokeColor, shadowEnabled, shadowX, shadowY, shadowBlur, shadowColor) => {
+    const shadows = [];
+    
+    // If stroke is enabled, create outline using multiple text-shadows in all directions
+    if (strokeEnabled && strokeWidth > 0) {
+      const outlineShadows = [];
+      // Create shadows in 8 directions (every 45 degrees) plus intermediate positions for smoother outline
+      const directions = [
+        { x: 0, y: -strokeWidth },      // top
+        { x: strokeWidth, y: -strokeWidth }, // top-right
+        { x: strokeWidth, y: 0 },       // right
+        { x: strokeWidth, y: strokeWidth },  // bottom-right
+        { x: 0, y: strokeWidth },       // bottom
+        { x: -strokeWidth, y: strokeWidth }, // bottom-left
+        { x: -strokeWidth, y: 0 },      // left
+        { x: -strokeWidth, y: -strokeWidth }, // top-left
+      ];
+      
+      // Add more directions for thicker strokes (every 30 degrees for strokeWidth >= 3)
+      if (strokeWidth >= 3) {
+        const angle45 = Math.PI / 4;
+        directions.push(
+          { x: Math.round(Math.cos(angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 2 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 2 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 3 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 3 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 4 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 4 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 5 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 5 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 6 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 6 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 7 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 7 + angle45 / 2) * strokeWidth) }
+        );
+      }
+      
+      directions.forEach(dir => {
+        outlineShadows.push(`${dir.x}px ${dir.y}px 0 ${strokeColor}`);
+      });
+      shadows.push(...outlineShadows);
+    }
+    
+    // Add regular shadow if enabled (and not overridden by stroke outline)
+    if (shadowEnabled && (shadows.length === 0 || !strokeEnabled)) {
+      shadows.push(`${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowColor}`);
+    } else if (shadowEnabled && strokeEnabled) {
+      // If both stroke and shadow are enabled, add shadow after outline (on top)
+      shadows.push(`${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowColor}`);
+    }
+    
+    return shadows.length > 0 ? shadows.join(', ') : 'none';
+  };
+  
+  // Generate combined text-shadow for artist name and subtitle
+  const artistNameTextShadow = generateTextShadowOutline(
+    effectiveArtistNameStrokeEnabled,
+    effectiveArtistNameStrokeWidth,
+    effectiveArtistNameStrokeColor,
+    effectiveArtistNameShadowEnabled,
+    effectiveArtistNameShadowXOffset,
+    effectiveArtistNameShadowYOffset,
+    effectiveArtistNameShadowBlur,
+    effectiveArtistNameShadowColor
+  );
+  
+  const subtitleTextShadow = generateTextShadowOutline(
+    effectiveSubtitleStrokeEnabled,
+    effectiveSubtitleStrokeWidth,
+    effectiveSubtitleStrokeColor,
+    effectiveSubtitleShadowEnabled,
+    effectiveSubtitleShadowXOffset,
+    effectiveSubtitleShadowYOffset,
+    effectiveSubtitleShadowBlur,
+    effectiveSubtitleShadowColor
+  );
+  
   // Log when organizationData changes
   useEffect(() => {
     console.log('🎨 [GENERAL REQUESTS] GeneralRequestsPage organizationData changed:', {
@@ -2151,6 +2225,10 @@ export function GeneralRequestsPage({
             .border-brand-300\\/50 { border-color: ${effectiveAccentColor}80 !important; }
             .border-brand-700\\/30 { border-color: ${effectiveAccentColor}4d !important; }
             
+            /* Border variants without -200/-300/-700 suffix (used by request type buttons) */
+            .border-brand\\/30 { border-color: ${effectiveAccentColor}4d !important; }
+            .border-brand\\/50 { border-color: ${effectiveAccentColor}80 !important; }
+            
             .ring-brand-500 { --tw-ring-color: var(--accent-color) !important; }
             .focus\\:ring-brand-500:focus { --tw-ring-color: var(--accent-color) !important; }
             .focus\\:border-brand-500:focus { border-color: var(--accent-color) !important; }
@@ -2159,6 +2237,14 @@ export function GeneralRequestsPage({
             .shadow-brand-500\\/40 { --tw-shadow-color: ${effectiveAccentColor}66 !important; }
             .shadow-brand-500\\/60 { --tw-shadow-color: ${effectiveAccentColor}99 !important; }
             .focus\\:shadow-brand-500\\/20:focus { --tw-shadow-color: ${effectiveAccentColor}33 !important; }
+            
+            /* Shadow variants without -500 suffix (used by request type buttons) */
+            .shadow-brand\\/10 { --tw-shadow-color: ${effectiveAccentColor}1a !important; }
+            .shadow-brand\\/20 { --tw-shadow-color: ${effectiveAccentColor}33 !important; }
+            .shadow-brand\\/30 { --tw-shadow-color: ${effectiveAccentColor}4d !important; }
+            .shadow-brand\\/40 { --tw-shadow-color: ${effectiveAccentColor}66 !important; }
+            .shadow-brand\\/50 { --tw-shadow-color: ${effectiveAccentColor}80 !important; }
+            .shadow-brand\\/60 { --tw-shadow-color: ${effectiveAccentColor}99 !important; }
             
             /* Gradient classes with brand colors */
             .from-brand-50 { --tw-gradient-from: ${effectiveAccentColor}10 !important; }
@@ -2202,6 +2288,12 @@ export function GeneralRequestsPage({
             .hover\\:via-brand-400:hover { --tw-gradient-via: ${effectiveAccentColor}cc !important; }
             .hover\\:to-brand-600:hover { --tw-gradient-to: var(--accent-color) !important; }
             
+            .bg-brand\\/5 { background-color: ${effectiveAccentColor}0d !important; }
+            .bg-brand\\/10 { background-color: ${effectiveAccentColor}1a !important; }
+            .bg-brand\\/20 { background-color: ${effectiveAccentColor}33 !important; }
+            .bg-brand\\/30 { background-color: ${effectiveAccentColor}4d !important; }
+            .bg-brand\\/50 { background-color: ${effectiveAccentColor}80 !important; }
+            .bg-brand\\/90 { background-color: ${effectiveAccentColor}e6 !important; }
             .group-hover\\:bg-brand\\/10 { background-color: ${effectiveAccentColor}1a !important; }
             .group-hover\\:text-brand { color: var(--accent-color) !important; }
             
@@ -2384,13 +2476,7 @@ export function GeneralRequestsPage({
                       textTransform: effectiveArtistNameTextTransform,
                       color: effectiveArtistNameColor,
                       letterSpacing: `${effectiveArtistNameKerning}px`,
-                      WebkitTextStroke: effectiveArtistNameStrokeEnabled 
-                        ? `${effectiveArtistNameStrokeWidth}px ${effectiveArtistNameStrokeColor}` 
-                        : 'none',
-                      WebkitTextFillColor: effectiveArtistNameStrokeEnabled ? 'transparent' : undefined,
-                      textShadow: effectiveArtistNameShadowEnabled
-                        ? `${effectiveArtistNameShadowXOffset}px ${effectiveArtistNameShadowYOffset}px ${effectiveArtistNameShadowBlur}px ${effectiveArtistNameShadowColor}`
-                        : 'none',
+                      textShadow: artistNameTextShadow,
                       transform: 'rotate(-12deg) scale(1.5)',
                       whiteSpace: 'nowrap'
                     }}
@@ -2738,13 +2824,7 @@ export function GeneralRequestsPage({
                         textTransform: effectiveArtistNameTextTransform,
                         color: effectiveArtistNameColor,
                         letterSpacing: `${effectiveArtistNameKerning}px`,
-                        WebkitTextStroke: effectiveArtistNameStrokeEnabled 
-                          ? `${effectiveArtistNameStrokeWidth}px ${effectiveArtistNameStrokeColor}` 
-                          : 'none',
-                        WebkitTextFillColor: effectiveArtistNameStrokeEnabled ? 'transparent' : undefined,
-                        textShadow: effectiveArtistNameShadowEnabled
-                          ? `${effectiveArtistNameShadowXOffset}px ${effectiveArtistNameShadowYOffset}px ${effectiveArtistNameShadowBlur}px ${effectiveArtistNameShadowColor}`
-                          : 'none'
+                        textShadow: artistNameTextShadow
                       }}
                     >
                       {(() => {
@@ -2780,13 +2860,7 @@ export function GeneralRequestsPage({
                       textTransform: effectiveSubtitleTextTransform,
                       color: effectiveSubtitleColor,
                       letterSpacing: `${effectiveSubtitleKerning}px`,
-                      WebkitTextStroke: effectiveSubtitleStrokeEnabled 
-                        ? `${effectiveSubtitleStrokeWidth}px ${effectiveSubtitleStrokeColor}` 
-                        : 'none',
-                      WebkitTextFillColor: effectiveSubtitleStrokeEnabled ? 'transparent' : undefined,
-                      textShadow: effectiveSubtitleShadowEnabled
-                        ? `${effectiveSubtitleShadowXOffset}px ${effectiveSubtitleShadowYOffset}px ${effectiveSubtitleShadowBlur}px ${effectiveSubtitleShadowColor}`
-                        : 'none'
+                      textShadow: subtitleTextShadow
                     }}
                   >
                     {(() => {
@@ -3003,7 +3077,7 @@ export function GeneralRequestsPage({
               <div className="space-y-6">
                 {/* Bidding Context Banner - Explain the bidding system */}
                 {!biddingRequestId && (
-                  <div className="bg-brand/5 dark:bg-black/40 border-2 border-brand/30 dark:border-brand/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 shadow-lg">
+                  <div className="bg-brand/5 dark:!bg-black/40 border-2 border-brand/30 dark:border-brand/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 shadow-lg">
                     <div className="flex items-start gap-3 sm:gap-4">
                       <div className="flex-shrink-0">
                         <Gift className="w-6 h-6 sm:w-7 sm:h-7 text-brand" />
@@ -3016,7 +3090,7 @@ export function GeneralRequestsPage({
                           Your song request will enter the current bidding round. The highest bidder&apos;s song plays first. You can increase your bid later if someone outbids you.
                         </p>
                         {currentWinningBid > 0 ? (
-                          <div className="mt-3 p-3 bg-white/70 dark:bg-black/50 rounded-lg border border-gray-200 dark:border-gray-800">
+                          <div className="mt-3 p-3 bg-white/70 dark:!bg-black/50 rounded-lg border border-gray-200 dark:border-gray-800">
                             <div className="flex items-center justify-between mb-2">
                               <p className="text-sm font-semibold text-gray-900 dark:text-white">
                                 Current Winning Bid:
@@ -3042,7 +3116,7 @@ export function GeneralRequestsPage({
                           </div>
                         )}
                         {roundTimeRemaining > 0 && (
-                          <div className="mt-3 p-3 bg-white/70 dark:bg-black/50 rounded-lg border border-gray-200 dark:border-gray-800">
+                          <div className="mt-3 p-3 bg-white/70 dark:!bg-black/50 rounded-lg border border-gray-200 dark:border-gray-800">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <Clock className={`w-4 h-4 ${
@@ -3075,7 +3149,7 @@ export function GeneralRequestsPage({
                     
                     {/* Song Request Fields */}
                     {requestType === 'song_request' && (
-                      <div className="bg-white/70 dark:bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0 space-y-2 sm:space-y-3 md:space-y-4">
+                      <div className="bg-white/70 dark:!bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0 space-y-2 sm:space-y-3 md:space-y-4">
                         <h2 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4 flex items-center gap-2 sm:gap-3">
                           <div className="w-1 h-5 sm:h-6 md:h-8 bg-brand rounded-full hidden sm:block"></div>
                           <span className="leading-tight">Submit Your Song Request</span>
@@ -3108,7 +3182,7 @@ export function GeneralRequestsPage({
                                 }, 200);
                                 handleSongTitleBlur(e);
                               }}
-                              className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 touch-manipulation ${
+                              className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 touch-manipulation ${
                                 extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3 sm:pr-4'
                               }`}
                               placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
@@ -3152,14 +3226,14 @@ export function GeneralRequestsPage({
                           )}
                           {/* Autocomplete suggestions */}
                           {showAutocomplete && suggestions.length > 0 && (
-                            <div className="mt-2 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                            <div className="mt-2 bg-white dark:!bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
                               {suggestions.map((suggestion, index) => (
                                 <button
                                   key={suggestion.id}
                                   type="button"
                                   onClick={() => handleSuggestionSelect(suggestion)}
                                   className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-black/80 transition-colors flex items-center gap-3 ${
-                                    index === selectedSuggestionIndex ? 'bg-gray-100 dark:bg-black/80' : ''
+                                    index === selectedSuggestionIndex ? 'bg-gray-100 dark:!bg-black/80' : ''
                                   }`}
                                 >
                                   {suggestion.albumArt && (
@@ -3182,7 +3256,7 @@ export function GeneralRequestsPage({
                             </div>
                           )}
                           {showAutocomplete && searchingSongs && suggestions.length === 0 && (
-                            <div className="mt-2 p-3 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
+                            <div className="mt-2 p-3 bg-white dark:!bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
                               <Loader2 className="w-4 h-4 animate-spin text-brand" />
                               <span className="text-sm text-gray-600 dark:text-gray-400">Searching...</span>
                             </div>
@@ -3199,7 +3273,7 @@ export function GeneralRequestsPage({
                             name="songArtist"
                             value={formData.songArtist}
                             onChange={handleInputChange}
-                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
+                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
                             placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
                             required
                             autoComplete="off"
@@ -3208,7 +3282,7 @@ export function GeneralRequestsPage({
 
                         {/* Bundle Songs Input (only show when bundle size > 1) */}
                         {bundleSize > 1 && bundleSongs.length > 0 && (
-                          <div ref={bundleSongsRef} className="mt-4 p-4 bg-white/70 dark:bg-black/50 rounded-lg border border-gray-200/50 dark:border-gray-800/50">
+                          <div ref={bundleSongsRef} className="mt-4 p-4 bg-white/70 dark:!bg-black/50 rounded-lg border border-gray-200/50 dark:border-gray-800/50">
                             <div className="flex items-center gap-2 mb-3">
                               <Gift className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -3225,7 +3299,7 @@ export function GeneralRequestsPage({
                                 const currentSearching = activeBundleSongIndex === index ? bundleSearching : false;
                                 
                                 return (
-                                  <div key={index} className="bg-white/50 dark:bg-black/30 rounded-lg p-3 sm:p-4 border border-gray-200/50 dark:border-gray-700/50">
+                                  <div key={index} className="bg-white/50 dark:!bg-black/30 rounded-lg p-3 sm:p-4 border border-gray-200/50 dark:border-gray-700/50">
                                     <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-2">
                                       Song {index + 2} of {bundleSize}
                                     </div>
@@ -3255,7 +3329,7 @@ export function GeneralRequestsPage({
                                               }, 200);
                                               handleBundleSongBlur(e, index);
                                             }}
-                                            className={`w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 ${
+                                            className={`w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 ${
                                               bundleExtractingSong[index] ? 'pr-20' : bundleIsExtractedFromLink[index] ? 'pr-20' : 'pr-3'
                                             }`}
                                             placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
@@ -3299,14 +3373,14 @@ export function GeneralRequestsPage({
                                         )}
                                         {/* Autocomplete suggestions */}
                                         {bundleShowAutocomplete[index] && currentSuggestions.length > 0 && (
-                                          <div className="mt-2 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                                          <div className="mt-2 bg-white dark:!bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
                                             {currentSuggestions.map((suggestion, sugIndex) => (
                                               <button
                                                 key={suggestion.id}
                                                 type="button"
                                                 onClick={() => handleBundleSuggestionSelect(suggestion, index)}
                                                 className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-black/80 transition-colors flex items-center gap-3 ${
-                                                  sugIndex === (bundleSelectedSuggestionIndex[index] || -1) ? 'bg-gray-100 dark:bg-black/80' : ''
+                                                  sugIndex === (bundleSelectedSuggestionIndex[index] || -1) ? 'bg-gray-100 dark:!bg-black/80' : ''
                                                 }`}
                                               >
                                                 {suggestion.albumArt && (
@@ -3329,7 +3403,7 @@ export function GeneralRequestsPage({
                                           </div>
                                         )}
                                         {bundleShowAutocomplete[index] && currentSearching && currentSuggestions.length === 0 && (
-                                          <div className="mt-2 p-3 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
+                                          <div className="mt-2 p-3 bg-white dark:!bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
                                             <Loader2 className="w-4 h-4 animate-spin text-brand" />
                                             <span className="text-sm text-gray-600 dark:text-gray-400">Searching...</span>
                                           </div>
@@ -3347,7 +3421,7 @@ export function GeneralRequestsPage({
                                             newSongs[index] = { ...newSongs[index], songArtist: e.target.value };
                                             setBundleSongs(newSongs);
                                           }}
-                                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
+                                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
                                           placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
                                           autoComplete="off"
                                         />
@@ -3385,7 +3459,7 @@ export function GeneralRequestsPage({
 
                         {/* Current Winning Bid Display - Show prominently above amount selector */}
                         {shouldUseBidding && currentWinningBid > 0 && (
-                          <div className="bg-white/70 dark:bg-black/50 border-2 border-brand/30 dark:border-brand/30 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3">
+                          <div className="bg-white/70 dark:!bg-black/50 border-2 border-brand/30 dark:border-brand/30 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3">
                             <div className="flex items-center justify-between flex-wrap gap-2">
                               <div>
                                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Current Winning Bid</p>
@@ -3690,7 +3764,7 @@ export function GeneralRequestsPage({
               ) : (
               <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
                 {/* Request Type Selection */}
-                <div className="bg-white/70 dark:bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
+                <div className="bg-white/70 dark:!bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
                   <h2 className="text-base sm:text-xl md:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4 flex items-center gap-2 sm:gap-3">
                     <div className="w-1 h-5 sm:h-6 bg-brand rounded-full hidden sm:block"></div>
                     <span className="leading-tight">{organizationData?.requests_main_heading || 'What would you like to request?'}</span>
@@ -3706,7 +3780,7 @@ export function GeneralRequestsPage({
                           className={`group relative p-2.5 sm:p-3 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
                             requestType === 'song_request'
                               ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
-                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
+                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
                           }`}
                         >
                           {requestType === 'song_request' && (
@@ -3716,7 +3790,7 @@ export function GeneralRequestsPage({
                             <div className={`inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg mb-1.5 sm:mb-2 transition-all duration-300 ${
                               requestType === 'song_request'
                                 ? 'bg-brand shadow-lg shadow-brand/30'
-                                : 'bg-gray-100 dark:bg-black/50 group-hover:bg-brand/10'
+                                : 'bg-gray-100 dark:!bg-black/50 group-hover:bg-brand/10'
                             }`}>
                               <Music className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
                                 requestType === 'song_request' ? 'text-black' : 'text-gray-400 group-hover:text-brand'
@@ -3734,7 +3808,7 @@ export function GeneralRequestsPage({
                           className={`group relative p-2.5 sm:p-3 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
                             requestType === 'shoutout'
                               ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
-                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
+                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
                           }`}
                         >
                           {requestType === 'shoutout' && (
@@ -3762,7 +3836,7 @@ export function GeneralRequestsPage({
                           className={`group relative p-2.5 sm:p-3 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
                             requestType === 'tip'
                               ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
-                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
+                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
                           }`}
                         >
                           {requestType === 'tip' && (
@@ -3815,7 +3889,7 @@ export function GeneralRequestsPage({
                               }, 200);
                               handleSongTitleBlur(e);
                             }}
-                            className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 touch-manipulation ${
+                            className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 touch-manipulation ${
                               extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3 sm:pr-4'
                             }`}
                             placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
@@ -3860,14 +3934,14 @@ export function GeneralRequestsPage({
                          )}
                          {/* Autocomplete suggestions */}
                          {showAutocomplete && suggestions.length > 0 && (
-                           <div className="mt-2 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                           <div className="mt-2 bg-white dark:!bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
                              {suggestions.map((suggestion, index) => (
                                <button
                                  key={suggestion.id}
                                  type="button"
                                  onClick={() => handleSuggestionSelect(suggestion)}
                                  className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-black/80 transition-colors flex items-center gap-3 ${
-                                   index === selectedSuggestionIndex ? 'bg-gray-100 dark:bg-black/80' : ''
+                                   index === selectedSuggestionIndex ? 'bg-gray-100 dark:!bg-black/80' : ''
                                  }`}
                                >
                                  {suggestion.albumArt && (
@@ -3890,7 +3964,7 @@ export function GeneralRequestsPage({
                            </div>
                          )}
                          {showAutocomplete && searchingSongs && suggestions.length === 0 && (
-                           <div className="mt-2 p-3 bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
+                           <div className="mt-2 p-3 bg-white dark:!bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg flex items-center gap-2">
                               <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
                              <span className="text-sm text-gray-600 dark:text-gray-400">Searching...</span>
                            </div>
@@ -3907,7 +3981,7 @@ export function GeneralRequestsPage({
                           name="songArtist"
                           value={formData.songArtist}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:shadow-lg focus:shadow-brand-500/20 transition-all duration-200"
+                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:shadow-lg focus:shadow-brand-500/20 transition-all duration-200"
                           placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
                           required
                           autoComplete="off"
@@ -3916,7 +3990,7 @@ export function GeneralRequestsPage({
 
                       {/* Bundle Songs Input (only show when bundle size > 1) */}
                       {bundleSize > 1 && bundleSongs.length > 0 && (
-                        <div ref={bundleSongsRef} className="mt-4 p-4 bg-white/70 dark:bg-black/50 rounded-lg border border-gray-200/50 dark:border-gray-800/50">
+                        <div ref={bundleSongsRef} className="mt-4 p-4 bg-white/70 dark:!bg-black/50 rounded-lg border border-gray-200/50 dark:border-gray-800/50">
                           <div className="flex items-center gap-2 mb-3">
                             <Gift className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -3928,7 +4002,7 @@ export function GeneralRequestsPage({
                           </p>
                           <div className="space-y-4">
                             {bundleSongs.map((song, index) => (
-                              <div key={index} className="bg-white/50 dark:bg-black/30 rounded-lg p-3 sm:p-4 border border-gray-200/50 dark:border-gray-700/50">
+                              <div key={index} className="bg-white/50 dark:!bg-black/30 rounded-lg p-3 sm:p-4 border border-gray-200/50 dark:border-gray-700/50">
                                 <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-2">
                                   Song {index + 2} of {bundleSize}
                                 </div>
@@ -3945,7 +4019,7 @@ export function GeneralRequestsPage({
                                         newSongs[index] = { ...newSongs[index], songTitle: e.target.value };
                                         setBundleSongs(newSongs);
                                       }}
-                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
+                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
                                       placeholder="Enter song title"
                                       required
                                       autoComplete="off"
@@ -3963,7 +4037,7 @@ export function GeneralRequestsPage({
                                         newSongs[index] = { ...newSongs[index], songArtist: e.target.value };
                                         setBundleSongs(newSongs);
                                       }}
-                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
+                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
                                       placeholder="Enter artist name"
                                       autoComplete="off"
                                     />
@@ -4152,7 +4226,7 @@ export function GeneralRequestsPage({
                           name="recipientName"
                           value={formData.recipientName}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                           placeholder={organizationData?.requests_recipient_name_placeholder || "Who is this shoutout for?"}
                           required
                         />
@@ -4167,7 +4241,7 @@ export function GeneralRequestsPage({
                           value={formData.recipientMessage}
                           onChange={handleInputChange}
                           rows={3}
-                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
                           placeholder={organizationData?.requests_message_placeholder || "What would you like to say?"}
                           required
                         />
@@ -4243,7 +4317,7 @@ export function GeneralRequestsPage({
                         name="requesterName"
                         value={formData.requesterName}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                        className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                         placeholder={requestType === 'tip' ? "Enter your name (optional)" : "Enter your name"}
                         required={requestType !== 'tip'}
                         autoComplete="name"
@@ -4264,7 +4338,7 @@ export function GeneralRequestsPage({
                         value={formData.message}
                         onChange={handleInputChange}
                         rows={2}
-                        className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+                        className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
                         placeholder="Any additional information..."
                       />
                     </div>
@@ -4349,7 +4423,7 @@ export function GeneralRequestsPage({
                 {/* Submit Button - Sticky at bottom, appears when selection is complete */}
                 {((requestType === 'tip') || isSongSelectionComplete()) && (
                 <div 
-                  className="sticky bottom-0 left-0 right-0 z-50 bg-white dark:bg-black pt-2 sm:pt-3 pb-3 sm:pb-4 border-t border-gray-200 dark:border-gray-800 shadow-lg flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
+                  className="sticky bottom-0 left-0 right-0 z-50 bg-white dark:!bg-black pt-2 sm:pt-3 pb-3 sm:pb-4 border-t border-gray-200 dark:border-gray-800 shadow-lg flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
                   style={{ 
                     paddingBottom: 'max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))',
                     position: 'sticky',

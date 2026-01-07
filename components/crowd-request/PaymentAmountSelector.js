@@ -78,7 +78,7 @@ function PaymentAmountSelector({
     updateCustomAmount(newValue.toFixed(2));
   };
   return (
-    <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/80 dark:bg-black/80 rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
+    <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/80 dark:!bg-black rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
       <h2 className="text-base sm:text-lg md:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2">
         <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-brand-500" />
         {isBiddingMode ? 'Your Bid Amount' : 'Payment Amount'}
@@ -146,7 +146,7 @@ function PaymentAmountSelector({
                     ? 'border-brand-500 bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-xl shadow-brand-500/40 scale-105'
                       : beatsCurrentBid
                       ? 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-900/20 hover:border-green-500 hover:scale-[1.02] hover:shadow-lg'
-                    : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-black/50 hover:border-brand-300 hover:scale-[1.02] hover:shadow-lg'
+                      : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:!bg-black hover:border-brand-300 hover:scale-[1.02] hover:shadow-lg'
                 }`}
               >
                 {presetAmount === preset.value && (
@@ -208,7 +208,7 @@ function PaymentAmountSelector({
                           return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
                         })()
                           ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
-                          : 'border-brand-500 dark:border-brand-500 bg-white dark:bg-gray-700'
+                          : 'border-brand-500 dark:border-brand-500 bg-white dark:!bg-black'
                       } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
                       placeholder={requestType === 'tip' ? '0.00' : (() => {
                         const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
@@ -248,7 +248,7 @@ function PaymentAmountSelector({
                       return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
                     })()
                       ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
-                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
+                      : 'border-gray-300 dark:border-gray-600 bg-white dark:!bg-black'
                   } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
                   placeholder={requestType === 'tip' ? '0.00' : (() => {
                     const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);

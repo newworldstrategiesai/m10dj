@@ -228,6 +228,80 @@ export default function RequestsPageSettings() {
     requests_default_request_type: 'song_request' as 'song_request' | 'shoutout'
   });
 
+  // Helper function to generate text-shadow outline effect (preserves fill color)
+  const generateTextShadowOutline = (strokeEnabled: boolean, strokeWidth: number, strokeColor: string, shadowEnabled: boolean, shadowX: number, shadowY: number, shadowBlur: number, shadowColor: string) => {
+    const shadows: string[] = [];
+    
+    // If stroke is enabled, create outline using multiple text-shadows in all directions
+    if (strokeEnabled && strokeWidth > 0) {
+      const outlineShadows: string[] = [];
+      // Create shadows in 8 directions (every 45 degrees) plus intermediate positions for smoother outline
+      const directions: { x: number; y: number }[] = [
+        { x: 0, y: -strokeWidth },      // top
+        { x: strokeWidth, y: -strokeWidth }, // top-right
+        { x: strokeWidth, y: 0 },       // right
+        { x: strokeWidth, y: strokeWidth },  // bottom-right
+        { x: 0, y: strokeWidth },       // bottom
+        { x: -strokeWidth, y: strokeWidth }, // bottom-left
+        { x: -strokeWidth, y: 0 },      // left
+        { x: -strokeWidth, y: -strokeWidth }, // top-left
+      ];
+      
+      // Add more directions for thicker strokes (every 30 degrees for strokeWidth >= 3)
+      if (strokeWidth >= 3) {
+        const angle45 = Math.PI / 4;
+        directions.push(
+          { x: Math.round(Math.cos(angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 2 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 2 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 3 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 3 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 4 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 4 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 5 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 5 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 6 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 6 + angle45 / 2) * strokeWidth) },
+          { x: Math.round(Math.cos(angle45 * 7 + angle45 / 2) * strokeWidth), y: -Math.round(Math.sin(angle45 * 7 + angle45 / 2) * strokeWidth) }
+        );
+      }
+      
+      directions.forEach(dir => {
+        outlineShadows.push(`${dir.x}px ${dir.y}px 0 ${strokeColor}`);
+      });
+      shadows.push(...outlineShadows);
+    }
+    
+    // Add regular shadow if enabled (and not overridden by stroke outline)
+    if (shadowEnabled && (shadows.length === 0 || !strokeEnabled)) {
+      shadows.push(`${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowColor}`);
+    } else if (shadowEnabled && strokeEnabled) {
+      // If both stroke and shadow are enabled, add shadow after outline (on top)
+      shadows.push(`${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowColor}`);
+    }
+    
+    return shadows.length > 0 ? shadows.join(', ') : 'none';
+  };
+
+  // Generate text-shadow for previews
+  const artistNameTextShadow = generateTextShadowOutline(
+    artistNameStrokeEnabled,
+    artistNameStrokeWidth,
+    artistNameStrokeColor,
+    artistNameShadowEnabled,
+    artistNameShadowXOffset,
+    artistNameShadowYOffset,
+    artistNameShadowBlur,
+    artistNameShadowColor
+  );
+
+  const subtitleTextShadow = generateTextShadowOutline(
+    subtitleStrokeEnabled,
+    subtitleStrokeWidth,
+    subtitleStrokeColor,
+    subtitleShadowEnabled,
+    subtitleShadowXOffset,
+    subtitleShadowYOffset,
+    subtitleShadowBlur,
+    subtitleShadowColor
+  );
+
   useEffect(() => {
     checkUser();
   }, []);
@@ -2218,11 +2292,7 @@ export default function RequestsPageSettings() {
                             textTransform: artistNameTextTransform,
                             color: artistNameColor,
                             letterSpacing: `${artistNameKerning}px`,
-                            WebkitTextStroke: artistNameStrokeEnabled ? `${artistNameStrokeWidth}px ${artistNameStrokeColor}` : 'none',
-                            WebkitTextFillColor: artistNameStrokeEnabled ? 'transparent' : undefined,
-                            textShadow: artistNameShadowEnabled 
-                              ? `${artistNameShadowXOffset}px ${artistNameShadowYOffset}px ${artistNameShadowBlur}px ${artistNameShadowColor}`
-                              : 'none'
+                            textShadow: artistNameTextShadow
                           } as React.CSSProperties}
                         >
                           {(() => {
@@ -2642,11 +2712,7 @@ export default function RequestsPageSettings() {
                               textTransform: subtitleTextTransform,
                               color: subtitleColor,
                               letterSpacing: `${subtitleKerning}px`,
-                              WebkitTextStroke: subtitleStrokeEnabled ? `${subtitleStrokeWidth}px ${subtitleStrokeColor}` : 'none',
-                              WebkitTextFillColor: subtitleStrokeEnabled ? 'transparent' : undefined,
-                              textShadow: subtitleShadowEnabled 
-                                ? `${subtitleShadowXOffset}px ${subtitleShadowYOffset}px ${subtitleShadowBlur}px ${subtitleShadowColor}`
-                                : 'none'
+                              textShadow: subtitleTextShadow
                             } as React.CSSProperties}
                           >
                             {(() => {
