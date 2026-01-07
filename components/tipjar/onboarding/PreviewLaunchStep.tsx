@@ -167,7 +167,7 @@ export default function PreviewLaunchStep({
         </div>
 
         {/* Navigation */}
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <button
             onClick={onBack}
             disabled={loading}
@@ -176,23 +176,32 @@ export default function PreviewLaunchStep({
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
-          <button
-            onClick={handleComplete}
-            disabled={loading}
-            className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                Go to Dashboard
-                <ExternalLink className="w-4 h-4" />
-              </>
-            )}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 flex-1">
+            <a
+              href="/admin/crowd-requests"
+              className="flex-1 px-6 py-3 border border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400 font-semibold rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center justify-center gap-2"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open Dashboard
+            </a>
+            <button
+              onClick={handleComplete}
+              disabled={loading}
+              className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  Complete Setup
+                  <CheckCircle className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
