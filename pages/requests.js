@@ -1427,6 +1427,8 @@ export function GeneralRequestsPage({
   // Don't auto-advance - let user control with Continue button
 
   const handleSubmit = async (e) => {
+    logger.info('[handleSubmit] Form submission started', { currentStep, requestType, submitting });
+    
     try {
       e?.preventDefault?.();
       e?.stopPropagation?.();
@@ -1436,7 +1438,17 @@ export function GeneralRequestsPage({
     
     setError('');
 
-    if (!validateForm()) {
+    const isValid = validateForm();
+    logger.info('[handleSubmit] Validation result', { isValid, requestType, formData: { 
+      requesterName: formData.requesterName?.trim() || '', 
+      songTitle: formData.songTitle?.trim() || '',
+      songArtist: formData.songArtist?.trim() || '',
+      recipientName: formData.recipientName?.trim() || '',
+      recipientMessage: formData.recipientMessage?.trim() || ''
+    }});
+    
+    if (!isValid) {
+      logger.warn('[handleSubmit] Validation failed, showing error');
       // Scroll to error message after a brief delay to allow state to update
       // Note: Don't check `error` here - it's stale (React state updates are async)
       setTimeout(() => {
@@ -1451,6 +1463,8 @@ export function GeneralRequestsPage({
       }, 100);
       return;
     }
+    
+    logger.info('[handleSubmit] Validation passed, proceeding with submission');
 
     setSubmitting(true);
 
@@ -4356,15 +4370,36 @@ export function GeneralRequestsPage({
                       return false;
                     })()}
                     className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-2xl shadow-brand-500/40 hover:shadow-brand-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
-                    onClick={async (e) => {
+                    onClick={(e) => {
+                      logger.info('[Submit Button] onClick fired', { 
+                        currentStep, 
+                        submitting, 
+                        buttonType: currentStep === 1 ? 'button' : 'submit',
+                        disabled: (() => {
+                          if (submitting) return true;
+                          if (currentStep >= 2) {
+                            const amount = getPaymentAmount();
+                            if (shouldUseBidding) {
+                              const minBid = dynamicMinimumAmount || 500;
+                              return !amount || amount < minBid;
+                            }
+                            const minAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+                            return !amount || amount < minAmount;
+                          }
+                          return false;
+                        })()
+                      });
+                      
                       // Prevent double-submission
                       if (submitting) {
+                        logger.warn('[Submit Button] Already submitting, preventing click');
                         e.preventDefault();
                         e.stopPropagation();
                         return;
                       }
                       
                       if (currentStep === 1) {
+                        logger.info('[Submit Button] Step 1: Navigating to payment step');
                         e.preventDefault();
                         e.stopPropagation();
                         // Clear any previous errors and go to payment step
@@ -4380,13 +4415,39 @@ export function GeneralRequestsPage({
                         return;
                       }
                       
-                      // For step 2, explicitly trigger form submission
-                      // This ensures handleSubmit is called even if form submission is blocked
-                      e.preventDefault();
-                      e.stopPropagation();
+                      // For step 2, explicitly ensure form submission happens
+                      logger.info('[Submit Button] Step 2: Ensuring form submission');
                       
-                      // Manually call handleSubmit
-                      await handleSubmit(e);
+                      // Check if button is actually enabled (not disabled by validation)
+                      const amount = getPaymentAmount();
+                      const isDisabled = (() => {
+                        if (shouldUseBidding) {
+                          const minBid = dynamicMinimumAmount || 500;
+                          return !amount || amount < minBid;
+                        }
+                        const minAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+                        return !amount || amount < minAmount;
+                      })();
+                      
+                      if (isDisabled) {
+                        logger.warn('[Submit Button] Button should be disabled but click fired', { amount, minAmount: shouldUseBidding ? (dynamicMinimumAmount || 500) : (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount) });
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                      }
+                      
+                      // Find the form and ensure it submits
+                      const form = e.target.closest('form');
+                      if (form) {
+                        // Let the form's onSubmit handle it naturally
+                        // Don't prevent default - allow form submission
+                        logger.info('[Submit Button] Form found, allowing natural submission');
+                      } else {
+                        logger.error('[Submit Button] Form not found! Manually calling handleSubmit');
+                        // Fallback: call handleSubmit directly if form not found
+                        e.preventDefault();
+                        handleSubmit(e);
+                      }
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
