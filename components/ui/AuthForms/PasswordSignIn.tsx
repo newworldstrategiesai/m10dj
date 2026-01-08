@@ -24,7 +24,8 @@ export default function PasswordSignIn({
   initialEmail,
   message
 }: PasswordSignInProps) {
-  const router = redirectMethod === 'client' ? useRouter() : null;
+  // Always call hooks unconditionally (Rules of Hooks)
+  const router = useRouter();
   const pathname = usePathname();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -35,7 +36,8 @@ export default function PasswordSignIn({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setIsSubmitting(true); // Disable the button while the request is being handled
-    await handleRequest(e, signInWithPassword, router);
+    // Only use router if redirectMethod is 'client', otherwise pass null
+    await handleRequest(e, signInWithPassword, redirectMethod === 'client' ? router : null);
     setIsSubmitting(false);
   };
 

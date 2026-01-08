@@ -129,7 +129,10 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
         {/* Critical Resource Hints - Preload above-the-fold assets */}
-        <link rel="preload" href="/logo-static.jpg" as="image" type="image/jpeg" fetchPriority="high" />
+        {/* Only preload logo for non-marketing sites (M10 DJ Company pages) */}
+        {!isMarketingSite && (
+          <link rel="preload" href="/logo-static.jpg" as="image" type="image/jpeg" fetchPriority="high" />
+        )}
         
         {/* Structured Data for Local Business */}
         {/* Only show on non-homepage pages to avoid duplication with generateStructuredData */}
