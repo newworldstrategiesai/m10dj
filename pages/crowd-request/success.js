@@ -22,7 +22,7 @@ export default function CrowdRequestSuccessPage() {
   const [statusJustChanged, setStatusJustChanged] = useState(false);
   const [albumArt, setAlbumArt] = useState(null); // Main song album art
   const [bundleAlbumArts, setBundleAlbumArts] = useState({}); // Album art for bundled songs { songId: artUrl }
-  const [organizationSlug, setOrganizationSlug] = useState<string | null>(null); // Organization slug for building correct URLs
+  const [organizationSlug, setOrganizationSlug] = useState(null); // Organization slug for building correct URLs
   const confettiTriggered = useRef(false);
   const playingConfettiTriggered = useRef(false);
   const supabase = createClientComponentClient();
