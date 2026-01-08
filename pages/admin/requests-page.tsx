@@ -437,8 +437,10 @@ export default function RequestsPageSettings() {
           : [];
         setSocialLinks(links.sort((a, b) => (a.order || 0) - (b.order || 0)));
         
-        // Set bidding settings
-        setBiddingEnabled(org.requests_bidding_enabled || false);
+        // Set bidding settings - ensure bidding is disabled by default
+        const biddingEnabledValue = org.requests_bidding_enabled === true;
+        console.log('[ADMIN] Loading bidding enabled:', biddingEnabledValue, 'from:', org.requests_bidding_enabled);
+        setBiddingEnabled(biddingEnabledValue);
         setMinimumBid(org.requests_bidding_minimum_bid || 500);
         setStartingBid(org.requests_bidding_starting_bid || 500); // Default to $5.00 if not set
         
@@ -610,6 +612,7 @@ export default function RequestsPageSettings() {
   };
 
   const handleSave = async () => {
+    console.log('[ADMIN] Saving bidding settings - biddingEnabled:', biddingEnabled, 'type:', typeof biddingEnabled);
     if (!organization) {
       setError('No organization found');
       return;
@@ -687,7 +690,7 @@ export default function RequestsPageSettings() {
         // Social links
         social_links: validSocialLinks,
         // Bidding settings
-        requests_bidding_enabled: biddingEnabled,
+        requests_bidding_enabled: biddingEnabled, // Should be boolean
         requests_bidding_minimum_bid: minimumBid,
         requests_bidding_starting_bid: startingBid,
         // Payment amount settings

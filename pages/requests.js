@@ -672,7 +672,9 @@ export function GeneralRequestsPage({
       setBiddingEnabled(true);
     } else {
       // /requests page - only enable if organization setting is true
-      setBiddingEnabled(organizationData?.requests_bidding_enabled || false);
+      const biddingValue = organizationData?.requests_bidding_enabled === true;
+      console.log('[REQUESTS] Setting bidding enabled:', biddingValue, 'from:', organizationData?.requests_bidding_enabled);
+      setBiddingEnabled(biddingValue);
     }
   }, [organizationData, forceBiddingMode]);
 
