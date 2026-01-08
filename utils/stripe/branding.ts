@@ -30,16 +30,57 @@ export const defaultBranding: PlatformBranding = {
 };
 
 /**
+ * Product-specific branding configurations
+ * Each product has its own branding for Stripe Connect onboarding
+ */
+export const productBranding: Record<'tipjar' | 'djdash' | 'm10dj', PlatformBranding> = {
+  tipjar: {
+    logo: 'https://tipjar.live/tipjar-logo.svg', // Use absolute URL for Stripe
+    primaryColor: '#8b5cf6', // Purple
+    secondaryColor: '#ec4899', // Pink
+    backgroundColor: '#ffffff',
+    textColor: '#1f2937',
+    fontFamily: 'system-ui, sans-serif',
+    companyName: 'TipJar.Live',
+  },
+  djdash: {
+    logo: 'https://djdash.net/djdash-logo.svg', // Use absolute URL for Stripe
+    primaryColor: '#3b82f6', // Blue
+    secondaryColor: '#6366f1', // Indigo
+    backgroundColor: '#ffffff',
+    textColor: '#1f2937',
+    fontFamily: 'system-ui, sans-serif',
+    companyName: 'DJ Dash',
+  },
+  m10dj: {
+    logo: 'https://m10djcompany.com/logo-static.jpg', // Use absolute URL for Stripe
+    primaryColor: '#000000', // Black
+    secondaryColor: '#fbbf24', // Gold/Yellow
+    backgroundColor: '#ffffff',
+    textColor: '#1f2937',
+    fontFamily: 'system-ui, sans-serif',
+    companyName: 'M10 DJ Company',
+  },
+};
+
+/**
  * Get branding for Stripe Connect Express account creation
+ * Supports product-specific branding based on product context
  */
 export function getConnectAccountBranding(
-  customBranding?: Partial<PlatformBranding>
+  customBranding?: Partial<PlatformBranding>,
+  productContext?: 'tipjar' | 'djdash' | 'm10dj' | null
 ): {
   logo?: string;
   primaryColor?: string;
   secondaryColor?: string;
 } {
-  const branding = { ...defaultBranding, ...customBranding };
+  // Use product-specific branding if product context is provided
+  const baseBranding = productContext && productBranding[productContext]
+    ? productBranding[productContext]
+    : defaultBranding;
+
+  const branding = { ...baseBranding, ...customBranding };
 
   return {
     logo: branding.logo,

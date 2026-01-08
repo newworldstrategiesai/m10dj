@@ -23,6 +23,9 @@ export default async function handler(req, res) {
 
     const user = session.user;
 
+    // Create admin client at the start (we'll need it for organization operations)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     // Get user's organization using the helper function
     // This handles both owner and team member cases (venue hierarchy support)
     let organization = await getCurrentOrganization(supabase);
@@ -30,12 +33,11 @@ export default async function handler(req, res) {
     // If not found via helper (which uses RLS), try with admin client as fallback
     // This handles edge cases where RLS might block but user should have access
     if (!organization) {
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
       const { data: orgData, error: orgError } = await supabaseAdmin
-      .from('organizations')
-      .select('id, name, slug, stripe_connect_account_id, product_context')
-      .eq('owner_id', user.id)
-      .single();
+        .from('organizations')
+        .select('id, name, slug, stripe_connect_account_id, product_context')
+        .eq('owner_id', user.id)
+        .single();
       
       if (!orgError && orgData) {
         organization = orgData;
@@ -70,7 +72,6 @@ export default async function handler(req, res) {
       }
       
       // Create organization with trial
-      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14-day trial
       
@@ -134,10 +135,13 @@ export default async function handler(req, res) {
     try {
       // Import branding config (use dynamic import for ES modules)
       const brandingModule = await import('@/utils/stripe/branding');
-      const brandingResult = brandingModule.getConnectAccountBranding({
-        // You can customize per organization if needed
-        // For now, use default platform branding
-      });
+      // Use product-specific branding based on organization's product context
+      // Fallback to null if product_context is not set (for backwards compatibility)
+      const productContext = organization.product_context || null;
+      const brandingResult = brandingModule.getConnectAccountBranding(
+        {}, // No custom overrides for now
+        productContext // Pass product context for product-specific branding
+      );
       
       // Only use branding if logo URL is absolute (Stripe requires absolute URLs)
       if (brandingResult.logo && (brandingResult.logo.startsWith('http://') || brandingResult.logo.startsWith('https://'))) {
@@ -171,17 +175,72 @@ export default async function handler(req, res) {
     console.log('Creating Stripe Connect account for:', user.email, organization.name);
     
     // Determine correct domain based on product context
-    // For TipJar users, use tipjar.live; for others, use m10djcompany.com
-    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.headers.origin || 'http://localhost:3000';
+    // Check multiple sources to ensure we get the correct product context
+    let productContext = organization.product_context || user.user_metadata?.product_context || null;
     
-    // Override based on product context
-    if (organization.product_context === 'tipjar') {
+    // If product context is still not set, try to detect from request headers
+    if (!productContext) {
+      const origin = req.headers.origin || '';
+      const referer = req.headers.referer || '';
+      const host = req.headers.host || '';
+      
+      // Check all possible sources for product context
+      const combinedUrl = `${origin} ${referer} ${host}`.toLowerCase();
+      
+      if (combinedUrl.includes('tipjar.live')) {
+        productContext = 'tipjar';
+      } else if (combinedUrl.includes('djdash.net') || combinedUrl.includes('djdash.com')) {
+        productContext = 'djdash';
+      }
+    }
+    
+    // Determine baseUrl based on detected product context
+    let baseUrl = 'https://m10djcompany.com'; // Default fallback
+    
+    if (productContext === 'tipjar') {
       baseUrl = 'https://tipjar.live';
-    } else if (organization.product_context === 'djdash') {
+    } else if (productContext === 'djdash') {
       baseUrl = 'https://djdash.net';
-    } else if (!baseUrl.includes('tipjar.live') && !baseUrl.includes('djdash.net')) {
-      // Default to m10djcompany.com if not already set and not a product-specific domain
-      baseUrl = 'https://m10djcompany.com';
+    } else {
+      // Fallback: check request origin/referer directly
+      const origin = req.headers.origin || req.headers.referer || '';
+      if (origin.includes('tipjar.live')) {
+        baseUrl = 'https://tipjar.live';
+        // Update organization product_context if it was missing
+        if (!organization.product_context) {
+          productContext = 'tipjar';
+        }
+      } else if (origin.includes('djdash.net') || origin.includes('djdash.com')) {
+        baseUrl = 'https://djdash.net';
+        // Update organization product_context if it was missing
+        if (!organization.product_context) {
+          productContext = 'djdash';
+        }
+      } else {
+        // Use environment variable if set
+        const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
+        if (envUrl && (envUrl.includes('tipjar.live') || envUrl.includes('djdash.net') || envUrl.includes('djdash.com'))) {
+          baseUrl = envUrl.startsWith('http') ? envUrl : `https://${envUrl}`;
+        }
+      }
+    }
+    
+    console.log('Detected product context:', productContext, 'Using baseUrl:', baseUrl);
+    
+    // Update organization's product_context if it was missing but we detected it from request
+    if (productContext && !organization.product_context) {
+      console.log('Updating organization product_context from', organization.product_context, 'to', productContext);
+      const { error: updateContextError } = await supabaseAdmin
+        .from('organizations')
+        .update({ product_context: productContext })
+        .eq('id', organization.id);
+      
+      if (updateContextError) {
+        console.warn('Failed to update organization product_context:', updateContextError);
+      } else {
+        // Update local organization object
+        organization.product_context = productContext;
+      }
     }
     
     // Build business profile URL if organization has a slug
@@ -194,8 +253,8 @@ export default async function handler(req, res) {
       organization.name,
       organization.slug, // Pass slug for business profile URL
       branding,
-      baseUrl, // Pass the correct baseUrl
-      organization.product_context // Pass product context for metadata
+      baseUrl, // Pass the correct baseUrl (detected from product context)
+      productContext || organization.product_context || null // Pass detected or existing product context for metadata
     );
     console.log('Stripe Connect account created successfully:', account.id);
 

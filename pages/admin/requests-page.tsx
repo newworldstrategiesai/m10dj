@@ -162,6 +162,9 @@ export default function RequestsPageSettings() {
   // Show subtitle (location) toggle
   const [showSubtitle, setShowSubtitle] = useState(true);
   
+  // Background type (gradient, subtle, bubble, spiral, aurora, none)
+  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'none'>('gradient');
+  
   // Artist name font
   const [artistNameFont, setArtistNameFont] = useState('Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
   
@@ -367,6 +370,9 @@ export default function RequestsPageSettings() {
         
         // Set whether to show subtitle (defaults to true for new users)
         setShowSubtitle(org.requests_show_subtitle !== false);
+        
+        // Set background type (defaults to 'gradient' for new users)
+        setBackgroundType(org.requests_background_type || 'gradient');
         
         // Set artist name font
         setArtistNameFont(org.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
@@ -601,6 +607,8 @@ export default function RequestsPageSettings() {
       subtitleShadowColor: subtitleShadowColor,
       // Payment amount settings for preview
       amountsSortOrder: amountsSortOrder,
+      // Background type for preview
+      backgroundType: backgroundType,
     });
     
     return `/${organization.slug}/requests?${params.toString()}`;
@@ -648,6 +656,8 @@ export default function RequestsPageSettings() {
         requests_show_artist_name_over_video: showArtistNameOverVideo,
         // Show subtitle setting
         requests_show_subtitle: showSubtitle,
+        // Background type setting
+        requests_background_type: backgroundType,
         // Artist name font
         requests_artist_name_font: artistNameFont || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
         // Artist name text transform
@@ -1407,6 +1417,35 @@ export default function RequestsPageSettings() {
                           </div>
                         </div>
                       )}
+                      
+                      {/* Background Type Selection */}
+                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                            Background Animation Type
+                          </label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            Choose the animated background style when no video or cover photo is set
+                          </p>
+                          <select
+                            value={backgroundType}
+                            onChange={(e) => {
+                              setBackgroundType(e.target.value as 'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'none');
+                              setError(null);
+                              setSuccess(false);
+                              setTimeout(() => updatePreviewIframe(), 100);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                          >
+                            <option value="gradient">Gradient (New)</option>
+                            <option value="subtle">Subtle (Original)</option>
+                            <option value="bubble">Bubble</option>
+                            <option value="spiral">Spiral</option>
+                            <option value="aurora">Aurora</option>
+                            <option value="none">None (No Animation)</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   </div>

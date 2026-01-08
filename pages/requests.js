@@ -295,6 +295,9 @@ export function GeneralRequestsPage({
   // Read payment amount sort order from URL (for admin preview)
   const previewAmountsSortOrder = router.query.amountsSortOrder || null;
   
+  // Read background type from URL (for admin preview)
+  const previewBackgroundType = router.query.backgroundType || null;
+  
   // Use preview values for subtitle styling if available, otherwise use organization data
   const effectiveSubtitleFont = previewSubtitleFont || organizationData?.requests_subtitle_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
   const effectiveSubtitleTextTransform = previewSubtitleTextTransform || organizationData?.requests_subtitle_text_transform || 'none';
@@ -395,9 +398,6 @@ export function GeneralRequestsPage({
       organizationDataKeys: organizationData ? Object.keys(organizationData).filter(k => k.startsWith('requests_')) : []
     });
   }, [organizationData]);
-  // Use default cover photo if none is provided - always show a cover photo
-  const coverPhoto = organizationCoverPhoto || DEFAULT_COVER_PHOTO;
-  
   // Get the video URL from organization data (if set)
   // This allows each organization to have their own animated header
   // CRITICAL: Only use video URL if it's explicitly set for THIS organization
@@ -444,19 +444,34 @@ export function GeneralRequestsPage({
   // Determine what to show as background:
   // 1. Custom video if set (and not blocked)
   // 2. Custom cover photo if set (not the default placeholder)
-  // 3. Animated gradient with accent color (default for TipJar pages)
+  // 3. Animated background based on background type (only if not 'none')
+  // 4. Solid color background if backgroundType is 'none' and no custom media
   const hasCustomVideo = !!headerVideoUrl;
-  const hasCustomCoverPhoto = coverPhoto && coverPhoto !== DEFAULT_COVER_PHOTO && !coverPhoto.includes('DJ-Ben-Murray');
+  // Use preview value if available, otherwise use organization data, default to 'gradient'
+  const backgroundType = previewBackgroundType || organizationData?.requests_background_type || 'gradient';
+  
+  // Only use cover photo if it's actually a custom one (not the default)
+  // If backgroundType is 'none', don't use the default fallback image
+  const hasCustomCoverPhoto = organizationCoverPhoto && 
+    organizationCoverPhoto !== DEFAULT_COVER_PHOTO && 
+    !organizationCoverPhoto.includes('DJ-Ben-Murray');
+  const coverPhoto = hasCustomCoverPhoto ? organizationCoverPhoto : null;
+  
   const showVideo = hasCustomVideo;
-  const showAnimatedGradient = !hasCustomVideo && !hasCustomCoverPhoto;
+  const showAnimatedGradient = !hasCustomVideo && !hasCustomCoverPhoto && backgroundType !== 'none';
+  const showSolidBackground = !hasCustomVideo && !hasCustomCoverPhoto && backgroundType === 'none';
   
   // Log cover photo and video for debugging
   useEffect(() => {
     console.log('🖼️ [GENERAL REQUESTS] Cover photo & video:', {
       organizationCoverPhoto,
       coverPhoto,
+      hasCustomCoverPhoto,
       headerVideoUrl,
       showVideo,
+      showAnimatedGradient,
+      showSolidBackground,
+      backgroundType,
       rawVideoUrl: organizationData?.requests_header_video_url,
       fromOrganizationData: organizationData?.requests_cover_photo_url || organizationData?.requests_artist_photo_url || organizationData?.requests_venue_photo_url,
       primaryCoverSource: organizationData?.requests_primary_cover_source,
@@ -466,7 +481,7 @@ export function GeneralRequestsPage({
       venueUrl: organizationData?.requests_venue_photo_url,
       allOrgKeys: organizationData ? Object.keys(organizationData) : []
     });
-  }, [organizationCoverPhoto, coverPhoto, headerVideoUrl, showVideo, organizationData]);
+  }, [organizationCoverPhoto, coverPhoto, hasCustomCoverPhoto, headerVideoUrl, showVideo, showAnimatedGradient, showSolidBackground, backgroundType, organizationData]);
   // Determine default request type - if allowedRequestTypes is set, use first allowed type
   const defaultRequestType = allowedRequestTypes && allowedRequestTypes.length > 0
     ? allowedRequestTypes[0]
@@ -2553,11 +2568,18 @@ export function GeneralRequestsPage({
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : showSolidBackground ? (
+              /* Solid color background when animation is disabled and no custom media */
+              <div className="absolute inset-0 w-full h-full bg-black" />
+            ) : coverPhoto ? (
+              /* Custom cover photo */
               <div 
                 className="absolute inset-0 w-full h-full bg-cover bg-center"
                 style={{ backgroundImage: `url(${coverPhoto})` }}
               />
+            ) : (
+              /* No background - transparent/black fallback */
+              <div className="absolute inset-0 w-full h-full bg-black" />
             )}
             {/* Subtle gradient overlay on right edge for seamless blend */}
             <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/40 to-transparent pointer-events-none z-10"></div>
@@ -2847,11 +2869,18 @@ export function GeneralRequestsPage({
             ) : showAnimatedGradient ? (
               /* Animated gradient - Default TipJar background for mobile and desktop */
               <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden" style={{ zIndex: 0 }} />
-            ) : (
+            ) : showSolidBackground ? (
+              /* Solid color background when animation is disabled and no custom media */
+              <div className="absolute inset-0 w-full h-full bg-black md:hidden" style={{ zIndex: 0 }} />
+            ) : coverPhoto ? (
+              /* Custom cover photo */
               <div 
                 className="absolute inset-0 w-full h-full bg-cover bg-center md:hidden"
-                style={{ backgroundImage: `url(${coverPhoto})`, objectPosition: 'center 40%' }}
+                style={{ backgroundImage: `url(${coverPhoto})`, objectPosition: 'center 40%', zIndex: 0 }}
               />
+            ) : (
+              /* No background - transparent/black fallback */
+              <div className="absolute inset-0 w-full h-full bg-black md:hidden" style={{ zIndex: 0 }} />
             )}
             
             {/* Desktop Background - removed black gradient to show animated background */}

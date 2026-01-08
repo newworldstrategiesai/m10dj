@@ -1412,9 +1412,56 @@ export default function CrowdRequestsPage() {
     }
 
     // Determine base URL based on product context
-    let baseUrl: string;
-    const productContext = organization.product_context || 'tipjar';
+    // Check multiple sources to ensure we get the correct product context
+    let productContext = organization.product_context || null;
     
+    // If product context is not set or might be wrong, try to detect from multiple sources
+    if (!productContext || productContext === 'm10dj') {
+      // Try to detect from current domain first
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname.toLowerCase();
+        if (hostname.includes('tipjar.live')) {
+          productContext = 'tipjar';
+        } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+          productContext = 'djdash';
+        } else if (hostname.includes('m10djcompany.com')) {
+          productContext = 'm10dj';
+        }
+      }
+      
+      // If on localhost and still not detected, check user metadata or environment
+      if ((!productContext || productContext === 'm10dj') && typeof window !== 'undefined') {
+        const hostname = window.location.hostname.toLowerCase();
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+          // On localhost, check environment variables or default to tipjar
+          // This helps with development when product_context might be incorrectly set
+          if (process.env.NEXT_PUBLIC_TIPJAR_URL || process.env.NEXT_PUBLIC_DEFAULT_PRODUCT === 'tipjar') {
+            productContext = 'tipjar';
+          } else if (process.env.NEXT_PUBLIC_DJDASH_URL || process.env.NEXT_PUBLIC_DEFAULT_PRODUCT === 'djdash') {
+            productContext = 'djdash';
+          } else {
+            // For localhost development, default to tipjar if product_context was m10dj
+            // This helps fix cases where organization was created with wrong product_context
+            productContext = 'tipjar';
+          }
+        }
+      }
+    }
+    
+    // Final fallback: default to tipjar if still not detected
+    productContext = productContext || 'tipjar';
+    
+    // Debug logging
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1'))) {
+      console.log('[QR Code] Product context detection:', {
+        organization_product_context: organization.product_context,
+        detected_product_context: productContext,
+        hostname: window.location.hostname,
+        organization_slug: organization.slug
+      });
+    }
+    
+    let baseUrl: string;
     switch (productContext) {
       case 'tipjar':
         baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
@@ -1426,8 +1473,19 @@ export default function CrowdRequestsPage() {
         baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://m10djcompany.com';
         break;
       default:
-        // Fallback to current domain for unknown product contexts
-        baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+        // Fallback: check current domain
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname.toLowerCase();
+          if (hostname.includes('tipjar.live')) {
+            baseUrl = 'https://tipjar.live';
+          } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+            baseUrl = 'https://djdash.net';
+          } else {
+            baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+          }
+        } else {
+          baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live';
+        }
     }
 
     let requestUrl: string;
@@ -1435,15 +1493,12 @@ export default function CrowdRequestsPage() {
 
     if (qrType === 'public') {
       // Generate QR for public requests page
-      // Use organization slug for TipJar/DJDash, generic /requests for M10
-      if (organization.slug && (productContext === 'tipjar' || productContext === 'djdash')) {
-        // TipJar and DJ Dash use slug-based URLs: tipjar.live/{slug}/requests
-        requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
-      } else if (organization.slug && productContext === 'm10dj') {
-        // M10 DJ Company can also use slug-based URLs if available
+      // Always use slug-based URLs when slug is available (for all product contexts)
+      if (organization.slug) {
+        // Use slug-based URLs: {domain}/{slug}/requests?qr=1
         requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
       } else {
-        // Fallback: M10 DJ Company uses generic /requests path if no slug
+        // Fallback: use generic /requests path if no slug
         requestUrl = `${baseUrl}/requests?qr=1`;
       }
       qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(requestUrl)}`;
@@ -1484,9 +1539,46 @@ export default function CrowdRequestsPage() {
     }
 
     // Determine base URL based on product context
-    let baseUrl: string;
-    const productContext = organization.product_context || 'tipjar';
+    // Check multiple sources to ensure we get the correct product context
+    let productContext = organization.product_context || null;
     
+    // If product context is not set or might be wrong, try to detect from multiple sources
+    if (!productContext || productContext === 'm10dj') {
+      // Try to detect from current domain first
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname.toLowerCase();
+        if (hostname.includes('tipjar.live')) {
+          productContext = 'tipjar';
+        } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+          productContext = 'djdash';
+        } else if (hostname.includes('m10djcompany.com')) {
+          productContext = 'm10dj';
+        }
+      }
+      
+      // If on localhost and still not detected, check user metadata or environment
+      if ((!productContext || productContext === 'm10dj') && typeof window !== 'undefined') {
+        const hostname = window.location.hostname.toLowerCase();
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+          // On localhost, check environment variables or default to tipjar
+          // This helps with development when product_context might be incorrectly set
+          if (process.env.NEXT_PUBLIC_TIPJAR_URL || process.env.NEXT_PUBLIC_DEFAULT_PRODUCT === 'tipjar') {
+            productContext = 'tipjar';
+          } else if (process.env.NEXT_PUBLIC_DJDASH_URL || process.env.NEXT_PUBLIC_DEFAULT_PRODUCT === 'djdash') {
+            productContext = 'djdash';
+          } else {
+            // For localhost development, default to tipjar if product_context was m10dj
+            // This helps fix cases where organization was created with wrong product_context
+            productContext = 'tipjar';
+          }
+        }
+      }
+    }
+    
+    // Final fallback: default to tipjar if still not detected
+    productContext = productContext || 'tipjar';
+    
+    let baseUrl: string;
     switch (productContext) {
       case 'tipjar':
         baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
@@ -1498,22 +1590,30 @@ export default function CrowdRequestsPage() {
         baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://m10djcompany.com';
         break;
       default:
-        // Fallback to current domain for unknown product contexts
-        baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+        // Fallback: check current domain
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname.toLowerCase();
+          if (hostname.includes('tipjar.live')) {
+            baseUrl = 'https://tipjar.live';
+          } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+            baseUrl = 'https://djdash.net';
+          } else {
+            baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+          }
+        } else {
+          baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live';
+        }
     }
 
     let requestUrl: string;
     
     if (qrType === 'public') {
-      // Use organization slug for TipJar/DJDash, generic /requests for M10
-      if (organization.slug && (productContext === 'tipjar' || productContext === 'djdash')) {
-        // TipJar and DJ Dash use slug-based URLs: tipjar.live/{slug}/requests
-        requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
-      } else if (organization.slug && productContext === 'm10dj') {
-        // M10 DJ Company can also use slug-based URLs if available
+      // Always use slug-based URLs when slug is available (for all product contexts)
+      if (organization.slug) {
+        // Use slug-based URLs: {domain}/{slug}/requests?qr=1
         requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
       } else {
-        // Fallback: M10 DJ Company uses generic /requests path if no slug
+        // Fallback: use generic /requests path if no slug
         requestUrl = `${baseUrl}/requests?qr=1`;
       }
     } else {
@@ -3699,7 +3799,20 @@ export default function CrowdRequestsPage() {
       <div className="space-y-6 px-4 lg:px-6">
         {/* Onboarding Reminder - Shows if critical tasks incomplete */}
         {organization && (
-          <OnboardingReminder organization={organization} />
+          <OnboardingReminder 
+            organization={organization}
+            onOrganizationUpdate={async (updatedOrg) => {
+              // Update local organization state
+              setOrganization(updatedOrg);
+              // Also update header settings if location was updated
+              if (updatedOrg.requests_header_location) {
+                setHeaderSettings(prev => ({
+                  ...prev,
+                  location: updatedOrg.requests_header_location || prev.location
+                }));
+              }
+            }}
+          />
         )}
         
         {/* Stripe Connect Requirement Banner */}
@@ -4158,9 +4271,46 @@ export default function CrowdRequestsPage() {
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded break-all">
                           {(() => {
                             // Determine base URL based on product context
-                            let baseUrl: string;
-                            const productContext = organization?.product_context || 'tipjar';
+                            // Check multiple sources to ensure we get the correct product context
+                            let productContext = organization?.product_context || null;
                             
+                            // If product context is not set or might be wrong, try to detect from multiple sources
+                            if (!productContext || productContext === 'm10dj') {
+                              // Try to detect from current domain first
+                              if (typeof window !== 'undefined') {
+                                const hostname = window.location.hostname.toLowerCase();
+                                if (hostname.includes('tipjar.live')) {
+                                  productContext = 'tipjar';
+                                } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+                                  productContext = 'djdash';
+                                } else if (hostname.includes('m10djcompany.com')) {
+                                  productContext = 'm10dj';
+                                }
+                              }
+                              
+                              // If on localhost and still not detected, check user metadata or environment
+                              if ((!productContext || productContext === 'm10dj') && typeof window !== 'undefined') {
+                                const hostname = window.location.hostname.toLowerCase();
+                                if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+                                  // On localhost, check environment variables or default to tipjar
+                                  // This helps with development when product_context might be incorrectly set
+                                  if (process.env.NEXT_PUBLIC_TIPJAR_URL || process.env.NEXT_PUBLIC_DEFAULT_PRODUCT === 'tipjar') {
+                                    productContext = 'tipjar';
+                                  } else if (process.env.NEXT_PUBLIC_DJDASH_URL || process.env.NEXT_PUBLIC_DEFAULT_PRODUCT === 'djdash') {
+                                    productContext = 'djdash';
+                                  } else {
+                                    // For localhost development, default to tipjar if product_context was m10dj
+                                    // This helps fix cases where organization was created with wrong product_context
+                                    productContext = 'tipjar';
+                                  }
+                                }
+                              }
+                            }
+                            
+                            // Final fallback: default to tipjar if still not detected
+                            productContext = productContext || 'tipjar';
+                            
+                            let baseUrl: string;
                             switch (productContext) {
                               case 'tipjar':
                                 baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
@@ -4172,11 +4322,23 @@ export default function CrowdRequestsPage() {
                                 baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://m10djcompany.com';
                                 break;
                               default:
-                                baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+                                // Fallback: check current domain
+                                if (typeof window !== 'undefined') {
+                                  const hostname = window.location.hostname.toLowerCase();
+                                  if (hostname.includes('tipjar.live')) {
+                                    baseUrl = 'https://tipjar.live';
+                                  } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+                                    baseUrl = 'https://djdash.net';
+                                  } else {
+                                    baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+                                  }
+                                } else {
+                                  baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live';
+                                }
                             }
 
-                            // Use organization slug for TipJar/DJDash, generic /requests for M10
-                            if (organization?.slug && (productContext === 'tipjar' || productContext === 'djdash')) {
+                            // Use organization slug for TipJar/DJDash, also for M10 if slug exists
+                            if (organization?.slug && (productContext === 'tipjar' || productContext === 'djdash' || productContext === 'm10dj')) {
                               return `${baseUrl}/${organization.slug}/requests?qr=1`;
                             } else {
                               return `${baseUrl}/requests?qr=1`;

@@ -9,33 +9,58 @@ function isValidEmail(email: string) {
 }
 
 /**
- * Detect product context from request (domain or path)
+ * Detect product context from request (domain, path, or referer)
  */
 function detectProductContext(request: NextRequest): 'tipjar' | 'djdash' | 'm10dj' {
+  // Check multiple sources to ensure accurate detection
   const hostname = request.headers.get('host') || '';
   const hostnameLower = hostname.toLowerCase();
   const pathname = request.nextUrl.pathname;
+  const referer = request.headers.get('referer') || '';
+  const origin = request.headers.get('origin') || '';
+  
+  // Combine all URL sources for detection
+  const allUrls = `${hostname} ${pathname} ${referer} ${origin}`.toLowerCase();
 
-  // Check domain first
-  if (hostnameLower.includes('tipjar.live') || hostnameLower.includes('tipjar')) {
+  // Priority 1: Check for TipJar domains/paths (most specific first)
+  if (hostnameLower.includes('tipjar.live') || 
+      allUrls.includes('tipjar.live') ||
+      pathname.startsWith('/tipjar/') ||
+      allUrls.includes('/tipjar/')) {
     return 'tipjar';
   }
-  if (hostnameLower.includes('djdash.net') || hostnameLower.includes('djdash')) {
+
+  // Priority 2: Check for DJ Dash domains/paths
+  if (hostnameLower.includes('djdash.net') || 
+      allUrls.includes('djdash.net') ||
+      allUrls.includes('djdash.com') ||
+      pathname.startsWith('/djdash/') ||
+      allUrls.includes('/djdash/')) {
     return 'djdash';
   }
-  if (hostnameLower.includes('m10djcompany.com') || hostnameLower.includes('m10dj')) {
+
+  // Priority 3: Check for M10 DJ Company domains/paths
+  // Only match exact domains, not just 'm10dj' substring (to avoid false matches)
+  if ((hostnameLower.includes('m10djcompany.com') && !hostnameLower.includes('tipjar')) ||
+      (allUrls.includes('m10djcompany.com') && !allUrls.includes('tipjar')) ||
+      pathname.startsWith('/m10dj/') ||
+      allUrls.includes('/m10dj/')) {
     return 'm10dj';
   }
 
-  // Check path as fallback
-  if (pathname.startsWith('/tipjar/')) {
+  // Check for 'tipjar' substring only if not m10dj company domain
+  if (hostnameLower.includes('tipjar') && !hostnameLower.includes('m10djcompany')) {
     return 'tipjar';
   }
-  if (pathname.startsWith('/djdash/')) {
+
+  // Check for 'djdash' substring only if not m10dj company domain
+  if ((hostnameLower.includes('djdash') || allUrls.includes('djdash')) && 
+      !hostnameLower.includes('m10djcompany')) {
     return 'djdash';
   }
 
-  // Default to tipjar for shared signup endpoint
+  // Default to tipjar for shared signup endpoint (TipJar is the primary product)
+  // This ensures new signups default to TipJar if detection fails
   return 'tipjar';
 }
 
