@@ -27,32 +27,35 @@ export default function CrowdRequestSuccessPage() {
   const supabase = createClientComponentClient();
 
   // Determine product context and site name for meta tags
-  const getProductContext = () => {
-    if (typeof window === 'undefined') return 'tipjar'; // SSR default
+  // Use useState to avoid SSR/client mismatch
+  const [siteName, setSiteName] = useState('TipJar.Live'); // Default for SSR
+
+  useEffect(() => {
+    // Determine product context from hostname on client side only
+    if (typeof window === 'undefined') return;
     
     const hostname = window.location.hostname.toLowerCase();
+    let productContext = 'tipjar'; // Default
+    
     if (hostname.includes('tipjar.live')) {
-      return 'tipjar';
+      productContext = 'tipjar';
     } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
-      return 'djdash';
+      productContext = 'djdash';
     } else if (hostname.includes('m10djcompany.com')) {
-      return 'm10dj';
+      productContext = 'm10dj';
     }
-    return 'tipjar'; // Default to tipjar
-  };
-
-  const getSiteName = () => {
-    const productContext = getProductContext();
+    
+    // Set site name based on product context
     if (productContext === 'tipjar') {
-      return 'TipJar.Live';
+      setSiteName('TipJar.Live');
     } else if (productContext === 'djdash') {
-      return 'DJ Dash';
+      setSiteName('DJ Dash');
     } else {
-      return 'M10 DJ Company';
+      setSiteName('M10 DJ Company');
     }
-  };
+  }, []);
 
-  // Track success page view
+  // Track success page view using hook
   useSuccessPageTracking(request_id);
 
   // Force dark mode on the success page
@@ -520,7 +523,7 @@ export default function CrowdRequestSuccessPage() {
     return (
       <>
         <Head>
-          <title>Processing Payment | {getSiteName()}</title>
+          <title>Processing Payment | {siteName}</title>
         </Head>
         <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
@@ -540,7 +543,7 @@ export default function CrowdRequestSuccessPage() {
   return (
     <>
       <Head>
-        <title>Request Confirmed! | {getSiteName()}</title>
+        <title>Request Confirmed! | {siteName}</title>
       </Head>
 
       <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 dark:from-black dark:via-neutral-950 dark:to-black pb-28 md:pb-8">

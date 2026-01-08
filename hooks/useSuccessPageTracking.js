@@ -13,41 +13,43 @@ export function useSuccessPageTracking(requestId) {
   const MAX_RETRIES = 3;
 
   useEffect(() => {
-    // Normalize requestId - handle both string and array (Next.js query params can be arrays)
-    const normalizedRequestId = Array.isArray(requestId) ? requestId[0] : requestId;
-    
-    // Only track once per page load and only if we have a request_id
-    if (hasTracked.current) {
-      return; // Already tracked successfully, don't track again
-    }
-    
-    if (!normalizedRequestId) {
-      // If router is ready but no request_id, log for debugging
-      if (router.isReady) {
-        console.log('⚠️ [SUCCESS-TRACKING] Router ready but no request_id:', {
-          requestId,
-          query: router.query,
-          pathname: router.pathname
-        });
+    // Wrap in try-catch to prevent React errors from blocking tracking
+    try {
+      // Normalize requestId - handle both string and array (Next.js query params can be arrays)
+      const normalizedRequestId = Array.isArray(requestId) ? requestId[0] : requestId;
+      
+      // Only track once per page load and only if we have a request_id
+      if (hasTracked.current) {
+        return; // Already tracked successfully, don't track again
       }
-      return;
-    }
-    
-    if (!router.isReady) {
-      // Router not ready yet, will retry when it becomes ready
-      return;
-    }
-    
-    // Check retry limit
-    if (retryCount.current >= MAX_RETRIES) {
-      console.error('❌ [SUCCESS-TRACKING] Max retries reached, giving up');
-      return;
-    }
-    
-    retryCount.current += 1;
+      
+      if (!normalizedRequestId) {
+        // If router is ready but no request_id, log for debugging
+        if (router.isReady) {
+          console.log('⚠️ [SUCCESS-TRACKING] Router ready but no request_id:', {
+            requestId,
+            query: router.query,
+            pathname: router.pathname
+          });
+        }
+        return;
+      }
+      
+      if (!router.isReady) {
+        // Router not ready yet, will retry when it becomes ready
+        return;
+      }
+      
+      // Check retry limit
+      if (retryCount.current >= MAX_RETRIES) {
+        console.error('❌ [SUCCESS-TRACKING] Max retries reached, giving up');
+        return;
+      }
+      
+      retryCount.current += 1;
 
-    // Track the success page view
-    const trackView = async () => {
+      // Track the success page view
+      const trackView = async () => {
       try {
         console.log('🔵 [SUCCESS-TRACKING] Attempting to track success page view:', {
           request_id: normalizedRequestId,
@@ -98,7 +100,21 @@ export function useSuccessPageTracking(requestId) {
       }
     };
 
-    trackView();
+      trackView();
+    } catch (error) {
+      // Catch any errors that might prevent tracking from running
+      console.error('❌ [SUCCESS-TRACKING] Error in tracking hook setup:', error);
+      // Still try to track even if there's an error
+      const normalizedRequestId = Array.isArray(requestId) ? requestId[0] : requestId;
+      if (normalizedRequestId && !hasTracked.current) {
+        // Direct fetch as last resort
+        fetch('/api/crowd-request/track-success-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request_id: normalizedRequestId }),
+        }).catch(err => console.error('❌ [SUCCESS-TRACKING] Fallback tracking also failed:', err));
+      }
+    }
   }, [requestId, router.isReady, router.query]);
 
   // Return the view ID if available
