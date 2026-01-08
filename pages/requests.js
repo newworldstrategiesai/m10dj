@@ -1019,6 +1019,7 @@ export function GeneralRequestsPage({
   // Reset bundle size to 1 when custom amount is entered or amount doesn't equal minimum
   // Must be after getBaseAmount is defined
   // Only reset if user actively changes away from minimum amount
+  // CRITICAL: Don't include bundleSize in dependencies - only reset when amount/amountType changes, not when bundleSize changes
   useEffect(() => {
     // Skip if presetAmounts haven't loaded yet (avoid false triggers on initial load)
     if (presetAmounts.length === 0 || !initialPresetSet) return;
@@ -1033,7 +1034,8 @@ export function GeneralRequestsPage({
         setBundleSize(1);
       }
     }
-  }, [amountType, customAmount, presetAmount, minimumAmount, getBaseAmount, bundleSize, presetAmounts.length, initialPresetSet]); // Watch for amount changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amountType, customAmount, presetAmount, minimumAmount, getBaseAmount, presetAmounts.length, initialPresetSet]); // Watch for amount changes, NOT bundleSize
 
   // Scroll to bundle songs section when bundle is selected and min bid is selected
   // Must be after getBaseAmount is defined

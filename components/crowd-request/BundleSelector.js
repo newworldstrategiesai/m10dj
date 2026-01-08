@@ -118,7 +118,13 @@ function BundleSelector({
             <button
               key={bundle.size}
               type="button"
-              onClick={() => !isBundleDisabled && setBundleSize(bundle.size)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isBundleDisabled && bundleSize !== bundle.size) {
+                  setBundleSize(bundle.size);
+                }
+              }}
               disabled={isBundleDisabled}
               className={`relative p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation ${
                 isSelected

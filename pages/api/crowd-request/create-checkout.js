@@ -14,6 +14,16 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export default async function handler(req, res) {
+  console.log('🔵 [CREATE-CHECKOUT] Request received:', {
+    method: req.method,
+    body: req.body,
+    headers: {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      host: req.headers.host
+    }
+  });
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -21,6 +31,7 @@ export default async function handler(req, res) {
   const { requestId, amount, preferredPaymentMethod } = req.body;
 
   if (!requestId || !amount) {
+    console.error('❌ [CREATE-CHECKOUT] Missing required fields:', { requestId, amount });
     return res.status(400).json({ error: 'Request ID and amount are required' });
   }
 
@@ -55,9 +66,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('🔵 [CREATE-CHECKOUT] Initializing Supabase client...');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get the crowd request
+    console.log('🔵 [CREATE-CHECKOUT] Fetching crowd request:', requestId);
     const { data: crowdRequest, error: requestError } = await supabase
       .from('crowd_requests')
       .select('*')
@@ -65,8 +78,15 @@ export default async function handler(req, res) {
       .single();
 
     if (requestError || !crowdRequest) {
-      return res.status(404).json({ error: 'Request not found' });
+      console.error('❌ [CREATE-CHECKOUT] Request not found:', { requestError, requestId });
+      return res.status(404).json({ error: 'Request not found', details: requestError?.message });
     }
+    
+    console.log('✅ [CREATE-CHECKOUT] Crowd request found:', {
+      id: crowdRequest.id,
+      type: crowdRequest.request_type,
+      organization_id: crowdRequest.organization_id
+    });
 
     // Fetch bundle songs if this is part of a bundle
     // Bundle songs share: same requester (email/phone), same payment_code, created within 5 seconds
@@ -135,14 +155,29 @@ export default async function handler(req, res) {
     // Get organization data (if available) - including Stripe Connect account
     let organization = null;
     if (crowdRequest.organization_id) {
-      const { data: orgData } = await supabase
+      console.log('🔵 [CREATE-CHECKOUT] Fetching organization:', crowdRequest.organization_id);
+      const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .select('*, stripe_connect_account_id, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, platform_fee_percentage, platform_fee_fixed, subscription_tier, subscription_status, is_platform_owner')
         .eq('id', crowdRequest.organization_id)
         .single();
-      organization = orgData;
+      
+      if (orgError) {
+        console.error('❌ [CREATE-CHECKOUT] Error fetching organization:', orgError);
+      } else {
+        organization = orgData;
+        console.log('✅ [CREATE-CHECKOUT] Organization found:', {
+          id: organization.id,
+          name: organization.name,
+          hasConnectAccount: !!organization.stripe_connect_account_id,
+          chargesEnabled: organization.stripe_connect_charges_enabled,
+          payoutsEnabled: organization.stripe_connect_payouts_enabled
+        });
+      }
       
       // Allow all users to process payments regardless of subscription tier
+    } else {
+      console.log('⚠️ [CREATE-CHECKOUT] No organization_id on request');
     }
 
     // Calculate charity donation if enabled
@@ -396,6 +431,13 @@ export default async function handler(req, res) {
                               organization?.stripe_connect_charges_enabled && 
                               organization?.stripe_connect_payouts_enabled;
     
+    console.log('🔵 [CREATE-CHECKOUT] Stripe Connect status:', {
+      hasConnectAccount,
+      connectAccountId: organization?.stripe_connect_account_id || 'none',
+      chargesEnabled: organization?.stripe_connect_charges_enabled || false,
+      payoutsEnabled: organization?.stripe_connect_payouts_enabled || false
+    });
+    
     // PLATFORM OWNER BYPASS: M10 DJ Company can use platform account (existing behavior)
     // This ensures your business operations are never disrupted
     const isPlatformOwner = organization?.is_platform_owner || false;
@@ -407,9 +449,16 @@ export default async function handler(req, res) {
     // Import Connect helpers (if needed)
     let createCheckoutSessionWithPlatformFee, calculatePlatformFee;
     if (hasConnectAccount) {
-      const connectModule = await import('@/utils/stripe/connect');
-      createCheckoutSessionWithPlatformFee = connectModule.createCheckoutSessionWithPlatformFee;
-      calculatePlatformFee = connectModule.calculatePlatformFee;
+      try {
+        console.log('🔵 [CREATE-CHECKOUT] Importing Stripe Connect helpers...');
+        const connectModule = await import('@/utils/stripe/connect');
+        createCheckoutSessionWithPlatformFee = connectModule.createCheckoutSessionWithPlatformFee;
+        calculatePlatformFee = connectModule.calculatePlatformFee;
+        console.log('✅ [CREATE-CHECKOUT] Stripe Connect helpers imported successfully');
+      } catch (importError) {
+        console.error('❌ [CREATE-CHECKOUT] Error importing Stripe Connect helpers:', importError);
+        throw new Error(`Failed to load Stripe Connect utilities: ${importError.message}`);
+      }
     }
     
     // Calculate platform fee if using Connect
@@ -506,11 +555,27 @@ export default async function handler(req, res) {
             charity_donation_amount: charityInfo.amount.toString(),
           }),
         },
-        customer_account: organization.stripe_connect_account_id, // Accounts v2 API - routes payment to connected account
+        // Note: We use payment_intent_data.transfer_data.destination to route payment to connected account
+        // The customer_account parameter is not a valid Checkout Sessions API parameter
       };
       
-      // Note: Cash App Pay is supported with Stripe Connect via customer_account parameter
+      // Note: Cash App Pay is supported with Stripe Connect via transfer_data.destination
       // The payment method types (cashapp) will work correctly with the connected account
+      
+      // Validate Stripe secret key
+      if (!process.env.STRIPE_SECRET_KEY) {
+        throw new Error('Stripe secret key is not configured');
+      }
+      
+      // Validate session parameters
+      console.log('🔵 [CREATE-CHECKOUT] Creating Stripe Connect checkout session with params:', {
+        payment_method_types: sessionParams.payment_method_types,
+        line_items_count: sessionParams.line_items.length,
+        total_amount: totalAmountInCents,
+        connect_account_id: organization.stripe_connect_account_id?.substring(0, 20) + '...',
+        has_application_fee: !!sessionParams.payment_intent_data?.application_fee_amount,
+        transfer_destination: sessionParams.payment_intent_data?.transfer_data?.destination?.substring(0, 20) + '...'
+      });
       
       try {
         session = await stripe.checkout.sessions.create(sessionParams);
@@ -522,14 +587,15 @@ export default async function handler(req, res) {
         console.log(`   DJ Payout: $${((totalAmountInCents - applicationFeeAmount) / 100).toFixed(2)}`);
         console.log(`   Payment Methods: ${paymentMethodTypes.join(', ')}`);
       } catch (connectError) {
-        console.error('❌ Error creating Stripe Connect checkout session:', connectError);
-        // Log detailed error information for debugging
-        if (connectError.message) {
-          console.error('   Error message:', connectError.message);
-        }
-        if (connectError.type) {
-          console.error('   Error type:', connectError.type);
-        }
+        console.error('❌ [CREATE-CHECKOUT] Error creating Stripe Connect checkout session:', {
+          message: connectError.message,
+          type: connectError.type,
+          code: connectError.code,
+          decline_code: connectError.decline_code,
+          param: connectError.param,
+          raw: connectError.raw,
+          stack: connectError.stack
+        });
         // Re-throw to be caught by outer try-catch
         throw connectError;
       }
@@ -583,6 +649,19 @@ export default async function handler(req, res) {
       if (totalAmount < 1) {
         throw new Error('Invalid payment amount: Total amount must be at least $0.01');
       }
+      
+      // Validate Stripe secret key
+      if (!process.env.STRIPE_SECRET_KEY) {
+        throw new Error('Stripe secret key is not configured');
+      }
+      
+      // Validate session parameters
+      console.log('🔵 [CREATE-CHECKOUT] Creating regular checkout session with params:', {
+        payment_method_types: paymentMethodTypes,
+        line_items_count: regularLineItems.length,
+        total_amount: totalAmount,
+        has_organization: !!organization
+      });
       
       try {
         session = await stripe.checkout.sessions.create({
@@ -701,17 +780,15 @@ export default async function handler(req, res) {
           console.log(`   Note: Payment will go to platform account. Organization can set up Stripe Connect for automatic payouts.`);
         }
       } catch (regularError) {
-        console.error('❌ Error creating regular checkout session:', regularError);
-        // Log detailed error information for debugging
-        if (regularError.message) {
-          console.error('   Error message:', regularError.message);
-        }
-        if (regularError.type) {
-          console.error('   Error type:', regularError.type);
-        }
-        if (regularError.code) {
-          console.error('   Error code:', regularError.code);
-        }
+        console.error('❌ [CREATE-CHECKOUT] Error creating regular checkout session:', {
+          message: regularError.message,
+          type: regularError.type,
+          code: regularError.code,
+          decline_code: regularError.decline_code,
+          param: regularError.param,
+          raw: regularError.raw,
+          stack: regularError.stack
+        });
         // Re-throw to be caught by outer try-catch
         throw regularError;
       }
@@ -742,11 +819,25 @@ export default async function handler(req, res) {
       requestId: crowdRequest.id,
     });
   } catch (error) {
-    console.error('❌ Error creating checkout session:', error);
-    return res.status(500).json({
-      error: 'Failed to create checkout session',
+    console.error('❌ [CREATE-CHECKOUT] Error creating checkout session:', {
       message: error.message,
+      type: error.type,
+      code: error.code,
+      stack: error.stack,
+      requestId: req.body?.requestId,
+      amount: req.body?.amount
     });
+    
+    // Return detailed error information for debugging
+    const errorResponse = {
+      error: 'Failed to create checkout session',
+      message: error.message || 'Unknown error occurred',
+      ...(error.type && { type: error.type }),
+      ...(error.code && { code: error.code }),
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    };
+    
+    return res.status(500).json(errorResponse);
   }
 }
 
