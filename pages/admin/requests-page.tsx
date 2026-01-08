@@ -1544,6 +1544,7 @@ export default function RequestsPageSettings() {
                       ))}
                     </div>
                   )}
+                    </div>
                   </div>
                 </div>
               ) : activeTab === 'payments' ? (
@@ -2192,7 +2193,6 @@ export default function RequestsPageSettings() {
                       </div>
                     )}
                   </div>
-                </div>
               ) : activeTab === 'content' ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
@@ -3589,7 +3589,6 @@ export default function RequestsPageSettings() {
               </div>
             </div>
           </div>
-        </div>
         
         {/* Mobile Floating Preview + Save */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
@@ -3681,7 +3680,8 @@ export default function RequestsPageSettings() {
             </button>
           </div>
         </div>
-      </AdminPageLayout>
+      </div>
+    </AdminPageLayout>
   );
 }
 
