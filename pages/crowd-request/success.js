@@ -22,6 +22,7 @@ export default function CrowdRequestSuccessPage() {
   const [statusJustChanged, setStatusJustChanged] = useState(false);
   const [albumArt, setAlbumArt] = useState(null); // Main song album art
   const [bundleAlbumArts, setBundleAlbumArts] = useState({}); // Album art for bundled songs { songId: artUrl }
+  const [organizationSlug, setOrganizationSlug] = useState<string | null>(null); // Organization slug for building correct URLs
   const confettiTriggered = useRef(false);
   const playingConfettiTriggered = useRef(false);
   const supabase = createClientComponentClient();
@@ -936,7 +937,9 @@ export default function CrowdRequestSuccessPage() {
               {request?.event_qr_code && (
                 <div className="hidden md:block">
                   <Link
-                    href={request.event_qr_code.startsWith('general') ? '/requests' : `/crowd-request/${request.event_qr_code}`}
+                    href={request.event_qr_code.startsWith('general') 
+                      ? (organizationSlug ? `/${organizationSlug}/requests` : '/requests')
+                      : `/crowd-request/${request.event_qr_code}`}
                     className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-300 text-black font-bold text-lg rounded-xl shadow-lg hover:shadow-xl shadow-amber-500/30 hover:shadow-amber-400/50 transition-all duration-200 transform hover:scale-[1.02]"
                   >
                     <Music className="w-6 h-6" />
@@ -952,7 +955,9 @@ export default function CrowdRequestSuccessPage() {
         {request?.event_qr_code && (
           <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white/95 via-white/90 to-white/80 dark:from-black/95 dark:via-black/90 dark:to-black/80 backdrop-blur-lg border-t border-gray-200 dark:border-neutral-800 safe-area-pb z-50">
             <Link
-              href={request.event_qr_code.startsWith('general') ? '/requests' : `/crowd-request/${request.event_qr_code}`}
+              href={request.event_qr_code.startsWith('general') 
+                ? (organizationSlug ? `/${organizationSlug}/requests` : '/requests')
+                : `/crowd-request/${request.event_qr_code}`}
               className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-300 text-black font-bold text-base rounded-xl shadow-lg hover:shadow-xl shadow-amber-500/30 hover:shadow-amber-400/50 transition-all duration-200"
             >
               <Music className="w-5 h-5" />
