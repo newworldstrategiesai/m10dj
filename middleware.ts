@@ -118,6 +118,10 @@ export async function middleware(request: NextRequest) {
     } else if (path === '/bid' || path.startsWith('/bid/')) {
       // Keep /bid path as-is (dedicated bidding page)
       // Don't rewrite, let it fall through to pages router
+    } else if (path.startsWith('/crowd-request/')) {
+      // Keep /crowd-request/* paths as-is (handled by pages router)
+      // Don't rewrite, let it fall through to pages router
+      rewritePath = '';
     } else {
       // Extract path parts for routing
       const pathParts = path.replace(/^\//, '').split('/').filter(Boolean);
