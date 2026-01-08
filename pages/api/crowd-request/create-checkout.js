@@ -167,7 +167,7 @@ export default async function handler(req, res) {
       console.log('🔵 [CREATE-CHECKOUT] Fetching organization:', crowdRequest.organization_id);
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('*, stripe_connect_account_id, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, platform_fee_percentage, platform_fee_fixed, subscription_tier, subscription_status, is_platform_owner')
+        .select('*, stripe_connect_account_id, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, platform_fee_percentage, platform_fee_fixed, subscription_tier, subscription_status, is_platform_owner, is_claimed, owner_id, prospect_email')
         .eq('id', crowdRequest.organization_id)
         .single();
       
@@ -180,7 +180,9 @@ export default async function handler(req, res) {
           name: organization.name,
           hasConnectAccount: !!organization.stripe_connect_account_id,
           chargesEnabled: organization.stripe_connect_charges_enabled,
-          payoutsEnabled: organization.stripe_connect_payouts_enabled
+          payoutsEnabled: organization.stripe_connect_payouts_enabled,
+          is_claimed: organization.is_claimed,
+          is_unclaimed: !organization.is_claimed
         });
       }
       
@@ -473,17 +475,28 @@ export default async function handler(req, res) {
       paymentMethodTypes = ['cashapp'];
     }
     
+    // Check if organization is unclaimed (no owner_id)
+    const isUnclaimed = organization && !organization.is_claimed && !organization.owner_id;
+    
     // Check if organization has Stripe Connect account set up
-    const hasConnectAccount = organization?.stripe_connect_account_id && 
+    // Unclaimed organizations cannot have Connect accounts (they don't have owners yet)
+    const hasConnectAccount = !isUnclaimed && 
+                              organization?.stripe_connect_account_id && 
                               organization?.stripe_connect_charges_enabled && 
                               organization?.stripe_connect_payouts_enabled;
     
     console.log('🔵 [CREATE-CHECKOUT] Stripe Connect status:', {
+      isUnclaimed,
       hasConnectAccount,
       connectAccountId: organization?.stripe_connect_account_id || 'none',
       chargesEnabled: organization?.stripe_connect_charges_enabled || false,
       payoutsEnabled: organization?.stripe_connect_payouts_enabled || false
     });
+    
+    // If unclaimed, payment will go to platform account and be tracked for later transfer
+    if (isUnclaimed) {
+      console.log('🔵 [CREATE-CHECKOUT] Unclaimed organization detected. Payment will be tracked for later transfer.');
+    }
     
     // PLATFORM OWNER BYPASS: M10 DJ Company can use platform account (existing behavior)
     // This ensures your business operations are never disrupted
@@ -619,16 +632,17 @@ export default async function handler(req, res) {
             destination: organization.stripe_connect_account_id,
           },
         },
-        metadata: {
-          request_id: crowdRequest.id,
-          request_type: crowdRequest.request_type,
-          event_code: crowdRequest.event_qr_code,
-          organization_id: organization.id,
-          organization_name: organization.name,
-          is_fast_track: isFastTrackRequest ? 'true' : 'false',
-          is_next: isNextRequest ? 'true' : 'false',
-          payment_routing: 'stripe_connect', // Track that this payment is routed through Stripe Connect
-          requires_manual_payout: 'false', // Connect payments are automatically routed
+          metadata: {
+            request_id: crowdRequest.id,
+            request_type: crowdRequest.request_type,
+            event_code: crowdRequest.event_qr_code,
+            organization_id: organization.id,
+            organization_name: organization.name,
+            is_fast_track: isFastTrackRequest ? 'true' : 'false',
+            is_next: isNextRequest ? 'true' : 'false',
+            payment_routing: 'stripe_connect', // Track that this payment is routed through Stripe Connect
+            requires_manual_payout: 'false', // Connect payments are automatically routed
+            is_unclaimed: 'false', // Claimed organization using Connect
           ...(crowdRequest.request_type === 'song_request' && {
             song_title: crowdRequest.song_title || '',
             song_artist: crowdRequest.song_artist || '',
@@ -778,8 +792,10 @@ export default async function handler(req, res) {
           organization_name: organization?.name || '',
           is_fast_track: isFastTrackRequest ? 'true' : 'false',
           is_next: isNextRequest ? 'true' : 'false',
-          payment_routing: 'platform_account', // Track that this payment went to platform account
-          requires_manual_payout: organization ? 'true' : 'false', // Manual payout needed for non-Connect accounts
+          payment_routing: isUnclaimed ? 'platform_account_unclaimed' : 'platform_account', // Track unclaimed vs claimed
+          requires_manual_payout: organization && !isUnclaimed ? 'true' : 'false', // Manual payout needed for claimed non-Connect accounts
+          is_unclaimed: isUnclaimed ? 'true' : 'false', // Track if this is for an unclaimed organization
+          prospect_email: isUnclaimed && organization?.prospect_email ? organization.prospect_email : '',
         // Add song info to metadata for easy viewing in Stripe dashboard
         ...(crowdRequest.request_type === 'song_request' && {
           song_title: crowdRequest.song_title || '',

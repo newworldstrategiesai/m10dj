@@ -368,6 +368,91 @@ export default async function handler(req, res) {
               }
             })();
 
+            // Track tips for unclaimed organizations
+            if (requestDataBeforeUpdate?.organization_id && session.metadata?.is_unclaimed === 'true') {
+              (async () => {
+                try {
+                  console.log('🔵 Tracking tip for unclaimed organization:', requestDataBeforeUpdate.organization_id);
+                  
+                  // Get organization to verify it's unclaimed
+                  const { data: org } = await supabase
+                    .from('organizations')
+                    .select('id, is_claimed, owner_id')
+                    .eq('id', requestDataBeforeUpdate.organization_id)
+                    .single();
+                  
+                  if (!org || org.is_claimed) {
+                    console.log('⚠️ Organization is no longer unclaimed, skipping tip balance update');
+                    return;
+                  }
+                  
+                  // Calculate platform fee
+                  const feePercentage = 3.50; // Default platform fee percentage
+                  const feeFixed = 0.30; // Default fixed fee
+                  const amountCents = session.amount_total; // Amount already in cents
+                  const feeCents = Math.round((amountCents * feePercentage / 100) + (feeFixed * 100));
+                  const netAmountCents = amountCents - feeCents;
+                  
+                  // Get or create tip balance record
+                  const { data: existingBalance } = await supabase
+                    .from('unclaimed_tip_balance')
+                    .select('*')
+                    .eq('organization_id', requestDataBeforeUpdate.organization_id)
+                    .single();
+                  
+                  const paymentIntentId = session.payment_intent || session.id;
+                  const chargeId = session.charges?.data?.[0]?.id || '';
+                  
+                  if (existingBalance) {
+                    // Update existing balance
+                    await supabase
+                      .from('unclaimed_tip_balance')
+                      .update({
+                        total_amount_cents: existingBalance.total_amount_cents + amountCents,
+                        total_fees_cents: existingBalance.total_fees_cents + feeCents,
+                        net_amount_cents: existingBalance.net_amount_cents + netAmountCents,
+                        tip_count: existingBalance.tip_count + 1,
+                        stripe_payment_intent_ids: [...(existingBalance.stripe_payment_intent_ids || []), paymentIntentId],
+                        stripe_charge_ids: [...(existingBalance.stripe_charge_ids || []), chargeId].filter(Boolean),
+                        last_tip_at: new Date().toISOString(),
+                        first_tip_at: existingBalance.first_tip_at || new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('id', existingBalance.id);
+                    
+                    console.log('✅ Updated unclaimed tip balance:', {
+                      orgId: requestDataBeforeUpdate.organization_id,
+                      totalCents: existingBalance.total_amount_cents + amountCents,
+                      netCents: existingBalance.net_amount_cents + netAmountCents
+                    });
+                  } else {
+                    // Create new balance record
+                    await supabase
+                      .from('unclaimed_tip_balance')
+                      .insert({
+                        organization_id: requestDataBeforeUpdate.organization_id,
+                        total_amount_cents: amountCents,
+                        total_fees_cents: feeCents,
+                        net_amount_cents: netAmountCents,
+                        tip_count: 1,
+                        stripe_payment_intent_ids: [paymentIntentId],
+                        stripe_charge_ids: chargeId ? [chargeId] : [],
+                        first_tip_at: new Date().toISOString(),
+                        last_tip_at: new Date().toISOString()
+                      });
+                    
+                    console.log('✅ Created unclaimed tip balance:', {
+                      orgId: requestDataBeforeUpdate.organization_id,
+                      totalCents: amountCents,
+                      netCents: netAmountCents
+                    });
+                  }
+                } catch (err) {
+                  console.error('❌ Error tracking tip for unclaimed organization:', err);
+                }
+              })();
+            }
+            
             // Notify DJ of payment (non-blocking)
             if (requestDataBeforeUpdate?.organization_id) {
               (async () => {
