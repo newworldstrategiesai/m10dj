@@ -36,27 +36,36 @@ export default async function handler(req, res) {
   }
 
   // Validate and normalize amount - ensure it's in cents (integer)
-  // Amount should already be in cents from frontend, but handle edge cases
-  let amountInCents = amount;
+  // IMPORTANT: Frontend always sends amounts in cents (e.g., 500 for $5.00)
+  // Do NOT convert - amounts are already in cents
+  let amountInCents;
   if (typeof amount === 'string') {
-    // If it's a string, try to parse it
+    // If it's a string, parse it as a number (already in cents)
     const parsed = parseFloat(amount);
     if (isNaN(parsed)) {
+      console.error('❌ [CREATE-CHECKOUT] Invalid amount format (string):', amount);
       return res.status(400).json({ error: 'Invalid amount format' });
     }
-    // If it looks like dollars (less than 1000), assume it's dollars and convert to cents
-    amountInCents = parsed < 1000 ? Math.round(parsed * 100) : Math.round(parsed);
+    amountInCents = Math.round(parsed);
   } else if (typeof amount === 'number') {
-    // If it's a number less than 1000, assume it's dollars and convert to cents
-    amountInCents = amount < 1000 ? Math.round(amount * 100) : Math.round(amount);
+    // Amount is already in cents from frontend
+    amountInCents = Math.round(amount);
   } else {
+    console.error('❌ [CREATE-CHECKOUT] Invalid amount type:', typeof amount, amount);
     return res.status(400).json({ error: 'Invalid amount type' });
   }
 
   // Ensure amount is at least 1 cent (Stripe minimum)
   if (amountInCents < 1) {
+    console.error('❌ [CREATE-CHECKOUT] Amount too small:', amountInCents);
     return res.status(400).json({ error: 'Amount must be at least $0.01' });
   }
+
+  console.log('✅ [CREATE-CHECKOUT] Amount validated:', {
+    original: amount,
+    normalized: amountInCents,
+    in_dollars: `$${(amountInCents / 100).toFixed(2)}`
+  });
 
   // Use normalized amount for rest of function
   const normalizedAmount = amountInCents;
