@@ -240,6 +240,8 @@ export function GeneralRequestsPage({
   
   // Read preview parameters from URL (for admin preview)
   const previewAccentColor = router.query.accentColor ? decodeURIComponent(router.query.accentColor) : null;
+  const previewSecondaryColor1 = router.query.secondaryColor1 ? decodeURIComponent(router.query.secondaryColor1) : null;
+  const previewSecondaryColor2 = router.query.secondaryColor2 ? decodeURIComponent(router.query.secondaryColor2) : null;
   const previewButtonStyle = router.query.buttonStyle || null;
   const previewThemeMode = router.query.themeMode || null;
   
@@ -261,6 +263,9 @@ export function GeneralRequestsPage({
   // Default accent color based on product context: TipJar = green, others = gold
   const defaultAccentColor = organizationData?.product_context === 'tipjar' ? '#10b981' : '#fcba00';
   const effectiveAccentColor = previewAccentColor || organizationData?.requests_accent_color || defaultAccentColor;
+  // Secondary colors default to accent color if not set
+  const effectiveSecondaryColor1 = previewSecondaryColor1 || organizationData?.requests_secondary_color_1 || effectiveAccentColor;
+  const effectiveSecondaryColor2 = previewSecondaryColor2 || organizationData?.requests_secondary_color_2 || effectiveAccentColor;
   const effectiveButtonStyle = previewButtonStyle || organizationData?.requests_button_style || 'gradient';
   const effectiveThemeMode = previewThemeMode || organizationData?.requests_theme_mode || 'dark';
   
@@ -2310,18 +2315,24 @@ export function GeneralRequestsPage({
               --accent-color: ${effectiveAccentColor};
               --accent-color-hover: ${effectiveAccentColor}dd;
               --accent-color-light: ${effectiveAccentColor}20;
+              --secondary-color-1: ${effectiveSecondaryColor1};
+              --secondary-color-1-hover: ${effectiveSecondaryColor1}dd;
+              --secondary-color-1-light: ${effectiveSecondaryColor1}20;
+              --secondary-color-2: ${effectiveSecondaryColor2};
+              --secondary-color-2-hover: ${effectiveSecondaryColor2}dd;
+              --secondary-color-2-light: ${effectiveSecondaryColor2}20;
             }
             
             .bg-brand { background-color: var(--accent-color) !important; }
             .bg-\\[\\#fcba00\\] { background-color: var(--accent-color) !important; }
             .text-brand { color: var(--accent-color) !important; }
             .text-\\[\\#fcba00\\] { color: var(--accent-color) !important; }
-            .border-brand { border-color: var(--accent-color) !important; }
-            .border-\\[\\#fcba00\\] { border-color: var(--accent-color) !important; }
-            .ring-brand { --tw-ring-color: var(--accent-color) !important; }
-            .ring-\\[\\#fcba00\\] { --tw-ring-color: var(--accent-color) !important; }
-            .focus\\:ring-brand:focus { --tw-ring-color: var(--accent-color) !important; }
-            .focus\\:ring-\\[\\#fcba00\\]:focus { --tw-ring-color: var(--accent-color) !important; }
+            .border-brand { border-color: var(--secondary-color-1) !important; }
+            .border-\\[\\#fcba00\\] { border-color: var(--secondary-color-1) !important; }
+            .ring-brand { --tw-ring-color: var(--secondary-color-1) !important; }
+            .ring-\\[\\#fcba00\\] { --tw-ring-color: var(--secondary-color-1) !important; }
+            .focus\\:ring-brand:focus { --tw-ring-color: var(--secondary-color-1) !important; }
+            .focus\\:ring-\\[\\#fcba00\\]:focus { --tw-ring-color: var(--secondary-color-1) !important; }
             .hover\\:bg-\\[\\#d99f00\\]:hover { background-color: var(--accent-color-hover) !important; }
             
             .from-\\[\\#fcba00\\] { --tw-gradient-from: var(--accent-color) !important; }
@@ -2347,37 +2358,37 @@ export function GeneralRequestsPage({
             .text-brand-700 { color: var(--accent-color-hover) !important; }
             .text-brand-800 { color: var(--accent-color-hover) !important; }
             
-            .border-brand-200 { border-color: ${effectiveAccentColor}30 !important; }
-            .border-brand-300 { border-color: ${effectiveAccentColor}50 !important; }
-            .border-brand-500 { border-color: var(--accent-color) !important; }
-            .border-brand-600 { border-color: var(--accent-color) !important; }
-            .border-brand-700 { border-color: var(--accent-color-hover) !important; }
+            .border-brand-200 { border-color: ${effectiveSecondaryColor1}30 !important; }
+            .border-brand-300 { border-color: ${effectiveSecondaryColor1}50 !important; }
+            .border-brand-500 { border-color: var(--secondary-color-1) !important; }
+            .border-brand-600 { border-color: var(--secondary-color-1) !important; }
+            .border-brand-700 { border-color: var(--secondary-color-1-hover) !important; }
             
             /* Border variants with opacity */
-            .border-brand-200\\/50 { border-color: ${effectiveAccentColor}80 !important; }
-            .border-brand-300\\/50 { border-color: ${effectiveAccentColor}80 !important; }
-            .border-brand-700\\/30 { border-color: ${effectiveAccentColor}4d !important; }
+            .border-brand-200\\/50 { border-color: ${effectiveSecondaryColor1}80 !important; }
+            .border-brand-300\\/50 { border-color: ${effectiveSecondaryColor1}80 !important; }
+            .border-brand-700\\/30 { border-color: ${effectiveSecondaryColor1}4d !important; }
             
             /* Border variants without -200/-300/-700 suffix (used by request type buttons) */
-            .border-brand\\/30 { border-color: ${effectiveAccentColor}4d !important; }
-            .border-brand\\/50 { border-color: ${effectiveAccentColor}80 !important; }
+            .border-brand\\/30 { border-color: ${effectiveSecondaryColor1}4d !important; }
+            .border-brand\\/50 { border-color: ${effectiveSecondaryColor1}80 !important; }
             
-            .ring-brand-500 { --tw-ring-color: var(--accent-color) !important; }
-            .focus\\:ring-brand-500:focus { --tw-ring-color: var(--accent-color) !important; }
-            .focus\\:border-brand-500:focus { border-color: var(--accent-color) !important; }
+            .ring-brand-500 { --tw-ring-color: var(--secondary-color-1) !important; }
+            .focus\\:ring-brand-500:focus { --tw-ring-color: var(--secondary-color-1) !important; }
+            .focus\\:border-brand-500:focus { border-color: var(--secondary-color-1) !important; }
             
-            .shadow-brand-500\\/20 { --tw-shadow-color: ${effectiveAccentColor}33 !important; }
-            .shadow-brand-500\\/40 { --tw-shadow-color: ${effectiveAccentColor}66 !important; }
-            .shadow-brand-500\\/60 { --tw-shadow-color: ${effectiveAccentColor}99 !important; }
-            .focus\\:shadow-brand-500\\/20:focus { --tw-shadow-color: ${effectiveAccentColor}33 !important; }
+            .shadow-brand-500\\/20 { --tw-shadow-color: ${effectiveSecondaryColor2}33 !important; }
+            .shadow-brand-500\\/40 { --tw-shadow-color: ${effectiveSecondaryColor2}66 !important; }
+            .shadow-brand-500\\/60 { --tw-shadow-color: ${effectiveSecondaryColor2}99 !important; }
+            .focus\\:shadow-brand-500\\/20:focus { --tw-shadow-color: ${effectiveSecondaryColor2}33 !important; }
             
             /* Shadow variants without -500 suffix (used by request type buttons) */
-            .shadow-brand\\/10 { --tw-shadow-color: ${effectiveAccentColor}1a !important; }
-            .shadow-brand\\/20 { --tw-shadow-color: ${effectiveAccentColor}33 !important; }
-            .shadow-brand\\/30 { --tw-shadow-color: ${effectiveAccentColor}4d !important; }
-            .shadow-brand\\/40 { --tw-shadow-color: ${effectiveAccentColor}66 !important; }
-            .shadow-brand\\/50 { --tw-shadow-color: ${effectiveAccentColor}80 !important; }
-            .shadow-brand\\/60 { --tw-shadow-color: ${effectiveAccentColor}99 !important; }
+            .shadow-brand\\/10 { --tw-shadow-color: ${effectiveSecondaryColor2}1a !important; }
+            .shadow-brand\\/20 { --tw-shadow-color: ${effectiveSecondaryColor2}33 !important; }
+            .shadow-brand\\/30 { --tw-shadow-color: ${effectiveSecondaryColor2}4d !important; }
+            .shadow-brand\\/40 { --tw-shadow-color: ${effectiveSecondaryColor2}66 !important; }
+            .shadow-brand\\/50 { --tw-shadow-color: ${effectiveSecondaryColor2}80 !important; }
+            .shadow-brand\\/60 { --tw-shadow-color: ${effectiveSecondaryColor2}99 !important; }
             
             /* Gradient classes with brand colors */
             .from-brand-50 { --tw-gradient-from: ${effectiveAccentColor}10 !important; }
@@ -2412,22 +2423,23 @@ export function GeneralRequestsPage({
             .hover\\:bg-brand-600:hover { background-color: var(--accent-color-hover) !important; }
             .hover\\:bg-brand-700:hover { background-color: var(--accent-color) !important; }
             .hover\\:text-brand:hover { color: var(--accent-color-hover) !important; }
-            .hover\\:border-brand:hover { border-color: var(--accent-color) !important; }
-            .hover\\:border-brand\\/50:hover { border-color: ${effectiveAccentColor}80 !important; }
-            .hover\\:shadow-brand-500\\/60:hover { --tw-shadow-color: ${effectiveAccentColor}99 !important; }
+            .hover\\:border-brand:hover { border-color: var(--secondary-color-1) !important; }
+            .hover\\:border-brand\\/50:hover { border-color: ${effectiveSecondaryColor1}80 !important; }
+            .hover\\:shadow-brand-500\\/60:hover { --tw-shadow-color: ${effectiveSecondaryColor2}99 !important; }
             
             .hover\\:from-brand-500:hover { --tw-gradient-from: var(--accent-color) !important; }
             .hover\\:from-brand-600:hover { --tw-gradient-from: var(--accent-color) !important; }
             .hover\\:via-brand-400:hover { --tw-gradient-via: ${effectiveAccentColor}cc !important; }
             .hover\\:to-brand-600:hover { --tw-gradient-to: var(--accent-color) !important; }
             
-            .bg-brand\\/5 { background-color: ${effectiveAccentColor}0d !important; }
-            .bg-brand\\/10 { background-color: ${effectiveAccentColor}1a !important; }
-            .bg-brand\\/20 { background-color: ${effectiveAccentColor}33 !important; }
-            .bg-brand\\/30 { background-color: ${effectiveAccentColor}4d !important; }
-            .bg-brand\\/50 { background-color: ${effectiveAccentColor}80 !important; }
-            .bg-brand\\/90 { background-color: ${effectiveAccentColor}e6 !important; }
-            .group-hover\\:bg-brand\\/10 { background-color: ${effectiveAccentColor}1a !important; }
+            /* Background highlights - use secondary color 2 for subtle highlights */
+            .bg-brand\\/5 { background-color: ${effectiveSecondaryColor2}0d !important; }
+            .bg-brand\\/10 { background-color: ${effectiveSecondaryColor2}1a !important; }
+            .bg-brand\\/20 { background-color: ${effectiveSecondaryColor2}33 !important; }
+            .bg-brand\\/30 { background-color: ${effectiveSecondaryColor2}4d !important; }
+            .bg-brand\\/50 { background-color: ${effectiveSecondaryColor2}80 !important; }
+            .bg-brand\\/90 { background-color: ${effectiveSecondaryColor2}e6 !important; }
+            .group-hover\\:bg-brand\\/10 { background-color: ${effectiveSecondaryColor2}1a !important; }
             .group-hover\\:text-brand { color: var(--accent-color) !important; }
             
             /* File input styling */
@@ -2503,11 +2515,11 @@ export function GeneralRequestsPage({
               .requests-page-container .btn-primary,
               .requests-page-container button[type="submit"] {
                 background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-hover) 50%, ${effectiveAccentColor}99 100%) !important;
-                box-shadow: 0 4px 14px ${effectiveAccentColor}40 !important;
+                box-shadow: 0 4px 14px ${effectiveSecondaryColor2}40 !important;
               }
               .requests-page-container .btn-primary:hover,
               .requests-page-container button[type="submit"]:hover {
-                box-shadow: 0 6px 20px ${effectiveAccentColor}60 !important;
+                box-shadow: 0 6px 20px ${effectiveSecondaryColor2}60 !important;
                 transform: translateY(-1px);
               }
             `}
