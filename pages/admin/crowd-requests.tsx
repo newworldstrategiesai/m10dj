@@ -1756,12 +1756,81 @@ export default function CrowdRequestsPage() {
         });
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      // Determine base URL based on product context (same logic as generateQRCode)
+      let productContext = organization?.product_context || null;
+      
+      // If product context is not set or might be wrong, try to detect from multiple sources
+      if (!productContext || productContext === 'm10dj') {
+        // Try to detect from current domain first
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname.toLowerCase();
+          if (hostname.includes('tipjar.live')) {
+            productContext = 'tipjar';
+          } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+            productContext = 'djdash';
+          } else if (hostname.includes('m10djcompany.com')) {
+            productContext = 'm10dj';
+          }
+        }
+        
+        // If on localhost and still not detected, check user metadata or environment
+        if ((!productContext || productContext === 'm10dj') && typeof window !== 'undefined') {
+          const hostname = window.location.hostname.toLowerCase();
+          if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+            // On localhost, check environment variables or default to tipjar
+            if (process.env.NEXT_PUBLIC_TIPJAR_URL || process.env.NEXT_PUBLIC_DEFAULT_PRODUCT === 'tipjar') {
+              productContext = 'tipjar';
+            } else if (process.env.NEXT_PUBLIC_DJDASH_URL || process.env.NEXT_PUBLIC_DEFAULT_PRODUCT === 'djdash') {
+              productContext = 'djdash';
+            } else {
+              // For localhost development, default to tipjar if product_context was m10dj
+              productContext = 'tipjar';
+            }
+          }
+        }
+      }
+      
+      // Final fallback: default to tipjar if still not detected
+      productContext = productContext || 'tipjar';
+      
+      let baseUrl: string;
+      switch (productContext) {
+        case 'tipjar':
+          baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
+          break;
+        case 'djdash':
+          baseUrl = process.env.NEXT_PUBLIC_DJDASH_URL || 'https://djdash.net';
+          break;
+        case 'm10dj':
+          baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://m10djcompany.com';
+          break;
+        default:
+          // Fallback: check current domain
+          if (typeof window !== 'undefined') {
+            const hostname = window.location.hostname.toLowerCase();
+            if (hostname.includes('tipjar.live')) {
+              baseUrl = 'https://tipjar.live';
+            } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+              baseUrl = 'https://djdash.net';
+            } else {
+              baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+            }
+          } else {
+            baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live';
+          }
+      }
+      
       let requestUrl: string;
       
       if (qrType === 'public') {
-        // Add ?qr=1 to automatically mark scans as QR code scans
-        requestUrl = `${baseUrl}/requests?qr=1`;
+        // Always use slug-based URLs when slug is available (for all product contexts)
+        if (organization?.slug) {
+          // Use slug-based URLs: {domain}/{slug}/requests?qr=1
+          requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
+        } else {
+          // Fallback: use generic /requests path if no slug
+          requestUrl = `${baseUrl}/requests?qr=1`;
+        }
       } else {
         // Add ?qr=1 to automatically mark scans as QR code scans
         requestUrl = `${baseUrl}/crowd-request/${encodeURIComponent(qrEventCode)}?qr=1`;
@@ -2101,7 +2170,7 @@ export default function CrowdRequestsPage() {
                   font-size: 10px;
                   color: #999999;
                   margin-top: 15px;
-                ">Powered by m10 dj company</p>
+                ">Powered by ${productContext === 'tipjar' ? 'TipJar.Live' : productContext === 'djdash' ? 'DJ Dash' : 'm10 dj company'}</p>
               </div>
               
                 <!-- Decorated QR Code on the right side -->
@@ -2269,27 +2338,35 @@ export default function CrowdRequestsPage() {
               </span>
             </div>
             
-            ${paymentSettings.cashAppTag ? `
-              <p style="
-                font-size: 10px;
-                color: #666666;
-                margin: 5px 0;
-              ">Cash App: ${escapeHtml(paymentSettings.cashAppTag)}</p>
-            ` : ''}
-            
-            ${paymentSettings.venmoUsername ? `
-              <p style="
-                font-size: 10px;
-                color: #666666;
-                margin: 5px 0;
-              ">Venmo: ${escapeHtml(paymentSettings.venmoUsername)}</p>
-            ` : ''}
+            ${(() => {
+              // Use organization's payment settings first, then fall back to paymentSettings state
+              const cashAppTag = organization?.requests_cashapp_tag || paymentSettings?.cashAppTag || null;
+              const venmoUsername = organization?.requests_venmo_username || paymentSettings?.venmoUsername || null;
+              
+              return `
+                ${cashAppTag ? `
+                  <p style="
+                    font-size: 10px;
+                    color: #666666;
+                    margin: 5px 0;
+                  ">Cash App: ${escapeHtml(cashAppTag)}</p>
+                ` : ''}
+                
+                ${venmoUsername ? `
+                  <p style="
+                    font-size: 10px;
+                    color: #666666;
+                    margin: 5px 0;
+                  ">Venmo: ${escapeHtml(venmoUsername)}</p>
+                ` : ''}
+              `;
+            })()}
             
             <p style="
               font-size: 10px;
               color: #999999;
               margin-top: 20px;
-            ">Powered by m10 dj company</p>
+            ">Powered by ${productContext === 'tipjar' ? 'TipJar.Live' : productContext === 'djdash' ? 'DJ Dash' : 'm10 dj company'}</p>
           </div>
         `;
       };

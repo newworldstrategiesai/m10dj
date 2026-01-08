@@ -162,6 +162,18 @@ export default function RequestsPageSettings() {
   // Show subtitle (location) toggle
   const [showSubtitle, setShowSubtitle] = useState(true);
   
+  // Subtitle type: 'location' (city/state), 'venue', or 'custom'
+  const [subtitleType, setSubtitleType] = useState<'location' | 'venue' | 'custom'>('location');
+  
+  // Venue name for subtitle
+  const [subtitleVenue, setSubtitleVenue] = useState('');
+  
+  // Custom subtitle text
+  const [subtitleCustomText, setSubtitleCustomText] = useState('');
+  
+  // Flag to track if subtitle font was manually changed (if false, use artist name font)
+  const [subtitleFontManuallyChanged, setSubtitleFontManuallyChanged] = useState(false);
+  
   // Background type (gradient, subtle, bubble, spiral, aurora, none)
   const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'none'>('gradient');
   
@@ -189,8 +201,11 @@ export default function RequestsPageSettings() {
   // Artist name kerning (letter-spacing)
   const [artistNameKerning, setArtistNameKerning] = useState(0); // In pixels
   
-  // Subtitle (location) font
+  // Subtitle (location) font - defaults to artist name font unless manually changed
   const [subtitleFont, setSubtitleFont] = useState('Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
+  
+  // Computed subtitle font - uses artist name font by default unless manually changed
+  const effectiveSubtitleFont = subtitleFontManuallyChanged ? subtitleFont : artistNameFont;
   
   // Subtitle text transform
   const [subtitleTextTransform, setSubtitleTextTransform] = useState<'uppercase' | 'lowercase' | 'none'>('none');
@@ -398,8 +413,17 @@ export default function RequestsPageSettings() {
         // Set artist name kerning (letter-spacing)
         setArtistNameKerning(org.requests_artist_name_kerning || 0);
         
-        // Set subtitle font
-        setSubtitleFont(org.requests_subtitle_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
+        // Set subtitle type and related fields
+        setSubtitleType(org.requests_subtitle_type || 'location');
+        setSubtitleVenue(org.requests_subtitle_venue || '');
+        setSubtitleCustomText(org.requests_subtitle_custom_text || '');
+        
+        // Set subtitle font - check if it was manually changed
+        const savedSubtitleFont = org.requests_subtitle_font || '';
+        const savedArtistNameFont = org.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
+        const fontWasManuallyChanged = savedSubtitleFont !== '' && savedSubtitleFont !== savedArtistNameFont;
+        setSubtitleFontManuallyChanged(fontWasManuallyChanged);
+        setSubtitleFont(savedSubtitleFont || savedArtistNameFont);
         
         // Set subtitle text transform
         setSubtitleTextTransform(org.requests_subtitle_text_transform || 'none');
@@ -548,6 +572,8 @@ export default function RequestsPageSettings() {
     setHeaderFields(prev => ({ ...prev, [field]: value }));
     setError(null);
     setSuccess(false);
+    // Update preview iframe in real-time for header fields (especially location/subtitle)
+    setTimeout(() => updatePreviewIframe(), 100);
   };
   
   const handleLabelFieldChange = (field: keyof typeof labelFields, value: string) => {
@@ -568,6 +594,25 @@ export default function RequestsPageSettings() {
     setSuccess(false);
   };
 
+  // Sync subtitle font with artist name font when artist name font changes (unless manually changed)
+  useEffect(() => {
+    if (!subtitleFontManuallyChanged && artistNameFont) {
+      setSubtitleFont(artistNameFont);
+    }
+  }, [artistNameFont, subtitleFontManuallyChanged]);
+
+  // Function to compute subtitle text based on selected type
+  const getSubtitleText = () => {
+    if (subtitleType === 'venue') {
+      return subtitleVenue || '';
+    } else if (subtitleType === 'custom') {
+      return subtitleCustomText || '';
+    } else {
+      // Location - use saved city/state from header fields
+      return headerFields.requests_header_location || '';
+    }
+  };
+
   // Function to get the preview URL with all display name styling parameters
   const getPreviewUrl = () => {
     if (!organization?.slug) return '';
@@ -579,6 +624,10 @@ export default function RequestsPageSettings() {
       accentColor: accentColor,
       buttonStyle: buttonStyle,
       themeMode: themeMode,
+      // Header field values for preview (including subtitle/location)
+      headerArtistName: headerFields.requests_header_artist_name || '',
+      headerLocation: getSubtitleText(), // Use computed subtitle text
+      headerDate: headerFields.requests_header_date || '',
       // Display name styling parameters
       artistNameFont: encodeURIComponent(artistNameFont),
       artistNameTextTransform: artistNameTextTransform,
@@ -593,7 +642,7 @@ export default function RequestsPageSettings() {
       artistNameShadowBlur: String(artistNameShadowBlur),
       artistNameShadowColor: artistNameShadowColor,
       // Subtitle styling parameters
-      subtitleFont: encodeURIComponent(subtitleFont),
+      subtitleFont: encodeURIComponent(effectiveSubtitleFont), // Use effective font (artist name font if not manually changed)
       subtitleTextTransform: subtitleTextTransform,
       subtitleColor: subtitleColor,
       subtitleKerning: String(subtitleKerning),
@@ -621,7 +670,15 @@ export default function RequestsPageSettings() {
     const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
     if (!iframe) return;
     
-    iframe.src = getPreviewUrl();
+    // Force reload by using current timestamp (cache-busting)
+    const previewUrl = getPreviewUrl();
+    if (!previewUrl) return;
+    
+    // Parse the relative URL and update timestamp to force reload
+    const url = new URL(previewUrl, window.location.origin);
+    url.searchParams.set('t', String(Date.now())); // Always use current timestamp to force reload
+    
+    iframe.src = url.pathname + url.search;
   };
 
   const handleSave = async () => {
@@ -676,8 +733,12 @@ export default function RequestsPageSettings() {
         requests_artist_name_color: artistNameColor || '#ffffff',
         // Artist name kerning (letter-spacing)
         requests_artist_name_kerning: artistNameKerning || 0,
-        // Subtitle font
-        requests_subtitle_font: subtitleFont || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
+        // Subtitle type and content
+        requests_subtitle_type: subtitleType || 'location',
+        requests_subtitle_venue: subtitleType === 'venue' ? (subtitleVenue || '') : null,
+        requests_subtitle_custom_text: subtitleType === 'custom' ? (subtitleCustomText || '') : null,
+        // Subtitle font - only save if manually changed, otherwise it uses artist name font
+        requests_subtitle_font: subtitleFontManuallyChanged ? (effectiveSubtitleFont || null) : null,
         // Subtitle text transform
         requests_subtitle_text_transform: subtitleTextTransform || 'none',
         // Subtitle stroke settings
@@ -1158,6 +1219,8 @@ export default function RequestsPageSettings() {
                             setThemeMode('light');
                             setError(null);
                             setSuccess(false);
+                            // Update preview iframe in real-time
+                            setTimeout(() => updatePreviewIframe(), 100);
                           }}
                           className={`relative p-4 rounded-lg border-2 transition-all ${
                             themeMode === 'light'
@@ -1190,6 +1253,8 @@ export default function RequestsPageSettings() {
                             setThemeMode('dark');
                             setError(null);
                             setSuccess(false);
+                            // Update preview iframe in real-time
+                            setTimeout(() => updatePreviewIframe(), 100);
                           }}
                           className={`relative p-4 rounded-lg border-2 transition-all ${
                             themeMode === 'dark'
@@ -2684,16 +2749,112 @@ export default function RequestsPageSettings() {
                       
                       {showSubtitle && (
                         <>
+                      {/* Subtitle Type Selection */}
+                      <div className="mb-6">
+                        <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Subtitle Content
+                        </Label>
+                        <div className="flex gap-2 mb-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubtitleType('location');
+                              setError(null);
+                              setSuccess(false);
+                              setTimeout(() => updatePreviewIframe(), 100);
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                              subtitleType === 'location'
+                                ? 'bg-[#fcba00] text-black shadow-sm'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            City & State
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubtitleType('venue');
+                              setError(null);
+                              setSuccess(false);
+                              setTimeout(() => updatePreviewIframe(), 100);
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                              subtitleType === 'venue'
+                                ? 'bg-[#fcba00] text-black shadow-sm'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            Venue
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubtitleType('custom');
+                              setError(null);
+                              setSuccess(false);
+                              setTimeout(() => updatePreviewIframe(), 100);
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                              subtitleType === 'custom'
+                                ? 'bg-[#fcba00] text-black shadow-sm'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            Custom Text
+                          </button>
+                        </div>
+                        
+                        {/* Venue input - shown when venue is selected */}
+                        {subtitleType === 'venue' && (
+                          <div className="mt-3">
+                            <Input
+                              placeholder="Enter venue name"
+                              value={subtitleVenue}
+                              onChange={(e) => {
+                                setSubtitleVenue(e.target.value);
+                                setError(null);
+                                setSuccess(false);
+                                setTimeout(() => updatePreviewIframe(), 100);
+                              }}
+                              className="w-full"
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Custom text input - shown when custom is selected */}
+                        {subtitleType === 'custom' && (
+                          <div className="mt-3">
+                            <Input
+                              placeholder="Enter custom subtitle text"
+                              value={subtitleCustomText}
+                              onChange={(e) => {
+                                setSubtitleCustomText(e.target.value);
+                                setError(null);
+                                setSuccess(false);
+                                setTimeout(() => updatePreviewIframe(), 100);
+                              }}
+                              className="w-full"
+                            />
+                          </div>
+                        )}
+                        
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Choose what to display as the subtitle: City & State (from saved location), Venue name, or Custom text
+                        </p>
+                      </div>
+                      
                       {/* Subtitle Font */}
                       <div className="mb-6">
                         <Label htmlFor="subtitle_font" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Subtitle Font
+                          Subtitle Font {!subtitleFontManuallyChanged && <span className="text-xs text-gray-500">(uses Display Name font by default)</span>}
                         </Label>
                         <select
                           id="subtitle_font"
-                          value={subtitleFont}
+                          value={effectiveSubtitleFont}
                           onChange={(e) => {
                             setSubtitleFont(e.target.value);
+                            setSubtitleFontManuallyChanged(true);
                             setError(null);
                             setSuccess(false);
                             setTimeout(() => updatePreviewIframe(), 100);
@@ -2777,7 +2938,7 @@ export default function RequestsPageSettings() {
                           <p 
                             className="font-black text-gray-900 dark:text-white tracking-tight text-2xl"
                             style={{ 
-                              fontFamily: subtitleFont,
+                              fontFamily: effectiveSubtitleFont,
                               textTransform: subtitleTextTransform,
                               color: subtitleColor,
                               letterSpacing: `${subtitleKerning}px`,
@@ -2785,7 +2946,7 @@ export default function RequestsPageSettings() {
                             } as React.CSSProperties}
                           >
                             {(() => {
-                              const previewText = headerFields.requests_header_location || 'Memphis, TN';
+                              const previewText = getSubtitleText() || (subtitleType === 'location' ? 'Memphis, TN' : subtitleType === 'venue' ? 'Venue Name' : 'Custom Text');
                               if (subtitleTextTransform === 'uppercase') {
                                 return previewText.toUpperCase();
                               } else if (subtitleTextTransform === 'lowercase') {

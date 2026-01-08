@@ -252,27 +252,53 @@ export default function OrganizationRequestsPage() {
         </Head>
       )}
       <Head>
-        <title>
-          {organization?.requests_page_title || 
-            (typeof window !== 'undefined' && (window.location.hostname === 'tipjar.live' || window.location.hostname === 'www.tipjar.live')
-              ? `TipJar.Live | ${organization?.requests_header_artist_name || organization?.name || 'Requests'}`
-              : `Request a Song or Shoutout | ${organization?.name || 'TipJar.Live'}`
-            )
-          }
-        </title>
-        <meta
-          name="description"
-          content={
-            organization?.requests_page_description ||
-            (organization?.requests_header_artist_name
-              ? `Request a song or shoutout for ${organization.requests_header_artist_name}`
-              : `Request a song or shoutout for ${organization?.name || 'your event'}`)
-          }
-        />
         {(() => {
-          const siteUrl = typeof window !== 'undefined' 
+          // Determine product context from organization or hostname
+          let productContext = organization?.product_context || null;
+          
+          // If product context is not set, detect from hostname
+          if (!productContext && typeof window !== 'undefined') {
+            const hostname = window.location.hostname.toLowerCase();
+            if (hostname.includes('tipjar.live')) {
+              productContext = 'tipjar';
+            } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+              productContext = 'djdash';
+            } else if (hostname.includes('m10djcompany.com')) {
+              productContext = 'm10dj';
+            }
+          }
+          
+          // Fallback: default to tipjar if not detected
+          productContext = productContext || 'tipjar';
+          
+          // Determine site name based on product context
+          const siteName = productContext === 'tipjar' 
+            ? 'TipJar.Live' 
+            : productContext === 'djdash' 
+            ? 'DJ Dash' 
+            : 'M10 DJ Company';
+          
+          // Determine site URL based on product context
+          let siteUrl = typeof window !== 'undefined' 
             ? window.location.origin 
-            : (process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com');
+            : null;
+          
+          if (!siteUrl) {
+            switch (productContext) {
+              case 'tipjar':
+                siteUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
+                break;
+              case 'djdash':
+                siteUrl = process.env.NEXT_PUBLIC_DJDASH_URL || 'https://djdash.net';
+                break;
+              case 'm10dj':
+                siteUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://m10djcompany.com';
+                break;
+              default:
+                siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live';
+            }
+          }
+          
           const coverPhoto = getCoverPhotoUrl(organization, '/assets/DJ-Ben-Murray-Dodge-Poster.png');
           const getAbsoluteImageUrl = (imageUrl) => {
             if (!imageUrl) return `${siteUrl}/assets/DJ-Ben-Murray-Dodge-Poster.png`;
@@ -285,18 +311,31 @@ export default function OrganizationRequestsPage() {
             return `${siteUrl}/${imageUrl}`;
           };
           const ogImageUrl = getAbsoluteImageUrl(coverPhoto);
-          const displayName = organization?.requests_header_artist_name || organization?.name || 'M10 DJ Company';
-          const pageTitle = organization?.requests_page_title || `Request a Song or Shoutout | ${displayName}`;
+          
+          // Use organization name or artist name for display, fallback to site name
+          const displayName = organization?.requests_header_artist_name || organization?.name || siteName;
+          
+          // Generate page title - use custom title if set, otherwise use product-aware format
+          const pageTitle = organization?.requests_page_title || 
+            (productContext === 'tipjar'
+              ? `TipJar.Live | ${displayName}`
+              : productContext === 'djdash'
+              ? `DJ Dash | ${displayName}`
+              : `Request a Song or Shoutout | ${displayName}`
+            );
+          
           const pageDescription = organization?.requests_page_description || 
             (organization?.requests_header_artist_name 
               ? `Request a song or shoutout for ${organization.requests_header_artist_name}`
               : `Request a song or shoutout for ${organization?.name || 'your event'}`);
+          
           const currentUrl = typeof window !== 'undefined' 
             ? window.location.href 
             : `${siteUrl}/${organization?.slug || 'requests'}/requests`;
           
           return (
             <>
+              <title>{pageTitle}</title>
               <meta name="description" content={pageDescription} />
               <meta property="og:type" content="website" />
               <meta property="og:url" content={currentUrl} />
@@ -306,7 +345,7 @@ export default function OrganizationRequestsPage() {
               <meta property="og:image:width" content="1200" />
               <meta property="og:image:height" content="630" />
               <meta property="og:image:alt" content={organization?.requests_header_artist_name || organization?.name || 'Request a Song or Shoutout'} />
-              <meta property="og:site_name" content={organization?.name || 'M10 DJ Company'} />
+              <meta property="og:site_name" content={organization?.name || siteName} />
               <meta property="og:locale" content="en_US" />
               <meta name="twitter:card" content="summary_large_image" />
               <meta name="twitter:url" content={currentUrl} />

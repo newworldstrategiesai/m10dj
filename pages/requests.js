@@ -298,8 +298,32 @@ export function GeneralRequestsPage({
   // Read background type from URL (for admin preview)
   const previewBackgroundType = router.query.backgroundType || null;
   
+  // Read header field values from URL (for admin preview)
+  const previewHeaderArtistName = router.query.headerArtistName ? decodeURIComponent(router.query.headerArtistName) : null;
+  const previewHeaderLocation = router.query.headerLocation ? decodeURIComponent(router.query.headerLocation) : null;
+  const previewHeaderDate = router.query.headerDate ? decodeURIComponent(router.query.headerDate) : null;
+  
+  // Use preview values for header fields if available, otherwise use organization data
+  const effectiveHeaderArtistName = previewHeaderArtistName !== null ? previewHeaderArtistName : (organizationData?.requests_header_artist_name || organizationData?.name || '');
+  const effectiveHeaderLocation = previewHeaderLocation !== null ? previewHeaderLocation : (() => {
+    // Compute subtitle text based on type (for non-preview mode)
+    if (previewHeaderLocation !== null) return previewHeaderLocation;
+    const subtitleType = organizationData?.requests_subtitle_type || 'location';
+    if (subtitleType === 'venue') {
+      return organizationData?.requests_subtitle_venue || '';
+    } else if (subtitleType === 'custom') {
+      return organizationData?.requests_subtitle_custom_text || '';
+    } else {
+      // Location - use saved city/state
+      return organizationData?.requests_header_location || '';
+    }
+  })();
+  const effectiveHeaderDate = previewHeaderDate !== null ? previewHeaderDate : (organizationData?.requests_header_date || '');
+  
   // Use preview values for subtitle styling if available, otherwise use organization data
-  const effectiveSubtitleFont = previewSubtitleFont || organizationData?.requests_subtitle_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
+  // Subtitle font defaults to artist name font if not set (unless manually changed)
+  const artistNameFont = organizationData?.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
+  const effectiveSubtitleFont = previewSubtitleFont || (organizationData?.requests_subtitle_font || artistNameFont);
   const effectiveSubtitleTextTransform = previewSubtitleTextTransform || organizationData?.requests_subtitle_text_transform || 'none';
   const effectiveSubtitleColor = previewSubtitleColor || organizationData?.requests_subtitle_color || '#ffffff';
   const effectiveSubtitleKerning = previewSubtitleKerning !== null ? previewSubtitleKerning : (organizationData?.requests_subtitle_kerning || 0);
@@ -790,28 +814,40 @@ export function GeneralRequestsPage({
     };
   }, [forceBiddingMode, biddingEnabled, requestType, organizationId]);
 
-  // Apply dark mode only on requests page - ensure it overrides any theme settings
+  // Apply theme mode on requests page - respect user's theme selection
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Force dark mode on requests page
-      const applyDarkMode = () => {
-        document.documentElement.classList.add('dark');
-        // Also set data attribute to prevent theme provider from overriding
-        document.documentElement.setAttribute('data-force-dark', 'true');
+      // Apply theme mode based on effectiveThemeMode setting
+      const applyThemeMode = () => {
+        if (effectiveThemeMode === 'dark') {
+          document.documentElement.classList.add('dark');
+          document.documentElement.classList.remove('light');
+          document.documentElement.setAttribute('data-force-dark', 'true');
+          document.documentElement.removeAttribute('data-force-light');
+        } else if (effectiveThemeMode === 'light') {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('light');
+          document.documentElement.setAttribute('data-force-light', 'true');
+          document.documentElement.removeAttribute('data-force-dark');
+        }
       };
       
       // Apply immediately
-      applyDarkMode();
+      applyThemeMode();
       
       // Also apply after a short delay to override any theme provider changes
-      const timeoutId = setTimeout(applyDarkMode, 100);
+      const timeoutId = setTimeout(applyThemeMode, 100);
       
-      // Monitor for theme changes and re-apply dark mode
+      // Monitor for theme changes and re-apply theme mode
       const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
           if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-            if (!document.documentElement.classList.contains('dark')) {
-              applyDarkMode();
+            // Only re-apply if the class doesn't match our desired theme
+            const hasDark = document.documentElement.classList.contains('dark');
+            const hasLight = document.documentElement.classList.contains('light');
+            if ((effectiveThemeMode === 'dark' && !hasDark) || 
+                (effectiveThemeMode === 'light' && !hasLight)) {
+              applyThemeMode();
             }
           }
         });
@@ -822,15 +858,16 @@ export function GeneralRequestsPage({
         attributeFilter: ['class']
       });
       
-      // Cleanup: remove dark mode when component unmounts (user navigates away)
+      // Cleanup: remove theme classes when component unmounts (user navigates away)
       return () => {
         clearTimeout(timeoutId);
         observer.disconnect();
-        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.remove('dark', 'light');
         document.documentElement.removeAttribute('data-force-dark');
+        document.documentElement.removeAttribute('data-force-light');
       };
     }
-  }, []);
+  }, [effectiveThemeMode]);
 
   // Force video autoplay for Safari - Safari requires programmatic play() call
   useEffect(() => {
@@ -2454,10 +2491,20 @@ export function GeneralRequestsPage({
             
             ${effectiveThemeMode === 'light' ? `
               .requests-page-container, .requests-page-container * { color-scheme: light; }
+              .requests-page-container { background-color: white !important; }
+              @media (min-width: 768px) {
+                .requests-page-container { background-color: transparent !important; }
+              }
               .requests-page-container .dark\\:bg-black { background-color: transparent !important; }
-              .requests-page-container .dark\\:from-black { --tw-gradient-from: transparent !important; }
-              .requests-page-container .dark\\:via-black { --tw-gradient-via: transparent !important; }
-              .requests-page-container .dark\\:to-black { --tw-gradient-to: transparent !important; }
+              .requests-page-container .dark\\:from-black { --tw-gradient-from: rgb(249, 250, 251) !important; }
+              .requests-page-container .dark\\:via-black { --tw-gradient-via: rgb(249, 250, 251) !important; }
+              .requests-page-container .dark\\:to-black { --tw-gradient-to: rgb(249, 250, 251) !important; }
+              .requests-page-container .bg-gray-50 { background-color: rgb(249, 250, 251) !important; }
+              .requests-page-container .bg-white { background-color: white !important; }
+              .requests-page-container .bg-white\\/80 { background-color: rgba(255, 255, 255, 0.8) !important; }
+              .requests-page-container .from-gray-50 { --tw-gradient-from: rgb(249, 250, 251) !important; }
+              .requests-page-container .via-brand\\/5 { --tw-gradient-via: rgba(252, 186, 0, 0.05) !important; }
+              .requests-page-container .to-gray-50 { --tw-gradient-to: rgb(249, 250, 251) !important; }
               .requests-page-container .dark\\:bg-gray-900 { background-color: rgb(249, 250, 251) !important; }
               .requests-page-container .dark\\:bg-gray-800 { background-color: white !important; }
               .requests-page-container .dark\\:bg-black\\/80 { background-color: rgba(255, 255, 255, 0.8) !important; }
@@ -2466,6 +2513,13 @@ export function GeneralRequestsPage({
               .requests-page-container .dark\\:text-gray-200 { color: rgb(55, 65, 81) !important; }
               .requests-page-container .dark\\:text-gray-300 { color: rgb(75, 85, 99) !important; }
               .requests-page-container .dark\\:text-gray-400 { color: rgb(107, 114, 128) !important; }
+              .requests-page-container .text-gray-900 { color: rgb(17, 24, 39) !important; }
+              .requests-page-container .text-gray-800 { color: rgb(31, 41, 55) !important; }
+              .requests-page-container .text-gray-700 { color: rgb(55, 65, 81) !important; }
+              .requests-page-container .text-gray-600 { color: rgb(75, 85, 99) !important; }
+              .requests-page-container .text-gray-500 { color: rgb(107, 114, 128) !important; }
+              .requests-page-container .border-gray-200 { border-color: rgb(229, 231, 235) !important; }
+              .requests-page-container .border-gray-300 { border-color: rgb(209, 213, 219) !important; }
               .requests-page-container .dark\\:border-gray-700 { border-color: rgb(229, 231, 235) !important; }
               .requests-page-container .dark\\:border-gray-800 { border-color: rgb(229, 231, 235) !important; }
             ` : ''}
@@ -2494,8 +2548,12 @@ export function GeneralRequestsPage({
       />
 
       <div 
-        className={`requests-page-container min-h-screen bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 dark:from-black dark:via-black dark:to-black relative overflow-x-hidden md:flex ${
-          effectiveThemeMode === 'dark' ? 'force-dark' : effectiveThemeMode === 'light' ? 'force-light' : ''
+        className={`requests-page-container min-h-screen relative overflow-x-hidden md:flex ${
+          effectiveThemeMode === 'dark' 
+            ? 'bg-gradient-to-br from-black via-black to-black force-dark'
+            : effectiveThemeMode === 'light'
+            ? 'bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 force-light'
+            : 'bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50 dark:from-black dark:via-black dark:to-black'
         }`}
         style={{
           scrollbarWidth: 'none',
@@ -2939,7 +2997,7 @@ export function GeneralRequestsPage({
                 })()}
                 
                 {/* Location - Only show if value exists, show subtitle is enabled, and not minimal header */}
-                {!minimalHeader && organizationData?.requests_header_location && organizationData?.requests_show_subtitle !== false && (
+                {!minimalHeader && effectiveHeaderLocation && organizationData?.requests_show_subtitle !== false && (
                   <p 
                     className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-3 sm:mb-4"
                     style={{
@@ -2951,7 +3009,7 @@ export function GeneralRequestsPage({
                     }}
                   >
                     {(() => {
-                      const locationText = organizationData.requests_header_location;
+                      const locationText = effectiveHeaderLocation;
                       // Apply text transform
                       if (effectiveSubtitleTextTransform === 'uppercase') {
                         return locationText.toUpperCase();
@@ -2964,9 +3022,9 @@ export function GeneralRequestsPage({
                 )}
                 
                 {/* Date - Only show if value exists and not minimal header */}
-                {!minimalHeader && organizationData?.requests_header_date && (
+                {!minimalHeader && effectiveHeaderDate && (
                   <p className="text-lg sm:text-xl md:text-2xl text-white/80 drop-shadow-md">
-                    {organizationData.requests_header_date}
+                    {effectiveHeaderDate}
                   </p>
                 )}
                 
