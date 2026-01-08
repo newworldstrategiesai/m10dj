@@ -18,138 +18,161 @@ export default function TipJarAnimatedLoader({
   return (
     <svg
       viewBox="0 0 512 512"
-      xmlns="http://www.w3.org/2000/svg"
       width={size}
       height={size}
+      xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="Loading"
       className={className}
     >
       <defs>
-        {/* Jar interior (used to clip liquid) */}
-        <clipPath id="jar-interior">
-          <path
-            d="
-              M144 128
-              C120 152 112 176 112 208
-              V400
-              C112 448 152 480 192 480
-              H320
-              C360 480 400 448 400 400
-              V208
-              C400 176 392 152 368 128
-              Z
-            "
-          />
+        {/* Jar interior clip */}
+        <clipPath id="jar-clip">
+          <path d="
+            M144 156
+            C144 128 168 108 192 108
+            H320
+            C344 108 368 128 368 156
+            V404
+            C368 432 344 452 320 452
+            H192
+            C168 452 144 432 144 404
+            Z
+          " />
         </clipPath>
-        
-        {/* Liquid gradient */}
-        <linearGradient id="liquid-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#81C784" />
-          <stop offset="100%" stopColor="#66BB6A" />
+
+        <linearGradient id="liquid-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#7FE08C"/>
+          <stop offset="100%" stopColor="#3C8D4B"/>
         </linearGradient>
       </defs>
 
-      {/* 🌊 LIGHT GREEN SURFACE with wave animation */}
+      {/* === LIQUID SYSTEM === */}
+      <g clipPath="url(#jar-clip)">
+        <g transform="translate(0,210)">
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            values="0 210; 0 0; 0 210"
+            dur="2.3s"
+            repeatCount="indefinite"
+            keyTimes="0;0.75;1"
+            calcMode="spline"
+            keySplines="
+              0.4 0 0.6 1;
+              0.4 0 0.6 1
+            "
+          />
+
+          {/* Base liquid (intentionally extends ABOVE wave) */}
+          <rect
+            x="112"
+            y="80"
+            width="288"
+            height="500"
+            fill="#4CAF50"
+          />
+
+          {/* Light green surface (defines ONLY visible top) */}
+          <path
+            fill="url(#liquid-grad)"
+            d="
+              M112 240
+              C170 215, 250 275, 320 250
+              C360 240, 380 265, 400 255
+              L400 580
+              L112 580
+              Z
+            "
+          >
+            <animate
+              attributeName="d"
+              dur="1.05s"
+              repeatCount="indefinite"
+              calcMode="spline"
+              keySplines="
+                0.4 0 0.6 1;
+                0.4 0 0.6 1
+              "
+              values="
+                M112 240 C170 215,250 275,320 250 C360 240,380 265,400 255 L400 580 L112 580 Z;
+                M112 240 C170 275,250 215,320 270 C360 280,380 245,400 265 L400 580 L112 580 Z;
+                M112 240 C170 215,250 275,320 250 C360 240,380 265,400 255 L400 580 L112 580 Z
+              "
+            />
+          </path>
+
+          {/* Thin dark green border following the wave */}
+          <path
+            fill="none"
+            stroke="#2E7D32"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="
+              M112 240
+              C170 215, 250 275, 320 250
+              C360 240, 380 265, 400 255
+            "
+          >
+            <animate
+              attributeName="d"
+              dur="1.05s"
+              repeatCount="indefinite"
+              calcMode="spline"
+              keySplines="
+                0.4 0 0.6 1;
+                0.4 0 0.6 1
+              "
+              values="
+                M112 240 C170 215,250 275,320 250 C360 240,380 265,400 255;
+                M112 240 C170 275,250 215,320 270 C360 280,380 245,400 265;
+                M112 240 C170 215,250 275,320 250 C360 240,380 265,400 255
+              "
+            />
+          </path>
+        </g>
+      </g>
+
+      {/* === JAR BODY === */}
       <path
-        id="wave"
-        fill="url(#liquid-grad)"
-        clipPath="url(#jar-interior)"
         d="
-          M96 260
-          C160 225, 240 285, 320 255
-          C360 245, 390 265, 416 255
-          L416 640
-          L96 640
+          M144 156
+          C144 128 168 108 192 108
+          H320
+          C344 108 368 128 368 156
+          V404
+          C368 432 344 452 320 452
+          H192
+          C168 452 144 432 144 404
           Z
         "
-      >
-        <animate
-          attributeName="d"
-          dur="1.1s"
-          repeatCount="indefinite"
-          calcMode="spline"
-          keySplines="
-            0.4 0 0.6 1;
-            0.4 0 0.6 1
-          "
-          values="
-            M96 260 C160 225,240 285,320 255 C360 245,390 265,416 255 L416 640 L96 640 Z;
-            M96 260 C160 285,240 225,320 275 C360 285,390 245,416 270 L416 640 L96 640 Z;
-            M96 260 C160 225,240 285,320 255 C360 245,390 265,416 255 L416 640 L96 640 Z
-          "
-        />
-      </path>
-
-      {/* 🌊 DARK GREEN THIN BORDER (same wave, stroke only) */}
-      <path
         fill="none"
         stroke="#2E7D32"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        clipPath="url(#jar-interior)"
-        d="
-          M96 260
-          C160 225, 240 285, 320 255
-          C360 245, 390 265, 416 255
-        "
-      >
-        <animate
-          attributeName="d"
-          dur="1.1s"
-          repeatCount="indefinite"
-          calcMode="spline"
-          keySplines="
-            0.4 0 0.6 1;
-            0.4 0 0.6 1
-          "
-          values="
-            M96 260 C160 225,240 285,320 255 C360 245,390 265,416 255;
-            M96 260 C160 285,240 225,320 275 C360 285,390 245,416 270;
-            M96 260 C160 225,240 285,320 255 C360 245,390 265,416 255
-          "
-        />
-      </path>
-
-      {/* Jar outline */}
-      <path
-        d="
-          M144 128
-          C120 152 112 176 112 208
-          V400
-          C112 448 152 480 192 480
-          H320
-          C360 480 400 448 400 400
-          V208
-          C400 176 392 152 368 128
-          Z
-        "
-        fill="none"
-        stroke="#3e8f3e"
-        strokeWidth="16"
-        strokeLinejoin="round"
+        strokeWidth="10"
       />
 
-      {/* Lid */}
+      {/* === LID (with matching stroke) === */}
       <rect
-        x="120"
-        y="72"
-        width="272"
-        height="56"
-        rx="28"
-        fill="#7acb7f"
+        x="160"
+        y="64"
+        width="192"
+        height="44"
+        rx="22"
+        fill="#6BD27C"
+        stroke="#2E7D32"
+        strokeWidth="10"
       />
 
-      {/* Dollar sign */}
+      {/* === DOLLAR SIGN === */}
       <text
         x="256"
-        y="335"
+        y="330"
         textAnchor="middle"
         fontSize="180"
-        fontWeight="700"
-        fill="white"
-        fontFamily="system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif"
+        fontWeight="800"
+        fill="#FFFFFF"
+        fontFamily="system-ui, -apple-system, BlinkMacSystemFont"
       >
         $
       </text>
