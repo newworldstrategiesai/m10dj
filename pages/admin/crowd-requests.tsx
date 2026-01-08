@@ -192,6 +192,50 @@ export default function CrowdRequestsPage() {
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [eventSearchQuery, setEventSearchQuery] = useState('');
   const [showEventDropdown, setShowEventDropdown] = useState(false);
+
+  // Helper function to determine product context for placeholders
+  const getProductContext = (): string => {
+    // Check organization product context first
+    let productContext = organization?.product_context || null;
+    
+    // If product context is not set or might be wrong, try to detect from hostname
+    if (!productContext || productContext === 'm10dj') {
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname.toLowerCase();
+        if (hostname.includes('tipjar.live')) {
+          productContext = 'tipjar';
+        } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+          productContext = 'djdash';
+        } else if (hostname.includes('m10djcompany.com')) {
+          productContext = 'm10dj';
+        }
+      }
+      
+      // For localhost, default to tipjar
+      if ((!productContext || productContext === 'm10dj') && typeof window !== 'undefined') {
+        const hostname = window.location.hostname.toLowerCase();
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+          productContext = 'tipjar';
+        }
+      }
+    }
+    
+    // Final fallback: default to tipjar if still not detected
+    return productContext || 'tipjar';
+  };
+
+  // Helper function to get page title placeholder based on product context
+  const getPageTitlePlaceholder = (): string => {
+    const productContext = getProductContext();
+    
+    if (productContext === 'tipjar') {
+      return 'Request a Song or Shoutout | TipJar.Live';
+    } else if (productContext === 'djdash') {
+      return 'Request a Song or Shoutout | DJ Dash';
+    } else {
+      return 'Request a Song or Shoutout | M10 DJ Company';
+    }
+  };
   const [headerSettings, setHeaderSettings] = useState({
     artistName: '',
     location: '',
@@ -5448,7 +5492,7 @@ export default function CrowdRequestsPage() {
                             <Input
                               value={pageSettings.pageTitle}
                               onChange={(e) => setPageSettings(prev => ({ ...prev, pageTitle: e.target.value }))}
-                              placeholder="Request a Song or Shoutout | M10 DJ Company"
+                              placeholder={getPageTitlePlaceholder()}
                               className="w-full"
                             />
                             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -6697,7 +6741,7 @@ export default function CrowdRequestsPage() {
                         <Input
                           value={pageSettings.pageTitle}
                           onChange={(e) => setPageSettings(prev => ({ ...prev, pageTitle: e.target.value }))}
-                          placeholder="Request a Song or Shoutout | M10 DJ Company"
+                          placeholder={getPageTitlePlaceholder()}
                           className="max-w-md"
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
