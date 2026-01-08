@@ -249,16 +249,39 @@ async function extractYouTubeInfo(url) {
         const part1 = dashMatch[1].trim();
         const part2 = dashMatch[2].trim();
         
-        // Heuristic: if part2 is shorter or contains common artist indicators, it's likely the artist
-        // Also check if part1 looks like a song title (longer, might have parentheses)
-        if (part2.length < part1.length || part2.match(/\b(ft\.|feat\.|featuring|official|video|audio|lyrics)\b/i)) {
-          // Likely "Song Title - Artist Name"
-          songTitle = part1;
-          artist = part2.replace(/\s*\(.*?\)\s*$/, '').trim(); // Remove trailing parenthetical info
-        } else {
+        // Improved heuristic to determine "Artist - Song" vs "Song - Artist"
+        // Common indicators:
+        // - Artist names are often shorter (1-3 words), song titles can be longer
+        // - Song titles often contain common words like "the", "to", "me", etc.
+        // - If part2 has keywords like "official", "video", etc., it's likely the song title
+        // - If part1 is a single word or very short, it's likely the artist
+        
+        const part1Words = part1.split(/\s+/).length;
+        const part2Words = part2.split(/\s+/).length;
+        
+        // Check for song title indicators in part2
+        const songTitleIndicators = /\b(ft\.|feat\.|featuring|official|video|audio|lyrics|remix|mix|extended|version)\b/i;
+        const hasSongIndicators = songTitleIndicators.test(part2);
+        
+        // Check if part1 looks like an artist name (typically 1-3 words, shorter length)
+        const looksLikeArtist = part1Words <= 3 && part1.length < 30;
+        
+        // Check if part2 looks like a song title (multiple words, longer, or has common song words)
+        const looksLikeSong = part2Words >= 2 || part2.length > part1.length;
+        
+        // Decision logic:
+        // 1. If part2 has song indicators, it's definitely "Artist - Song"
+        // 2. If part1 looks like an artist (short, 1-3 words) AND part2 looks like a song (longer), it's "Artist - Song"
+        // 3. Otherwise, default to "Song - Artist" (more common on YouTube)
+        
+        if (hasSongIndicators || (looksLikeArtist && looksLikeSong)) {
           // Likely "Artist Name - Song Title"
           artist = part1;
-          songTitle = part2;
+          songTitle = part2.replace(/\s*\(.*?\)\s*$/, '').trim(); // Remove trailing parenthetical info
+        } else {
+          // Likely "Song Title - Artist Name" (more common format)
+          songTitle = part1;
+          artist = part2.replace(/\s*\(.*?\)\s*$/, '').trim(); // Remove trailing parenthetical info
         }
       } else {
         // Try colon format "Artist: Song Title"

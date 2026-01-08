@@ -2428,6 +2428,15 @@ export function GeneralRequestsPage({
               }
             `}
             
+            /* Remove any focus rings or borders from submit/continue payment buttons only */
+            .requests-page-container button[type="submit"]:focus-visible,
+            .requests-page-container button[type="submit"]:focus,
+            .requests-page-container button.group.relative.w-full:focus-visible,
+            .requests-page-container button.group.relative.w-full:focus {
+              outline: none !important;
+              border: none !important;
+            }
+            
             ${effectiveThemeMode === 'light' ? `
               .requests-page-container, .requests-page-container * { color-scheme: light; }
               .requests-page-container .dark\\:bg-black { background-color: transparent !important; }
@@ -4476,18 +4485,22 @@ export function GeneralRequestsPage({
                 {/* Submit Button - Sticky at bottom, appears when selection is complete */}
                 {((requestType === 'tip') || isSongSelectionComplete()) && (
                 <div 
-                  className="sticky bottom-0 left-0 right-0 z-50 bg-white dark:!bg-black pt-2 sm:pt-3 pb-3 sm:pb-4 border-t border-gray-200 dark:border-gray-800 shadow-lg flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
+                  className="sticky bottom-0 left-0 right-0 z-50 bg-transparent dark:bg-transparent pt-2 sm:pt-3 pb-3 sm:pb-4 border-0 shadow-none flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
                   style={{ 
                     paddingBottom: 'max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))',
                     position: 'sticky',
                     scrollbarWidth: 'none',
-                    msOverflowStyle: 'none'
+                    msOverflowStyle: 'none',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none'
                   }}
                 >
                   <button
                     type="button"
                     disabled={submitting}
-                    className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-2xl shadow-brand-500/40 hover:shadow-brand-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
+                    className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-2xl shadow-brand-500/40 hover:shadow-brand-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none border-0 outline-none !border-0 !outline-none"
+                    style={{ border: 'none', outline: 'none' }}
                     onClick={(e) => {
                       // Always log the click for debugging
                       console.log('[Submit Button] onClick fired', {

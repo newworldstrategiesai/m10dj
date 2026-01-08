@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { MessageCircle, X, Send, Loader2, Minimize2 } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Minimize2, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -27,7 +27,7 @@ export default function TipJarChatWidget({
   themeMode = 'dark' // Default to dark mode
 }: TipJarChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [messages, setMessages] = useState<Array<{ id: number; role: 'user' | 'assistant'; content: string; timestamp: Date }>>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -135,12 +135,16 @@ export default function TipJarChatWidget({
 
   const handleOpen = () => {
     setIsOpen(true);
-    setIsMinimized(false);
+    setIsMaximized(false);
   };
 
   const handleClose = () => {
     setIsOpen(false);
-    setIsMinimized(true);
+    setIsMaximized(false);
+  };
+
+  const handleToggleMaximize = () => {
+    setIsMaximized(!isMaximized);
   };
 
   return (
@@ -164,7 +168,7 @@ export default function TipJarChatWidget({
 
       {/* Chat widget */}
       {isOpen && createPortal(
-        <Card className={`fixed bottom-4 right-4 z-[99999] w-[90vw] sm:w-96 h-[600px] flex flex-col shadow-2xl border-2 ${themeMode === 'dark' ? 'border-gray-800 bg-black' : 'border-gray-200 bg-white'}`}>
+        <Card className={`${isMaximized ? 'fixed inset-0 z-[99999]' : 'fixed bottom-4 right-4 z-[99999] w-[90vw] sm:w-96 h-[50vh]'} flex flex-col shadow-2xl border-2 ${themeMode === 'dark' ? 'border-gray-800 bg-black' : 'border-gray-200 bg-white'}`}>
           {/* Header */}
           <div 
             className="flex items-center justify-between p-4 border-b text-white"
@@ -178,11 +182,11 @@ export default function TipJarChatWidget({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsMinimized(!isMinimized)}
+                onClick={handleToggleMaximize}
                 className="p-1 hover:bg-white/20 rounded transition-colors"
-                aria-label={isMinimized ? 'Expand' : 'Minimize'}
+                aria-label={isMaximized ? 'Minimize' : 'Maximize'}
               >
-                <Minimize2 className="w-4 h-4" />
+                {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
               <button
                 onClick={handleClose}
@@ -194,10 +198,8 @@ export default function TipJarChatWidget({
             </div>
           </div>
 
-          {!isMinimized && (
-            <>
-              {/* Messages */}
-              <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${themeMode === 'dark' ? 'bg-black' : 'bg-gray-50'}`}>
+          {/* Messages */}
+          <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${themeMode === 'dark' ? 'bg-black' : 'bg-gray-50'}`}>
                 {messages.map((msg) => {
                   // Parse message content to extract links
                   const parseMessage = (text: string) => {
@@ -373,8 +375,6 @@ export default function TipJarChatWidget({
                   </Button>
                 </div>
               </form>
-            </>
-          )}
         </Card>,
         document.body
       )}
