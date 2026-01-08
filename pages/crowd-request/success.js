@@ -26,6 +26,32 @@ export default function CrowdRequestSuccessPage() {
   const playingConfettiTriggered = useRef(false);
   const supabase = createClientComponentClient();
 
+  // Determine product context and site name for meta tags
+  const getProductContext = () => {
+    if (typeof window === 'undefined') return 'tipjar'; // SSR default
+    
+    const hostname = window.location.hostname.toLowerCase();
+    if (hostname.includes('tipjar.live')) {
+      return 'tipjar';
+    } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+      return 'djdash';
+    } else if (hostname.includes('m10djcompany.com')) {
+      return 'm10dj';
+    }
+    return 'tipjar'; // Default to tipjar
+  };
+
+  const getSiteName = () => {
+    const productContext = getProductContext();
+    if (productContext === 'tipjar') {
+      return 'TipJar.Live';
+    } else if (productContext === 'djdash') {
+      return 'DJ Dash';
+    } else {
+      return 'M10 DJ Company';
+    }
+  };
+
   // Track success page view
   useSuccessPageTracking(request_id);
 
@@ -494,7 +520,7 @@ export default function CrowdRequestSuccessPage() {
     return (
       <>
         <Head>
-          <title>Processing Payment | M10 DJ Company</title>
+          <title>Processing Payment | {getSiteName()}</title>
         </Head>
         <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
@@ -514,7 +540,7 @@ export default function CrowdRequestSuccessPage() {
   return (
     <>
       <Head>
-        <title>Request Confirmed! | M10 DJ Company</title>
+        <title>Request Confirmed! | {getSiteName()}</title>
       </Head>
 
       <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 dark:from-black dark:via-neutral-950 dark:to-black pb-28 md:pb-8">
