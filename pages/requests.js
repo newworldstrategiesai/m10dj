@@ -298,6 +298,26 @@ export function GeneralRequestsPage({
   // Read background type from URL (for admin preview)
   const previewBackgroundType = router.query.backgroundType || null;
   
+  // Read header background color settings from URL (for admin preview)
+  const previewHeaderBackgroundType = router.query.headerBackgroundType || null;
+  const previewHeaderBackgroundColor = router.query.headerBackgroundColor || null;
+  const previewHeaderBackgroundGradientStart = router.query.headerBackgroundGradientStart || null;
+  const previewHeaderBackgroundGradientEnd = router.query.headerBackgroundGradientEnd || null;
+  
+  // Use preview values for header background if available, otherwise use organization data
+  const effectiveHeaderBackgroundType = previewHeaderBackgroundType !== null 
+    ? previewHeaderBackgroundType 
+    : (organizationData?.requests_header_background_type || 'solid');
+  const effectiveHeaderBackgroundColor = previewHeaderBackgroundColor !== null
+    ? previewHeaderBackgroundColor
+    : (organizationData?.requests_header_background_color || '#000000');
+  const effectiveHeaderBackgroundGradientStart = previewHeaderBackgroundGradientStart !== null
+    ? previewHeaderBackgroundGradientStart
+    : (organizationData?.requests_header_background_gradient_start || '#000000');
+  const effectiveHeaderBackgroundGradientEnd = previewHeaderBackgroundGradientEnd !== null
+    ? previewHeaderBackgroundGradientEnd
+    : (organizationData?.requests_header_background_gradient_end || '#1a1a1a');
+  
   // Read header field values from URL (for admin preview)
   const previewHeaderArtistName = router.query.headerArtistName ? decodeURIComponent(router.query.headerArtistName) : null;
   const previewHeaderLocation = router.query.headerLocation ? decodeURIComponent(router.query.headerLocation) : null;
@@ -546,6 +566,7 @@ export function GeneralRequestsPage({
   const [customAmount, setCustomAmount] = useState('');
   const [initialPresetSet, setInitialPresetSet] = useState(false); // Track if initial preset amount has been set
   const [initialCalculatedMax, setInitialCalculatedMax] = useState(null); // Track the initial max preset we calculated
+  const [userSelectedPreset, setUserSelectedPreset] = useState(false); // Track if user has manually selected a preset amount
   const [biddingSelectedAmount, setBiddingSelectedAmount] = useState(null); // Amount selected via BiddingAmountSelector (in cents)
   const [isFastTrack, setIsFastTrack] = useState(false);
   const [isNext, setIsNext] = useState(false);
@@ -896,20 +917,23 @@ export function GeneralRequestsPage({
 
   // Set initial preset amount when settings load (only once)
   // Use organization's default preset amount if set, otherwise use max preset amount
+  // Only apply on initial load, not when user manually selects an amount
   useEffect(() => {
     // Skip if presetAmounts haven't loaded yet
     if (presetAmounts.length === 0) return;
+    
+    // CRITICAL: Don't override user selection - only apply default on initial load
+    if (userSelectedPreset) {
+      return; // User has manually selected an amount, don't reset it
+    }
     
     // Check if organization has a default preset amount set
     if (defaultPresetAmount !== null && defaultPresetAmount !== undefined) {
       // Verify the default preset amount exists in the preset amounts array
       const defaultExists = presetAmounts.some(p => p.value === defaultPresetAmount);
       if (defaultExists) {
-        // If preset is still at initial value (500) or matches the calculated max (meaning user hasn't changed it), apply the default
-        const shouldApplyDefault = 
-          !initialPresetSet || 
-          presetAmount === CROWD_REQUEST_CONSTANTS.DEFAULT_PRESET_AMOUNT ||
-          (initialCalculatedMax !== null && presetAmount === initialCalculatedMax);
+        // Only apply default if we haven't set it yet (initial load only)
+        const shouldApplyDefault = !initialPresetSet;
         
         if (shouldApplyDefault && presetAmount !== defaultPresetAmount) {
           setPresetAmount(defaultPresetAmount);
@@ -929,7 +953,7 @@ export function GeneralRequestsPage({
       setInitialCalculatedMax(maxPreset.value);
       setInitialPresetSet(true);
     }
-  }, [presetAmounts, presetAmount, defaultPresetAmount, initialPresetSet, initialCalculatedMax]);
+  }, [presetAmounts, presetAmount, defaultPresetAmount, initialPresetSet, initialCalculatedMax, userSelectedPreset]);
 
   // Use song extraction hook
   const { extractingSong, extractionError, extractedData, extractSongInfo: extractSongInfoHook } = useSongExtraction();
@@ -985,6 +1009,12 @@ export function GeneralRequestsPage({
     }
     return getPaymentAmountHook();
   }, [shouldUseBidding, biddingSelectedAmount, getPaymentAmountHook]);
+
+  // Wrapper function to track user selection of preset amount
+  const handlePresetAmountChange = (newAmount) => {
+    setPresetAmount(newAmount);
+    setUserSelectedPreset(true); // Mark that user has manually selected an amount
+  };
 
   // Reset bundle size to 1 when custom amount is entered or amount doesn't equal minimum
   // Must be after getBaseAmount is defined
@@ -2627,8 +2657,20 @@ export function GeneralRequestsPage({
                 </div>
               </div>
             ) : showSolidBackground ? (
-              /* Solid color background when animation is disabled and no custom media */
-              <div className="absolute inset-0 w-full h-full bg-black" />
+              /* Custom background color or gradient when animation is disabled and no custom media */
+              effectiveHeaderBackgroundType === 'gradient' ? (
+                <div 
+                  className="absolute inset-0 w-full h-full"
+                  style={{
+                    background: `linear-gradient(135deg, ${effectiveHeaderBackgroundGradientStart} 0%, ${effectiveHeaderBackgroundGradientEnd} 100%)`
+                  }}
+                />
+              ) : (
+                <div 
+                  className="absolute inset-0 w-full h-full"
+                  style={{ backgroundColor: effectiveHeaderBackgroundColor }}
+                />
+              )
             ) : coverPhoto ? (
               /* Custom cover photo */
               <div 
@@ -2928,8 +2970,24 @@ export function GeneralRequestsPage({
               /* Animated gradient - Default TipJar background for mobile and desktop */
               <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden" style={{ zIndex: 0 }} />
             ) : showSolidBackground ? (
-              /* Solid color background when animation is disabled and no custom media */
-              <div className="absolute inset-0 w-full h-full bg-black md:hidden" style={{ zIndex: 0 }} />
+              /* Custom background color or gradient when animation is disabled and no custom media */
+              effectiveHeaderBackgroundType === 'gradient' ? (
+                <div 
+                  className="absolute inset-0 w-full h-full md:hidden"
+                  style={{
+                    zIndex: 0,
+                    background: `linear-gradient(135deg, ${effectiveHeaderBackgroundGradientStart} 0%, ${effectiveHeaderBackgroundGradientEnd} 100%)`
+                  }}
+                />
+              ) : (
+                <div 
+                  className="absolute inset-0 w-full h-full md:hidden"
+                  style={{ 
+                    zIndex: 0,
+                    backgroundColor: effectiveHeaderBackgroundColor 
+                  }}
+                />
+              )
             ) : coverPhoto ? (
               /* Custom cover photo */
               <div 
@@ -3657,7 +3715,7 @@ export function GeneralRequestsPage({
                               amountType={amountType}
                               setAmountType={setAmountType}
                               presetAmount={presetAmount}
-                              setPresetAmount={setPresetAmount}
+                              setPresetAmount={handlePresetAmountChange}
                               customAmount={customAmount}
                               setCustomAmount={setCustomAmount}
                               presetAmounts={presetAmounts}

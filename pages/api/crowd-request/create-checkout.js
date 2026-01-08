@@ -24,6 +24,32 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Request ID and amount are required' });
   }
 
+  // Validate and normalize amount - ensure it's in cents (integer)
+  // Amount should already be in cents from frontend, but handle edge cases
+  let amountInCents = amount;
+  if (typeof amount === 'string') {
+    // If it's a string, try to parse it
+    const parsed = parseFloat(amount);
+    if (isNaN(parsed)) {
+      return res.status(400).json({ error: 'Invalid amount format' });
+    }
+    // If it looks like dollars (less than 1000), assume it's dollars and convert to cents
+    amountInCents = parsed < 1000 ? Math.round(parsed * 100) : Math.round(parsed);
+  } else if (typeof amount === 'number') {
+    // If it's a number less than 1000, assume it's dollars and convert to cents
+    amountInCents = amount < 1000 ? Math.round(amount * 100) : Math.round(amount);
+  } else {
+    return res.status(400).json({ error: 'Invalid amount type' });
+  }
+
+  // Ensure amount is at least 1 cent (Stripe minimum)
+  if (amountInCents < 1) {
+    return res.status(400).json({ error: 'Amount must be at least $0.01' });
+  }
+
+  // Use normalized amount for rest of function
+  const normalizedAmount = amountInCents;
+
   if (!process.env.STRIPE_SECRET_KEY) {
     return res.status(500).json({ error: 'Stripe not configured' });
   }
@@ -123,7 +149,7 @@ export default async function handler(req, res) {
     let charityDonationAmount = 0;
     let charityInfo = null;
     if (organization?.charity_donation_enabled && organization?.charity_donation_percentage > 0) {
-      charityDonationAmount = Math.round(amount * (organization.charity_donation_percentage / 100));
+      charityDonationAmount = Math.round(normalizedAmount * (organization.charity_donation_percentage / 100));
       charityInfo = {
         name: organization.charity_name,
         url: organization.charity_url,
@@ -221,10 +247,11 @@ export default async function handler(req, res) {
     const fastTrackFee = crowdRequest.fast_track_fee || 0;
     const nextFee = crowdRequest.next_fee || 0;
     const audioUploadFee = crowdRequest.audio_upload_fee || 0;
-    const baseAmount = amount - fastTrackFee - nextFee - audioUploadFee;
+    const baseAmount = Math.max(0, normalizedAmount - fastTrackFee - nextFee - audioUploadFee); // Ensure baseAmount is never negative
     
     // Base request item with detailed description
-    if (baseAmount > 0) {
+    // Ensure we always have a base line item if the total amount is valid
+    if (baseAmount > 0 || amount > 0) {
       // Build base description with all bundle songs
       let baseDescription = '';
       if (crowdRequest.request_type === 'song_request') {
@@ -270,7 +297,21 @@ export default async function handler(req, res) {
               }),
             },
           },
-          unit_amount: baseAmount,
+          unit_amount: Math.max(1, baseAmount), // Ensure unit_amount is at least 1 cent (Stripe minimum)
+        },
+        quantity: 1,
+      });
+    } else if (normalizedAmount > 0 && baseAmount <= 0) {
+      // Edge case: If fees exceed base amount, create a single line item with the total amount
+      // This can happen if someone adds fees that exceed the base amount (shouldn't happen in normal flow)
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: fullDescription.substring(0, 100) || 'Song Request / Shoutout',
+            description: fullDescription,
+          },
+          unit_amount: Math.max(1, normalizedAmount), // Ensure unit_amount is at least 1 cent (Stripe minimum)
         },
         quantity: 1,
       });
@@ -377,9 +418,9 @@ export default async function handler(req, res) {
     let feeCalculation = null;
     
     if (hasConnectAccount) {
-      feeCalculation = calculatePlatformFee(amount, platformFeePercentage, platformFeeFixed);
+      feeCalculation = calculatePlatformFee(normalizedAmount, platformFeePercentage, platformFeeFixed);
       console.log(`💰 Using Stripe Connect for organization ${organization.name}:`);
-      console.log(`   Total: $${amount.toFixed(2)}`);
+      console.log(`   Total: $${(normalizedAmount / 100).toFixed(2)}`);
       console.log(`   Platform Fee: $${feeCalculation.feeAmount.toFixed(2)} (${platformFeePercentage}% + $${platformFeeFixed.toFixed(2)})`);
       console.log(`   DJ Payout: $${feeCalculation.payoutAmount.toFixed(2)}`);
     } else if (isPlatformOwner) {
@@ -392,30 +433,39 @@ export default async function handler(req, res) {
     
     if (hasConnectAccount) {
       // Use Stripe Connect to route payment to DJ's account with platform fee
+      // Create checkout session with line items and Connect routing
+      // Ensure we have at least one line item - use amount directly if lineItems is empty (shouldn't happen, but safety check)
+      const finalLineItems = lineItems.length > 0 ? lineItems : [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: fullDescription.substring(0, 100) || 'Song Request / Shoutout',
+              description: fullDescription,
+            },
+            unit_amount: Math.max(1, normalizedAmount), // Amount is already in cents, ensure minimum 1 cent
+          },
+          quantity: 1,
+        },
+      ];
+      
       // Calculate total amount from line items for platform fee calculation
-      const totalAmountInCents = lineItems.reduce((sum, item) => {
+      const totalAmountInCents = finalLineItems.reduce((sum, item) => {
         return sum + (item.price_data.unit_amount * (item.quantity || 1));
       }, 0);
+      
+      // Ensure we have a valid total amount (at least 1 cent)
+      if (totalAmountInCents < 1) {
+        throw new Error('Invalid payment amount: Total amount must be at least $0.01');
+      }
       
       // Calculate platform fee based on total amount
       const percentageFee = Math.round((totalAmountInCents * platformFeePercentage) / 100);
       const applicationFeeAmount = percentageFee + Math.round(platformFeeFixed * 100);
       
-      // Create checkout session with line items and Connect routing
       const sessionParams = {
         payment_method_types: paymentMethodTypes,
-        line_items: lineItems.length > 0 ? lineItems : [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: 'Song Request / Shoutout',
-              },
-              unit_amount: Math.round(amount * 100),
-            },
-            quantity: 1,
-          },
-        ],
+        line_items: finalLineItems,
         mode: 'payment',
         success_url: `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`,
         cancel_url: cancelUrl,
@@ -440,8 +490,8 @@ export default async function handler(req, res) {
           organization_name: organization.name,
           is_fast_track: isFastTrackRequest ? 'true' : 'false',
           is_next: isNextRequest ? 'true' : 'false',
-          payment_routing: 'platform_account', // Track that this payment went to platform account
-          requires_manual_payout: 'true', // Indicates manual payout needed until Connect is set up
+          payment_routing: 'stripe_connect', // Track that this payment is routed through Stripe Connect
+          requires_manual_payout: 'false', // Connect payments are automatically routed
           ...(crowdRequest.request_type === 'song_request' && {
             song_title: crowdRequest.song_title || '',
             song_artist: crowdRequest.song_artist || '',
@@ -456,15 +506,33 @@ export default async function handler(req, res) {
             charity_donation_amount: charityInfo.amount.toString(),
           }),
         },
-        customer_account: organization.stripe_connect_account_id, // Accounts v2 API
+        customer_account: organization.stripe_connect_account_id, // Accounts v2 API - routes payment to connected account
       };
       
-      session = await stripe.checkout.sessions.create(sessionParams);
+      // Note: Cash App Pay is supported with Stripe Connect via customer_account parameter
+      // The payment method types (cashapp) will work correctly with the connected account
       
-      console.log(`💰 Created Stripe Connect checkout session for organization ${organization.name}:`);
-      console.log(`   Total: $${(totalAmountInCents / 100).toFixed(2)}`);
-      console.log(`   Platform Fee: $${(applicationFeeAmount / 100).toFixed(2)} (${platformFeePercentage}% + $${platformFeeFixed.toFixed(2)})`);
-      console.log(`   DJ Payout: $${((totalAmountInCents - applicationFeeAmount) / 100).toFixed(2)}`);
+      try {
+        session = await stripe.checkout.sessions.create(sessionParams);
+        
+        console.log(`✅ Created Stripe Connect checkout session for organization ${organization.name}:`);
+        console.log(`   Session ID: ${session.id}`);
+        console.log(`   Total: $${(totalAmountInCents / 100).toFixed(2)}`);
+        console.log(`   Platform Fee: $${(applicationFeeAmount / 100).toFixed(2)} (${platformFeePercentage}% + $${platformFeeFixed.toFixed(2)})`);
+        console.log(`   DJ Payout: $${((totalAmountInCents - applicationFeeAmount) / 100).toFixed(2)}`);
+        console.log(`   Payment Methods: ${paymentMethodTypes.join(', ')}`);
+      } catch (connectError) {
+        console.error('❌ Error creating Stripe Connect checkout session:', connectError);
+        // Log detailed error information for debugging
+        if (connectError.message) {
+          console.error('   Error message:', connectError.message);
+        }
+        if (connectError.type) {
+          console.error('   Error type:', connectError.type);
+        }
+        // Re-throw to be caught by outer try-catch
+        throw connectError;
+      }
       
     } else {
       // Fallback to regular checkout (payment goes to platform account)
@@ -474,15 +542,13 @@ export default async function handler(req, res) {
       console.log(`⚠️ Organization ${organization?.name || 'Unknown'} (${organization?.id || 'Unknown ID'}) does not have Stripe Connect set up. Payment will go to platform account for manual payout.`);
       console.log(`   💡 User can set up Stripe Connect later in their dashboard to receive automatic payouts.`);
       
-      session = await stripe.checkout.sessions.create({
-      payment_method_types: paymentMethodTypes, // Card includes Apple Pay automatically on supported devices
-      // Cash App Pay requires enabling in Stripe dashboard: Settings > Payment methods > Cash App Pay
-      line_items: lineItems.length > 0 ? lineItems : [
+      // Ensure we have at least one line item with valid amount
+      const regularLineItems = lineItems.length > 0 ? lineItems : [
         {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: fullDescription.substring(0, 100), // Product name (max 100 chars)
+              name: fullDescription.substring(0, 100) || 'Song Request / Shoutout', // Product name (max 100 chars)
               description: fullDescription, // Full description appears in Stripe dashboard
               metadata: {
                 request_type: crowdRequest.request_type,
@@ -503,27 +569,47 @@ export default async function handler(req, res) {
                 }),
               },
             },
-            unit_amount: amount,
+            unit_amount: Math.max(1, normalizedAmount), // Amount is already in cents, ensure minimum 1 cent (Stripe requirement)
           },
           quantity: 1,
         },
-      ],
-      mode: 'payment',
-      success_url: `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`,
-      cancel_url: cancelUrl,
-      // Pre-fill customer email if we have it (Stripe only supports email pre-fill in Checkout)
-      // Note: customer_details is read-only on completed sessions, not a valid create parameter
-      customer_email: crowdRequest.requester_email || undefined,
-      billing_address_collection: 'auto',
-      phone_number_collection: {
-        enabled: !crowdRequest.requester_phone, // Only collect phone if we don't already have it
-      },
-      metadata: {
-        request_id: crowdRequest.id,
-        request_type: crowdRequest.request_type,
-        event_code: crowdRequest.event_qr_code,
-        is_fast_track: isFastTrackRequest ? 'true' : 'false',
-        is_next: isNextRequest ? 'true' : 'false',
+      ];
+      
+      // Validate that total amount is valid (at least 1 cent)
+      const totalAmount = regularLineItems.reduce((sum, item) => {
+        return sum + (item.price_data.unit_amount * (item.quantity || 1));
+      }, 0);
+      
+      if (totalAmount < 1) {
+        throw new Error('Invalid payment amount: Total amount must be at least $0.01');
+      }
+      
+      try {
+        session = await stripe.checkout.sessions.create({
+        payment_method_types: paymentMethodTypes, // Card includes Apple Pay automatically on supported devices
+        // Cash App Pay requires enabling in Stripe dashboard: Settings > Payment methods > Cash App Pay
+        // Cash App Pay works with both Connect and non-Connect accounts
+        line_items: regularLineItems,
+        mode: 'payment',
+        success_url: `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`,
+        cancel_url: cancelUrl,
+        // Pre-fill customer email if we have it (Stripe only supports email pre-fill in Checkout)
+        // Note: customer_details is read-only on completed sessions, not a valid create parameter
+        customer_email: crowdRequest.requester_email || undefined,
+        billing_address_collection: 'auto',
+        phone_number_collection: {
+          enabled: !crowdRequest.requester_phone, // Only collect phone if we don't already have it
+        },
+        metadata: {
+          request_id: crowdRequest.id,
+          request_type: crowdRequest.request_type,
+          event_code: crowdRequest.event_qr_code,
+          organization_id: organization?.id || '',
+          organization_name: organization?.name || '',
+          is_fast_track: isFastTrackRequest ? 'true' : 'false',
+          is_next: isNextRequest ? 'true' : 'false',
+          payment_routing: 'platform_account', // Track that this payment went to platform account
+          requires_manual_payout: organization ? 'true' : 'false', // Manual payout needed for non-Connect accounts
         // Add song info to metadata for easy viewing in Stripe dashboard
         ...(crowdRequest.request_type === 'song_request' && {
           song_title: crowdRequest.song_title || '',
@@ -605,6 +691,30 @@ export default async function handler(req, res) {
         })(),
       },
       });
+      
+        console.log(`✅ Created regular checkout session (platform account):`);
+        console.log(`   Session ID: ${session.id}`);
+        console.log(`   Total: $${(totalAmount / 100).toFixed(2)}`);
+        console.log(`   Payment Methods: ${paymentMethodTypes.join(', ')}`);
+        if (organization) {
+          console.log(`   Organization: ${organization.name || organization.id}`);
+          console.log(`   Note: Payment will go to platform account. Organization can set up Stripe Connect for automatic payouts.`);
+        }
+      } catch (regularError) {
+        console.error('❌ Error creating regular checkout session:', regularError);
+        // Log detailed error information for debugging
+        if (regularError.message) {
+          console.error('   Error message:', regularError.message);
+        }
+        if (regularError.type) {
+          console.error('   Error type:', regularError.type);
+        }
+        if (regularError.code) {
+          console.error('   Error code:', regularError.code);
+        }
+        // Re-throw to be caught by outer try-catch
+        throw regularError;
+      }
     }
 
     // Update crowd request with Stripe session ID

@@ -395,18 +395,30 @@ async function extractSpotifyInfo(url) {
                 const part1 = dashMatch[1].trim();
                 const part2 = dashMatch[2].trim();
                 
-                // Heuristic: If part2 contains common song title indicators or is longer, it's likely the song
-                // If part1 is shorter and doesn't have common indicators, it's likely the artist
-                // Common patterns: "Artist - Song Title" is more common than "Song - Artist"
-                // But also check for song indicators like parentheses, "feat", etc.
-                const hasSongIndicators = /\s*\(.*?\)\s*$|feat\.|ft\.|featuring|official|video|audio|lyrics|remix/i;
+                // Heuristic: Spotify typically uses "Artist Name - Song Title" format
+                // Check for song title indicators in part2 (parentheses, feat, remix, etc.)
+                // If part2 has these indicators, it's definitely the song title
+                // Also check word count - artist names are typically 1-3 words, song titles can be longer
+                const hasSongIndicators = /\s*\(.*?\)\s*$|feat\.|ft\.|featuring|official|video|audio|lyrics|remix|remastered|extended|version/i;
+                const part1Words = part1.split(/\s+/).length;
+                const part2Words = part2.split(/\s+/).length;
                 
-                if (part2.match(hasSongIndicators) || part2.length > part1.length * 1.2) {
-                  // Likely "Song Title - Artist Name"
-                  title = part1;
-                  artist = part2.replace(hasSongIndicators, '').trim();
-                } else {
+                // If part2 has song indicators (like parentheses with remastered info), it's definitely the song
+                // Also if part1 is short (1-3 words, typical artist name) and part2 is longer, it's "Artist - Song"
+                const part2HasIndicators = hasSongIndicators.test(part2);
+                const part1LooksLikeArtist = part1Words <= 3 && part1.length < 40;
+                const part2LooksLikeSong = part2Words >= 2 || part2.length > part1.length;
+                
+                if (part2HasIndicators || (part1LooksLikeArtist && part2LooksLikeSong)) {
                   // Likely "Artist Name - Song Title"
+                  artist = part1;
+                  title = part2; // Keep the full title including parenthetical info like "(Remastered 2010)"
+                } else if (part2.length > part1.length * 1.5) {
+                  // If part2 is significantly longer, it's likely the song title
+                  artist = part1;
+                  title = part2;
+                } else {
+                  // Default: assume "Artist Name - Song Title" (most common Spotify format)
                   artist = part1;
                   title = part2;
                 }
@@ -518,9 +530,28 @@ async function extractSpotifyInfo(url) {
                   // Try dash format
                   const dashMatch = ogTitle.match(/^(.+?)\s*[-–—]\s*(.+)$/);
                   if (dashMatch) {
-                    // Usually "Song Title · Artist" format, so first part is song, second is artist
-                    if (!title) title = dashMatch[1].trim();
-                    if (!artist) artist = dashMatch[2].trim();
+                    const part1 = dashMatch[1].trim();
+                    const part2 = dashMatch[2].trim();
+                    
+                    // Heuristic: Spotify og:title typically uses "Artist Name - Song Title" format
+                    // Check for song title indicators in part2 (parentheses, feat, remix, etc.)
+                    const hasSongIndicators = /\s*\(.*?\)\s*$|feat\.|ft\.|featuring|official|video|audio|lyrics|remix|remastered|extended|version/i;
+                    const part1Words = part1.split(/\s+/).length;
+                    const part2Words = part2.split(/\s+/).length;
+                    
+                    const part2HasIndicators = hasSongIndicators.test(part2);
+                    const part1LooksLikeArtist = part1Words <= 3 && part1.length < 40;
+                    const part2LooksLikeSong = part2Words >= 2 || part2.length > part1.length;
+                    
+                    if (part2HasIndicators || (part1LooksLikeArtist && part2LooksLikeSong)) {
+                      // Likely "Artist Name - Song Title"
+                      if (!artist) artist = part1;
+                      if (!title) title = part2;
+                    } else {
+                      // Default: assume "Artist Name - Song Title"
+                      if (!artist) artist = part1;
+                      if (!title) title = part2;
+                    }
                   } else {
                     if (!title) title = ogTitle;
                   }

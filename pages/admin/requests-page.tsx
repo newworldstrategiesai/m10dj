@@ -177,6 +177,12 @@ export default function RequestsPageSettings() {
   // Background type (gradient, subtle, bubble, spiral, aurora, none)
   const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'none'>('gradient');
   
+  // Header background color settings
+  const [headerBackgroundType, setHeaderBackgroundType] = useState<'solid' | 'gradient'>('solid');
+  const [headerBackgroundColor, setHeaderBackgroundColor] = useState('#000000'); // Default black
+  const [headerBackgroundGradientStart, setHeaderBackgroundGradientStart] = useState('#000000');
+  const [headerBackgroundGradientEnd, setHeaderBackgroundGradientEnd] = useState('#1a1a1a');
+  
   // Artist name font
   const [artistNameFont, setArtistNameFont] = useState('Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
   
@@ -388,6 +394,12 @@ export default function RequestsPageSettings() {
         
         // Set background type (defaults to 'gradient' for new users)
         setBackgroundType(org.requests_background_type || 'gradient');
+        
+        // Set header background color settings
+        setHeaderBackgroundType(org.requests_header_background_type || 'solid');
+        setHeaderBackgroundColor(org.requests_header_background_color || '#000000');
+        setHeaderBackgroundGradientStart(org.requests_header_background_gradient_start || '#000000');
+        setHeaderBackgroundGradientEnd(org.requests_header_background_gradient_end || '#1a1a1a');
         
         // Set artist name font
         setArtistNameFont(org.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif');
@@ -614,8 +626,11 @@ export default function RequestsPageSettings() {
   };
 
   // Function to get the preview URL with all display name styling parameters
-  const getPreviewUrl = () => {
+  const getPreviewUrl = (overrideSubtitleText?: string) => {
     if (!organization?.slug) return '';
+    
+    // Use override subtitle text if provided (for real-time preview), otherwise use computed value
+    const subtitleText = overrideSubtitleText !== undefined ? overrideSubtitleText : getSubtitleText();
     
     // Build URL with all display name styling parameters
     const params = new URLSearchParams({
@@ -626,7 +641,7 @@ export default function RequestsPageSettings() {
       themeMode: themeMode,
       // Header field values for preview (including subtitle/location)
       headerArtistName: headerFields.requests_header_artist_name || '',
-      headerLocation: getSubtitleText(), // Use computed subtitle text
+      headerLocation: subtitleText, // Use provided override or computed subtitle text
       headerDate: headerFields.requests_header_date || '',
       // Display name styling parameters
       artistNameFont: encodeURIComponent(artistNameFont),
@@ -658,20 +673,25 @@ export default function RequestsPageSettings() {
       amountsSortOrder: amountsSortOrder,
       // Background type for preview
       backgroundType: backgroundType,
+      // Header background color settings for preview
+      headerBackgroundType: headerBackgroundType,
+      headerBackgroundColor: headerBackgroundColor,
+      headerBackgroundGradientStart: headerBackgroundGradientStart,
+      headerBackgroundGradientEnd: headerBackgroundGradientEnd,
     });
     
     return `/${organization.slug}/requests?${params.toString()}`;
   };
 
   // Function to update the preview iframe with current display name styling
-  const updatePreviewIframe = () => {
+  const updatePreviewIframe = (overrideSubtitleText?: string) => {
     if (!organization?.slug) return;
     
     const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
     if (!iframe) return;
     
     // Force reload by using current timestamp (cache-busting)
-    const previewUrl = getPreviewUrl();
+    const previewUrl = getPreviewUrl(overrideSubtitleText);
     if (!previewUrl) return;
     
     // Parse the relative URL and update timestamp to force reload
@@ -715,6 +735,11 @@ export default function RequestsPageSettings() {
         requests_show_subtitle: showSubtitle,
         // Background type setting
         requests_background_type: backgroundType,
+        // Header background color settings
+        requests_header_background_type: headerBackgroundType || 'solid',
+        requests_header_background_color: headerBackgroundType === 'solid' ? (headerBackgroundColor || '#000000') : null,
+        requests_header_background_gradient_start: headerBackgroundType === 'gradient' ? (headerBackgroundGradientStart || '#000000') : null,
+        requests_header_background_gradient_end: headerBackgroundType === 'gradient' ? (headerBackgroundGradientEnd || '#1a1a1a') : null,
         // Artist name font
         requests_artist_name_font: artistNameFont || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif',
         // Artist name text transform
@@ -1509,6 +1534,184 @@ export default function RequestsPageSettings() {
                             <option value="aurora">Aurora</option>
                             <option value="none">None (No Animation)</option>
                           </select>
+                        </div>
+                      </div>
+                      
+                      {/* Header Background Color */}
+                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                            Header Background Color
+                          </label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            Custom background color or gradient shown when no video, photo, or animation is set
+                          </p>
+                          
+                          {/* Background Type: Solid or Gradient */}
+                          <div className="flex gap-2 mb-4">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setHeaderBackgroundType('solid');
+                                setError(null);
+                                setSuccess(false);
+                                setTimeout(() => updatePreviewIframe(), 100);
+                              }}
+                              className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                                headerBackgroundType === 'solid'
+                                  ? 'bg-[#fcba00] text-black shadow-sm'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                              }`}
+                            >
+                              Solid Color
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setHeaderBackgroundType('gradient');
+                                setError(null);
+                                setSuccess(false);
+                                setTimeout(() => updatePreviewIframe(), 100);
+                              }}
+                              className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                                headerBackgroundType === 'gradient'
+                                  ? 'bg-[#fcba00] text-black shadow-sm'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                              }`}
+                            >
+                              Gradient
+                            </button>
+                          </div>
+                          
+                          {/* Solid Color Input */}
+                          {headerBackgroundType === 'solid' && (
+                            <div className="space-y-3">
+                              <div>
+                                <Label htmlFor="header_background_color" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  Background Color
+                                </Label>
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    id="header_background_color"
+                                    type="color"
+                                    value={headerBackgroundColor}
+                                    onChange={(e) => {
+                                      setHeaderBackgroundColor(e.target.value);
+                                      setError(null);
+                                      setSuccess(false);
+                                      setTimeout(() => updatePreviewIframe(), 100);
+                                    }}
+                                    className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={headerBackgroundColor}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                                        setHeaderBackgroundColor(value);
+                                        setError(null);
+                                        setSuccess(false);
+                                        setTimeout(() => updatePreviewIframe(), 100);
+                                      }
+                                    }}
+                                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                                    placeholder="#000000"
+                                  />
+                                </div>
+                              </div>
+                              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Preview:</p>
+                                <div 
+                                  className="w-full h-20 rounded"
+                                  style={{ backgroundColor: headerBackgroundColor }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Gradient Inputs */}
+                          {headerBackgroundType === 'gradient' && (
+                            <div className="space-y-3">
+                              <div>
+                                <Label htmlFor="header_background_gradient_start" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  Gradient Start Color
+                                </Label>
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    id="header_background_gradient_start"
+                                    type="color"
+                                    value={headerBackgroundGradientStart}
+                                    onChange={(e) => {
+                                      setHeaderBackgroundGradientStart(e.target.value);
+                                      setError(null);
+                                      setSuccess(false);
+                                      setTimeout(() => updatePreviewIframe(), 100);
+                                    }}
+                                    className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={headerBackgroundGradientStart}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                                        setHeaderBackgroundGradientStart(value);
+                                        setError(null);
+                                        setSuccess(false);
+                                        setTimeout(() => updatePreviewIframe(), 100);
+                                      }
+                                    }}
+                                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                                    placeholder="#000000"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor="header_background_gradient_end" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  Gradient End Color
+                                </Label>
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    id="header_background_gradient_end"
+                                    type="color"
+                                    value={headerBackgroundGradientEnd}
+                                    onChange={(e) => {
+                                      setHeaderBackgroundGradientEnd(e.target.value);
+                                      setError(null);
+                                      setSuccess(false);
+                                      setTimeout(() => updatePreviewIframe(), 100);
+                                    }}
+                                    className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={headerBackgroundGradientEnd}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                                        setHeaderBackgroundGradientEnd(value);
+                                        setError(null);
+                                        setSuccess(false);
+                                        setTimeout(() => updatePreviewIframe(), 100);
+                                      }
+                                    }}
+                                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                                    placeholder="#1a1a1a"
+                                  />
+                                </div>
+                              </div>
+                              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Preview:</p>
+                                <div 
+                                  className="w-full h-20 rounded"
+                                  style={{ 
+                                    background: `linear-gradient(135deg, ${headerBackgroundGradientStart} 0%, ${headerBackgroundGradientEnd} 100%)`
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2812,10 +3015,12 @@ export default function RequestsPageSettings() {
                               placeholder="Enter venue name"
                               value={subtitleVenue}
                               onChange={(e) => {
-                                setSubtitleVenue(e.target.value);
+                                const newValue = e.target.value;
+                                setSubtitleVenue(newValue);
                                 setError(null);
                                 setSuccess(false);
-                                setTimeout(() => updatePreviewIframe(), 100);
+                                // Pass the new value directly to preview to avoid state timing issues
+                                setTimeout(() => updatePreviewIframe(newValue), 100);
                               }}
                               className="w-full"
                             />
@@ -2829,10 +3034,12 @@ export default function RequestsPageSettings() {
                               placeholder="Enter custom subtitle text"
                               value={subtitleCustomText}
                               onChange={(e) => {
-                                setSubtitleCustomText(e.target.value);
+                                const newValue = e.target.value;
+                                setSubtitleCustomText(newValue);
                                 setError(null);
                                 setSuccess(false);
-                                setTimeout(() => updatePreviewIframe(), 100);
+                                // Pass the new value directly to preview to avoid state timing issues
+                                setTimeout(() => updatePreviewIframe(newValue), 100);
                               }}
                               className="w-full"
                             />
