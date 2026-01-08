@@ -1878,18 +1878,19 @@ export function GeneralRequestsPage({
         setSubmitting(false);
       }
     } catch (err) {
+      console.error('[handleSubmit] Submission error:', err);
       logger.error('Submission error', err);
-      setError(err.message || 'Failed to submit request. Please try again.');
+      const errorMessage = err?.message || err?.toString() || 'Failed to submit request. Please try again.';
+      setError(errorMessage);
       setSubmitting(false);
       
-      if (window.innerWidth < 640) {
-        setTimeout(() => {
-          const errorEl = document.querySelector('.bg-red-50, .bg-red-900');
-          if (errorEl) {
-            errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 100);
-      }
+      // Always scroll to error on mobile, and also on desktop if error element exists
+      setTimeout(() => {
+        const errorEl = document.querySelector('.bg-red-50, .bg-red-900, [class*="bg-red"]');
+        if (errorEl) {
+          errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
     }
   };
 
@@ -4451,53 +4452,73 @@ export function GeneralRequestsPage({
                 >
                   <button
                     type="button"
-                    disabled={(() => {
-                      if (submitting) return true;
-                      // Don't disable based on amount validation - let handleSubmit show errors
-                      return false;
-                    })()}
+                    disabled={submitting}
                     className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-2xl shadow-brand-500/40 hover:shadow-brand-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
                     onClick={(e) => {
+                      // Always log the click for debugging
+                      console.log('[Submit Button] onClick fired', {
+                        currentStep,
+                        submitting,
+                        requestType,
+                        timestamp: new Date().toISOString()
+                      });
+                      
                       logger.info('[Submit Button] onClick fired', {
                         currentStep,
                         submitting,
+                        requestType,
                         buttonType: currentStep === 1 ? 'button' : 'submit'
                       });
                       
-                      // Prevent double-submission
-                      if (submitting) {
-                        logger.warn('[Submit Button] Already submitting, preventing click');
+                      try {
+                        // Prevent double-submission
+                        if (submitting) {
+                          console.warn('[Submit Button] Already submitting, preventing click');
+                          logger.warn('[Submit Button] Already submitting, preventing click');
+                          e.preventDefault();
+                          e.stopPropagation();
+                          return;
+                        }
+                        
+                        if (currentStep === 1) {
+                          console.log('[Submit Button] Step 1: Navigating to payment step');
+                          logger.info('[Submit Button] Step 1: Navigating to payment step');
+                          e.preventDefault();
+                          e.stopPropagation();
+                          // Clear any previous errors and go to payment step
+                          setError('');
+                          setCurrentStep(2);
+                          // Scroll to payment section
+                          setTimeout(() => {
+                            const paymentElement = document.querySelector('[data-payment-section]');
+                            if (paymentElement) {
+                              paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }, 100);
+                          return;
+                        }
+                        
+                        // For step 2, explicitly call handleSubmit
+                        console.log('[Submit Button] Step 2: Calling handleSubmit');
+                        logger.info('[Submit Button] Step 2: Calling handleSubmit');
+                        
+                        // Prevent default form submission since we're handling it manually
                         e.preventDefault();
                         e.stopPropagation();
-                        return;
+                        
+                        // Call handleSubmit directly
+                        handleSubmit(e).catch((error) => {
+                          console.error('[Submit Button] Error in handleSubmit:', error);
+                          logger.error('[Submit Button] Error in handleSubmit:', error);
+                          setError('An error occurred. Please try again.');
+                          setSubmitting(false);
+                        });
+                      } catch (error) {
+                        console.error('[Submit Button] onClick error:', error);
+                        logger.error('[Submit Button] onClick error:', error);
+                        setError('An unexpected error occurred. Please try again.');
+                        setSubmitting(false);
                       }
-                      
-                      if (currentStep === 1) {
-                        logger.info('[Submit Button] Step 1: Navigating to payment step');
-                        e.preventDefault();
-                        e.stopPropagation();
-                        // Clear any previous errors and go to payment step
-                        setError('');
-                        setCurrentStep(2);
-                        // Scroll to payment section
-                        setTimeout(() => {
-                          const paymentElement = document.querySelector('[data-payment-section]');
-                          if (paymentElement) {
-                            paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }
-                        }, 100);
-                        return;
-                      }
-                      
-                      // For step 2, explicitly ensure form submission happens
-                      logger.info('[Submit Button] Step 2: Ensuring form submission');
-
-                      // For step 2, explicitly call handleSubmit to ensure it always works
-                      // This is more reliable than relying on form's onSubmit which might not fire
-                      logger.info('[Submit Button] Step 2: Explicitly calling handleSubmit');
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleSubmit(e);
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
