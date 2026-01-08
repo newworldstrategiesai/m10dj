@@ -1124,6 +1124,22 @@ export default function CrowdRequestsPage() {
       }
 
       setOrganization(org);
+      
+      // Set brand colors for admin UI (with black fallback for TipJar if not set)
+      const isTipJar = org.product_context === 'tipjar';
+      const defaultAccent = isTipJar ? '#000000' : '#fcba00';
+      const accent = org.requests_accent_color || defaultAccent;
+      const secondary1 = org.requests_secondary_color_1 || accent || defaultAccent;
+      const secondary2 = org.requests_secondary_color_2 || accent || defaultAccent;
+      
+      // Apply brand colors to CSS variables (will be used in style tag below)
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--admin-brand-color', accent);
+        document.documentElement.style.setProperty('--admin-brand-color-hover', `${accent}dd`);
+        document.documentElement.style.setProperty('--admin-secondary-color-1', secondary1);
+        document.documentElement.style.setProperty('--admin-secondary-color-2', secondary2);
+      }
+      
       setHeaderSettings({
         artistName: org.requests_header_artist_name || '',
         location: org.requests_header_location || '',
@@ -3915,8 +3931,50 @@ export default function CrowdRequestsPage() {
     checkTier();
   }, [supabase]);
 
+  // Helper function to get effective brand colors with fallback
+  const getEffectiveBrandColor = (colorType: 'accent' | 'secondary1' | 'secondary2'): string => {
+    if (!organization) return '#000000';
+    const isTipJar = organization?.product_context === 'tipjar';
+    const defaultAccent = isTipJar ? '#000000' : '#fcba00';
+    const accent = organization.requests_accent_color || defaultAccent;
+    
+    if (colorType === 'accent') return accent;
+    if (colorType === 'secondary1') {
+      return organization.requests_secondary_color_1 || accent || defaultAccent;
+    }
+    return organization.requests_secondary_color_2 || accent || defaultAccent;
+  };
+
+  const effectiveBrandColor = getEffectiveBrandColor('accent');
+  const effectiveSecondaryColor1 = getEffectiveBrandColor('secondary1');
+  const effectiveSecondaryColor2 = getEffectiveBrandColor('secondary2');
+  const effectiveBrandColorHover = `${effectiveBrandColor}dd`;
+
   return (
     <AdminLayout>
+      {/* Brand Color CSS Variables - Apply user's brand colors to admin UI */}
+      <style 
+        dangerouslySetInnerHTML={{ 
+          __html: `
+            :root {
+              --admin-brand-color: ${effectiveBrandColor};
+              --admin-brand-color-hover: ${effectiveBrandColorHover};
+              --admin-secondary-color-1: ${effectiveSecondaryColor1};
+              --admin-secondary-color-2: ${effectiveSecondaryColor2};
+            }
+            /* Override hardcoded gold references */
+            .bg-\\[\\#fcba00\\] { background-color: var(--admin-brand-color) !important; }
+            .text-\\[\\#fcba00\\] { color: var(--admin-brand-color) !important; }
+            .border-\\[\\#fcba00\\] { border-color: var(--admin-secondary-color-1) !important; }
+            .ring-\\[\\#fcba00\\] { --tw-ring-color: var(--admin-secondary-color-1) !important; }
+            .hover\\:bg-\\[\\#d99f00\\]:hover { background-color: var(--admin-brand-color-hover) !important; }
+            .accent-\\[\\#fcba00\\] { accent-color: var(--admin-brand-color) !important; }
+            .peer-checked\\:bg-\\[\\#fcba00\\] { background-color: var(--admin-brand-color) !important; }
+            .focus\\:ring-\\[\\#fcba00\\]:focus { --tw-ring-color: var(--admin-secondary-color-1) !important; }
+            .dark .peer-focus\\:ring-\\[\\#fcba00\\] { --tw-ring-color: var(--admin-secondary-color-1) !important; }
+          `
+        }}
+      />
       <div className="space-y-6 px-4 lg:px-6">
         {/* Onboarding Reminder - Shows if critical tasks incomplete */}
         {organization && (

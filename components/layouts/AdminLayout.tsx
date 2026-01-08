@@ -8,6 +8,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { Plus, ArrowLeft, Menu, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { getCurrentOrganization } from '@/utils/organization-helpers';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -30,23 +31,48 @@ export default function AdminLayout({ children, title, description, showPageTitl
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [productContext, setProductContext] = useState<string | null>(null);
+  const [organization, setOrganization] = useState<any>(null);
+  const [brandColors, setBrandColors] = useState({
+    accent: '#000000',
+    secondary1: '#000000',
+    secondary2: '#000000'
+  });
 
   // Get the actual theme to display (resolve system theme)
   const displayTheme = mounted && theme !== 'system' ? theme : (mounted && systemTheme || 'dark');
 
-  // Check product context on mount
+  // Check product context and fetch organization brand colors on mount
   useEffect(() => {
-    const checkProductContext = async () => {
+    const checkProductContextAndBrandColors = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.user_metadata?.product_context) {
           setProductContext(user.user_metadata.product_context);
         }
+
+        // Fetch organization to get brand colors
+        const org = await getCurrentOrganization(supabase);
+        if (org) {
+          setOrganization(org);
+          
+          // Get effective brand colors with black fallback for TipJar
+          const isTipJar = org.product_context === 'tipjar';
+          const defaultAccent = isTipJar ? '#000000' : '#fcba00';
+          const accent = org.requests_accent_color || defaultAccent;
+          const secondary1 = org.requests_secondary_color_1 || accent || defaultAccent;
+          const secondary2 = org.requests_secondary_color_2 || accent || defaultAccent;
+          
+          setBrandColors({
+            accent,
+            secondary1,
+            secondary2
+          });
+        }
       } catch (error) {
-        console.error('Error checking product context:', error);
+        console.error('Error checking product context or fetching organization:', error);
       }
     };
-    checkProductContext();
+    checkProductContextAndBrandColors();
   }, [supabase]);
 
   // Determine logo based on theme and product context
@@ -85,6 +111,17 @@ export default function AdminLayout({ children, title, description, showPageTitl
     router.push('/signin');
   };
 
+  // Helper function to get effective brand color
+  const getEffectiveBrandColor = (colorType: 'accent' | 'secondary1' | 'secondary2'): string => {
+    if (colorType === 'accent') return brandColors.accent;
+    if (colorType === 'secondary1') return brandColors.secondary1;
+    return brandColors.secondary2;
+  };
+
+  const effectiveBrandColor = getEffectiveBrandColor('accent');
+  const effectiveSecondaryColor1 = getEffectiveBrandColor('secondary1');
+  const effectiveBrandColorHover = `${effectiveBrandColor}dd`;
+
   return (
     <>
       <Head>
@@ -92,6 +129,31 @@ export default function AdminLayout({ children, title, description, showPageTitl
         {description && <meta name="description" content={description} />}
         <meta name="robots" content="noindex, nofollow" />
       </Head>
+
+      {/* Brand Color CSS Variables - Apply user's brand colors to admin UI */}
+      <style 
+        dangerouslySetInnerHTML={{ 
+          __html: `
+            :root {
+              --admin-brand-color: ${effectiveBrandColor};
+              --admin-brand-color-hover: ${effectiveBrandColorHover};
+              --admin-secondary-color-1: ${effectiveSecondaryColor1};
+              --admin-secondary-color-2: ${brandColors.secondary2};
+            }
+            /* Override hardcoded gold references */
+            .bg-\\[\\#fcba00\\] { background-color: var(--admin-brand-color) !important; }
+            .text-\\[\\#fcba00\\] { color: var(--admin-brand-color) !important; }
+            .border-\\[\\#fcba00\\] { border-color: var(--admin-secondary-color-1) !important; }
+            .ring-\\[\\#fcba00\\] { --tw-ring-color: var(--admin-secondary-color-1) !important; }
+            .hover\\:bg-\\[\\#d99f00\\]:hover { background-color: var(--admin-brand-color-hover) !important; }
+            .hover\\:text-\\[\\#fcba00\\]:hover { color: var(--admin-brand-color) !important; }
+            .accent-\\[\\#fcba00\\] { accent-color: var(--admin-brand-color) !important; }
+            .peer-checked\\:bg-\\[\\#fcba00\\] { background-color: var(--admin-brand-color) !important; }
+            .focus\\:ring-\\[\\#fcba00\\]:focus { --tw-ring-color: var(--admin-secondary-color-1) !important; }
+            .dark .peer-focus\\:ring-\\[\\#fcba00\\] { --tw-ring-color: var(--admin-secondary-color-1) !important; }
+          `
+        }}
+      />
 
       <div className="min-h-screen bg-gray-50 dark:bg-black m-0 p-0">
         {/* Sidebar */}
@@ -158,7 +220,17 @@ export default function AdminLayout({ children, title, description, showPageTitl
                     <div className="flex items-center">
                       <Link
                         href={newButton.href}
-                        className="bg-[#fcba00] hover:bg-yellow-500 text-black px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center text-sm sm:text-base w-full sm:w-auto touch-manipulation shadow-sm"
+                        className="bg-[#fcba00] hover:bg-[#d99f00] text-black px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center text-sm sm:text-base w-full sm:w-auto touch-manipulation shadow-sm"
+                        style={{
+                          backgroundColor: effectiveBrandColor,
+                          color: effectiveBrandColor === '#000000' ? '#ffffff' : '#000000'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = effectiveBrandColorHover;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = effectiveBrandColor;
+                        }}
                       >
                         <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
                         <span className="hidden sm:inline">{newButton.label}</span>

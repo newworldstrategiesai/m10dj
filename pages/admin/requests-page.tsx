@@ -466,8 +466,8 @@ export default function RequestsPageSettings() {
         setHeaderLogoUrl(org.requests_header_logo_url || '');
         setCanCustomizeHeaderLogo(org.can_customize_header_logo || false);
         
-        // Set accent color - default based on product context
-        const defaultAccentColor = org.product_context === 'tipjar' ? '#10b981' : '#fcba00';
+        // Set accent color - default based on product context (black for TipJar if not set)
+        const defaultAccentColor = org.product_context === 'tipjar' ? '#000000' : '#fcba00';
         setAccentColor(org.requests_accent_color || defaultAccentColor);
         
         // Set secondary brand colors (optional)
@@ -792,8 +792,8 @@ export default function RequestsPageSettings() {
         requests_subtitle_kerning: subtitleKerning || 0,
         // Custom header logo (only save if user can customize)
         requests_header_logo_url: canCustomizeHeaderLogo ? (headerLogoUrl || null) : null,
-        // Accent color (available to all users) - use product-aware default
-        requests_accent_color: accentColor || (organization?.product_context === 'tipjar' ? '#10b981' : '#fcba00'),
+        // Accent color (available to all users) - use product-aware default (black for TipJar if not set)
+        requests_accent_color: accentColor || (organization?.product_context === 'tipjar' ? '#000000' : '#fcba00'),
         // Secondary brand colors (optional)
         requests_secondary_color_1: secondaryColor1 || null,
         requests_secondary_color_2: secondaryColor2 || null,
@@ -946,33 +946,91 @@ export default function RequestsPageSettings() {
     setSocialLinks(updated);
   };
 
+  // Helper function to get effective brand colors with fallback
+  // For TipJar: falls back to black (#000000) if no colors are set
+  // For others: falls back to accent color if secondary colors not set
+  const getEffectiveBrandColor = (colorType: 'accent' | 'secondary1' | 'secondary2'): string => {
+    const isTipJar = organization?.product_context === 'tipjar';
+    
+    if (colorType === 'accent') {
+      // If accent color is set, use it; otherwise black for TipJar, default for others
+      if (accentColor) return accentColor;
+      return isTipJar ? '#000000' : '#fcba00';
+    } else if (colorType === 'secondary1') {
+      // Secondary 1: use if set, otherwise accent color, otherwise black for TipJar
+      if (secondaryColor1) return secondaryColor1;
+      return accentColor || (isTipJar ? '#000000' : '#fcba00');
+    } else { // secondary2
+      // Secondary 2: use if set, otherwise accent color, otherwise black for TipJar
+      if (secondaryColor2) return secondaryColor2;
+      return accentColor || (isTipJar ? '#000000' : '#fcba00');
+    }
+  };
+
+  const effectiveBrandColor = getEffectiveBrandColor('accent');
+  const effectiveSecondaryColor1 = getEffectiveBrandColor('secondary1');
+  const effectiveSecondaryColor2 = getEffectiveBrandColor('secondary2');
+
   if (loading) {
+    // Get effective brand color even during loading (use default)
+    const loadingBrandColor = organization?.product_context === 'tipjar' ? '#000000' : accentColor || '#fcba00';
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#fcba00] mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+      <>
+        <style 
+          dangerouslySetInnerHTML={{ 
+            __html: `
+              :root {
+                --admin-brand-color: ${loadingBrandColor};
+                --admin-brand-color-hover: ${loadingBrandColor}dd;
+              }
+              .text-\\[\\#fcba00\\] { color: var(--admin-brand-color) !important; }
+              .bg-\\[\\#fcba00\\] { background-color: var(--admin-brand-color) !important; }
+              .hover\\:bg-\\[\\#d99f00\\]:hover { background-color: var(--admin-brand-color-hover) !important; }
+            `
+          }}
+        />
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-[#fcba00] mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!organization) {
+    // Default brand color for error state
+    const errorBrandColor = '#000000'; // Black fallback
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No Organization Found</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            You need to create an organization first before managing requests page settings.
-          </p>
-          <Link
-            href="/admin/organizations"
-            className="inline-flex items-center px-4 py-2 bg-[#fcba00] text-black rounded-lg hover:bg-[#d99f00] transition-colors"
-          >
-            Go to Organizations
-          </Link>
+      <>
+        <style 
+          dangerouslySetInnerHTML={{ 
+            __html: `
+              :root {
+                --admin-brand-color: ${errorBrandColor};
+                --admin-brand-color-hover: ${errorBrandColor}dd;
+              }
+              .bg-\\[\\#fcba00\\] { background-color: var(--admin-brand-color) !important; }
+              .hover\\:bg-\\[\\#d99f00\\]:hover { background-color: var(--admin-brand-color-hover) !important; }
+            `
+          }}
+        />
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No Organization Found</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              You need to create an organization first before managing requests page settings.
+            </p>
+            <Link
+              href="/admin/organizations"
+              className="inline-flex items-center px-4 py-2 bg-[#fcba00] text-black rounded-lg hover:bg-[#d99f00] transition-colors"
+            >
+              Go to Organizations
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -981,6 +1039,43 @@ export default function RequestsPageSettings() {
 
   return (
     <AdminPageLayout title="Requests Page Settings" description="Customize your public song requests page with cover photos and social links">
+      {/* Brand Color CSS Variables - Apply user's brand colors to admin UI */}
+      <style 
+        dangerouslySetInnerHTML={{ 
+          __html: `
+            :root {
+              --admin-brand-color: ${effectiveBrandColor};
+              --admin-brand-color-hover: ${effectiveBrandColor}dd;
+              --admin-secondary-color-1: ${effectiveSecondaryColor1};
+              --admin-secondary-color-2: ${effectiveSecondaryColor2};
+            }
+            /* Map all brand color references to CSS variables */
+            .bg-admin-brand { background-color: var(--admin-brand-color) !important; }
+            .text-admin-brand { color: var(--admin-brand-color) !important; }
+            .border-admin-brand { border-color: var(--admin-brand-color) !important; }
+            .ring-admin-brand { --tw-ring-color: var(--admin-brand-color) !important; }
+            .hover\\:bg-admin-brand:hover { background-color: var(--admin-brand-color-hover) !important; }
+            /* Override hardcoded gold references */
+            .bg-\\[\\#fcba00\\] { background-color: var(--admin-brand-color) !important; }
+            .text-\\[\\#fcba00\\] { color: var(--admin-brand-color) !important; }
+            .border-\\[\\#fcba00\\] { border-color: var(--admin-secondary-color-1) !important; }
+            .ring-\\[\\#fcba00\\] { --tw-ring-color: var(--admin-secondary-color-1) !important; }
+            .hover\\:bg-\\[\\#d99f00\\]:hover { background-color: var(--admin-brand-color-hover) !important; }
+            .accent-\\[\\#fcba00\\] { accent-color: var(--admin-brand-color) !important; }
+            .peer-checked\\:bg-\\[\\#fcba00\\] { background-color: var(--admin-brand-color) !important; }
+            .focus\\:ring-\\[\\#fcba00\\]:focus { --tw-ring-color: var(--admin-secondary-color-1) !important; }
+            .dark .peer-focus\\:ring-\\[\\#fcba00\\] { --tw-ring-color: var(--admin-secondary-color-1) !important; }
+            .from-\\[\\#fcba00\\] { --tw-gradient-from: var(--admin-brand-color) !important; }
+            .to-\\[\\#fcba00\\] { --tw-gradient-to: var(--admin-brand-color) !important; }
+            .border-\\[\\#fcba00\\]\\/30 { border-color: ${effectiveSecondaryColor1}4d !important; }
+            .bg-\\[\\#fcba00\\]\\/5 { background-color: ${effectiveSecondaryColor2}0d !important; }
+            .bg-\\[\\#fcba00\\]\\/10 { background-color: ${effectiveSecondaryColor2}1a !important; }
+            .text-\\[\\#fcba00\\]\\/10 { color: ${effectiveSecondaryColor2}1a !important; }
+            .ring-\\[\\#fcba00\\]\\/20 { --tw-ring-color: ${effectiveSecondaryColor2}33 !important; }
+            .ring-\\[\\#fcba00\\]\\/40 { --tw-ring-color: ${effectiveSecondaryColor2}66 !important; }
+          `
+        }}
+      />
       <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-28 lg:pb-8">
           {/* Header - Mobile optimized */}
           <div className="mb-4 sm:mb-8">
@@ -3633,7 +3728,7 @@ export default function RequestsPageSettings() {
                         id="header_date"
                         value={headerFields.requests_header_date}
                         onChange={(e) => handleHeaderFieldChange('requests_header_date', e.target.value)}
-                        placeholder="December 31, 2024"
+                        placeholder={new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                         className="w-full"
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
