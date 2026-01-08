@@ -1984,8 +1984,9 @@ export function GeneralRequestsPage({
       const displayName = organizationData?.requests_header_artist_name || organizationData?.name || 'Requests';
       return `TipJar.Live | ${displayName}`;
     } else {
-      // For M10 DJ Company pages, use M10 branding
-      return 'Request a Song or Shoutout | M10 DJ Company';
+      // For M10 DJ Company and other pages, use "Request a Song or Shoutout | Display Name" format
+      const displayName = organizationData?.requests_header_artist_name || organizationData?.name || 'M10 DJ Company';
+      return `Request a Song or Shoutout | ${displayName}`;
     }
   };
   

@@ -741,7 +741,7 @@ export default function CrowdRequestPage() {
   return (
     <>
       <Head>
-        <title>Request a Song or Shoutout | M10 DJ Company</title>
+        <title>Request a Song or Shoutout</title>
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
         <meta name="mobile-web-app-capable" content="yes" />

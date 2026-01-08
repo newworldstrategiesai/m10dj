@@ -285,7 +285,8 @@ export default function OrganizationRequestsPage() {
             return `${siteUrl}/${imageUrl}`;
           };
           const ogImageUrl = getAbsoluteImageUrl(coverPhoto);
-          const pageTitle = organization?.requests_page_title || `Request a Song or Shoutout | ${organization?.name || 'M10 DJ Company'}`;
+          const displayName = organization?.requests_header_artist_name || organization?.name || 'M10 DJ Company';
+          const pageTitle = organization?.requests_page_title || `Request a Song or Shoutout | ${displayName}`;
           const pageDescription = organization?.requests_page_description || 
             (organization?.requests_header_artist_name 
               ? `Request a song or shoutout for ${organization.requests_header_artist_name}`
