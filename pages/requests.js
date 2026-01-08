@@ -292,6 +292,9 @@ export function GeneralRequestsPage({
   const previewSubtitleShadowBlur = router.query.subtitleShadowBlur ? parseInt(router.query.subtitleShadowBlur) : null;
   const previewSubtitleShadowColor = router.query.subtitleShadowColor || null;
   
+  // Read payment amount sort order from URL (for admin preview)
+  const previewAmountsSortOrder = router.query.amountsSortOrder || null;
+  
   // Use preview values for subtitle styling if available, otherwise use organization data
   const effectiveSubtitleFont = previewSubtitleFont || organizationData?.requests_subtitle_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
   const effectiveSubtitleTextTransform = previewSubtitleTextTransform || organizationData?.requests_subtitle_text_transform || 'none';
@@ -502,6 +505,8 @@ export function GeneralRequestsPage({
   const [amountType, setAmountType] = useState('preset'); // 'preset' or 'custom'
   const [presetAmount, setPresetAmount] = useState(500); // $5.00 in cents
   const [customAmount, setCustomAmount] = useState('');
+  const [initialPresetSet, setInitialPresetSet] = useState(false); // Track if initial preset amount has been set
+  const [initialCalculatedMax, setInitialCalculatedMax] = useState(null); // Track the initial max preset we calculated
   const [biddingSelectedAmount, setBiddingSelectedAmount] = useState(null); // Amount selected via BiddingAmountSelector (in cents)
   const [isFastTrack, setIsFastTrack] = useState(false);
   const [isNext, setIsNext] = useState(false);
@@ -597,6 +602,7 @@ export function GeneralRequestsPage({
     minimumAmount,
     presetAmounts,
     defaultPresetAmount,
+    amountsSortOrder: apiAmountsSortOrder,
     bundleDiscountEnabled,
     bundleDiscount: bundleDiscountPercent,
     loading: settingsLoading
@@ -604,6 +610,9 @@ export function GeneralRequestsPage({
     organizationId: organizationId ? String(organizationId) : null,
     organizationSlug: organizationData?.slug ? String(organizationData.slug) : null
   });
+  
+  // Use preview sort order if available, otherwise use API sort order
+  const amountsSortOrder = previewAmountsSortOrder || apiAmountsSortOrder || 'desc';
 
   // Track QR code scan for public requests page
   useQRScanTracking('public', organizationId);
@@ -833,28 +842,42 @@ export function GeneralRequestsPage({
     return () => clearTimeout(timer);
   }, []);
 
-  // Set initial preset amount when settings load
+  // Set initial preset amount when settings load (only once)
   // Use organization's default preset amount if set, otherwise use max preset amount
   useEffect(() => {
-    if (presetAmounts.length > 0 && presetAmount === CROWD_REQUEST_CONSTANTS.DEFAULT_PRESET_AMOUNT) {
-      // Check if organization has a default preset amount set
-      if (defaultPresetAmount !== null && defaultPresetAmount !== undefined) {
-        // Verify the default preset amount exists in the preset amounts array
-        const defaultExists = presetAmounts.some(p => p.value === defaultPresetAmount);
-        if (defaultExists) {
+    // Skip if presetAmounts haven't loaded yet
+    if (presetAmounts.length === 0) return;
+    
+    // Check if organization has a default preset amount set
+    if (defaultPresetAmount !== null && defaultPresetAmount !== undefined) {
+      // Verify the default preset amount exists in the preset amounts array
+      const defaultExists = presetAmounts.some(p => p.value === defaultPresetAmount);
+      if (defaultExists) {
+        // If preset is still at initial value (500) or matches the calculated max (meaning user hasn't changed it), apply the default
+        const shouldApplyDefault = 
+          !initialPresetSet || 
+          presetAmount === CROWD_REQUEST_CONSTANTS.DEFAULT_PRESET_AMOUNT ||
+          (initialCalculatedMax !== null && presetAmount === initialCalculatedMax);
+        
+        if (shouldApplyDefault && presetAmount !== defaultPresetAmount) {
           setPresetAmount(defaultPresetAmount);
-        } else {
-          // If default doesn't exist in presets, fall back to max
-          const maxPreset = presetAmounts[presetAmounts.length - 1];
-          setPresetAmount(maxPreset.value);
+          setInitialPresetSet(true);
+          setInitialCalculatedMax(null); // Clear this since we're using the default
+          return;
         }
-      } else {
-        // No default set, use the maximum preset amount (last one in array, since array is reversed in UI)
-        const maxPreset = presetAmounts[presetAmounts.length - 1];
-        setPresetAmount(maxPreset.value);
       }
     }
-  }, [presetAmounts, presetAmount, defaultPresetAmount]);
+    
+    // No default set or default doesn't exist in presets, use the maximum preset amount
+    // Only do this if we haven't set it yet (to avoid overriding a user selection)
+    if (!initialPresetSet && presetAmount === CROWD_REQUEST_CONSTANTS.DEFAULT_PRESET_AMOUNT) {
+      const sortedByValue = [...presetAmounts].sort((a, b) => b.value - a.value);
+      const maxPreset = sortedByValue[0];
+      setPresetAmount(maxPreset.value);
+      setInitialCalculatedMax(maxPreset.value);
+      setInitialPresetSet(true);
+    }
+  }, [presetAmounts, presetAmount, defaultPresetAmount, initialPresetSet, initialCalculatedMax]);
 
   // Use song extraction hook
   const { extractingSong, extractionError, extractedData, extractSongInfo: extractSongInfoHook } = useSongExtraction();
@@ -913,15 +936,22 @@ export function GeneralRequestsPage({
 
   // Reset bundle size to 1 when custom amount is entered or amount doesn't equal minimum
   // Must be after getBaseAmount is defined
+  // Only reset if user actively changes away from minimum amount
   useEffect(() => {
-    const baseAmount = getBaseAmount();
-    // If using custom amount OR amount doesn't equal minimum, reset bundle to 1
-    if (amountType === 'custom' || (baseAmount > 0 && baseAmount !== minimumAmount)) {
-      if (bundleSize > 1) {
+    // Skip if presetAmounts haven't loaded yet (avoid false triggers on initial load)
+    if (presetAmounts.length === 0 || !initialPresetSet) return;
+    
+    // Only reset if bundle is currently > 1 (don't reset unnecessarily)
+    if (bundleSize > 1) {
+      const baseAmount = getBaseAmount();
+      // Reset bundle if:
+      // 1. Using custom amount (always reset for custom)
+      // 2. Using preset amount AND amount doesn't equal minimum (bundle only works with minimum)
+      if (amountType === 'custom' || (amountType === 'preset' && baseAmount !== minimumAmount)) {
         setBundleSize(1);
       }
     }
-  }, [amountType, customAmount, presetAmount, minimumAmount, getBaseAmount, bundleSize]); // Watch for amount changes
+  }, [amountType, customAmount, presetAmount, minimumAmount, getBaseAmount, bundleSize, presetAmounts.length, initialPresetSet]); // Watch for amount changes
 
   // Scroll to bundle songs section when bundle is selected and min bid is selected
   // Must be after getBaseAmount is defined
@@ -3034,7 +3064,7 @@ export function GeneralRequestsPage({
         )}
         
         <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-8 sm:py-12 md:py-16' : 'py-3 sm:py-6 md:py-8 lg:py-12'} px-3 sm:px-4 md:px-8 lg:px-12 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto'), display: 'flex', flexDirection: 'column', maxWidth: '100vw' }}>
-          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-xl md:max-w-lg'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden`}>
+          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-xl md:max-w-2xl lg:max-w-3xl'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden`}>
             {/* Header - Compact for no-scroll design - Hide when hero image is shown */}
             {false && (
               <div className="text-center mb-2 sm:mb-3">
@@ -3527,7 +3557,7 @@ export function GeneralRequestsPage({
                             )
                           ) : (
                             <PaymentAmountSelector
-                              key={`payment-selector-${shouldUseBidding ? 'bidding' : 'normal'}-${presetAmounts.length}`}
+                              key={`payment-selector-${shouldUseBidding ? 'bidding' : 'normal'}-${presetAmounts.length}-${amountsSortOrder}`}
                               amountType={amountType}
                               setAmountType={setAmountType}
                               presetAmount={presetAmount}
@@ -3552,6 +3582,7 @@ export function GeneralRequestsPage({
                               currentWinningBid={0}
                               bundleSize={bundleSize}
                               setBundleSize={setBundleSize}
+                              amountsSortOrder={amountsSortOrder}
                             />
                           )}
                         </div>
@@ -3791,12 +3822,12 @@ export function GeneralRequestsPage({
                   
                   {/* Request Type Selection - Hide if only one type is allowed */}
                   {(!allowedRequestTypes || allowedRequestTypes.length > 1) && (
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-5 md:mb-6">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-6 mb-4 sm:mb-5 md:mb-6">
                       {(!allowedRequestTypes || allowedRequestTypes.includes('song_request')) && (
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('song_request')}
-                          className={`group relative p-2.5 sm:p-3 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                          className={`group relative p-2.5 sm:p-3 md:p-4 lg:p-5 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
                             requestType === 'song_request'
                               ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
                               : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
@@ -4298,6 +4329,7 @@ export function GeneralRequestsPage({
                         showNextSong={false}
                         bundleSize={bundleSize}
                         setBundleSize={setBundleSize}
+                        amountsSortOrder={amountsSortOrder}
                       />
                       {/* Fallback payment options for tips only */}
                       {((paymentSettings?.cashAppTag && paymentSettings.cashAppTag.trim()) || (paymentSettings?.venmoUsername && paymentSettings.venmoUsername.trim())) && (
@@ -4398,6 +4430,7 @@ export function GeneralRequestsPage({
                           showNextSong={false}
                           bundleSize={bundleSize}
                           setBundleSize={setBundleSize}
+                          amountsSortOrder={amountsSortOrder}
                         />
                       </div>
                     );
@@ -4430,6 +4463,7 @@ export function GeneralRequestsPage({
                           showNextSong={organizationData?.requests_show_next_song !== false}
                           bundleSize={bundleSize}
                           setBundleSize={setBundleSize}
+                          amountsSortOrder={amountsSortOrder}
                         />
                       </div>
                     );

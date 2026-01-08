@@ -106,7 +106,7 @@ function BundleSelector({
         </h3>
       </div>
       
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
         {bundles.map((bundle) => {
           const isSelected = bundleSize === bundle.size;
           const pricePerSong = getPricePerSong(bundle.size);
@@ -120,7 +120,7 @@ function BundleSelector({
               type="button"
               onClick={() => !isBundleDisabled && setBundleSize(bundle.size)}
               disabled={isBundleDisabled}
-              className={`relative p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation ${
+              className={`relative p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation ${
                 isSelected
                   ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/20 shadow-lg shadow-purple-500/20 scale-105'
                   : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-md'

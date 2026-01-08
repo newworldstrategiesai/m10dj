@@ -599,6 +599,8 @@ export default function RequestsPageSettings() {
       subtitleShadowYOffset: String(subtitleShadowYOffset),
       subtitleShadowBlur: String(subtitleShadowBlur),
       subtitleShadowColor: subtitleShadowColor,
+      // Payment amount settings for preview
+      amountsSortOrder: amountsSortOrder,
     });
     
     return `/${organization.slug}/requests?${params.toString()}`;
@@ -1687,6 +1689,8 @@ export default function RequestsPageSettings() {
                             setAmountsSortOrder('desc');
                             setError(null);
                             setSuccess(false);
+                            // Update preview iframe in real-time
+                            updatePreviewIframe();
                           }}
                           className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
                             amountsSortOrder === 'desc'
@@ -1703,6 +1707,8 @@ export default function RequestsPageSettings() {
                             setAmountsSortOrder('asc');
                             setError(null);
                             setSuccess(false);
+                            // Update preview iframe in real-time
+                            updatePreviewIframe();
                           }}
                           className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
                             amountsSortOrder === 'asc'

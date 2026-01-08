@@ -54,11 +54,10 @@ export default async function handler(req, res) {
     if (organization && (organization.requests_minimum_amount || organization.requests_preset_amounts)) {
       const orgMinimum = organization.requests_minimum_amount || 1000;
       let orgPresets = organization.requests_preset_amounts || [1000, 1500, 2000, 2500];
-      const sortOrder = organization.requests_amounts_sort_order || 'desc';
       
-      // Sort presets according to preference
-      if (Array.isArray(orgPresets)) {
-        orgPresets = [...orgPresets].sort((a, b) => sortOrder === 'desc' ? b - a : a - b);
+      // Ensure presets is an array (don't pre-sort - let frontend handle sorting based on sort order)
+      if (!Array.isArray(orgPresets)) {
+        orgPresets = [1000, 1500, 2000, 2500];
       }
       
       // Still need to get payment method settings (CashApp, Venmo) from admin_settings
@@ -105,6 +104,7 @@ export default async function handler(req, res) {
         minimumAmount: orgMinimum,
         presetAmounts: orgPresets,
         defaultPresetAmount: organization.requests_default_preset_amount || null,
+        amountsSortOrder: organization.requests_amounts_sort_order || 'desc',
         bundleDiscountEnabled: paymentMethodSettings['crowd_request_bundle_discount_enabled'] === 'true' || paymentMethodSettings['crowd_request_bundle_discount_enabled'] === undefined,
         bundleDiscountPercent: parseInt(paymentMethodSettings['crowd_request_bundle_discount_percent']) || 10,
         // Payment method enabled flags
@@ -204,6 +204,7 @@ export default async function handler(req, res) {
         nextFee,
         minimumAmount: defaultMinimum,
         presetAmounts: generateDefaultPresets(defaultMinimum),
+        amountsSortOrder: organization?.requests_amounts_sort_order || 'desc',
         // Payment method enabled flags
         // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
         // Payment method enabled flags
@@ -270,6 +271,7 @@ export default async function handler(req, res) {
       nextFee,
       minimumAmount: minimumAmount,
       presetAmounts,
+      amountsSortOrder: organization?.requests_amounts_sort_order || 'desc',
       bundleDiscountEnabled: bundleDiscountEnabled === 'true',
       bundleDiscountPercent: parseInt(bundleDiscountPercent) || 10,
       // Payment method enabled flags

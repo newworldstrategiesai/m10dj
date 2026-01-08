@@ -26,7 +26,8 @@ function PaymentAmountSelector({
   isBiddingMode = false, // Indicates if this is in bidding mode
   currentWinningBid = 0, // Current winning bid amount in cents (for bidding mode)
   bundleSize = 1, // Bundle size: 1, 2, or 3
-  setBundleSize = () => {} // Function to set bundle size
+  setBundleSize = () => {}, // Function to set bundle size
+  amountsSortOrder = 'desc' // Sort order: 'desc' (highest first) or 'asc' (lowest first)
 }) {
   // Detect mobile device
   const [isMobile, setIsMobile] = useState(false);
@@ -43,6 +44,22 @@ function PaymentAmountSelector({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+  
+  // Set default custom amount when switching to custom mode
+  // Default should be max preset amount + $5 (500 cents), but not less than minimum
+  useEffect(() => {
+    if (amountType === 'custom' && (!customAmount || customAmount.trim() === '')) {
+      if (presetAmounts.length > 0) {
+        // Find max preset amount (highest value regardless of sort order)
+        const sortedByValue = [...presetAmounts].sort((a, b) => b.value - a.value);
+        const maxPreset = sortedByValue[0];
+        // Default is max preset + $5 (500 cents), but not less than minimum
+        const defaultAmount = Math.max(maxPreset.value + 500, minimumAmount);
+        // Set as formatted dollar amount (e.g., "30.00")
+        setCustomAmount((defaultAmount / 100).toFixed(2));
+      }
+    }
+  }, [amountType, presetAmounts, minimumAmount, customAmount, setCustomAmount]);
   
   // Helper function to update custom amount
   const updateCustomAmount = (value) => {
@@ -128,7 +145,7 @@ function PaymentAmountSelector({
                 return true; // Show this button
               })
               .slice()
-              .reverse() // Reverse order: max first, min last
+              .sort((a, b) => amountsSortOrder === 'desc' ? b.value - a.value : a.value - b.value) // Sort by order setting
               .map((preset, idx) => {
               const beatsCurrentBid = isBiddingMode && currentWinningBid > 0 && preset.value > currentWinningBid;
               const isBelowMinimum = isBiddingMode && preset.value < minimumAmount;

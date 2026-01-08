@@ -22,6 +22,7 @@ export function usePaymentSettings(options = {}) {
     { label: '$25', value: 2500 }
   ]);
   const [defaultPresetAmount, setDefaultPresetAmount] = useState(null);
+  const [amountsSortOrder, setAmountsSortOrder] = useState('desc');
   const [bundleDiscountEnabled, setBundleDiscountEnabled] = useState(true);
   const [bundleDiscount, setBundleDiscount] = useState(0.1);
   const [loading, setLoading] = useState(true);
@@ -64,6 +65,9 @@ export function usePaymentSettings(options = {}) {
         if (data.defaultPresetAmount !== undefined) {
           setDefaultPresetAmount(data.defaultPresetAmount);
         }
+        if (data.amountsSortOrder !== undefined) {
+          setAmountsSortOrder(data.amountsSortOrder);
+        }
         if (data.bundleDiscountEnabled !== undefined) {
           setBundleDiscountEnabled(data.bundleDiscountEnabled);
         }
@@ -89,6 +93,7 @@ export function usePaymentSettings(options = {}) {
     minimumAmount,
     presetAmounts,
     defaultPresetAmount,
+    amountsSortOrder,
     bundleDiscountEnabled,
     bundleDiscount,
     loading,
