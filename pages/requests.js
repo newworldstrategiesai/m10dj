@@ -4455,23 +4455,10 @@ export function GeneralRequestsPage({
                     })()}
                     className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-2xl shadow-brand-500/40 hover:shadow-brand-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
                     onClick={(e) => {
-                      logger.info('[Submit Button] onClick fired', { 
-                        currentStep, 
-                        submitting, 
-                        buttonType: currentStep === 1 ? 'button' : 'submit',
-                        disabled: (() => {
-                          if (submitting) return true;
-                          if (currentStep >= 2) {
-                            const amount = getPaymentAmount();
-                            if (shouldUseBidding) {
-                              const minBid = dynamicMinimumAmount || 500;
-                              return !amount || amount < minBid;
-                            }
-                            const minAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-                            return !amount || amount < minAmount;
-                          }
-                          return false;
-                        })()
+                      logger.info('[Submit Button] onClick fired', {
+                        currentStep,
+                        submitting,
+                        buttonType: currentStep === 1 ? 'button' : 'submit'
                       });
                       
                       // Prevent double-submission
@@ -4501,25 +4488,7 @@ export function GeneralRequestsPage({
                       
                       // For step 2, explicitly ensure form submission happens
                       logger.info('[Submit Button] Step 2: Ensuring form submission');
-                      
-                      // Check if button is actually enabled (not disabled by validation)
-                      const amount = getPaymentAmount();
-                      const isDisabled = (() => {
-                        if (shouldUseBidding) {
-                          const minBid = dynamicMinimumAmount || 500;
-                          return !amount || amount < minBid;
-                        }
-                        const minAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-                        return !amount || amount < minAmount;
-                      })();
-                      
-                      if (isDisabled) {
-                        logger.warn('[Submit Button] Button should be disabled but click fired', { amount, minAmount: shouldUseBidding ? (dynamicMinimumAmount || 500) : (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount) });
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return;
-                      }
-                      
+
                       // For step 2, explicitly call handleSubmit to ensure it always works
                       // This is more reliable than relying on form's onSubmit which might not fire
                       logger.info('[Submit Button] Step 2: Explicitly calling handleSubmit');
