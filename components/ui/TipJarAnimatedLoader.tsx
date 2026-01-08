@@ -42,38 +42,75 @@ export default function TipJarAnimatedLoader({
             "
           />
         </clipPath>
+        
+        {/* Liquid gradient */}
+        <linearGradient id="liquid-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#81C784" />
+          <stop offset="100%" stopColor="#66BB6A" />
+        </linearGradient>
       </defs>
 
-      {/* Liquid fill */}
-      <rect
-        x="112"
-        y="480"
-        width="288"
-        height="0"
-        fill="#66bb6a"
+      {/* 🌊 LIGHT GREEN SURFACE with wave animation */}
+      <path
+        id="wave"
+        fill="url(#liquid-grad)"
         clipPath="url(#jar-interior)"
+        d="
+          M96 260
+          C160 225, 240 285, 320 255
+          C360 245, 390 265, 416 255
+          L416 640
+          L96 640
+          Z
+        "
       >
-        {/* Grow fill */}
         <animate
-          attributeName="height"
-          from="0"
-          to="280"
-          dur="1.8s"
+          attributeName="d"
+          dur="1.1s"
           repeatCount="indefinite"
-          keyTimes="0;0.85;1"
-          values="0;280;280"
+          calcMode="spline"
+          keySplines="
+            0.4 0 0.6 1;
+            0.4 0 0.6 1
+          "
+          values="
+            M96 260 C160 225,240 285,320 255 C360 245,390 265,416 255 L416 640 L96 640 Z;
+            M96 260 C160 285,240 225,320 275 C360 285,390 245,416 270 L416 640 L96 640 Z;
+            M96 260 C160 225,240 285,320 255 C360 245,390 265,416 255 L416 640 L96 640 Z
+          "
         />
-        {/* Keep bottom fixed */}
+      </path>
+
+      {/* 🌊 DARK GREEN THIN BORDER (same wave, stroke only) */}
+      <path
+        fill="none"
+        stroke="#2E7D32"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        clipPath="url(#jar-interior)"
+        d="
+          M96 260
+          C160 225, 240 285, 320 255
+          C360 245, 390 265, 416 255
+        "
+      >
         <animate
-          attributeName="y"
-          from="480"
-          to="200"
-          dur="1.8s"
+          attributeName="d"
+          dur="1.1s"
           repeatCount="indefinite"
-          keyTimes="0;0.85;1"
-          values="480;200;200"
+          calcMode="spline"
+          keySplines="
+            0.4 0 0.6 1;
+            0.4 0 0.6 1
+          "
+          values="
+            M96 260 C160 225,240 285,320 255 C360 245,390 265,416 255;
+            M96 260 C160 285,240 225,320 275 C360 285,390 245,416 270;
+            M96 260 C160 225,240 285,320 255 C360 245,390 265,416 255
+          "
         />
-      </rect>
+      </path>
 
       {/* Jar outline */}
       <path
