@@ -11,6 +11,7 @@ import TipJarHeader from '@/components/tipjar/Header';
 import { Button } from '@/components/ui/button';
 import { Lock, Share2, Users, MessageSquare, X, ChevronUp, ChevronDown } from 'lucide-react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 
 interface LiveStream {
   id: string;
@@ -318,12 +319,25 @@ export default function LiveStreamPage() {
     }
   }
 
+  // Check if we're on TipJar domain
+  const isTipJarDomain = typeof window !== 'undefined' && 
+    (window.location.hostname === 'tipjar.live' || window.location.hostname === 'www.tipjar.live');
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-white text-lg">Loading stream...</div>
+        <div className="text-center text-white">
+          {isTipJarDomain ? (
+            <>
+              <TipJarAnimatedLoader size={128} className="mx-auto mb-4" />
+              <div className="text-lg">Loading stream...</div>
+            </>
+          ) : (
+            <>
+              <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="text-lg">Loading stream...</div>
+            </>
+          )}
         </div>
       </div>
     );

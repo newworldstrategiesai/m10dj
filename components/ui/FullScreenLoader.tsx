@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import TipJarAnimatedLoader from './TipJarAnimatedLoader';
 
 interface FullScreenLoaderProps {
   isOpen: boolean;
@@ -136,14 +137,18 @@ export default function FullScreenLoader({
         <div className={`absolute inset-0 ${backdropClass}`}></div>
       )}
       <div className="flex flex-col items-center justify-center relative z-10">
-        {/* Animated Logo GIF - Centered */}
-        <div className="relative w-64 h-64 md:w-96 md:h-96">
-          <img
-            src={logoSrc}
-            alt={isTipJarDomain ? 'TipJar.Live Loading' : isDJDashDomain ? 'DJDash Loading' : 'Loading'}
-            className="w-full h-full object-contain"
-            loading="eager"
-          />
+        {/* Animated Logo - TipJar uses animated jar, others use static images */}
+        <div className="relative w-64 h-64 md:w-96 md:h-96 flex items-center justify-center">
+          {isTipJarDomain ? (
+            <TipJarAnimatedLoader size={256} className="max-w-full max-h-full" />
+          ) : (
+            <img
+              src={logoSrc}
+              alt={isDJDashDomain ? 'DJDash Loading' : 'Loading'}
+              className="w-full h-full object-contain"
+              loading="eager"
+            />
+          )}
         </div>
 
         {/* Loading Message - Optional */}

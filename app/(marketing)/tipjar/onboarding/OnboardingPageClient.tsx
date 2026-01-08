@@ -5,6 +5,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import TipJarOnboardingWizard from '@/components/tipjar/OnboardingWizard';
 import { Loader2 } from 'lucide-react';
+import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 
 interface OnboardingPageClientProps {
   user: any;
@@ -112,8 +113,8 @@ export default function OnboardingPageClient({
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 text-purple-600 dark:text-purple-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">
+          <TipJarAnimatedLoader size={128} className="mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400 mt-4">
             {checking ? 'Setting up your account...' : 'Loading...'}
           </p>
         </div>

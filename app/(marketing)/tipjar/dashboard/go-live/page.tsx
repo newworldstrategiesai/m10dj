@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Copy, Play, Square, DollarSign, Users, X, Share2, Check, Circle, StopCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 
 interface LiveStream {
   id: string;
@@ -500,7 +501,10 @@ export default function GoLivePage() {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
-        <div className="text-white text-lg">Loading...</div>
+        <div className="flex flex-col items-center text-white">
+          <TipJarAnimatedLoader size={128} className="mb-4" />
+          <p className="text-lg">Loading...</p>
+        </div>
       </div>
     );
   }

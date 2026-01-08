@@ -8,6 +8,7 @@ import { CheckCircle, Music, Mic, Loader2, Zap, Mail, Check, Clock, Gift, Radio,
 import confetti from 'canvas-confetti';
 import { useSuccessPageTracking } from '../../hooks/useSuccessPageTracking';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import TipJarAnimatedLoader from '../../components/ui/TipJarAnimatedLoader';
 
 export default function CrowdRequestSuccessPage() {
   const router = useRouter();
@@ -538,6 +539,10 @@ export default function CrowdRequestSuccessPage() {
     }
   };
 
+  // Check if we're on TipJar domain
+  const isTipJarDomain = typeof window !== 'undefined' && 
+    (window.location.hostname === 'tipjar.live' || window.location.hostname === 'www.tipjar.live');
+
   if (loading) {
     return (
       <>
@@ -548,10 +553,21 @@ export default function CrowdRequestSuccessPage() {
           <Header />
           <main className="section-container py-12 md:py-20">
             <div className="max-w-2xl mx-auto text-center">
-              <Loader2 className="w-12 h-12 text-blue-500 dark:text-purple-500 animate-spin mx-auto mb-4" />
-              <p className="text-lg text-gray-600 dark:text-gray-400">
-                Processing your payment...
-              </p>
+              {isTipJarDomain ? (
+                <div className="flex flex-col items-center">
+                  <TipJarAnimatedLoader size={128} className="mb-4" />
+                  <p className="text-lg text-gray-600 dark:text-gray-400 mt-4">
+                    Processing your payment...
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <Loader2 className="w-12 h-12 text-blue-500 dark:text-purple-500 animate-spin mx-auto mb-4" />
+                  <p className="text-lg text-gray-600 dark:text-gray-400">
+                    Processing your payment...
+                  </p>
+                </>
+              )}
             </div>
           </main>
         </div>
