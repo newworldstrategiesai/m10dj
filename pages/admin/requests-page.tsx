@@ -1227,6 +1227,81 @@ export default function RequestsPageSettings() {
                       </div>
                     </div>
                     
+                    {/* Theme Collections */}
+                    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                            Theme Collections
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Pre-curated color palettes designed for specific themes and events
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {themeCollections.map((theme) => (
+                          <div
+                            key={theme.name}
+                            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+                                  {theme.name}
+                                </h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {theme.description}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Apply the primary color (first color in the palette) as accent color
+                                  const primaryColor = theme.colors[0].hex;
+                                  setAccentColor(primaryColor);
+                                  setError(null);
+                                  setSuccess(false);
+                                  setTimeout(() => updatePreviewIframe(), 100);
+                                }}
+                                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                              >
+                                Apply
+                              </button>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              {theme.colors.map((color, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+                                >
+                                  <div
+                                    className="w-10 h-10 rounded-lg border-2 border-gray-200 dark:border-gray-700 flex-shrink-0 shadow-sm"
+                                    style={{ backgroundColor: color.hex }}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {color.name}
+                                      </span>
+                                      <span className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-900 px-1.5 py-0.5 rounded">
+                                        {color.hex}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                      {color.usage}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
                     {/* Theme Mode */}
                     <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
