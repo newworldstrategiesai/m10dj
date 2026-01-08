@@ -406,13 +406,29 @@ export default async function handler(req, res) {
       });
     }
 
-    // Determine base URL based on source_domain to keep user on same domain
+    // Determine base URL based on source_domain and organization product_context
+    // This ensures TipJar requests redirect to tipjar.live, not m10djcompany.com
     let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001';
-    if (crowdRequest.source_domain) {
+    
+    // First check organization's product_context (most reliable)
+    if (organization?.product_context) {
+      if (organization.product_context === 'tipjar') {
+        // Use www.tipjar.live to match the actual domain (www redirects work, but be explicit)
+        baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://www.tipjar.live';
+      } else if (organization.product_context === 'djdash') {
+        baseUrl = process.env.NEXT_PUBLIC_DJDASH_URL || 'https://djdash.net';
+      } else if (organization.product_context === 'm10dj') {
+        baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://www.m10djcompany.com';
+      }
+    }
+    // Fallback to source_domain if product_context not set
+    else if (crowdRequest.source_domain) {
       // If request came from tipjar.live, use tipjar.live for success page
-      if (crowdRequest.source_domain === 'tipjar.live' || crowdRequest.source_domain === 'www.tipjar.live') {
+      if (crowdRequest.source_domain.includes('tipjar.live')) {
         baseUrl = 'https://tipjar.live';
-      } else if (crowdRequest.source_domain === 'm10djcompany.com' || crowdRequest.source_domain === 'www.m10djcompany.com') {
+      } else if (crowdRequest.source_domain.includes('djdash.net') || crowdRequest.source_domain.includes('djdash.com')) {
+        baseUrl = 'https://djdash.net';
+      } else if (crowdRequest.source_domain.includes('m10djcompany.com')) {
         baseUrl = 'https://www.m10djcompany.com';
       }
       // For other domains, use the source_domain to construct URL
@@ -421,6 +437,28 @@ export default async function handler(req, res) {
         baseUrl = `https://${crowdRequest.source_domain.replace(/^www\./, '')}`;
       }
     }
+    // Final fallback: check environment variables
+    else {
+      const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
+      if (envUrl) {
+        if (envUrl.includes('tipjar.live')) {
+          baseUrl = 'https://tipjar.live';
+        } else if (envUrl.includes('djdash.net') || envUrl.includes('djdash.com')) {
+          baseUrl = 'https://djdash.net';
+        } else if (envUrl.includes('m10djcompany.com')) {
+          baseUrl = 'https://www.m10djcompany.com';
+        } else {
+          baseUrl = envUrl.startsWith('http') ? envUrl : `https://${envUrl}`;
+        }
+      }
+    }
+    
+    console.log('🔵 [CREATE-CHECKOUT] Determined baseUrl:', {
+      baseUrl,
+      product_context: organization?.product_context,
+      source_domain: crowdRequest.source_domain,
+      organization_id: organization?.id
+    });
     
     // Determine cancel URL based on whether it's a general request or event-specific
     const isGeneralRequest = crowdRequest.event_qr_code && crowdRequest.event_qr_code.startsWith('general');
@@ -559,11 +597,14 @@ export default async function handler(req, res) {
       const percentageFee = Math.round((totalAmountInCents * platformFeePercentage) / 100);
       const applicationFeeAmount = percentageFee + Math.round(platformFeeFixed * 100);
       
+      const successUrl = `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`;
+      console.log('🔵 [CREATE-CHECKOUT] Stripe Connect success URL:', successUrl);
+      
       const sessionParams = {
         payment_method_types: paymentMethodTypes,
         line_items: finalLineItems,
         mode: 'payment',
-        success_url: `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`,
+        success_url: successUrl,
         cancel_url: cancelUrl,
         ...(crowdRequest.requester_email && {
           customer_email: crowdRequest.requester_email,
@@ -710,6 +751,9 @@ export default async function handler(req, res) {
         has_organization: !!organization
       });
       
+      const successUrl = `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`;
+      console.log('🔵 [CREATE-CHECKOUT] Regular checkout success URL:', successUrl);
+      
       try {
         session = await stripe.checkout.sessions.create({
         payment_method_types: paymentMethodTypes, // Card includes Apple Pay automatically on supported devices
@@ -717,7 +761,7 @@ export default async function handler(req, res) {
         // Cash App Pay works with both Connect and non-Connect accounts
         line_items: regularLineItems,
         mode: 'payment',
-        success_url: `${baseUrl}/crowd-request/success?session_id={CHECKOUT_SESSION_ID}&request_id=${crowdRequest.id}`,
+        success_url: successUrl,
         cancel_url: cancelUrl,
         // Pre-fill customer email if we have it (Stripe only supports email pre-fill in Checkout)
         // Note: customer_details is read-only on completed sessions, not a valid create parameter
