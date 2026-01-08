@@ -446,7 +446,10 @@ export default function RequestsPageSettings() {
         
         // Set payment amount settings
         setMinimumAmount(org.requests_minimum_amount || 1000);
-        setPresetAmounts(org.requests_preset_amounts || [1000, 1500, 2000, 2500]);
+        const presets = org.requests_preset_amounts && Array.isArray(org.requests_preset_amounts) && org.requests_preset_amounts.length > 0
+          ? org.requests_preset_amounts
+          : [1000, 1500, 2000, 2500];
+        setPresetAmounts(presets);
         setAmountsSortOrder(org.requests_amounts_sort_order || 'desc');
         setDefaultPresetAmount(org.requests_default_preset_amount || null);
         
@@ -1860,7 +1863,7 @@ export default function RequestsPageSettings() {
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                             <input
                               type="text"
-                              value={cashAppTag.replace(/^\$/, '')}
+                              value={(cashAppTag || '').replace(/^\$/, '')}
                               onChange={(e) => {
                                 const value = e.target.value.replace(/^\$/, '');
                                 setCashAppTag(value ? `$${value}` : '');
@@ -1885,7 +1888,7 @@ export default function RequestsPageSettings() {
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">@</span>
                             <input
                               type="text"
-                              value={venmoUsername.replace(/^@/, '')}
+                              value={(venmoUsername || '').replace(/^@/, '')}
                               onChange={(e) => {
                                 const value = e.target.value.replace(/^@/, '');
                                 const newUsername = value ? `@${value}` : '';
