@@ -21,12 +21,14 @@ export default function ForgotPassword({
   disableButton,
   productContext
 }: ForgotPasswordProps) {
-  const router = redirectMethod === 'client' ? useRouter() : null;
+  // Always call hooks unconditionally (Rules of Hooks)
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setIsSubmitting(true); // Disable the button while the request is being handled
-    await handleRequest(e, requestPasswordUpdate, router);
+    // Only use router if redirectMethod is 'client', otherwise pass null
+    await handleRequest(e, requestPasswordUpdate, redirectMethod === 'client' ? router : null);
     setIsSubmitting(false);
   };
 

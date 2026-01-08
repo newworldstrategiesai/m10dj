@@ -15,12 +15,14 @@ interface SignUpProps {
 }
 
 export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
-  const router = redirectMethod === 'client' ? useRouter() : null;
+  // Always call hooks unconditionally (Rules of Hooks)
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setIsSubmitting(true); // Disable the button while the request is being handled
-    await handleRequest(e, signUp, router);
+    // Only use router if redirectMethod is 'client', otherwise pass null
+    await handleRequest(e, signUp, redirectMethod === 'client' ? router : null);
     setIsSubmitting(false);
   };
 
