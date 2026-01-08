@@ -1552,6 +1552,14 @@ export default function RequestsPageSettings() {
                     Payment Amount Settings
                   </h2>
                   
+                  {(!minimumAmount || !presetAmounts || presetAmounts.length === 0) && (
+                    <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        Loading payment settings...
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="space-y-6">
                     {/* Minimum Amount */}
                     <div>
@@ -1567,18 +1575,20 @@ export default function RequestsPageSettings() {
                           type="number"
                           step="1"
                           min="1"
-                          value={minimumAmount / 100}
+                          value={(minimumAmount || 1000) / 100}
                           onChange={(e) => {
                             const newMin = Math.max(100, Math.round(parseFloat(e.target.value) * 100) || 100);
                             setMinimumAmount(newMin);
                             
                             // Auto-adjust preset amounts if minimum changes
-                            const currentMin = Math.min(...presetAmounts);
-                            if (newMin !== currentMin) {
-                              // Calculate the difference and shift all presets
-                              const diff = newMin - currentMin;
-                              const newPresets = presetAmounts.map(amount => amount + diff);
-                              setPresetAmounts(newPresets);
+                            if (presetAmounts && presetAmounts.length > 0) {
+                              const currentMin = Math.min(...presetAmounts);
+                              if (newMin !== currentMin) {
+                                // Calculate the difference and shift all presets
+                                const diff = newMin - currentMin;
+                                const newPresets = presetAmounts.map(amount => amount + diff);
+                                setPresetAmounts(newPresets);
+                              }
                             }
                             
                             setError(null);
@@ -1602,7 +1612,7 @@ export default function RequestsPageSettings() {
                         These are the preset amounts shown as buttons on the request page
                       </p>
                       <div className="space-y-3">
-                        {presetAmounts.map((amount, index) => (
+                        {presetAmounts && presetAmounts.length > 0 ? presetAmounts.map((amount, index) => (
                           <div key={index} className="flex items-center gap-3">
                             <span className="text-sm text-gray-500 w-16">Button {index + 1}:</span>
                             <div className="relative w-32">
@@ -1638,8 +1648,12 @@ export default function RequestsPageSettings() {
                               </button>
                             )}
                           </div>
-                        ))}
-                        {presetAmounts.length < 6 && (
+                        )) : (
+                          <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                            No preset amounts configured. Default amounts will be used.
+                          </div>
+                        )}
+                        {presetAmounts && presetAmounts.length > 0 && presetAmounts.length < 6 && (
                           <button
                             type="button"
                             onClick={() => {
@@ -1726,7 +1740,7 @@ export default function RequestsPageSettings() {
                             Auto (Highest Amount)
                           </span>
                         </label>
-                        {presetAmounts.map((amount, index) => (
+                        {presetAmounts && presetAmounts.length > 0 ? presetAmounts.map((amount, index) => (
                           <label key={index} className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
@@ -1743,7 +1757,7 @@ export default function RequestsPageSettings() {
                               ${(amount / 100).toFixed(0)}
                             </span>
                           </label>
-                        ))}
+                        )) : null}
                       </div>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                         💡 &quot;Auto&quot; will select the highest preset amount by default
@@ -1756,19 +1770,23 @@ export default function RequestsPageSettings() {
                         Preview
                       </h3>
                       <div className="flex flex-wrap gap-2">
-                        {[...presetAmounts]
-                          .sort((a, b) => amountsSortOrder === 'desc' ? b - a : a - b)
-                          .map((amount, index) => (
-                            <div
-                              key={index}
-                              className="px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-medium"
-                            >
-                              ${(amount / 100).toFixed(0)}
-                            </div>
-                          ))}
+                        {presetAmounts && presetAmounts.length > 0 ? (
+                          [...presetAmounts]
+                            .sort((a, b) => amountsSortOrder === 'desc' ? b - a : a - b)
+                            .map((amount, index) => (
+                              <div
+                                key={index}
+                                className="px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-medium"
+                              >
+                                ${(amount / 100).toFixed(0)}
+                              </div>
+                            ))
+                        ) : (
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No preset amounts configured</p>
+                        )}
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                        Minimum: ${(minimumAmount / 100).toFixed(0)}
+                        Minimum: ${((minimumAmount || 1000) / 100).toFixed(0)}
                       </p>
                     </div>
                     
@@ -1796,7 +1814,7 @@ export default function RequestsPageSettings() {
                               type="number"
                               step="0.01"
                               min="0"
-                              value={(fastTrackFee / 100).toFixed(2)}
+                              value={((fastTrackFee || 1000) / 100).toFixed(2)}
                               onChange={(e) => {
                                 const value = Math.round(parseFloat(e.target.value) * 100) || 0;
                                 setFastTrackFee(Math.max(0, value));
@@ -1826,7 +1844,7 @@ export default function RequestsPageSettings() {
                               type="number"
                               step="0.01"
                               min="0"
-                              value={(nextFee / 100).toFixed(2)}
+                              value={((nextFee || 2000) / 100).toFixed(2)}
                               onChange={(e) => {
                                 const value = Math.round(parseFloat(e.target.value) * 100) || 0;
                                 setNextFee(Math.max(0, value));
