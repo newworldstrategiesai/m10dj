@@ -396,6 +396,24 @@ export default function CrowdRequestSuccessPage() {
         const data = await response.json();
         setRequest(data);
         
+        // Fetch organization slug if we have organization_id
+        if (data.organization_id) {
+          try {
+            const { data: org, error: orgError } = await supabase
+              .from('organizations')
+              .select('slug')
+              .eq('id', data.organization_id)
+              .single();
+            
+            if (!orgError && org?.slug) {
+              setOrganizationSlug(org.slug);
+            }
+          } catch (orgErr) {
+            console.error('Error fetching organization slug (non-critical):', orgErr);
+            // Continue - we'll fall back to /requests if slug not found
+          }
+        }
+        
         // Fetch bundled songs if this is part of a bundle
         // Look for requests with "Bundle deal" message from the same requester created within 5 seconds
         try {
