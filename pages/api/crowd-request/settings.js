@@ -107,11 +107,19 @@ export default async function handler(req, res) {
         defaultPresetAmount: organization.requests_default_preset_amount || null,
         bundleDiscountEnabled: paymentMethodSettings['crowd_request_bundle_discount_enabled'] === 'true' || paymentMethodSettings['crowd_request_bundle_discount_enabled'] === undefined,
         bundleDiscountPercent: parseInt(paymentMethodSettings['crowd_request_bundle_discount_percent']) || 10,
+        // Check if organization can process payments (subscription-based)
+        const { canProcessPayments } = await import('@/utils/feature-gating');
+        const paymentAccess = canProcessPayments(
+          organization.subscription_tier,
+          organization.subscription_status
+        );
+
         // Payment method enabled flags
-        // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
-        paymentMethodCardEnabled: organization.requests_payment_method_card_enabled !== false,
-        paymentMethodCashappEnabled: organization.requests_payment_method_cashapp_enabled !== false, // CashApp goes through Stripe, doesn't need tag
-        paymentMethodVenmoEnabled: venmoUsername ? (organization.requests_payment_method_venmo_enabled !== false) : false
+        // All payment methods require payment processing access, plus their individual settings
+        const canProcessPaymentsFlag = paymentAccess.allowed;
+        paymentMethodCardEnabled: canProcessPaymentsFlag && (organization.requests_payment_method_card_enabled !== false),
+        paymentMethodCashappEnabled: canProcessPaymentsFlag && (organization.requests_payment_method_cashapp_enabled !== false), // CashApp goes through Stripe, doesn't need tag
+        paymentMethodVenmoEnabled: canProcessPaymentsFlag && venmoUsername && (organization.requests_payment_method_venmo_enabled !== false)
       });
     }
 
@@ -206,9 +214,19 @@ export default async function handler(req, res) {
         presetAmounts: generateDefaultPresets(defaultMinimum),
         // Payment method enabled flags
         // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
-        paymentMethodCardEnabled: organization?.requests_payment_method_card_enabled !== false,
-        paymentMethodCashappEnabled: organization?.requests_payment_method_cashapp_enabled !== false, // CashApp goes through Stripe, doesn't need tag
-        paymentMethodVenmoEnabled: orgVenmoUsername ? (organization?.requests_payment_method_venmo_enabled !== false) : false
+        // Check if organization can process payments (subscription-based)
+        const { canProcessPayments } = await import('@/utils/feature-gating');
+        const paymentAccess = canProcessPayments(
+          organization?.subscription_tier,
+          organization?.subscription_status
+        );
+
+        // Payment method enabled flags
+        // All payment methods require payment processing access, plus their individual settings
+        const canProcessPaymentsFlag = paymentAccess.allowed;
+        paymentMethodCardEnabled: canProcessPaymentsFlag && (organization?.requests_payment_method_card_enabled !== false),
+        paymentMethodCashappEnabled: canProcessPaymentsFlag && (organization?.requests_payment_method_cashapp_enabled !== false), // CashApp goes through Stripe, doesn't need tag
+        paymentMethodVenmoEnabled: canProcessPaymentsFlag && orgVenmoUsername && (organization?.requests_payment_method_venmo_enabled !== false)
       });
     }
 
@@ -270,11 +288,19 @@ export default async function handler(req, res) {
       presetAmounts,
       bundleDiscountEnabled: bundleDiscountEnabled === 'true',
       bundleDiscountPercent: parseInt(bundleDiscountPercent) || 10,
+      // Check if organization can process payments (subscription-based)
+      const { canProcessPayments } = await import('@/utils/feature-gating');
+      const paymentAccess = canProcessPayments(
+        organization?.subscription_tier,
+        organization?.subscription_status
+      );
+
       // Payment method enabled flags
-      // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
-      paymentMethodCardEnabled: organization?.requests_payment_method_card_enabled !== false,
-      paymentMethodCashappEnabled: organization?.requests_payment_method_cashapp_enabled !== false, // CashApp goes through Stripe, doesn't need tag
-      paymentMethodVenmoEnabled: venmoUsername ? (organization?.requests_payment_method_venmo_enabled !== false) : false
+      // All payment methods require payment processing access, plus their individual settings
+      const canProcessPaymentsFlag = paymentAccess.allowed;
+      paymentMethodCardEnabled: canProcessPaymentsFlag && (organization?.requests_payment_method_card_enabled !== false),
+      paymentMethodCashappEnabled: canProcessPaymentsFlag && (organization?.requests_payment_method_cashapp_enabled !== false), // CashApp goes through Stripe, doesn't need tag
+      paymentMethodVenmoEnabled: canProcessPaymentsFlag && venmoUsername && (organization?.requests_payment_method_venmo_enabled !== false)
     });
   } catch (error) {
     console.error('❌ Error fetching payment settings:', error);
