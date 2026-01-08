@@ -51,11 +51,12 @@ export default function AdminLayout({ children, title, description, showPageTitl
         }
 
         // Fetch organization to get brand colors
-        const org = await getCurrentOrganization(supabase);
+        const org = await getCurrentOrganization(supabase) as any;
         if (org) {
           setOrganization(org);
           
           // Get effective brand colors with black fallback for TipJar
+          // Type assertion needed because Organization interface doesn't include all DB fields
           const isTipJar = org.product_context === 'tipjar';
           const defaultAccent = isTipJar ? '#000000' : '#fcba00';
           const accent = org.requests_accent_color || defaultAccent;
