@@ -86,9 +86,11 @@ export async function createConnectAccount(
   const businessProfileUrl = `${finalBaseUrl}/${organizationSlug}/requests`;
 
   // Accounts v2 API structure
+  // For TipJar accounts, use "TipJar.live" as the display name shown on checkout pages
+  const businessDisplayName = productContext === 'tipjar' ? 'TipJar.live' : organizationName;
   const accountData: any = {
     contact_email: email,
-    display_name: organizationName,
+    display_name: businessDisplayName,
     dashboard: 'full', // Full dashboard access for connected accounts
     identity: {
       business_details: {
@@ -123,6 +125,7 @@ export async function createConnectAccount(
     },
     business_profile: {
       url: businessProfileUrl,
+      name: businessDisplayName, // Set business profile name for v2 API (shown on checkout pages)
     },
     metadata: {
       organization_name: organizationName,
@@ -202,9 +205,10 @@ export async function createConnectAccount(
           created_via: productContext === 'tipjar' ? 'tipjar' : productContext === 'djdash' ? 'djdash' : 'm10dj_platform',
         },
         // Business profile for better onboarding
+        // For TipJar accounts, use "TipJar.live" as the business name shown on checkout pages
         business_profile: {
           url: businessProfileUrl,
-          name: organizationName,
+          name: productContext === 'tipjar' ? 'TipJar.live' : organizationName,
         },
         // Settings for better UX
         settings: {

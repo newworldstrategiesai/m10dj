@@ -470,6 +470,44 @@ export default async function handler(req, res) {
       }
     }
     
+    // Determine product context for business name customization
+    let productContext = organization?.product_context || null;
+    if (!productContext && crowdRequest.source_domain) {
+      if (crowdRequest.source_domain.includes('tipjar.live')) {
+        productContext = 'tipjar';
+      } else if (crowdRequest.source_domain.includes('djdash.net') || crowdRequest.source_domain.includes('djdash.com')) {
+        productContext = 'djdash';
+      } else if (crowdRequest.source_domain.includes('m10djcompany.com')) {
+        productContext = 'm10dj';
+      }
+    }
+    
+    // Update connected account business profile for TipJar to show "TipJar.live" instead of organization name
+    // This ensures the business name shown on Stripe checkout pages is "TipJar.live" for TipJar payments
+    if (hasConnectAccount && productContext === 'tipjar') {
+      try {
+        console.log('🔵 [CREATE-CHECKOUT] Checking connected account business profile for TipJar...');
+        const account = await stripe.accounts.retrieve(organization.stripe_connect_account_id);
+        const currentBusinessName = account.business_profile?.name || account.display_name || '';
+        
+        if (currentBusinessName !== 'TipJar.live') {
+          console.log(`🔵 [CREATE-CHECKOUT] Updating business profile from "${currentBusinessName}" to "TipJar.live"...`);
+          await stripe.accounts.update(organization.stripe_connect_account_id, {
+            business_profile: {
+              name: 'TipJar.live',
+              url: `https://tipjar.live/${organization.slug || 'requests'}/requests`
+            }
+          });
+          console.log('✅ [CREATE-CHECKOUT] Updated connected account business profile to "TipJar.live"');
+        } else {
+          console.log('✅ [CREATE-CHECKOUT] Business profile already set to "TipJar.live"');
+        }
+      } catch (updateError) {
+        console.error('⚠️ [CREATE-CHECKOUT] Failed to update business profile (non-critical):', updateError);
+        // Non-critical error - continue with checkout even if update fails
+      }
+    }
+    
     // Calculate platform fee if using Connect
     let platformFeePercentage = organization?.platform_fee_percentage || 3.50;
     let platformFeeFixed = organization?.platform_fee_fixed || 0.30;
