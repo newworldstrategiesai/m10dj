@@ -17,6 +17,16 @@ function generateSessionId(userAgent, ipAddress) {
 }
 
 export default async function handler(req, res) {
+  console.log('🔵 [TRACK-SUCCESS-VIEW] Request received:', {
+    method: req.method,
+    body: req.body,
+    headers: {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      host: req.headers.host
+    }
+  });
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -25,8 +35,11 @@ export default async function handler(req, res) {
     const { request_id } = req.body;
 
     if (!request_id) {
+      console.error('❌ [TRACK-SUCCESS-VIEW] Missing request_id in request body');
       return res.status(400).json({ error: 'request_id is required' });
     }
+
+    console.log('🔵 [TRACK-SUCCESS-VIEW] Processing tracking for request_id:', request_id);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -38,8 +51,17 @@ export default async function handler(req, res) {
       .single();
 
     if (requestError || !request) {
+      console.error('❌ [TRACK-SUCCESS-VIEW] Request not found:', {
+        request_id,
+        error: requestError
+      });
       return res.status(404).json({ error: 'Request not found' });
     }
+
+    console.log('✅ [TRACK-SUCCESS-VIEW] Request found:', {
+      request_id: request.id,
+      organization_id: request.organization_id
+    });
 
     // Get user agent and IP address
     const userAgent = req.headers['user-agent'] || null;
@@ -79,9 +101,22 @@ export default async function handler(req, res) {
       .single();
 
     if (error) {
-      console.error('Error tracking success page view:', error);
+      console.error('❌ [TRACK-SUCCESS-VIEW] Error inserting success page view:', {
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
       return res.status(500).json({ error: 'Failed to track success page view' });
     }
+
+    console.log('✅ [TRACK-SUCCESS-VIEW] Success page view tracked:', {
+      view_id: data.id,
+      request_id,
+      organization_id: request.organization_id,
+      is_first_view: isFirstView,
+      session_id: sessionId
+    });
 
     return res.status(200).json({ 
       success: true, 
