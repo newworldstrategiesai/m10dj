@@ -431,33 +431,7 @@ export default async function handler(req, res) {
               }
             }
             
-            // Check payment processing access (for tips and requests with payment)
-            if (amount > 0 && requestType === 'tip') {
-              const paymentAccess = canProcessPayments(org.subscription_tier, org.subscription_status);
-              
-              if (!paymentAccess.allowed) {
-                return res.status(403).json({
-                  error: 'Payment processing not available',
-                  message: paymentAccess.reason,
-                  upgradeRequired: true,
-                  upgradeTier: paymentAccess.upgradeRequired,
-                });
-              }
-            }
-            
-            // For song requests and shoutouts with payment, also check payment access
-            if (amount > 0 && (requestType === 'song_request' || requestType === 'shoutout')) {
-              const paymentAccess = canProcessPayments(org.subscription_tier, org.subscription_status);
-              
-              if (!paymentAccess.allowed) {
-                // Free tier can create requests, but cannot process payments
-                // Set amount to 0 to allow the request without payment
-                console.log(`⚠️ Free tier organization cannot process payments. Setting amount to 0 for request.`);
-                insertData.amount_requested = 0;
-                // Note: The request will be created but payment will not be processed
-                // Frontend should handle this by not showing payment options for Free tier
-              }
-            }
+            // Allow all users to process payments regardless of subscription tier
           }
         }
       } catch (featureGateError) {
