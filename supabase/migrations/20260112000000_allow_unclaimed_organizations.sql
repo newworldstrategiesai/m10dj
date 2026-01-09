@@ -11,16 +11,7 @@
 ALTER TABLE organizations 
   ALTER COLUMN owner_id DROP NOT NULL;
 
--- Drop the unique constraint on owner_id (multiple orgs can be unclaimed)
--- But we still want unique owner_id when it's not NULL (one org per user)
-DROP INDEX IF EXISTS organizations_owner_id_key;
-
--- Create partial unique index: owner_id must be unique when NOT NULL
-CREATE UNIQUE INDEX IF NOT EXISTS organizations_owner_id_unique_when_set 
-  ON organizations(owner_id) 
-  WHERE owner_id IS NOT NULL;
-
--- Add new columns for prospect management
+-- Add new columns for prospect management FIRST (before we try to use is_claimed)
 ALTER TABLE organizations
   ADD COLUMN IF NOT EXISTS prospect_email TEXT,
   ADD COLUMN IF NOT EXISTS prospect_phone TEXT,
@@ -29,6 +20,55 @@ ALTER TABLE organizations
   ADD COLUMN IF NOT EXISTS is_claimed BOOLEAN DEFAULT TRUE,
   ADD COLUMN IF NOT EXISTS created_by_admin_id UUID REFERENCES auth.users(id),
   ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMP WITH TIME ZONE;
+
+-- Drop the unique constraint on owner_id (multiple orgs can be unclaimed)
+-- But we still want unique owner_id when it's not NULL (one org per user)
+DROP INDEX IF EXISTS organizations_owner_id_key;
+DROP INDEX IF EXISTS organizations_owner_id_unique_when_set;
+
+-- Handle any existing duplicate owner_ids before creating unique index
+-- Keep the most recent organization for each owner_id and unclaim the older ones
+DO $$
+DECLARE
+  duplicate_count INTEGER;
+BEGIN
+  -- Check if there are duplicates
+  SELECT COUNT(*) INTO duplicate_count
+  FROM (
+    SELECT owner_id, COUNT(*) as cnt
+    FROM organizations
+    WHERE owner_id IS NOT NULL
+    GROUP BY owner_id
+    HAVING COUNT(*) > 1
+  ) duplicates;
+  
+  -- If duplicates exist, keep the most recent and unclaim the rest
+  IF duplicate_count > 0 THEN
+    WITH duplicate_owners AS (
+      SELECT owner_id, 
+             id,
+             ROW_NUMBER() OVER (PARTITION BY owner_id ORDER BY created_at DESC, id DESC) as rn
+      FROM organizations
+      WHERE owner_id IS NOT NULL
+    )
+    UPDATE organizations
+    SET owner_id = NULL,
+        is_claimed = FALSE
+    WHERE id IN (
+      SELECT id 
+      FROM duplicate_owners 
+      WHERE rn > 1
+    );
+    
+    RAISE NOTICE 'Unclaimed % organizations with duplicate owner_ids', duplicate_count;
+  END IF;
+END $$;
+
+-- Create partial unique index: owner_id must be unique when NOT NULL
+-- This ensures one organization per user when claimed
+CREATE UNIQUE INDEX organizations_owner_id_unique_when_set 
+  ON organizations(owner_id) 
+  WHERE owner_id IS NOT NULL;
 
 -- Create indexes for fast lookups
 CREATE INDEX IF NOT EXISTS idx_organizations_claim_token ON organizations(claim_token) WHERE claim_token IS NOT NULL;

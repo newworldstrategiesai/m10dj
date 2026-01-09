@@ -40,14 +40,14 @@ interface AccountClaimedEmailData {
 
 /**
  * Generate prospect welcome email HTML
+ * Exported for preview functionality
  */
-function generateProspectWelcomeEmail(data: ProspectWelcomeEmailData): { html: string; text: string } {
+export function generateProspectWelcomeEmail(data: ProspectWelcomeEmailData): { html: string; text: string } {
   const productName = getProductName(data.productContext);
   const productDomain = getProductBaseUrl(data.productContext);
   const fromEmail = getProductFromEmail(data.productContext);
   
   const displayName = data.prospectName || data.businessName;
-  const pendingTips = data.pendingTipsCents ? (data.pendingTipsCents / 100).toFixed(2) : null;
 
   const html = `
 <!DOCTYPE html>
@@ -195,8 +195,9 @@ Need help? Reply to this email or visit ${productDomain}
 
 /**
  * Generate claim reminder email HTML
+ * Exported for preview functionality
  */
-function generateClaimReminderEmail(data: ClaimReminderEmailData): { html: string; text: string } {
+export function generateClaimReminderEmail(data: ClaimReminderEmailData): { html: string; text: string } {
   const productName = getProductName(data.productContext);
   const productDomain = getProductBaseUrl(data.productContext);
   const fromEmail = getProductFromEmail(data.productContext);
@@ -328,8 +329,9 @@ Your page: ${data.pageUrl}
 
 /**
  * Generate account claimed email HTML
+ * Exported for preview functionality
  */
-function generateAccountClaimedEmail(data: AccountClaimedEmailData): { html: string; text: string } {
+export function generateAccountClaimedEmail(data: AccountClaimedEmailData): { html: string; text: string } {
   const productName = getProductName(data.productContext);
   const productDomain = getProductBaseUrl(data.productContext);
   const fromEmail = getProductFromEmail(data.productContext);

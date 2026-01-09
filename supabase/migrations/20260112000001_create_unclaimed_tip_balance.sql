@@ -165,7 +165,7 @@ $$;
 
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION add_tip_to_unclaimed_balance(UUID, INTEGER, INTEGER, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION add_tip_to_unclaimed_tip_balance(UUID, INTEGER, INTEGER, TEXT, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION add_tip_to_unclaimed_balance(UUID, INTEGER, INTEGER, TEXT, TEXT) TO service_role;
 
 -- ============================================
 -- 7. Comments

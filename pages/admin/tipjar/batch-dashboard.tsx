@@ -16,7 +16,6 @@ import {
   Download,
   QrCode,
   ExternalLink,
-  Mail,
   Copy,
   CheckCircle,
   XCircle,
@@ -28,13 +27,15 @@ import {
   TrendingUp,
   Users,
   AlertCircle,
-  Plus
+  Plus,
+  Mail as MailIcon
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import Link from 'next/link';
+import { generateProspectWelcomeEmail, generateClaimReminderEmail, generateAccountClaimedEmail } from '@/lib/email/tipjar-batch-emails';
 
 interface BatchOrganization {
   id: string;
@@ -76,6 +77,8 @@ export default function BatchDashboardPage() {
   const [selectedOrg, setSelectedOrg] = useState<BatchOrganization | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [emailPreview, setEmailPreview] = useState<{ html: string; subject: string; type: string } | null>(null);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [quickCreateLoading, setQuickCreateLoading] = useState(false);
   
   // Quick create form state
@@ -175,9 +178,72 @@ export default function BatchDashboardPage() {
     });
   };
 
+  // Preview email for an organization
+  const previewEmail = (org: BatchOrganization, emailType: 'welcome' | 'reminder' | 'claimed') => {
+    const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://tipjar.live');
+    
+    try {
+      let emailData: { html: string; subject: string; type: string };
+
+      if (emailType === 'welcome') {
+        const { html } = generateProspectWelcomeEmail({
+          prospectEmail: org.prospect_email,
+          prospectName: org.name,
+          businessName: org.name,
+          pageUrl: org.url,
+          claimLink: `${baseUrl}/tipjar/claim?token=PREVIEW_TOKEN`,
+          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(org.url)}`,
+          productContext: 'tipjar'
+        });
+        emailData = { html, subject: 'Your TipJar page is ready! 🎉', type: 'Welcome Email' };
+      } else if (emailType === 'reminder') {
+        const { html } = generateClaimReminderEmail({
+          prospectEmail: org.prospect_email,
+          prospectName: org.name,
+          businessName: org.name,
+          pageUrl: org.url,
+          claimLink: `${baseUrl}/tipjar/claim?token=PREVIEW_TOKEN`,
+          pendingTipsCents: org.pending_tips_cents,
+          tipCount: org.tip_count || 0,
+          productContext: 'tipjar'
+        });
+        const subject = org.has_pending_tips 
+          ? `You have tips waiting! Claim your TipJar account 💰`
+          : `Claim your TipJar account`;
+        emailData = { html, subject, type: 'Reminder Email' };
+      } else {
+        const { html } = generateAccountClaimedEmail({
+          prospectEmail: org.prospect_email,
+          prospectName: org.name,
+          businessName: org.name,
+          dashboardUrl: `${baseUrl}/tipjar/dashboard`,
+          pendingTipsCents: org.pending_tips_cents,
+          productContext: 'tipjar'
+        });
+        emailData = { html, subject: 'Welcome to TipJar! Your account is ready 🎉', type: 'Account Claimed Email' };
+      }
+
+      setEmailPreview(emailData);
+      setShowEmailPreview(true);
+    } catch (error: any) {
+      console.error('Error generating email preview:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate email preview',
+        variant: 'destructive'
+      });
+    }
+  };
+
   // Quick create single organization
-  const handleQuickCreate = async () => {
+  const handleQuickCreate = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
+    console.log('handleQuickCreate called', quickCreateData);
+    
     if (!quickCreateData.email || !quickCreateData.business_name) {
+      console.log('Validation failed - missing email or business_name');
       toast({
         title: 'Validation error',
         description: 'Email and business name are required',
@@ -188,6 +254,8 @@ export default function BatchDashboardPage() {
 
     setQuickCreateLoading(true);
     try {
+      console.log('Sending quick create request to /api/admin/tipjar/batch-create');
+      
       const response = await fetch('/api/admin/tipjar/batch-create', {
         method: 'POST',
         headers: {
@@ -561,6 +629,7 @@ export default function BatchDashboardPage() {
                               setSelectedOrg(org);
                               setShowDetails(true);
                             }}
+                            title="View Details"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -568,9 +637,20 @@ export default function BatchDashboardPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => window.open(org.url, '_blank')}
+                            title="Open Page"
                           >
                             <ExternalLink className="w-4 h-4" />
                           </Button>
+                          {!org.is_claimed && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => previewEmail(org, 'welcome')}
+                              title="Preview Welcome Email"
+                            >
+                              <MailIcon className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -580,6 +660,32 @@ export default function BatchDashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Email Preview Dialog */}
+        <Dialog open={showEmailPreview} onOpenChange={setShowEmailPreview}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Email Preview - {emailPreview?.type}</DialogTitle>
+              <DialogDescription>
+                This is how the email will look to prospects
+              </DialogDescription>
+            </DialogHeader>
+            
+            {emailPreview && (
+              <div className="flex-1 overflow-y-auto border rounded-lg bg-gray-50 p-4">
+                <div className="mb-4 text-sm text-muted-foreground bg-white p-3 rounded border">
+                  <p><strong>Email Type:</strong> {emailPreview.type}</p>
+                  <p><strong>Subject:</strong> {emailPreview.subject}</p>
+                </div>
+                <div 
+                  className="bg-white rounded-lg shadow-sm overflow-hidden"
+                  style={{ minHeight: '500px' }}
+                  dangerouslySetInnerHTML={{ __html: emailPreview.html }}
+                />
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Quick Create Dialog */}
         <Dialog open={showQuickCreate} onOpenChange={setShowQuickCreate}>
@@ -754,6 +860,49 @@ export default function BatchDashboardPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Email Previews */}
+                  {!selectedOrg.is_claimed && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold">Email Previews</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => previewEmail(selectedOrg, 'welcome')}
+                        >
+                          <MailIcon className="w-4 h-4 mr-2" />
+                          Preview Welcome Email
+                        </Button>
+                        {selectedOrg.has_pending_tips && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => previewEmail(selectedOrg, 'reminder')}
+                          >
+                            <MailIcon className="w-4 h-4 mr-2" />
+                            Preview Reminder Email
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedOrg.is_claimed && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold">Email Preview</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => previewEmail(selectedOrg, 'claimed')}
+                        >
+                          <MailIcon className="w-4 h-4 mr-2" />
+                          Preview Claimed Email
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Tips Info */}
                   {selectedOrg.has_pending_tips && (

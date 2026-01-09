@@ -83,13 +83,34 @@ export default async function handler(req, res) {
     // Require super admin authentication (djbenmurray@gmail.com only)
     const user = await requireSuperAdmin(req, res);
     
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    // Verify we have service role key
+    if (!supabaseServiceKey) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY is not set');
+      return res.status(500).json({
+        error: 'Server configuration error',
+        message: 'Service role key not configured'
+      });
+    }
     
-    const { prospects } = req.body;
+    // Create admin client with service role (bypasses RLS)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    
+    console.log('Batch create request from super admin:', user.email);
+    
+    const { prospects, send_emails = false } = req.body;
     
     if (!prospects || !Array.isArray(prospects) || prospects.length === 0) {
       return res.status(400).json({ error: 'prospects array is required and must not be empty' });
     }
+
+    // For single page creation, don't send emails automatically (admin will review first)
+    // For batch creation, send emails automatically
+    const shouldSendEmails = send_emails || prospects.length > 1;
 
     // Validate each prospect
     const validationErrors = [];
@@ -196,25 +217,55 @@ export default async function handler(req, res) {
         defaultConfig.trial_ends_at = trialEndsAt.toISOString();
         
         // Create organization
+        console.log(`Creating organization for ${prospect.email}:`, {
+          name: prospect.business_name,
+          slug: uniqueSlug,
+          defaultConfig
+        });
+        
+        const insertData = {
+          name: prospect.business_name,
+          slug: uniqueSlug,
+          artist_name: prospect.artist_name || prospect.business_name,
+          requests_header_artist_name: prospect.configuration?.requests_header_artist_name || prospect.artist_name || prospect.business_name,
+          ...defaultConfig
+        };
+        
+        console.log('Insert data:', JSON.stringify(insertData, null, 2));
+        
         const { data: organization, error: orgError } = await supabaseAdmin
           .from('organizations')
-          .insert({
-            name: prospect.business_name,
-            slug: uniqueSlug,
-            artist_name: prospect.artist_name || prospect.business_name,
-            requests_header_artist_name: prospect.configuration?.requests_header_artist_name || prospect.artist_name || prospect.business_name,
-            ...defaultConfig
-          })
+          .insert(insertData)
           .select()
           .single();
         
-        if (orgError || !organization) {
+        if (orgError) {
+          console.error(`Error creating organization for ${prospect.email}:`, {
+            error: orgError,
+            code: orgError.code,
+            message: orgError.message,
+            details: orgError.details,
+            hint: orgError.hint
+          });
           failures.push({
             email: prospect.email,
-            error: orgError?.message || 'Failed to create organization'
+            error: orgError.message || 'Failed to create organization',
+            details: orgError.details,
+            code: orgError.code
           });
           continue;
         }
+        
+        if (!organization) {
+          console.error(`No organization returned for ${prospect.email}, but no error either`);
+          failures.push({
+            email: prospect.email,
+            error: 'Organization creation returned no data'
+          });
+          continue;
+        }
+        
+        console.log(`Successfully created organization ${organization.id} for ${prospect.email}`);
         
         // Generate claim token
         const claimToken = generateClaimToken(organization.id, prospect.email);
@@ -251,28 +302,51 @@ export default async function handler(req, res) {
           prospect_email: prospect.email
         });
 
-        // Send welcome email (non-blocking, failures don't prevent creation)
-        const { sendProspectWelcomeEmail } = await import('@/lib/email/tipjar-batch-emails');
-        sendProspectWelcomeEmail({
-          prospectEmail: prospect.email,
-          prospectName: prospect.artist_name || prospect.business_name,
-          businessName: prospect.business_name,
-          pageUrl,
-          claimLink: claimUrl,
-          qrCodeUrl,
-          productContext: 'tipjar'
-        }).catch((emailError) => {
-          console.error(`Error sending welcome email to ${prospect.email}:`, emailError);
-          // Don't fail the batch creation if email fails
-        });
+        // Send welcome email only if send_emails is true (or batch creation)
+        // Single page creation: admin reviews first, then sends email manually
+        if (shouldSendEmails) {
+          const { sendProspectWelcomeEmail } = await import('@/lib/email/tipjar-batch-emails');
+          sendProspectWelcomeEmail({
+            prospectEmail: prospect.email,
+            prospectName: prospect.artist_name || prospect.business_name,
+            businessName: prospect.business_name,
+            pageUrl,
+            claimLink: claimUrl,
+            qrCodeUrl,
+            productContext: 'tipjar'
+          }).catch((emailError) => {
+            console.error(`Error sending welcome email to ${prospect.email}:`, emailError);
+            // Don't fail the batch creation if email fails
+          });
+        }
         
       } catch (error) {
         console.error(`Error creating organization for ${prospect.email}:`, error);
+        console.error('Error stack:', error.stack);
         failures.push({
           email: prospect.email,
-          error: error.message || 'Unknown error'
+          error: error.message || 'Unknown error',
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
       }
+    }
+    
+    // If all failed, return error with detailed failure info
+    if (createdOrganizations.length === 0 && failures.length > 0) {
+      console.error('All organizations failed to create. Failures:', JSON.stringify(failures, null, 2));
+      return res.status(500).json({
+        error: 'Failed to create any organizations',
+        failures: failures,
+        message: failures[0]?.error || 'Unknown error',
+        details: failures[0]?.details,
+        code: failures[0]?.code
+      });
+    }
+    
+    // Log success/failure summary
+    console.log(`Batch create completed: ${createdOrganizations.length} created, ${failures.length} failed`);
+    if (failures.length > 0) {
+      console.error('Failures:', failures);
     }
     
     return res.status(200).json({

@@ -22,11 +22,15 @@ import {
   Copy,
   ExternalLink,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  Send,
+  Eye
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { generateProspectWelcomeEmail } from '@/lib/email/tipjar-batch-emails';
 
 interface Prospect {
   email: string;
@@ -64,6 +68,11 @@ export default function BatchCreateTipJarPage() {
   const [showResults, setShowResults] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [activeTab, setActiveTab] = useState<'manual' | 'csv'>('manual');
+  const [previewEmail, setPreviewEmail] = useState<{ html: string; subject: string } | null>(null);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [reviewOrg, setReviewOrg] = useState<CreatedOrganization | null>(null);
+  const [showReview, setShowReview] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   
   // Quick create mode - start with one empty prospect
   const [quickMode, setQuickMode] = useState(false);
@@ -242,9 +251,15 @@ export default function BatchCreateTipJarPage() {
   };
 
   // Create organizations
-  const handleCreate = async () => {
+  const handleCreate = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
+    console.log('handleCreate called', { prospectsCount: prospects.length, prospects });
+    
     const validation = validateProspects();
     if (!validation.valid) {
+      console.log('Validation failed', validation.errors);
       toast({
         title: 'Validation errors',
         description: validation.errors.join(', '),
@@ -254,6 +269,7 @@ export default function BatchCreateTipJarPage() {
     }
 
     if (prospects.length === 0) {
+      console.log('No prospects to create');
       toast({
         title: 'No prospects',
         description: quickMode ? 'Please fill in the prospect information' : 'Please add at least one prospect',
@@ -264,22 +280,46 @@ export default function BatchCreateTipJarPage() {
 
     setLoading(true);
     try {
+      console.log('Sending request to /api/admin/tipjar/batch-create', { prospects, quickMode });
+      
+      // For single page creation, don't send emails automatically (admin reviews first)
+      // For batch creation, send emails automatically
+      const sendEmails = !quickMode || prospects.length > 1;
+      
       const response = await fetch('/api/admin/tipjar/batch-create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ prospects })
+        body: JSON.stringify({ 
+          prospects,
+          send_emails: sendEmails
+        })
       });
 
+      console.log('Response status:', response.status, response.ok);
+      
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create organizations');
+        console.error('API error:', response.status, data);
+        throw new Error(data.error || `Failed to create organizations (${response.status})`);
       }
 
+      console.log('Success! Created organizations:', data.organizations?.length);
+      
       setCreatedOrgs(data.organizations || []);
-      setShowResults(true);
+      
+      // For single page creation in quick mode, show review step first
+      if (quickMode && data.created === 1 && data.organizations?.[0]) {
+        setReviewOrg(data.organizations[0]);
+        setShowReview(true);
+        setShowResults(false); // Don't show results dialog yet
+      } else {
+        // For batch creation or multiple pages, show results immediately
+        setShowResults(true);
+      }
       
       toast({
         title: 'Success!',
@@ -290,27 +330,10 @@ export default function BatchCreateTipJarPage() {
       if (!quickMode || data.created === 1) {
         setProspects([]);
         setCsvFile(null);
-        
-        // If quick mode and single creation, offer to create another
-        if (quickMode && data.created === 1) {
-          setTimeout(() => {
-            if (confirm('Page created! Would you like to create another?')) {
-              setProspects([{
-                email: '',
-                business_name: '',
-                artist_name: '',
-                phone: '',
-                slug: ''
-              }]);
-              setShowResults(false);
-            } else {
-              setQuickMode(false);
-            }
-          }, 1000);
-        }
       }
     } catch (error: any) {
       console.error('Error creating organizations:', error);
+      console.error('Error stack:', error.stack);
       toast({
         title: 'Error',
         description: error.message || 'Failed to create organizations',
@@ -328,6 +351,117 @@ export default function BatchCreateTipJarPage() {
       title: 'Copied!',
       description: `${label} copied to clipboard`
     });
+  };
+
+  // Send welcome email for a created organization
+  const sendWelcomeEmail = async (org: CreatedOrganization) => {
+    setSendingEmail(true);
+    try {
+      const response = await fetch('/api/admin/tipjar/send-welcome-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          organization_id: org.id,
+          prospect_email: org.prospect_email
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      toast({
+        title: 'Email sent!',
+        description: `Welcome email sent to ${org.prospect_email}`,
+      });
+
+      // Close review dialog and show success
+      setShowReview(false);
+      setReviewOrg(null);
+      
+      // Option to create another
+      setTimeout(() => {
+        if (confirm('Email sent! Would you like to create another page?')) {
+          setProspects([{
+            email: '',
+            business_name: '',
+            artist_name: '',
+            phone: '',
+            slug: ''
+          }]);
+        } else {
+          setQuickMode(false);
+        }
+      }, 500);
+
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send email',
+        variant: 'destructive'
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  // Preview and send email for a created organization
+  const previewAndSendEmail = (org: CreatedOrganization) => {
+    const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || window.location.origin;
+    
+    const { html } = generateProspectWelcomeEmail({
+      prospectEmail: org.prospect_email,
+      prospectName: org.name,
+      businessName: org.name,
+      pageUrl: org.url,
+      claimLink: org.claim_link,
+      qrCodeUrl: org.qr_code_url,
+      productContext: 'tipjar'
+    });
+
+    const subject = `Your TipJar page is ready! 🎉`;
+
+    setPreviewEmail({ html, subject });
+    setShowEmailPreview(true);
+    
+    // After preview closes, if confirmed, send email
+    // We'll handle this with a state update
+  };
+
+  // Preview email for a prospect
+  const previewEmailForProspect = (prospect: Prospect) => {
+    if (!prospect.email || !prospect.business_name) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in email and business name to preview email',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Generate preview data with placeholder URLs
+    const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || window.location.origin;
+    const slug = prospect.slug || prospect.business_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    
+    const { html } = generateProspectWelcomeEmail({
+      prospectEmail: prospect.email,
+      prospectName: prospect.artist_name,
+      businessName: prospect.business_name,
+      pageUrl: `${baseUrl}/${slug}/requests`,
+      claimLink: `${baseUrl}/tipjar/claim?token=PREVIEW_TOKEN`,
+      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${baseUrl}/${slug}/requests`)}`,
+      productContext: 'tipjar'
+    });
+
+    const subject = `Your TipJar page is ready! 🎉`;
+
+    setPreviewEmail({ html, subject });
+    setShowEmailPreview(true);
   };
 
   // Export results to CSV
@@ -409,7 +543,7 @@ export default function BatchCreateTipJarPage() {
             </h1>
             <p className="text-muted-foreground mt-2">
               {quickMode 
-                ? 'Create a single Tip Jar Live page for a prospect. Email will be sent automatically.'
+                ? 'Create a single Tip Jar Live page for a prospect. Review the page and then send the welcome email.'
                 : 'Create fully configured Tip Jar Live pages for prospects. They can use the pages immediately and claim them later.'}
             </p>
           </div>
@@ -443,6 +577,218 @@ export default function BatchCreateTipJarPage() {
             )}
           </div>
         </div>
+
+        {/* Review & Send Email Dialog (Single Page Creation) */}
+        <Dialog open={showReview} onOpenChange={(open) => {
+          if (!open && reviewOrg) {
+            // If closing review without sending, ask to confirm
+            if (!confirm('Close without sending email? You can send it later from the dashboard.')) {
+              return;
+            }
+            setReviewOrg(null);
+          }
+          setShowReview(open);
+        }}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Page Created Successfully! 🎉</DialogTitle>
+              <DialogDescription>
+                Review the page and then preview & send the welcome email
+              </DialogDescription>
+            </DialogHeader>
+            
+            {reviewOrg && (
+              <div className="space-y-6 mt-4">
+                {/* Page URL and QR Code */}
+                <div className="bg-muted/50 rounded-lg p-6 space-y-4">
+                  <div>
+                    <Label className="text-sm font-semibold mb-2 block">Page URL</Label>
+                    <div className="flex items-center gap-2">
+                      <Input value={reviewOrg.url} readOnly className="text-sm font-mono" />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyToClipboard(reviewOrg.url, 'URL')}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(reviewOrg.url, '_blank')}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-semibold mb-2 block">QR Code</Label>
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={reviewOrg.qr_code_url}
+                        alt="QR Code"
+                        className="w-40 h-40 border-2 border-border rounded-lg"
+                      />
+                      <div className="flex-1 space-y-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(reviewOrg.qr_code_url, '_blank')}
+                          className="w-full"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download QR Code
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          Share this QR code with your prospect. They can scan it to access their Tip Jar page.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-900 dark:text-blue-100">
+                      <strong>💡 Tip:</strong> Visit the page URL above to review the page before sending the email. Make sure everything looks good!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Email Actions */}
+                <div className="border-t pt-4 space-y-3">
+                  <h3 className="font-semibold">Next Step: Send Welcome Email</h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const { html } = generateProspectWelcomeEmail({
+                          prospectEmail: reviewOrg.prospect_email,
+                          prospectName: reviewOrg.name,
+                          businessName: reviewOrg.name,
+                          pageUrl: reviewOrg.url,
+                          claimLink: reviewOrg.claim_link,
+                          qrCodeUrl: reviewOrg.qr_code_url,
+                          productContext: 'tipjar'
+                        });
+                        setPreviewEmail({ html, subject: 'Your TipJar page is ready! 🎉' });
+                        setShowEmailPreview(true);
+                      }}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Preview Email
+                    </Button>
+                    <Button
+                      onClick={() => sendWelcomeEmail(reviewOrg)}
+                      disabled={sendingEmail}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {sendingEmail ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Send Welcome Email
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowReview(false);
+                        setReviewOrg(null);
+                        if (confirm('Skip email for now? You can send it later from the dashboard.')) {
+                          if (confirm('Would you like to create another page?')) {
+                            setProspects([{
+                              email: '',
+                              business_name: '',
+                              artist_name: '',
+                              phone: '',
+                              slug: ''
+                            }]);
+                          } else {
+                            setQuickMode(false);
+                          }
+                        }
+                      }}
+                    >
+                      Skip for Now
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Email Preview Dialog */}
+        <Dialog open={showEmailPreview} onOpenChange={(open) => {
+          setShowEmailPreview(open);
+          // If closing preview and we have a review org, optionally send email
+          if (!open && reviewOrg && previewEmail) {
+            // Email preview closed, continue with review dialog
+          }
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Email Preview</DialogTitle>
+              <DialogDescription>
+                This is how the welcome email will look to prospects
+              </DialogDescription>
+            </DialogHeader>
+            
+            {previewEmail && (
+              <div className="flex-1 overflow-y-auto border rounded-lg bg-gray-50 p-4">
+                <div className="mb-4 text-sm text-muted-foreground bg-white p-3 rounded border">
+                  <p><strong>Subject:</strong> {previewEmail.subject}</p>
+                  {reviewOrg && (
+                    <p className="text-xs mt-1">
+                      <strong>Recipient:</strong> {reviewOrg.prospect_email}
+                    </p>
+                  )}
+                </div>
+                <div 
+                  className="bg-white rounded-lg shadow-sm overflow-hidden"
+                  style={{ minHeight: '500px' }}
+                  dangerouslySetInnerHTML={{ __html: previewEmail.html }}
+                />
+                
+                {reviewOrg && (
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      onClick={() => {
+                        setShowEmailPreview(false);
+                        sendWelcomeEmail(reviewOrg);
+                      }}
+                      disabled={sendingEmail}
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      {sendingEmail ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Send This Email
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowEmailPreview(false)}
+                    >
+                      Close Preview
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Results Dialog */}
         <Dialog open={showResults} onOpenChange={setShowResults}>
@@ -561,13 +907,24 @@ export default function BatchCreateTipJarPage() {
                   <div key={index} className="border rounded-lg p-4 space-y-4">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-semibold">Prospect #{index + 1}</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeProspect(index)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => previewEmailForProspect(prospect)}
+                          disabled={!prospect.email || !prospect.business_name}
+                          title="Preview welcome email"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeProspect(index)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -694,9 +1051,13 @@ export default function BatchCreateTipJarPage() {
                 {prospects.length} prospect(s) ready to create
               </div>
               <Button
-                onClick={handleCreate}
-                disabled={loading}
+                onClick={(e) => {
+                  console.log('Create button clicked');
+                  handleCreate(e);
+                }}
+                disabled={loading || !isSuperAdmin}
                 size="lg"
+                type="button"
               >
                 {loading ? (
                   <>

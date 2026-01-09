@@ -24,7 +24,9 @@ import {
   Ticket,
   Moon,
   Sun,
-  CreditCard
+  CreditCard,
+  UserPlus,
+  List
 } from 'lucide-react';
 
 interface NavItem {
@@ -85,6 +87,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     : '/assets/m10 dj company logo black.gif';
 
   const [productContext, setProductContext] = useState<string | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const checkSubscriptionTier = async () => {
     try {
@@ -108,7 +111,11 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
       if (adminEmails.includes(user.email || '')) {
         setIsPlatformAdmin(true);
         setSubscriptionTier('enterprise'); // Platform admins see everything
-        return;
+      }
+
+      // Check if super admin (djbenmurray@gmail.com)
+      if (user.email?.toLowerCase() === 'djbenmurray@gmail.com') {
+        setIsSuperAdmin(true);
       }
 
       // Get user's organization
@@ -145,12 +152,22 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
   const getNavItems = (): NavItem[] => {
     // TipJar users only see crowd requests and related features
     if (productContext === 'tipjar') {
-      return [
+      const tipjarNavItems: NavItem[] = [
         { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
         { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
         { label: 'Payouts', href: '/admin/payouts', icon: <DollarSign className="w-5 h-5" /> },
         { label: 'Billing', href: '/admin/billing', icon: <CreditCard className="w-5 h-5" /> },
       ];
+
+      // Add batch invite links for super admin only
+      if (isSuperAdmin) {
+        tipjarNavItems.push(
+          { label: 'Batch Invites', href: '/admin/tipjar/batch-dashboard', icon: <List className="w-5 h-5" /> },
+          { label: 'Create Batch', href: '/admin/tipjar/batch-create', icon: <UserPlus className="w-5 h-5" /> }
+        );
+      }
+
+      return tipjarNavItems;
     }
 
     // Platform admins and paid tiers see everything
