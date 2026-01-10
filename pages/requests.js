@@ -2790,7 +2790,7 @@ export function GeneralRequestsPage({
               <style jsx global>{`
                 /* Override Header positioning on desktop for requests page */
                 @media (min-width: 768px) {
-                  /* Position header inside iPhone frame - properly constrained */
+                  /* Position header inside iPhone frame - properly constrained and visible */
                   .desktop-content-wrapper [data-requests-header-wrapper] {
                     position: relative !important;
                     width: 100% !important;
@@ -2798,31 +2798,63 @@ export function GeneralRequestsPage({
                     left: auto !important;
                     right: auto !important;
                     top: 0 !important;
-                    z-index: 10 !important;
-                    overflow: hidden !important;
+                    z-index: 15 !important;
+                    overflow: visible !important;
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    margin-bottom: 0.5rem !important;
                   }
-                  .desktop-content-wrapper [data-requests-header-wrapper] header[data-transparent] {
+                  /* Override ALL header positioning - force it to be relative and visible */
+                  .desktop-content-wrapper [data-requests-header-wrapper] header,
+                  .desktop-content-wrapper [data-requests-header-wrapper] header[data-transparent],
+                  .desktop-content-wrapper header,
+                  header[data-transparent] {
+                    position: relative !important;
                     width: 100% !important;
                     max-width: 359px !important;
                     left: auto !important;
                     right: auto !important;
                     top: auto !important;
-                    position: relative !important;
+                    bottom: auto !important;
                     transform: none !important;
                     scale: 1 !important;
-                    padding: 0.5rem 1rem !important;
+                    padding: 0.75rem 1rem !important;
+                    margin: 0 !important;
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    background: transparent !important;
+                    z-index: 10 !important;
                   }
-                  /* Ensure logo and header elements are properly sized */
+                  /* Override the fixed positioning that Header component applies */
+                  .desktop-content-wrapper header.fixed {
+                    position: relative !important;
+                  }
+                  /* Ensure logo and header elements are properly sized - CRITICAL */
                   .desktop-content-wrapper [data-requests-header-wrapper] header img,
-                  .desktop-content-wrapper [data-requests-header-wrapper] header svg {
+                  .desktop-content-wrapper [data-requests-header-wrapper] header svg,
+                  .desktop-content-wrapper [data-requests-header-wrapper] header a img,
+                  .desktop-content-wrapper header img {
                     max-width: 120px !important;
                     width: auto !important;
                     height: auto !important;
                     max-height: 40px !important;
+                    object-fit: contain !important;
+                    transform: none !important;
+                    scale: 1 !important;
                   }
-                  .desktop-content-wrapper [data-requests-header-wrapper] header * {
+                  .desktop-content-wrapper [data-requests-header-wrapper] header *,
+                  .desktop-content-wrapper header * {
                     max-width: 100% !important;
                     box-sizing: border-box !important;
+                    transform: none !important;
+                  }
+                  .desktop-content-wrapper [data-requests-header-wrapper] header a,
+                  .desktop-content-wrapper header a {
+                    display: inline-flex !important;
+                    max-width: 120px !important;
+                    align-items: center !important;
                   }
                 }
               `}</style>
@@ -2976,8 +3008,19 @@ export function GeneralRequestsPage({
                 pointer-events: auto !important;
                 box-shadow: none !important;
                 margin: 0 !important;
+                padding: 0 !important;
                 padding-bottom: 20px !important;
                 animation: float 3s ease-in-out infinite;
+              }
+              /* Ensure all content inside wrapper is visible and properly positioned */
+              .desktop-content-wrapper > *:first-child {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+              }
+              /* Make sure content has proper z-index and is visible */
+              .desktop-content-wrapper > * {
+                position: relative !important;
+                z-index: 1 !important;
               }
               
               /* Show iPhone frame wrapper on desktop */
