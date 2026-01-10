@@ -236,12 +236,21 @@ export default async function handler(req, res) {
           prospect_email: prospect.email.toLowerCase().trim(),
           prospect_phone: prospect.phone || null,
           created_by_admin_id: user.id,
+          // TipJar brand colors - use TipJar green (#10b981) instead of M10 gold
+          requests_accent_color: '#10b981', // TipJar emerald green
+          // No social links until admin claims and sets them
+          social_links: [],
           ...prospect.configuration || {}
         };
         
         // Ensure is_claimed is explicitly false (required by constraint)
         if (defaultConfig.is_claimed !== false) {
           defaultConfig.is_claimed = false;
+        }
+        
+        // Ensure social_links is always an empty array (no default social links)
+        if (!prospect.configuration?.social_links) {
+          defaultConfig.social_links = [];
         }
         
         // Set trial end date (14 days from now, or from config)
