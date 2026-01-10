@@ -134,6 +134,7 @@ CREATE TRIGGER create_owner_membership_on_org_create
   EXECUTE FUNCTION create_owner_membership();
 
 -- Backfill existing organizations: create owner memberships for existing orgs
+-- Only for organizations that have an owner (claimed orgs)
 INSERT INTO organization_members (
   organization_id,
   user_id,
@@ -141,18 +142,19 @@ INSERT INTO organization_members (
   joined_at,
   is_active
 )
-SELECT 
+SELECT
   id,
   owner_id,
   'owner',
   created_at,
   true
 FROM organizations
-WHERE NOT EXISTS (
-  SELECT 1 FROM organization_members 
-  WHERE organization_members.organization_id = organizations.id 
-  AND organization_members.user_id = organizations.owner_id
-)
+WHERE owner_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM organization_members
+    WHERE organization_members.organization_id = organizations.id
+    AND organization_members.user_id = organizations.owner_id
+  )
 ON CONFLICT (organization_id, user_id) DO NOTHING;
 
 -- Remove UNIQUE constraint on organizations.owner_id to allow multiple owners via members table
