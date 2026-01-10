@@ -266,6 +266,16 @@ export function GeneralRequestsPage({
   // Secondary colors default to accent color if not set
   const effectiveSecondaryColor1 = previewSecondaryColor1 || organizationData?.requests_secondary_color_1 || effectiveAccentColor;
   const effectiveSecondaryColor2 = previewSecondaryColor2 || organizationData?.requests_secondary_color_2 || effectiveAccentColor;
+  
+  // Helper function to convert hex to rgba
+  const hexToRgba = (hex, alpha) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return `rgba(0, 0, 0, ${alpha})`;
+    const r = parseInt(result[1], 16);
+    const g = parseInt(result[2], 16);
+    const b = parseInt(result[3], 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
   const effectiveButtonStyle = previewButtonStyle || organizationData?.requests_button_style || 'gradient';
   const effectiveThemeMode = previewThemeMode || organizationData?.requests_theme_mode || 'dark';
   
@@ -2803,12 +2813,16 @@ export function GeneralRequestsPage({
                     display: block !important;
                     visibility: visible !important;
                     opacity: 1 !important;
+                    margin: 0 !important;
                     margin-bottom: 0.5rem !important;
+                    padding-top: 0.5rem !important;
+                    min-height: 50px !important;
                   }
                   /* Override ALL header positioning - force it to be relative and visible */
                   .desktop-content-wrapper [data-requests-header-wrapper] header,
                   .desktop-content-wrapper [data-requests-header-wrapper] header[data-transparent],
                   .desktop-content-wrapper header,
+                  header.fixed,
                   header[data-transparent] {
                     position: relative !important;
                     width: 100% !important;
@@ -2819,30 +2833,49 @@ export function GeneralRequestsPage({
                     bottom: auto !important;
                     transform: none !important;
                     scale: 1 !important;
-                    padding: 0.75rem 1rem !important;
+                    padding: 0.5rem 1rem !important;
                     margin: 0 !important;
-                    display: block !important;
+                    display: flex !important;
                     visibility: visible !important;
                     opacity: 1 !important;
                     background: transparent !important;
-                    z-index: 10 !important;
+                    z-index: 15 !important;
+                    height: auto !important;
+                    min-height: auto !important;
                   }
                   /* Override the fixed positioning that Header component applies */
-                  .desktop-content-wrapper header.fixed {
+                  .desktop-content-wrapper header.fixed,
+                  .desktop-content-wrapper [data-requests-header-wrapper] header.fixed {
                     position: relative !important;
+                    top: auto !important;
                   }
-                  /* Ensure logo and header elements are properly sized - CRITICAL */
+                  /* Ensure logo and header elements are properly sized - CRITICAL - override all logo sizes */
                   .desktop-content-wrapper [data-requests-header-wrapper] header img,
                   .desktop-content-wrapper [data-requests-header-wrapper] header svg,
                   .desktop-content-wrapper [data-requests-header-wrapper] header a img,
-                  .desktop-content-wrapper header img {
-                    max-width: 120px !important;
+                  .desktop-content-wrapper [data-requests-header-wrapper] header a > div > img,
+                  .desktop-content-wrapper [data-requests-header-wrapper] header a > div > svg,
+                  .desktop-content-wrapper header img,
+                  .desktop-content-wrapper header svg,
+                  .desktop-content-wrapper header a img {
+                    max-width: 100px !important;
                     width: auto !important;
                     height: auto !important;
-                    max-height: 40px !important;
+                    max-height: 32px !important;
+                    min-width: unset !important;
+                    min-height: unset !important;
                     object-fit: contain !important;
                     transform: none !important;
                     scale: 1 !important;
+                    flex-shrink: 1 !important;
+                  }
+                  /* Constrain the logo container div */
+                  .desktop-content-wrapper [data-requests-header-wrapper] header a > div,
+                  .desktop-content-wrapper header a > div {
+                    max-width: 100px !important;
+                    max-height: 32px !important;
+                    width: auto !important;
+                    height: auto !important;
                   }
                   .desktop-content-wrapper [data-requests-header-wrapper] header *,
                   .desktop-content-wrapper header * {
@@ -2853,8 +2886,9 @@ export function GeneralRequestsPage({
                   .desktop-content-wrapper [data-requests-header-wrapper] header a,
                   .desktop-content-wrapper header a {
                     display: inline-flex !important;
-                    max-width: 120px !important;
+                    max-width: 100px !important;
                     align-items: center !important;
+                    justify-content: flex-start !important;
                   }
                 }
               `}</style>
@@ -2893,19 +2927,47 @@ export function GeneralRequestsPage({
                 display: none !important;
               }
               
-              /* Full-screen gradient background for desktop */
-              .desktop-gradient-background {
+              /* Animated gradient background applied directly to iPhone frame container */
+              /* This creates the animated background behind the floating iPhone - separate from header gradient */
+              /* TEMPORARY: Using bright test colors to verify container is working */
+              .desktop-iphone-frame-container.desktop-preview-bg {
+                background-color: rgba(255, 0, 0, 0.3) !important;
+                background-image: linear-gradient(135deg, rgba(255, 0, 0, 0.5) 0%, rgba(0, 255, 0, 0.5) 25%, rgba(0, 0, 255, 0.5) 50%, rgba(0, 255, 0, 0.5) 75%, rgba(255, 0, 0, 0.5) 100%) !important;
+                background-size: 200% 200% !important;
+                background-position: 0% 50% !important;
+                animation: gradientShiftDesktop 8s ease infinite !important;
+                z-index: -1 !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                display: block !important;
+                width: 100vw !important;
+                height: 100vh !important;
                 position: fixed !important;
                 top: 0 !important;
                 left: 0 !important;
                 right: 0 !important;
                 bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                z-index: 0 !important;
-                background: linear-gradient(135deg, ${effectiveAccentColor}15 0%, ${effectiveAccentColor}05 25%, transparent 50%, ${effectiveAccentColor}05 75%, ${effectiveAccentColor}15 100%);
-                background-size: 200% 200%;
-                animation: gradientShiftDesktop 8s ease infinite;
+              }
+              /* Ensure html and body allow gradient to show through - WHITE BACKGROUND FOR DEBUGGING */
+              html {
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+              }
+              body {
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                overflow-x: hidden !important;
+              }
+              /* Make sure nothing covers the gradient background */
+              #__next {
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                position: relative !important;
+                z-index: 1 !important;
+              }
+              /* Ensure requests page container doesn't block gradient */
+              .requests-page-container {
+                background: transparent !important;
               }
               
               /* Subtle glow effect behind phone */
@@ -2934,15 +2996,17 @@ export function GeneralRequestsPage({
                 z-index: 0 !important;
               }
               
-              /* Ensure container background is transparent so animation shows through */
+              /* Ensure container background is transparent so gradient animation shows through */
               .requests-page-container {
                 background: transparent !important;
                 background-color: transparent !important;
                 background-image: none !important;
                 position: relative !important;
+                z-index: 1 !important;
+                overflow: visible !important;
               }
               
-              /* Override all background gradients and colors on desktop */
+              /* Override all background gradients and colors on desktop - make transparent */
               .requests-page-container.bg-gradient-to-br,
               .requests-page-container[class*="bg-gradient"],
               .requests-page-container[class*="from-"],
@@ -2953,6 +3017,11 @@ export function GeneralRequestsPage({
                 background-image: none !important;
               }
               
+              /* Ensure body background shows the gradient */
+              body {
+                background: #000000 !important;
+              }
+              
               /* iPhone frame wrapper - centered and floating - creates stacking context */
               .desktop-iphone-frame-wrapper {
                 position: fixed !important;
@@ -2960,7 +3029,7 @@ export function GeneralRequestsPage({
                 left: 50% !important;
                 transform: translate(-50%, -50%) !important;
                 z-index: 15 !important;
-                animation: float 3s ease-in-out infinite;
+                animation: float 3s ease-in-out infinite !important;
                 width: 375px !important;
                 height: 812px !important;
                 max-height: 90vh !important;
@@ -2968,18 +3037,23 @@ export function GeneralRequestsPage({
                 isolation: isolate !important;
               }
               
-              /* iPhone frame styling - visual frame only */
+              /* iPhone frame styling - realistic iPhone appearance with metallic finish */
               .desktop-iphone-frame {
                 position: absolute !important;
                 top: 0 !important;
                 left: 0 !important;
                 width: 100% !important;
                 height: 100% !important;
-                background: #1a1a1a !important;
-                border-radius: 40px !important;
-                padding: 8px !important;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 0, 0, 0.3) !important;
-                border: 4px solid #0a0a0a !important;
+                background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #0f0f0f 100%) !important;
+                border-radius: 47px !important;
+                padding: 10px !important;
+                box-shadow: 
+                  0 30px 100px rgba(0, 0, 0, 0.7),
+                  0 15px 40px rgba(0, 0, 0, 0.5),
+                  0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
+                  0 0 40px rgba(0, 0, 0, 0.4),
+                  0 2px 4px rgba(0, 0, 0, 0.3) inset !important;
+                border: 5px solid #1f1f1f !important;
                 pointer-events: none !important;
                 z-index: 1 !important;
               }
@@ -2995,22 +3069,24 @@ export function GeneralRequestsPage({
                 top: 50% !important;
                 left: 50% !important;
                 transform: translate(-50%, -50%) !important;
-                width: 359px !important;
-                max-width: 359px !important;
-                height: 796px !important;
+                width: 355px !important;
+                max-width: 355px !important;
+                height: 792px !important;
                 max-height: calc(90vh - 16px) !important;
                 z-index: 14 !important;
                 background: #000000 !important;
-                border-radius: 32px !important;
+                border-radius: 37px !important;
                 overflow-x: hidden !important;
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch !important;
                 pointer-events: auto !important;
-                box-shadow: none !important;
+                box-shadow: 
+                  0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+                  0 0 30px rgba(0, 0, 0, 0.8) inset !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 padding-bottom: 20px !important;
-                animation: float 3s ease-in-out infinite;
+                animation: none !important;
               }
               /* Ensure all content inside wrapper is visible and properly positioned */
               .desktop-content-wrapper > *:first-child {
@@ -3082,32 +3158,35 @@ export function GeneralRequestsPage({
                 box-sizing: border-box !important;
               }
               
-              /* Dynamic Island / Notch - positioned relative to frame wrapper */
+              /* Dynamic Island / Notch - realistic iPhone 14/15 style */
               .desktop-iphone-notch {
                 position: absolute !important;
                 top: 10px !important;
                 left: 50% !important;
                 transform: translateX(-50%) !important;
-                width: 112px !important;
-                height: 28px !important;
+                width: 126px !important;
+                height: 37px !important;
                 background: #000000 !important;
-                border-radius: 9999px !important;
+                border-radius: 19px !important;
                 z-index: 20 !important;
                 pointer-events: none !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
               }
               
-              /* Home indicator - positioned relative to frame wrapper, visible above content */
+              /* Home indicator - realistic iPhone home bar */
               .desktop-iphone-home-indicator {
                 position: absolute !important;
                 bottom: 8px !important;
                 left: 50% !important;
                 transform: translateX(-50%) !important;
-                width: 96px !important;
-                height: 4px !important;
-                background: rgba(255, 255, 255, 0.6) !important;
-                border-radius: 9999px !important;
+                width: 134px !important;
+                height: 5px !important;
+                background: rgba(255, 255, 255, 0.4) !important;
+                border-radius: 3px !important;
                 z-index: 30 !important;
                 pointer-events: none !important;
+                backdrop-filter: blur(10px) !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
               }
             }
             
@@ -3136,10 +3215,7 @@ export function GeneralRequestsPage({
         
         {/* Desktop iPhone Frame Container - Only visible on desktop */}
         {/* Note: Content wrapper is positioned separately but aligned with frame */}
-        <div className="hidden md:block desktop-iphone-frame-container fixed inset-0 pointer-events-none" style={{ zIndex: 10 }}>
-          {/* Full-screen gradient background */}
-          <div className="desktop-gradient-background" />
-          
+        <div className="hidden md:block desktop-iphone-frame-container fixed inset-0 pointer-events-none desktop-preview-bg" style={{ zIndex: -1 }}>
           {/* Subtle glow effect behind phone */}
           <div className="desktop-phone-glow" />
           

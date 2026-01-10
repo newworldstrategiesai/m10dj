@@ -14,6 +14,7 @@ import {
   Zap,
   Copy
 } from 'lucide-react';
+import ForceLightMode from './ForceLightMode';
 
 export const metadata: Metadata = {
   title: 'Mobile Tip Jar & QR Code Song Requests DJ | Embed TipJar Widget',
@@ -32,15 +33,17 @@ export default function EmbedPage() {
   const embedCode = `<script src="https://tipjar.live/widget.js" data-tipjar-id="YOUR_ID"></script>`;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
-      <TipJarHeader />
+    <>
+      <ForceLightMode />
+      <div className="min-h-screen bg-white dark:bg-gray-950" suppressHydrationWarning>
+        <TipJarHeader />
       {/* Hero Section */}
-      <section className="bg-tipjar-gradient dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 pt-32 pb-20">
+      <section className="bg-gradient-to-br from-emerald-600 via-green-600 to-emerald-700 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 pt-32 pb-20">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-center text-white mb-4">
             Mobile Tip Jar & QR Code<br />Song Requests for DJs
           </h1>
-          <p className="text-xl text-center text-gray-300 max-w-2xl mx-auto">
+          <p className="text-xl text-center text-emerald-50 dark:text-gray-200 max-w-2xl mx-auto">
             Embed mobile tip jar and QR code song requests on your website. One line of code to add tip collection and song requests to any site.
           </p>
         </div>
@@ -77,11 +80,11 @@ export default function EmbedPage() {
                   </li>
                 </ul>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-                <QrCode className="w-32 h-32 mx-auto mb-4 text-tipjar-primary-600" />
-                <p className="text-center text-gray-600 dark:text-gray-300">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-8 border-2 border-gray-200 dark:border-gray-700 shadow-lg">
+                <QrCode className="w-32 h-32 mx-auto mb-4 text-gray-900 dark:text-white" />
+                <p className="text-center text-gray-700 dark:text-gray-300 font-medium">
                   QR Code Example<br />
-                  <span className="text-sm">Scan to tip and request songs</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Scan to tip and request songs</span>
                 </p>
               </div>
             </div>
@@ -140,7 +143,7 @@ export default function EmbedPage() {
               One line of code to add mobile tip jar and song requests to your website. Works on WordPress, Wix, Squarespace, or any platform.
             </p>
 
-            <Card className="p-6 dark:bg-gray-800 dark:border-gray-700 mb-8">
+            <Card className="p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Embed Code</h3>
                 <Button
@@ -275,18 +278,18 @@ export default function EmbedPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-tipjar-cta-gradient">
+      <section className="py-20 bg-gradient-to-br from-emerald-600 via-green-600 to-emerald-700 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-4xl font-bold text-white mb-6">
             Ready to Add Mobile Tip Jar to Your Site?
           </h2>
-          <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-emerald-50 dark:text-gray-200 mb-8 max-w-2xl mx-auto">
             Start collecting tips and song requests with QR codes. Setup takes 2 minutes.
           </p>
           <Button 
             size="lg" 
             asChild
-            className="bg-white text-tipjar-primary-600 hover:bg-gray-100 font-semibold uppercase tracking-wider text-lg px-8 py-6"
+            className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold uppercase tracking-wider text-lg px-8 py-6 shadow-xl hover:shadow-2xl transition-all"
           >
             <Link href="/signup">
               Get Started Free <ArrowRight className="ml-2 w-5 h-5" />
@@ -295,7 +298,8 @@ export default function EmbedPage() {
         </div>
       </section>
       <TipJarFooter />
-    </div>
+      </div>
+    </>
   );
 }
 

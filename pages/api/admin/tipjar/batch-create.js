@@ -6,9 +6,11 @@
  * claimed later by prospects when they create accounts.
  */
 
-import { requireSuperAdmin } from '@/utils/auth-helpers/api-auth';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
+import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -79,9 +81,28 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  console.log('Batch create API called', { method: req.method, hasBody: !!req.body });
+
   try {
-    // Require super admin authentication (djbenmurray@gmail.com only)
-    const user = await requireSuperAdmin(req, res);
+    // Authenticate using session (like other working API routes)
+    const supabaseAuth = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabaseAuth.auth.getSession();
+
+    if (sessionError || !session) {
+      console.error('Session error:', sessionError);
+      return res.status(401).json({ error: 'Unauthorized', message: 'Please log in' });
+    }
+
+    const user = session.user;
+    console.log('User authenticated:', user.email);
+
+    // Check if user is super admin
+    if (!isSuperAdminEmail(user.email)) {
+      console.error('Non-super admin attempted batch create:', user.email);
+      return res.status(403).json({ error: 'Super admin access required' });
+    }
+
+    console.log('Super admin authenticated:', user.email);
     
     // Verify we have service role key
     if (!supabaseServiceKey) {
@@ -89,6 +110,14 @@ export default async function handler(req, res) {
       return res.status(500).json({
         error: 'Server configuration error',
         message: 'Service role key not configured'
+      });
+    }
+    
+    if (!supabaseUrl) {
+      console.error('NEXT_PUBLIC_SUPABASE_URL is not set');
+      return res.status(500).json({
+        error: 'Server configuration error',
+        message: 'Supabase URL not configured'
       });
     }
     
@@ -198,18 +227,23 @@ export default async function handler(req, res) {
         const claimTokenExpiresAt = new Date();
         claimTokenExpiresAt.setDate(claimTokenExpiresAt.getDate() + 90);
         
-        // Default configuration
+        // Default configuration for unclaimed organizations
         const defaultConfig = {
           product_context: 'tipjar',
           subscription_tier: 'starter',
           subscription_status: 'trial',
-          is_claimed: false,
-          owner_id: null,
-          prospect_email: prospect.email,
+          is_claimed: false, // Must be false for unclaimed orgs
+          owner_id: null, // NULL for unclaimed orgs (migration must allow this)
+          prospect_email: prospect.email.toLowerCase().trim(),
           prospect_phone: prospect.phone || null,
           created_by_admin_id: user.id,
           ...prospect.configuration || {}
         };
+        
+        // Ensure is_claimed is explicitly false (required by constraint)
+        if (defaultConfig.is_claimed !== false) {
+          defaultConfig.is_claimed = false;
+        }
         
         // Set trial end date (14 days from now, or from config)
         const trialEndsAt = new Date();
@@ -245,13 +279,15 @@ export default async function handler(req, res) {
             code: orgError.code,
             message: orgError.message,
             details: orgError.details,
-            hint: orgError.hint
+            hint: orgError.hint,
+            insertData: JSON.stringify(insertData)
           });
           failures.push({
             email: prospect.email,
             error: orgError.message || 'Failed to create organization',
             details: orgError.details,
-            code: orgError.code
+            code: orgError.code,
+            hint: orgError.hint
           });
           continue;
         }
@@ -334,12 +370,14 @@ export default async function handler(req, res) {
     // If all failed, return error with detailed failure info
     if (createdOrganizations.length === 0 && failures.length > 0) {
       console.error('All organizations failed to create. Failures:', JSON.stringify(failures, null, 2));
+      const firstFailure = failures[0];
       return res.status(500).json({
         error: 'Failed to create any organizations',
+        message: firstFailure?.error || 'Unknown error',
         failures: failures,
-        message: failures[0]?.error || 'Unknown error',
-        details: failures[0]?.details,
-        code: failures[0]?.code
+        details: firstFailure?.details,
+        hint: firstFailure?.hint,
+        code: firstFailure?.code
       });
     }
     

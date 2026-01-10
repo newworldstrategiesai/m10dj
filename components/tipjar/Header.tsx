@@ -13,6 +13,7 @@ export default function TipJarHeader() {
   const pathname = usePathname();
   const isLivePage = pathname?.startsWith('/live/');
   const isPricingPage = pathname?.includes('/pricing') || pathname === '/pricing';
+  const isEmbedPage = pathname?.startsWith('/tipjar/embed') || pathname === '/embed';
   // Check if this is an artist/organization page (e.g., /tipjar/m10djcompany)
   // Marketing pages are: /tipjar, /tipjar/pricing, /tipjar/features, etc.
   const isArtistPage = pathname?.startsWith('/tipjar/') && 
@@ -48,6 +49,10 @@ export default function TipJarHeader() {
           ? 'bg-black/60 backdrop-blur-md'
           : isPricingPage
           ? 'bg-gradient-to-br from-emerald-900 via-emerald-800 to-green-600 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 backdrop-blur-md shadow-lg border-b border-white/10'
+          : isEmbedPage
+          ? isScrolled
+            ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg'
+            : 'bg-gradient-to-br from-emerald-900 via-emerald-800 to-green-600 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 backdrop-blur-md shadow-lg border-b border-white/10'
           : isScrolled
           ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg'
           : 'bg-transparent'
@@ -83,14 +88,14 @@ export default function TipJarHeader() {
                   />
                 </div>
                 <span className={`text-2xl font-bold transition-colors ${
-                  isLivePage || isPricingPage || !isScrolled
+                  isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                     ? 'text-white' 
                     : 'text-gray-900 dark:text-white'
                 }`}>
                   TipJar
                 </span>
                 <span className={`text-sm font-medium transition-colors ${
-                  isLivePage || isPricingPage || !isScrolled
+                  isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                     ? 'text-white font-semibold' 
                     : 'text-gray-600 dark:text-gray-400'
                 }`}>
@@ -105,7 +110,7 @@ export default function TipJarHeader() {
             <Link
               href="/features"
               className={`font-semibold transition-colors ${
-                isLivePage || isPricingPage || !isScrolled
+                isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                   ? 'text-white hover:text-emerald-200'
                   : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
               }`}
@@ -115,7 +120,7 @@ export default function TipJarHeader() {
             <Link
               href="/pricing"
               className={`font-semibold transition-colors ${
-                isLivePage || isPricingPage || !isScrolled
+                isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                   ? 'text-white hover:text-emerald-200'
                   : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
               }`}
@@ -125,7 +130,7 @@ export default function TipJarHeader() {
             <Link
               href="/how-it-works"
               className={`font-semibold transition-colors ${
-                isLivePage || isPricingPage || !isScrolled
+                isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                   ? 'text-white hover:text-emerald-200'
                   : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
               }`}
@@ -135,7 +140,7 @@ export default function TipJarHeader() {
             <Link
               href="/tipjar/signin/password_signin"
               className={`font-semibold transition-colors ${
-                isLivePage || isPricingPage || !isScrolled
+                isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                   ? 'text-white hover:text-emerald-200'
                   : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
               }`}
@@ -145,7 +150,7 @@ export default function TipJarHeader() {
             <Button
               asChild
               className={`font-semibold ${
-                isLivePage || isPricingPage || !isScrolled
+                isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                   ? 'bg-white text-emerald-600 hover:bg-gray-100 dark:bg-white dark:text-emerald-600 dark:hover:bg-gray-100'
                   : 'bg-gradient-to-r from-emerald-600 to-green-500 text-white hover:from-emerald-700 hover:to-green-600'
               }`}
@@ -160,7 +165,7 @@ export default function TipJarHeader() {
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className={`md:hidden p-2 rounded-lg transition-colors ${
-              isLivePage || isPricingPage || !isScrolled
+              isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                 ? 'text-white'
                 : 'text-gray-700 dark:text-gray-300'
             }`}
@@ -177,7 +182,7 @@ export default function TipJarHeader() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className={`md:hidden py-4 border-t ${
-            isLivePage || isPricingPage
+            isLivePage || isPricingPage || (isEmbedPage && !isScrolled)
               ? 'border-white/20'
               : isScrolled
               ? 'border-gray-200 dark:border-gray-700'
@@ -185,6 +190,10 @@ export default function TipJarHeader() {
           } ${
             isLivePage || isPricingPage
               ? 'bg-gradient-to-br from-emerald-900 via-emerald-800 to-green-600 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 backdrop-blur-md'
+              : isEmbedPage
+              ? isScrolled
+                ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md'
+                : 'bg-gradient-to-br from-emerald-900 via-emerald-800 to-green-600 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 backdrop-blur-md'
               : isScrolled
               ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md'
               : 'bg-white/98 dark:bg-gray-900/98 backdrop-blur-md shadow-lg'
@@ -193,8 +202,10 @@ export default function TipJarHeader() {
               <Link
                 href="/features"
                 className={`font-medium transition-colors ${
-                  isLivePage || isPricingPage
+                  isLivePage || isPricingPage || (isEmbedPage && !isScrolled)
                     ? 'text-white hover:text-emerald-200'
+                    : isEmbedPage && isScrolled
+                    ? 'text-gray-900 dark:text-gray-100 hover:text-emerald-600 dark:hover:text-emerald-400'
                     : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
                 }`}
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -204,8 +215,10 @@ export default function TipJarHeader() {
               <Link
                 href="/pricing"
                 className={`font-medium transition-colors ${
-                  isLivePage || isPricingPage
+                  isLivePage || isPricingPage || (isEmbedPage && !isScrolled)
                     ? 'text-white hover:text-emerald-200'
+                    : isEmbedPage && isScrolled
+                    ? 'text-gray-900 dark:text-gray-100 hover:text-emerald-600 dark:hover:text-emerald-400'
                     : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
                 }`}
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -215,8 +228,10 @@ export default function TipJarHeader() {
               <Link
                 href="/how-it-works"
                 className={`font-medium transition-colors ${
-                  isLivePage || isPricingPage
+                  isLivePage || isPricingPage || (isEmbedPage && !isScrolled)
                     ? 'text-white hover:text-emerald-200'
+                    : isEmbedPage && isScrolled
+                    ? 'text-gray-900 dark:text-gray-100 hover:text-emerald-600 dark:hover:text-emerald-400'
                     : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
                 }`}
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -226,8 +241,10 @@ export default function TipJarHeader() {
               <Link
                 href="/tipjar/signin/password_signin"
                 className={`font-medium transition-colors ${
-                  isLivePage || isPricingPage
+                  isLivePage || isPricingPage || (isEmbedPage && !isScrolled)
                     ? 'text-white hover:text-emerald-200'
+                    : isEmbedPage && isScrolled
+                    ? 'text-gray-900 dark:text-gray-100 hover:text-emerald-600 dark:hover:text-emerald-400'
                     : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
                 }`}
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -237,8 +254,10 @@ export default function TipJarHeader() {
               <Button 
                 asChild
                 className={`w-full font-semibold ${
-                  isLivePage || isPricingPage
+                  isLivePage || isPricingPage || (isEmbedPage && !isScrolled)
                     ? 'bg-white text-emerald-600 hover:bg-gray-100'
+                    : isEmbedPage && isScrolled
+                    ? 'bg-gradient-to-r from-emerald-600 to-green-500 text-white hover:from-emerald-700 hover:to-green-600'
                     : 'bg-gradient-to-r from-emerald-600 to-green-500 text-white hover:from-emerald-700 hover:to-green-600'
                 }`}
               >

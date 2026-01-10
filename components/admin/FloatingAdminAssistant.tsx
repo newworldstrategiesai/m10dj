@@ -31,6 +31,7 @@ import {
   IconArrowRight,
   IconMicrophone,
   IconMicrophoneOff,
+  IconQrcode,
 } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -56,6 +57,12 @@ import { parseEmailContent, ParsedEmailData } from '@/utils/email-parser';
 import { MessageContentRenderer } from './MessageContentRenderer';
 import { isAdminEmail } from '@/utils/auth-helpers/admin-roles';
 import { VoiceAssistant } from './VoiceAssistant';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { getCurrentOrganization } from '@/utils/organization-context';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 // Admin emails removed - now using centralized admin roles system
 // See: utils/auth-helpers/admin-roles.ts
@@ -832,21 +839,89 @@ export default function FloatingAdminAssistant() {
   }, [open, editingField, handleClose]);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isTipJarAdmin, setIsTipJarAdmin] = useState(false);
   
-  // Check admin status using centralized admin roles system
+  // QR Scan Count Modal State
+  const [qrScanModalOpen, setQrScanModalOpen] = useState(false);
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [scanCount, setScanCount] = useState<number | null>(null);
+  const [loadingScanCount, setLoadingScanCount] = useState(false);
+  
+  // Check admin status and TipJar context using centralized admin roles system
   useEffect(() => {
     const checkAdmin = async () => {
       if (user?.email) {
         const adminStatus = await isAdminEmail(user.email);
         setIsAdmin(adminStatus);
+        
+        // Check if user is a TipJar admin
+        const supabase = createClientComponentClient();
+        const org = await getCurrentOrganization(supabase);
+        const isTipJar = user.user_metadata?.product_context === 'tipjar' || org?.product_context === 'tipjar';
+        setIsTipJarAdmin(isTipJar && adminStatus);
       } else {
         setIsAdmin(false);
+        setIsTipJarAdmin(false);
       }
     };
     if (!loading) {
       checkAdmin();
     }
-  }, [user?.email, loading]);
+  }, [user?.email, user?.user_metadata, loading]);
+
+  // Fetch QR scan count
+  const fetchQRScanCount = async () => {
+    if (!startDate || !endDate) {
+      toast({
+        title: 'Date Range Required',
+        description: 'Please select both start and end dates.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoadingScanCount(true);
+    setScanCount(null);
+
+    try {
+      const startDateStr = format(startDate, 'yyyy-MM-dd');
+      const endDateStr = format(endDate, 'yyyy-MM-dd');
+
+      const response = await fetch(
+        `/api/qr-scan/count?startDate=${startDateStr}&endDate=${endDateStr}`
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch scan count');
+      }
+
+      const data = await response.json();
+      setScanCount(data.count);
+    } catch (error: any) {
+      console.error('Error fetching QR scan count:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to fetch QR scan count',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingScanCount(false);
+    }
+  };
+
+  // Handle opening QR scan modal
+  const handleOpenQRScanModal = () => {
+    setQrScanModalOpen(true);
+    // Set default date range to last 30 days
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    setStartDate(thirtyDaysAgo);
+    setEndDate(today);
+    setScanCount(null);
+  };
 
   if (loading) return null;
   if (!isAdmin) return null;
@@ -980,6 +1055,16 @@ export default function FloatingAdminAssistant() {
                       >
                         🎵 Song Requests
                       </button>
+                      
+                      {/* TipJar QR Scan Count - Only visible for TipJar admins */}
+                      {isTipJarAdmin && (
+                        <button
+                          onClick={handleOpenQRScanModal}
+                          className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
+                        >
+                          📱 QR Code Scans
+                        </button>
+                      )}
                       
                       {/* Tools */}
                       <button
@@ -1135,6 +1220,14 @@ export default function FloatingAdminAssistant() {
                           >
                             🎵 Requests
                           </button>
+                          {isTipJarAdmin && (
+                            <button
+                              onClick={handleOpenQRScanModal}
+                              className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 whitespace-nowrap transition-colors"
+                            >
+                              📱 QR Scans
+                            </button>
+                          )}
                           <button
                             onClick={() => setActiveTab('import')}
                             className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 whitespace-nowrap transition-colors"
@@ -2084,6 +2177,132 @@ export default function FloatingAdminAssistant() {
           </div>
         </div>
       )}
+
+      {/* QR Scan Count Modal - TipJar Only */}
+      <Dialog open={qrScanModalOpen} onOpenChange={setQrScanModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <IconQrcode className="h-5 w-5" />
+              QR Code Scan Count
+            </DialogTitle>
+            <DialogDescription>
+              How many times was your QR code scanned in the selected time range?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Start Date Picker */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                Start Date
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !startDate && "text-zinc-500 dark:text-zinc-400"
+                    )}
+                  >
+                    <IconCalendar className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, 'PPP') : <span>Pick a start date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* End Date Picker */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                End Date
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !endDate && "text-zinc-500 dark:text-zinc-400"
+                    )}
+                  >
+                    <IconCalendar className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, 'PPP') : <span>Pick an end date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                    disabled={(date) => startDate ? date < startDate : false}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Result Display */}
+            {scanCount !== null && (
+              <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      Total Scans
+                    </p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                      {startDate && endDate && (
+                        <>
+                          {format(startDate, 'MMM d')} - {format(endDate, 'MMM d, yyyy')}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                    {scanCount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setQrScanModalOpen(false);
+                setScanCount(null);
+                setStartDate(undefined);
+                setEndDate(undefined);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={fetchQRScanCount}
+              disabled={!startDate || !endDate || loadingScanCount}
+            >
+              {loadingScanCount ? (
+                <>
+                  <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                'Get Scan Count'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

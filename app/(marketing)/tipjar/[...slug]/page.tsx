@@ -22,10 +22,21 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Force dynamic rendering to prevent build-time errors
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
+// Create Supabase client function to avoid module-level initialization issues
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase environment variables are not configured');
+  }
+  
+  return createClient(supabaseUrl, supabaseKey);
+}
 
 interface ArtistPageProps {
   params: {
@@ -36,11 +47,52 @@ interface ArtistPageProps {
 export async function generateMetadata({ params }: ArtistPageProps): Promise<Metadata> {
   const slugs = Array.isArray(params.slug) ? params.slug : [params.slug];
   
+  // Reserved paths that should not be handled by catch-all route
+  const reservedPaths = [
+    'claim',
+    'signin',
+    'signup',
+    'dashboard',
+    'onboarding',
+    'pricing',
+    'features',
+    'how-it-works',
+    'embed',
+    'alerts',
+    'admin',
+    'api',
+    'auth',
+    'batch-create',
+    'batch-dashboard',
+    'privacy-policy',
+    'terms-of-service',
+    'recordings',
+    'venue',
+    'accept-invite'
+  ];
+
+  // Check if first slug is a reserved path
+  const firstSlug = slugs[0];
+  if (firstSlug && reservedPaths.includes(firstSlug.toLowerCase())) {
+    return {
+      title: 'Page Not Found | TipJar.Live',
+    };
+  }
+  
   // Handle nested route: [venue-slug]/[performer-slug]
   if (slugs.length === 2) {
     const [venueSlug, performerSlug] = slugs;
     
+    // Check if any slug is reserved
+    if (reservedPaths.includes(venueSlug.toLowerCase()) || 
+        reservedPaths.includes(performerSlug.toLowerCase())) {
+      return {
+        title: 'Page Not Found | TipJar.Live',
+      };
+    }
+    
     // Get venue
+    const supabase = getSupabaseClient();
     const { data: venueOrg } = await supabase
       .from('organizations')
       .select('id, name, slug')
@@ -85,6 +137,15 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
   
   // Handle single slug route: [slug]
   const slug = slugs[0];
+  
+  // Early return for reserved paths
+  if (!slug || reservedPaths.includes(slug.toLowerCase())) {
+    return {
+      title: 'Page Not Found | TipJar.Live',
+    };
+  }
+  
+  const supabase = getSupabaseClient();
   const { data: org } = await supabase
     .from('organizations')
     .select('name, artist_page_headline, artist_page_bio, artist_page_profile_image_url')
@@ -128,11 +189,49 @@ function getIconForLink(icon: string) {
 export default async function ArtistPage({ params }: ArtistPageProps) {
   const slugs = Array.isArray(params.slug) ? params.slug : [params.slug];
   
+  // Reserved paths that should not be handled by catch-all route
+  // These should be handled by their specific route files
+  const reservedPaths = [
+    'claim',
+    'signin',
+    'signup',
+    'dashboard',
+    'onboarding',
+    'pricing',
+    'features',
+    'how-it-works',
+    'embed',
+    'alerts',
+    'admin',
+    'api',
+    'auth',
+    'batch-create',
+    'batch-dashboard',
+    'privacy-policy',
+    'terms-of-service',
+    'recordings',
+    'venue',
+    'accept-invite'
+  ];
+
+  // Check if first slug is a reserved path
+  const firstSlug = slugs[0];
+  if (firstSlug && reservedPaths.includes(firstSlug.toLowerCase())) {
+    notFound();
+  }
+  
   // Handle nested route: [venue-slug]/[performer-slug]
   if (slugs.length === 2) {
     const [venueSlug, performerSlug] = slugs;
     
+    // Check if any slug is reserved
+    if (reservedPaths.includes(venueSlug.toLowerCase()) || 
+        reservedPaths.includes(performerSlug.toLowerCase())) {
+      notFound();
+    }
+    
     // Get venue organization
+    const supabase = getSupabaseClient();
     const { data: venueOrg, error: venueError } = await supabase
       .from('organizations')
       .select('id, name, slug')
@@ -165,7 +264,13 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
   // Handle single slug route: [slug]
   const slug = slugs[0];
   
+  // Early return for reserved paths (double-check)
+  if (!slug || reservedPaths.includes(slug.toLowerCase())) {
+    notFound();
+  }
+  
   // First check if organization exists
+  const supabase = getSupabaseClient();
   const { data: org, error: orgError } = await supabase
     .from('organizations')
     .select('*')

@@ -76,9 +76,9 @@ export async function requireAuth(
 
   if (!user || error) {
     if (!res.headersSent) {
-    res.status(401).json({ error: error || 'Unauthorized' });
+      res.status(401).json({ error: error || 'Unauthorized' });
     }
-    throw new Error('Unauthorized');
+    throw new Error(error || 'Unauthorized');
   }
 
   return user;
@@ -133,19 +133,30 @@ export async function requireSuperAdmin(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<AuthenticatedUser> {
-  const user = await requireAuth(req, res);
+  let user: AuthenticatedUser;
+  
+  try {
+    user = await requireAuth(req, res);
+  } catch (error) {
+    // requireAuth already sent response and threw error, re-throw
+    throw error;
+  }
 
   if (!user.email) {
-    res.status(403).json({ error: 'Super admin access required' });
-    throw new Error('Super admin access required');
+    if (!res.headersSent) {
+      res.status(403).json({ error: 'Super admin access required', reason: 'No email found' });
+    }
+    throw new Error('Super admin access required - no email');
   }
 
   const { isSuperAdminEmail } = await import('./super-admin');
   const isSuper = isSuperAdminEmail(user.email);
   
   if (!isSuper) {
-    res.status(403).json({ error: 'Super admin access required' });
-    throw new Error('Super admin access required');
+    if (!res.headersSent) {
+      res.status(403).json({ error: 'Super admin access required', reason: 'Not super admin email' });
+    }
+    throw new Error('Super admin access required - not authorized');
   }
 
   return user;

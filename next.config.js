@@ -3,6 +3,7 @@ module.exports = {
   reactStrictMode: true,
   experimental: {
     serverActions: true,
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },
   // Performance optimizations
   swcMinify: true, // Use SWC for minification (faster than Terser)
@@ -127,7 +128,9 @@ module.exports = {
     
     // Exclude Puppeteer from client-side bundle (server-only)
     if (isServer) {
-      config.externals = config.externals || [];
+      if (!Array.isArray(config.externals)) {
+        config.externals = [];
+      }
       config.externals.push({
         'puppeteer': 'commonjs puppeteer',
       });

@@ -304,7 +304,11 @@ export default function BatchCreateTipJarPage() {
 
       if (!response.ok) {
         console.error('API error:', response.status, data);
-        throw new Error(data.error || `Failed to create organizations (${response.status})`);
+        // Show more detailed error message if available
+        const errorMessage = data.message || data.error || `Failed to create organizations (${response.status})`;
+        const errorDetails = data.details ? ` Details: ${data.details}` : '';
+        const errorHint = data.hint ? ` Hint: ${data.hint}` : '';
+        throw new Error(errorMessage + errorDetails + errorHint);
       }
 
       console.log('Success! Created organizations:', data.organizations?.length);
