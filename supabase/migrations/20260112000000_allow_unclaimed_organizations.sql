@@ -129,6 +129,7 @@ COMMENT ON POLICY "Allow public read access to organizations" ON organizations I
 -- Policy: Only platform admins can create unclaimed organizations
 -- Regular users can only create claimed organizations (with owner_id = their user_id)
 DROP POLICY IF EXISTS "Users can create own organizations" ON organizations;
+DROP POLICY IF EXISTS "Users can create organizations" ON organizations;
 
 CREATE POLICY "Users can create own organizations"
   ON organizations
@@ -146,6 +147,7 @@ CREATE POLICY "Users can create own organizations"
 -- Users cannot update unclaimed organizations (even if they try to claim)
 -- Claiming happens through a separate API endpoint for security
 DROP POLICY IF EXISTS "Users can update own organizations" ON organizations;
+DROP POLICY IF EXISTS "Users can update organizations" ON organizations;
 
 CREATE POLICY "Users can update own organizations"
   ON organizations
@@ -167,6 +169,7 @@ CREATE POLICY "Users can update own organizations"
 -- Policy: Users can only delete their own organizations
 -- Platform admins can delete any organization
 DROP POLICY IF EXISTS "Users can delete own organizations" ON organizations;
+DROP POLICY IF EXISTS "Users can delete organizations" ON organizations;
 
 CREATE POLICY "Users can delete own organizations"
   ON organizations
