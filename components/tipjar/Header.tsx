@@ -47,7 +47,7 @@ export default function TipJarHeader() {
         isLivePage
           ? 'bg-black/60 backdrop-blur-md'
           : isPricingPage
-          ? 'bg-tipjar-gradient backdrop-blur-md shadow-lg border-b border-white/10'
+          ? 'bg-gradient-to-br from-emerald-900 via-emerald-800 to-green-600 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 backdrop-blur-md shadow-lg border-b border-white/10'
           : isScrolled
           ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg'
           : 'bg-transparent'

@@ -109,7 +109,7 @@ export default function PricingPage() {
       <TipJarHeader />
       
       {/* Hero Section */}
-      <section className="bg-tipjar-gradient dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 pt-32 pb-24 relative overflow-hidden">
+      <section className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-green-600 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 pt-32 pb-24 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 dark:opacity-20">
           <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-500 rounded-full blur-3xl"></div>
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-green-500 rounded-full blur-3xl"></div>

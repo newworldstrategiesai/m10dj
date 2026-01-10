@@ -18,7 +18,7 @@ import { getRoleBasedRedirectUrl } from '@/utils/auth-helpers/role-redirect';
 import { getProductBasedRedirectUrl } from '@/utils/auth-helpers/product-redirect';
 import TipJarHeader from '@/components/tipjar/Header';
 import TipJarFooter from '@/components/tipjar/Footer';
-import { Music } from 'lucide-react';
+import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 
 export default async function TipJarSignIn({
   params,
@@ -154,9 +154,7 @@ export default async function TipJarSignIn({
           <div className="flex justify-center mb-8">
             <div className="text-center">
               <div className="inline-flex items-center justify-center mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Music className="w-8 h-8 text-white" />
-                </div>
+                <TipJarAnimatedLoader size={64} />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 TipJar<span className="text-purple-600">.Live</span>

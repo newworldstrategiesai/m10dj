@@ -309,6 +309,21 @@ export function GeneralRequestsPage({
   const previewHeaderBackgroundGradientStart = router.query.headerBackgroundGradientStart || null;
   const previewHeaderBackgroundGradientEnd = router.query.headerBackgroundGradientEnd || null;
   
+  // Read preview social links from URL (for admin preview)
+  let previewSocialLinks = null;
+  if (router.query.socialLinks && typeof router.query.socialLinks === 'string') {
+    try {
+      previewSocialLinks = JSON.parse(router.query.socialLinks);
+      // Ensure it's an array
+      if (!Array.isArray(previewSocialLinks)) {
+        previewSocialLinks = null;
+      }
+    } catch (e) {
+      console.error('Error parsing preview social links:', e);
+      previewSocialLinks = null;
+    }
+  }
+  
   // Use preview values for header background if available, otherwise use organization data
   const effectiveHeaderBackgroundType = previewHeaderBackgroundType !== null 
     ? previewHeaderBackgroundType 
@@ -2702,9 +2717,9 @@ export function GeneralRequestsPage({
             <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black via-black/60 to-transparent z-20 pointer-events-none"></div>
             
             {/* Social Links at bottom of video sidebar */}
-            {organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0 && (
+            {((previewSocialLinks && previewSocialLinks.length > 0) || (organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0)) && (
               <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-5 z-30">
-                {organizationData.social_links
+                {(previewSocialLinks || organizationData?.social_links || [])
                   .filter(link => link.enabled !== false)
                   .sort((a, b) => (a.order || 0) - (b.order || 0))
                   .map((link, index) => {
@@ -2794,7 +2809,7 @@ export function GeneralRequestsPage({
                     : customBranding?.customLogoUrl
                 } 
                 transparent={true} 
-                socialLinks={organizationData?.social_links} 
+                socialLinks={previewSocialLinks || organizationData?.social_links} 
                 isOwner={isOwner} 
                 organizationSlug={organizationData?.slug} 
                 organizationId={organizationId} 
@@ -3133,9 +3148,9 @@ export function GeneralRequestsPage({
               {!minimalHeader && (
               <div className="w-full flex flex-col items-center gap-4 mt-4 sm:mt-6">
                 {/* Social Links - Positioned at bottom */}
-                {organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0 ? (
+                {((previewSocialLinks && previewSocialLinks.length > 0) || (organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0)) ? (
                   <div className="flex items-center justify-center gap-3">
-                    {organizationData.social_links
+                    {(previewSocialLinks || organizationData?.social_links || [])
                       .filter(link => link.enabled !== false)
                       .sort((a, b) => (a.order || 0) - (b.order || 0))
                       .map((link, index) => {

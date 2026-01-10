@@ -125,7 +125,11 @@ export default function PasswordSignIn({
           <Button
             variant="slim"
             type="submit"
-            className="w-full bg-gradient-to-r from-brand to-amber-500 hover:from-amber-500 hover:to-brand text-black font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`w-full font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+              isTipJar
+                ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-500 hover:from-emerald-500 hover:via-green-500 hover:to-emerald-600 text-white'
+                : 'bg-gradient-to-r from-brand to-amber-500 hover:from-amber-500 hover:to-brand text-black'
+            }`}
             loading={isSubmitting}
           >
             Sign in

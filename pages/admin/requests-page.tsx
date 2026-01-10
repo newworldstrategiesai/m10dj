@@ -688,6 +688,12 @@ export default function RequestsPageSettings() {
       headerBackgroundColor: headerBackgroundColor,
       headerBackgroundGradientStart: headerBackgroundGradientStart,
       headerBackgroundGradientEnd: headerBackgroundGradientEnd,
+      // Social links for preview - serialize as JSON (filter valid links and sort by order)
+      socialLinks: JSON.stringify(
+        socialLinks
+          .filter(link => link.url.trim() !== '' && link.label.trim() !== '' && link.enabled !== false)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+      ),
     });
     
     return `/${organization.slug}/requests?${params.toString()}`;
@@ -724,7 +730,20 @@ export default function RequestsPageSettings() {
       setSuccess(false);
 
       // Filter and prepare social links
-      const validSocialLinks = socialLinks
+      // Auto-populate labels for known platforms if missing
+      const linksWithLabels = socialLinks.map(link => {
+        // If platform is set but label is empty, auto-populate from platform
+        if (link.platform && link.platform !== 'custom' && (!link.label || link.label.trim() === '')) {
+          const platform = SUPPORTED_PLATFORMS.find(p => p.value === link.platform);
+          return {
+            ...link,
+            label: platform?.label || link.platform.charAt(0).toUpperCase() + link.platform.slice(1)
+          };
+        }
+        return link;
+      });
+      
+      const validSocialLinks = linksWithLabels
         .filter(link => link.url.trim() !== '' && link.label.trim() !== '')
         .map(link => ({
           ...link,
@@ -912,24 +931,38 @@ export default function RequestsPageSettings() {
     };
     setSocialLinks([...socialLinks, newLink]);
     setActiveTab('design'); // Social links are now part of Design tab
+    
+    // Update preview iframe after adding link (will show once URL and label are filled)
+    setTimeout(() => updatePreviewIframe(), 100);
   };
 
   const removeSocialLink = (index: number) => {
     const updated = socialLinks.filter((_, i) => i !== index);
     const reordered = updated.map((link, i) => ({ ...link, order: i + 1 }));
     setSocialLinks(reordered);
+    
+    // Update preview iframe in real-time when social link is removed
+    setTimeout(() => updatePreviewIframe(), 100);
   };
 
   const updateSocialLink = (index: number, field: keyof SocialLink, value: any) => {
     const updated = [...socialLinks];
     updated[index] = { ...updated[index], [field]: value };
     
-    if (field === 'platform' && value !== 'custom' && !updated[index].label) {
-      const platform = SUPPORTED_PLATFORMS.find(p => p.value === value);
-      updated[index].label = platform?.label || value;
+    // Auto-populate label when platform changes (if label is empty or missing)
+    if (field === 'platform' && value !== 'custom') {
+      const currentLabel = updated[index].label;
+      // If label is empty, undefined, or just whitespace, auto-populate it
+      if (!currentLabel || currentLabel.trim() === '') {
+        const platform = SUPPORTED_PLATFORMS.find(p => p.value === value);
+        updated[index].label = platform?.label || value.charAt(0).toUpperCase() + value.slice(1);
+      }
     }
     
     setSocialLinks(updated);
+    
+    // Update preview iframe in real-time when social links change
+    setTimeout(() => updatePreviewIframe(), 100);
   };
 
   const moveSocialLink = (index: number, direction: 'up' | 'down') => {
@@ -944,6 +977,9 @@ export default function RequestsPageSettings() {
     
     [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
     setSocialLinks(updated);
+    
+    // Update preview iframe in real-time when social link order changes
+    setTimeout(() => updatePreviewIframe(), 100);
   };
 
   // Helper function to get effective brand colors with fallback
