@@ -41,8 +41,8 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    // Generate URLs
-    const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live';
+    // Generate URLs - Always use tipjar.live for TipJar pages
+    const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
     const pageUrl = `${baseUrl}/${organization.slug}/requests`;
     const claimUrl = organization.claim_token 
       ? `${baseUrl}/tipjar/claim?token=${organization.claim_token}`

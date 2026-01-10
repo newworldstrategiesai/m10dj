@@ -319,8 +319,8 @@ export default async function handler(req, res) {
           // Continue anyway, token can be regenerated
         }
         
-        // Generate URLs
-        const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live';
+        // Generate URLs - Always use tipjar.live for TipJar pages
+        const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://tipjar.live';
         const pageUrl = `${baseUrl}/${uniqueSlug}/requests`;
         const claimUrl = `${baseUrl}/tipjar/claim?token=${claimToken}`;
         const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pageUrl)}`;
