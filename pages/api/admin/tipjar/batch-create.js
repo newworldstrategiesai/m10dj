@@ -259,7 +259,7 @@ export default async function handler(req, res) {
         const insertData = {
           name: prospect.business_name,
           slug: uniqueSlug,
-          artist_name: prospect.artist_name || prospect.business_name,
+          // Use requests_header_artist_name instead of artist_name (column doesn't exist)
           requests_header_artist_name: prospect.configuration?.requests_header_artist_name || prospect.artist_name || prospect.business_name,
           ...defaultConfig
         };
