@@ -189,3 +189,11 @@ COMMENT ON COLUMN organizations.is_claimed IS 'Whether organization has been cla
 COMMENT ON COLUMN organizations.created_by_admin_id IS 'User ID of platform admin who created this unclaimed organization.';
 COMMENT ON COLUMN organizations.claimed_at IS 'Timestamp when organization was claimed by a user.';
 
+-- ============================================
+-- 4. Update create_owner_membership trigger to handle unclaimed orgs
+-- ============================================
+
+-- The trigger was updated in the organization_members migration to only create
+-- memberships for organizations with owner_id IS NOT NULL, so unclaimed orgs
+-- don't create organization_members records automatically.
+

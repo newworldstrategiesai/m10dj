@@ -94,24 +94,29 @@ CREATE POLICY "Users can update their own membership"
 
 -- Auto-create owner membership when organization is created
 -- This ensures the owner is also in the members table
+-- Only create membership for claimed organizations (owner_id IS NOT NULL)
 CREATE OR REPLACE FUNCTION create_owner_membership()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO organization_members (
-    organization_id,
-    user_id,
-    role,
-    joined_at,
-    is_active
-  ) VALUES (
-    NEW.id,
-    NEW.owner_id,
-    'owner',
-    NOW(),
-    true
-  )
-  ON CONFLICT (organization_id, user_id) DO NOTHING;
-  
+  -- Only create membership for organizations with an owner (claimed orgs)
+  -- Unclaimed organizations (owner_id IS NULL) don't get members
+  IF NEW.owner_id IS NOT NULL THEN
+    INSERT INTO organization_members (
+      organization_id,
+      user_id,
+      role,
+      joined_at,
+      is_active
+    ) VALUES (
+      NEW.id,
+      NEW.owner_id,
+      'owner',
+      NOW(),
+      true
+    )
+    ON CONFLICT (organization_id, user_id) DO NOTHING;
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
