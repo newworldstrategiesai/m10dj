@@ -126,6 +126,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS create_owner_membership_on_org_create ON organizations;
+
 CREATE TRIGGER create_owner_membership_on_org_create
   AFTER INSERT ON organizations
   FOR EACH ROW
