@@ -1,12 +1,12 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FeatureCard } from '@/components/tipjar/FeatureCard';
 import TipJarHeader from '@/components/tipjar/Header';
 import TipJarFooter from '@/components/tipjar/Footer';
 import { StickyCTA } from '@/components/tipjar/StickyCTA';
+import { PreviewCards } from './PreviewCards';
 import {
   CreditCard,
   Music,
@@ -252,73 +252,7 @@ export default function FeaturesPage() {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            {/* DJ Dashboard Preview */}
-            <Card className="p-8 dark:bg-gray-800 dark:border-gray-700 hover:shadow-xl transition-shadow">
-              <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 mb-6 aspect-[9/16] flex items-center justify-center border-2 border-emerald-100 dark:border-emerald-800">
-                <div className="text-center">
-                  <BarChart3 className="w-16 h-16 text-emerald-600 dark:text-emerald-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400 font-medium">
-                    Dashboard Preview
-                  </p>
-                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-                    Real-time analytics & request management
-                  </p>
-                </div>
-              </div>
-              <h3 className="text-2xl font-bold mb-3 dark:text-white">DJ Dashboard</h3>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-                Real-time view of all tips and requests. Manage your queue, see earnings, and track performance with beautiful, easy-to-read charts.
-              </p>
-              <ul className="space-y-2">
-                <li className="flex items-start">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600 dark:text-gray-300 text-sm">Live earnings tracker</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600 dark:text-gray-300 text-sm">Request queue management</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600 dark:text-gray-300 text-sm">Performance analytics</span>
-                </li>
-              </ul>
-            </Card>
-            
-            {/* Guest Experience Preview */}
-            <Card className="p-8 dark:bg-gray-800 dark:border-gray-700 hover:shadow-xl transition-shadow">
-              <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-8 mb-6 aspect-[9/16] flex items-center justify-center border-2 border-emerald-100 dark:border-emerald-800">
-                <div className="text-center">
-                  <Smartphone className="w-16 h-16 text-green-600 dark:text-green-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400 font-medium">
-                    Guest View Preview
-                  </p>
-                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-                    Clean, mobile-optimized interface
-                  </p>
-                </div>
-              </div>
-              <h3 className="text-2xl font-bold mb-3 dark:text-white">Guest Experience</h3>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-                Clean, mobile-optimized interface. Guests can tip and request songs in seconds with an intuitive, beautiful design.
-              </p>
-              <ul className="space-y-2">
-                <li className="flex items-start">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600 dark:text-gray-300 text-sm">One-tap song requests</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600 dark:text-gray-300 text-sm">Fast, secure checkout</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600 dark:text-gray-300 text-sm">Works on any device</span>
-                </li>
-              </ul>
-            </Card>
-          </div>
+          <PreviewCards />
         </div>
       </section>
 

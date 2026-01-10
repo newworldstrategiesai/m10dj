@@ -2782,44 +2782,68 @@ export function GeneralRequestsPage({
           </div>
         )}
         
-        {/* Header - Fixed position overlaying video sidebar on desktop */}
-        {/* Header component is already fixed w-full, use CSS to override positioning on desktop */}
-        {/* Use a unique key to prevent duplicate renders when organizationData changes */}
-        {!embedMode && !showPaymentMethods && !minimalHeader && (
-          <>
-            <style jsx global>{`
-              /* Override Header positioning on desktop for requests page */
-              @media (min-width: 768px) {
-                body:has([data-requests-header-wrapper]) header[data-transparent] {
-                  width: auto !important;
-                  left: 1rem !important;
-                  right: auto !important;
-                  top: 1rem !important;
-                  max-width: calc(100vw - 2rem) !important;
-                }
-              }
-            `}</style>
-            <div data-requests-header-wrapper key={`header-${organizationId || 'default'}`}>
-              <Header 
-                key={`header-component-${organizationId || 'default'}`}
-                customLogoUrl={
-                  // Use requests page custom logo if set and user can customize
-                  (organizationData?.can_customize_header_logo && organizationData?.requests_header_logo_url) 
-                    ? organizationData.requests_header_logo_url 
-                    : customBranding?.customLogoUrl
-                } 
-                transparent={true} 
-                socialLinks={previewSocialLinks || organizationData?.social_links} 
-                isOwner={isOwner} 
-                organizationSlug={organizationData?.slug} 
-                organizationId={organizationId} 
-              />
-            </div>
-          </>
-        )}
-        
         {/* Main Content Area - Centered on desktop with animated background */}
         <div className="flex-1 min-w-0 relative desktop-content-wrapper">
+          {/* Header - Inside content wrapper so it appears in iPhone frame on desktop */}
+          {!embedMode && !showPaymentMethods && !minimalHeader && (
+            <>
+              <style jsx global>{`
+                /* Override Header positioning on desktop for requests page */
+                @media (min-width: 768px) {
+                  /* Position header inside iPhone frame - properly constrained */
+                  .desktop-content-wrapper [data-requests-header-wrapper] {
+                    position: relative !important;
+                    width: 100% !important;
+                    max-width: 359px !important;
+                    left: auto !important;
+                    right: auto !important;
+                    top: 0 !important;
+                    z-index: 10 !important;
+                    overflow: hidden !important;
+                  }
+                  .desktop-content-wrapper [data-requests-header-wrapper] header[data-transparent] {
+                    width: 100% !important;
+                    max-width: 359px !important;
+                    left: auto !important;
+                    right: auto !important;
+                    top: auto !important;
+                    position: relative !important;
+                    transform: none !important;
+                    scale: 1 !important;
+                    padding: 0.5rem 1rem !important;
+                  }
+                  /* Ensure logo and header elements are properly sized */
+                  .desktop-content-wrapper [data-requests-header-wrapper] header img,
+                  .desktop-content-wrapper [data-requests-header-wrapper] header svg {
+                    max-width: 120px !important;
+                    width: auto !important;
+                    height: auto !important;
+                    max-height: 40px !important;
+                  }
+                  .desktop-content-wrapper [data-requests-header-wrapper] header * {
+                    max-width: 100% !important;
+                    box-sizing: border-box !important;
+                  }
+                }
+              `}</style>
+              <div data-requests-header-wrapper key={`header-${organizationId || 'default'}`}>
+                <Header 
+                  key={`header-component-${organizationId || 'default'}`}
+                  customLogoUrl={
+                    // Use requests page custom logo if set and user can customize
+                    (organizationData?.can_customize_header_logo && organizationData?.requests_header_logo_url) 
+                      ? organizationData.requests_header_logo_url 
+                      : customBranding?.customLogoUrl
+                  } 
+                  transparent={true} 
+                  socialLinks={previewSocialLinks || organizationData?.social_links} 
+                  isOwner={isOwner} 
+                  organizationSlug={organizationData?.slug} 
+                  organizationId={organizationId} 
+                />
+              </div>
+            </>
+          )}
           {/* Desktop Animated Background and Centered Layout with Floating iPhone Frame */}
           <style dangerouslySetInnerHTML={{ __html: `
             @keyframes gradientShiftDesktop {
@@ -2908,10 +2932,11 @@ export function GeneralRequestsPage({
                 width: 375px !important;
                 height: 812px !important;
                 max-height: 90vh !important;
+                pointer-events: none !important;
                 isolation: isolate !important;
               }
               
-              /* iPhone frame styling - visual frame only, behind content */
+              /* iPhone frame styling - visual frame only */
               .desktop-iphone-frame {
                 position: absolute !important;
                 top: 0 !important;
@@ -2925,34 +2950,33 @@ export function GeneralRequestsPage({
                 border: 4px solid #0a0a0a !important;
                 pointer-events: none !important;
                 z-index: 1 !important;
-                overflow: visible !important;
               }
               
-              /* iPhone screen content area - hidden, content goes in desktop-content-wrapper */
+              /* iPhone screen content area - hidden */
               .desktop-iphone-content {
                 display: none !important;
               }
               
-              /* Position content wrapper inside iPhone frame on desktop - synchronized with frame */
-              /* Content appears above frame border - notch/home indicator use fixed positioning to overlay */
+              /* Position content wrapper inside iPhone frame on desktop - properly constrained */
               .requests-page-container > div.desktop-content-wrapper {
                 position: fixed !important;
                 top: 50% !important;
                 left: 50% !important;
                 transform: translate(-50%, -50%) !important;
                 width: 359px !important;
-                height: 780px !important;
-                max-height: calc(90vh - 32px) !important;
-                z-index: 16 !important;
+                max-width: 359px !important;
+                height: 796px !important;
+                max-height: calc(90vh - 16px) !important;
+                z-index: 14 !important;
                 background: #000000 !important;
                 border-radius: 32px !important;
-                overflow: hidden !important;
-                overflow-y: auto !important;
                 overflow-x: hidden !important;
+                overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch !important;
                 pointer-events: auto !important;
                 box-shadow: none !important;
                 margin: 0 !important;
+                padding-bottom: 20px !important;
                 animation: float 3s ease-in-out infinite;
               }
               
@@ -2961,52 +2985,86 @@ export function GeneralRequestsPage({
                 display: block !important;
               }
               
-              /* Ensure content inside iPhone frame wrapper is properly sized */
+              /* Constrain all content inside the iPhone frame - CRITICAL for boundaries */
               .desktop-content-wrapper > * {
-                max-width: 100% !important;
+                max-width: 359px !important;
                 width: 100% !important;
+                box-sizing: border-box !important;
               }
               
-              /* Ensure hero section doesn't clip location subtitle inside iPhone frame */
+              /* Prevent horizontal overflow but allow vertical scrolling */
+              .desktop-content-wrapper {
+                overscroll-behavior-y: contain !important;
+                overscroll-behavior-x: none !important;
+              }
+              
+              /* Ensure direct children respect width constraints */
+              .desktop-content-wrapper > * {
+                box-sizing: border-box !important;
+              }
+              
+              /* Images and media must respect boundaries */
+              .desktop-content-wrapper img,
+              .desktop-content-wrapper video,
+              .desktop-content-wrapper iframe {
+                max-width: 100% !important;
+                height: auto !important;
+                box-sizing: border-box !important;
+              }
+              
+              /* Hero section - must respect boundaries but allow content to flow */
               .desktop-content-wrapper > div[class*="relative w-full"] {
+                width: 100% !important;
+                max-width: 359px !important;
+                position: relative !important;
+                box-sizing: border-box !important;
                 overflow: visible !important;
-                min-height: auto !important;
               }
               
-              /* Ensure content overlay doesn't clip location subtitle inside iPhone frame */
+              /* Content overlay - must respect boundaries but allow content to flow */
               .desktop-content-wrapper > div[class*="relative w-full"] > div[class*="relative z-20"] {
+                width: 100% !important;
+                max-width: 359px !important;
+                box-sizing: border-box !important;
                 overflow: visible !important;
-                min-height: auto !important;
               }
               
-              /* Dynamic Island / Notch - fixed positioning to appear above content wrapper */
+              /* Buttons and interactive elements should respect bounds */
+              .desktop-content-wrapper button,
+              .desktop-content-wrapper a,
+              .desktop-content-wrapper input,
+              .desktop-content-wrapper textarea,
+              .desktop-content-wrapper select {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+              }
+              
+              /* Dynamic Island / Notch - positioned relative to frame wrapper */
               .desktop-iphone-notch {
-                position: fixed !important;
-                top: calc(50% - 406px + 10px) !important;
+                position: absolute !important;
+                top: 10px !important;
                 left: 50% !important;
                 transform: translateX(-50%) !important;
                 width: 112px !important;
                 height: 28px !important;
                 background: #000000 !important;
                 border-radius: 9999px !important;
-                z-index: 30 !important;
+                z-index: 20 !important;
                 pointer-events: none !important;
-                animation: float 3s ease-in-out infinite;
               }
               
-              /* Home indicator - fixed positioning to appear above content wrapper */
+              /* Home indicator - positioned relative to frame wrapper, visible above content */
               .desktop-iphone-home-indicator {
-                position: fixed !important;
-                bottom: calc(50% - 406px + 8px) !important;
+                position: absolute !important;
+                bottom: 8px !important;
                 left: 50% !important;
                 transform: translateX(-50%) !important;
                 width: 96px !important;
                 height: 4px !important;
-                background: rgba(156, 163, 175, 0.6) !important;
+                background: rgba(255, 255, 255, 0.6) !important;
                 border-radius: 9999px !important;
                 z-index: 30 !important;
                 pointer-events: none !important;
-                animation: float 3s ease-in-out infinite;
               }
             }
             
@@ -3048,9 +3106,9 @@ export function GeneralRequestsPage({
               {/* iPhone screen content area - placeholder */}
               <div className="desktop-iphone-content" />
             </div>
-            {/* Dynamic Island / Notch - positioned relative to wrapper to appear above content */}
+            {/* Dynamic Island / Notch - moves with frame animation */}
             <div className="desktop-iphone-notch" />
-            {/* Home indicator - positioned relative to wrapper to appear above content */}
+            {/* Home indicator - moves with frame animation */}
             <div className="desktop-iphone-home-indicator" />
           </div>
         </div>

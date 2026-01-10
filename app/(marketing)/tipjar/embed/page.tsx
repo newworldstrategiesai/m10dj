@@ -52,7 +52,7 @@ export default function EmbedPage() {
           <div className="max-w-6xl mx-auto">
             <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold mb-6 dark:text-white">
+                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900 dark:text-white">
                   QR Code Tip Jar for Events
                 </h2>
                 <p className="text-xl text-gray-600 dark:text-gray-300 mb-6">
@@ -94,7 +94,7 @@ export default function EmbedPage() {
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4 dark:text-white">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
                 Mobile Tip Jar That Works Everywhere
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
@@ -105,21 +105,21 @@ export default function EmbedPage() {
             <div className="grid md:grid-cols-3 gap-8 mb-12">
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <Smartphone className="w-12 h-12 text-tipjar-primary-600 mb-4" />
-                <h3 className="text-xl font-bold mb-3 dark:text-white">Mobile-First Design</h3>
+                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">Mobile-First Design</h3>
                 <p className="text-gray-600 dark:text-gray-300">
                   Optimized for mobile phones. Fast loading, touch-friendly interface. Works perfectly on any screen size.
                 </p>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <Globe className="w-12 h-12 text-tipjar-primary-600 mb-4" />
-                <h3 className="text-xl font-bold mb-3 dark:text-white">No App Required</h3>
+                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">No App Required</h3>
                 <p className="text-gray-600 dark:text-gray-300">
                   Guests open your link in any browser. No app download, no account creation. Zero friction for maximum tips.
                 </p>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <Zap className="w-12 h-12 text-tipjar-primary-600 mb-4" />
-                <h3 className="text-xl font-bold mb-3 dark:text-white">Instant Payments</h3>
+                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">Instant Payments</h3>
                 <p className="text-gray-600 dark:text-gray-300">
                   Credit card or Cash App Pay. Secure checkout in seconds. Tips go straight to your account.
                 </p>
@@ -133,7 +133,7 @@ export default function EmbedPage() {
       <section className="py-20 bg-white dark:bg-gray-950">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 dark:text-white">
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-gray-900 dark:text-white">
               Embed TipJar on Your Website
             </h2>
             <p className="text-xl text-center text-gray-600 dark:text-gray-300 mb-12">
@@ -142,7 +142,7 @@ export default function EmbedPage() {
 
             <Card className="p-6 dark:bg-gray-800 dark:border-gray-700 mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold dark:text-white">Embed Code</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Embed Code</h3>
                 <Button
                   variant="outline"
                   size="sm"
@@ -161,7 +161,7 @@ export default function EmbedPage() {
 
             <div className="grid md:grid-cols-2 gap-8 mb-12">
               <div>
-                <h3 className="text-xl font-bold mb-4 dark:text-white">Supported Platforms</h3>
+                <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Supported Platforms</h3>
                 <ul className="space-y-2">
                   <li className="flex items-center">
                     <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
@@ -186,7 +186,7 @@ export default function EmbedPage() {
                 </ul>
               </div>
               <div>
-                <h3 className="text-xl font-bold mb-4 dark:text-white">Features Included</h3>
+                <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Features Included</h3>
                 <ul className="space-y-2">
                   <li className="flex items-center">
                     <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
@@ -219,7 +219,7 @@ export default function EmbedPage() {
       <section className="py-20 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 dark:text-white">
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-gray-900 dark:text-white">
               QR Code Song Requests for DJs
             </h2>
             <p className="text-xl text-center text-gray-600 dark:text-gray-300 mb-12">
@@ -228,7 +228,7 @@ export default function EmbedPage() {
 
             <div className="grid md:grid-cols-2 gap-8 mb-12">
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-bold mb-4 dark:text-white">How It Works</h3>
+                <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">How It Works</h3>
                 <ol className="space-y-3">
                   <li className="flex items-start">
                     <span className="flex-shrink-0 w-6 h-6 bg-tipjar-primary-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">1</span>
@@ -249,7 +249,7 @@ export default function EmbedPage() {
                 </ol>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-bold mb-4 dark:text-white">Benefits</h3>
+                <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Benefits</h3>
                 <ul className="space-y-3">
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
