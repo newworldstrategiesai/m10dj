@@ -10,7 +10,6 @@ import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
-import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
