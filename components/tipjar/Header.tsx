@@ -177,46 +177,70 @@ export default function TipJarHeader() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className={`md:hidden py-4 border-t ${
-            isScrolled
+            isLivePage || isPricingPage
+              ? 'border-white/20'
+              : isScrolled
               ? 'border-gray-200 dark:border-gray-700'
               : 'border-white/20'
           } ${
-            isScrolled
+            isLivePage || isPricingPage
+              ? 'bg-gradient-to-br from-emerald-900 via-emerald-800 to-green-600 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 backdrop-blur-md'
+              : isScrolled
               ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md'
               : 'bg-white/98 dark:bg-gray-900/98 backdrop-blur-md shadow-lg'
           }`}>
             <div className="flex flex-col space-y-4">
               <Link
                 href="/features"
-                className="font-medium text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400"
+                className={`font-medium transition-colors ${
+                  isLivePage || isPricingPage
+                    ? 'text-white hover:text-emerald-200'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
+                }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Features
               </Link>
               <Link
                 href="/pricing"
-                className="font-medium text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400"
+                className={`font-medium transition-colors ${
+                  isLivePage || isPricingPage
+                    ? 'text-white hover:text-emerald-200'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
+                }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Pricing
               </Link>
               <Link
                 href="/how-it-works"
-                className="font-medium text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400"
+                className={`font-medium transition-colors ${
+                  isLivePage || isPricingPage
+                    ? 'text-white hover:text-emerald-200'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
+                }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 How It Works
               </Link>
               <Link
                 href="/tipjar/signin/password_signin"
-                className="font-medium text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400"
+                className={`font-medium transition-colors ${
+                  isLivePage || isPricingPage
+                    ? 'text-white hover:text-emerald-200'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
+                }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Sign In
               </Link>
               <Button 
                 asChild
-                className="w-full bg-gradient-to-r from-emerald-600 to-green-500 text-white font-semibold"
+                className={`w-full font-semibold ${
+                  isLivePage || isPricingPage
+                    ? 'bg-white text-emerald-600 hover:bg-gray-100'
+                    : 'bg-gradient-to-r from-emerald-600 to-green-500 text-white hover:from-emerald-700 hover:to-green-600'
+                }`}
               >
                 <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>
                   Start Free

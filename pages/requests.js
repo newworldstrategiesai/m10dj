@@ -2820,17 +2820,50 @@ export function GeneralRequestsPage({
         
         {/* Main Content Area - Centered on desktop with animated background */}
         <div className="flex-1 min-w-0 relative desktop-content-wrapper">
-          {/* Desktop Animated Background and Centered Layout */}
+          {/* Desktop Animated Background and Centered Layout with Floating iPhone Frame */}
           <style dangerouslySetInnerHTML={{ __html: `
             @keyframes gradientShiftDesktop {
               0% { background-position: 0% 50%; }
               50% { background-position: 100% 50%; }
               100% { background-position: 0% 50%; }
             }
+            @keyframes float {
+              0%, 100% { transform: translateY(0px); }
+              50% { transform: translateY(-10px); }
+            }
             @media (min-width: 768px) {
               /* Hide video sidebar on desktop */
               .desktop-video-sidebar {
                 display: none !important;
+              }
+              
+              /* Full-screen gradient background for desktop */
+              .desktop-gradient-background {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                z-index: 0 !important;
+                background: linear-gradient(135deg, ${effectiveAccentColor}15 0%, ${effectiveAccentColor}05 25%, transparent 50%, ${effectiveAccentColor}05 75%, ${effectiveAccentColor}15 100%);
+                background-size: 200% 200%;
+                animation: gradientShiftDesktop 8s ease infinite;
+              }
+              
+              /* Subtle glow effect behind phone */
+              .desktop-phone-glow {
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                width: 600px !important;
+                height: 600px !important;
+                background: radial-gradient(circle, ${effectiveAccentColor}20 0%, transparent 70%);
+                filter: blur(60px);
+                z-index: 1 !important;
+                pointer-events: none !important;
               }
               
               /* Make animated gradient background full screen on desktop */
@@ -2864,48 +2897,164 @@ export function GeneralRequestsPage({
                 background-image: none !important;
               }
               
-              /* Center content and constrain to mobile width */
-              .requests-page-container > div.desktop-content-wrapper,
-              .requests-page-container > div.flex-1 {
-                margin-left: auto !important;
-                margin-right: auto !important;
-                max-width: 375px !important;
-                width: 100% !important;
-                position: relative !important;
-                z-index: 10 !important;
-                background: transparent !important;
-                transform: none !important;
-                border-radius: 0 !important;
-                clip-path: none !important;
-                mask-image: none !important;
-                -webkit-mask-image: none !important;
-                contain: none !important;
-                isolation: auto !important;
-                overflow: visible !important;
-                height: auto !important;
-                min-height: 100vh !important;
-                padding: 0 !important;
+              /* iPhone frame wrapper - centered and floating - creates stacking context */
+              .desktop-iphone-frame-wrapper {
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                z-index: 15 !important;
+                animation: float 3s ease-in-out infinite;
+                width: 375px !important;
+                height: 812px !important;
+                max-height: 90vh !important;
+                isolation: isolate !important;
               }
               
-              /* Ensure content inside is properly sized */
-              .requests-page-container > div.flex-1 > * {
+              /* iPhone frame styling - visual frame only, behind content */
+              .desktop-iphone-frame {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: #1a1a1a !important;
+                border-radius: 40px !important;
+                padding: 8px !important;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 0, 0, 0.3) !important;
+                border: 4px solid #0a0a0a !important;
+                pointer-events: none !important;
+                z-index: 1 !important;
+                overflow: visible !important;
+              }
+              
+              /* iPhone screen content area - hidden, content goes in desktop-content-wrapper */
+              .desktop-iphone-content {
+                display: none !important;
+              }
+              
+              /* Position content wrapper inside iPhone frame on desktop - synchronized with frame */
+              /* Content appears above frame border - notch/home indicator use fixed positioning to overlay */
+              .requests-page-container > div.desktop-content-wrapper {
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                width: 359px !important;
+                height: 780px !important;
+                max-height: calc(90vh - 32px) !important;
+                z-index: 16 !important;
+                background: #000000 !important;
+                border-radius: 32px !important;
+                overflow: hidden !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                -webkit-overflow-scrolling: touch !important;
+                pointer-events: auto !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                animation: float 3s ease-in-out infinite;
+              }
+              
+              /* Show iPhone frame wrapper on desktop */
+              .desktop-iphone-frame-container {
+                display: block !important;
+              }
+              
+              /* Ensure content inside iPhone frame wrapper is properly sized */
+              .desktop-content-wrapper > * {
                 max-width: 100% !important;
                 width: 100% !important;
               }
               
-              /* Ensure hero section doesn't clip location subtitle on desktop */
-              .requests-page-container > div.flex-1 > div[class*="relative w-full"] {
+              /* Ensure hero section doesn't clip location subtitle inside iPhone frame */
+              .desktop-content-wrapper > div[class*="relative w-full"] {
                 overflow: visible !important;
                 min-height: auto !important;
               }
               
-              /* Ensure content overlay doesn't clip location subtitle */
-              .requests-page-container > div.flex-1 > div[class*="relative w-full"] > div[class*="relative z-20"] {
+              /* Ensure content overlay doesn't clip location subtitle inside iPhone frame */
+              .desktop-content-wrapper > div[class*="relative w-full"] > div[class*="relative z-20"] {
                 overflow: visible !important;
                 min-height: auto !important;
               }
+              
+              /* Dynamic Island / Notch - fixed positioning to appear above content wrapper */
+              .desktop-iphone-notch {
+                position: fixed !important;
+                top: calc(50% - 406px + 10px) !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                width: 112px !important;
+                height: 28px !important;
+                background: #000000 !important;
+                border-radius: 9999px !important;
+                z-index: 30 !important;
+                pointer-events: none !important;
+                animation: float 3s ease-in-out infinite;
+              }
+              
+              /* Home indicator - fixed positioning to appear above content wrapper */
+              .desktop-iphone-home-indicator {
+                position: fixed !important;
+                bottom: calc(50% - 406px + 8px) !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                width: 96px !important;
+                height: 4px !important;
+                background: rgba(156, 163, 175, 0.6) !important;
+                border-radius: 9999px !important;
+                z-index: 30 !important;
+                pointer-events: none !important;
+                animation: float 3s ease-in-out infinite;
+              }
+            }
+            
+            /* Hide iPhone frame on mobile and restore normal layout */
+            @media (max-width: 767px) {
+              .desktop-iphone-frame-container {
+                display: none !important;
+              }
+              .requests-page-container > div.desktop-content-wrapper {
+                display: block !important;
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                transform: none !important;
+                width: 100% !important;
+                height: auto !important;
+                max-height: none !important;
+                background: transparent !important;
+                border-radius: 0 !important;
+                overflow: visible !important;
+                animation: none !important;
+                z-index: auto !important;
+              }
             }
           `}} />
+        
+        {/* Desktop iPhone Frame Container - Only visible on desktop */}
+        {/* Note: Content wrapper is positioned separately but aligned with frame */}
+        <div className="hidden md:block desktop-iphone-frame-container fixed inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+          {/* Full-screen gradient background */}
+          <div className="desktop-gradient-background" />
+          
+          {/* Subtle glow effect behind phone */}
+          <div className="desktop-phone-glow" />
+          
+          {/* Floating iPhone frame wrapper */}
+          <div className="desktop-iphone-frame-wrapper">
+            <div className="desktop-iphone-frame">
+              {/* iPhone screen content area - placeholder */}
+              <div className="desktop-iphone-content" />
+            </div>
+            {/* Dynamic Island / Notch - positioned relative to wrapper to appear above content */}
+            <div className="desktop-iphone-notch" />
+            {/* Home indicator - positioned relative to wrapper to appear above content */}
+            <div className="desktop-iphone-home-indicator" />
+          </div>
+        </div>
+        
         {/* Apply custom branding styles */}
         {customBranding?.whiteLabelEnabled && (
           <style jsx global>{`
