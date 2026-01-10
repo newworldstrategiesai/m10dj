@@ -30,6 +30,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_organization_members_updated_at ON organization_members;
+
 CREATE TRIGGER update_organization_members_updated_at
   BEFORE UPDATE ON organization_members
   FOR EACH ROW

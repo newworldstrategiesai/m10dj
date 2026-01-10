@@ -108,6 +108,8 @@ DROP POLICY IF EXISTS "Allow public read access to organizations by slug" ON org
 -- Policy: Anyone can view organizations (needed for public Tip Jar pages)
 -- This includes unclaimed organizations for Tip Jar Live
 -- Platform admins can view everything
+DROP POLICY IF EXISTS "Allow public read access to organizations" ON organizations;
+
 CREATE POLICY "Allow public read access to organizations"
   ON organizations
   FOR SELECT
