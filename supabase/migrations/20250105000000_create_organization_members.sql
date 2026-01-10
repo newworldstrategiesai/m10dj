@@ -41,6 +41,7 @@ CREATE TRIGGER update_organization_members_updated_at
 ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can view members of organizations they belong to
+DROP POLICY IF EXISTS "Users can view members of their organizations" ON organization_members;
 CREATE POLICY "Users can view members of their organizations"
   ON organization_members
   FOR SELECT
@@ -57,6 +58,7 @@ CREATE POLICY "Users can view members of their organizations"
   );
 
 -- Policy: Owners and admins can manage members
+DROP POLICY IF EXISTS "Owners and admins can manage members" ON organization_members;
 CREATE POLICY "Owners and admins can manage members"
   ON organization_members
   FOR ALL
@@ -66,8 +68,8 @@ CREATE POLICY "Owners and admins can manage members"
       SELECT id FROM organizations WHERE owner_id = auth.uid()
     )
     OR organization_id IN (
-      SELECT organization_id FROM organization_members 
-      WHERE user_id = auth.uid() 
+      SELECT organization_id FROM organization_members
+      WHERE user_id = auth.uid()
       AND role IN ('owner', 'admin')
       AND is_active = true
     )
@@ -78,8 +80,8 @@ CREATE POLICY "Owners and admins can manage members"
       SELECT id FROM organizations WHERE owner_id = auth.uid()
     )
     OR organization_id IN (
-      SELECT organization_id FROM organization_members 
-      WHERE user_id = auth.uid() 
+      SELECT organization_id FROM organization_members
+      WHERE user_id = auth.uid()
       AND role IN ('owner', 'admin')
       AND is_active = true
     )
@@ -87,6 +89,7 @@ CREATE POLICY "Owners and admins can manage members"
   );
 
 -- Policy: Users can update their own membership (e.g., accept invitation)
+DROP POLICY IF EXISTS "Users can update their own membership" ON organization_members;
 CREATE POLICY "Users can update their own membership"
   ON organization_members
   FOR UPDATE
