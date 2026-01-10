@@ -416,8 +416,6 @@ export default function BatchCreateTipJarPage() {
 
   // Preview and send email for a created organization
   const previewAndSendEmail = (org: CreatedOrganization) => {
-    const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || window.location.origin;
-    
     const { html } = generateProspectWelcomeEmail({
       prospectEmail: org.prospect_email,
       prospectName: org.name,
@@ -432,9 +430,7 @@ export default function BatchCreateTipJarPage() {
 
     setPreviewEmail({ html, subject });
     setShowEmailPreview(true);
-    
-    // After preview closes, if confirmed, send email
-    // We'll handle this with a state update
+    // reviewOrg is set by the button onClick handler
   };
 
   // Preview email for a prospect
@@ -822,6 +818,19 @@ export default function BatchCreateTipJarPage() {
                         <Badge variant="outline">{org.slug}</Badge>
                       </div>
                     </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setReviewOrg(org);
+                          previewAndSendEmail(org);
+                        }}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Preview & Send Email
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -878,6 +887,22 @@ export default function BatchCreateTipJarPage() {
                         Download
                       </Button>
                     </div>
+                  </div>
+
+                  {/* Email Action */}
+                  <div className="border-t pt-3 mt-3">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => {
+                        setReviewOrg(org);
+                        previewAndSendEmail(org);
+                      }}
+                      className="w-full"
+                    >
+                      <Mail className="w-4 h-4 mr-2" />
+                      Preview & Send Welcome Email
+                    </Button>
                   </div>
                 </div>
               ))}
