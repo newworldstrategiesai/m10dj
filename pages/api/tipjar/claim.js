@@ -154,6 +154,26 @@ export default async function handler(req, res) {
       });
     }
     
+    // Create organization_members record for the new owner
+    // (The trigger only fires on INSERT, not UPDATE, so we need to do this manually)
+    const { error: memberError } = await supabaseAdmin
+      .from('organization_members')
+      .insert({
+        organization_id: updatedOrg.id,
+        user_id: userId,
+        role: 'owner',
+        joined_at: new Date().toISOString(),
+        is_active: true
+      })
+      .select()
+      .single();
+    
+    if (memberError && memberError.code !== '23505') { // 23505 = unique_violation (already exists)
+      console.error('Error creating organization_members record:', memberError);
+      // Don't fail the claim if membership creation fails - it's not critical
+      // The organization is already claimed, the user can still use it
+    }
+    
     // Clear claim token (organization is now claimed)
     await supabaseAdmin
       .from('organizations')
