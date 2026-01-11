@@ -120,6 +120,24 @@ export default async function handler(req, res) {
       
       userId = newUser.user.id;
       isNewUser = true;
+      
+      // When a new user is created, a trigger automatically creates an organization for them
+      // We need to delete that auto-created organization since we're claiming an unclaimed one
+      // Find and delete the auto-created organization (if it exists)
+      const { data: autoCreatedOrg } = await supabaseAdmin
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', userId)
+        .eq('is_claimed', true)
+        .single();
+      
+      if (autoCreatedOrg) {
+        console.log(`Deleting auto-created organization ${autoCreatedOrg.id} for user ${userId} since they're claiming an unclaimed organization`);
+        await supabaseAdmin
+          .from('organizations')
+          .delete()
+          .eq('id', autoCreatedOrg.id);
+      }
     }
     
     // Get unclaimed tip balance
@@ -164,20 +182,27 @@ export default async function handler(req, res) {
     
     // Create organization_members record for the new owner
     // (The trigger only fires on INSERT, not UPDATE, so we need to do this manually)
+    // Use upsert to handle the case where the membership already exists
     const { error: memberError } = await supabaseAdmin
       .from('organization_members')
-      .insert({
+      .upsert({
         organization_id: updatedOrg.id,
         user_id: userId,
         role: 'owner',
         joined_at: new Date().toISOString(),
         is_active: true
-      })
-      .select()
-      .single();
+      }, {
+        onConflict: 'organization_id,user_id'
+      });
     
-    if (memberError && memberError.code !== '23505') { // 23505 = unique_violation (already exists)
-      console.error('Error creating organization_members record:', memberError);
+    if (memberError) {
+      console.error('Error creating/updating organization_members record:', memberError);
+      console.error('Member error details:', {
+        message: memberError?.message,
+        code: memberError?.code,
+        details: memberError?.details,
+        hint: memberError?.hint
+      });
       // Don't fail the claim if membership creation fails - it's not critical
       // The organization is already claimed, the user can still use it
     }
