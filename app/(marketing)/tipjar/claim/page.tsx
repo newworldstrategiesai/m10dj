@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TipJarHeader from '@/components/tipjar/Header';
 import TipJarFooter from '@/components/tipjar/Footer';
+import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -139,7 +140,9 @@ export default function ClaimPage() {
         <main className="container mx-auto px-4 py-16 max-w-2xl">
           <Card>
             <CardContent className="py-16 text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto mb-4" />
+              <div className="flex justify-center mb-4">
+                <TipJarAnimatedLoader size={64} />
+              </div>
               <p className="text-gray-600 dark:text-gray-400">Verifying claim token...</p>
             </CardContent>
           </Card>
@@ -187,8 +190,8 @@ export default function ClaimPage() {
       <main className="container mx-auto px-4 py-16 max-w-2xl">
         <Card>
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
-              <Music className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+            <div className="mx-auto mb-4 flex items-center justify-center">
+              <TipJarAnimatedLoader size={80} />
             </div>
             <CardTitle className="text-2xl">Claim Your TipJar Page</CardTitle>
             <CardDescription className="text-lg mt-2">
@@ -202,16 +205,16 @@ export default function ClaimPage() {
 
           <CardContent>
             {organization && (
-              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-6">
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 mb-6">
                 <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-purple-900 dark:text-purple-100">Page Ready</h3>
-                    <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
+                    <h3 className="font-semibold text-emerald-900 dark:text-emerald-100">Page Ready</h3>
+                    <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
                       Your TipJar page <strong>{organization.slug || organization.name}</strong> is ready to be claimed.
                     </p>
                     {organization.has_pending_tips && (
-                      <p className="text-sm text-purple-700 dark:text-purple-300 mt-2 font-semibold">
+                      <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-2 font-semibold">
                         💰 You have ${organization.pending_tips_dollars || '0.00'} in pending tips waiting for you!
                       </p>
                     )}
