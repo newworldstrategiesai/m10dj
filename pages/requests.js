@@ -5101,20 +5101,15 @@ export function GeneralRequestsPage({
 
         {/* Footer: "Create Your Page" link for new DJs OR "Claim Your Page" for unclaimed orgs */}
         <footer className="mt-8 mb-4 text-center">
-          {organizationData && (organizationData.is_claimed === false || organizationData.owner_id === null) ? (
-            // Unclaimed organization - show "Claim it now" link
-            <div className="space-y-1">
-              <a 
-                href="/tipjar/signup" 
-                className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 transition-colors inline-flex items-center gap-1"
-              >
-                <span>Is this your page?</span>
-                <span className="underline">Claim it now</span>
-              </a>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                Make sure to use the same email address that you received your invitation
-              </p>
-            </div>
+          {organizationData && (organizationData.is_claimed === false || organizationData.owner_id === null) && organizationData.claim_token ? (
+            // Unclaimed organization - show "Claim it now" link with token
+            <a 
+              href={`/tipjar/claim?token=${organizationData.claim_token}`}
+              className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 transition-colors inline-flex items-center gap-1"
+            >
+              <span>Is this your page?</span>
+              <span className="underline">Claim it now</span>
+            </a>
           ) : (
             // Claimed organization - show normal "Create your page" link
             <a 
