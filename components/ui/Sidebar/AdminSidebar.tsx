@@ -81,12 +81,15 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
   // Get the actual theme to display (resolve system theme)
   const displayTheme = mounted && theme !== 'system' ? theme : (mounted && systemTheme || 'dark');
 
-  // Determine logo based on theme
-  const logoSrc = displayTheme === 'dark'
-    ? '/assets/m10 dj company logo white.gif'
-    : '/assets/m10 dj company logo black.gif';
-
   const [productContext, setProductContext] = useState<string | null>(null);
+
+  // Determine logo based on theme and product context
+  // TipJar users should not see M10 DJ Company logos
+  const logoSrc = productContext === 'tipjar'
+    ? '/assets/TipJar-Logo-Icon.png'
+    : displayTheme === 'dark'
+      ? '/assets/m10 dj company logo white.gif'
+      : '/assets/m10 dj company logo black.gif';
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const checkSubscriptionTier = async () => {
@@ -275,15 +278,11 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         }`}>
           <Link href={productContext === 'tipjar' ? '/admin/crowd-requests' : '/admin/dashboard'} className="flex items-center gap-3 px-4">
             <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-              {productContext === 'tipjar' ? (
-                <span className="text-2xl font-bold text-[#fcba00]">💸</span>
-              ) : (
-                <img
-                  src={logoSrc}
-                  alt="M10 DJ Company Logo"
-                  className="w-8 h-8 object-contain"
-                />
-              )}
+              <img
+                src={logoSrc}
+                alt={productContext === 'tipjar' ? 'TipJar Logo' : 'M10 DJ Company Logo'}
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <span
               className={`
