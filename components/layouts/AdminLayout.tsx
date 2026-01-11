@@ -78,9 +78,11 @@ export default function AdminLayout({ children, title, description, showPageTitl
 
   // Determine logo based on theme and product context
   // TipJar users should not see M10 DJ Company logos
-  const logoSrc = displayTheme === 'dark'
-    ? '/assets/m10 dj company logo white.gif'
-    : '/assets/m10 dj company logo black.gif';
+  const logoSrc = productContext === 'tipjar'
+    ? '/assets/TipJar-Logo-Icon.png'
+    : displayTheme === 'dark'
+      ? '/assets/m10 dj company logo white.gif'
+      : '/assets/m10 dj company logo black.gif';
 
   // Initialize mounted state
   useEffect(() => {
@@ -194,15 +196,11 @@ export default function AdminLayout({ children, title, description, showPageTitl
                     {pageTitle && (
                       <>
                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                          {productContext === 'tipjar' ? (
-                            <span className="text-2xl font-bold text-[#fcba00]">💸</span>
-                          ) : (
-                            <img
-                              src={mounted ? logoSrc : '/assets/m10 dj company logo black.gif'}
-                              alt="M10 DJ Company Logo"
-                              className="w-10 h-10 object-contain"
-                            />
-                          )}
+                          <img
+                            src={mounted ? logoSrc : (productContext === 'tipjar' ? '/assets/TipJar-Logo-Icon.png' : '/assets/m10 dj company logo black.gif')}
+                            alt={productContext === 'tipjar' ? 'TipJar Logo' : 'M10 DJ Company Logo'}
+                            className="w-10 h-10 object-contain"
+                          />
                         </div>
                         <div className="min-w-0 flex-1">
                           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
