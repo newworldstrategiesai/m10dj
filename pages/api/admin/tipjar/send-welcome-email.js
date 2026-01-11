@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     // Fetch organization details
     const { data: organization, error: orgError } = await supabaseAdmin
       .from('organizations')
-      .select('id, name, slug, artist_name, prospect_email, claim_token, product_context')
+      .select('id, name, slug, requests_header_artist_name, prospect_email, claim_token, product_context')
       .eq('id', organization_id)
       .eq('prospect_email', prospect_email.toLowerCase())
       .single();
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     // Send welcome email
     const emailResult = await sendProspectWelcomeEmail({
       prospectEmail: organization.prospect_email,
-      prospectName: organization.artist_name || organization.name,
+      prospectName: organization.requests_header_artist_name || organization.name,
       businessName: organization.name,
       pageUrl,
       claimLink: claimUrl,
