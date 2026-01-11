@@ -5099,17 +5099,34 @@ export function GeneralRequestsPage({
           </div>
         </main>
 
-        {/* Inconspicuous "Create Your Page" link for new DJs */}
+        {/* Footer: "Create Your Page" link for new DJs OR "Claim Your Page" for unclaimed orgs */}
         <footer className="mt-8 mb-4 text-center">
-          <a 
-            href="https://tipjar.live" 
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 transition-colors inline-flex items-center gap-1"
-          >
-            <span>Are you a DJ?</span>
-            <span className="underline">Create your request page</span>
-          </a>
+          {organizationData && (organizationData.is_claimed === false || organizationData.owner_id === null) ? (
+            // Unclaimed organization - show "Claim it now" link
+            <div className="space-y-1">
+              <a 
+                href="/tipjar/signup" 
+                className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 transition-colors inline-flex items-center gap-1"
+              >
+                <span>Is this your page?</span>
+                <span className="underline">Claim it now</span>
+              </a>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                Make sure to use the same email address that you received your invitation
+              </p>
+            </div>
+          ) : (
+            // Claimed organization - show normal "Create your page" link
+            <a 
+              href="https://tipjar.live" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 transition-colors inline-flex items-center gap-1"
+            >
+              <span>Are you a DJ?</span>
+              <span className="underline">Create your request page</span>
+            </a>
+          )}
         </footer>
         </div>{/* End Main Content Area */}
       </div>
