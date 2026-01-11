@@ -148,9 +148,17 @@ export default async function handler(req, res) {
     
     if (updateError || !updatedOrg) {
       console.error('Error claiming organization:', updateError);
+      console.error('Update error details:', {
+        message: updateError?.message,
+        code: updateError?.code,
+        details: updateError?.details,
+        hint: updateError?.hint
+      });
       return res.status(500).json({
         error: 'Failed to claim organization',
-        details: updateError?.message
+        details: updateError?.message || updateError?.details,
+        code: updateError?.code,
+        hint: updateError?.hint
       });
     }
     
@@ -224,9 +232,18 @@ export default async function handler(req, res) {
     
   } catch (error) {
     console.error('Error in claim endpoint:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    });
     return res.status(500).json({
       error: 'Failed to claim organization',
-      message: error.message
+      message: error.message,
+      details: error.details || error.code || 'Unknown error',
+      hint: error.hint
     });
   }
 }
