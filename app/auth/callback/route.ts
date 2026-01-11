@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import { getErrorRedirect, getStatusRedirect } from '@/utils/helpers';
@@ -208,11 +209,61 @@ export async function GET(request: NextRequest) {
     // Fall through to default redirect
   }
 
-  // For TipJar users, check if onboarding is complete
-  // If not, redirect directly to onboarding wizard
+  // For TipJar users, check for unclaimed organizations and claim them
+  // Also check if onboarding is complete
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user?.user_metadata?.product_context === 'tipjar') {
+    if (user?.user_metadata?.product_context === 'tipjar' && user?.email && user?.id) {
+      // Check for unclaimed organization matching this email
+      try {
+        const supabaseAdmin = createAdminClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false
+            }
+          }
+        );
+
+        // Find unclaimed organization with matching prospect_email
+        const { data: unclaimedOrg, error: unclaimedError } = await supabaseAdmin
+          .from('organizations')
+          .select('*')
+          .eq('prospect_email', user.email.toLowerCase().trim())
+          .eq('is_claimed', false)
+          .eq('product_context', 'tipjar')
+          .maybeSingle();
+
+        if (!unclaimedError && unclaimedOrg) {
+          // Found unclaimed organization - claim it
+          const { error: claimError } = await supabaseAdmin
+            .from('organizations')
+            .update({
+              owner_id: user.id,
+              is_claimed: true,
+              claimed_at: new Date().toISOString(),
+              claim_token: null,
+              claim_token_expires_at: null
+            })
+            .eq('id', unclaimedOrg.id);
+
+          if (!claimError) {
+            // Successfully claimed - delete any auto-created organization
+            // (The trigger may have created one, but we want to use the claimed one)
+            await supabaseAdmin
+              .from('organizations')
+              .delete()
+              .eq('owner_id', user.id)
+              .neq('id', unclaimedOrg.id);
+          }
+        }
+      } catch (claimError) {
+        // Log error but don't fail - user can still continue
+        console.error('Error during auto-claim in callback:', claimError);
+      }
+
       // Import getCurrentOrganization to check onboarding status
       const { getCurrentOrganization } = await import('@/utils/organization-context');
       const organization = await getCurrentOrganization(supabase);

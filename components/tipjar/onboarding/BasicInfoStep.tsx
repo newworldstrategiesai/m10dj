@@ -35,6 +35,14 @@ export default function BasicInfoStep({
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const confettiTriggered = useRef(false);
 
+  // Check if fields were pre-filled from organization
+  const hasPreFilledData = organization && (
+    organization.requests_header_artist_name || 
+    organization.name || 
+    organization.slug ||
+    organization.requests_header_location
+  );
+
   // Generate slug from display name (only if slug hasn't been manually edited)
   useEffect(() => {
     if (displayName && !slugManuallyEdited) {
@@ -182,11 +190,16 @@ export default function BasicInfoStep({
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
-            Tell us about yourself
+            {hasPreFilledData ? 'Review and update your information' : 'Tell us about yourself'}
           </h2>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Step {currentStep} of {totalSteps} • This takes about 30 seconds
           </p>
+          {hasPreFilledData && (
+            <p className="mt-2 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
+              We've pre-filled your information from your page. You can edit any field below.
+            </p>
+          )}
         </div>
 
         {/* Display Name Field */}

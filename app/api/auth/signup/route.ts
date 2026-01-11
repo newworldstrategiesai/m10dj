@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { getURL } from '@/utils/helpers';
 import { getProductBaseUrl } from '@/lib/email/product-email-config';
 
@@ -143,12 +144,67 @@ export async function POST(request: NextRequest) {
     }
 
     if (data.user) {
+      // Check for unclaimed organization matching this email (only for TipJar)
+      if (productContext === 'tipjar' && data.user.id) {
+        try {
+          const supabaseAdmin = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            {
+              auth: {
+                autoRefreshToken: false,
+                persistSession: false
+              }
+            }
+          );
+
+          // Find unclaimed organization with matching prospect_email
+          const { data: unclaimedOrg, error: unclaimedError } = await supabaseAdmin
+            .from('organizations')
+            .select('*')
+            .eq('prospect_email', email.toLowerCase().trim())
+            .eq('is_claimed', false)
+            .eq('product_context', 'tipjar')
+            .maybeSingle();
+
+          if (!unclaimedError && unclaimedOrg) {
+            // Found unclaimed organization - claim it
+            const { error: claimError } = await supabaseAdmin
+              .from('organizations')
+              .update({
+                owner_id: data.user.id,
+                is_claimed: true,
+                claimed_at: new Date().toISOString(),
+                claim_token: null,
+                claim_token_expires_at: null
+              })
+              .eq('id', unclaimedOrg.id);
+
+            if (!claimError) {
+              // Successfully claimed - delete any auto-created organization
+              // (The trigger may have created one, but we want to use the claimed one)
+              await supabaseAdmin
+                .from('organizations')
+                .delete()
+                .eq('owner_id', data.user.id)
+                .neq('id', unclaimedOrg.id);
+
+              // Update the claimed org to be the user's primary org
+              // (This is already done by the claim update above)
+            }
+          }
+        } catch (claimError) {
+          // Log error but don't fail signup - user can still sign up normally
+          console.error('Error during auto-claim:', claimError);
+        }
+      }
+
       if (data.session) {
-        // User is signed in immediately - redirect to product-specific dashboard
-        const dashboardPath = productContext === 'tipjar' ? '/tipjar/dashboard' :
+        // User is signed in immediately - redirect to onboarding for TipJar, dashboard for others
+        const redirectPath = productContext === 'tipjar' ? '/tipjar/onboarding' :
                              productContext === 'djdash' ? '/djdash/dashboard' :
                              '/onboarding/welcome';
-        return NextResponse.redirect(new URL(dashboardPath, request.url), { status: 303 });
+        return NextResponse.redirect(new URL(redirectPath, request.url), { status: 303 });
       } else {
         // Email confirmation required
         return NextResponse.redirect(
