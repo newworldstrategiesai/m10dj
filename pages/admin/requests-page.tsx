@@ -703,11 +703,14 @@ export default function RequestsPageSettings() {
   };
 
   // Function to get the preview URL with all display name styling parameters
-  const getPreviewUrl = (overrideSubtitleText?: string) => {
+  const getPreviewUrl = (overrideSubtitleText?: string, overrideBackgroundType?: typeof backgroundType) => {
     if (!organization?.slug) return '';
     
     // Use override subtitle text if provided (for real-time preview), otherwise use computed value
     const subtitleText = overrideSubtitleText !== undefined ? overrideSubtitleText : getSubtitleText();
+    
+    // Use override background type if provided (for real-time preview), otherwise use state value
+    const effectiveBackgroundType = overrideBackgroundType !== undefined ? overrideBackgroundType : backgroundType;
     
     // Build URL with all display name styling parameters
     const params = new URLSearchParams({
@@ -751,7 +754,7 @@ export default function RequestsPageSettings() {
       // Payment amount settings for preview
       amountsSortOrder: amountsSortOrder,
       // Background type for preview
-      backgroundType: backgroundType,
+      backgroundType: effectiveBackgroundType,
       // Header background color settings for preview
       headerBackgroundType: headerBackgroundType,
       headerBackgroundColor: headerBackgroundColor,
@@ -769,14 +772,14 @@ export default function RequestsPageSettings() {
   };
 
   // Function to update the preview iframe with current display name styling
-  const updatePreviewIframe = (overrideSubtitleText?: string) => {
+  const updatePreviewIframe = (overrideSubtitleText?: string, overrideBackgroundType?: typeof backgroundType) => {
     if (!organization?.slug) return;
     
     const iframe = document.getElementById('live-preview-iframe') as HTMLIFrameElement;
     if (!iframe) return;
     
     // Force reload by using current timestamp (cache-busting)
-    const previewUrl = getPreviewUrl(overrideSubtitleText);
+    const previewUrl = getPreviewUrl(overrideSubtitleText, overrideBackgroundType);
     if (!previewUrl) return;
     
     // Parse the relative URL and update timestamp to force reload
@@ -1922,6 +1925,21 @@ export default function RequestsPageSettings() {
                       {/* Background Animation Selection Modal */}
                       <Dialog open={showBackgroundModal} onOpenChange={setShowBackgroundModal}>
                         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                          <style dangerouslySetInnerHTML={{ __html: `
+                            @keyframes gradient-shift-preview {
+                              0% { background-position: 0% 50%; }
+                              50% { background-position: 100% 50%; }
+                              100% { background-position: 0% 50%; }
+                            }
+                            @keyframes spin-preview {
+                              from { transform: rotate(0deg); }
+                              to { transform: rotate(360deg); }
+                            }
+                            @keyframes pulse-preview {
+                              0%, 100% { opacity: 0.4; }
+                              50% { opacity: 0.6; }
+                            }
+                          `}} />
                           <DialogHeader>
                             <DialogTitle>Select Background Animation</DialogTitle>
                             <DialogDescription>
@@ -1930,39 +1948,155 @@ export default function RequestsPageSettings() {
                           </DialogHeader>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
                             {[
-                              { value: 'gradient', label: 'Gradient (New)', icon: '✨' },
-                              { value: 'subtle', label: 'Subtle (Original)', icon: '🎨' },
-                              { value: 'bubble', label: 'Bubble', icon: '🫧' },
-                              { value: 'spiral', label: 'Spiral', icon: '🌀' },
-                              { value: 'aurora', label: 'Aurora', icon: '🌌' },
-                              { value: 'smoke', label: 'Smoke', icon: '💨' },
-                              { value: 'smooth-spiral', label: 'Smooth Spiral', icon: '🌊' },
-                              { value: 'none', label: 'None (No Animation)', icon: '⚪' },
+                              { value: 'gradient', label: 'Gradient (New)' },
+                              { value: 'subtle', label: 'Subtle (Original)' },
+                              { value: 'bubble', label: 'Bubble' },
+                              { value: 'spiral', label: 'Spiral' },
+                              { value: 'aurora', label: 'Aurora' },
+                              { value: 'smoke', label: 'Smoke' },
+                              { value: 'smooth-spiral', label: 'Smooth Spiral' },
+                              { value: 'none', label: 'None (No Animation)' },
                             ].map((option) => (
                               <button
                                 key={option.value}
                                 type="button"
                                 onClick={() => {
-                                  setBackgroundType(option.value as typeof backgroundType);
+                                  const newBackgroundType = option.value as typeof backgroundType;
+                                  setBackgroundType(newBackgroundType);
                                   setShowBackgroundModal(false);
-                                  setError(null);
-                                  setSuccess(false);
-                                  setTimeout(() => updatePreviewIframe(), 100);
+                              setError(null);
+                              setSuccess(false);
+                                  // Update preview immediately with new value (before state updates)
+                                  setTimeout(() => updatePreviewIframe(undefined, newBackgroundType), 0);
                                 }}
-                                className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+                                className={`relative rounded-lg border-2 transition-all overflow-hidden ${
                                   backgroundType === option.value
-                                    ? 'border-[#fcba00] bg-[#fcba00]/10 dark:bg-[#fcba00]/20 ring-2 ring-[#fcba00]/30'
-                                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'
+                                    ? 'border-[#fcba00] ring-2 ring-[#fcba00]/30'
+                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'
                                 }`}
                               >
                                 {backgroundType === option.value && (
-                                  <div className="absolute top-2 right-2">
+                                  <div className="absolute top-2 right-2 z-10">
                                     <CheckCircle className="w-5 h-5 text-[#fcba00]" fill="currentColor" />
-                                  </div>
+                        </div>
                                 )}
-                                <div className="text-3xl mb-2">{option.icon}</div>
-                                <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {option.label}
+                                {/* Animation Preview */}
+                                <div className="relative w-full h-24 bg-black overflow-hidden">
+                                  {option.value === 'gradient' && (
+                                    <div 
+                                      className="absolute inset-0"
+                                      style={{
+                                        background: `linear-gradient(135deg, ${accentColor}22 0%, ${accentColor}44 25%, #000 50%, ${accentColor}33 75%, ${accentColor}22 100%)`,
+                                        backgroundSize: '400% 400%',
+                                        animation: 'gradient-shift-preview 15s ease infinite'
+                                      }}
+                                    />
+                                  )}
+                                  {option.value === 'subtle' && (
+                                    <div 
+                                      className="absolute inset-0"
+                                      style={{
+                                        background: `linear-gradient(135deg, ${accentColor}10 0%, transparent 50%, ${accentColor}10 100%)`,
+                                        backgroundSize: '200% 200%',
+                                        animation: 'gradient-shift-preview 10s ease infinite'
+                                      }}
+                                    />
+                                  )}
+                                  {option.value === 'bubble' && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <div className="relative w-full h-full">
+                                        <div className="absolute top-1/4 left-1/4 w-8 h-8 bg-white/20 rounded-full animate-pulse" style={{ animationDelay: '0s' }} />
+                                        <div className="absolute top-1/2 right-1/4 w-6 h-6 bg-white/15 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+                                        <div className="absolute bottom-1/4 left-1/2 w-10 h-10 bg-white/25 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+                      </div>
+                                    </div>
+                                  )}
+                                  {option.value === 'spiral' && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <div className="relative w-full h-full">
+                                        <div 
+                                          className="absolute inset-0"
+                                          style={{
+                                            background: `conic-gradient(from 0deg, ${accentColor}40, transparent, ${accentColor}40)`,
+                                            animation: 'spin-preview 8s linear infinite',
+                                            transformOrigin: 'center'
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                  {option.value === 'aurora' && (
+                                    <div className="absolute inset-0">
+                                      <div 
+                                        className="absolute inset-0 opacity-60"
+                                        style={{
+                                          background: `linear-gradient(45deg, ${accentColor}30, transparent 30%, transparent 70%, ${accentColor}30)`,
+                                          backgroundSize: '200% 200%',
+                                          animation: 'gradient-shift-preview 12s ease infinite'
+                                        }}
+                                      />
+                                      <div 
+                                        className="absolute inset-0 opacity-40"
+                                        style={{
+                                          background: `radial-gradient(ellipse at top, ${accentColor}40, transparent 50%)`,
+                                          animation: 'pulse-preview 4s ease-in-out infinite'
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  {option.value === 'smoke' && typeof window !== 'undefined' && (() => {
+                                    try {
+                                      const Smoke = require('@/components/ui/shadcn-io/smoke').default;
+                                      return (
+                                        <Smoke
+                                          density={50}
+                                          color="#cccccc"
+                                          opacity={0.6}
+                                          enableRotation={true}
+                                          enableWind={true}
+                                          windStrength={[0.02, 0.01, 0.01]}
+                                          enableTurbulence={true}
+                                          turbulenceStrength={[0.02, 0.02, 0.01]}
+                                        />
+                                      );
+                                    } catch (e) {
+                                      return <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/50 text-xs">Smoke</div>;
+                                    }
+                                  })()}
+                                  {option.value === 'smooth-spiral' && typeof window !== 'undefined' && (() => {
+                                    try {
+                                      const PsychedelicSpiral = require('@/components/ui/shadcn-io/psychedelic-spiral').default;
+                                      return (
+                                        <PsychedelicSpiral
+                                          spinRotation={-2.0}
+                                          spinSpeed={7.0}
+                                          offset={[0.0, 0.0]}
+                                          color1="#871d87"
+                                          color2="#b2dfdf"
+                                          color3="#0c204e"
+                                          contrast={3.5}
+                                          lighting={0.4}
+                                          spinAmount={0.25}
+                                          pixelFilter={745.0}
+                                          spinEase={1.0}
+                                          isRotate={true}
+                                        />
+                                      );
+                                    } catch (e) {
+                                      return <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/50 text-xs">Spiral</div>;
+                                    }
+                                  })()}
+                                  {option.value === 'none' && (
+                                    <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                                      <div className="text-white/30 text-xs">No Animation</div>
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Label */}
+                                <div className="p-2 bg-white dark:bg-gray-800">
+                                  <div className="text-xs font-medium text-gray-900 dark:text-white text-center">
+                                    {option.label}
+                                  </div>
                                 </div>
                               </button>
                             ))}
