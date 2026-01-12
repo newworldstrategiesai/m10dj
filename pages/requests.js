@@ -2135,7 +2135,8 @@ export function GeneralRequestsPage({
     }
   };
   
-  const pageTitle = organizationData?.requests_page_title || getDefaultPageTitle();
+  // Use custom page title if set (and not empty), otherwise use default
+  const pageTitle = (organizationData?.requests_page_title?.trim()) || getDefaultPageTitle();
   const pageDescription = organizationData?.requests_page_description || 
     (organizationData?.requests_header_artist_name 
       ? `Request a song or shoutout for ${organizationData.requests_header_artist_name}`

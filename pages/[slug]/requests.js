@@ -315,8 +315,8 @@ export default function OrganizationRequestsPage() {
           // Use organization name or artist name for display, fallback to site name
           const displayName = organization?.requests_header_artist_name || organization?.name || siteName;
           
-          // Generate page title - use custom title if set, otherwise use product-aware format
-          const pageTitle = organization?.requests_page_title || 
+          // Generate page title - use custom title if set (and not empty), otherwise use product-aware format
+          const pageTitle = (organization?.requests_page_title?.trim()) || 
             (productContext === 'tipjar'
               ? `TipJar.Live | ${displayName}`
               : productContext === 'djdash'

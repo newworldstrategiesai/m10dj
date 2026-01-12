@@ -656,9 +656,9 @@ export default function RequestsPageSettings() {
           requests_show_bundle_discount: org.requests_show_bundle_discount !== false
         });
         
-        // Set SEO fields
+        // Set SEO fields (don't set default in state - let placeholder show default)
         setSeoFields({
-          requests_page_title: org.requests_page_title || 'Request a Song or Shoutout | M10 DJ Company',
+          requests_page_title: org.requests_page_title || '',
           requests_page_description: org.requests_page_description || '',
           requests_default_request_type: org.requests_default_request_type || 'song_request'
         });
@@ -956,8 +956,10 @@ export default function RequestsPageSettings() {
         ...labelFields,
         // Feature toggles
         ...featureToggles,
-        // SEO fields
-        ...seoFields,
+        // SEO fields - convert empty strings to null so defaults are used
+        requests_page_title: seoFields.requests_page_title?.trim() || null,
+        requests_page_description: seoFields.requests_page_description?.trim() || null,
+        requests_default_request_type: seoFields.requests_default_request_type || 'song_request',
       };
 
       // Update slug if it changed (validate and update via API if needed)
