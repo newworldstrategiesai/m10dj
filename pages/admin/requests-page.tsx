@@ -186,7 +186,7 @@ export default function RequestsPageSettings() {
   const [subtitleFontManuallyChanged, setSubtitleFontManuallyChanged] = useState(false);
   
   // Background type (gradient, subtle, bubble, spiral, aurora, smoke, smooth-spiral, none)
-  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'smoke' | 'smooth-spiral' | 'vortex' | 'none'>('gradient');
+  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'smoke' | 'smooth-spiral' | 'vortex' | 'fireflies' | 'none'>('gradient');
   const [showBackgroundModal, setShowBackgroundModal] = useState(false);
   
   // Header background color settings
@@ -1916,6 +1916,7 @@ export default function RequestsPageSettings() {
                               {backgroundType === 'smoke' && 'Smoke'}
                               {backgroundType === 'smooth-spiral' && 'Smooth Spiral'}
                               {backgroundType === 'vortex' && 'Vortex'}
+                              {backgroundType === 'fireflies' && 'Fireflies'}
                               {backgroundType === 'none' && 'None (No Animation)'}
                             </span>
                             <Sparkles className="w-4 h-4 text-gray-400" />
@@ -1940,6 +1941,20 @@ export default function RequestsPageSettings() {
                               0%, 100% { opacity: 0.4; }
                               50% { opacity: 0.6; }
                             }
+                            @keyframes aurora {
+                              0% {
+                                background-position: 50% 50%, 50% 50%;
+                              }
+                              33% {
+                                background-position: 0% 0%, 100% 100%;
+                              }
+                              66% {
+                                background-position: 100% 100%, 0% 0%;
+                              }
+                              100% {
+                                background-position: 50% 50%, 50% 50%;
+                              }
+                            }
                           `}} />
                           <DialogHeader>
                             <DialogTitle>Select Background Animation</DialogTitle>
@@ -1957,6 +1972,7 @@ export default function RequestsPageSettings() {
                               { value: 'smoke', label: 'Smoke' },
                               { value: 'smooth-spiral', label: 'Smooth Spiral' },
                               { value: 'vortex', label: 'Vortex' },
+                              { value: 'fireflies', label: 'Fireflies' },
                               { value: 'none', label: 'None (No Animation)' },
                             ].map((option) => (
                               <button
@@ -2027,25 +2043,34 @@ export default function RequestsPageSettings() {
                                       </div>
                                     </div>
                                   )}
-                                  {option.value === 'aurora' && (
-                                    <div className="absolute inset-0">
-                                      <div 
-                                        className="absolute inset-0 opacity-60"
-                                        style={{
-                                          background: `linear-gradient(45deg, ${accentColor}30, transparent 30%, transparent 70%, ${accentColor}30)`,
-                                          backgroundSize: '200% 200%',
-                                          animation: 'gradient-shift-preview 12s ease infinite'
-                                        }}
-                                      />
-                                      <div 
-                                        className="absolute inset-0 opacity-40"
-                                        style={{
-                                          background: `radial-gradient(ellipse at top, ${accentColor}40, transparent 50%)`,
-                                          animation: 'pulse-preview 4s ease-in-out infinite'
-                                        }}
-                                      />
-                                    </div>
-                                  )}
+                                  {option.value === 'aurora' && typeof window !== 'undefined' && (() => {
+                                    try {
+                                      const AuroraBackground = require('@/components/ui/shadcn-io/aurora-background').default;
+                                      return (
+                                        <AuroraBackground showRadialGradient={true} />
+                                      );
+                                    } catch (e) {
+                                      return (
+                                        <div className="absolute inset-0">
+                                          <div 
+                                            className="absolute inset-0 opacity-60"
+                                            style={{
+                                              background: `linear-gradient(45deg, ${accentColor}30, transparent 30%, transparent 70%, ${accentColor}30)`,
+                                              backgroundSize: '200% 200%',
+                                              animation: 'gradient-shift-preview 12s ease infinite'
+                                            }}
+                                          />
+                                          <div 
+                                            className="absolute inset-0 opacity-40"
+                                            style={{
+                                              background: `radial-gradient(ellipse at top, ${accentColor}40, transparent 50%)`,
+                                              animation: 'pulse-preview 4s ease-in-out infinite'
+                                            }}
+                                          />
+                                        </div>
+                                      );
+                                    }
+                                  })()}
                                   {option.value === 'smoke' && typeof window !== 'undefined' && (() => {
                                     try {
                                       const Smoke = require('@/components/ui/shadcn-io/smoke').default;
@@ -2101,6 +2126,22 @@ export default function RequestsPageSettings() {
                                       );
                                     } catch (e) {
                                       return <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/50 text-xs">Vortex</div>;
+                                    }
+                                  })()}
+                                  {option.value === 'fireflies' && typeof window !== 'undefined' && (() => {
+                                    try {
+                                      const Fireflies = require('@/components/ui/shadcn-io/fireflies').default;
+                                      return (
+                                        <Fireflies
+                                          count={30}
+                                          speed={0.3}
+                                          size={2}
+                                          color={accentColor}
+                                          backgroundColor="black"
+                                        />
+                                      );
+                                    } catch (e) {
+                                      return <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/50 text-xs">Fireflies</div>;
                                     }
                                   })()}
                                   {option.value === 'none' && (

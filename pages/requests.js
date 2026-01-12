@@ -2776,6 +2776,27 @@ export function GeneralRequestsPage({
                     }
                   })()}
                 </div>
+              ) : backgroundType === 'fireflies' ? (
+                /* Fireflies animation background */
+                <div className="absolute inset-0 w-full h-full overflow-hidden bg-black" style={{ zIndex: 0 }}>
+                  {typeof window !== 'undefined' && (() => {
+                    try {
+                      const Fireflies = require('@/components/ui/shadcn-io/fireflies').default;
+                      return (
+                        <Fireflies
+                          count={50}
+                          speed={0.5}
+                          size={2}
+                          color={effectiveAccentColor}
+                          backgroundColor="black"
+                        />
+                      );
+                    } catch (e) {
+                      console.warn('Fireflies component not available:', e);
+                      return null;
+                    }
+                  })()}
+                </div>
               ) : (
                 /* Animated gradient with artist name - Default TipJar background */
                 <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden">

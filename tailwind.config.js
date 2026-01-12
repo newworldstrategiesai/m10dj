@@ -105,7 +105,8 @@ module.exports = {
       animation: {
         'fade-in': 'fadeIn 0.4s ease-out',
         'fade-in-up': 'fadeInUp 0.6s ease-out',
-        'slide-in': 'slideIn 0.4s ease-out'
+        'slide-in': 'slideIn 0.4s ease-out',
+        'aurora': 'aurora 60s linear infinite'
       },
       keyframes: {
         fadeIn: {
@@ -119,6 +120,20 @@ module.exports = {
         slideIn: {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(0)' }
+        },
+        aurora: {
+          '0%': {
+            backgroundPosition: '50% 50%, 50% 50%'
+          },
+          '33%': {
+            backgroundPosition: '0% 0%, 100% 100%'
+          },
+          '66%': {
+            backgroundPosition: '100% 100%, 0% 0%'
+          },
+          '100%': {
+            backgroundPosition: '50% 50%, 50% 50%'
+          }
         }
       },
       spacing: {
