@@ -15,6 +15,7 @@ export interface OnboardingData {
   location: string;
   slug: string;
   paymentSetup: 'completed' | 'skipped' | 'pending';
+  logoUrl?: string;
   accentColor?: string;
   minimumBid?: number; // In cents
   showFastTrack?: boolean;
@@ -54,6 +55,7 @@ export default function TipJarOnboardingWizard({
         displayName: organization.requests_header_artist_name || organization.name || '',
         location: organization.requests_header_location || '',
         slug: organization.slug || '',
+        logoUrl: organization.requests_header_logo_url || undefined,
         paymentSetup: organization.stripe_connect_account_id ? 'completed' : 'pending'
       }));
     } else if (user?.email && !onboardingData.displayName) {
@@ -107,12 +109,19 @@ export default function TipJarOnboardingWizard({
           updated_at: new Date().toISOString()
         };
 
+        // Add logo if provided
+        if (onboardingData.logoUrl !== undefined) {
+          updateData.requests_header_logo_url = onboardingData.logoUrl || null;
+        }
+        
         // Add customization settings if provided
         if (onboardingData.accentColor) {
           updateData.requests_accent_color = onboardingData.accentColor;
         }
         if (onboardingData.minimumBid !== undefined) {
           updateData.requests_bidding_minimum_bid = onboardingData.minimumBid;
+          // Also set as minimum amount for regular requests/tips
+          updateData.requests_minimum_amount = onboardingData.minimumBid;
         }
         if (onboardingData.showFastTrack !== undefined) {
           updateData.requests_show_fast_track = onboardingData.showFastTrack;
@@ -176,6 +185,23 @@ export default function TipJarOnboardingWizard({
           console.error('Failed to track onboarding completion:', error);
           // Non-critical, continue anyway
         }
+      }
+
+      // Create dummy data for new users to explore the UI
+      try {
+        const dummyDataResponse = await fetch('/api/admin/create-dummy-crowd-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (dummyDataResponse.ok) {
+          console.log('✅ Dummy data created successfully');
+        } else {
+          // Non-critical - continue even if dummy data creation fails
+          console.log('⚠️ Dummy data creation skipped or failed (non-critical)');
+        }
+      } catch (error) {
+        // Non-critical - continue even if dummy data creation fails
+        console.error('Error creating dummy data (non-critical):', error);
       }
 
       // Redirect to admin dashboard

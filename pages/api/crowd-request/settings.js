@@ -108,10 +108,11 @@ export default async function handler(req, res) {
         bundleDiscountEnabled: paymentMethodSettings['crowd_request_bundle_discount_enabled'] === 'true' || paymentMethodSettings['crowd_request_bundle_discount_enabled'] === undefined,
         bundleDiscountPercent: parseInt(paymentMethodSettings['crowd_request_bundle_discount_percent']) || 10,
         // Payment method enabled flags
-        // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
+        // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set, Cash defaults to true
         paymentMethodCardEnabled: organization.requests_payment_method_card_enabled !== false,
         paymentMethodCashappEnabled: organization.requests_payment_method_cashapp_enabled !== false, // CashApp goes through Stripe, doesn't need tag
-        paymentMethodVenmoEnabled: venmoUsername ? (organization.requests_payment_method_venmo_enabled !== false) : false
+        paymentMethodVenmoEnabled: venmoUsername ? (organization.requests_payment_method_venmo_enabled !== false) : false,
+        paymentMethodCashEnabled: organization.requests_payment_method_cash_enabled !== false // Cash defaults to true
       });
     }
 
@@ -208,10 +209,11 @@ export default async function handler(req, res) {
         // Payment method enabled flags
         // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
         // Payment method enabled flags
-        // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set
+        // Card and CashApp (via Stripe) default to true, Venmo only enabled if username is set, Cash defaults to true
         paymentMethodCardEnabled: organization?.requests_payment_method_card_enabled !== false,
         paymentMethodCashappEnabled: organization?.requests_payment_method_cashapp_enabled !== false, // CashApp goes through Stripe, doesn't need tag
-        paymentMethodVenmoEnabled: orgVenmoUsername ? (organization?.requests_payment_method_venmo_enabled !== false) : false
+        paymentMethodVenmoEnabled: orgVenmoUsername ? (organization?.requests_payment_method_venmo_enabled !== false) : false,
+        paymentMethodCashEnabled: organization?.requests_payment_method_cash_enabled !== false // Cash defaults to true
       });
     }
 
@@ -297,7 +299,8 @@ export default async function handler(req, res) {
       // Payment method enabled flags (defaults on error)
       paymentMethodCardEnabled: true,
       paymentMethodCashappEnabled: false, // CashApp disabled by default unless tag is configured
-      paymentMethodVenmoEnabled: false // Venmo disabled by default unless username is configured
+      paymentMethodVenmoEnabled: false, // Venmo disabled by default unless username is configured
+      paymentMethodCashEnabled: true // Cash enabled by default
     });
   }
 }

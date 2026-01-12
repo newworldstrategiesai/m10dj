@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, ArrowRight, MapPin, CheckCircle, AlertCircle } from 'lucide-react';
 import { OnboardingData } from '../OnboardingWizard';
 import { triggerQuickConfetti } from '@/utils/confetti';
+import LogoUpload from './LogoUpload';
 
 interface BasicInfoStepProps {
   data: OnboardingData;
@@ -29,6 +30,7 @@ export default function BasicInfoStep({
   const [displayName, setDisplayName] = useState(data.displayName || '');
   const [location, setLocation] = useState(data.location || '');
   const [slug, setSlug] = useState(data.slug || '');
+  const [logoUrl, setLogoUrl] = useState(data.logoUrl || '');
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [checkingSlug, setCheckingSlug] = useState(false);
   const [errors, setErrors] = useState<{ displayName?: string; slug?: string }>({});
@@ -40,8 +42,17 @@ export default function BasicInfoStep({
     organization.requests_header_artist_name || 
     organization.name || 
     organization.slug ||
-    organization.requests_header_location
+    organization.requests_header_location ||
+    organization.requests_header_logo_url
   );
+
+  // Load logo from organization if available
+  useEffect(() => {
+    if (organization?.requests_header_logo_url && !logoUrl) {
+      setLogoUrl(organization.requests_header_logo_url);
+      onDataUpdate({ logoUrl: organization.requests_header_logo_url });
+    }
+  }, [organization]);
 
   // Generate slug from display name (only if slug hasn't been manually edited)
   useEffect(() => {
@@ -143,7 +154,8 @@ export default function BasicInfoStep({
               name: displayName.trim(),
               slug: slug.trim(),
               requests_header_artist_name: displayName.trim(),
-              requests_header_location: location.trim() || null
+              requests_header_location: location.trim() || null,
+              requests_header_logo_url: logoUrl || null
             })
           });
           
@@ -176,7 +188,8 @@ export default function BasicInfoStep({
       onDataUpdate({
         displayName: displayName.trim(),
         location: location.trim(),
-        slug: slug.trim()
+        slug: slug.trim(),
+        logoUrl: logoUrl || undefined
       });
       onNext();
     }
@@ -289,6 +302,18 @@ export default function BasicInfoStep({
             </p>
           </div>
         )}
+
+        {/* Logo Upload (Optional) */}
+        <div className="mb-6">
+          <LogoUpload
+            value={logoUrl}
+            onChange={(url) => {
+              setLogoUrl(url);
+              onDataUpdate({ logoUrl: url });
+            }}
+            organizationId={organization?.id}
+          />
+        </div>
 
         {/* Location Field (Optional) */}
         <div className="mb-8">

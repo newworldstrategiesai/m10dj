@@ -719,7 +719,7 @@ export default function CrowdRequestPage() {
         setError(err.message || 'Failed to create checkout session');
         setSubmitting(false);
       }
-    } else if (paymentMethod === 'cashapp' || paymentMethod === 'venmo') {
+    } else if (paymentMethod === 'cashapp' || paymentMethod === 'venmo' || paymentMethod === 'cash') {
       // Update request with payment method
       try {
         await crowdRequestAPI.updatePaymentMethod({

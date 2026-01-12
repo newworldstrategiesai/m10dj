@@ -20,6 +20,7 @@ function PaymentAmountSelector({
   nextFee,
   getBaseAmount,
   getPaymentAmount,
+  calculateBundlePrice = null, // Function to calculate bundle price
   hidePriorityOptions = false, // Hide fast track and next options (for bidding mode)
   showFastTrack = true, // Show fast track option (from organization settings)
   showNextSong = true, // Show next song option (from organization settings)
@@ -372,7 +373,7 @@ function PaymentAmountSelector({
                   </span>
                 </div>
                 <p className="text-[10px] sm:text-xs text-brand-600 dark:text-brand-400 font-medium mt-0.5">
-                  ⚡ Your song will be played next!
+                  ⚡ Priority placement - plays soon
                 </p>
               </div>
             </label>
@@ -421,11 +422,16 @@ function PaymentAmountSelector({
                     </span>
                   </div>
                   <span className="text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                    +${(nextFee / 100).toFixed(2)}
+                    +${((nextFee * bundleSize) / 100).toFixed(2)}
+                    {bundleSize > 1 && (
+                      <span className="text-[10px] text-blue-500 dark:text-blue-400 ml-1">
+                        ({bundleSize}x)
+                      </span>
+                    )}
                   </span>
                 </div>
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Play next - jump to front
+                  🎵 Plays immediately - skips queue
                 </p>
               </div>
             </label>
@@ -438,7 +444,15 @@ function PaymentAmountSelector({
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-700 dark:text-gray-300 font-medium">Base Amount:</span>
               <span className="text-gray-900 dark:text-white font-bold text-sm sm:text-base">
-                ${(getBaseAmount() / 100).toFixed(2)}
+                ${(() => {
+                  const baseAmount = getBaseAmount();
+                  // If bundle is selected and calculateBundlePrice is available, use bundle price
+                  if (requestType === 'song_request' && bundleSize > 1 && calculateBundlePrice) {
+                    const bundlePrice = calculateBundlePrice(baseAmount, bundleSize, minimumAmount);
+                    return (bundlePrice / 100).toFixed(2);
+                  }
+                  return (baseAmount / 100).toFixed(2);
+                })()}
               </span>
             </div>
             {isFastTrack && requestType === 'song_request' && (
@@ -464,7 +478,7 @@ function PaymentAmountSelector({
                   Next Fee:
                 </span>
                 <span className="font-bold text-sm sm:text-base bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
-                  +${(nextFee / 100).toFixed(2)}
+                  +${((nextFee * bundleSize) / 100).toFixed(2)}
                 </span>
               </div>
             )}

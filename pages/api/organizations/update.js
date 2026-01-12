@@ -30,8 +30,10 @@ export default async function handler(req, res) {
       slug, 
       requests_header_artist_name, 
       requests_header_location,
+      requests_header_logo_url,
       requests_accent_color,
       requests_bidding_minimum_bid,
+      requests_minimum_amount,
       requests_show_fast_track,
       requests_fast_track_fee,
       requests_show_next_song,
@@ -80,8 +82,14 @@ export default async function handler(req, res) {
     if (requests_header_location !== undefined) {
       updateData.requests_header_location = requests_header_location;
     }
+    if (requests_header_logo_url !== undefined) {
+      updateData.requests_header_logo_url = requests_header_logo_url;
+    }
     if (requests_accent_color !== undefined) {
       updateData.requests_accent_color = requests_accent_color;
+    }
+    if (requests_minimum_amount !== undefined) {
+      updateData.requests_minimum_amount = requests_minimum_amount;
     }
     if (requests_bidding_minimum_bid !== undefined) {
       updateData.requests_bidding_minimum_bid = requests_bidding_minimum_bid;

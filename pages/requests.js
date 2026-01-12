@@ -2151,11 +2151,48 @@ export function GeneralRequestsPage({
       '"Montserrat", sans-serif': 'Montserrat:wght@400;500;600;700;800;900',
       '"Poppins", sans-serif': 'Poppins:wght@400;500;600;700;800;900',
       '"Roboto", sans-serif': 'Roboto:wght@400;500;700;900',
+      '"Open Sans", sans-serif': 'Open+Sans:wght@400;600;700;800',
+      '"Lato", sans-serif': 'Lato:wght@400;700;900',
+      '"Nunito", sans-serif': 'Nunito:wght@400;600;700;800;900',
+      '"Ubuntu", sans-serif': 'Ubuntu:wght@400;500;700',
+      '"Source Sans Pro", sans-serif': 'Source+Sans+Pro:wght@400;600;700;900',
+      '"Inter", sans-serif': 'Inter:wght@400;500;600;700;800;900',
+      '"Work Sans", sans-serif': 'Work+Sans:wght@400;500;600;700;800;900',
+      '"DM Sans", sans-serif': 'DM+Sans:wght@400;500;700',
+      '"Space Grotesk", sans-serif': 'Space+Grotesk:wght@400;500;600;700',
       '"Bebas Neue", sans-serif': 'Bebas+Neue',
       '"Anton", sans-serif': 'Anton',
       '"Raleway", sans-serif': 'Raleway:wght@400;500;600;700;800;900',
+      '"PT Sans", sans-serif': 'PT+Sans:wght@400;700',
+      '"Josefin Sans", sans-serif': 'Josefin+Sans:wght@400;600;700',
+      '"Libre Franklin", sans-serif': 'Libre+Franklin:wght@400;600;700;800;900',
+      '"Quicksand", sans-serif': 'Quicksand:wght@400;500;600;700',
+      '"Rubik", sans-serif': 'Rubik:wght@400;500;700;900',
+      '"Fira Sans", sans-serif': 'Fira+Sans:wght@400;500;600;700;800;900',
+      '"Manrope", sans-serif': 'Manrope:wght@400;500;600;700;800',
+      '"Comfortaa", sans-serif': 'Comfortaa:wght@400;500;600;700',
+      '"Kanit", sans-serif': 'Kanit:wght@400;500;600;700;800;900',
+      '"Titillium Web", sans-serif': 'Titillium+Web:wght@400;600;700;900',
+      '"Muli", sans-serif': 'Muli:wght@400;600;700;800;900',
+      '"Exo 2", sans-serif': 'Exo+2:wght@400;500;600;700;800;900',
+      '"Rajdhani", sans-serif': 'Rajdhani:wght@400;500;600;700',
+      '"Orbitron", sans-serif': 'Orbitron:wght@400;500;600;700;800;900',
+      '"Righteous", sans-serif': 'Righteous',
+      '"Fredoka One", sans-serif': 'Fredoka+One',
+      '"Bungee", sans-serif': 'Bungee',
+      '"Russo One", sans-serif': 'Russo+One',
       '"Playfair Display", serif': 'Playfair+Display:wght@400;500;600;700;800;900',
       '"Lora", serif': 'Lora:wght@400;500;600;700',
+      '"Merriweather", serif': 'Merriweather:wght@400;700;900',
+      '"Libre Baskerville", serif': 'Libre+Baskerville:wght@400;700',
+      '"Crimson Text", serif': 'Crimson+Text:wght@400;600;700',
+      '"Georgia", serif': '', // System font, no Google Fonts link needed
+      '"PT Serif", serif': 'PT+Serif:wght@400;700',
+      '"Bitter", serif': 'Bitter:wght@400;700;900',
+      '"Arvo", serif': 'Arvo:wght@400;700',
+      '"Space Mono", monospace': 'Space+Mono:wght@400;700',
+      '"Roboto Mono", monospace': 'Roboto+Mono:wght@400;500;700',
+      '"Fira Code", monospace': 'Fira+Code:wght@400;500;600;700',
     };
     
     const selectedFont = fontFamily || effectiveArtistNameFont;
@@ -2802,21 +2839,20 @@ export function GeneralRequestsPage({
                 @media (min-width: 768px) {
                   /* Position header inside iPhone frame - properly constrained and visible */
                   .desktop-content-wrapper [data-requests-header-wrapper] {
-                    position: relative !important;
+                    position: absolute !important;
                     width: 100% !important;
                     max-width: 359px !important;
-                    left: auto !important;
-                    right: auto !important;
+                    left: 0 !important;
+                    right: 0 !important;
                     top: 0 !important;
-                    z-index: 15 !important;
+                    z-index: 20 !important;
                     overflow: visible !important;
                     display: block !important;
                     visibility: visible !important;
                     opacity: 1 !important;
                     margin: 0 !important;
-                    margin-bottom: 0.5rem !important;
-                    padding-top: 0.5rem !important;
-                    min-height: 50px !important;
+                    padding: 0 !important;
+                    min-height: auto !important;
                   }
                   /* Override ALL header positioning - force it to be relative and visible */
                   .desktop-content-wrapper [data-requests-header-wrapper] header,
@@ -2833,13 +2869,13 @@ export function GeneralRequestsPage({
                     bottom: auto !important;
                     transform: none !important;
                     scale: 1 !important;
-                    padding: 0.5rem 1rem !important;
+                    padding: 0.75rem 1rem 0.5rem 1rem !important;
                     margin: 0 !important;
                     display: flex !important;
                     visibility: visible !important;
                     opacity: 1 !important;
                     background: transparent !important;
-                    z-index: 15 !important;
+                    z-index: 20 !important;
                     height: auto !important;
                     min-height: auto !important;
                   }
@@ -2929,24 +2965,11 @@ export function GeneralRequestsPage({
               
               /* Animated gradient background applied directly to iPhone frame container */
               /* This creates the animated background behind the floating iPhone - separate from header gradient */
-              /* TEMPORARY: Using bright test colors to verify container is working */
               .desktop-iphone-frame-container.desktop-preview-bg {
-                background-color: rgba(255, 0, 0, 0.3) !important;
-                background-image: linear-gradient(135deg, rgba(255, 0, 0, 0.5) 0%, rgba(0, 255, 0, 0.5) 25%, rgba(0, 0, 255, 0.5) 50%, rgba(0, 255, 0, 0.5) 75%, rgba(255, 0, 0, 0.5) 100%) !important;
-                background-size: 200% 200% !important;
-                background-position: 0% 50% !important;
-                animation: gradientShiftDesktop 8s ease infinite !important;
+                background: transparent !important;
+                background-color: transparent !important;
+                background-image: none !important;
                 z-index: -1 !important;
-                opacity: 1 !important;
-                visibility: visible !important;
-                display: block !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
               }
               /* Ensure html and body allow gradient to show through - WHITE BACKGROUND FOR DEBUGGING */
               html {
@@ -2970,18 +2993,9 @@ export function GeneralRequestsPage({
                 background: transparent !important;
               }
               
-              /* Subtle glow effect behind phone */
+              /* Subtle glow effect behind phone - removed */
               .desktop-phone-glow {
-                position: fixed !important;
-                top: 50% !important;
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                width: 600px !important;
-                height: 600px !important;
-                background: radial-gradient(circle, ${effectiveAccentColor}20 0%, transparent 70%);
-                filter: blur(60px);
-                z-index: 1 !important;
-                pointer-events: none !important;
+                display: none !important;
               }
               
               /* Make animated gradient background full screen on desktop */
@@ -3017,9 +3031,10 @@ export function GeneralRequestsPage({
                 background-image: none !important;
               }
               
-              /* Ensure body background shows the gradient */
+              /* Ensure body background is clean */
               body {
-                background: #000000 !important;
+                background: #ffffff !important;
+                background-color: #ffffff !important;
               }
               
               /* iPhone frame wrapper - centered and floating - creates stacking context */
@@ -3085,18 +3100,33 @@ export function GeneralRequestsPage({
                   0 0 30px rgba(0, 0, 0, 0.8) inset !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                padding-top: 0 !important;
                 padding-bottom: 20px !important;
                 animation: none !important;
+              }
+              
+              /* Reset scroll position to top on desktop */
+              .desktop-content-wrapper {
+                scroll-padding-top: 0 !important;
               }
               /* Ensure all content inside wrapper is visible and properly positioned */
               .desktop-content-wrapper > *:first-child {
                 margin-top: 0 !important;
                 padding-top: 0 !important;
               }
+              
               /* Make sure content has proper z-index and is visible */
               .desktop-content-wrapper > * {
                 position: relative !important;
                 z-index: 1 !important;
+              }
+              
+              /* Header is absolutely positioned, so hero section can start at top */
+              .desktop-content-wrapper > div[class*="relative w-full"]:not([data-requests-header-wrapper]):first-of-type,
+              .desktop-content-wrapper > div[class*="relative w-full"]:not([data-requests-header-wrapper]) {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+                top: 0 !important;
               }
               
               /* Show iPhone frame wrapper on desktop */
@@ -3137,7 +3167,54 @@ export function GeneralRequestsPage({
                 max-width: 359px !important;
                 position: relative !important;
                 box-sizing: border-box !important;
-                overflow: visible !important;
+                overflow: hidden !important;
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+              }
+              
+              /* Make hero section start at absolute top, header overlays it */
+              .desktop-content-wrapper > div[class*="relative w-full"]:not([data-requests-header-wrapper]) {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+                position: relative !important;
+                top: 0 !important;
+              }
+              
+              /* Ensure hero section video/background starts at the very top and is properly aligned */
+              .desktop-content-wrapper > div[class*="relative w-full"] > video {
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                position: absolute !important;
+                object-position: center top !important;
+                transform: translateY(-20%) !important;
+              }
+              
+              /* Ensure background divs (gradients, cover photos) are properly aligned */
+              .desktop-content-wrapper > div[class*="relative w-full"] > div[class*="absolute"][class*="inset-0"] {
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+              }
+              
+              /* Ensure hero section container itself is aligned at top */
+              .desktop-content-wrapper > div[class*="relative w-full"][class*="top-0"] {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+                top: 0 !important;
               }
               
               /* Content overlay - must respect boundaries but allow content to flow */
@@ -3216,9 +3293,6 @@ export function GeneralRequestsPage({
         {/* Desktop iPhone Frame Container - Only visible on desktop */}
         {/* Note: Content wrapper is positioned separately but aligned with frame */}
         <div className="hidden md:block desktop-iphone-frame-container fixed inset-0 pointer-events-none desktop-preview-bg" style={{ zIndex: -1 }}>
-          {/* Subtle glow effect behind phone */}
-          <div className="desktop-phone-glow" />
-          
           {/* Floating iPhone frame wrapper */}
           <div className="desktop-iphone-frame-wrapper">
             <div className="desktop-iphone-frame">
@@ -3298,11 +3372,11 @@ export function GeneralRequestsPage({
               zIndex: 0
             }}
           >
-            {/* Mobile Background - video, animated gradient, or cover photo */}
+            {/* Background - video, animated gradient, or cover photo (visible on both mobile and desktop within iPhone frame) */}
             {showVideo && !videoFailed ? (
               <video
                 ref={mobileVideoRef}
-                className="absolute inset-0 w-full h-full object-cover md:hidden"
+                className="absolute inset-0 w-full h-full object-cover"
                 autoPlay
                 loop
                 muted
@@ -3328,7 +3402,7 @@ export function GeneralRequestsPage({
               /* Custom background color or gradient when animation is disabled and no custom media */
               effectiveHeaderBackgroundType === 'gradient' ? (
                 <div 
-                  className="absolute inset-0 w-full h-full md:hidden"
+                  className="absolute inset-0 w-full h-full"
                   style={{
                     zIndex: 0,
                     background: `linear-gradient(135deg, ${effectiveHeaderBackgroundGradientStart} 0%, ${effectiveHeaderBackgroundGradientEnd} 100%)`
@@ -3336,7 +3410,7 @@ export function GeneralRequestsPage({
                 />
               ) : (
                 <div 
-                  className="absolute inset-0 w-full h-full md:hidden"
+                  className="absolute inset-0 w-full h-full"
                   style={{ 
                     zIndex: 0,
                     backgroundColor: effectiveHeaderBackgroundColor 
@@ -3346,12 +3420,12 @@ export function GeneralRequestsPage({
             ) : coverPhoto ? (
               /* Custom cover photo */
               <div 
-                className="absolute inset-0 w-full h-full bg-cover bg-center md:hidden"
+                className="absolute inset-0 w-full h-full bg-cover bg-center"
                 style={{ backgroundImage: `url(${coverPhoto})`, objectPosition: 'center 40%', zIndex: 0 }}
               />
             ) : (
               /* No background - transparent/black fallback */
-              <div className="absolute inset-0 w-full h-full bg-black md:hidden" style={{ zIndex: 0 }} />
+              <div className="absolute inset-0 w-full h-full bg-black" style={{ zIndex: 0 }} />
             )}
             
             {/* Desktop Background - removed black gradient to show animated background */}
@@ -4084,6 +4158,7 @@ export function GeneralRequestsPage({
                               nextFee={nextFee}
                               getBaseAmount={getBaseAmount}
                               getPaymentAmount={getPaymentAmount}
+                              calculateBundlePrice={calculateBundlePrice}
                               hidePriorityOptions={false}
                               showFastTrack={organizationData?.requests_show_fast_track !== false}
                               showNextSong={organizationData?.requests_show_next_song !== false}
@@ -4834,6 +4909,7 @@ export function GeneralRequestsPage({
                         nextFee={0}
                         getBaseAmount={getBaseAmount}
                         getPaymentAmount={getPaymentAmount}
+                        calculateBundlePrice={calculateBundlePrice}
                         showFastTrack={false}
                         showNextSong={false}
                         bundleSize={bundleSize}
@@ -4935,6 +5011,7 @@ export function GeneralRequestsPage({
                           nextFee={0}
                           getBaseAmount={getBaseAmount}
                           getPaymentAmount={getPaymentAmount}
+                          calculateBundlePrice={calculateBundlePrice}
                           showFastTrack={false}
                           showNextSong={false}
                           bundleSize={bundleSize}
@@ -4968,6 +5045,7 @@ export function GeneralRequestsPage({
                           nextFee={nextFee}
                           getBaseAmount={getBaseAmount}
                           getPaymentAmount={getPaymentAmount}
+                          calculateBundlePrice={calculateBundlePrice}
                           showFastTrack={organizationData?.requests_show_fast_track !== false}
                           showNextSong={organizationData?.requests_show_next_song !== false}
                           bundleSize={bundleSize}

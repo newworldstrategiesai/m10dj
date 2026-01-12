@@ -145,6 +145,7 @@ export default function CustomizationStep({
             body: JSON.stringify({
               requests_accent_color: accentColor,
               requests_bidding_minimum_bid: minimumBidCents,
+              requests_minimum_amount: minimumBidCents, // Also set minimum amount for regular requests/tips
               requests_show_fast_track: showFastTrack,
               requests_fast_track_fee: fastTrackFeeCents,
               requests_show_next_song: showNextSong,

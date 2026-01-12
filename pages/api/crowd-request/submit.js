@@ -349,6 +349,62 @@ export default async function handler(req, res) {
       }
     }
     
+    // Validate song request against music library rules (if organization and song request)
+    let validatedAmount = amount;
+    let validationWarning = null;
+    
+    if (requestType === 'song_request' && organizationIdToUse && normalizedTitle && normalizedArtist) {
+      try {
+        const { validateSongRequest } = require('@/utils/music-library-validation');
+        
+        // Get event_id if available (for duplicate detection)
+        let eventIdForValidation = null;
+        if (eventCode && eventCode !== 'general') {
+          // Try to find event by code
+          const { data: event } = await supabase
+            .from('events')
+            .select('id')
+            .eq('event_qr_code', eventCode)
+            .eq('organization_id', organizationIdToUse)
+            .single();
+          eventIdForValidation = event?.id || null;
+        }
+        
+        const validation = await validateSongRequest({
+          organizationId: organizationIdToUse,
+          songTitle: normalizedTitle,
+          songArtist: normalizedArtist,
+          basePriceCents: amount,
+          isFastTrack: isFastTrack || false,
+          eventId: eventIdForValidation,
+          supabase
+        });
+        
+        if (validation.shouldDeny) {
+          return res.status(403).json({
+            error: 'Request denied',
+            message: validation.denyReason || 'This song request has been denied',
+            denied: true
+          });
+        }
+        
+        if (validation.adjustedPrice !== undefined && validation.adjustedPrice !== amount) {
+          validatedAmount = validation.adjustedPrice;
+          validationWarning = validation.priceAdjustmentReason;
+          
+          console.log('💰 Price adjusted by validation:', {
+            original: amount,
+            adjusted: validatedAmount,
+            reason: validationWarning
+          });
+        }
+      } catch (validationError) {
+        console.error('⚠️ Error during song validation (non-blocking):', validationError);
+        // Don't block the request if validation fails - fail open
+        // This ensures the system remains functional even if validation has issues
+      }
+    }
+    
     // Create crowd request record with all fields
     const insertData = {
       event_qr_code: uniqueEventCode,
@@ -361,7 +417,7 @@ export default async function handler(req, res) {
       requester_email: requesterEmail?.trim() || null,
       requester_phone: requesterPhone || null,
       request_message: message || null,
-      amount_requested: amount,
+      amount_requested: validatedAmount, // Use validated amount
       is_fast_track: requestType === 'song_request' ? (isFastTrack || false) : false,
       is_next: requestType === 'song_request' ? (isNext || false) : false,
       fast_track_fee: (requestType === 'song_request' && isFastTrack) ? (fastTrackFee || 0) : 0,

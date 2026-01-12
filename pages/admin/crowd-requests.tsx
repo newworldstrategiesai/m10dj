@@ -192,6 +192,8 @@ export default function CrowdRequestsPage() {
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [eventSearchQuery, setEventSearchQuery] = useState('');
   const [showEventDropdown, setShowEventDropdown] = useState(false);
+  const [hasDummyData, setHasDummyData] = useState(false);
+  const [deletingDummyData, setDeletingDummyData] = useState(false);
 
   // Helper function to determine product context for placeholders
   const getProductContext = (): string => {
@@ -1281,6 +1283,12 @@ export default function CrowdRequestsPage() {
       });
       
       setRequests(deduplicatedRequests);
+      
+      // Check if dummy data exists
+      const dummyDataExists = deduplicatedRequests.some(req => 
+        (req as any).admin_notes?.includes('DUMMY DATA')
+      );
+      setHasDummyData(dummyDataExists);
       
       // Fetch Stripe customer names for requests that need them
       // NOTE: New requests (after making name mandatory) will always have a name.
@@ -3167,6 +3175,44 @@ export default function CrowdRequestsPage() {
     }
   };
 
+  // Delete all dummy data
+  const handleDeleteAllDummyData = async () => {
+    if (!confirm('Are you sure you want to delete all dummy data? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingDummyData(true);
+    try {
+      const response = await fetch('/api/admin/delete-dummy-crowd-requests', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete dummy data');
+      }
+
+      toast({
+        title: 'Success',
+        description: `Successfully deleted ${data.deleted} dummy request(s)`,
+      });
+
+      setHasDummyData(false);
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error deleting dummy data:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete dummy data',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingDummyData(false);
+    }
+  };
+
   // Bulk delete requests
   const handleBulkDelete = async () => {
     if (selectedRequests.size === 0) {
@@ -3606,7 +3652,8 @@ export default function CrowdRequestsPage() {
       request.requester_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.requester_phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.payment_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.id?.toLowerCase().includes(searchTerm.toLowerCase());
+      request.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (request as any).admin_notes?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || request.status === statusFilter || 
                          (statusFilter === 'paid' && request.payment_status === 'paid');
@@ -4094,6 +4141,21 @@ export default function CrowdRequestsPage() {
                 <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="hidden lg:inline text-xs sm:text-sm">Find Missing</span>
               </Button>
+              {hasDummyData && (
+                <Button
+                  onClick={handleDeleteAllDummyData}
+                  disabled={deletingDummyData}
+                  variant="outline"
+                  size="sm"
+                  className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 h-8 sm:h-9 text-orange-600 dark:text-orange-400 border-orange-300 dark:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                  title="Delete all dummy/sample data"
+                >
+                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden lg:inline text-xs sm:text-sm">
+                    {deletingDummyData ? 'Deleting...' : 'Delete Dummy Data'}
+                  </span>
+                </Button>
+              )}
               <Button
                 onClick={handleManualSync}
                 disabled={syncingPayments}

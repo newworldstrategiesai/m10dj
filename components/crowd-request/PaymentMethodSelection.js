@@ -300,6 +300,54 @@ function PaymentMethodSelection({
     }
   };
 
+  const handleCashClick = () => {
+    try {
+      if (!requestId) {
+        throw new Error('Request not created yet. Please fill out the form first.');
+      }
+      
+      // Use getPaymentAmount() to ensure we include all fees (fast-track, next, bundle, etc.)
+      let finalAmount;
+      if (getPaymentAmount) {
+        finalAmount = getPaymentAmount();
+      } else {
+        finalAmount = updatedAmount || amount;
+      }
+      
+      if (!finalAmount || finalAmount <= 0) {
+        throw new Error('Invalid payment amount');
+      }
+      
+      // Update additional songs before payment
+      handleProceedWithPayment('cash');
+      
+      // Update payment method to cash
+      fetch('/api/crowd-request/update-payment-method', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          paymentMethod: 'cash'
+        })
+      }).catch(err => {
+        console.error('Error updating payment method:', err);
+      });
+      
+      // For cash payments, show a success message and redirect to thank you page
+      // Cash payments are manual - no verification needed
+      if (requestId) {
+        const thankYouUrl = `${window.location.origin}/crowd-request/success?request_id=${requestId}`;
+        // Small delay to ensure payment method is updated
+        setTimeout(() => {
+          window.location.href = thankYouUrl;
+        }, 500);
+      }
+    } catch (err) {
+      console.error('Cash payment error:', err);
+      if (onError) onError(err.message || 'Failed to process cash payment. Please try again.');
+    }
+  };
+
   const handleVenmoClick = () => {
     try {
       if (!paymentSettings?.venmoUsername) {
@@ -532,6 +580,28 @@ function PaymentMethodSelection({
               </div>
               <span className="text-lg font-semibold text-gray-900 dark:text-white">
                 Pay with Venmo
+              </span>
+            </div>
+          </button>
+          )}
+
+          {/* Cash Button - Only show if enabled */}
+          {paymentSettings?.paymentMethodCashEnabled !== false && (
+          <button
+            type="button"
+            onClick={handleCashClick}
+            disabled={isSubmitting}
+            className="group relative w-full p-5 rounded-2xl border-2 border-gray-500/80 bg-gradient-to-br from-gray-50 via-slate-50 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 hover:from-gray-100 hover:via-slate-100 hover:to-gray-100 dark:hover:from-gray-800 dark:hover:via-gray-800 dark:hover:to-gray-800 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-gray-500/10 hover:shadow-xl hover:shadow-gray-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-400/0 via-gray-400/5 to-gray-400/10 group-hover:from-gray-400/5 group-hover:via-gray-400/10 group-hover:to-gray-400/15 transition-all duration-300"></div>
+            <div className="relative flex items-center justify-start gap-4 pl-2">
+              <div className="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow p-2.5 flex-shrink-0">
+                <svg className="w-7 h-7 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                Pay with Cash
               </span>
             </div>
           </button>

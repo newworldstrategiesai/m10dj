@@ -86,7 +86,8 @@ export function useCrowdRequestPayment({
     const baseAmount = getBaseAmount();
     // Fast track fee should be multiplied by bundle size (each song in bundle gets fast track)
     const fastTrack = (requestType === 'song_request' && isFastTrack) ? fastTrackFee * bundleSize : 0;
-    const next = (requestType === 'song_request' && isNext) ? nextFee : 0;
+    // Next fee should also be multiplied by bundle size (each song in bundle gets next priority)
+    const next = (requestType === 'song_request' && isNext) ? nextFee * bundleSize : 0;
     const audioFee = (requestType === 'song_request' && audioFileUrl) ? audioUploadFee : 0;
     
     // Calculate bundle price if bundle size > 1

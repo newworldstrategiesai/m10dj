@@ -106,7 +106,7 @@ function BundleSelector({
         </h3>
       </div>
       
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-2 md:gap-2 lg:gap-3">
         {bundles.map((bundle) => {
           const isSelected = bundleSize === bundle.size;
           const pricePerSong = getPricePerSong(bundle.size);
@@ -126,43 +126,25 @@ function BundleSelector({
                 }
               }}
               disabled={isBundleDisabled}
-              className={`relative p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation ${
+              className={`relative p-3 sm:p-4 md:p-3.5 lg:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation md:aspect-[1.3/1] md:min-h-[100px] md:max-h-[110px] md:flex md:flex-col md:items-center md:justify-center ${
                 isSelected
                   ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/20 shadow-lg shadow-purple-500/20 scale-105'
                   : 'border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-purple-300 hover:scale-[1.02] hover:shadow-md'
               } ${isBundleDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
               {isSelected && (
-                <div className="absolute -top-2 -right-2 bg-purple-500 text-white rounded-full p-1">
+                <div className="absolute -top-2 -right-2 bg-purple-500 text-white rounded-full p-1 z-10">
                   <Sparkles className="w-3 h-3" />
                 </div>
               )}
               
-              <div className="text-center">
-                <div className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white mb-1">
+              <div className="text-center w-full flex flex-col items-center justify-center space-y-0.5 md:space-y-1">
+                <div className="text-xs sm:text-xs md:text-xs font-bold text-gray-900 dark:text-white">
                   {bundle.label}
                 </div>
-                <div className="text-base sm:text-lg md:text-xl font-extrabold text-purple-600 dark:text-purple-400 mb-1">
+                <div className="text-sm sm:text-base md:text-sm font-extrabold text-purple-600 dark:text-purple-400">
                   ${(bundle.price / 100).toFixed(2)}
                 </div>
-                {bundle.size > 1 && (
-                  <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
-                    ${(pricePerSong / 100).toFixed(2)} each
-                  </div>
-                )}
-                {hasDiscount && (
-                  <div className="mt-1 flex items-center justify-center gap-1">
-                    <TrendingDown className="w-3 h-3 text-green-500" />
-                    <span className="text-[10px] sm:text-xs font-semibold text-green-600 dark:text-green-400">
-                      Save ${(bundle.savings / 100).toFixed(2)}
-                    </span>
-                  </div>
-                )}
-                {isMinimumTier && bundle.size === 2 && (
-                  <div className="mt-1 text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 font-medium">
-                    Same price, 2 songs!
-                  </div>
-                )}
               </div>
             </button>
           );
