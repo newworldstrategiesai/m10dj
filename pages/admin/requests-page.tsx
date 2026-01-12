@@ -186,7 +186,7 @@ export default function RequestsPageSettings() {
   const [subtitleFontManuallyChanged, setSubtitleFontManuallyChanged] = useState(false);
   
   // Background type (gradient, subtle, bubble, spiral, aurora, smoke, smooth-spiral, none)
-  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'smoke' | 'smooth-spiral' | 'none'>('gradient');
+  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'smoke' | 'smooth-spiral' | 'vortex' | 'none'>('gradient');
   const [showBackgroundModal, setShowBackgroundModal] = useState(false);
   
   // Header background color settings
@@ -1915,6 +1915,7 @@ export default function RequestsPageSettings() {
                               {backgroundType === 'aurora' && 'Aurora'}
                               {backgroundType === 'smoke' && 'Smoke'}
                               {backgroundType === 'smooth-spiral' && 'Smooth Spiral'}
+                              {backgroundType === 'vortex' && 'Vortex'}
                               {backgroundType === 'none' && 'None (No Animation)'}
                             </span>
                             <Sparkles className="w-4 h-4 text-gray-400" />
@@ -1955,6 +1956,7 @@ export default function RequestsPageSettings() {
                               { value: 'aurora', label: 'Aurora' },
                               { value: 'smoke', label: 'Smoke' },
                               { value: 'smooth-spiral', label: 'Smooth Spiral' },
+                              { value: 'vortex', label: 'Vortex' },
                               { value: 'none', label: 'None (No Animation)' },
                             ].map((option) => (
                               <button
@@ -2084,6 +2086,21 @@ export default function RequestsPageSettings() {
                                       );
                                     } catch (e) {
                                       return <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/50 text-xs">Spiral</div>;
+                                    }
+                                  })()}
+                                  {option.value === 'vortex' && typeof window !== 'undefined' && (() => {
+                                    try {
+                                      const Vortex = require('@/components/ui/shadcn-io/vortex').default;
+                                      return (
+                                        <Vortex
+                                          backgroundColor="black"
+                                          rangeY={800}
+                                          particleCount={300}
+                                          baseHue={120}
+                                        />
+                                      );
+                                    } catch (e) {
+                                      return <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/50 text-xs">Vortex</div>;
                                     }
                                   })()}
                                   {option.value === 'none' && (

@@ -2756,6 +2756,26 @@ export function GeneralRequestsPage({
                     }
                   })()}
                 </div>
+              ) : backgroundType === 'vortex' ? (
+                /* Vortex animation background */
+                <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
+                  {typeof window !== 'undefined' && (() => {
+                    try {
+                      const Vortex = require('@/components/ui/shadcn-io/vortex').default;
+                      return (
+                        <Vortex
+                          backgroundColor="black"
+                          rangeY={800}
+                          particleCount={500}
+                          baseHue={120}
+                        />
+                      );
+                    } catch (e) {
+                      console.warn('Vortex component not available:', e);
+                      return null;
+                    }
+                  })()}
+                </div>
               ) : (
                 /* Animated gradient with artist name - Default TipJar background */
                 <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden">
@@ -3502,6 +3522,27 @@ export function GeneralRequestsPage({
                       );
                     } catch (e) {
                       console.warn('PsychedelicSpiral component not available:', e);
+                      return null;
+                    }
+                  })()}
+                </div>
+              ) : backgroundType === 'vortex' ? (
+                /* Vortex animation background */
+                <div className="absolute inset-0 w-full h-full overflow-hidden bg-black" style={{ zIndex: 0 }}>
+                  {typeof window !== 'undefined' && (() => {
+                    // Dynamic import to avoid SSR issues
+                    try {
+                      const Vortex = require('@/components/ui/shadcn-io/vortex').default;
+                      return (
+                        <Vortex
+                          backgroundColor="black"
+                          rangeY={800}
+                          particleCount={500}
+                          baseHue={120}
+                        />
+                      );
+                    } catch (e) {
+                      console.warn('Vortex component not available:', e);
                       return null;
                     }
                   })()}
