@@ -186,8 +186,16 @@ export default function RequestsPageSettings() {
   const [subtitleFontManuallyChanged, setSubtitleFontManuallyChanged] = useState(false);
   
   // Background type (gradient, subtle, bubble, spiral, aurora, smoke, smooth-spiral, none)
-  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'smoke' | 'smooth-spiral' | 'vortex' | 'fireflies' | 'none'>('gradient');
+  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'smoke' | 'smooth-spiral' | 'vortex' | 'fireflies' | 'wavy' | 'none'>('gradient');
   const [showBackgroundModal, setShowBackgroundModal] = useState(false);
+  
+  // Wavy background configuration
+  const [wavyColors, setWavyColors] = useState<string[]>(['#38bdf8', '#818cf8', '#c084fc', '#e879f9', '#22d3ee']);
+  const [wavyWaveWidth, setWavyWaveWidth] = useState(50);
+  const [wavyBackgroundFill, setWavyBackgroundFill] = useState('black');
+  const [wavyBlur, setWavyBlur] = useState(10);
+  const [wavySpeed, setWavySpeed] = useState<'slow' | 'fast'>('fast');
+  const [wavyWaveOpacity, setWavyWaveOpacity] = useState(0.5);
   
   // Header background color settings
   const [headerBackgroundType, setHeaderBackgroundType] = useState<'solid' | 'gradient'>('solid');
@@ -467,6 +475,18 @@ export default function RequestsPageSettings() {
         
         // Set background type (defaults to 'gradient' for new users)
         setBackgroundType(org.requests_background_type || 'gradient');
+        
+        // Set wavy background configuration
+        if (org.requests_wavy_colors && Array.isArray(org.requests_wavy_colors)) {
+          setWavyColors(org.requests_wavy_colors);
+        } else {
+          setWavyColors(['#38bdf8', '#818cf8', '#c084fc', '#e879f9', '#22d3ee']);
+        }
+        setWavyWaveWidth(org.requests_wavy_wave_width || 50);
+        setWavyBackgroundFill(org.requests_wavy_background_fill || 'black');
+        setWavyBlur(org.requests_wavy_blur || 10);
+        setWavySpeed(org.requests_wavy_speed === 'slow' ? 'slow' : 'fast');
+        setWavyWaveOpacity(org.requests_wavy_wave_opacity || 0.5);
         
         // Set header background color settings
         setHeaderBackgroundType(org.requests_header_background_type || 'solid');
@@ -755,6 +775,13 @@ export default function RequestsPageSettings() {
       amountsSortOrder: amountsSortOrder,
       // Background type for preview
       backgroundType: effectiveBackgroundType,
+      // Wavy background configuration for preview
+      wavyColors: JSON.stringify(wavyColors),
+      wavyWaveWidth: String(wavyWaveWidth),
+      wavyBackgroundFill: wavyBackgroundFill,
+      wavyBlur: String(wavyBlur),
+      wavySpeed: wavySpeed,
+      wavyWaveOpacity: String(wavyWaveOpacity),
       // Header background color settings for preview
       headerBackgroundType: headerBackgroundType,
       headerBackgroundColor: headerBackgroundColor,
@@ -836,6 +863,13 @@ export default function RequestsPageSettings() {
         requests_show_subtitle: showSubtitle,
         // Background type setting
         requests_background_type: backgroundType,
+        // Wavy background configuration
+        requests_wavy_colors: backgroundType === 'wavy' ? wavyColors : null,
+        requests_wavy_wave_width: backgroundType === 'wavy' ? wavyWaveWidth : null,
+        requests_wavy_background_fill: backgroundType === 'wavy' ? wavyBackgroundFill : null,
+        requests_wavy_blur: backgroundType === 'wavy' ? wavyBlur : null,
+        requests_wavy_speed: backgroundType === 'wavy' ? wavySpeed : null,
+        requests_wavy_wave_opacity: backgroundType === 'wavy' ? wavyWaveOpacity : null,
         // Header background color settings
         requests_header_background_type: headerBackgroundType || 'solid',
         requests_header_background_color: headerBackgroundType === 'solid' ? (headerBackgroundColor || '#000000') : null,
@@ -2142,6 +2176,23 @@ export default function RequestsPageSettings() {
                                       );
                                     } catch (e) {
                                       return <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/50 text-xs">Fireflies</div>;
+                                    }
+                                  })()}
+                                  {option.value === 'wavy' && typeof window !== 'undefined' && (() => {
+                                    try {
+                                      const WavyBackground = require('@/components/ui/shadcn-io/wavy-background').default;
+                                      return (
+                                        <WavyBackground
+                                          backgroundFill={wavyBackgroundFill}
+                                          colors={wavyColors.length >= 2 ? wavyColors : [accentColor, secondaryColor1 || accentColor, secondaryColor2 || accentColor]}
+                                          waveWidth={wavyWaveWidth}
+                                          blur={wavyBlur}
+                                          speed={wavySpeed}
+                                          waveOpacity={wavyWaveOpacity}
+                                        />
+                                      );
+                                    } catch (e) {
+                                      return <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white/50 text-xs">Wavy</div>;
                                     }
                                   })()}
                                   {option.value === 'none' && (

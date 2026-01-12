@@ -2797,6 +2797,37 @@ export function GeneralRequestsPage({
                     }
                   })()}
                 </div>
+              ) : backgroundType === 'wavy' ? (
+                /* Wavy animation background */
+                <div className="absolute inset-0 w-full h-full overflow-hidden bg-black" style={{ zIndex: 0 }}>
+                  {typeof window !== 'undefined' && (() => {
+                    try {
+                      const WavyBackground = require('@/components/ui/shadcn-io/wavy-background').default;
+                      // Get wavy configuration from URL params or organization data
+                      const wavyColorsParam = router.query.wavyColors;
+                      const wavyColors = wavyColorsParam ? JSON.parse(wavyColorsParam) : (organizationData?.requests_wavy_colors || [effectiveAccentColor, effectiveSecondaryColor1 || effectiveAccentColor, effectiveSecondaryColor2 || effectiveAccentColor]);
+                      const wavyWaveWidth = router.query.wavyWaveWidth ? Number(router.query.wavyWaveWidth) : (organizationData?.requests_wavy_wave_width || 50);
+                      const wavyBackgroundFill = router.query.wavyBackgroundFill || organizationData?.requests_wavy_background_fill || 'black';
+                      const wavyBlur = router.query.wavyBlur ? Number(router.query.wavyBlur) : (organizationData?.requests_wavy_blur || 10);
+                      const wavySpeed = router.query.wavySpeed || organizationData?.requests_wavy_speed || 'fast';
+                      const wavyWaveOpacity = router.query.wavyWaveOpacity ? Number(router.query.wavyWaveOpacity) : (organizationData?.requests_wavy_wave_opacity || 0.5);
+                      
+                      return (
+                        <WavyBackground
+                          backgroundFill={wavyBackgroundFill}
+                          colors={wavyColors.length >= 2 ? wavyColors : [effectiveAccentColor, effectiveSecondaryColor1 || effectiveAccentColor, effectiveSecondaryColor2 || effectiveAccentColor]}
+                          waveWidth={wavyWaveWidth}
+                          blur={wavyBlur}
+                          speed={wavySpeed}
+                          waveOpacity={wavyWaveOpacity}
+                        />
+                      );
+                    } catch (e) {
+                      console.warn('WavyBackground component not available:', e);
+                      return null;
+                    }
+                  })()}
+                </div>
               ) : (
                 /* Animated gradient with artist name - Default TipJar background */
                 <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden">

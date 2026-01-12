@@ -37,7 +37,13 @@ export default async function handler(req, res) {
       requests_show_fast_track,
       requests_fast_track_fee,
       requests_show_next_song,
-      requests_next_fee
+      requests_next_fee,
+      requests_wavy_colors,
+      requests_wavy_wave_width,
+      requests_wavy_background_fill,
+      requests_wavy_blur,
+      requests_wavy_speed,
+      requests_wavy_wave_opacity
     } = req.body;
 
     // Get current organization
@@ -105,6 +111,24 @@ export default async function handler(req, res) {
     }
     if (requests_next_fee !== undefined) {
       updateData.requests_next_fee = requests_next_fee;
+    }
+    if (requests_wavy_colors !== undefined) {
+      updateData.requests_wavy_colors = requests_wavy_colors;
+    }
+    if (requests_wavy_wave_width !== undefined) {
+      updateData.requests_wavy_wave_width = requests_wavy_wave_width;
+    }
+    if (requests_wavy_background_fill !== undefined) {
+      updateData.requests_wavy_background_fill = requests_wavy_background_fill;
+    }
+    if (requests_wavy_blur !== undefined) {
+      updateData.requests_wavy_blur = requests_wavy_blur;
+    }
+    if (requests_wavy_speed !== undefined) {
+      updateData.requests_wavy_speed = requests_wavy_speed;
+    }
+    if (requests_wavy_wave_opacity !== undefined) {
+      updateData.requests_wavy_wave_opacity = requests_wavy_wave_opacity;
     }
 
     // Update organization
