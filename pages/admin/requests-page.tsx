@@ -31,6 +31,13 @@ import {
   Link as LinkIcon,
   MessageCircle
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -178,8 +185,9 @@ export default function RequestsPageSettings() {
   // Flag to track if subtitle font was manually changed (if false, use artist name font)
   const [subtitleFontManuallyChanged, setSubtitleFontManuallyChanged] = useState(false);
   
-  // Background type (gradient, subtle, bubble, spiral, aurora, none)
-  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'none'>('gradient');
+  // Background type (gradient, subtle, bubble, spiral, aurora, smoke, smooth-spiral, none)
+  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'smoke' | 'smooth-spiral' | 'none'>('gradient');
+  const [showBackgroundModal, setShowBackgroundModal] = useState(false);
   
   // Header background color settings
   const [headerBackgroundType, setHeaderBackgroundType] = useState<'solid' | 'gradient'>('solid');
@@ -1891,25 +1899,76 @@ export default function RequestsPageSettings() {
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                             Choose the animated background style when no video or cover photo is set
                           </p>
-                          <select
-                            value={backgroundType}
-                            onChange={(e) => {
-                              setBackgroundType(e.target.value as 'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'none');
-                              setError(null);
-                              setSuccess(false);
-                              setTimeout(() => updatePreviewIframe(), 100);
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                          <button
+                            type="button"
+                            onClick={() => setShowBackgroundModal(true)}
+                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-2 focus:ring-[#fcba00] focus:border-transparent transition-colors flex items-center justify-between"
                           >
-                            <option value="gradient">Gradient (New)</option>
-                            <option value="subtle">Subtle (Original)</option>
-                            <option value="bubble">Bubble</option>
-                            <option value="spiral">Spiral</option>
-                            <option value="aurora">Aurora</option>
-                            <option value="none">None (No Animation)</option>
-                          </select>
+                            <span>
+                              {backgroundType === 'gradient' && 'Gradient (New)'}
+                              {backgroundType === 'subtle' && 'Subtle (Original)'}
+                              {backgroundType === 'bubble' && 'Bubble'}
+                              {backgroundType === 'spiral' && 'Spiral'}
+                              {backgroundType === 'aurora' && 'Aurora'}
+                              {backgroundType === 'smoke' && 'Smoke'}
+                              {backgroundType === 'smooth-spiral' && 'Smooth Spiral'}
+                              {backgroundType === 'none' && 'None (No Animation)'}
+                            </span>
+                            <Sparkles className="w-4 h-4 text-gray-400" />
+                          </button>
                         </div>
                       </div>
+
+                      {/* Background Animation Selection Modal */}
+                      <Dialog open={showBackgroundModal} onOpenChange={setShowBackgroundModal}>
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Select Background Animation</DialogTitle>
+                            <DialogDescription>
+                              Choose the animated background style when no video or cover photo is set
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
+                            {[
+                              { value: 'gradient', label: 'Gradient (New)', icon: '✨' },
+                              { value: 'subtle', label: 'Subtle (Original)', icon: '🎨' },
+                              { value: 'bubble', label: 'Bubble', icon: '🫧' },
+                              { value: 'spiral', label: 'Spiral', icon: '🌀' },
+                              { value: 'aurora', label: 'Aurora', icon: '🌌' },
+                              { value: 'smoke', label: 'Smoke', icon: '💨' },
+                              { value: 'smooth-spiral', label: 'Smooth Spiral', icon: '🌊' },
+                              { value: 'none', label: 'None (No Animation)', icon: '⚪' },
+                            ].map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => {
+                                  setBackgroundType(option.value as typeof backgroundType);
+                                  setShowBackgroundModal(false);
+                                  setError(null);
+                                  setSuccess(false);
+                                  setTimeout(() => updatePreviewIframe(), 100);
+                                }}
+                                className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+                                  backgroundType === option.value
+                                    ? 'border-[#fcba00] bg-[#fcba00]/10 dark:bg-[#fcba00]/20 ring-2 ring-[#fcba00]/30'
+                                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'
+                                }`}
+                              >
+                                {backgroundType === option.value && (
+                                  <div className="absolute top-2 right-2">
+                                    <CheckCircle className="w-5 h-5 text-[#fcba00]" fill="currentColor" />
+                                  </div>
+                                )}
+                                <div className="text-3xl mb-2">{option.icon}</div>
+                                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {option.label}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                       
                       {/* Header Background Color */}
                       <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">

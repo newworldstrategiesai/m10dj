@@ -2702,36 +2702,92 @@ export function GeneralRequestsPage({
                 <p className="text-white text-center p-4">Video unavailable</p>
               </video>
             ) : showAnimatedGradient ? (
-              /* Animated gradient with artist name - Default TipJar background */
-              <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden">
-                {/* Artist name as centered watermark */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div 
-                    className="text-white/[0.08] text-[12rem] font-black tracking-wider select-none pointer-events-none"
-                    style={{
-                      fontFamily: effectiveArtistNameFont,
-                      textTransform: effectiveArtistNameTextTransform,
-                      color: effectiveArtistNameColor,
-                      letterSpacing: `${effectiveArtistNameKerning}px`,
-                      textShadow: artistNameTextShadow,
-                      transform: 'rotate(-12deg) scale(1.5)',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {(() => {
-                      const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'TipJar';
-                      
-                      // Apply text transform
-                      if (effectiveArtistNameTextTransform === 'uppercase') {
-                        return artistName.toUpperCase();
-                      } else if (effectiveArtistNameTextTransform === 'lowercase') {
-                        return artistName.toLowerCase();
-                      }
-                      return artistName; // Normal case
-                    })()}
+              backgroundType === 'smoke' ? (
+                /* Smoke animation background */
+                <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
+                  {typeof window !== 'undefined' && (() => {
+                    // Dynamic import to avoid SSR issues
+                    try {
+                      const Smoke = require('@/components/ui/shadcn-io/smoke').default;
+                      return (
+                        <Smoke
+                          density={75}
+                          color="#cccccc"
+                          opacity={0.7}
+                          enableRotation={true}
+                          enableWind={true}
+                          windStrength={[0.02, 0.01, 0.01]}
+                          enableTurbulence={true}
+                          turbulenceStrength={[0.02, 0.02, 0.01]}
+                        />
+                      );
+                    } catch (e) {
+                      console.warn('Smoke component not available:', e);
+                      return null;
+                    }
+                  })()}
+                </div>
+              ) : backgroundType === 'smooth-spiral' ? (
+                /* Smooth Spiral animation background */
+                <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
+                  {typeof window !== 'undefined' && (() => {
+                    // Dynamic import to avoid SSR issues
+                    try {
+                      const PsychedelicSpiral = require('@/components/ui/shadcn-io/psychedelic-spiral').default;
+                      return (
+                        <PsychedelicSpiral
+                          spinRotation={-2.0}
+                          spinSpeed={7.0}
+                          offset={[0.0, 0.0]}
+                          color1="#871d87"
+                          color2="#b2dfdf"
+                          color3="#0c204e"
+                          contrast={3.5}
+                          lighting={0.4}
+                          spinAmount={0.25}
+                          pixelFilter={745.0}
+                          spinEase={1.0}
+                          isRotate={true}
+                        />
+                      );
+                    } catch (e) {
+                      console.warn('PsychedelicSpiral component not available:', e);
+                      return null;
+                    }
+                  })()}
+                </div>
+              ) : (
+                /* Animated gradient with artist name - Default TipJar background */
+                <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden">
+                  {/* Artist name as centered watermark */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div 
+                      className="text-white/[0.08] text-[12rem] font-black tracking-wider select-none pointer-events-none"
+                      style={{
+                        fontFamily: effectiveArtistNameFont,
+                        textTransform: effectiveArtistNameTextTransform,
+                        color: effectiveArtistNameColor,
+                        letterSpacing: `${effectiveArtistNameKerning}px`,
+                        textShadow: artistNameTextShadow,
+                        transform: 'rotate(-12deg) scale(1.5)',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {(() => {
+                        const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'TipJar';
+                        
+                        // Apply text transform
+                        if (effectiveArtistNameTextTransform === 'uppercase') {
+                          return artistName.toUpperCase();
+                        } else if (effectiveArtistNameTextTransform === 'lowercase') {
+                          return artistName.toLowerCase();
+                        }
+                        return artistName; // Normal case
+                      })()}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )
             ) : showSolidBackground ? (
               /* Custom background color or gradient when animation is disabled and no custom media */
               effectiveHeaderBackgroundType === 'gradient' ? (
@@ -3396,8 +3452,64 @@ export function GeneralRequestsPage({
                 <p className="text-white text-center p-4">Video unavailable</p>
               </video>
             ) : showAnimatedGradient ? (
-              /* Animated gradient - Default TipJar background for mobile and desktop */
-              <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden" style={{ zIndex: 0 }} />
+              backgroundType === 'smoke' ? (
+                /* Smoke animation background */
+                <div className="absolute inset-0 w-full h-full overflow-hidden bg-black" style={{ zIndex: 0 }}>
+                  {typeof window !== 'undefined' && (() => {
+                    // Dynamic import to avoid SSR issues
+                    try {
+                      const Smoke = require('@/components/ui/shadcn-io/smoke').default;
+                      return (
+                        <Smoke
+                          density={75}
+                          color="#cccccc"
+                          opacity={0.7}
+                          enableRotation={true}
+                          enableWind={true}
+                          windStrength={[0.02, 0.01, 0.01]}
+                          enableTurbulence={true}
+                          turbulenceStrength={[0.02, 0.02, 0.01]}
+                        />
+                      );
+                    } catch (e) {
+                      console.warn('Smoke component not available:', e);
+                      return null;
+                    }
+                  })()}
+                </div>
+              ) : backgroundType === 'smooth-spiral' ? (
+                /* Smooth Spiral animation background */
+                <div className="absolute inset-0 w-full h-full overflow-hidden bg-black" style={{ zIndex: 0 }}>
+                  {typeof window !== 'undefined' && (() => {
+                    // Dynamic import to avoid SSR issues
+                    try {
+                      const PsychedelicSpiral = require('@/components/ui/shadcn-io/psychedelic-spiral').default;
+                      return (
+                        <PsychedelicSpiral
+                          spinRotation={-2.0}
+                          spinSpeed={7.0}
+                          offset={[0.0, 0.0]}
+                          color1="#871d87"
+                          color2="#b2dfdf"
+                          color3="#0c204e"
+                          contrast={3.5}
+                          lighting={0.4}
+                          spinAmount={0.25}
+                          pixelFilter={745.0}
+                          spinEase={1.0}
+                          isRotate={true}
+                        />
+                      );
+                    } catch (e) {
+                      console.warn('PsychedelicSpiral component not available:', e);
+                      return null;
+                    }
+                  })()}
+                </div>
+              ) : (
+                /* Animated gradient - Default TipJar background for mobile and desktop */
+                <div className="absolute inset-0 w-full h-full animated-gradient-bg overflow-hidden" style={{ zIndex: 0 }} />
+              )
             ) : showSolidBackground ? (
               /* Custom background color or gradient when animation is disabled and no custom media */
               effectiveHeaderBackgroundType === 'gradient' ? (
