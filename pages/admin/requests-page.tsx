@@ -2005,6 +2005,7 @@ export default function RequestsPageSettings() {
                               {backgroundType === 'smooth-spiral' && 'Smooth Spiral'}
                               {backgroundType === 'vortex' && 'Vortex'}
                               {backgroundType === 'fireflies' && 'Fireflies'}
+                              {backgroundType === 'wavy' && 'Wavy'}
                               {backgroundType === 'none' && 'None (No Animation)'}
                             </span>
                             <Sparkles className="w-4 h-4 text-gray-400" />
