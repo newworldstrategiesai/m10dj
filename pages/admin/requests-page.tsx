@@ -2060,6 +2060,7 @@ export default function RequestsPageSettings() {
                               { value: 'smooth-spiral', label: 'Smooth Spiral' },
                               { value: 'vortex', label: 'Vortex' },
                               { value: 'fireflies', label: 'Fireflies' },
+                              { value: 'wavy', label: 'Wavy' },
                               { value: 'none', label: 'None (No Animation)' },
                             ].map((option) => (
                               <button
