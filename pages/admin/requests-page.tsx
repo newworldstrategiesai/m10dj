@@ -45,6 +45,7 @@ import { Label } from '@/components/ui/label';
 import ImageUploadInput from '@/components/admin/ImageUploadInput';
 import VideoUploadInput from '@/components/admin/VideoUploadInput';
 import Link from 'next/link';
+import FontSelect, { FontOption } from '@/components/ui/font-select';
 
 interface SocialLink {
   platform: string;
@@ -64,6 +65,59 @@ const SUPPORTED_PLATFORMS = [
   { value: 'snapchat', label: 'Snapchat', icon: '👻' },
   { value: 'pinterest', label: 'Pinterest', icon: '📌' },
   { value: 'custom', label: 'Custom Link', icon: '🔗' },
+];
+
+const FONT_OPTIONS: FontOption[] = [
+  { value: 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif', label: 'Impact (Bold)' },
+  { value: '"Arial Black", Arial, sans-serif', label: 'Arial Black' },
+  { value: '"Helvetica Neue", Helvetica, Arial, sans-serif', label: 'Helvetica Neue' },
+  { value: '"Oswald", sans-serif', label: 'Oswald (Condensed)' },
+  { value: '"Montserrat", sans-serif', label: 'Montserrat' },
+  { value: '"Poppins", sans-serif', label: 'Poppins' },
+  { value: '"Roboto", sans-serif', label: 'Roboto' },
+  { value: '"Open Sans", sans-serif', label: 'Open Sans' },
+  { value: '"Lato", sans-serif', label: 'Lato' },
+  { value: '"Nunito", sans-serif', label: 'Nunito' },
+  { value: '"Ubuntu", sans-serif', label: 'Ubuntu' },
+  { value: '"Source Sans Pro", sans-serif', label: 'Source Sans Pro' },
+  { value: '"Inter", sans-serif', label: 'Inter' },
+  { value: '"Work Sans", sans-serif', label: 'Work Sans' },
+  { value: '"DM Sans", sans-serif', label: 'DM Sans' },
+  { value: '"Space Grotesk", sans-serif', label: 'Space Grotesk' },
+  { value: '"Bebas Neue", sans-serif', label: 'Bebas Neue (Bold)' },
+  { value: '"Anton", sans-serif', label: 'Anton (Condensed)' },
+  { value: '"Raleway", sans-serif', label: 'Raleway' },
+  { value: '"PT Sans", sans-serif', label: 'PT Sans' },
+  { value: '"Josefin Sans", sans-serif', label: 'Josefin Sans' },
+  { value: '"Libre Franklin", sans-serif', label: 'Libre Franklin' },
+  { value: '"Quicksand", sans-serif', label: 'Quicksand' },
+  { value: '"Rubik", sans-serif', label: 'Rubik' },
+  { value: '"Fira Sans", sans-serif', label: 'Fira Sans' },
+  { value: '"Manrope", sans-serif', label: 'Manrope' },
+  { value: '"Comfortaa", sans-serif', label: 'Comfortaa' },
+  { value: '"Kanit", sans-serif', label: 'Kanit' },
+  { value: '"Titillium Web", sans-serif', label: 'Titillium Web' },
+  { value: '"Muli", sans-serif', label: 'Muli' },
+  { value: '"Exo 2", sans-serif', label: 'Exo 2' },
+  { value: '"Rajdhani", sans-serif', label: 'Rajdhani (Condensed)' },
+  { value: '"Orbitron", sans-serif', label: 'Orbitron (Futuristic)' },
+  { value: '"Righteous", sans-serif', label: 'Righteous' },
+  { value: '"Fredoka One", sans-serif', label: 'Fredoka One' },
+  { value: '"Bungee", sans-serif', label: 'Bungee' },
+  { value: '"Russo One", sans-serif', label: 'Russo One' },
+  { value: '"Playfair Display", serif', label: 'Playfair Display (Elegant)' },
+  { value: '"Lora", serif', label: 'Lora (Serif)' },
+  { value: '"Merriweather", serif', label: 'Merriweather (Serif)' },
+  { value: '"Libre Baskerville", serif', label: 'Libre Baskerville (Serif)' },
+  { value: '"Crimson Text", serif', label: 'Crimson Text (Serif)' },
+  { value: '"Georgia", serif', label: 'Georgia (Serif)' },
+  { value: '"PT Serif", serif', label: 'PT Serif' },
+  { value: '"Bitter", serif', label: 'Bitter (Serif)' },
+  { value: '"Arvo", serif', label: 'Arvo (Serif)' },
+  { value: '"Courier New", monospace', label: 'Courier New (Monospace)' },
+  { value: '"Space Mono", monospace', label: 'Space Mono (Monospace)' },
+  { value: '"Roboto Mono", monospace', label: 'Roboto Mono (Monospace)' },
+  { value: '"Fira Code", monospace', label: 'Fira Code (Monospace)' },
 ];
 
 export default function RequestsPageSettings() {
@@ -3771,57 +3825,19 @@ export default function RequestsPageSettings() {
                         <Label htmlFor="subtitle_font" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Subtitle Font {!subtitleFontManuallyChanged && <span className="text-xs text-gray-500">(uses Display Name font by default)</span>}
                         </Label>
-                        <select
+                        <FontSelect
                           id="subtitle_font"
                           value={effectiveSubtitleFont}
-                          onChange={(e) => {
-                            setSubtitleFont(e.target.value);
+                          onChange={(value) => {
+                            setSubtitleFont(value);
                             setSubtitleFontManuallyChanged(true);
                             setError(null);
                             setSuccess(false);
                             setTimeout(() => updatePreviewIframe(), 100);
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
-                        >
-                          <option value='Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif'>Impact (Bold)</option>
-                          <option value='"Arial Black", Arial, sans-serif'>Arial Black</option>
-                          <option value='"Helvetica Neue", Helvetica, Arial, sans-serif'>Helvetica Neue</option>
-                          <option value='"Oswald", sans-serif'>Oswald (Condensed)</option>
-                          <option value='"Montserrat", sans-serif'>Montserrat</option>
-                          <option value='"Roboto", sans-serif'>Roboto</option>
-                          <option value='"Open Sans", sans-serif'>Open Sans</option>
-                          <option value='"Lato", sans-serif'>Lato</option>
-                          <option value='"Raleway", sans-serif' style={{ fontFamily: '"Raleway", sans-serif' }}>Raleway</option>
-                          <option value='"Nunito", sans-serif' style={{ fontFamily: '"Nunito", sans-serif' }}>Nunito</option>
-                          <option value='"Ubuntu", sans-serif' style={{ fontFamily: '"Ubuntu", sans-serif' }}>Ubuntu</option>
-                          <option value='"Source Sans Pro", sans-serif' style={{ fontFamily: '"Source Sans Pro", sans-serif' }}>Source Sans Pro</option>
-                          <option value='"Inter", sans-serif' style={{ fontFamily: '"Inter", sans-serif' }}>Inter</option>
-                          <option value='"Work Sans", sans-serif' style={{ fontFamily: '"Work Sans", sans-serif' }}>Work Sans</option>
-                          <option value='"DM Sans", sans-serif' style={{ fontFamily: '"DM Sans", sans-serif' }}>DM Sans</option>
-                          <option value='"Space Grotesk", sans-serif' style={{ fontFamily: '"Space Grotesk", sans-serif' }}>Space Grotesk</option>
-                          <option value='"PT Sans", sans-serif' style={{ fontFamily: '"PT Sans", sans-serif' }}>PT Sans</option>
-                          <option value='"Josefin Sans", sans-serif' style={{ fontFamily: '"Josefin Sans", sans-serif' }}>Josefin Sans</option>
-                          <option value='"Libre Franklin", sans-serif' style={{ fontFamily: '"Libre Franklin", sans-serif' }}>Libre Franklin</option>
-                          <option value='"Quicksand", sans-serif' style={{ fontFamily: '"Quicksand", sans-serif' }}>Quicksand</option>
-                          <option value='"Rubik", sans-serif' style={{ fontFamily: '"Rubik", sans-serif' }}>Rubik</option>
-                          <option value='"Fira Sans", sans-serif' style={{ fontFamily: '"Fira Sans", sans-serif' }}>Fira Sans</option>
-                          <option value='"Manrope", sans-serif' style={{ fontFamily: '"Manrope", sans-serif' }}>Manrope</option>
-                          <option value='"Comfortaa", sans-serif' style={{ fontFamily: '"Comfortaa", sans-serif' }}>Comfortaa</option>
-                          <option value='"Kanit", sans-serif' style={{ fontFamily: '"Kanit", sans-serif' }}>Kanit</option>
-                          <option value='"Titillium Web", sans-serif' style={{ fontFamily: '"Titillium Web", sans-serif' }}>Titillium Web</option>
-                          <option value='"Muli", sans-serif' style={{ fontFamily: '"Muli", sans-serif' }}>Muli</option>
-                          <option value='"Exo 2", sans-serif' style={{ fontFamily: '"Exo 2", sans-serif' }}>Exo 2</option>
-                          <option value='"Rajdhani", sans-serif' style={{ fontFamily: '"Rajdhani", sans-serif' }}>Rajdhani</option>
-                          <option value='"Playfair Display", serif' style={{ fontFamily: '"Playfair Display", serif' }}>Playfair Display</option>
-                          <option value='"Lora", serif' style={{ fontFamily: '"Lora", serif' }}>Lora</option>
-                          <option value='"Merriweather", serif' style={{ fontFamily: '"Merriweather", serif' }}>Merriweather</option>
-                          <option value='"Libre Baskerville", serif' style={{ fontFamily: '"Libre Baskerville", serif' }}>Libre Baskerville</option>
-                          <option value='"Crimson Text", serif' style={{ fontFamily: '"Crimson Text", serif' }}>Crimson Text</option>
-                          <option value='"Georgia", serif' style={{ fontFamily: '"Georgia", serif' }}>Georgia</option>
-                          <option value='"PT Serif", serif' style={{ fontFamily: '"PT Serif", serif' }}>PT Serif</option>
-                          <option value='"Bitter", serif' style={{ fontFamily: '"Bitter", serif' }}>Bitter</option>
-                          <option value='"Arvo", serif' style={{ fontFamily: '"Arvo", serif' }}>Arvo</option>
-                        </select>
+                          options={FONT_OPTIONS}
+                          placeholder="Select a font..."
+                        />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                           Choose the font style for your subtitle
                         </p>
