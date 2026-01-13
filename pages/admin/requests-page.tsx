@@ -240,7 +240,7 @@ export default function RequestsPageSettings() {
   const [subtitleFontManuallyChanged, setSubtitleFontManuallyChanged] = useState(false);
   
   // Background type (gradient, subtle, bubble, spiral, aurora, smoke, smooth-spiral, none)
-  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'bubble' | 'spiral' | 'aurora' | 'smoke' | 'smooth-spiral' | 'vortex' | 'fireflies' | 'wavy' | 'none'>('gradient');
+  const [backgroundType, setBackgroundType] = useState<'gradient' | 'subtle' | 'aurora' | 'smoke' | 'smooth-spiral' | 'vortex' | 'fireflies' | 'wavy' | 'none'>('gradient');
   const [showBackgroundModal, setShowBackgroundModal] = useState(false);
   
   // Wavy background configuration
@@ -2000,8 +2000,6 @@ export default function RequestsPageSettings() {
                             <span>
                               {backgroundType === 'gradient' && 'Gradient (New)'}
                               {backgroundType === 'subtle' && 'Subtle (Original)'}
-                              {backgroundType === 'bubble' && 'Bubble'}
-                              {backgroundType === 'spiral' && 'Spiral'}
                               {backgroundType === 'aurora' && 'Aurora'}
                               {backgroundType === 'smoke' && 'Smoke'}
                               {backgroundType === 'smooth-spiral' && 'Smooth Spiral'}
@@ -2056,8 +2054,6 @@ export default function RequestsPageSettings() {
                             {[
                               { value: 'gradient', label: 'Gradient (New)' },
                               { value: 'subtle', label: 'Subtle (Original)' },
-                              { value: 'bubble', label: 'Bubble' },
-                              { value: 'spiral', label: 'Spiral' },
                               { value: 'aurora', label: 'Aurora' },
                               { value: 'smoke', label: 'Smoke' },
                               { value: 'smooth-spiral', label: 'Smooth Spiral' },
@@ -2109,29 +2105,6 @@ export default function RequestsPageSettings() {
                                         animation: 'gradient-shift-preview 10s ease infinite'
                                       }}
                                     />
-                                  )}
-                                  {option.value === 'bubble' && (
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                      <div className="relative w-full h-full">
-                                        <div className="absolute top-1/4 left-1/4 w-8 h-8 bg-white/20 rounded-full animate-pulse" style={{ animationDelay: '0s' }} />
-                                        <div className="absolute top-1/2 right-1/4 w-6 h-6 bg-white/15 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
-                                        <div className="absolute bottom-1/4 left-1/2 w-10 h-10 bg-white/25 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
-                      </div>
-                                    </div>
-                                  )}
-                                  {option.value === 'spiral' && (
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                      <div className="relative w-full h-full">
-                                        <div 
-                                          className="absolute inset-0"
-                                          style={{
-                                            background: `conic-gradient(from 0deg, ${accentColor}40, transparent, ${accentColor}40)`,
-                                            animation: 'spin-preview 8s linear infinite',
-                                            transformOrigin: 'center'
-                                          }}
-                                        />
-                                      </div>
-                                    </div>
                                   )}
                                   {option.value === 'aurora' && typeof window !== 'undefined' && (() => {
                                     try {
