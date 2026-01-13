@@ -329,6 +329,9 @@ export default function OrganizationRequestsPage() {
           ));
         const isAssistantEnabled = organization.requests_assistant_enabled !== false;
         
+        // Get event code from URL query params if available
+        const eventQrCode = router.query.eventCode || router.query.code || null;
+        
         return isTipJarPage && isAssistantEnabled ? (
           <TipJarChatWidget
             organizationId={organization.id}
@@ -336,6 +339,7 @@ export default function OrganizationRequestsPage() {
             organizationData={organization}
             accentColor={organization.requests_accent_color || (isTipJarPage ? '#10b981' : '#fcba00')}
             themeMode={organization.requests_theme_mode || 'dark'}
+            eventQrCode={eventQrCode}
           />
         ) : null;
       })()}

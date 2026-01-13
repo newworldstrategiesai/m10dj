@@ -318,6 +318,16 @@ export default function RequestsPageSettings() {
 
   // Assistant settings
   const [assistantEnabled, setAssistantEnabled] = useState(true);
+  const [assistantCustomPrompt, setAssistantCustomPrompt] = useState('');
+  const [assistantFunctions, setAssistantFunctions] = useState({
+    enable_user_status: true,
+    enable_all_requests: true,
+    enable_queue: true,
+    enable_played: true,
+    enable_popular: true,
+    enable_count: true,
+    enable_search: true
+  });
   
   // SEO fields
   const [seoFields, setSeoFields] = useState({
@@ -667,6 +677,20 @@ export default function RequestsPageSettings() {
         // Set assistant enabled setting (defaults to true for new users)
         setAssistantEnabled(org.requests_assistant_enabled !== false);
         
+        // Set assistant custom prompt
+        setAssistantCustomPrompt(org.requests_assistant_custom_prompt || '');
+        
+        // Set assistant function toggles (default to true if not set)
+        setAssistantFunctions({
+          enable_user_status: org.requests_assistant_enable_user_status !== false,
+          enable_all_requests: org.requests_assistant_enable_all_requests !== false,
+          enable_queue: org.requests_assistant_enable_queue !== false,
+          enable_played: org.requests_assistant_enable_played !== false,
+          enable_popular: org.requests_assistant_enable_popular !== false,
+          enable_count: org.requests_assistant_enable_count !== false,
+          enable_search: org.requests_assistant_enable_search !== false
+        });
+        
         // Set header fields
         setHeaderFields({
           requests_header_artist_name: org.requests_header_artist_name || org.name || '',
@@ -1004,6 +1028,14 @@ export default function RequestsPageSettings() {
         requests_payment_method_venmo_enabled: paymentMethodEnabled.venmo,
         // Assistant settings
         requests_assistant_enabled: assistantEnabled,
+        requests_assistant_custom_prompt: assistantCustomPrompt?.trim() || null,
+        requests_assistant_enable_user_status: assistantFunctions.enable_user_status,
+        requests_assistant_enable_all_requests: assistantFunctions.enable_all_requests,
+        requests_assistant_enable_queue: assistantFunctions.enable_queue,
+        requests_assistant_enable_played: assistantFunctions.enable_played,
+        requests_assistant_enable_popular: assistantFunctions.enable_popular,
+        requests_assistant_enable_count: assistantFunctions.enable_count,
+        requests_assistant_enable_search: assistantFunctions.enable_search,
         // Header fields
         ...headerFields,
         // Label fields
@@ -4268,36 +4300,199 @@ export default function RequestsPageSettings() {
                   </div>
                 </div>
               ) : activeTab === 'assistant' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
-                    Assistant Settings
-                  </h2>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 dark:text-white mb-1">Enable Assistant Widget</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Show the AI assistant chat widget on your requests page to help customers with questions
-                        </p>
+                <div className="space-y-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
+                      Assistant Settings
+                    </h2>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 dark:text-white mb-1">Enable Assistant Widget</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Show the AI assistant chat widget on your requests page to help customers with questions
+                          </p>
+                        </div>
+                        <Switch
+                          checked={assistantEnabled}
+                          onCheckedChange={(checked) => {
+                            setAssistantEnabled(checked);
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                        />
                       </div>
-                      <Switch
-                        checked={assistantEnabled}
-                        onCheckedChange={(checked) => {
-                          setAssistantEnabled(checked);
-                          setError(null);
-                          setSuccess(false);
-                        }}
-                      />
+                      
+                      {assistantEnabled && (
+                        <>
+                          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                              <strong>About the Assistant:</strong> The assistant helps customers with questions about your business and how to use TipJar. 
+                              It uses AI to answer questions using information from your page settings, including your display name, location, and social media links.
+                            </p>
+                          </div>
+
+                          {/* Custom Prompt Section */}
+                          <div className="mt-6 space-y-2">
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                              Custom System Prompt (Optional)
+                            </label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                              Customize the assistant&apos;s behavior and knowledge. Leave empty to use the default prompt. 
+                              You can use placeholders like {'{artistName}'}, {'{location}'}, {'{organizationName}'} which will be replaced automatically.
+                            </p>
+                            <Textarea
+                              value={assistantCustomPrompt}
+                              onChange={(e) => {
+                                setAssistantCustomPrompt(e.target.value);
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              placeholder="Leave empty to use default prompt..."
+                              className="min-h-[200px] font-mono text-sm"
+                              rows={10}
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              The default prompt includes information about TipJar, your organization, and how to answer questions. 
+                              Your custom prompt will replace the entire default prompt, so make sure to include all necessary context.
+                            </p>
+                          </div>
+
+                          {/* Function Availability Section */}
+                          <div className="mt-6 space-y-4">
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                                Available Functions
+                              </h3>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                                Control which capabilities the assistant has. Disable functions you don&apos;t want customers to access.
+                              </p>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm text-gray-900 dark:text-white">Check Request Status</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Allow users to ask &quot;Has my song been played?&quot; or &quot;When did my song play?&quot;
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={assistantFunctions.enable_user_status}
+                                  onCheckedChange={(checked) => {
+                                    setAssistantFunctions(prev => ({ ...prev, enable_user_status: checked }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm text-gray-900 dark:text-white">Show All Requests</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Allow users to ask &quot;What songs have been requested?&quot;
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={assistantFunctions.enable_all_requests}
+                                  onCheckedChange={(checked) => {
+                                    setAssistantFunctions(prev => ({ ...prev, enable_all_requests: checked }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm text-gray-900 dark:text-white">Show Queue</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Allow users to ask &quot;What&apos;s in the queue?&quot; or &quot;What songs are waiting?&quot;
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={assistantFunctions.enable_queue}
+                                  onCheckedChange={(checked) => {
+                                    setAssistantFunctions(prev => ({ ...prev, enable_queue: checked }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm text-gray-900 dark:text-white">Show Played Songs</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Allow users to ask &quot;What songs have been played?&quot;
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={assistantFunctions.enable_played}
+                                  onCheckedChange={(checked) => {
+                                    setAssistantFunctions(prev => ({ ...prev, enable_played: checked }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm text-gray-900 dark:text-white">Show Popular Songs</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Allow users to ask &quot;What&apos;s the most popular song?&quot; or &quot;What&apos;s the most requested song?&quot;
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={assistantFunctions.enable_popular}
+                                  onCheckedChange={(checked) => {
+                                    setAssistantFunctions(prev => ({ ...prev, enable_popular: checked }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm text-gray-900 dark:text-white">Show Statistics</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Allow users to ask &quot;How many requests have been made?&quot;
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={assistantFunctions.enable_count}
+                                  onCheckedChange={(checked) => {
+                                    setAssistantFunctions(prev => ({ ...prev, enable_count: checked }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm text-gray-900 dark:text-white">Search Songs</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Allow users to ask &quot;Has [song name] been requested?&quot; or &quot;Who requested [song name]?&quot;
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={assistantFunctions.enable_search}
+                                  onCheckedChange={(checked) => {
+                                    setAssistantFunctions(prev => ({ ...prev, enable_search: checked }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    
-                    {assistantEnabled && (
-                      <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          <strong>About the Assistant:</strong> The assistant helps customers with questions about your business and how to use TipJar. 
-                          It uses AI to answer questions using information from your page settings, including your display name, location, and social media links.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               ) : activeTab === 'advanced' ? (

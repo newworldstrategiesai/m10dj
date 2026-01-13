@@ -17,6 +17,7 @@ interface TipJarChatWidgetProps {
   organizationData?: any; // Organization data for context
   accentColor?: string; // User's accent color selection
   themeMode?: 'light' | 'dark'; // Theme mode (light or dark)
+  eventQrCode?: string; // Optional event QR code for looking up user requests
 }
 
 export default function TipJarChatWidget({ 
@@ -24,7 +25,8 @@ export default function TipJarChatWidget({
   organizationName,
   organizationData,
   accentColor = '#fcba00', // Default to yellow if not provided
-  themeMode = 'dark' // Default to dark mode
+  themeMode = 'dark', // Default to dark mode
+  eventQrCode // Optional event QR code
 }: TipJarChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -93,6 +95,7 @@ export default function TipJarChatWidget({
           messages: conversationHistoryRef.current,
           organizationId,
           organizationName,
+          eventQrCode, // Pass event QR code for request lookup
           organizationData: {
             name: organizationName,
             slug: organizationData?.slug,
