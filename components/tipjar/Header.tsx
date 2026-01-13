@@ -21,6 +21,7 @@ export default function TipJarHeader() {
     !pathname.startsWith('/tipjar/pricing') &&
     !pathname.startsWith('/tipjar/features') &&
     !pathname.startsWith('/tipjar/how-it-works') &&
+    !pathname.startsWith('/tipjar/customization') &&
     !pathname.startsWith('/tipjar/signin') &&
     !pathname.startsWith('/tipjar/signup') &&
     !pathname.startsWith('/tipjar/dashboard') &&
@@ -138,6 +139,16 @@ export default function TipJarHeader() {
               How It Works
             </Link>
             <Link
+              href="/tipjar/customization"
+              className={`font-semibold transition-colors ${
+                isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
+                  ? 'text-white hover:text-emerald-200'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
+              }`}
+            >
+              Customization
+            </Link>
+            <Link
               href="/tipjar/signin/password_signin"
               className={`font-semibold transition-colors ${
                 isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
@@ -237,6 +248,19 @@ export default function TipJarHeader() {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 How It Works
+              </Link>
+              <Link
+                href="/tipjar/customization"
+                className={`font-medium transition-colors ${
+                  isLivePage || isPricingPage || (isEmbedPage && !isScrolled)
+                    ? 'text-white hover:text-emerald-200'
+                    : isEmbedPage && isScrolled
+                    ? 'text-gray-900 dark:text-gray-100 hover:text-emerald-600 dark:hover:text-emerald-400'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400'
+                }`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Customization
               </Link>
               <Link
                 href="/tipjar/signin/password_signin"
