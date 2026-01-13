@@ -51,12 +51,23 @@ export default function GoLivePage() {
   const earningsChannelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadStream() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/tipjar/signin?redirect=/tipjar/dashboard/go-live');
-        return;
-      }
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        // Handle AbortError gracefully (component unmounted or request cancelled)
+        if (userError && (userError.name === 'AbortError' || userError.message?.includes('aborted'))) {
+          return;
+        }
+        
+        if (!isMounted) return;
+        
+        if (!user) {
+          router.push('/tipjar/signin?redirect=/tipjar/dashboard/go-live');
+          return;
+        }
 
       // Check if user already has a stream
       const { data: existingStream } = await supabase
@@ -96,17 +107,33 @@ export default function GoLivePage() {
           .select()
           .single();
 
-        if (newStream) {
+        if (newStream && isMounted) {
           const typedNewStream = newStream as LiveStream;
           setStream(typedNewStream);
           setTitle(typedNewStream.title || `Live with @${newUsername}`);
         }
       }
 
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
+      } catch (error: any) {
+        // Handle AbortError gracefully (component unmounted or request cancelled)
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          return;
+        }
+        if (isMounted) {
+          console.error('Error loading stream:', error);
+          setLoading(false);
+        }
+      }
     }
 
     loadStream();
+
+    return () => {
+      isMounted = false;
+    };
   }, [supabase, router]);
 
   async function getStreamToken(roomName: string) {

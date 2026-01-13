@@ -91,8 +91,10 @@ const PHONE_REGEXES = [
   /(\d{10})/, // 10 consecutive digits
 ];
 
+// Enhanced DATE_REGEX to match both numeric and text-based dates
+// Matches: "1/31/2024", "01-31-2024", "Jan. 31st", "January 31st", "Jan 31", etc.
 const DATE_REGEX =
-  /\b(0?[1-9]|1[0-2])[\/\-](0?[1-9]|[12]\d|3[01])[\/\-](\d{2}|\d{4})\b/;
+  /\b((?:0?[1-9]|1[0-2])[\/\-](?:0?[1-9]|[12]\d|3[01])[\/\-](?:\d{2}|\d{4})|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|June|July|August|September|October|November|December)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*,?\s*\d{4})?)\b/i;
 
 export function parseLeadThread(thread: string): ParsedLeadThread {
   const normalizedThread = thread.replace(/\r\n/g, '\n').trim();
@@ -469,60 +471,88 @@ function extractContactInfo(thread: string): ParsedLeadContact {
     }
   }
   
-  // Extract referral source (e.g., "Spike's cousin" -> "Spike")
-  let referralSource = null;
-  const referralPatterns = [
-    /\b(?:referred|referred by|got your|contacted|found you|heard about you|recommended|recommended by|told me about|said|mentioned)\s+(?:by|from|through)?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
-    /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)'s\s+(?:cousin|friend|brother|sister|colleague|co-worker|neighbor|family|relative)/i,
-    /\b(?:my|a)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:referred|recommended|told me|said)/i,
-  ];
-  
-  for (const pattern of referralPatterns) {
-    const match = thread.match(pattern);
-    if (match) {
-      const candidate = match[1].trim();
-      // Validate it's not a common word or our own name
-      const commonWords = ['the', 'this', 'that', 'ben', 'benjamin', 'murray', 'm10', 'dj', 'company'];
-      if (!commonWords.includes(candidate.toLowerCase()) && candidate.length >= 2) {
-        referralSource = capitalize(candidate);
-        break;
+  // Extract referral source (e.g., "Spike's cousin" -> "Spike", "I'm Joe, Spike's cousin" -> "Spike")
+  let referralSource = structured.referralSource || null;
+  if (!referralSource) {
+    const referralPatterns = [
+      // Pattern 1: "Spike's cousin" - standalone pattern (test this first, it's the simplest)
+      /([A-Z][a-z]+)'s\s+(?:cousin|friend|brother|sister|colleague|co-worker|neighbor|family|relative)/i,
+      // Pattern 2: "I'm Joe, Spike's cousin" or "I'm Joe Spike's cousin" (with or without comma)
+      /(?:I'?m|I am|my name is)\s+[A-Z][a-z]+(?:,\s*|\s+)([A-Z][a-z]+)'s\s+(?:cousin|friend|brother|sister|colleague|co-worker|neighbor|family|relative)/i,
+      // Pattern 3: "referred by Spike" or "got your number from Spike"
+      /\b(?:referred|referred by|got your|contacted|found you|heard about you|recommended|recommended by|told me about|said|mentioned)\s+(?:by|from|through)?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+      // Pattern 4: "my friend Spike referred me"
+      /\b(?:my|a)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:referred|recommended|told me|said)/i,
+    ];
+    
+    for (let i = 0; i < referralPatterns.length; i++) {
+      const pattern = referralPatterns[i];
+      const match = thread.match(pattern);
+      if (match) {
+        const candidate = match[1].trim();
+        console.log('[lead-thread-parser] Referral pattern', i, 'matched:', match[0], 'candidate:', candidate);
+        // Validate it's not a common word or our own name
+        const commonWords = ['the', 'this', 'that', 'ben', 'benjamin', 'murray', 'm10', 'dj', 'company', 'joe', 'looking', 'he', 'she', 'they', 'for', 'a', 'dj'];
+        if (!commonWords.includes(candidate.toLowerCase()) && candidate.length >= 2) {
+          referralSource = capitalize(candidate);
+          console.log('[lead-thread-parser] ✅ Extracted referral source:', referralSource, 'from match:', match[0]);
+          break;
+        } else {
+          console.log('[lead-thread-parser] ⚠️ Referral candidate filtered out (common word):', candidate);
+        }
+      }
+    }
+    if (!referralSource) {
+      console.log('[lead-thread-parser] ⚠️ No referral source extracted from thread');
+      // Debug: try to find any name with apostrophe-s followed by cousin
+      const debugMatch = thread.match(/([A-Z][a-z]+)'s\s+cousin/i);
+      if (debugMatch) {
+        console.log('[lead-thread-parser] 🔍 Debug: Found potential referral:', debugMatch[0], 'but pattern did not match');
       }
     }
   }
 
   // Extract event occasion details (e.g., "surprise birthday party", "my wife's")
-  let eventOccasion = null;
-  let eventFor = null;
-  let isSurprise = false;
+  let eventOccasion = structured.eventOccasion || null;
+  let eventFor = structured.eventFor || null;
+  let isSurprise = structured.isSurprise || false;
   
-  const occasionPatterns = [
-    /\b(surprise\s+(?:birthday|anniversary|party|celebration|event))/i,
-    /\b((?:birthday|anniversary|graduation|retirement|engagement)\s+party)/i,
-    /\b(surprise\s+party)/i,
-  ];
-  
-  for (const pattern of occasionPatterns) {
-    const match = thread.match(pattern);
-    if (match) {
-      eventOccasion = match[1].trim().toLowerCase();
-      if (eventOccasion.includes('surprise')) {
-        isSurprise = true;
+  if (!eventOccasion) {
+    const occasionPatterns = [
+      /\b(surprise\s+(?:birthday|anniversary|party|celebration|event))/i,
+      /\b((?:birthday|anniversary|graduation|retirement|engagement)\s+party)/i,
+      /\b(surprise\s+party)/i,
+      /\b(?:for|celebrating)\s+(?:my|our)?\s*(?:wife|husband|daughter|son|mom|dad|mother|father|parent|sister|brother|friend|boss|colleague)'s\s+(?:surprise\s+)?(?:birthday|anniversary|graduation|retirement|engagement)\s+party/i, // "my wife's surprise birthday party"
+    ];
+    
+    for (const pattern of occasionPatterns) {
+      const match = thread.match(pattern);
+      if (match) {
+        eventOccasion = match[1] ? match[1].trim().toLowerCase() : match[0].trim().toLowerCase();
+        if (eventOccasion.includes('surprise')) {
+          isSurprise = true;
+        }
+        console.log('[lead-thread-parser] Extracted event occasion:', eventOccasion, 'isSurprise:', isSurprise);
+        break;
       }
-      break;
     }
   }
   
   // Extract who the event is for (e.g., "my wife's", "my daughter's")
-  const eventForPatterns = [
-    /\b(?:my|our)\s+(wife|husband|daughter|son|mom|dad|mother|father|parent|sister|brother|friend|boss|colleague)'s/i,
-    /\b(?:for|celebrating)\s+(?:my|our)?\s*(wife|husband|daughter|son|mom|dad|mother|father|parent|sister|brother|friend|boss|colleague)/i,
-  ];
-  
-  for (const pattern of eventForPatterns) {
-    const match = thread.match(pattern);
-    if (match) {
-      eventFor = match[1].trim().toLowerCase();
-      break;
+  if (!eventFor) {
+    const eventForPatterns = [
+      /\b(?:my|our)\s+(wife|husband|daughter|son|mom|dad|mother|father|parent|sister|brother|friend|boss|colleague)'s/i,
+      /\b(?:for|celebrating)\s+(?:my|our)?\s*(wife|husband|daughter|son|mom|dad|mother|father|parent|sister|brother|friend|boss|colleague)/i,
+      /\b(?:for|celebrating)\s+(?:my|our)?\s*(?:wife|husband|daughter|son|mom|dad|mother|father|parent|sister|brother|friend|boss|colleague)'s/i, // "for my wife's"
+    ];
+    
+    for (const pattern of eventForPatterns) {
+      const match = thread.match(pattern);
+      if (match) {
+        eventFor = match[1].trim().toLowerCase();
+        console.log('[lead-thread-parser] Extracted event for:', eventFor);
+        break;
+      }
     }
   }
 
@@ -555,35 +585,50 @@ function extractContactInfo(thread: string): ParsedLeadContact {
   }
 
   // Extract venue type and room details (e.g., "It's the clubhouse", "We have the clubhouse")
-  let venueType = null;
-  let venueRoom = null;
+  let venueType = structured.venueType || null;
+  let venueRoom = structured.venueRoom || null;
   
-  const venueTypePatterns = [
-    /\b(?:it'?s|it is|we have|the|at)\s+(?:the\s+)?(clubhouse|ballroom|banquet hall|conference room|meeting room|lounge|bar|restaurant|outdoor|patio|garden|pool|beach|park|venue|hall|room|space|area)/i,
-    /\b(?:venue|location|place)\s+(?:is|type|kind)\s+(?:a|an|the)?\s*(clubhouse|ballroom|banquet hall|conference room|meeting room|lounge|bar|restaurant|outdoor|patio|garden|pool|beach|park|venue|hall|room|space|area)/i,
-  ];
-  
-  for (const pattern of venueTypePatterns) {
-    const match = thread.match(pattern);
-    if (match) {
-      const candidate = match[1].trim().toLowerCase();
-      // Check if it's a room/area within the venue
-      const roomTypes = ['clubhouse', 'ballroom', 'banquet hall', 'conference room', 'meeting room', 'lounge', 'room', 'space', 'area'];
-      if (roomTypes.includes(candidate)) {
-        venueRoom = capitalize(candidate);
-      } else {
-        venueType = capitalize(candidate);
+  if (!venueType && !venueRoom) {
+    const venueTypePatterns = [
+      /\b(?:it'?s|it is|we have|the|at)\s+(?:the\s+)?(clubhouse|ballroom|banquet hall|conference room|meeting room|lounge|bar|restaurant|outdoor|patio|garden|pool|beach|park|venue|hall|room|space|area)/i,
+      /\b(?:venue|location|place)\s+(?:is|type|kind)\s+(?:a|an|the)?\s*(clubhouse|ballroom|banquet hall|conference room|meeting room|lounge|bar|restaurant|outdoor|patio|garden|pool|beach|park|venue|hall|room|space|area)/i,
+    ];
+    
+    for (const pattern of venueTypePatterns) {
+      const match = thread.match(pattern);
+      if (match) {
+        const candidate = match[1].trim().toLowerCase();
+        // Check if it's a room/area within the venue
+        const roomTypes = ['clubhouse', 'ballroom', 'banquet hall', 'conference room', 'meeting room', 'lounge', 'room', 'space', 'area'];
+        if (roomTypes.includes(candidate)) {
+          venueRoom = capitalize(candidate);
+          console.log('[lead-thread-parser] Extracted venue room:', venueRoom, 'from match:', match[0]);
+        } else {
+          venueType = capitalize(candidate);
+          console.log('[lead-thread-parser] Extracted venue type:', venueType, 'from match:', match[0]);
+        }
+        break;
       }
-      break;
     }
   }
   
-  // Also check for venue room in context of venue name
+  // Also check for venue room in context of venue name (e.g., "It's the clubhouse")
   if (venueName && !venueRoom) {
     const roomContextPattern = /\b(?:it'?s|it is|we have|the)\s+(?:the\s+)?(clubhouse|ballroom|banquet hall|conference room|meeting room|lounge|room|space|area)/i;
     const roomMatch = thread.match(roomContextPattern);
     if (roomMatch) {
       venueRoom = capitalize(roomMatch[1].trim());
+      console.log('[lead-thread-parser] Extracted venue room from context:', venueRoom, 'from match:', roomMatch[0]);
+    }
+  }
+  
+  // Also check standalone "It's the clubhouse" pattern
+  if (!venueRoom) {
+    const standaloneRoomPattern = /\b(?:it'?s|it is)\s+(?:the\s+)?(clubhouse|ballroom|banquet hall|conference room|meeting room|lounge|room|space|area)\b/i;
+    const standaloneMatch = thread.match(standaloneRoomPattern);
+    if (standaloneMatch) {
+      venueRoom = capitalize(standaloneMatch[1].trim());
+      console.log('[lead-thread-parser] Extracted venue room (standalone):', venueRoom, 'from match:', standaloneMatch[0]);
     }
   }
 
@@ -1481,8 +1526,18 @@ function normalizeFlexibleDate(value: string): string | null {
     sanitized = sanitized.replace(regex, full);
   }
 
-  const parsed = new Date(sanitized);
-  if (!isNaN(parsed.getTime())) {
+  // Try to parse the date - if no year is provided, assume current year
+  let parsed = new Date(sanitized);
+  
+  // If parsing failed or year is 1901 (default for dates without year), try adding current year
+  if (isNaN(parsed.getTime()) || parsed.getFullYear() === 1901) {
+    // Try adding current year if not present
+    const currentYear = new Date().getFullYear();
+    const withYear = `${sanitized} ${currentYear}`;
+    parsed = new Date(withYear);
+  }
+  
+  if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
     return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()))
       .toISOString()
       .split('T')[0];

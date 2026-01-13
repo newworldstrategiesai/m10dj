@@ -1,15 +1,17 @@
 'use client';
 
 import { ThemeProvider } from 'next-themes';
-import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useEffect, useState, useRef } from 'react';
+import { createClient } from '@/utils/supabase/client';
 
 export default function ThemeProviderWrapper({ children }: { children: React.ReactNode }) {
   const [defaultTheme, setDefaultTheme] = useState<'light' | 'dark' | 'system'>('light'); // Default to light for non-logged-in users
   const [forcedTheme, setForcedTheme] = useState<'light' | 'dark' | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     setMounted(true);
     
     // Check if we're on the requests page - if so, don't apply theme (requests page handles its own dark mode)
@@ -27,12 +29,19 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
       return;
     }
     
-    const supabase = createClientComponentClient();
+    const supabase = createClient();
     
     // Load theme preference from admin settings
     async function loadThemePreference() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        // Handle AbortError gracefully (component unmounted or request cancelled)
+        if (sessionError && (sessionError.name === 'AbortError' || sessionError.message?.includes('aborted'))) {
+          return;
+        }
+        
+        if (!isMountedRef.current) return;
         
         if (!session) {
           // No session, default to light mode but allow users to toggle
@@ -85,11 +94,17 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
             }
           }
         }
-      } catch (error) {
-        console.error('Error loading theme preference:', error);
-        // Fall back to light mode but allow users to toggle
-        setDefaultTheme('light');
-        setForcedTheme(undefined);
+      } catch (error: any) {
+        // Handle AbortError gracefully (component unmounted or request cancelled)
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          return;
+        }
+        if (isMountedRef.current) {
+          console.error('Error loading theme preference:', error);
+          // Fall back to light mode but allow users to toggle
+          setDefaultTheme('light');
+          setForcedTheme(undefined);
+        }
       }
     }
 
@@ -97,6 +112,8 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
     
     // Listen for auth state changes to update theme when user logs in/out
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMountedRef.current) return;
+      
       if (!session) {
         // User logged out, default to light mode but allow toggling
         setDefaultTheme('light');
@@ -111,20 +128,27 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
               'Authorization': `Bearer ${session.access_token}`,
             },
           });
-          if (response.ok) {
+          if (response.ok && isMountedRef.current) {
             const data = await response.json();
             const theme = data.settings?.app_theme;
             if (theme && (theme === 'light' || theme === 'dark' || theme === 'system')) {
               setDefaultTheme(theme);
             }
           }
-        } catch (error) {
-          console.error('Error loading theme preference after login:', error);
+        } catch (error: any) {
+          // Handle AbortError gracefully
+          if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+            return;
+          }
+          if (isMountedRef.current) {
+            console.error('Error loading theme preference after login:', error);
+          }
         }
       }
     });
     
     return () => {
+      isMountedRef.current = false;
       subscription?.unsubscribe();
     };
   }, []);

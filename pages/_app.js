@@ -17,11 +17,46 @@ export default function App({ Component, pageProps }) {
   // This is a known issue where Next.js uses fetchPriority but React expects fetchpriority (lowercase)
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Global error handler for unhandled AbortErrors from Supabase auth
+      const handleUnhandledError = (event) => {
+        const error = event.error || event.reason;
+        if (error && (error.name === 'AbortError' || error.message?.includes('aborted') || error.message?.includes('signal is aborted'))) {
+          // Suppress AbortError - it's expected when components unmount or requests are cancelled
+          event.preventDefault();
+          return true;
+        }
+        return false;
+      };
+
+      window.addEventListener('error', handleUnhandledError);
+      window.addEventListener('unhandledrejection', handleUnhandledError);
+
       // Suppress console.error warnings
       const originalError = console.error;
       console.error = (...args) => {
-        // Filter out fetchPriority warnings from Next.js Image component
+        // Filter out AbortError warnings from Supabase auth
         const message = args[0];
+        const isAbortError = (
+          (typeof message === 'string' && (
+            message.includes('AbortError') || 
+            message.includes('signal is aborted') ||
+            message.includes('aborted without reason')
+          )) ||
+          (message && typeof message === 'object' && (
+            (message.toString && message.toString().includes('AbortError')) ||
+            (message.name === 'AbortError') ||
+            (message.message && typeof message.message === 'string' && (
+              message.message.includes('AbortError') || 
+              message.message.includes('signal is aborted')
+            ))
+          ))
+        );
+
+        if (isAbortError) {
+          return; // Suppress AbortError warnings
+        }
+
+        // Filter out fetchPriority warnings from Next.js Image component
         const shouldSuppress = (
           (typeof message === 'string' && (
             message.includes('fetchPriority') || 
@@ -58,6 +93,8 @@ export default function App({ Component, pageProps }) {
       };
       
       return () => {
+        window.removeEventListener('error', handleUnhandledError);
+        window.removeEventListener('unhandledrejection', handleUnhandledError);
         console.error = originalError;
         console.warn = originalWarn;
       };

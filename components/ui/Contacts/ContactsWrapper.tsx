@@ -368,17 +368,38 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
 
   // Check if user is platform admin
   useEffect(() => {
+    let isMounted = true;
+
     const checkAdminStatus = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        // Handle AbortError gracefully (component unmounted or request cancelled)
+        if (userError && (userError.name === 'AbortError' || userError.message?.includes('aborted'))) {
+          return;
+        }
+        
+        if (!isMounted) return;
+        
         if (user?.email) {
           setIsAdmin(isPlatformAdmin(user.email));
         }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
+      } catch (error: any) {
+        // Handle AbortError gracefully
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          return;
+        }
+        if (isMounted) {
+          console.error('Error checking admin status:', error);
+        }
       }
     };
+    
     checkAdminStatus();
+
+    return () => {
+      isMounted = false;
+    };
   }, [supabase]);
 
   useEffect(() => {

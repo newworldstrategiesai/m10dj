@@ -608,10 +608,18 @@ export default function FloatingAdminAssistant() {
       eventDate: 'event_date',
       venueName: 'venue_name',
       venueAddress: 'venue_address',
+      venueType: 'venue_type',
+      venueRoom: 'venue_room',
       eventTime: 'event_time',
       endTime: 'end_time',
+      setupTime: 'setup_time',
+      guestArrivalTime: 'guest_arrival_time',
       guestCount: 'guest_count',
       budgetRange: 'budget_range',
+      referralSource: 'referral_source',
+      eventOccasion: 'event_occasion',
+      eventFor: 'event_for',
+      isSurprise: 'is_surprise',
     };
     return mapping[fieldKey] || fieldKey;
   };
@@ -823,11 +831,28 @@ export default function FloatingAdminAssistant() {
       };
       
       // Only include fields that should be updated
+      // For new fields (fields that don't exist in existing contact), automatically include them
+      // For existing fields, only include if user explicitly chose 'update' or 'new'
       Object.entries(allDetectedFields).forEach(([key, value]) => {
+        if (!value) return; // Skip empty values
+        
         const choice = fieldUpdateChoices[key];
-        if (value && (choice === 'update' || choice === 'new')) {
+        const existingValue = existingContact ? (existingContact[getContactFieldName(key)] || null) : null;
+        const isNewField = !existingValue || existingValue === null || existingValue === '';
+        
+        // Include if:
+        // 1. User explicitly chose 'update' or 'new', OR
+        // 2. It's a new field (doesn't exist in contact) and user hasn't explicitly chosen 'keep'
+        if (choice === 'update' || choice === 'new' || (isNewField && choice !== 'keep')) {
           fieldsToUse[key] = value;
         }
+      });
+      
+      console.log('[FloatingAdminAssistant] 📋 Fields being sent to API:', {
+        allDetectedFields: Object.keys(allDetectedFields).filter(k => allDetectedFields[k as keyof typeof allDetectedFields]),
+        fieldUpdateChoices,
+        fieldsToUse: Object.keys(fieldsToUse),
+        fieldsToUseValues: fieldsToUse
       });
       
       setImportStatus({ state: 'processing', step: 'Importing contact data...' });

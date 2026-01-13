@@ -211,6 +211,7 @@ async function updateOrCreateLinkedProjects(
   contactData: {
     event_time?: string | null;
     end_time?: string | null;
+    setup_time?: string | null;
     venue_name?: string | null;
     venue_address?: string | null;
     venue_type?: string | null;
@@ -223,10 +224,19 @@ async function updateOrCreateLinkedProjects(
   adminClient: any
 ) {
   try {
-    // Get the contact to find email and other details
+    console.log('[updateOrCreateLinkedProjects] 🚀 Starting event creation/update for contact:', contactId);
+    console.log('[updateOrCreateLinkedProjects] 📋 Contact data received:', {
+      event_date: contactData.event_date,
+      event_time: contactData.event_time,
+      venue_name: contactData.venue_name,
+      event_type: contactData.event_type,
+      guest_count: contactData.guest_count
+    });
+    
+    // Get the contact to find email and other details, including event_date
     const result = await (adminClient as any)
       .from('contacts')
-      .select('email_address, first_name, last_name, organization_id')
+      .select('email_address, first_name, last_name, organization_id, event_date')
       .eq('id', contactId)
       .single();
     const contact = result.data as { 
@@ -234,10 +244,11 @@ async function updateOrCreateLinkedProjects(
       first_name: string | null;
       last_name: string | null;
       organization_id: string | null;
+      event_date: string | null;
     } | null;
 
     if (!contact) {
-      console.log('[updateOrCreateLinkedProjects] Contact not found');
+      console.log('[updateOrCreateLinkedProjects] ❌ Contact not found');
       return;
     }
 
@@ -258,27 +269,42 @@ async function updateOrCreateLinkedProjects(
     });
 
     // Find projects linked to this contact by contact_id (preferred), email, or submission_id
+    // Build query with OR conditions to find events by any linking method
     let projectsQuery = adminClient
       .from('events')
       .select('id, start_time, end_time, venue_name, venue_address, event_date, contact_id, submission_id, client_email');
 
-    // First try to match by contact_id (most reliable)
+    // Build OR condition for multiple matching methods
+    const orConditions: string[] = [];
     if (contactId) {
-      projectsQuery = projectsQuery.eq('contact_id', contactId);
-    } else if (email) {
-      // Fallback to email matching
-      projectsQuery = projectsQuery.eq('client_email', email);
-    } else {
-      // Last resort: match by submission_id
-      projectsQuery = projectsQuery.eq('submission_id', contactId);
+      orConditions.push(`contact_id.eq.${contactId}`);
+    }
+    if (email) {
+      orConditions.push(`client_email.eq.${email}`);
+    }
+    if (contactId) {
+      orConditions.push(`submission_id.eq.${contactId}`);
+    }
+    
+    if (orConditions.length > 0) {
+      projectsQuery = projectsQuery.or(orConditions.join(','));
     }
 
-    // If we have an event date, try to match by date for more precise matching
+    // If we have an event date, also filter by date for more precise matching
+    // But don't make it required - we want to find events even if date doesn't match exactly
     if (contactData.event_date) {
-      projectsQuery = projectsQuery.eq('event_date', contactData.event_date);
+      // Note: We're not filtering by date here to be more lenient
+      // We'll check dates in the results instead
+      console.log('[updateOrCreateLinkedProjects] 📅 Event date provided:', contactData.event_date);
     }
 
     const { data: projects, error: projectsError } = await projectsQuery;
+    
+    console.log('[updateOrCreateLinkedProjects] 🔎 Query result:', {
+      found: projects?.length || 0,
+      error: projectsError?.message || null,
+      projects: projects?.map((p: any) => ({ id: p.id, event_date: p.event_date, contact_id: p.contact_id })) || []
+    });
 
     if (projectsError) {
       console.error('[updateOrCreateLinkedProjects] Error finding projects:', projectsError);
@@ -287,7 +313,7 @@ async function updateOrCreateLinkedProjects(
 
     if (projects && projects.length > 0) {
       // Update existing projects
-      console.log(`[updateOrCreateLinkedProjects] Found ${projects.length} project(s) to update`);
+      console.log(`[updateOrCreateLinkedProjects] ✅ Found ${projects.length} existing project(s), updating...`);
 
       const projectUpdates: Record<string, any> = {
         updated_at: new Date().toISOString(),
@@ -299,6 +325,9 @@ async function updateOrCreateLinkedProjects(
       }
       if (contactData.end_time) {
         projectUpdates.end_time = contactData.end_time;
+      }
+      if (contactData.setup_time) {
+        projectUpdates.setup_time = contactData.setup_time;
       }
       if (contactData.venue_name) {
         projectUpdates.venue_name = contactData.venue_name;
@@ -324,28 +353,40 @@ async function updateOrCreateLinkedProjects(
         const { error: updateError } = await (adminClient
           .from('events') as any)
           .update(projectUpdates)
-          .eq('client_email', email);
+          .in('id', projects.map((p: any) => p.id)); // Update all matched projects
 
         if (updateError) {
-          console.error('[updateOrCreateLinkedProjects] Error updating projects:', updateError);
+          console.error('[updateOrCreateLinkedProjects] ❌ Error updating projects:', updateError);
         } else {
-          console.log(`[updateOrCreateLinkedProjects] Successfully updated ${projects.length} project(s)`);
+          console.log(`[updateOrCreateLinkedProjects] ✅ Successfully updated ${projects.length} project(s)`);
         }
       }
-    } else if (contactData.event_date || contactData.venue_name || contactData.event_type) {
-      // Create new event if we have event information but no existing event
-      console.log('[updateOrCreateLinkedProjects] 📅 No existing projects found, creating new event');
-      console.log('[updateOrCreateLinkedProjects] Event data available:', {
-        event_date: contactData.event_date,
-        venue_name: contactData.venue_name,
-        event_type: contactData.event_type,
-        contact_id: contactId,
-        email: email
-      });
+    } else {
+      // Check if we have enough data to create an event
+      const hasEventData = !!(contactData.event_date || contactData.venue_name || contactData.event_type || contactData.event_time || contactData.guest_count);
+      
+      if (hasEventData) {
+        // Create new event if we have event information but no existing event
+        console.log('[updateOrCreateLinkedProjects] 📅 No existing projects found, creating new event');
+        console.log('[updateOrCreateLinkedProjects] Event data available:', {
+          event_date: contactData.event_date,
+          venue_name: contactData.venue_name,
+          event_type: contactData.event_type,
+          event_time: contactData.event_time,
+          guest_count: contactData.guest_count,
+          contact_id: contactId,
+          email: email
+        });
       
       const clientName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Client';
       const eventType = contactData.event_type || 'other';
-      const eventDate = contactData.event_date || new Date().toISOString().split('T')[0];
+      // Use contactData.event_date if provided, otherwise try contact.event_date from DB, otherwise use today
+      const eventDate = contactData.event_date || contact.event_date || new Date().toISOString().split('T')[0];
+      console.log('[updateOrCreateLinkedProjects] 📅 Final event_date to use:', {
+        from_contactData: contactData.event_date,
+        from_contact_db: contact.event_date,
+        final: eventDate
+      });
       const venue = contactData.venue_name ? ` - ${contactData.venue_name}` : '';
       
       const eventName = `${clientName} - ${eventType}${venue}`;
@@ -360,13 +401,14 @@ async function updateOrCreateLinkedProjects(
         event_date: eventDate,
         start_time: contactData.event_time || null,
         end_time: contactData.end_time || null,
+        setup_time: contactData.setup_time || null,
         venue_name: contactData.venue_name || null,
         venue_address: contactData.venue_address || null,
         venue_type: contactData.venue_type || null,
         venue_room: contactData.venue_room || null,
         number_of_guests: contactData.guest_count || null,
         status: 'confirmed',
-        notes: `Auto-generated from thread import on ${new Date().toLocaleDateString()}.`,
+        special_requests: `Auto-generated from thread import on ${new Date().toLocaleDateString()}.`,
       };
 
       if (contact.organization_id) {
@@ -392,9 +434,12 @@ async function updateOrCreateLinkedProjects(
           venue: newEvent?.venue_name
         });
       }
+    } else {
+      console.log('[updateOrCreateLinkedProjects] ⚠️ No event data available, skipping event creation');
     }
+  }
   } catch (error) {
-    console.error('[updateOrCreateLinkedProjects] Unexpected error:', error);
+    console.error('[updateOrCreateLinkedProjects] ❌ Unexpected error:', error);
   }
 }
 
@@ -939,6 +984,16 @@ export default async function handler(
     }
 
     if (existingContact) {
+      console.log('[lead-import-thread] 📥 Received overrides:', JSON.stringify(overrides, null, 2));
+      console.log('[lead-import-thread] 📥 Parsed contact data:', {
+        referralSource: parsed.contact.referralSource,
+        eventOccasion: parsed.contact.eventOccasion,
+        eventFor: parsed.contact.eventFor,
+        isSurprise: parsed.contact.isSurprise,
+        venueRoom: parsed.contact.venueRoom,
+        venueType: parsed.contact.venueType,
+      });
+      
       // Check for duplicate messages in existing notes
       const existingNotes = existingContact.notes || '';
       const isDuplicate = checkForDuplicateMessages(existingNotes, conversationText);
@@ -1077,43 +1132,82 @@ export default async function handler(
         }
       }
 
-      if (parsed.contact.venueType) {
-        if (!existingContact.venue_type || existingContact.venue_type.trim() === '') {
-          updatePayload.venue_type = parsed.contact.venueType;
+      // Use overrides if provided, otherwise use parsed data
+      const venueTypeToUse = overrides?.venueType !== undefined ? overrides.venueType : parsed.contact.venueType;
+      const venueRoomToUse = overrides?.venueRoom !== undefined ? overrides.venueRoom : parsed.contact.venueRoom;
+      const guestArrivalTimeToUse = overrides?.guestArrivalTime !== undefined ? overrides.guestArrivalTime : parsed.contact.guestArrivalTime;
+      const eventOccasionToUse = overrides?.eventOccasion !== undefined ? overrides.eventOccasion : parsed.contact.eventOccasion;
+      const eventForToUse = overrides?.eventFor !== undefined ? overrides.eventFor : parsed.contact.eventFor;
+      const isSurpriseToUse = overrides?.isSurprise !== undefined ? (overrides.isSurprise === 'true' || overrides.isSurprise === true) : parsed.contact.isSurprise;
+      const referralSourceToUse = overrides?.referralSource !== undefined ? overrides.referralSource : parsed.contact.referralSource;
+      const budgetRangeToUse = overrides?.budgetRange !== undefined ? overrides.budgetRange : parsed.contact.budgetRange;
+
+      // Update venue_type if we have new data and existing is null/empty, or if override is provided
+      if (venueTypeToUse) {
+        const existingValue = existingContact.venue_type?.trim() || '';
+        if (!existingValue || overrides?.venueType !== undefined) {
+          updatePayload.venue_type = venueTypeToUse;
+          console.log('[lead-import-thread] Updating venue_type:', venueTypeToUse, overrides?.venueType !== undefined ? '(from override)' : '(from parsed)');
         }
       }
 
-      if (parsed.contact.venueRoom) {
-        if (!existingContact.venue_room || existingContact.venue_room.trim() === '') {
-          updatePayload.venue_room = parsed.contact.venueRoom;
+      // Update venue_room if we have new data and existing is null/empty, or if override is provided
+      if (venueRoomToUse) {
+        const existingValue = existingContact.venue_room?.trim() || '';
+        if (!existingValue || overrides?.venueRoom !== undefined) {
+          updatePayload.venue_room = venueRoomToUse;
+          console.log('[lead-import-thread] Updating venue_room:', venueRoomToUse, overrides?.venueRoom !== undefined ? '(from override)' : '(from parsed)');
         }
       }
 
-      if (parsed.contact.guestArrivalTime) {
-        if (!existingContact.guest_arrival_time) {
-          updatePayload.guest_arrival_time = normalizeTime(parsed.contact.guestArrivalTime);
+      // Update guest_arrival_time if we have new data, or if override is provided
+      if (guestArrivalTimeToUse) {
+        if (!existingContact.guest_arrival_time || overrides?.guestArrivalTime !== undefined) {
+          updatePayload.guest_arrival_time = normalizeTime(guestArrivalTimeToUse);
+          console.log('[lead-import-thread] Updating guest_arrival_time:', guestArrivalTimeToUse, overrides?.guestArrivalTime !== undefined ? '(from override)' : '(from parsed)');
         }
       }
 
-      if (parsed.contact.eventOccasion) {
-        if (!existingContact.event_occasion || existingContact.event_occasion.trim() === '') {
-          updatePayload.event_occasion = parsed.contact.eventOccasion;
+      // Update event_occasion if we have new data and existing is null/empty, or if override is provided
+      if (eventOccasionToUse) {
+        const existingValue = existingContact.event_occasion?.trim() || '';
+        if (!existingValue || overrides?.eventOccasion !== undefined) {
+          updatePayload.event_occasion = eventOccasionToUse;
+          console.log('[lead-import-thread] Updating event_occasion:', eventOccasionToUse, overrides?.eventOccasion !== undefined ? '(from override)' : '(from parsed)');
         }
       }
 
-      if (parsed.contact.eventFor) {
-        if (!existingContact.event_for || existingContact.event_for.trim() === '') {
-          updatePayload.event_for = parsed.contact.eventFor;
+      // Update event_for if we have new data and existing is null/empty, or if override is provided
+      if (eventForToUse) {
+        const existingValue = existingContact.event_for?.trim() || '';
+        if (!existingValue || overrides?.eventFor !== undefined) {
+          updatePayload.event_for = eventForToUse;
+          console.log('[lead-import-thread] Updating event_for:', eventForToUse, overrides?.eventFor !== undefined ? '(from override)' : '(from parsed)');
         }
       }
 
-      if (parsed.contact.isSurprise !== null && existingContact.is_surprise === null) {
-        updatePayload.is_surprise = parsed.contact.isSurprise;
+      // Update is_surprise if we have new data and existing is null, or if override is provided
+      if (isSurpriseToUse !== null && (existingContact.is_surprise === null || overrides?.isSurprise !== undefined)) {
+        const isSurpriseValue = typeof isSurpriseToUse === 'boolean' ? isSurpriseToUse : (isSurpriseToUse === 'true' || isSurpriseToUse === true);
+        updatePayload.is_surprise = isSurpriseValue;
+        console.log('[lead-import-thread] Updating is_surprise:', isSurpriseValue, overrides?.isSurprise !== undefined ? '(from override)' : '(from parsed)');
       }
 
-      if (parsed.contact.referralSource) {
-        if (!existingContact.referral_source || existingContact.referral_source.trim() === '') {
-          updatePayload.referral_source = parsed.contact.referralSource;
+      // Update referral_source if we have new data and existing is null/empty, or if override is provided
+      if (referralSourceToUse) {
+        const existingValue = existingContact.referral_source?.trim() || '';
+        if (!existingValue || overrides?.referralSource !== undefined) {
+          updatePayload.referral_source = referralSourceToUse;
+          console.log('[lead-import-thread] Updating referral_source:', referralSourceToUse, overrides?.referralSource !== undefined ? '(from override)' : '(from parsed)');
+        }
+      }
+
+      // Update budget_range if we have new data and existing is null/empty, or if override is provided
+      if (budgetRangeToUse) {
+        const existingValue = existingContact.budget_range?.trim() || '';
+        if (!existingValue || overrides?.budgetRange !== undefined) {
+          updatePayload.budget_range = budgetRangeToUse;
+          console.log('[lead-import-thread] Updating budget_range:', budgetRangeToUse, overrides?.budgetRange !== undefined ? '(from override)' : '(from parsed)');
         }
       }
 
@@ -1275,6 +1369,14 @@ export default async function handler(
       console.log('[lead-import-thread] Contact updated successfully:', data.id);
 
       // Update or create linked projects/events
+      const eventDateForProject = data.event_date || eventDateToUse || parsed.contact.eventDate || null;
+      console.log('[lead-import-thread] 📅 Event date for project creation:', {
+        from_updated_contact: data.event_date,
+        from_eventDateToUse: eventDateToUse,
+        from_parsed: parsed.contact.eventDate,
+        final: eventDateForProject
+      });
+      
       await updateOrCreateLinkedProjects(data.id, {
         event_time: data.event_time,
         end_time: data.end_time,
@@ -1283,7 +1385,7 @@ export default async function handler(
         venue_type: data.venue_type,
         venue_room: data.venue_room,
         email_address: data.email_address,
-        event_date: data.event_date || eventDateToUse || null, // Use updated event_date or fallback to parsed date
+        event_date: eventDateForProject, // Use updated event_date or fallback to parsed date
         event_type: data.event_type,
         guest_count: data.guest_count,
       }, adminClient as any);
@@ -1623,6 +1725,7 @@ export default async function handler(
           await updateOrCreateLinkedProjects(newContact.id, {
             event_time: newContact.event_time,
             end_time: newContact.end_time,
+            setup_time: newContact.setup_time,
             venue_name: newContact.venue_name,
             venue_address: newContact.venue_address,
             venue_type: newContact.venue_type,

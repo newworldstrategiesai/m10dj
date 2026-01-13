@@ -65,13 +65,21 @@ export async function isAdminEmail(userEmail: string | null | undefined): Promis
     });
 
     if (error) {
+      // Handle AbortError gracefully (component unmounted or request cancelled)
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        return isAdminEmailFallback(userEmail);
+      }
       console.error('Error checking admin role:', error);
       // Fallback to hardcoded list during migration period
       return isAdminEmailFallback(userEmail);
     }
 
     return data === true;
-  } catch (error) {
+  } catch (error: any) {
+    // Handle AbortError gracefully (component unmounted or request cancelled)
+    if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+      return isAdminEmailFallback(userEmail);
+    }
     console.error('Error in isAdminEmail:', error);
     // Fallback during migration
     return isAdminEmailFallback(userEmail);

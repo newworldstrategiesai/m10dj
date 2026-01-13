@@ -55,6 +55,11 @@ export async function getCurrentOrganization(
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
+    // Handle AbortError gracefully (component unmounted or request cancelled)
+    if (userError && (userError.name === 'AbortError' || userError.message?.includes('aborted'))) {
+      return null;
+    }
+    
     if (userError || !user) {
       return null;
     }
@@ -67,7 +72,8 @@ export async function getCurrentOrganization(
       .maybeSingle();
 
     // Log RLS policy errors for debugging (but don't throw - these are expected if user has no org)
-    if (orgError && orgError.code !== 'PGRST116') {
+    // Skip AbortError logging as it's expected during component unmount
+    if (orgError && orgError.code !== 'PGRST116' && orgError.name !== 'AbortError' && !orgError.message?.includes('aborted')) {
       // PGRST116 is "not found" which is expected, but other errors might indicate RLS issues
       console.warn('Error querying organizations by owner_id:', orgError);
     }
@@ -83,7 +89,8 @@ export async function getCurrentOrganization(
         .maybeSingle();
 
       // Log membership query errors for debugging
-      if (membershipError && membershipError.code !== 'PGRST116') {
+      // Skip AbortError logging as it's expected during component unmount
+      if (membershipError && membershipError.code !== 'PGRST116' && membershipError.name !== 'AbortError' && !membershipError.message?.includes('aborted')) {
         console.warn('Error querying organization_members:', membershipError);
       }
 
@@ -95,7 +102,8 @@ export async function getCurrentOrganization(
           .eq('id', membership.organization_id)
           .maybeSingle();
 
-        if (memberOrgError && memberOrgError.code !== 'PGRST116') {
+        // Skip AbortError logging as it's expected during component unmount
+        if (memberOrgError && memberOrgError.code !== 'PGRST116' && memberOrgError.name !== 'AbortError' && !memberOrgError.message?.includes('aborted')) {
           console.warn('Error querying organization by membership:', memberOrgError);
         }
 
@@ -111,7 +119,11 @@ export async function getCurrentOrganization(
     }
 
     return org as Organization;
-  } catch (error) {
+  } catch (error: any) {
+    // Handle AbortError gracefully (component unmounted or request cancelled)
+    if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+      return null;
+    }
     console.error('Error getting current organization:', error);
     return null;
   }

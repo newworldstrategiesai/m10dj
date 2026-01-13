@@ -4,6 +4,7 @@ import { Save, Loader2, DollarSign, Package, Plus, AlertTriangle, CheckCircle, T
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/router';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 
@@ -614,10 +615,12 @@ export default function AdminPricing() {
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                                   Description
                                 </label>
-                                <Input
+                                <Textarea
                                   value={item.description}
                                   onChange={(e) => updateBreakdown(pkgNum as 1 | 2 | 3, idx, 'description', e.target.value)}
                                   placeholder="Description of this item"
+                                  rows={2}
+                                  className="resize-none"
                                 />
                               </div>
                             </div>
@@ -685,10 +688,12 @@ export default function AdminPricing() {
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Description
                         </label>
-                        <Input
+                        <Textarea
                           value={addon.description}
                           onChange={(e) => updateAddon(idx, 'description', e.target.value)}
                           placeholder="Description of this add-on"
+                          rows={2}
+                          className="resize-none"
                         />
                       </div>
                     </div>

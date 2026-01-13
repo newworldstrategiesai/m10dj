@@ -28,6 +28,11 @@ export async function getCurrentOrganization(
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
+    // Handle AbortError gracefully (component unmounted or request cancelled)
+    if (userError && (userError.name === 'AbortError' || userError.message?.includes('aborted'))) {
+      return null;
+    }
+    
     if (userError || !user) {
       return null;
     }
@@ -82,7 +87,11 @@ export async function getCurrentOrganization(
     }
 
     return org as Organization;
-  } catch (error) {
+  } catch (error: any) {
+    // Handle AbortError gracefully (component unmounted or request cancelled)
+    if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+      return null;
+    }
     console.error('Error getting current organization:', error);
     return null;
   }

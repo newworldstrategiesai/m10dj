@@ -69,7 +69,26 @@ export default async function handler(req, res) {
       session.user.email
     );
 
-    const { contactId, projectId, invoiceTitle, invoiceDate, dueDate, subtotal, lineItems, notes } = req.body;
+    const { 
+      contactId, 
+      projectId, 
+      invoiceTitle, 
+      invoiceDate, 
+      dueDate, 
+      subtotal, 
+      taxRate,
+      taxAmount,
+      discountType,
+      discountValue,
+      discountAmount,
+      totalAmount,
+      paymentTerms,
+      lateFeePercentage,
+      depositAmount,
+      lineItems, 
+      notes,
+      internalNotes
+    } = req.body;
 
     if (!contactId) {
       return res.status(400).json({ error: 'Contact ID is required' });
@@ -118,8 +137,18 @@ export default async function handler(req, res) {
       project = projectData;
     }
 
+    // Ensure organization_id is set (required for RLS)
+    const finalOrgId = contact.organization_id || orgId;
+    if (!finalOrgId && !isAdmin) {
+      console.error('Missing organization_id for invoice creation:', { contactId, orgId, contactOrgId: contact.organization_id });
+      return res.status(400).json({ 
+        error: 'Organization ID is required',
+        details: 'Contact does not have an organization assigned. Please assign the contact to an organization first.'
+      });
+    }
+
     // Generate invoice number
-    const invoiceNumber = await generateInvoiceNumber(adminSupabase, contact.organization_id || orgId);
+    const invoiceNumber = await generateInvoiceNumber(adminSupabase, finalOrgId);
 
     // Calculate dates
     const today = new Date();
@@ -132,8 +161,10 @@ export default async function handler(req, res) {
 
     // Calculate amounts
     const subtotalValue = subtotal || 0;
-    const taxAmount = 0; // Can be calculated if tax_rate is provided
-    const totalAmount = subtotalValue + taxAmount;
+    const taxRateValue = taxRate || null;
+    const taxAmountValue = taxAmount || (taxRate ? subtotalValue * (taxRate / 100) : 0);
+    const discountAmountValue = discountAmount || 0;
+    const totalAmountValue = totalAmount || (subtotalValue + taxAmountValue - discountAmountValue);
 
     // Build invoice title
     const clientName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Client';
@@ -143,7 +174,7 @@ export default async function handler(req, res) {
     const invoiceData = {
       contact_id: contact.id,
       project_id: projectId || null,
-      organization_id: contact.organization_id || orgId,
+      organization_id: finalOrgId, // Always set organization_id
       invoice_number: invoiceNumber,
       invoice_status: 'Draft',
       invoice_title: title,
@@ -151,14 +182,27 @@ export default async function handler(req, res) {
       invoice_date: invoiceDateValue,
       due_date: dueDateValue,
       subtotal: subtotalValue,
-      tax_amount: taxAmount,
-      total_amount: totalAmount,
-      balance_due: totalAmount,
+      tax_rate: taxRateValue !== null && taxRateValue !== undefined ? parseFloat(taxRateValue) : null,
+      tax_amount: taxAmountValue,
+      discount_amount: discountAmountValue,
+      total_amount: totalAmountValue,
+      balance_due: totalAmountValue,
       amount_paid: 0,
+      payment_terms: paymentTerms || null,
+      late_fee_percentage: lateFeePercentage !== null && lateFeePercentage !== undefined && lateFeePercentage !== '' ? parseFloat(lateFeePercentage) : null,
+      deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
       line_items: lineItems || [],
       notes: notes || null,
-      created_by: session.user.id
+      internal_notes: internalNotes || null
     };
+
+    console.log('[create-invoice] Attempting to create invoice:', {
+      contact_id: invoiceData.contact_id,
+      organization_id: invoiceData.organization_id,
+      invoice_number: invoiceData.invoice_number,
+      isAdmin,
+      orgId
+    });
 
     const { data: invoice, error: invoiceError } = await adminSupabase
       .from('invoices')
@@ -167,10 +211,22 @@ export default async function handler(req, res) {
       .single();
 
     if (invoiceError) {
-      console.error('Error creating invoice:', invoiceError);
+      console.error('Error creating invoice:', {
+        error: invoiceError,
+        code: invoiceError.code,
+        message: invoiceError.message,
+        details: invoiceError.details,
+        hint: invoiceError.hint,
+        invoiceData: {
+          ...invoiceData,
+          line_items: invoiceData.line_items ? '[...]' : null
+        }
+      });
       return res.status(500).json({ 
         error: 'Failed to create invoice',
-        details: invoiceError.message 
+        details: invoiceError.message,
+        code: invoiceError.code,
+        hint: invoiceError.hint
       });
     }
 

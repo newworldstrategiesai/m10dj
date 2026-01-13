@@ -43,15 +43,28 @@ export default function AdminLayout({ children, title, description, showPageTitl
 
   // Check product context and fetch organization brand colors on mount
   useEffect(() => {
+    let isMounted = true;
+    
     const checkProductContextAndBrandColors = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        // Handle AbortError gracefully (component unmounted or request cancelled)
+        if (userError && (userError.name === 'AbortError' || userError.message?.includes('aborted'))) {
+          return;
+        }
+        
+        if (!isMounted) return;
+        
         if (user?.user_metadata?.product_context) {
           setProductContext(user.user_metadata.product_context);
         }
 
         // Fetch organization to get brand colors
         const org = await getCurrentOrganization(supabase as any) as any;
+        
+        if (!isMounted) return;
+        
         if (org) {
           setOrganization(org);
           
@@ -69,11 +82,22 @@ export default function AdminLayout({ children, title, description, showPageTitl
             secondary2
           });
         }
-      } catch (error) {
-        console.error('Error checking product context or fetching organization:', error);
+      } catch (error: any) {
+        // Handle AbortError gracefully (component unmounted or request cancelled)
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          return;
+        }
+        if (isMounted) {
+          console.error('Error checking product context or fetching organization:', error);
+        }
       }
     };
+    
     checkProductContextAndBrandColors();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [supabase]);
 
   // Determine logo based on theme and product context

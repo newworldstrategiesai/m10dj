@@ -21,7 +21,9 @@ import {
   Calendar,
   MapPin,
   DollarSign,
-  CreditCard
+  CreditCard,
+  Plus,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -108,6 +110,8 @@ interface Contact {
   last_name: string;
   email_address: string;
   event_type: string;
+  event_date?: string | null;
+  organization_id?: string | null;
 }
 
 interface Event {
@@ -126,6 +130,9 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const isMountedRef = useRef(true);
+  
+  // Get contactId from router query params
+  const contactIdFromQuery = router.query?.contactId as string | undefined;
   const [formData, setFormData] = useState({
     contactId: '',
     projectId: '',
@@ -137,8 +144,52 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
       return date.toISOString().split('T')[0];
     })(),
     subtotal: '',
-    notes: ''
+    taxRate: '',
+    taxAmount: '',
+    discountType: 'percentage' as 'percentage' | 'flat' | '',
+    discountValue: '',
+    discountAmount: '',
+    paymentTerms: 'Net 30',
+    lateFeePercentage: '',
+    depositAmount: '',
+    notes: '',
+    internalNotes: ''
   });
+  const [lineItems, setLineItems] = useState<Array<{
+    description: string;
+    quantity: number;
+    rate: number;
+    amount: number;
+    source?: 'package' | 'addon' | 'custom'; // Track where the item came from
+    selectedItemId?: string; // Track which package/addon was selected
+  }>>([{
+    description: '',
+    quantity: 1,
+    rate: 0,
+    amount: 0,
+    source: 'custom'
+  }]);
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<Array<{
+    id: string;
+    name: string;
+    price: number;
+    description?: string;
+    type: 'package' | 'addon';
+    breakdown?: Array<{ item: string; description: string; price: number }>;
+  }>>([]);
+  const [showAutocomplete, setShowAutocomplete] = useState<number | null>(null); // Track which line item is showing autocomplete
+  const [packages, setPackages] = useState<Array<{
+    id: string;
+    name: string;
+    price: number;
+    breakdown: Array<{ item: string; description: string; price: number }>;
+  }>>([]);
+  const [addons, setAddons] = useState<Array<{
+    id: string;
+    name: string;
+    price: number;
+    description: string;
+  }>>([]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -149,6 +200,27 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
     };
   }, []);
 
+  // Close autocomplete when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.autocomplete-container')) {
+        setShowAutocomplete(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Set contactId when router query becomes available
+  useEffect(() => {
+    if (contactIdFromQuery && contactIdFromQuery !== formData.contactId) {
+      console.log('[Invoice Form] Setting contactId from router query:', contactIdFromQuery);
+      setFormData(prev => ({ ...prev, contactId: contactIdFromQuery }));
+    }
+  }, [contactIdFromQuery, formData.contactId]);
+
   // Refetch events when contact is selected to find their specific events
   useEffect(() => {
     if (formData.contactId && selectedContact) {
@@ -156,30 +228,338 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
     }
   }, [formData.contactId]);
 
+  // Update due date when contact is selected (use contact's event_date if available)
+  useEffect(() => {
+    if (formData.contactId && !formData.projectId) {
+      const contact = contacts.find(c => c.id === formData.contactId);
+      // Only update if no event is selected and contact has event_date
+      if (contact?.event_date) {
+        setFormData(prev => ({ ...prev, dueDate: contact.event_date! }));
+      }
+    }
+  }, [formData.contactId, formData.projectId, contacts]);
+
+  // Update due date when event is selected (default to event date - takes precedence)
+  useEffect(() => {
+    if (formData.projectId && events.length > 0) {
+      const selectedEvent = events.find(e => e.id === formData.projectId);
+      if (selectedEvent?.event_date) {
+        setFormData(prev => ({ ...prev, dueDate: selectedEvent.event_date }));
+      }
+    }
+  }, [formData.projectId, events]);
+
+  // Calculate subtotal, tax, discount, and total from line items
+  useEffect(() => {
+    const subtotal = lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const taxRate = parseFloat(formData.taxRate) || 0;
+    const taxAmount = subtotal * (taxRate / 100);
+    const discountType = formData.discountType;
+    const discountValue = parseFloat(formData.discountValue) || 0;
+    let discountAmount = 0;
+    
+    if (discountType === 'percentage' && discountValue > 0) {
+      discountAmount = subtotal * (discountValue / 100);
+    } else if (discountType === 'flat' && discountValue > 0) {
+      discountAmount = discountValue;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      subtotal: subtotal.toFixed(2),
+      taxAmount: taxAmount.toFixed(2),
+      discountAmount: discountAmount.toFixed(2)
+    }));
+  }, [lineItems, formData.taxRate, formData.discountType, formData.discountValue]);
+
+  // Add line item
+  const addLineItem = () => {
+    setLineItems(prev => [...prev, {
+      description: '',
+      quantity: 1,
+      rate: 0,
+      amount: 0,
+      source: 'custom' as const
+    }]);
+  };
+
+  // Handle package selection - expands package into multiple line items
+  const handlePackageSelect = (packageId: string, index: number) => {
+    const selectedPackage = packages.find(p => p.id === packageId);
+    if (!selectedPackage) return;
+
+    // If package has breakdown, add each item as a separate line item
+    if (selectedPackage.breakdown && selectedPackage.breakdown.length > 0) {
+      const newItems = selectedPackage.breakdown.map(item => ({
+        description: `${item.item}${item.description ? ` - ${item.description}` : ''}`,
+        quantity: 1,
+        rate: item.price || 0,
+        amount: item.price || 0,
+        source: 'package' as const,
+        selectedItemId: packageId
+      }));
+
+      // Replace current item and add the rest
+      setLineItems(prev => {
+        const updated = [...prev];
+        updated[index] = newItems[0];
+        // Insert remaining items after current index
+        newItems.slice(1).forEach((item, i) => {
+          updated.splice(index + i + 1, 0, item);
+        });
+        return updated;
+      });
+    } else {
+      // No breakdown, just use package name and price
+      setLineItems(prev => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          description: selectedPackage.name,
+          rate: selectedPackage.price,
+          amount: selectedPackage.price,
+          source: 'package',
+          selectedItemId: packageId
+        };
+        return updated;
+      });
+    }
+  };
+
+  // Handle addon selection - populates single line item
+  const handleAddonSelect = (addonId: string, index: number) => {
+    const selectedAddon = addons.find(a => a.id === addonId);
+    if (!selectedAddon) return;
+
+    setLineItems(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        description: selectedAddon.name, // Just the name, not the description
+        rate: selectedAddon.price,
+        amount: selectedAddon.price,
+        source: 'addon',
+        selectedItemId: addonId
+      };
+      return updated;
+    });
+    setShowAutocomplete(null); // Close autocomplete
+  };
+
+  // Search packages and addons for autocomplete
+  const searchItems = (query: string): Array<{
+    id: string;
+    name: string;
+    price: number;
+    description?: string;
+    type: 'package' | 'addon';
+    breakdown?: Array<{ item: string; description: string; price: number }>;
+  }> => {
+    if (!query || query.trim().length === 0) {
+      return [];
+    }
+
+    const normalizedQuery = query.toLowerCase().trim();
+    const results: Array<{
+      id: string;
+      name: string;
+      price: number;
+      description?: string;
+      type: 'package' | 'addon';
+      breakdown?: Array<{ item: string; description: string; price: number }>;
+      score: number; // Add score for sorting
+    }> = [];
+
+    // Search packages
+    packages.forEach(pkg => {
+      const nameLower = pkg.name.toLowerCase();
+      let score = 0;
+      
+      // Exact match gets highest score
+      if (nameLower === normalizedQuery) {
+        score = 100;
+      } else if (nameLower.startsWith(normalizedQuery)) {
+        score = 80;
+      } else if (nameLower.includes(normalizedQuery)) {
+        score = 60;
+      }
+      
+      // Also check if query matches "package" + number pattern
+      const packageNumMatch = nameLower.match(/package\s*(\d+)/);
+      const queryNumMatch = normalizedQuery.match(/(\d+)/);
+      if (packageNumMatch && queryNumMatch && packageNumMatch[1] === queryNumMatch[1]) {
+        score = Math.max(score, 70);
+      }
+
+      if (score > 0) {
+        results.push({
+          id: pkg.id,
+          name: pkg.name,
+          price: pkg.price,
+          type: 'package',
+          breakdown: pkg.breakdown,
+          score
+        });
+      }
+    });
+
+    // Search addons
+    console.log('[Invoice Form] Searching addons:', {
+      addonsCount: addons.length,
+      query: normalizedQuery,
+      addons: addons.map(a => ({ id: a.id, name: a.name }))
+    });
+    
+    addons.forEach(addon => {
+      if (!addon || !addon.name) {
+        console.warn('[Invoice Form] Invalid addon:', addon);
+        return;
+      }
+      
+      const nameLower = addon.name.toLowerCase();
+      const descLower = (addon.description || '').toLowerCase();
+      let score = 0;
+      
+      // Exact match gets highest score
+      if (nameLower === normalizedQuery) {
+        score = 100;
+      } else if (nameLower.startsWith(normalizedQuery)) {
+        score = 80;
+      } else if (nameLower.includes(normalizedQuery)) {
+        score = 60;
+      } else if (descLower.includes(normalizedQuery)) {
+        score = 40;
+      }
+
+      if (score > 0) {
+        console.log('[Invoice Form] Addon match found:', {
+          name: addon.name,
+          score,
+          query: normalizedQuery
+        });
+        results.push({
+          id: addon.id || `addon-${addon.name}`,
+          name: addon.name,
+          price: addon.price,
+          description: addon.description,
+          type: 'addon',
+          score
+        });
+      }
+    });
+
+    // Sort by score (highest first), then alphabetically
+    return results
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      })
+      .map(({ score, ...item }) => item); // Remove score from final result
+  };
+
+  // Handle description input change with autocomplete
+  const handleDescriptionChange = (index: number, value: string) => {
+    updateLineItem(index, 'description', value);
+    
+    // Show autocomplete if there are matches
+    if (value.trim().length > 0) {
+      const suggestions = searchItems(value);
+      console.log('[Invoice Form] Search query:', value, 'Found suggestions:', suggestions.length, 'Packages:', packages.length, 'Addons:', addons.length);
+      setAutocompleteSuggestions(suggestions);
+      setShowAutocomplete(suggestions.length > 0 ? index : null);
+    } else {
+      setShowAutocomplete(null);
+      setAutocompleteSuggestions([]);
+    }
+  };
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = (suggestion: {
+    id: string;
+    name: string;
+    price: number;
+    description?: string;
+    type: 'package' | 'addon';
+    breakdown?: Array<{ item: string; description: string; price: number }>;
+  }, index: number) => {
+    if (suggestion.type === 'package') {
+      handlePackageSelect(suggestion.id, index);
+    } else {
+      handleAddonSelect(suggestion.id, index);
+    }
+    setShowAutocomplete(null);
+    setAutocompleteSuggestions([]);
+  };
+
+  // Remove line item
+  const removeLineItem = (index: number) => {
+    setLineItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Update line item
+  const updateLineItem = (index: number, field: string, value: string | number) => {
+    setLineItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value } as any;
+      // Recalculate amount if quantity or rate changed
+      if (field === 'quantity' || field === 'rate') {
+        updated[index].amount = (updated[index].quantity || 0) * (updated[index].rate || 0);
+      }
+      // If description is manually edited, mark as custom
+      if (field === 'description' && updated[index].source !== 'custom') {
+        updated[index].source = 'custom';
+      }
+      return updated;
+    });
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
       
-      // Fetch contacts
-      const { data: contactsData, error: contactsError } = await supabase
-        .from('contacts')
-        .select('id, first_name, last_name, email_address, event_type')
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(100);
+      // Fetch contacts using API route to handle RLS properly
+      let contactsData: Contact[] = [];
+      try {
+        const contactsResponse = await fetch('/api/get-contacts?limit=200');
+        if (contactsResponse.ok) {
+          const contactsResult = await contactsResponse.json();
+          contactsData = contactsResult.contacts || [];
+          console.log('[Invoice Form] Loaded contacts:', contactsData.length);
+        } else {
+          console.error('[Invoice Form] Failed to fetch contacts:', contactsResponse.status);
+          // Fallback to direct query
+          const { data, error } = await supabase
+            .from('contacts')
+            .select('id, first_name, last_name, email_address, event_type, event_date')
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(200);
+          
+          if (!error && data) {
+            contactsData = data;
+          } else if (error) {
+            console.error('[Invoice Form] Direct contacts query error:', error);
+          }
+        }
+      } catch (error) {
+        console.error('[Invoice Form] Error fetching contacts:', error);
+        // Fallback to direct query
+        const { data, error: directError } = await supabase
+          .from('contacts')
+          .select('id, first_name, last_name, email_address, event_type, event_date')
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(200);
+        
+        if (!directError && data) {
+          contactsData = data;
+        }
+      }
 
       if (!isMountedRef.current) return;
-
-      if (contactsError) {
-        // Handle AbortError gracefully
-        if (contactsError.name === 'AbortError' || contactsError.message?.includes('aborted')) {
-          return;
-        }
-        throw contactsError;
-      }
       
       if (isMountedRef.current) {
-        setContacts(contactsData || []);
+        setContacts(contactsData);
       }
 
       // Fetch events with all linking fields
@@ -204,13 +584,112 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
         setEvents(eventsData || []);
       }
 
-      // Check if contactId is in query params
-      if (isMountedRef.current && typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        const contactIdParam = urlParams.get('contactId');
-        if (contactIdParam) {
-          setFormData(prev => ({ ...prev, contactId: contactIdParam }));
+      // Fetch pricing config for packages and addons
+      // Use API route to bypass RLS restrictions
+      let pricingConfig = null;
+      try {
+        const pricingResponse = await fetch('/api/admin/pricing');
+        if (pricingResponse.ok) {
+          pricingConfig = await pricingResponse.json();
+          console.log('[Invoice Form] Loaded pricing config:', {
+            hasPackages: !!(pricingConfig.package1_price || pricingConfig.package2_price || pricingConfig.package3_price),
+            hasAddons: Array.isArray(pricingConfig.addons) && pricingConfig.addons.length > 0,
+            package1Breakdown: pricingConfig.package1_breakdown?.length || 0,
+            package2Breakdown: pricingConfig.package2_breakdown?.length || 0,
+            package3Breakdown: pricingConfig.package3_breakdown?.length || 0,
+            addonsCount: pricingConfig.addons?.length || 0
+          });
+        } else {
+          console.warn('[Invoice Form] Failed to fetch pricing config:', pricingResponse.status);
         }
+      } catch (error) {
+        console.error('[Invoice Form] Error fetching pricing config:', error);
+      }
+
+      if (!isMountedRef.current) return;
+
+      if (pricingConfig) {
+        // Build packages array from pricing config
+        const packagesList: Array<{
+          id: string;
+          name: string;
+          price: number;
+          breakdown: Array<{ item: string; description: string; price: number }>;
+        }> = [];
+
+        // Package 1
+        if (pricingConfig.package1_price) {
+          const breakdown = (pricingConfig.package1_breakdown as any) || [];
+          packagesList.push({
+            id: 'package1',
+            name: 'Package 1',
+            price: parseFloat(pricingConfig.package1_price),
+            breakdown: Array.isArray(breakdown) ? breakdown : []
+          });
+        }
+
+        // Package 2
+        if (pricingConfig.package2_price) {
+          const breakdown = (pricingConfig.package2_breakdown as any) || [];
+          packagesList.push({
+            id: 'package2',
+            name: 'Package 2',
+            price: parseFloat(pricingConfig.package2_price),
+            breakdown: Array.isArray(breakdown) ? breakdown : []
+          });
+        }
+
+        // Package 3
+        if (pricingConfig.package3_price) {
+          const breakdown = (pricingConfig.package3_breakdown as any) || [];
+          packagesList.push({
+            id: 'package3',
+            name: 'Package 3',
+            price: parseFloat(pricingConfig.package3_price),
+            breakdown: Array.isArray(breakdown) ? breakdown : []
+          });
+        }
+
+        if (isMountedRef.current) {
+          setPackages(packagesList);
+        }
+
+        // Build addons array - ensure each addon has an id
+        // Use default addons if database is empty
+        const addonsList = (pricingConfig.addons as any) || [];
+        const defaultAddons = [
+          { id: 'dj_mc_4hours', name: 'Up to 4 Hours DJ/MC Services (A La Carte)', description: 'Professional DJ and MC services for up to 4 hours. Includes sound system, microphones, and music library. Perfect for receptions.', price: 1600 },
+          { id: 'dj_mc_3hours', name: 'Up to 3 Hours DJ/MC Services (A La Carte)', description: 'Professional DJ and MC services for up to 3 hours. Includes sound system, microphones, and music library.', price: 1300 },
+          { id: 'ceremony_audio', name: 'Ceremony Audio', description: 'Additional hour of DJ services + ceremony music programming. Perfect for couples who want professional audio for their ceremony.', price: 500 },
+          { id: 'dance_floor_lighting', name: 'Dance Floor Lighting', description: 'Multi-color LED fixtures for lighting the dance floor, audience, and/or performer. Creates an energetic atmosphere.', price: 400 },
+          { id: 'uplighting', name: 'Uplighting (16 fixtures)', description: 'Up to 16 multicolor LED fixtures to enhance your venue ambiance. Perfect for creating a romantic or energetic atmosphere.', price: 350 },
+          { id: 'monogram', name: 'Monogram Projection', description: 'A custom graphic showing the names or initials of newlyweds. The font and look is fully customizable to fit clients needs. Monograms can be projected on any floor or wall.', price: 350 },
+          { id: 'speaker_rental', name: 'Speaker Rental (Basic Setup)', description: 'Professional speaker system rental with built-in mixer. Perfect for cocktail hours, ceremonies, or separate areas. Includes microphone input.', price: 250 },
+          { id: 'additional_speaker', name: 'Cocktail Hour Audio', description: 'Extra powered speaker with built-in mixer for microphone or auxiliary inputs. Perfect for cocktail hours that are separate from the reception.', price: 250 },
+          { id: 'additional_hour', name: 'Additional Hour(s)', description: 'Additional DJ/MC services beyond the package hours. Perfect for extended receptions or events.', price: 400 },
+          { id: 'dancing_on_clouds', name: 'Dancing on the Clouds', description: 'Sophisticated dry ice effect for first dance and special moments. Creates a magical, floor-hugging cloud effect.', price: 500 }
+        ];
+        
+        // Use database addons if available, otherwise use defaults
+        const finalAddonsList = (Array.isArray(addonsList) && addonsList.length > 0) ? addonsList : defaultAddons;
+        
+        if (isMountedRef.current) {
+          // Ensure each addon has an id (use existing id or generate from name)
+          const addonsWithIds = finalAddonsList.map((addon: any, index: number) => ({
+            id: addon.id || `addon-${index}` || addon.name?.toLowerCase().replace(/\s+/g, '_') || `addon_${index}`,
+            name: addon.name || '',
+            price: typeof addon.price === 'number' ? addon.price : parseFloat(addon.price) || 0,
+            description: addon.description || ''
+          }));
+          setAddons(addonsWithIds);
+          console.log('[Invoice Form] Set addons:', addonsWithIds.length, addonsWithIds.length > 0 ? '(using ' + (Array.isArray(addonsList) && addonsList.length > 0 ? 'database' : 'default') + ' addons)' : '(empty)', addonsWithIds);
+        }
+      }
+
+      // Set contactId from query params (use router.query for Next.js)
+      if (isMountedRef.current && contactIdFromQuery) {
+        console.log('[Invoice Form] Setting contactId from query:', contactIdFromQuery);
+        setFormData(prev => ({ ...prev, contactId: contactIdFromQuery }));
       }
     } catch (error: any) {
       // Handle AbortError gracefully - don't log or show error
@@ -291,6 +770,14 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
     setSubmitting(true);
 
     try {
+      const subtotal = parseFloat(formData.subtotal) || 0;
+      const taxRate = parseFloat(formData.taxRate) || null;
+      const taxAmount = parseFloat(formData.taxAmount) || 0;
+      const discountType = formData.discountType || null;
+      const discountValue = formData.discountType ? parseFloat(formData.discountValue) || 0 : null;
+      const discountAmount = parseFloat(formData.discountAmount) || 0;
+      const totalAmount = subtotal + taxAmount - discountAmount;
+
       const response = await fetch('/api/invoices/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -300,21 +787,31 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
           invoiceTitle: formData.invoiceTitle || null,
           invoiceDate: formData.invoiceDate,
           dueDate: formData.dueDate,
-          subtotal: formData.subtotal ? parseFloat(formData.subtotal) : 0,
-          lineItems: formData.subtotal ? [{
-            description: 'Services',
-            quantity: 1,
-            rate: parseFloat(formData.subtotal),
-            amount: parseFloat(formData.subtotal)
-          }] : [],
-          notes: formData.notes || null
+          subtotal: subtotal,
+          taxRate: taxRate,
+          taxAmount: taxAmount,
+          discountType: discountType,
+          discountValue: discountValue,
+          discountAmount: discountAmount,
+          totalAmount: totalAmount,
+          paymentTerms: formData.paymentTerms || null,
+          lateFeePercentage: formData.lateFeePercentage ? parseFloat(formData.lateFeePercentage) : null,
+          depositAmount: formData.depositAmount ? parseFloat(formData.depositAmount) : null,
+          lineItems: lineItems.length > 0 ? lineItems
+            .filter(item => item.description.trim() !== '')
+            .map(({ source, selectedItemId, ...item }) => item) : [], // Remove internal fields
+          notes: formData.notes || null,
+          internalNotes: formData.internalNotes || null
         })
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create invoice');
+        const errorMessage = data.details 
+          ? `${data.error}: ${data.details}` 
+          : data.error || 'Failed to create invoice';
+        throw new Error(errorMessage);
       }
 
       // Redirect to the new invoice
@@ -325,7 +822,16 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
         return; // Don't show error for aborted requests
       }
       console.error('Error creating invoice:', error);
-      alert(error.message || 'Failed to create invoice');
+      
+      // Show user-friendly error message
+      const errorMessage = error.message || 'Failed to create invoice';
+      alert(errorMessage);
+      
+      // Log full error details for debugging
+      if (error.message?.includes('Organization ID is required')) {
+        const selectedContact = contacts.find(c => c.id === formData.contactId);
+        console.error('⚠️ Organization ID missing. Contact organization_id:', selectedContact?.organization_id || 'N/A', 'Contact ID:', formData.contactId);
+      }
     } finally {
       if (isMountedRef.current) {
         setSubmitting(false);
@@ -508,35 +1014,320 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
             </div>
           </div>
 
-          {/* Subtotal */}
+          {/* Line Items */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Line Items
+              </label>
+              <button
+                type="button"
+                onClick={addLineItem}
+                className="flex items-center gap-1 text-sm text-[#fcba00] hover:text-[#e5a800] font-medium"
+              >
+                <Plus className="h-4 w-4" />
+                Add Line Item
+              </button>
+            </div>
+            
+            {lineItems.length === 0 ? (
+              <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                <p className="text-gray-500 text-sm">No line items added yet</p>
+                <p className="text-gray-400 text-xs mt-1">Click "Add Line Item" to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {lineItems.map((item, index) => (
+                  <div key={index} className="relative autocomplete-container">
+                    <div className="grid grid-cols-12 gap-2 items-end p-3 border border-gray-200 rounded-lg bg-gray-50">
+                      <div className="col-span-5">
+                        <label className="block text-xs text-gray-600 mb-1">Item Name</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={item.description}
+                            onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                            onFocus={() => {
+                              if (item.description.trim().length > 0) {
+                                const suggestions = searchItems(item.description);
+                                setAutocompleteSuggestions(suggestions);
+                                setShowAutocomplete(suggestions.length > 0 ? index : null);
+                              }
+                            }}
+                            onBlur={() => {
+                              // Delay closing to allow click on suggestion
+                              setTimeout(() => setShowAutocomplete(null), 200);
+                            }}
+                            placeholder="Type item name (e.g., Package 1, Uplighting...)"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                          />
+                          {/* Autocomplete Suggestions */}
+                          {showAutocomplete === index && autocompleteSuggestions.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {autocompleteSuggestions.map((suggestion) => (
+                                <button
+                                  key={`${suggestion.type}-${suggestion.id}`}
+                                  type="button"
+                                  onClick={() => handleSuggestionSelect(suggestion, index)}
+                                  className="w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-900">{suggestion.name}</p>
+                                      {suggestion.description && (
+                                        <p className="text-xs text-gray-500">{suggestion.description}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-gray-500">
+                                        {suggestion.type === 'package' ? 'Package' : 'Add-on'}
+                                      </span>
+                                      <span className="text-sm font-semibold text-gray-900">
+                                        ${suggestion.price.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-600 mb-1">Quantity</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={item.quantity}
+                        onChange={(e) => updateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-600 mb-1">Rate</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={item.rate}
+                        onChange={(e) => updateLineItem(index, 'rate', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-600 mb-1">Amount</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={item.amount.toFixed(2)}
+                        readOnly
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded bg-gray-100"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <button
+                        type="button"
+                        onClick={() => removeLineItem(index)}
+                        className="w-full h-10 flex items-center justify-center text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Totals Display */}
+            <div className="mt-4 flex justify-end">
+              <div className="w-80 space-y-2">
+                <div className="flex justify-between items-center py-2 border-t border-gray-300">
+                  <span className="text-sm font-semibold text-gray-700">Subtotal:</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    ${parseFloat(formData.subtotal || '0').toFixed(2)}
+                  </span>
+                </div>
+                
+                {/* Tax */}
+                {(parseFloat(formData.taxRate) || 0) > 0 && (
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-sm text-gray-600">
+                      Tax ({formData.taxRate}%):
+                    </span>
+                    <span className="text-sm text-gray-700">
+                      ${parseFloat(formData.taxAmount || '0').toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Discount */}
+                {formData.discountType && parseFloat(formData.discountValue || '0') > 0 && (
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-sm text-gray-600">
+                      Discount {formData.discountType === 'percentage' ? `(${formData.discountValue}%)` : '(Flat)'}:
+                    </span>
+                    <span className="text-sm text-red-600">
+                      -${parseFloat(formData.discountAmount || '0').toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between items-center py-2 border-t-2 border-gray-400">
+                  <span className="text-lg font-bold text-gray-900">Total:</span>
+                  <span className="text-xl font-bold text-gray-900">
+                    ${(parseFloat(formData.subtotal || '0') + parseFloat(formData.taxAmount || '0') - parseFloat(formData.discountAmount || '0')).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tax & Discount Section */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Tax Rate */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Tax Rate (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={formData.taxRate}
+                onChange={(e) => setFormData(prev => ({ ...prev, taxRate: e.target.value }))}
+                placeholder="0.00"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+              />
+            </div>
+
+            {/* Discount */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Discount
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={formData.discountType}
+                  onChange={(e) => setFormData(prev => ({ ...prev, discountType: e.target.value as 'percentage' | 'flat' | '', discountValue: '' }))}
+                  className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                >
+                  <option value="">None</option>
+                  <option value="percentage">Percentage</option>
+                  <option value="flat">Flat Amount</option>
+                </select>
+                {formData.discountType && (
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.discountValue}
+                    onChange={(e) => setFormData(prev => ({ ...prev, discountValue: e.target.value }))}
+                    placeholder={formData.discountType === 'percentage' ? '0.00%' : '$0.00'}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Terms & Settings */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Payment Terms */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Payment Terms
+              </label>
+              <select
+                value={formData.paymentTerms}
+                onChange={(e) => setFormData(prev => ({ ...prev, paymentTerms: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+              >
+                <option value="Due on Receipt">Due on Receipt</option>
+                <option value="Net 15">Net 15</option>
+                <option value="Net 30">Net 30</option>
+                <option value="Net 45">Net 45</option>
+                <option value="Net 60">Net 60</option>
+                <option value="Custom">Custom</option>
+              </select>
+              {formData.paymentTerms === 'Custom' && (
+                <input
+                  type="text"
+                  value={formData.paymentTerms}
+                  onChange={(e) => setFormData(prev => ({ ...prev, paymentTerms: e.target.value }))}
+                  placeholder="Enter custom payment terms"
+                  className="w-full mt-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                />
+              )}
+            </div>
+
+            {/* Late Fee Percentage */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Late Fee Percentage (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={formData.lateFeePercentage}
+                onChange={(e) => setFormData(prev => ({ ...prev, lateFeePercentage: e.target.value }))}
+                placeholder="0.00"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Deposit Amount */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Subtotal (Optional)
+              Deposit Amount (Optional)
             </label>
             <input
               type="number"
               step="0.01"
               min="0"
-              value={formData.subtotal}
-              onChange={(e) => setFormData(prev => ({ ...prev, subtotal: e.target.value }))}
+              value={formData.depositAmount}
+              onChange={(e) => setFormData(prev => ({ ...prev, depositAmount: e.target.value }))}
               placeholder="0.00"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
             />
-            <p className="text-sm text-gray-500 mt-1">Leave blank to create a draft invoice with $0.00</p>
+            <p className="text-xs text-gray-500 mt-1">Optional deposit amount for this invoice</p>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Notes (Optional)
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              rows={3}
-              placeholder="Internal notes for this invoice..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
-            />
+          {/* Notes Section */}
+          <div className="grid grid-cols-1 gap-4">
+            {/* Public Notes */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Public Notes (Visible to Client)
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+                placeholder="Notes visible to the client on the invoice..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+              />
+            </div>
+
+            {/* Internal Notes */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Internal Notes (Private)
+              </label>
+              <textarea
+                value={formData.internalNotes}
+                onChange={(e) => setFormData(prev => ({ ...prev, internalNotes: e.target.value }))}
+                rows={3}
+                placeholder="Private notes for internal use only..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+              />
+            </div>
           </div>
 
           {/* Submit Button */}

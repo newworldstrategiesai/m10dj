@@ -22,6 +22,11 @@ export default function ContactsPage() {
         try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
 
+            // Handle AbortError gracefully (component unmounted or request cancelled)
+            if (userError && (userError.name === 'AbortError' || userError.message?.includes('aborted'))) {
+                return;
+            }
+
             if (userError || !user) {
                 router.push('/signin');
                 return;
@@ -64,7 +69,11 @@ export default function ContactsPage() {
                 twilioAuthToken: apiKeysData?.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN
             });
 
-        } catch (error) {
+        } catch (error: any) {
+            // Handle AbortError gracefully (component unmounted or request cancelled)
+            if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+                return;
+            }
             console.error('Error fetching user data:', error);
             router.push('/signin');
         } finally {

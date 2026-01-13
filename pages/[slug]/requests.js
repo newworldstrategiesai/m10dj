@@ -148,34 +148,62 @@ export default function OrganizationRequestsPage() {
   useEffect(() => {
     if (!organization) return;
 
+    let isMounted = true;
+
     async function checkOwnerStatus() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        // Handle AbortError gracefully (component unmounted or request cancelled)
+        if (userError && (userError.name === 'AbortError' || userError.message?.includes('aborted'))) {
+          return;
+        }
+        
+        if (!isMounted) return;
+        
         if (user && organization.owner_id === user.id) {
           setIsOwner(true);
         } else {
           setIsOwner(false);
         }
       } catch (authError) {
-        setIsOwner(false);
+        // Handle AbortError gracefully
+        if (authError?.name === 'AbortError' || authError?.message?.includes('aborted')) {
+          return;
+        }
+        if (isMounted) {
+          setIsOwner(false);
+        }
       }
     }
 
     checkOwnerStatus();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (organization) {
-        if (session?.user && organization.owner_id === session.user.id) {
-          setIsOwner(true);
-        } else {
-          setIsOwner(false);
+    let subscription = null;
+    try {
+      const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (isMounted && organization) {
+          if (session?.user && organization.owner_id === session.user.id) {
+            setIsOwner(true);
+          } else {
+            setIsOwner(false);
+          }
         }
+      });
+      subscription = authSubscription;
+    } catch (error) {
+      // Handle subscription setup errors
+      if (error?.name !== 'AbortError' && !error?.message?.includes('aborted')) {
+        console.error('Error setting up auth subscription:', error);
       }
-    });
+    }
 
     return () => {
-      subscription.unsubscribe();
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
   }, [organization]); // Removed supabase from dependencies - it's stable via useMemo
 

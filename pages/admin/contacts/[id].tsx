@@ -223,7 +223,10 @@ export default function ContactDetailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create event');
+        const errorMsg = data.error || 'Failed to create event';
+        const errorDetails = data.details || data.hint || '';
+        const fullError = errorDetails ? `${errorMsg}: ${errorDetails}` : errorMsg;
+        throw new Error(fullError);
       }
 
       toast({
@@ -237,9 +240,11 @@ export default function ContactDetailPage() {
       await checkEventStatus();
     } catch (error: any) {
       console.error('Error creating event:', error);
+      const errorMessage = error?.message || 'Failed to create event';
+      const errorDetails = error?.details || error?.response?.data?.details || '';
       toast({
         title: "Error",
-        description: error.message || 'Failed to create event',
+        description: errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -351,7 +356,17 @@ export default function ContactDetailPage() {
           return;
         }
         
-      setContact(data);
+      if (data) {
+        const contactData = data as Contact;
+        console.log('[fetchContact] Contact data loaded:', {
+          id: contactData.id,
+          event_date: contactData.event_date,
+          event_time: contactData.event_time,
+          end_time: contactData.end_time,
+          venue_name: contactData.venue_name
+        });
+      }
+      setContact(data as Contact);
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -933,6 +948,40 @@ export default function ContactDetailPage() {
     return new Date(dateString).toISOString().split('T')[0];
   };
 
+  const formatDateForDisplay = (dateString: string | null) => {
+    if (!dateString) return 'Not set';
+    // Handle date strings that are already in YYYY-MM-DD format
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      try {
+        const [year, month, day] = dateString.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        if (isNaN(date.getTime())) return 'Invalid date';
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch (e) {
+        return dateString;
+      }
+    }
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date string:', dateString);
+        return 'Invalid date';
+      }
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (e) {
+      console.warn('Error formatting date:', dateString, e);
+      return dateString; // Fallback to raw string if parsing fails
+    }
+  };
+
 
   if (loading) {
     return (
@@ -1350,7 +1399,12 @@ export default function ContactDetailPage() {
                         onChange={(e) => handleInputChange('event_date', e.target.value)}
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.event_date || 'Not set'}</p>
+                      <p className="text-gray-900">
+                        {contact.event_date ? formatDateForDisplay(contact.event_date) : 'Not set'}
+                        {process.env.NODE_ENV === 'development' && contact.event_date && (
+                          <span className="ml-2 text-xs text-gray-400">({contact.event_date})</span>
+                        )}
+                      </p>
                     )}
                   </div>
                   <div>
