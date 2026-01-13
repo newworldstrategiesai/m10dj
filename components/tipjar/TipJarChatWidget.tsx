@@ -36,6 +36,11 @@ export default function TipJarChatWidget({
   const [isMounted, setIsMounted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const conversationHistoryRef = useRef<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  
+  // Quick action settings from organization data
+  const showQuickActions = organizationData?.requests_assistant_show_quick_actions !== false;
+  const showHasPlayedButton = organizationData?.requests_assistant_quick_action_has_played !== false;
+  const showWhenWillPlayButton = organizationData?.requests_assistant_quick_action_when_will_play !== false;
 
   // Only render on client to avoid hydration mismatch
   useEffect(() => {
@@ -68,24 +73,22 @@ export default function TipJarChatWidget({
     return null;
   }
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+  // Helper function to send a message (used by both form submit and quick action buttons)
+  const sendMessage = async (messageText: string) => {
+    if (!messageText.trim() || isLoading) return;
 
-    const userText = inputValue;
-    setInputValue('');
     setIsLoading(true);
 
     // Add user message to UI
     const userMessage = {
       id: messages.length + 1,
       role: 'user' as const,
-      content: userText,
+      content: messageText,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    conversationHistoryRef.current.push({ role: 'user', content: userText });
+    conversationHistoryRef.current.push({ role: 'user', content: messageText });
 
     try {
       const response = await fetch('/api/tipjar/chat', {
@@ -134,6 +137,19 @@ export default function TipJarChatWidget({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim() || isLoading) return;
+
+    const userText = inputValue;
+    setInputValue('');
+    await sendMessage(userText);
+  };
+
+  const handleQuickAction = async (question: string) => {
+    await sendMessage(question);
   };
 
   const handleOpen = () => {
@@ -344,8 +360,50 @@ export default function TipJarChatWidget({
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Quick Action Buttons */}
+              {showQuickActions && eventQrCode && (showHasPlayedButton || showWhenWillPlayButton) && (
+                <div className={`px-4 pt-4 pb-2 border-t ${themeMode === 'dark' ? 'border-gray-800 bg-black' : 'border-gray-200 bg-white'}`}>
+                  <div className="flex flex-wrap gap-2">
+                    {showHasPlayedButton && (
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAction('Has my song played yet?')}
+                        disabled={isLoading}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                          themeMode === 'dark'
+                            ? 'bg-gray-800 text-gray-200 border border-gray-700 hover:bg-gray-700'
+                            : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        style={{
+                          borderColor: themeMode === 'dark' ? undefined : accentColor + '40',
+                        }}
+                      >
+                        Has my song played yet?
+                      </button>
+                    )}
+                    {showWhenWillPlayButton && (
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAction('When will my song play?')}
+                        disabled={isLoading}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                          themeMode === 'dark'
+                            ? 'bg-gray-800 text-gray-200 border border-gray-700 hover:bg-gray-700'
+                            : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        style={{
+                          borderColor: themeMode === 'dark' ? undefined : accentColor + '40',
+                        }}
+                      >
+                        When will my song play?
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Input */}
-              <form onSubmit={handleSendMessage} className={`p-4 border-t ${themeMode === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-gray-200'}`}>
+              <form onSubmit={handleSendMessage} className={`p-4 ${showQuickActions && eventQrCode && (showHasPlayedButton || showWhenWillPlayButton) ? '' : 'border-t'} ${themeMode === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-gray-200'}`}>
                 <div className="flex gap-2">
                   <input
                     type="text"

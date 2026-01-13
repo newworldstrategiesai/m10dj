@@ -328,6 +328,11 @@ export default function RequestsPageSettings() {
     enable_count: true,
     enable_search: true
   });
+  const [assistantQuickActions, setAssistantQuickActions] = useState({
+    show_quick_actions: true,
+    quick_action_has_played: true,
+    quick_action_when_will_play: true
+  });
   
   // SEO fields
   const [seoFields, setSeoFields] = useState({
@@ -691,6 +696,13 @@ export default function RequestsPageSettings() {
           enable_search: org.requests_assistant_enable_search !== false
         });
         
+        // Set assistant quick action toggles (default to true if not set)
+        setAssistantQuickActions({
+          show_quick_actions: org.requests_assistant_show_quick_actions !== false,
+          quick_action_has_played: org.requests_assistant_quick_action_has_played !== false,
+          quick_action_when_will_play: org.requests_assistant_quick_action_when_will_play !== false
+        });
+        
         // Set header fields
         setHeaderFields({
           requests_header_artist_name: org.requests_header_artist_name || org.name || '',
@@ -1036,6 +1048,9 @@ export default function RequestsPageSettings() {
         requests_assistant_enable_popular: assistantFunctions.enable_popular,
         requests_assistant_enable_count: assistantFunctions.enable_count,
         requests_assistant_enable_search: assistantFunctions.enable_search,
+        requests_assistant_show_quick_actions: assistantQuickActions.show_quick_actions,
+        requests_assistant_quick_action_has_played: assistantQuickActions.quick_action_has_played,
+        requests_assistant_quick_action_when_will_play: assistantQuickActions.quick_action_when_will_play,
         // Header fields
         ...headerFields,
         // Label fields
@@ -4488,6 +4503,75 @@ export default function RequestsPageSettings() {
                                   }}
                                 />
                               </div>
+                            </div>
+                          </div>
+
+                          {/* Quick Action Buttons Section */}
+                          <div className="mt-6 space-y-4">
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                                Quick Action Buttons
+                              </h3>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                                Show quick action buttons in the chat widget that allow users to quickly ask common questions.
+                              </p>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm text-gray-900 dark:text-white">Show Quick Actions</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Enable quick action buttons in the chat widget
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={assistantQuickActions.show_quick_actions}
+                                  onCheckedChange={(checked) => {
+                                    setAssistantQuickActions(prev => ({ ...prev, show_quick_actions: checked }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                />
+                              </div>
+
+                              {assistantQuickActions.show_quick_actions && (
+                                <>
+                                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg ml-4">
+                                    <div className="flex-1">
+                                      <p className="font-medium text-sm text-gray-900 dark:text-white">&quot;Has my song played yet?&quot;</p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Show button to quickly check if user&apos;s song has been played
+                                      </p>
+                                    </div>
+                                    <Switch
+                                      checked={assistantQuickActions.quick_action_has_played}
+                                      onCheckedChange={(checked) => {
+                                        setAssistantQuickActions(prev => ({ ...prev, quick_action_has_played: checked }));
+                                        setError(null);
+                                        setSuccess(false);
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg ml-4">
+                                    <div className="flex-1">
+                                      <p className="font-medium text-sm text-gray-900 dark:text-white">&quot;When will my song play?&quot;</p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Show button to quickly check when user&apos;s song will play
+                                      </p>
+                                    </div>
+                                    <Switch
+                                      checked={assistantQuickActions.quick_action_when_will_play}
+                                      onCheckedChange={(checked) => {
+                                        setAssistantQuickActions(prev => ({ ...prev, quick_action_when_will_play: checked }));
+                                        setError(null);
+                                        setSuccess(false);
+                                      }}
+                                    />
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         </>

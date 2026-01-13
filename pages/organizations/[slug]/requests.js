@@ -47,7 +47,7 @@ export default function OrganizationRequestsPage() {
         console.log('📡 Querying Supabase for organization...');
         const { data: org, error: orgError } = await supabase
           .from('organizations')
-          .select('*, social_links, product_context, requests_assistant_enabled, requests_accent_color, requests_theme_mode') // Explicitly select fields needed for chat widget
+          .select('*, social_links, product_context, requests_assistant_enabled, requests_assistant_show_quick_actions, requests_assistant_quick_action_has_played, requests_assistant_quick_action_when_will_play, requests_accent_color, requests_theme_mode') // Explicitly select fields needed for chat widget
           .eq('slug', slug)
           .maybeSingle(); // Use maybeSingle to avoid errors on not found
         
