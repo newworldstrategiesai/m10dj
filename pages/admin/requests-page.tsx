@@ -4639,7 +4639,7 @@ export default function RequestsPageSettings() {
                             >
                               <iframe
                                 id="live-preview-iframe"
-                                src={`/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}`}
+                                src={getPreviewUrl() || `/${organization?.slug}/requests?preview=true&t=${organization?._lastUpdated || Date.now()}&accentColor=${encodeURIComponent(accentColor)}&buttonStyle=${buttonStyle}&themeMode=${themeMode}&backgroundType=${backgroundType}`}
                                 className="border-0 bg-black"
                                 style={{ 
                                   transform: 'scale(0.73)',
