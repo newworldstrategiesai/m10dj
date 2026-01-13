@@ -34,12 +34,21 @@ export default async function handler(
     }
 
     // Parse the text thread
-    const parsed = parseLeadThread(textThread);
+    let parsed;
+    try {
+      parsed = parseLeadThread(textThread);
+    } catch (parseError: any) {
+      console.error('[parse-text-thread] Error parsing text thread:', parseError);
+      return res.status(400).json({
+        error: 'Failed to parse text thread',
+        details: parseError.message || 'Unknown parsing error'
+      });
+    }
 
-    if (!parsed.contact.firstName && !parsed.contact.lastName && !parsed.contact.email && !parsed.contact.phoneDigits) {
+    if (!parsed || (!parsed.contact.firstName && !parsed.contact.lastName && !parsed.contact.email && !parsed.contact.phoneDigits)) {
       return res.status(400).json({ 
         error: 'Could not extract contact information from text thread',
-        parsed 
+        parsed: parsed || null
       });
     }
 

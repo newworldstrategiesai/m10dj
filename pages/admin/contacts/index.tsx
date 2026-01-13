@@ -47,11 +47,17 @@ export default function ContactsPage() {
             setUser(user);
 
             // Get API keys if they exist (optional for contacts)
-            const { data: apiKeysData } = await supabase
+            // Use maybeSingle() to avoid 406 errors when no row exists
+            const { data: apiKeysData, error: apiKeysError } = await supabase
                 .from('api_keys')
                 .select('twilio_sid, twilio_auth_token')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
+
+            // Only log error if it's not a "not found" error (PGRST116)
+            if (apiKeysError && apiKeysError.code !== 'PGRST116') {
+                console.warn('Error fetching API keys:', apiKeysError.message);
+            }
 
             setApiKeys({
                 twilioSid: apiKeysData?.twilio_sid || process.env.TWILIO_ACCOUNT_SID,
