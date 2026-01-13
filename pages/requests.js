@@ -615,11 +615,12 @@ export function GeneralRequestsPage({
   }, [headerVideoUrl]);
 
   // Determine default request type - if allowedRequestTypes is set, use first allowed type
-  const defaultRequestType = allowedRequestTypes && allowedRequestTypes.length > 0
-    ? allowedRequestTypes[0]
-    : (organizationData?.requests_default_request_type || 'song_request');
-  
-  const [requestType, setRequestType] = useState(defaultRequestType); // 'song_request', 'shoutout', or 'tip'
+  // Use a function initializer to avoid TDZ issues
+  const [requestType, setRequestType] = useState(() => {
+    return allowedRequestTypes && allowedRequestTypes.length > 0
+      ? allowedRequestTypes[0]
+      : (organizationData?.requests_default_request_type || 'song_request');
+  }); // 'song_request', 'shoutout', or 'tip'
   
   // Lock request type if only one type is allowed (e.g., on /bid page)
   useEffect(() => {

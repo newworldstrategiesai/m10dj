@@ -87,6 +87,81 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to fetch contacts' });
     }
 
+    // For super admins, deduplicate contacts by email or phone
+    // This prevents showing multiple entries for the same person
+    let deduplicatedContacts = contacts || [];
+    if (isAdmin && contacts && contacts.length > 0) {
+      const emailMap = new Map(); // Deduplicate by email (most reliable)
+      const phoneMap = new Map(); // Deduplicate by phone (secondary)
+      const processedIds = new Set();
+      
+      // First pass: group by email (most reliable identifier)
+      for (const contact of contacts) {
+        const email = contact.email_address?.toLowerCase()?.trim();
+        if (email) {
+          const existing = emailMap.get(email);
+          if (!existing) {
+            emailMap.set(email, contact);
+            processedIds.add(contact.id);
+          } else {
+            // Keep the contact with more complete data or most recent
+            const contactDate = new Date(contact.created_at || 0);
+            const existingDate = new Date(existing.created_at || 0);
+            if (contactDate > existingDate || 
+                (contact.phone && !existing.phone) ||
+                (contact.organization_id && !existing.organization_id)) {
+              emailMap.set(email, contact);
+            }
+          }
+        }
+      }
+      
+      // Second pass: group remaining contacts by phone (if no email match)
+      for (const contact of contacts) {
+        if (processedIds.has(contact.id)) continue;
+        
+        const phone = contact.phone?.replace(/\D/g, '');
+        if (phone && phone.length >= 10) {
+          const existing = phoneMap.get(phone);
+          if (!existing) {
+            phoneMap.set(phone, contact);
+            processedIds.add(contact.id);
+          } else {
+            // Keep the contact with more complete data or most recent
+            const contactDate = new Date(contact.created_at || 0);
+            const existingDate = new Date(existing.created_at || 0);
+            if (contactDate > existingDate || 
+                (contact.email_address && !existing.email_address) ||
+                (contact.organization_id && !existing.organization_id)) {
+              phoneMap.set(phone, contact);
+            }
+          }
+        }
+      }
+      
+      // Combine email and phone deduplicated contacts, plus any remaining unique contacts
+      deduplicatedContacts = [
+        ...Array.from(emailMap.values()),
+        ...Array.from(phoneMap.values()),
+        ...contacts.filter(c => !processedIds.has(c.id))
+      ];
+      
+      // Sort by created_at descending to maintain chronological order
+      deduplicatedContacts.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        return dateB - dateA;
+      });
+      
+      console.log('Deduplication:', {
+        originalCount: contacts.length,
+        deduplicatedCount: deduplicatedContacts.length,
+        removed: contacts.length - deduplicatedContacts.length,
+        emailMatches: emailMap.size,
+        phoneMatches: phoneMap.size
+      });
+    }
+
     // Get summary statistics
     let summaryQuery = supabase
       .from('contacts_summary')
@@ -102,11 +177,11 @@ export default async function handler(req, res) {
     const { data: summary } = await summaryQuery.single();
 
     res.status(200).json({
-      contacts: contacts || [],
+      contacts: deduplicatedContacts,
       summary: summary || {
-        total_contacts: contacts?.length || 0,
-        new_leads: contacts?.filter(c => c.lead_status === 'New').length || 0,
-        booked_events: contacts?.filter(c => c.lead_status === 'Booked').length || 0,
+        total_contacts: deduplicatedContacts.length,
+        new_leads: deduplicatedContacts.filter(c => c.lead_status === 'New').length,
+        booked_events: deduplicatedContacts.filter(c => c.lead_status === 'Booked').length,
         upcoming_events: 0,
         follow_ups_due: 0
       }
