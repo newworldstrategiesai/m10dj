@@ -236,7 +236,60 @@ export function GeneralRequestsPage({
   allowedRequestTypes = null, // Array of allowed request types (e.g., ['song_request']). If null, all types allowed.
   minimalHeader = false // Use minimal header (for bid page)
 } = {}) {
+  // CRITICAL: Initialize router FIRST before any other code to prevent TDZ errors
   const router = useRouter();
+  
+  // CRITICAL: All hooks (useState, useRef, useMemo, etc.) must be declared BEFORE any useEffect hooks
+  // that use them to prevent Temporal Dead Zone (TDZ) errors
+  
+  // Video-related refs and state (used in early useEffect hooks)
+  const desktopVideoRef = useRef(null); // Ref for desktop video background
+  const mobileVideoRef = useRef(null); // Ref for mobile video background
+  const desktopVideoTimeoutRef = useRef(null); // Ref for desktop video timeout
+  const mobileVideoTimeoutRef = useRef(null); // Ref for mobile video timeout
+  const [videoFailed, setVideoFailed] = useState(false); // Track if video autoplay failed
+  const [videoLoadingTimeout, setVideoLoadingTimeout] = useState(null); // Timeout for video loading
+  const VIDEO_LOAD_TIMEOUT = 10000; // 10 seconds timeout for video loading
+  
+  // Request type state (used early in component)
+  const [requestType, setRequestType] = useState(() => {
+    return allowedRequestTypes && allowedRequestTypes.length > 0
+      ? allowedRequestTypes[0]
+      : (organizationData?.requests_default_request_type || 'song_request');
+  }); // 'song_request', 'shoutout', or 'tip'
+  
+  // Form data and amount state (used in handleRequestTypeChange and other early functions)
+  const [formData, setFormData] = useState({
+    songArtist: '',
+    songTitle: '',
+    recipientName: '',
+    recipientMessage: '',
+    requesterName: '',
+    requesterEmail: '',
+    requesterPhone: '',
+    message: ''
+  });
+  const [amountType, setAmountType] = useState('preset'); // 'preset' or 'custom'
+  const [presetAmount, setPresetAmount] = useState(500); // $5.00 in cents
+  const [customAmount, setCustomAmount] = useState('');
+  const [initialPresetSet, setInitialPresetSet] = useState(false); // Track if initial preset amount has been set
+  const [initialCalculatedMax, setInitialCalculatedMax] = useState(null); // Track the initial max preset we calculated
+  const [userSelectedPreset, setUserSelectedPreset] = useState(false); // Track if user has manually selected a preset amount
+  const [biddingSelectedAmount, setBiddingSelectedAmount] = useState(null); // Amount selected via BiddingAmountSelector (in cents)
+  const [isFastTrack, setIsFastTrack] = useState(false);
+  const [isNext, setIsNext] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [songUrl, setSongUrl] = useState(''); // Keep for submission payload
+  const [extractedSongUrl, setExtractedSongUrl] = useState(''); // Store the URL that was used for extraction
+  const [isExtractedFromLink, setIsExtractedFromLink] = useState(false); // Track if song was extracted from link
+  const [albumArtUrl, setAlbumArtUrl] = useState(null); // Store album art URL from extraction
+  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
+  const [showAutocomplete, setShowAutocomplete] = useState(false); // Show/hide autocomplete suggestions
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1); // Keyboard navigation
+  const songTitleInputRef = useRef(null); // Ref for scrolling to song title field
+  const bundleSongsRef = useRef(null); // Ref for scrolling to bundle songs section
   
   // Read preview parameters from URL (for admin preview)
   const previewAccentColor = router.query.accentColor ? decodeURIComponent(router.query.accentColor) : null;
@@ -473,6 +526,102 @@ export function GeneralRequestsPage({
     effectiveSubtitleShadowColor
   );
   
+  // CRITICAL: Declare all variables used in useEffect hooks BEFORE the hooks
+  // Use useMemo to ensure proper initialization order and prevent TDZ errors
+  // Detect domain context
+  const isTipJarDomain = useMemo(() => 
+    typeof window !== 'undefined' && 
+    (window.location.hostname === 'tipjar.live' || window.location.hostname === 'www.tipjar.live'),
+    []
+  );
+  const isM10Domain = useMemo(() => 
+    typeof window !== 'undefined' && 
+    (window.location.hostname === 'm10djcompany.com' || window.location.hostname === 'www.m10djcompany.com'),
+    []
+  );
+  const isM10Organization = useMemo(() => 
+    organizationData?.slug === 'm10djcompany' || organizationData?.name?.toLowerCase().includes('m10'),
+    [organizationData?.slug, organizationData?.name]
+  );
+  const allowSocialAccountSelector = useMemo(() => 
+    isM10Domain || isM10Organization,
+    [isM10Domain, isM10Organization]
+  );
+  
+  // Get the video URL from organization data (if set) with security checks
+  // This allows each organization to have their own animated header
+  // CRITICAL: Only use video URL if it's explicitly set for THIS organization
+  // Reject any video URLs that look like M10 defaults (djbenmurray, m10djcompany, etc.)
+  const headerVideoUrl = useMemo(() => {
+    let videoUrl = organizationData?.requests_header_video_url || null;
+    
+    // Security check: Block M10-specific video URLs from appearing on other organizations' pages
+    if (videoUrl) {
+      const videoUrlLower = videoUrl.toLowerCase();
+      const isM10Video = videoUrlLower.includes('djbenmurray') || 
+                         videoUrlLower.includes('m10djcompany') ||
+                         videoUrlLower.includes('m10-dj-company') ||
+                         videoUrlLower.includes('ben-murray') ||
+                         videoUrlLower.includes('dj-ben-murray');
+      
+      // Only allow M10 videos on M10 domains OR if this is actually the M10 organization
+      const shouldBlockM10Video = isM10Video && !isM10Domain && !isM10Organization;
+      
+      // On TipJar domain, never show M10 videos unless it's actually the M10 organization
+      const shouldBlockOnTipJar = isTipJarDomain && isM10Video && !isM10Organization;
+      
+      if (shouldBlockM10Video || shouldBlockOnTipJar) {
+        console.warn('🚫 [REQUESTS] Blocked M10-specific video URL from non-M10 organization:', {
+          videoUrl: videoUrl,
+          organizationId: organizationData?.id,
+          organizationName: organizationData?.name,
+          organizationSlug: organizationData?.slug,
+          isTipJarDomain,
+          isM10Domain,
+          isM10Organization
+        });
+        videoUrl = null; // Force fallback to animated gradient
+      }
+    }
+    
+    return videoUrl;
+  }, [organizationData?.requests_header_video_url, organizationData?.id, organizationData?.name, organizationData?.slug, isTipJarDomain, isM10Domain, isM10Organization]);
+  
+  // Use preview value if available, otherwise use organization data, default to 'gradient'
+  const backgroundType = useMemo(() => 
+    previewBackgroundType || organizationData?.requests_background_type || 'gradient',
+    [previewBackgroundType, organizationData?.requests_background_type]
+  );
+  
+  // Only use cover photo if it's actually a custom one (not the default)
+  // If backgroundType is 'none', don't use the default fallback image
+  const hasCustomCoverPhoto = useMemo(() => 
+    organizationCoverPhoto && 
+    organizationCoverPhoto !== DEFAULT_COVER_PHOTO && 
+    !organizationCoverPhoto.includes('DJ-Ben-Murray'),
+    [organizationCoverPhoto]
+  );
+  const coverPhoto = useMemo(() => 
+    hasCustomCoverPhoto ? organizationCoverPhoto : null,
+    [hasCustomCoverPhoto, organizationCoverPhoto]
+  );
+  
+  // Determine what to show as background:
+  // 1. Custom video if set (and not blocked)
+  // 2. Custom cover photo if set (not the default placeholder)
+  // 3. Animated background based on background type (only if not 'none')
+  // 4. Solid color background if backgroundType is 'none' and no custom media
+  const hasCustomVideo = useMemo(() => !!headerVideoUrl, [headerVideoUrl]);
+  const showVideo = useMemo(() => hasCustomVideo, [hasCustomVideo]);
+  const showAnimatedGradient = useMemo(() => 
+    !hasCustomVideo && !hasCustomCoverPhoto && backgroundType !== 'none',
+    [hasCustomVideo, hasCustomCoverPhoto, backgroundType]
+  );
+  const showSolidBackground = useMemo(() => 
+    !hasCustomVideo && !hasCustomCoverPhoto && backgroundType === 'none',
+    [hasCustomVideo, hasCustomCoverPhoto, backgroundType]
+  );
+  
   // Log when organizationData changes
   useEffect(() => {
     console.log('🎨 [GENERAL REQUESTS] GeneralRequestsPage organizationData changed:', {
@@ -485,68 +634,6 @@ export function GeneralRequestsPage({
       organizationDataKeys: organizationData ? Object.keys(organizationData).filter(k => k.startsWith('requests_')) : []
     });
   }, [organizationData]);
-  // Get the video URL from organization data (if set)
-  // This allows each organization to have their own animated header
-  // CRITICAL: Only use video URL if it's explicitly set for THIS organization
-  // Reject any video URLs that look like M10 defaults (djbenmurray, m10djcompany, etc.)
-  let headerVideoUrl = organizationData?.requests_header_video_url || null;
-  
-  // Detect domain context
-  const isTipJarDomain = typeof window !== 'undefined' && 
-    (window.location.hostname === 'tipjar.live' || window.location.hostname === 'www.tipjar.live');
-  const isM10Domain = typeof window !== 'undefined' && 
-    (window.location.hostname === 'm10djcompany.com' || window.location.hostname === 'www.m10djcompany.com');
-  const isM10Organization = organizationData?.slug === 'm10djcompany' || organizationData?.name?.toLowerCase().includes('m10');
-  const allowSocialAccountSelector = isM10Domain || isM10Organization;
-  
-  // Security check: Block M10-specific video URLs from appearing on other organizations' pages
-  if (headerVideoUrl) {
-    const videoUrlLower = headerVideoUrl.toLowerCase();
-    const isM10Video = videoUrlLower.includes('djbenmurray') || 
-                       videoUrlLower.includes('m10djcompany') ||
-                       videoUrlLower.includes('m10-dj-company') ||
-                       videoUrlLower.includes('ben-murray') ||
-                       videoUrlLower.includes('dj-ben-murray');
-    
-    // Only allow M10 videos on M10 domains OR if this is actually the M10 organization
-    const shouldBlockM10Video = isM10Video && !isM10Domain && !isM10Organization;
-    
-    // On TipJar domain, never show M10 videos unless it's actually the M10 organization
-    const shouldBlockOnTipJar = isTipJarDomain && isM10Video && !isM10Organization;
-    
-    if (shouldBlockM10Video || shouldBlockOnTipJar) {
-      console.warn('🚫 [REQUESTS] Blocked M10-specific video URL from non-M10 organization:', {
-        videoUrl: headerVideoUrl,
-        organizationId: organizationData?.id,
-        organizationName: organizationData?.name,
-        organizationSlug: organizationData?.slug,
-        isTipJarDomain,
-        isM10Domain,
-        isM10Organization
-      });
-      headerVideoUrl = null; // Force fallback to animated gradient
-    }
-  }
-  
-  // Determine what to show as background:
-  // 1. Custom video if set (and not blocked)
-  // 2. Custom cover photo if set (not the default placeholder)
-  // 3. Animated background based on background type (only if not 'none')
-  // 4. Solid color background if backgroundType is 'none' and no custom media
-  const hasCustomVideo = !!headerVideoUrl;
-  // Use preview value if available, otherwise use organization data, default to 'gradient'
-  const backgroundType = previewBackgroundType || organizationData?.requests_background_type || 'gradient';
-  
-  // Only use cover photo if it's actually a custom one (not the default)
-  // If backgroundType is 'none', don't use the default fallback image
-  const hasCustomCoverPhoto = organizationCoverPhoto && 
-    organizationCoverPhoto !== DEFAULT_COVER_PHOTO && 
-    !organizationCoverPhoto.includes('DJ-Ben-Murray');
-  const coverPhoto = hasCustomCoverPhoto ? organizationCoverPhoto : null;
-  
-  const showVideo = hasCustomVideo;
-  const showAnimatedGradient = !hasCustomVideo && !hasCustomCoverPhoto && backgroundType !== 'none';
-  const showSolidBackground = !hasCustomVideo && !hasCustomCoverPhoto && backgroundType === 'none';
   
   // Log cover photo and video for debugging
   useEffect(() => {
@@ -627,14 +714,6 @@ export function GeneralRequestsPage({
     }
   }, [headerVideoUrl]);
 
-  // Determine default request type - if allowedRequestTypes is set, use first allowed type
-  // Use a function initializer to avoid TDZ issues
-  const [requestType, setRequestType] = useState(() => {
-    return allowedRequestTypes && allowedRequestTypes.length > 0
-      ? allowedRequestTypes[0]
-      : (organizationData?.requests_default_request_type || 'song_request');
-  }); // 'song_request', 'shoutout', or 'tip'
-  
   // Lock request type if only one type is allowed (e.g., on /bid page)
   useEffect(() => {
     if (allowedRequestTypes && allowedRequestTypes.length === 1) {
@@ -652,45 +731,6 @@ export function GeneralRequestsPage({
       }
     }
   };
-  const [formData, setFormData] = useState({
-    songArtist: '',
-    songTitle: '',
-    recipientName: '',
-    recipientMessage: '',
-    requesterName: '',
-    requesterEmail: '',
-    requesterPhone: '',
-    message: ''
-  });
-  
-  const [amountType, setAmountType] = useState('preset'); // 'preset' or 'custom'
-  const [presetAmount, setPresetAmount] = useState(500); // $5.00 in cents
-  const [customAmount, setCustomAmount] = useState('');
-  const [initialPresetSet, setInitialPresetSet] = useState(false); // Track if initial preset amount has been set
-  const [initialCalculatedMax, setInitialCalculatedMax] = useState(null); // Track the initial max preset we calculated
-  const [userSelectedPreset, setUserSelectedPreset] = useState(false); // Track if user has manually selected a preset amount
-  const [biddingSelectedAmount, setBiddingSelectedAmount] = useState(null); // Amount selected via BiddingAmountSelector (in cents)
-  const [isFastTrack, setIsFastTrack] = useState(false);
-  const [isNext, setIsNext] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [songUrl, setSongUrl] = useState(''); // Keep for submission payload
-  const [extractedSongUrl, setExtractedSongUrl] = useState(''); // Store the URL that was used for extraction
-  const [isExtractedFromLink, setIsExtractedFromLink] = useState(false); // Track if song was extracted from link
-  const [albumArtUrl, setAlbumArtUrl] = useState(null); // Store album art URL from extraction
-  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
-  const [showAutocomplete, setShowAutocomplete] = useState(false); // Show/hide autocomplete suggestions
-  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1); // Keyboard navigation
-  const songTitleInputRef = useRef(null); // Ref for scrolling to song title field
-  const bundleSongsRef = useRef(null); // Ref for scrolling to bundle songs section
-  const desktopVideoRef = useRef(null); // Ref for desktop video background
-  const mobileVideoRef = useRef(null); // Ref for mobile video background
-  const [videoFailed, setVideoFailed] = useState(false); // Track if video autoplay failed
-  const [videoLoadingTimeout, setVideoLoadingTimeout] = useState(null); // Timeout for video loading
-  const desktopVideoTimeoutRef = useRef(null); // Ref for desktop video timeout
-  const mobileVideoTimeoutRef = useRef(null); // Ref for mobile video timeout
-  const VIDEO_LOAD_TIMEOUT = 10000; // 10 seconds timeout for video loading
   const [requestId, setRequestId] = useState(null);
   const [paymentCode, setPaymentCode] = useState(null);
   const [additionalRequestIds, setAdditionalRequestIds] = useState([]);
