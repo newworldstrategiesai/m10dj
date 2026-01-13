@@ -191,31 +191,54 @@ export function hasFeatureAccess(
 }
 
 /**
+ * Normalize slug by removing hyphens (for flexible matching)
+ * This allows "ben-spins" and "benspins" to match the same organization
+ */
+export function normalizeSlug(slug: string): string {
+  return slug.toLowerCase().replace(/-/g, '');
+}
+
+/**
  * Get organization by slug (for subdomain routing)
+ * Supports flexible matching: "ben-spins" and "benspins" will match the same organization
  */
 export async function getOrganizationBySlug(
   supabase: AnySupabaseClient,
   slug: string
 ): Promise<Organization | null> {
   try {
-    const { data: org, error } = await supabase
+    // First try exact match (for performance)
+    const { data: exactOrg, error: exactError } = await supabase
       .from('organizations')
       .select('*')
       .eq('slug', slug)
       .maybeSingle(); // Use maybeSingle() instead of single() to avoid throwing on not found
 
     // If there's an error (other than "not found"), log it
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
-      console.error('Error getting organization by slug:', error);
+    if (exactError && exactError.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+      console.error('Error getting organization by slug (exact match):', exactError);
+    }
+
+    // If exact match found, return it
+    if (exactOrg) {
+      return exactOrg as Organization;
+    }
+
+    // If exact match fails, try normalized match using RPC function
+    const { data: normalizedOrgs, error: rpcError } = await supabase
+      .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+
+    if (rpcError) {
+      console.error('Error getting organization by normalized slug:', rpcError);
       return null;
     }
 
     // If no org found, return null (this is expected and not an error)
-    if (!org) {
+    if (!normalizedOrgs || normalizedOrgs.length === 0) {
       return null;
     }
 
-    return org as Organization;
+    return normalizedOrgs[0] as Organization;
   } catch (error) {
     console.error('Error getting organization by slug:', error);
     return null;

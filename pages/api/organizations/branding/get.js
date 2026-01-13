@@ -49,7 +49,9 @@ export default async function handler(req, res) {
       }
     } else if (slug) {
       // Public access by slug (for public request pages)
-      const { data, error } = await supabaseAdmin
+      // Support normalized slug matching (e.g., "ben-spins" matches "benspins")
+      // Try exact match first
+      let { data, error } = await supabaseAdmin
         .from('organizations')
         .select(`
           id,
@@ -65,7 +67,39 @@ export default async function handler(req, res) {
           subscription_tier
         `)
         .eq('slug', slug)
-        .single();
+        .maybeSingle();
+      
+      // If not found, try normalized match using RPC function
+      if (!data && !error) {
+        const { data: normalizedOrgs } = await supabaseAdmin
+          .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+        
+        if (normalizedOrgs && normalizedOrgs.length > 0) {
+          const matchedSlug = normalizedOrgs[0].slug;
+          const { data: fullOrg } = await supabaseAdmin
+            .from('organizations')
+            .select(`
+              id,
+              white_label_enabled,
+              custom_logo_url,
+              custom_favicon_url,
+              primary_color,
+              secondary_color,
+              background_color,
+              text_color,
+              font_family,
+              custom_domain,
+              subscription_tier
+            `)
+            .eq('slug', matchedSlug)
+            .maybeSingle();
+          
+          if (fullOrg) {
+            data = fullOrg;
+            error = null;
+          }
+        }
+      }
       
       organization = data;
       orgError = error;

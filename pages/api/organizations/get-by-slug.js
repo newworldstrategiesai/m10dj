@@ -28,11 +28,34 @@ export default async function handler(req, res) {
     }
 
     // Get organization by slug (public read - no auth required)
-    const { data: organization, error: orgError } = await supabase
+    // Support normalized slug matching (e.g., "ben-spins" matches "benspins")
+    // Try exact match first
+    let { data: organization, error: orgError } = await supabase
       .from('organizations')
       .select('id, name, slug, subscription_status, subscription_tier')
       .eq('slug', slug)
-      .single();
+      .maybeSingle();
+
+    // If not found, try normalized match using RPC function
+    if (!organization && !orgError) {
+      const { data: normalizedOrgs } = await supabase
+        .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+      
+      if (normalizedOrgs && normalizedOrgs.length > 0) {
+        // Get the specific fields we need
+        const matchedSlug = normalizedOrgs[0].slug;
+        const { data: fullOrg } = await supabase
+          .from('organizations')
+          .select('id, name, slug, subscription_status, subscription_tier')
+          .eq('slug', matchedSlug)
+          .maybeSingle();
+        
+        if (fullOrg) {
+          organization = fullOrg;
+          orgError = null;
+        }
+      }
+    }
 
     if (orgError || !organization) {
       return res.status(404).json({ error: 'Organization not found' });

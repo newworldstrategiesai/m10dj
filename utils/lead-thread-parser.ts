@@ -971,12 +971,36 @@ function normalizeFlexibleDate(value: string): string | null {
     }
   }
 
-  const monthNameRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
+  // Try to parse with full or abbreviated month names
+  const monthNameRegex = /(january|february|march|april|may|june|july|august|september|october|november|december|jan\.?|feb\.?|mar\.?|apr\.?|may|jun\.?|jul\.?|aug\.?|sep\.?|sept\.?|oct\.?|nov\.?|dec\.?)/i;
   if (!monthNameRegex.test(trimmed)) {
     return null;
   }
 
-  const sanitized = stripOrdinalSuffixes(trimmed.replace(/[–—]/g, '-'));
+  // Handle abbreviated months - expand them
+  const monthAbbreviations: Record<string, string> = {
+    'jan': 'january', 'jan.': 'january',
+    'feb': 'february', 'feb.': 'february',
+    'mar': 'march', 'mar.': 'march',
+    'apr': 'april', 'apr.': 'april',
+    'may': 'may',
+    'jun': 'june', 'jun.': 'june',
+    'jul': 'july', 'jul.': 'july',
+    'aug': 'august', 'aug.': 'august',
+    'sep': 'september', 'sep.': 'september', 'sept': 'september', 'sept.': 'september',
+    'oct': 'october', 'oct.': 'october',
+    'nov': 'november', 'nov.': 'november',
+    'dec': 'december', 'dec.': 'december',
+  };
+
+  let sanitized = stripOrdinalSuffixes(trimmed.replace(/[–—]/g, '-'));
+  
+  // Replace abbreviated months with full names
+  for (const [abbr, full] of Object.entries(monthAbbreviations)) {
+    const regex = new RegExp(`\\b${abbr.replace('.', '\\.')}\\b`, 'gi');
+    sanitized = sanitized.replace(regex, full);
+  }
+
   const parsed = new Date(sanitized);
   if (!isNaN(parsed.getTime())) {
     return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()))

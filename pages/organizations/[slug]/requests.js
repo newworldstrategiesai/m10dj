@@ -44,12 +44,38 @@ export default function OrganizationRequestsPage() {
         }
 
         // Query with explicit cache control - use a fresh query each time
+        // Support normalized slug matching (e.g., "ben-spins" matches "benspins")
         console.log('📡 Querying Supabase for organization...');
-        const { data: org, error: orgError } = await supabase
+        
+        // Try exact match first
+        let { data: org, error: orgError } = await supabase
           .from('organizations')
           .select('*, social_links, product_context, requests_assistant_enabled, requests_assistant_show_quick_actions, requests_assistant_quick_action_has_played, requests_assistant_quick_action_when_will_play, requests_accent_color, requests_theme_mode') // Explicitly select fields needed for chat widget
           .eq('slug', slug)
           .maybeSingle(); // Use maybeSingle to avoid errors on not found
+        
+        // If not found, try normalized match using RPC function
+        if (!org && !orgError) {
+          console.log('📡 Exact match not found, trying normalized slug match...');
+          const { data: normalizedOrgs, error: rpcError } = await supabase
+            .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+          
+          if (!rpcError && normalizedOrgs && normalizedOrgs.length > 0) {
+            // Get full organization data for the matched org
+            const matchedSlug = normalizedOrgs[0].slug;
+            const { data: fullOrg, error: fullOrgError } = await supabase
+              .from('organizations')
+              .select('*, social_links, product_context, requests_assistant_enabled, requests_assistant_show_quick_actions, requests_assistant_quick_action_has_played, requests_assistant_quick_action_when_will_play, requests_accent_color, requests_theme_mode')
+              .eq('slug', matchedSlug)
+              .maybeSingle();
+            
+            if (!fullOrgError && fullOrg) {
+              org = fullOrg;
+              orgError = null;
+              console.log('✅ Found organization using normalized slug match:', matchedSlug);
+            }
+          }
+        }
         
         console.log('📥 Supabase response received:', { hasData: !!org, hasError: !!orgError });
 
@@ -191,26 +217,46 @@ export default function OrganizationRequestsPage() {
     if (organization && !organization.requests_header_artist_name && organization.name) {
       console.log('🔄 [REQUESTS PAGE] Artist name missing, triggering refresh in 1 second...');
       // Wait a moment for auto-fix to complete, then refresh
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
         console.log('🔄 [REQUESTS PAGE] Refreshing organization data...');
-        // Force a refresh by reloading the organization
-        supabase
+        // Force a refresh by reloading the organization (with normalized slug matching)
+        // Try exact match first
+        let { data: freshOrg, error } = await supabase
           .from('organizations')
           .select('*')
           .eq('slug', slug)
-          .maybeSingle()
-          .then(({ data: freshOrg, error }) => {
-            if (!error && freshOrg) {
-              console.log('✅ [REQUESTS PAGE] Refreshed organization:', {
-                artist_name: freshOrg.requests_header_artist_name,
-                name: freshOrg.name
-              });
-              setOrganization({
-                ...freshOrg,
-                _refreshKey: Date.now(),
-              });
+          .maybeSingle();
+        
+        // If not found, try normalized match
+        if (!freshOrg && !error) {
+          const { data: normalizedOrgs } = await supabase
+            .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+          
+          if (normalizedOrgs && normalizedOrgs.length > 0) {
+            const matchedSlug = normalizedOrgs[0].slug;
+            const { data: fullOrg } = await supabase
+              .from('organizations')
+              .select('*')
+              .eq('slug', matchedSlug)
+              .maybeSingle();
+            
+            if (fullOrg) {
+              freshOrg = fullOrg;
+              error = null;
             }
+          }
+        }
+        
+        if (!error && freshOrg) {
+          console.log('✅ [REQUESTS PAGE] Refreshed organization:', {
+            artist_name: freshOrg.requests_header_artist_name,
+            name: freshOrg.name
           });
+          setOrganization({
+            ...freshOrg,
+            _refreshKey: Date.now(),
+          });
+        }
       }, 1000);
       return () => clearTimeout(timer);
     }

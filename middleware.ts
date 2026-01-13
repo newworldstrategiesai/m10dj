@@ -9,6 +9,74 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+/**
+ * Helper function to get organization by slug with normalized matching
+ * Supports flexible matching: "ben-spins" and "benspins" will match the same organization
+ */
+async function getOrganizationBySlugNormalized(slug: string, filters?: {
+  organization_type?: string;
+  parent_organization_id?: string;
+  performer_slug?: string;
+  is_active?: boolean;
+}) {
+  try {
+    // First try exact match (for performance)
+    let query = supabase
+      .from('organizations')
+      .select('*')
+      .eq('slug', slug);
+    
+    if (filters?.organization_type) {
+      query = query.eq('organization_type', filters.organization_type);
+    }
+    if (filters?.parent_organization_id) {
+      query = query.eq('parent_organization_id', filters.parent_organization_id);
+    }
+    if (filters?.performer_slug) {
+      query = query.eq('performer_slug', filters.performer_slug);
+    }
+    if (filters?.is_active !== undefined) {
+      query = query.eq('is_active', filters.is_active);
+    }
+    
+    const { data: exactOrg, error: exactError } = await query.maybeSingle();
+    
+    if (!exactError && exactOrg) {
+      return exactOrg;
+    }
+    
+    // If exact match fails, try normalized match using RPC function
+    const { data: normalizedOrgs, error: rpcError } = await supabase
+      .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+    
+    if (rpcError || !normalizedOrgs || normalizedOrgs.length === 0) {
+      return null;
+    }
+    
+    // Apply filters to normalized results if provided
+    let result = normalizedOrgs[0];
+    if (filters) {
+      if (filters.organization_type && result.organization_type !== filters.organization_type) {
+        return null;
+      }
+      if (filters.parent_organization_id && result.parent_organization_id !== filters.parent_organization_id) {
+        return null;
+      }
+      if (filters.performer_slug && result.performer_slug !== filters.performer_slug) {
+        return null;
+      }
+      if (filters.is_active !== undefined && result.is_active !== filters.is_active) {
+        return null;
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error getting organization by normalized slug:', error);
+    return null;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get('host') || '';
@@ -134,24 +202,19 @@ export async function middleware(request: NextRequest) {
       if (pathParts.length >= 2) {
         const [venueSlug, performerSlug, ...rest] = pathParts;
         
-        // Lookup venue organization
+        // Lookup venue organization (with normalized slug matching)
         try {
-          const { data: venueOrg } = await supabase
-            .from('organizations')
-            .select('id, name, slug, organization_type')
-            .eq('slug', venueSlug)
-            .eq('organization_type', 'venue')
-            .single();
+          const venueOrg = await getOrganizationBySlugNormalized(venueSlug, {
+            organization_type: 'venue'
+          });
           
           if (venueOrg) {
-            // Lookup performer organization
-            const { data: performerOrg } = await supabase
-              .from('organizations')
-              .select('id, name, slug, parent_organization_id, performer_slug')
-              .eq('parent_organization_id', venueOrg.id)
-              .eq('performer_slug', performerSlug)
-              .eq('is_active', true)
-              .single();
+            // Lookup performer organization (with normalized slug matching)
+            const performerOrg = await getOrganizationBySlugNormalized(performerSlug, {
+              parent_organization_id: venueOrg.id,
+              performer_slug: performerSlug,
+              is_active: true
+            });
             
             if (performerOrg) {
               // Route to performer page
@@ -193,12 +256,9 @@ export async function middleware(request: NextRequest) {
         const [slug] = pathParts;
         
         try {
-          const { data: venueOrg } = await supabase
-            .from('organizations')
-            .select('id, name, slug, organization_type')
-            .eq('slug', slug)
-            .eq('organization_type', 'venue')
-            .single();
+          const venueOrg = await getOrganizationBySlugNormalized(slug, {
+            organization_type: 'venue'
+          });
           
           if (venueOrg) {
             // Route to venue landing page
@@ -384,27 +444,19 @@ export async function middleware(request: NextRequest) {
       if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
         // In development, you can test with ?org=slug query param
         const orgSlug = url.searchParams.get('org');
-        if (orgSlug) {
-          const { data: org, error } = await supabase
-            .from('organizations')
-            .select('slug, id, name')
-            .eq('slug', orgSlug)
-            .single();
-          
-          if (!error && org) {
+          if (orgSlug) {
+            const org = await getOrganizationBySlugNormalized(orgSlug);
+            
+            if (org) {
             url.pathname = `/organizations/${org.slug}`;
             return NextResponse.rewrite(url);
           }
         }
       } else {
-        // Production: lookup by subdomain
-        const { data: org, error } = await supabase
-          .from('organizations')
-          .select('slug, id, name')
-          .eq('slug', subdomain)
-          .single();
+        // Production: lookup by subdomain (with normalized slug matching)
+        const org = await getOrganizationBySlugNormalized(subdomain);
         
-        if (!error && org) {
+        if (org) {
           // Organization found - route to organization pages
           // Map common paths to organization-specific routes
           const path = url.pathname;

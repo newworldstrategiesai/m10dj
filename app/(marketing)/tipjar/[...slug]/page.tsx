@@ -91,14 +91,29 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
       };
     }
     
-    // Get venue
+    // Get venue (with normalized slug matching)
     const supabase = getSupabaseClient();
-    const { data: venueOrg } = await supabase
+    
+    // Try exact match first
+    let { data: venueOrg } = await supabase
       .from('organizations')
       .select('id, name, slug')
       .eq('slug', venueSlug)
       .eq('organization_type', 'venue')
-      .single();
+      .maybeSingle();
+    
+    // If not found, try normalized match
+    if (!venueOrg) {
+      const { data: normalizedOrgs } = await supabase
+        .rpc('get_organization_by_normalized_slug', { input_slug: venueSlug });
+      
+      if (normalizedOrgs && normalizedOrgs.length > 0) {
+        const found = normalizedOrgs.find((org: any) => org.organization_type === 'venue');
+        if (found) {
+          venueOrg = { id: found.id, name: found.name, slug: found.slug };
+        }
+      }
+    }
 
     if (!venueOrg) {
       return {
@@ -106,14 +121,34 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
       };
     }
 
-    // Get performer
-    const { data: performerOrg } = await supabase
+    // Get performer (with normalized slug matching)
+    let { data: performerOrg } = await supabase
       .from('organizations')
       .select('name, artist_page_headline, artist_page_bio, artist_page_profile_image_url')
       .eq('parent_organization_id', venueOrg.id)
       .eq('performer_slug', performerSlug)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
+    
+    // If not found, try normalized match on performer_slug
+    if (!performerOrg) {
+      const { data: allPerformers } = await supabase
+        .from('organizations')
+        .select('name, artist_page_headline, artist_page_bio, artist_page_profile_image_url, performer_slug')
+        .eq('parent_organization_id', venueOrg.id)
+        .eq('is_active', true);
+      
+      if (allPerformers) {
+        const normalizedPerformerSlug = performerSlug.toLowerCase().replace(/-/g, '');
+        const found = allPerformers.find((org: any) => {
+          const normalizedStored = (org.performer_slug || '').toLowerCase().replace(/-/g, '');
+          return normalizedStored === normalizedPerformerSlug;
+        });
+        if (found) {
+          performerOrg = found;
+        }
+      }
+    }
 
     if (!performerOrg) {
       return {
@@ -146,12 +181,32 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
   }
   
   const supabase = getSupabaseClient();
-  const { data: org } = await supabase
+  
+  // Try exact match first
+  let { data: org } = await supabase
     .from('organizations')
     .select('name, artist_page_headline, artist_page_bio, artist_page_profile_image_url')
     .eq('slug', slug)
     .eq('artist_page_enabled', true)
-    .single();
+    .maybeSingle();
+  
+  // If not found, try normalized match
+  if (!org) {
+    const { data: normalizedOrgs } = await supabase
+      .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+    
+    if (normalizedOrgs && normalizedOrgs.length > 0) {
+      const found = normalizedOrgs.find((o: any) => o.artist_page_enabled === true);
+      if (found) {
+        org = {
+          name: found.name,
+          artist_page_headline: found.artist_page_headline,
+          artist_page_bio: found.artist_page_bio,
+          artist_page_profile_image_url: found.artist_page_profile_image_url
+        };
+      }
+    }
+  }
 
   if (!org) {
     return {
@@ -230,27 +285,64 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
       notFound();
     }
     
-    // Get venue organization
+    // Get venue organization (with normalized slug matching)
     const supabase = getSupabaseClient();
-    const { data: venueOrg, error: venueError } = await supabase
+    
+    // Try exact match first
+    let { data: venueOrg, error: venueError } = await supabase
       .from('organizations')
       .select('id, name, slug')
       .eq('slug', venueSlug)
       .eq('organization_type', 'venue')
-      .single();
+      .maybeSingle();
+    
+    // If not found, try normalized match
+    if (!venueOrg && !venueError) {
+      const { data: normalizedOrgs } = await supabase
+        .rpc('get_organization_by_normalized_slug', { input_slug: venueSlug });
+      
+      if (normalizedOrgs && normalizedOrgs.length > 0) {
+        const found = normalizedOrgs.find((org: any) => org.organization_type === 'venue');
+        if (found) {
+          venueOrg = { id: found.id, name: found.name, slug: found.slug };
+          venueError = null;
+        }
+      }
+    }
 
     if (venueError || !venueOrg) {
       notFound();
     }
 
-    // Get performer organization
-    const { data: performerOrg, error: performerError } = await supabase
+    // Get performer organization (with normalized slug matching)
+    let { data: performerOrg, error: performerError } = await supabase
       .from('organizations')
       .select('*')
       .eq('parent_organization_id', venueOrg.id)
       .eq('performer_slug', performerSlug)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
+    
+    // If not found, try normalized match on performer_slug
+    if (!performerOrg && !performerError) {
+      const { data: allPerformers } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('parent_organization_id', venueOrg.id)
+        .eq('is_active', true);
+      
+      if (allPerformers) {
+        const normalizedPerformerSlug = performerSlug.toLowerCase().replace(/-/g, '');
+        const found = allPerformers.find((org: any) => {
+          const normalizedStored = (org.performer_slug || '').toLowerCase().replace(/-/g, '');
+          return normalizedStored === normalizedPerformerSlug;
+        });
+        if (found) {
+          performerOrg = found;
+          performerError = null;
+        }
+      }
+    }
 
     if (performerError || !performerOrg) {
       notFound();
@@ -269,13 +361,26 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
     notFound();
   }
   
-  // First check if organization exists
+  // First check if organization exists (with normalized slug matching)
   const supabase = getSupabaseClient();
-  const { data: org, error: orgError } = await supabase
+  
+  // Try exact match first
+  let { data: org, error: orgError } = await supabase
     .from('organizations')
     .select('*')
     .eq('slug', slug)
-    .single();
+    .maybeSingle();
+  
+  // If not found, try normalized match
+  if (!org && !orgError) {
+    const { data: normalizedOrgs } = await supabase
+      .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+    
+    if (normalizedOrgs && normalizedOrgs.length > 0) {
+      org = normalizedOrgs[0];
+      orgError = null;
+    }
+  }
 
   // If organization doesn't exist, show 404
   if (orgError || !org) {

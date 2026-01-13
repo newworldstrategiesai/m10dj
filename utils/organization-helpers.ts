@@ -89,24 +89,42 @@ export async function getCurrentOrganization(
 }
 
 /**
+ * Normalize slug by removing hyphens (for flexible matching)
+ * This allows "ben-spins" and "benspins" to match the same organization
+ */
+export function normalizeSlug(slug: string): string {
+  return slug.toLowerCase().replace(/-/g, '');
+}
+
+/**
  * Get organization by slug (public access)
+ * Supports flexible matching: "ben-spins" and "benspins" will match the same organization
  */
 export async function getOrganizationBySlug(
   supabase: SupabaseClient,
   slug: string
 ): Promise<Organization | null> {
   try {
-    const { data: org, error } = await supabase
+    // First try exact match (for performance)
+    const { data: exactOrg, error: exactError } = await supabase
       .from('organizations')
       .select('*')
       .eq('slug', slug)
-      .single();
+      .maybeSingle();
 
-    if (error || !org) {
+    if (!exactError && exactOrg) {
+      return exactOrg as Organization;
+    }
+
+    // If exact match fails, try normalized match using RPC function
+    const { data: normalizedOrgs, error: rpcError } = await supabase
+      .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+
+    if (rpcError || !normalizedOrgs || normalizedOrgs.length === 0) {
       return null;
     }
 
-    return org as Organization;
+    return normalizedOrgs[0] as Organization;
   } catch (error) {
     console.error('Error getting organization by slug:', error);
     return null;

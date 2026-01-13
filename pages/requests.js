@@ -556,6 +556,64 @@ export function GeneralRequestsPage({
       allOrgKeys: organizationData ? Object.keys(organizationData) : []
     });
   }, [organizationCoverPhoto, coverPhoto, hasCustomCoverPhoto, headerVideoUrl, showVideo, showAnimatedGradient, showSolidBackground, backgroundType, organizationData]);
+
+  // Video loading timeout and error handling
+  useEffect(() => {
+    if (!showVideo || videoFailed) {
+      // Clear any existing timeouts if video is not showing or already failed
+      if (desktopVideoTimeoutRef.current) {
+        clearTimeout(desktopVideoTimeoutRef.current);
+        desktopVideoTimeoutRef.current = null;
+      }
+      if (mobileVideoTimeoutRef.current) {
+        clearTimeout(mobileVideoTimeoutRef.current);
+        mobileVideoTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    // Set timeout for desktop video
+    if (desktopVideoRef.current) {
+      desktopVideoTimeoutRef.current = setTimeout(() => {
+        // Check if video still hasn't loaded after timeout
+        if (desktopVideoRef.current && desktopVideoRef.current.readyState < 2) {
+          console.warn('⚠️ [VIDEO] Desktop video loading timeout, falling back to poster/background');
+          setVideoFailed(true);
+        }
+      }, VIDEO_LOAD_TIMEOUT);
+    }
+
+    // Set timeout for mobile video
+    if (mobileVideoRef.current) {
+      mobileVideoTimeoutRef.current = setTimeout(() => {
+        // Check if video still hasn't loaded after timeout
+        if (mobileVideoRef.current && mobileVideoRef.current.readyState < 2) {
+          console.warn('⚠️ [VIDEO] Mobile video loading timeout, falling back to poster/background');
+          setVideoFailed(true);
+        }
+      }, VIDEO_LOAD_TIMEOUT);
+    }
+
+    // Cleanup timeouts on unmount or when dependencies change
+    return () => {
+      if (desktopVideoTimeoutRef.current) {
+        clearTimeout(desktopVideoTimeoutRef.current);
+        desktopVideoTimeoutRef.current = null;
+      }
+      if (mobileVideoTimeoutRef.current) {
+        clearTimeout(mobileVideoTimeoutRef.current);
+        mobileVideoTimeoutRef.current = null;
+      }
+    };
+  }, [showVideo, videoFailed, headerVideoUrl]);
+
+  // Reset video failed state when video URL changes
+  useEffect(() => {
+    if (headerVideoUrl) {
+      setVideoFailed(false);
+    }
+  }, [headerVideoUrl]);
+
   // Determine default request type - if allowedRequestTypes is set, use first allowed type
   const defaultRequestType = allowedRequestTypes && allowedRequestTypes.length > 0
     ? allowedRequestTypes[0]
@@ -615,6 +673,10 @@ export function GeneralRequestsPage({
   const desktopVideoRef = useRef(null); // Ref for desktop video background
   const mobileVideoRef = useRef(null); // Ref for mobile video background
   const [videoFailed, setVideoFailed] = useState(false); // Track if video autoplay failed
+  const [videoLoadingTimeout, setVideoLoadingTimeout] = useState(null); // Timeout for video loading
+  const desktopVideoTimeoutRef = useRef(null); // Ref for desktop video timeout
+  const mobileVideoTimeoutRef = useRef(null); // Ref for mobile video timeout
+  const VIDEO_LOAD_TIMEOUT = 10000; // 10 seconds timeout for video loading
   const [requestId, setRequestId] = useState(null);
   const [paymentCode, setPaymentCode] = useState(null);
   const [additionalRequestIds, setAdditionalRequestIds] = useState([]);
@@ -2691,17 +2753,54 @@ export function GeneralRequestsPage({
                 webkit-playsinline="true"
                 x-webkit-airplay="deny"
                 disablePictureInPicture
+                preload="metadata"
                 poster={coverPhoto}
                 style={{ objectPosition: 'center center' }}
+                onLoadStart={() => {
+                  // Clear timeout when video starts loading
+                  if (desktopVideoTimeoutRef.current) {
+                    clearTimeout(desktopVideoTimeoutRef.current);
+                    desktopVideoTimeoutRef.current = null;
+                  }
+                }}
+                onCanPlay={() => {
+                  // Clear timeout when video can play
+                  if (desktopVideoTimeoutRef.current) {
+                    clearTimeout(desktopVideoTimeoutRef.current);
+                    desktopVideoTimeoutRef.current = null;
+                  }
+                }}
                 onLoadedData={() => {
                   if (desktopVideoRef.current) {
-                    desktopVideoRef.current.play().catch(() => setVideoFailed(true));
+                    desktopVideoRef.current.play().catch((error) => {
+                      console.warn('⚠️ [VIDEO] Desktop video autoplay failed:', error);
+                      setVideoFailed(true);
+                    });
                   }
+                }}
+                onError={(e) => {
+                  console.error('❌ [VIDEO] Desktop video error:', e);
+                  setVideoFailed(true);
+                }}
+                onStalled={() => {
+                  console.warn('⚠️ [VIDEO] Desktop video stalled, may be loading slowly');
                 }}
               >
                 <source src={headerVideoUrl} type="video/mp4" />
                 <p className="text-white text-center p-4">Video unavailable</p>
               </video>
+            ) : (showVideo && videoFailed && coverPhoto) ? (
+              // Show poster image as fallback when video fails
+              <img
+                src={coverPhoto}
+                alt="Header background"
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ objectPosition: 'center center' }}
+                onError={(e) => {
+                  console.warn('⚠️ [VIDEO] Poster image also failed to load');
+                  // Fall through to animated gradient
+                }}
+              />
             ) : showAnimatedGradient ? (
               backgroundType === 'smoke' ? (
                 /* Smoke animation background */
@@ -3513,7 +3612,7 @@ export function GeneralRequestsPage({
         {/* Hero Section with Text Fallback */}
         {!embedMode && !showPaymentMethods && (
           <div 
-            className={`relative w-full overflow-visible top-0 ${
+            className={`relative w-full overflow-visible top-0 bg-black ${
               minimalHeader 
                 ? 'h-[120px] sm:h-[140px] min-h-[100px] sm:min-h-[120px]' 
                 : 'h-[40vh] sm:h-[50vh] md:min-h-[280px] lg:min-h-[300px] min-h-[250px] sm:min-h-[350px] max-h-[600px]'
@@ -3534,17 +3633,54 @@ export function GeneralRequestsPage({
                 webkit-playsinline="true"
                 x-webkit-airplay="deny"
                 disablePictureInPicture
+                preload="metadata"
                 poster={coverPhoto}
                 style={{ zIndex: 0, objectPosition: 'center 40%' }}
+                onLoadStart={() => {
+                  // Clear timeout when video starts loading
+                  if (mobileVideoTimeoutRef.current) {
+                    clearTimeout(mobileVideoTimeoutRef.current);
+                    mobileVideoTimeoutRef.current = null;
+                  }
+                }}
+                onCanPlay={() => {
+                  // Clear timeout when video can play
+                  if (mobileVideoTimeoutRef.current) {
+                    clearTimeout(mobileVideoTimeoutRef.current);
+                    mobileVideoTimeoutRef.current = null;
+                  }
+                }}
                 onLoadedData={() => {
                   if (mobileVideoRef.current) {
-                    mobileVideoRef.current.play().catch(() => setVideoFailed(true));
+                    mobileVideoRef.current.play().catch((error) => {
+                      console.warn('⚠️ [VIDEO] Mobile video autoplay failed:', error);
+                      setVideoFailed(true);
+                    });
                   }
+                }}
+                onError={(e) => {
+                  console.error('❌ [VIDEO] Mobile video error:', e);
+                  setVideoFailed(true);
+                }}
+                onStalled={() => {
+                  console.warn('⚠️ [VIDEO] Mobile video stalled, may be loading slowly');
                 }}
               >
                 <source src={headerVideoUrl} type="video/mp4" />
                 <p className="text-white text-center p-4">Video unavailable</p>
               </video>
+            ) : (showVideo && videoFailed && coverPhoto) ? (
+              // Show poster image as fallback when video fails
+              <img
+                src={coverPhoto}
+                alt="Header background"
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ zIndex: 0, objectPosition: 'center 40%' }}
+                onError={(e) => {
+                  console.warn('⚠️ [VIDEO] Poster image also failed to load');
+                  // Fall through to animated gradient
+                }}
+              />
             ) : showAnimatedGradient ? (
               backgroundType === 'smoke' ? (
                 /* Smoke animation background */

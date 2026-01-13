@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { IconSearch, IconPlus, IconPhone, IconMail, IconCalendar, IconMapPin, IconFilter, IconArrowUp, IconUser, IconMusic, IconCurrencyDollar, IconTarget, IconClock, IconEdit, IconTrash, IconEye, IconMessage, IconCheck, IconX, IconDownload, IconRefresh, IconFlame } from '@tabler/icons-react';
+import ParseTextThreadModal from '@/components/admin/ParseTextThreadModal';
 import { calculateScoresForContacts, getScoreColor, getPriorityColor } from '@/utils/lead-scoring';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +18,7 @@ import { toast, useToast } from '@/components/ui/Toasts/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import PipelineView from '@/components/admin/PipelineView';
 
 interface Contact {
@@ -118,6 +121,7 @@ const getTemperatureColor = (temperature: string | null) => {
 
 export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProps) {
   const router = useRouter();
+  const supabase = createClientComponentClient();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,6 +150,8 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailContact, setEmailContact] = useState<Contact | null>(null);
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [showParseTextModal, setShowParseTextModal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Fetch contacts from API
   const fetchContacts = async () => {
@@ -359,6 +365,21 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
 
     setFilteredContacts(filtered);
   }, [contacts, searchQuery, eventTypeFilter, leadStatusFilter, temperatureFilter, sortBy, sortOrder, dateRangeFilter, customStartDate, customEndDate]);
+
+  // Check if user is platform admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          setIsAdmin(isPlatformAdmin(user.email));
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+    checkAdminStatus();
+  }, [supabase]);
 
   useEffect(() => {
     fetchContacts();
@@ -680,15 +701,28 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
 
       {/* Filters and Search - Mobile Optimized */}
       <div className="flex flex-col gap-3 lg:gap-4">
-        {/* Search Bar - Full Width on Mobile */}
-        <div className="relative w-full">
-          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-          <Input
-            placeholder="Search contacts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-12 lg:h-10"
-          />
+        {/* Search Bar and Actions - Full Width on Mobile */}
+        <div className="flex gap-2 w-full">
+          <div className="relative flex-1">
+            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Input
+              placeholder="Search contacts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12 lg:h-10"
+            />
+          </div>
+          {isAdmin && (
+            <Button
+              onClick={() => setShowParseTextModal(true)}
+              className="h-12 lg:h-10"
+              variant="default"
+            >
+              <IconMessage className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Import Text</span>
+              <span className="sm:hidden">Text</span>
+            </Button>
+          )}
         </div>
         
         {/* Filters - 2 cols on mobile, row on desktop */}
@@ -1357,6 +1391,11 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
           }}
         />
       )}
+
+      <ParseTextThreadModal
+        open={showParseTextModal}
+        onClose={() => setShowParseTextModal(false)}
+      />
     </div>
   );
 }

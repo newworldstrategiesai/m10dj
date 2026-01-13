@@ -49,7 +49,9 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Organization not found' });
       }
     } else if (slug) {
-      const { data, error: orgError } = await supabaseAdmin
+      // Support normalized slug matching (e.g., "ben-spins" matches "benspins")
+      // Try exact match first
+      let { data, error: orgError } = await supabaseAdmin
         .from('organizations')
         .select(`
           id,
@@ -69,7 +71,43 @@ export default async function handler(req, res) {
           artist_page_custom_css
         `)
         .eq('slug', slug)
-        .single();
+        .maybeSingle();
+      
+      // If not found, try normalized match using RPC function
+      if (!data && !orgError) {
+        const { data: normalizedOrgs } = await supabaseAdmin
+          .rpc('get_organization_by_normalized_slug', { input_slug: slug });
+        
+        if (normalizedOrgs && normalizedOrgs.length > 0) {
+          const matchedSlug = normalizedOrgs[0].slug;
+          const { data: fullOrg } = await supabaseAdmin
+            .from('organizations')
+            .select(`
+              id,
+              name,
+              slug,
+              artist_page_enabled,
+              artist_page_bio,
+              artist_page_headline,
+              artist_page_profile_image_url,
+              artist_page_cover_image_url,
+              artist_page_gallery_images,
+              artist_page_video_urls,
+              artist_page_links,
+              artist_page_contact_email,
+              artist_page_contact_phone,
+              artist_page_booking_url,
+              artist_page_custom_css
+            `)
+            .eq('slug', matchedSlug)
+            .maybeSingle();
+          
+          if (fullOrg) {
+            data = fullOrg;
+            orgError = null;
+          }
+        }
+      }
       
       organization = data;
       if (orgError) {
