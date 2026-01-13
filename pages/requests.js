@@ -261,11 +261,24 @@ export function GeneralRequestsPage({
   
   // Use preview values if available, otherwise use organization data
   // Default accent color based on product context: TipJar = green, others = gold
-  const defaultAccentColor = organizationData?.product_context === 'tipjar' ? '#10b981' : '#fcba00';
-  const effectiveAccentColor = previewAccentColor || organizationData?.requests_accent_color || defaultAccentColor;
+  // Use useMemo to avoid TDZ issues during bundling
+  const defaultAccentColor = useMemo(() => 
+    organizationData?.product_context === 'tipjar' ? '#10b981' : '#fcba00',
+    [organizationData?.product_context]
+  );
+  const effectiveAccentColor = useMemo(() => 
+    previewAccentColor || organizationData?.requests_accent_color || defaultAccentColor,
+    [previewAccentColor, organizationData?.requests_accent_color, defaultAccentColor]
+  );
   // Secondary colors default to accent color if not set
-  const effectiveSecondaryColor1 = previewSecondaryColor1 || organizationData?.requests_secondary_color_1 || effectiveAccentColor;
-  const effectiveSecondaryColor2 = previewSecondaryColor2 || organizationData?.requests_secondary_color_2 || effectiveAccentColor;
+  const effectiveSecondaryColor1 = useMemo(() => 
+    previewSecondaryColor1 || organizationData?.requests_secondary_color_1 || effectiveAccentColor,
+    [previewSecondaryColor1, organizationData?.requests_secondary_color_1, effectiveAccentColor]
+  );
+  const effectiveSecondaryColor2 = useMemo(() => 
+    previewSecondaryColor2 || organizationData?.requests_secondary_color_2 || effectiveAccentColor,
+    [previewSecondaryColor2, organizationData?.requests_secondary_color_2, effectiveAccentColor]
+  );
   
   // Helper function to convert hex to rgba
   const hexToRgba = (hex, alpha) => {
