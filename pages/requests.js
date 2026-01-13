@@ -3230,8 +3230,29 @@ export function GeneralRequestsPage({
                 margin: 0 !important;
                 padding: 0 !important;
                 padding-top: 0 !important;
-                padding-bottom: 20px !important;
+                padding-bottom: 0 !important;
                 animation: none !important;
+                display: flex !important;
+                flex-direction: column !important;
+              }
+              
+              /* Ensure sticky elements inside desktop-content-wrapper stick to the bottom */
+              .desktop-content-wrapper .sticky {
+                position: sticky !important;
+                bottom: 0 !important;
+                margin-top: auto !important;
+              }
+              
+              /* Winning bid banner - ensure it stays at bottom of iPhone frame on desktop */
+              .desktop-content-wrapper [class*="sticky"][class*="bottom-0"] {
+                position: sticky !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                max-width: 355px !important;
+                left: 0 !important;
+                right: 0 !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
               }
               
               /* Reset scroll position to top on desktop */

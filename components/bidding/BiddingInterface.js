@@ -1079,7 +1079,7 @@ export default function BiddingInterface({
   }
 
   return (
-    <div className={`space-y-4 ${winningRequest ? 'pb-20 sm:pb-24' : 'pb-4'}`}>
+    <div className={`space-y-4 flex flex-col min-h-0 ${winningRequest ? 'pb-0' : 'pb-4'}`}>
       <style jsx>{`
         @keyframes slideIn {
           from {
@@ -1810,8 +1810,8 @@ export default function BiddingInterface({
 
       {/* Winning Bid Ticker with Time - Sticky to bottom, always visible */}
       {sortedRequests.length > 0 && currentWinningBidAmount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 dark:bg-gray-900/95 backdrop-blur-sm border-t-2 border-purple-500/50 shadow-2xl">
-          <div className="max-w-7xl mx-auto px-2 sm:px-4 py-1.5 sm:py-2">
+        <div className="sticky bottom-0 left-0 right-0 z-50 bg-black/95 dark:bg-gray-900/95 backdrop-blur-sm border-t-2 border-purple-500/50 shadow-2xl mt-auto">
+          <div className="px-2 sm:px-4 py-1.5 sm:py-2">
             <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 rounded-lg border-2 border-purple-500/50 overflow-hidden">
               <div className="px-2 sm:px-4 py-1.5 sm:py-2">
                 <div className="flex items-center justify-between gap-2 sm:gap-4">
