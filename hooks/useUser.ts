@@ -1,19 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useState, useEffect, useMemo } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 
 export function useUser() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClientComponentClient();
+  
+  // Use singleton client to prevent multiple instances
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
+    let isMounted = true;
+    let subscription: { unsubscribe: () => void } | null = null;
+
     // Get initial user
     const getUser = async () => {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
+        
+        // Don't update state if component unmounted
+        if (!isMounted) return;
         
         // Ignore refresh token errors - they'll be handled by middleware
         if (error && (error.message.includes('refresh_token_not_found') || 
@@ -26,26 +34,50 @@ export function useUser() {
         } else {
           setUser(null);
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Handle AbortError gracefully (component unmounted or request cancelled)
+        if (error?.name === 'AbortError') {
+          return; // Don't update state if request was aborted
+        }
         // Handle any other errors gracefully
-        setUser(null);
+        if (isMounted) {
+          setUser(null);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     getUser();
 
     // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    try {
+      const {
+        data: { subscription: authSubscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (isMounted) {
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      });
+      
+      subscription = authSubscription;
+    } catch (error: any) {
+      // Handle errors in subscription setup
+      if (error?.name !== 'AbortError' && isMounted) {
+        console.error('Error setting up auth subscription:', error);
+      }
+    }
 
-    return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+    return () => {
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, [supabase]);
 
   return { user, loading };
 }

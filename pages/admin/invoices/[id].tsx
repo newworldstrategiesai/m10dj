@@ -3,9 +3,9 @@
  * View and manage a specific invoice
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { 
   ArrowLeft,
   Download,
@@ -102,10 +102,472 @@ interface QuoteData {
   speaker_rental?: any;
 }
 
+interface Contact {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email_address: string;
+  event_type: string;
+}
+
+interface Event {
+  id: string;
+  event_name: string;
+  client_name: string;
+  client_email?: string;
+  event_date: string;
+  contact_id?: string;
+  submission_id?: string;
+}
+
+function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any }) {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const isMountedRef = useRef(true);
+  const [formData, setFormData] = useState({
+    contactId: '',
+    projectId: '',
+    invoiceTitle: '',
+    invoiceDate: new Date().toISOString().split('T')[0],
+    dueDate: (() => {
+      const date = new Date();
+      date.setDate(date.getDate() + 30);
+      return date.toISOString().split('T')[0];
+    })(),
+    subtotal: '',
+    notes: ''
+  });
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    fetchData();
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Refetch events when contact is selected to find their specific events
+  useEffect(() => {
+    if (formData.contactId && selectedContact) {
+      fetchEventsForContact(formData.contactId, selectedContact);
+    }
+  }, [formData.contactId]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch contacts
+      const { data: contactsData, error: contactsError } = await supabase
+        .from('contacts')
+        .select('id, first_name, last_name, email_address, event_type')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (!isMountedRef.current) return;
+
+      if (contactsError) {
+        // Handle AbortError gracefully
+        if (contactsError.name === 'AbortError' || contactsError.message?.includes('aborted')) {
+          return;
+        }
+        throw contactsError;
+      }
+      
+      if (isMountedRef.current) {
+        setContacts(contactsData || []);
+      }
+
+      // Fetch events with all linking fields
+      // Order by created_at to catch recently created events from imports
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('events')
+        .select('id, event_name, client_name, client_email, event_date, contact_id, submission_id, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200); // Increased limit to catch more events
+
+      if (!isMountedRef.current) return;
+
+      if (eventsError) {
+        // Handle AbortError gracefully
+        if (eventsError.name === 'AbortError' || eventsError.message?.includes('aborted')) {
+          return;
+        }
+        throw eventsError;
+      }
+      
+      if (isMountedRef.current) {
+        setEvents(eventsData || []);
+      }
+
+      // Check if contactId is in query params
+      if (isMountedRef.current && typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const contactIdParam = urlParams.get('contactId');
+        if (contactIdParam) {
+          setFormData(prev => ({ ...prev, contactId: contactIdParam }));
+        }
+      }
+    } catch (error: any) {
+      // Handle AbortError gracefully - don't log or show error
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        return;
+      }
+      console.error('Error fetching data:', error);
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Fetch events specifically for a selected contact
+  const fetchEventsForContact = async (contactId: string, contact: Contact) => {
+    try {
+      const allEvents: Event[] = [];
+      
+      // Query 1: By contact_id (most reliable)
+      const { data: byContactId, error: contactIdError } = await supabase
+        .from('events')
+        .select('id, event_name, client_name, client_email, event_date, contact_id, submission_id, created_at')
+        .eq('contact_id', contactId);
+      
+      if (!contactIdError && byContactId) {
+        allEvents.push(...byContactId);
+        console.log(`📅 Found ${byContactId.length} event(s) by contact_id for ${contact.first_name} ${contact.last_name}`);
+      }
+      
+      // Query 2: By email (if contact has email)
+      if (contact.email_address) {
+        const { data: byEmail, error: emailError } = await supabase
+          .from('events')
+          .select('id, event_name, client_name, client_email, event_date, contact_id, submission_id, created_at')
+          .eq('client_email', contact.email_address.toLowerCase().trim());
+        
+        if (!emailError && byEmail) {
+          allEvents.push(...byEmail);
+          console.log(`📧 Found ${byEmail.length} event(s) by email (${contact.email_address}) for ${contact.first_name} ${contact.last_name}`);
+        }
+      }
+      
+      // Query 3: By submission_id (legacy)
+      const { data: bySubmissionId, error: submissionError } = await supabase
+        .from('events')
+        .select('id, event_name, client_name, client_email, event_date, contact_id, submission_id, created_at')
+        .eq('submission_id', contactId);
+      
+      if (!submissionError && bySubmissionId) {
+        allEvents.push(...bySubmissionId);
+        console.log(`📝 Found ${bySubmissionId.length} event(s) by submission_id for ${contact.first_name} ${contact.last_name}`);
+      }
+      
+      // Deduplicate by event ID
+      const uniqueEvents = Array.from(
+        new Map(allEvents.map(e => [e.id, e])).values()
+      );
+      
+      if (isMountedRef.current) {
+        // Merge with existing events, prioritizing the contact-specific ones
+        setEvents(prev => {
+          const existingIds = new Set(prev.map(e => e.id));
+          const newEvents = uniqueEvents.filter(e => !existingIds.has(e.id));
+          return [...uniqueEvents, ...prev.filter(e => !uniqueEvents.some(ue => ue.id === e.id))];
+        });
+        console.log(`✅ Total unique events for ${contact.first_name} ${contact.last_name}: ${uniqueEvents.length}`);
+      }
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        console.error('Error fetching events for contact:', error);
+      }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const response = await fetch('/api/invoices/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId: formData.contactId,
+          projectId: formData.projectId || null,
+          invoiceTitle: formData.invoiceTitle || null,
+          invoiceDate: formData.invoiceDate,
+          dueDate: formData.dueDate,
+          subtotal: formData.subtotal ? parseFloat(formData.subtotal) : 0,
+          lineItems: formData.subtotal ? [{
+            description: 'Services',
+            quantity: 1,
+            rate: parseFloat(formData.subtotal),
+            amount: parseFloat(formData.subtotal)
+          }] : [],
+          notes: formData.notes || null
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create invoice');
+      }
+
+      // Redirect to the new invoice
+      router.push(`/admin/invoices/${data.invoice.id}`);
+    } catch (error: any) {
+      // Handle AbortError gracefully
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        return; // Don't show error for aborted requests
+      }
+      console.error('Error creating invoice:', error);
+      alert(error.message || 'Failed to create invoice');
+    } finally {
+      if (isMountedRef.current) {
+        setSubmitting(false);
+      }
+    }
+  };
+
+  const selectedContact = contacts.find(c => c.id === formData.contactId);
+  
+  // Filter events by contact - check multiple linking methods
+  // Events are linked via client_email, contact_id, or submission_id
+  const filteredEvents = formData.contactId && selectedContact
+    ? events.filter(e => {
+        // Primary: Match by contact_id (most reliable)
+        if (e.contact_id === formData.contactId) {
+          console.log('✅ Matched event by contact_id:', e.id, e.event_name);
+          return true;
+        }
+        // Secondary: Match by email (if contact has email) - case insensitive
+        if (selectedContact.email_address) {
+          const contactEmailLower = selectedContact.email_address.toLowerCase().trim();
+          const eventEmailLower = e.client_email?.toLowerCase().trim();
+          if (eventEmailLower && eventEmailLower === contactEmailLower) {
+            console.log('✅ Matched event by email:', e.id, e.event_name, eventEmailLower);
+            return true;
+          }
+        }
+        // Tertiary: Match by submission_id if it matches contact id (legacy)
+        if (e.submission_id === formData.contactId) {
+          console.log('✅ Matched event by submission_id:', e.id, e.event_name);
+          return true;
+        }
+        // Fallback: match by name (less reliable) - check if name contains contact name
+        const contactFullName = `${selectedContact.first_name || ''} ${selectedContact.last_name || ''}`.trim().toLowerCase();
+        if (contactFullName && e.client_name) {
+          const eventNameLower = e.client_name.toLowerCase();
+          // Check if event name starts with contact name or contains it
+          if (eventNameLower.includes(contactFullName) || eventNameLower.startsWith(contactFullName.split(' ')[0])) {
+            console.log('✅ Matched event by name:', e.id, e.event_name, 'contains', contactFullName);
+            return true;
+          }
+        }
+        return false;
+      })
+    : events;
+  
+  // Debug logging
+  useEffect(() => {
+    if (formData.contactId && selectedContact) {
+      console.log('🔍 Event filtering debug:', {
+        contactId: formData.contactId,
+        contactEmail: selectedContact.email_address,
+        contactName: `${selectedContact.first_name} ${selectedContact.last_name}`,
+        totalEvents: events.length,
+        filteredEvents: filteredEvents.length,
+        events: events.map(e => ({
+          id: e.id,
+          name: e.event_name,
+          client_email: e.client_email,
+          contact_id: e.contact_id,
+          submission_id: e.submission_id,
+          client_name: e.client_name
+        }))
+      });
+    }
+  }, [formData.contactId, selectedContact, events, filteredEvents]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <Button
+            variant="slim"
+            onClick={() => router.push('/admin/invoices')}
+            className="flex items-center gap-2 mb-4"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Invoices
+          </Button>
+          <h1 className="text-3xl font-bold text-gray-900">Create New Invoice</h1>
+          <p className="text-gray-600 mt-2">Select a contact and event to create an invoice</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+          {/* Contact Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Contact <span className="text-red-500">*</span>
+            </label>
+            <select
+              required
+              value={formData.contactId}
+              onChange={(e) => setFormData(prev => ({ ...prev, contactId: e.target.value, projectId: '' }))}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+            >
+              <option value="">Select a contact...</option>
+              {contacts.map(contact => (
+                <option key={contact.id} value={contact.id}>
+                  {contact.first_name} {contact.last_name} {contact.email_address ? `(${contact.email_address})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Event/Project Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Event/Project (Optional)
+            </label>
+            <select
+              value={formData.projectId}
+              onChange={(e) => setFormData(prev => ({ ...prev, projectId: e.target.value }))}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+              disabled={!formData.contactId}
+            >
+              <option value="">No event selected</option>
+              {filteredEvents.map(event => (
+                <option key={event.id} value={event.id}>
+                  {event.event_name || 'Untitled Event'} - {new Date(event.event_date).toLocaleDateString()}
+                </option>
+              ))}
+            </select>
+            {!formData.contactId && (
+              <p className="text-sm text-gray-500 mt-1">Select a contact first to see their events</p>
+            )}
+          </div>
+
+          {/* Invoice Title */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Invoice Title (Optional)
+            </label>
+            <input
+              type="text"
+              value={formData.invoiceTitle}
+              onChange={(e) => setFormData(prev => ({ ...prev, invoiceTitle: e.target.value }))}
+              placeholder="Auto-generated if left blank"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+            />
+          </div>
+
+          {/* Invoice Date */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Invoice Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.invoiceDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, invoiceDate: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+              />
+            </div>
+
+            {/* Due Date */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Due Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.dueDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Subtotal */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Subtotal (Optional)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.subtotal}
+              onChange={(e) => setFormData(prev => ({ ...prev, subtotal: e.target.value }))}
+              placeholder="0.00"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+            />
+            <p className="text-sm text-gray-500 mt-1">Leave blank to create a draft invoice with $0.00</p>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Notes (Optional)
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              rows={3}
+              placeholder="Internal notes for this invoice..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="slim"
+              onClick={() => router.push('/admin/invoices')}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting || !formData.contactId}
+              className="bg-[#fcba00] hover:bg-[#e5a800] text-black"
+            >
+              {submitting ? 'Creating...' : 'Create Invoice'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function InvoiceDetailPage() {
   const router = useRouter();
   const { id } = router.query;
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
+  const isMountedRef = useRef(true);
   
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
@@ -117,7 +579,14 @@ export default function InvoiceDetailPage() {
   const [leadData, setLeadData] = useState<any>(null);
   const [downloading, setDownloading] = useState(false);
 
-      const fetchInvoiceDetails = useCallback(async () => {
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const fetchInvoiceDetails = useCallback(async () => {
         // Prevent fetching if id is invalid or "new"
         if (!id || id === 'new' || typeof id !== 'string') {
           return;
@@ -140,7 +609,13 @@ export default function InvoiceDetailPage() {
             .eq('id', id)
             .single();
           
+          if (!isMountedRef.current) return;
+
           if (invoiceError) {
+            // Handle AbortError gracefully
+            if (invoiceError.name === 'AbortError' || invoiceError.message?.includes('aborted')) {
+              return;
+            }
             console.error('Error fetching invoice:', invoiceError);
             throw invoiceError;
           }
@@ -149,15 +624,22 @@ export default function InvoiceDetailPage() {
             throw new Error('Invoice not found');
           }
           
+          if (!isMountedRef.current) return;
+
+          const invoice = invoiceData as any;
           console.log('📄 Invoice data loaded:', {
-            id: invoiceData.id,
-            invoice_number: invoiceData.invoice_number,
-            contact_id: invoiceData.contact_id,
-            total_amount: invoiceData.total_amount,
-            invoice_status: invoiceData.invoice_status
+            id: invoice.id,
+            invoice_number: invoice.invoice_number,
+            contact_id: invoice.contact_id,
+            total_amount: invoice.total_amount,
+            invoice_status: invoice.invoice_status
           });
           
-          setInvoice(invoiceData);
+          if (isMountedRef.current) {
+            setInvoice(invoice);
+          }
+          
+          // Use the invoice variable for subsequent operations
 
           // Fetch line items
       const { data: lineItemsData, error: lineItemsError } = await supabase
@@ -172,7 +654,9 @@ export default function InvoiceDetailPage() {
           console.warn('Error fetching invoice line items:', lineItemsError);
         }
       }
-      setLineItems(lineItemsData || []);
+      if (isMountedRef.current) {
+        setLineItems(lineItemsData || []);
+      }
       console.log('📦 Invoice line items:', lineItemsData?.length || 0);
 
       // Fetch payments - use same API endpoint as quote page for consistency
@@ -180,10 +664,10 @@ export default function InvoiceDetailPage() {
       let paymentData = null;
       let hasPayment = false;
       
-      if (invoiceData && invoiceData.contact_id) {
+      if (invoice && invoice.contact_id) {
         try {
           const timestamp = new Date().getTime();
-          const paymentsResponse = await fetch(`/api/quote/${invoiceData.contact_id}/payments?_t=${timestamp}`, { 
+          const paymentsResponse = await fetch(`/api/quote/${invoice.contact_id}/payments?_t=${timestamp}`, { 
             cache: 'no-store' 
           });
           
@@ -224,10 +708,10 @@ export default function InvoiceDetailPage() {
 
       // Fetch lead/contact data using the same API endpoint as the quote page
       // This ensures we get the accurate event date (same as quote page)
-      if (invoiceData && invoiceData.contact_id) {
+      if (invoice && invoice.contact_id) {
         try {
           const timestamp = new Date().getTime();
-          const leadResponse = await fetch(`/api/leads/get-lead?id=${invoiceData.contact_id}&_t=${timestamp}`, { 
+          const leadResponse = await fetch(`/api/leads/get-lead?id=${invoice.contact_id}&_t=${timestamp}`, { 
             cache: 'no-store' 
           });
           
@@ -249,11 +733,11 @@ export default function InvoiceDetailPage() {
       // This ensures consistency and handles all the same parsing logic
       let quoteData = null;
       
-      if (invoiceData && invoiceData.contact_id) {
-        console.log('🔍 Fetching quote data for contact_id:', invoiceData.contact_id);
+      if (invoice && invoice.contact_id) {
+        console.log('🔍 Fetching quote data for contact_id:', invoice.contact_id);
         try {
           const timestamp = new Date().getTime();
-          const quoteResponse = await fetch(`/api/quote/${invoiceData.contact_id}?_t=${timestamp}`, { 
+          const quoteResponse = await fetch(`/api/quote/${invoice.contact_id}?_t=${timestamp}`, { 
             cache: 'no-store' 
           });
           
@@ -281,10 +765,10 @@ export default function InvoiceDetailPage() {
             // If quote doesn't have invoice_id set, update it
             if (!quote.invoice_id) {
               console.log('🔗 Linking quote to invoice...');
-              await supabase
-                .from('quote_selections')
+              await (supabase
+                .from('quote_selections') as any)
                 .update({ invoice_id: id })
-                .eq('id', quote.id);
+                .eq('id', (quote as any).id);
             }
           } else {
             const errorData = await quoteResponse.json().catch(() => ({}));
@@ -338,19 +822,23 @@ export default function InvoiceDetailPage() {
         setQuoteData(null);
       }
 
-    } catch (error) {
+    } catch (error: any) {
+      // Handle AbortError gracefully
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        return;
+      }
       console.error('Error fetching invoice details:', error);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [id, supabase]);
 
   useEffect(() => {
-    // Handle "new" route - redirect to create invoice page or show create form
+    // Handle "new" route - show create invoice form
     if (id === 'new') {
-      // For now, redirect back to invoices list
-      // TODO: Implement invoice creation page
-      router.push('/admin/invoices');
+      setLoading(false);
       return;
     }
     
@@ -516,6 +1004,11 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
     );
+  }
+
+  // Show invoice creation form if id is 'new'
+  if (id === 'new') {
+    return <CreateInvoiceForm router={router} supabase={supabase} />;
   }
 
   if (!invoice) {

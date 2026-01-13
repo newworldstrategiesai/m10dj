@@ -1,0 +1,190 @@
+/**
+ * Create Invoice API
+ * Creates a new invoice for a contact and optionally links it to an event/project
+ */
+
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
+import { getOrganizationContext } from '@/utils/organization-helpers';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+/**
+ * Generate invoice number
+ */
+async function generateInvoiceNumber(supabase, organizationId = null) {
+  try {
+    // Try to use database function first
+    const { data, error } = await supabase.rpc('generate_invoice_number');
+    if (!error && data) {
+      return data;
+    }
+  } catch (err) {
+    console.warn('⚠️ Database function not available, generating manually:', err.message);
+  }
+
+  // Fallback: Generate manually
+  const year = new Date().getFullYear();
+  const month = String(new Date().getMonth() + 1).padStart(2, '0');
+  
+  // Get count of invoices this month, scoped to organization if provided
+  let query = supabase
+    .from('invoices')
+    .select('*', { count: 'exact', head: true })
+    .like('invoice_number', `INV-${year}${month}%`);
+  
+  if (organizationId) {
+    query = query.eq('organization_id', organizationId);
+  }
+  
+  const { count } = await query;
+
+  const sequenceNum = String((count || 0) + 1).padStart(3, '0');
+  return `INV-${year}${month}-${sequenceNum}`;
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    // Authenticate user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is platform admin
+    const isAdmin = isPlatformAdmin(session.user.email);
+
+    // Get organization context
+    const orgId = await getOrganizationContext(
+      supabase,
+      session.user.id,
+      session.user.email
+    );
+
+    const { contactId, projectId, invoiceTitle, invoiceDate, dueDate, subtotal, lineItems, notes } = req.body;
+
+    if (!contactId) {
+      return res.status(400).json({ error: 'Contact ID is required' });
+    }
+
+    // Use service role client for queries
+    const adminSupabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verify contact exists and user has access
+    let contactQuery = adminSupabase
+      .from('contacts')
+      .select('id, first_name, last_name, email_address, event_type, organization_id')
+      .eq('id', contactId)
+      .is('deleted_at', null)
+      .single();
+
+    if (!isAdmin && orgId) {
+      contactQuery = contactQuery.eq('organization_id', orgId);
+    }
+
+    const { data: contact, error: contactError } = await contactQuery;
+
+    if (contactError || !contact) {
+      return res.status(404).json({ error: 'Contact not found or access denied' });
+    }
+
+    // Verify project exists if provided
+    let project = null;
+    if (projectId) {
+      let projectQuery = adminSupabase
+        .from('events')
+        .select('id, event_name, client_name, event_date, organization_id')
+        .eq('id', projectId)
+        .single();
+
+      if (!isAdmin && orgId) {
+        projectQuery = projectQuery.eq('organization_id', orgId);
+      }
+
+      const { data: projectData, error: projectError } = await projectQuery;
+
+      if (projectError || !projectData) {
+        return res.status(404).json({ error: 'Project not found or access denied' });
+      }
+
+      project = projectData;
+    }
+
+    // Generate invoice number
+    const invoiceNumber = await generateInvoiceNumber(adminSupabase, contact.organization_id || orgId);
+
+    // Calculate dates
+    const today = new Date();
+    const invoiceDateValue = invoiceDate || today.toISOString().split('T')[0];
+    const dueDateValue = dueDate || (() => {
+      const due = new Date(today);
+      due.setDate(due.getDate() + 30);
+      return due.toISOString().split('T')[0];
+    })();
+
+    // Calculate amounts
+    const subtotalValue = subtotal || 0;
+    const taxAmount = 0; // Can be calculated if tax_rate is provided
+    const totalAmount = subtotalValue + taxAmount;
+
+    // Build invoice title
+    const clientName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Client';
+    const title = invoiceTitle || `${contact.event_type || 'Event'} - ${clientName}`.trim();
+
+    // Create invoice
+    const invoiceData = {
+      contact_id: contact.id,
+      project_id: projectId || null,
+      organization_id: contact.organization_id || orgId,
+      invoice_number: invoiceNumber,
+      invoice_status: 'Draft',
+      invoice_title: title,
+      invoice_description: project ? `Invoice for ${project.event_name || 'event'}` : `Invoice for ${contact.event_type || 'event'} services`,
+      invoice_date: invoiceDateValue,
+      due_date: dueDateValue,
+      subtotal: subtotalValue,
+      tax_amount: taxAmount,
+      total_amount: totalAmount,
+      balance_due: totalAmount,
+      amount_paid: 0,
+      line_items: lineItems || [],
+      notes: notes || null,
+      created_by: session.user.id
+    };
+
+    const { data: invoice, error: invoiceError } = await adminSupabase
+      .from('invoices')
+      .insert([invoiceData])
+      .select()
+      .single();
+
+    if (invoiceError) {
+      console.error('Error creating invoice:', invoiceError);
+      return res.status(500).json({ 
+        error: 'Failed to create invoice',
+        details: invoiceError.message 
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      invoice: invoice,
+      message: 'Invoice created successfully'
+    });
+
+  } catch (error) {
+    console.error('Error in create invoice API:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+}

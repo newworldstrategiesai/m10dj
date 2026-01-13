@@ -99,6 +99,7 @@ export default async function handler(
     // Normalize event time
     let eventTime = parsed.contact.eventTime;
     let endTime = parsed.contact.endTime;
+    let setupTime = parsed.contact.setupTime;
     
     const normalizeTime = (timeStr: string | null): string | null => {
       if (!timeStr) return null;
@@ -140,6 +141,7 @@ export default async function handler(
 
     eventTime = normalizeTime(eventTime);
     endTime = normalizeTime(endTime);
+    setupTime = normalizeTime(setupTime);
 
     let contact;
     let project = null;
@@ -157,10 +159,22 @@ export default async function handler(
       if (eventDate && !existingContact.event_date) updateData.event_date = eventDate;
       if (eventTime && !existingContact.event_time) updateData.event_time = eventTime;
       if (endTime && !existingContact.end_time) updateData.end_time = endTime;
+      if (setupTime && !existingContact.setup_time) updateData.setup_time = setupTime;
       if (parsed.contact.venueName && !existingContact.venue_name) updateData.venue_name = parsed.contact.venueName;
       if (parsed.contact.venueAddress && !existingContact.venue_address) updateData.venue_address = parsed.contact.venueAddress;
+      if (parsed.contact.venueType && !existingContact.venue_type) updateData.venue_type = parsed.contact.venueType;
+      if (parsed.contact.venueRoom && !existingContact.venue_room) updateData.venue_room = parsed.contact.venueRoom;
       if (parsed.contact.guestCount && !existingContact.guest_count) updateData.guest_count = parsed.contact.guestCount;
       if (parsed.contact.eventType && !existingContact.event_type) updateData.event_type = parsed.contact.eventType;
+      if (parsed.contact.guestArrivalTime && !existingContact.guest_arrival_time) {
+        updateData.guest_arrival_time = normalizeTime(parsed.contact.guestArrivalTime);
+      }
+      if (parsed.contact.eventOccasion && !existingContact.event_occasion) updateData.event_occasion = parsed.contact.eventOccasion;
+      if (parsed.contact.eventFor && !existingContact.event_for) updateData.event_for = parsed.contact.eventFor;
+      if (parsed.contact.isSurprise !== null && existingContact.is_surprise === null) {
+        updateData.is_surprise = parsed.contact.isSurprise;
+      }
+      if (parsed.contact.referralSource && !existingContact.referral_source) updateData.referral_source = parsed.contact.referralSource;
 
       const existingNotes = existingContact.notes || '';
       const newNotes = parsed.contact.notes.join('\n');
@@ -192,10 +206,18 @@ export default async function handler(
         event_date: eventDate,
         event_time: eventTime,
         end_time: endTime,
+        setup_time: setupTime,
         venue_name: parsed.contact.venueName || null,
         venue_address: parsed.contact.venueAddress || null,
+        venue_type: parsed.contact.venueType || null,
+        venue_room: parsed.contact.venueRoom || null,
         guest_count: parsed.contact.guestCount || null,
         budget_range: parsed.contact.budgetRange || null,
+        guest_arrival_time: parsed.contact.guestArrivalTime ? normalizeTime(parsed.contact.guestArrivalTime) : null,
+        event_occasion: parsed.contact.eventOccasion || null,
+        event_for: parsed.contact.eventFor || null,
+        is_surprise: parsed.contact.isSurprise ?? null,
+        referral_source: parsed.contact.referralSource || null,
         lead_status: 'New',
         lead_source: 'Text Message',
         lead_stage: 'Initial Inquiry',
@@ -245,9 +267,56 @@ export default async function handler(
         .select('*')
         .eq('client_email', contact.email_address || '')
         .eq('event_date', eventDate || '')
-        .single();
+        .maybeSingle();
 
-      if (!existingEvent) {
+      if (existingEvent) {
+        // Update existing event with new data from thread
+        const eventUpdates: any = {
+          updated_at: new Date().toISOString(),
+        };
+
+        // Only update fields that are missing or if we have new data
+        if (eventTime && !existingEvent.start_time) {
+          eventUpdates.start_time = eventTime;
+        }
+        if (endTime && !existingEvent.end_time) {
+          eventUpdates.end_time = endTime;
+        }
+        if (contact.venue_name && !existingEvent.venue_name) {
+          eventUpdates.venue_name = contact.venue_name;
+        }
+        if (contact.venue_address && !existingEvent.venue_address) {
+          eventUpdates.venue_address = contact.venue_address;
+        }
+        if (contact.guest_count && !existingEvent.number_of_guests) {
+          eventUpdates.number_of_guests = contact.guest_count;
+        }
+        if (contact.event_type && !existingEvent.event_type) {
+          eventUpdates.event_type = contact.event_type;
+        }
+
+        // Only update if we have changes
+        if (Object.keys(eventUpdates).length > 1) { // More than just updated_at
+          const { data: updatedEvent, error: updateError } = await adminClient
+            .from('events')
+            .update(eventUpdates)
+            .eq('id', existingEvent.id)
+            .select()
+            .single();
+
+          if (!updateError && updatedEvent) {
+            project = updatedEvent;
+            console.log('[parse-text-thread] Updated existing event:', updatedEvent.id);
+          } else if (updateError) {
+            console.warn('[parse-text-thread] Failed to update event (non-critical):', updateError);
+            project = existingEvent; // Use existing event even if update failed
+          }
+        } else {
+          project = existingEvent;
+          console.log('[parse-text-thread] Using existing event (no updates needed):', existingEvent.id);
+        }
+      } else {
+        // Create new event if it doesn't exist
         const projectData: any = {
           submission_id: contact.id,
           event_name: generateProjectName(),
@@ -278,17 +347,19 @@ export default async function handler(
 
         if (!projectError && newProject) {
           project = newProject;
+          console.log('[parse-text-thread] Created new event:', newProject.id);
         } else if (projectError) {
-          console.warn('Failed to create project (non-critical):', projectError);
+          console.warn('[parse-text-thread] Failed to create project (non-critical):', projectError);
         }
-      } else {
-        project = existingEvent;
       }
     }
 
     // Save SMS conversation messages if we have them
     if (parsed.messages.length > 0 && contact.phone) {
       try {
+        // Get organization_id from contact
+        const contactOrgId = contact.organization_id || orgId || null;
+        
         const conversationSessionId = crypto.randomUUID();
         const importTimestamp = new Date().toISOString();
 
@@ -302,6 +373,7 @@ export default async function handler(
             direction: direction,
             message_type: messageType,
             customer_id: contact.id,
+            organization_id: contactOrgId,
             conversation_session_id: conversationSessionId,
             message_status: 'sent',
             created_at: new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString(),
@@ -312,6 +384,8 @@ export default async function handler(
         await adminClient
           .from('sms_conversations')
           .insert(messageRows);
+          
+        console.log(`[parse-text-thread] Saved ${messageRows.length} messages to sms_conversations`);
       } catch (conversationError) {
         console.warn('Failed to save SMS conversation (non-critical):', conversationError);
       }

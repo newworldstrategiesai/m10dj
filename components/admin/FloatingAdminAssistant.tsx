@@ -62,7 +62,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { getCurrentOrganization } from '@/utils/organization-context';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 
 // Admin emails removed - now using centralized admin roles system
 // See: utils/auth-helpers/admin-roles.ts
@@ -105,6 +105,7 @@ export default function FloatingAdminAssistant() {
   const [threadText, setThreadText] = useState('');
   const [inputMode, setInputMode] = useState<'paste' | 'upload'>('paste');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const importAbortControllerRef = useRef<AbortController | null>(null);
   const [importStatus, setImportStatus] = useState<ImportStatus>({ state: 'idle' });
   const [contactId, setContactId] = useState<string | null>(null);
   const [existingContact, setExistingContact] = useState<any>(null);
@@ -153,8 +154,10 @@ export default function FloatingAdminAssistant() {
   }, [threadText]);
 
   const parsedPreview: ParsedLeadThread | null = useMemo(() => {
-    if (!threadText.trim() || isEmail) return null;
+    if (!threadText.trim()) return null;
     try {
+      // Always parse thread for structured data, even if it's detected as email
+      // Structured fields (Name:, Email:, etc.) work in both SMS and emails
       const parsed = parseLeadThread(threadText);
       if (parsed) {
         const initialFields = {
@@ -166,10 +169,18 @@ export default function FloatingAdminAssistant() {
           eventDate: parsed.contact.eventDate || null,
           venueName: parsed.contact.venueName || null,
           venueAddress: parsed.contact.venueAddress || null,
+          venueType: parsed.contact.venueType || null,
+          venueRoom: parsed.contact.venueRoom || null,
           eventTime: parsed.contact.eventTime || null,
           endTime: parsed.contact.endTime || null,
+          setupTime: parsed.contact.setupTime || null,
+          guestArrivalTime: parsed.contact.guestArrivalTime || null,
           guestCount: parsed.contact.guestCount?.toString() || null,
           budgetRange: parsed.contact.budgetRange || null,
+          referralSource: parsed.contact.referralSource || null,
+          eventOccasion: parsed.contact.eventOccasion || null,
+          eventFor: parsed.contact.eventFor || null,
+          isSurprise: parsed.contact.isSurprise ? 'true' : null,
         };
         // Only update if editableFields is empty (initial load) or if thread text changed significantly
         const hasNoFields = Object.values(editableFields).every(v => !v);
@@ -203,6 +214,54 @@ export default function FloatingAdminAssistant() {
     }
   }, [isEmail, threadText]);
 
+  // Calculate detected fields for use in badge count and field display
+  const detectedFields = useMemo(() => {
+    const allFields = [
+      { key: 'firstName', label: 'First Name', icon: IconUser, existing: existingContact?.first_name },
+      { key: 'lastName', label: 'Last Name', icon: IconUser, existing: existingContact?.last_name },
+      { key: 'email', label: 'Email', icon: IconMail, existing: existingContact?.email_address },
+      { key: 'phone', label: 'Phone', icon: IconPhone, existing: existingContact?.phone },
+      { key: 'eventType', label: 'Event Type', icon: IconCalendar, existing: existingContact?.event_type },
+      { key: 'eventDate', label: 'Event Date', icon: IconCalendar, existing: existingContact?.event_date ? dayjs(existingContact.event_date).format('YYYY-MM-DD') : null },
+      { key: 'eventTime', label: 'Start Time', icon: IconClock, existing: existingContact?.event_time },
+      { key: 'endTime', label: 'End Time', icon: IconClock, existing: existingContact?.end_time },
+      { key: 'setupTime', label: 'Setup Time', icon: IconClock, existing: existingContact?.setup_time },
+      { key: 'guestArrivalTime', label: 'Guest Arrival Time', icon: IconClock, existing: existingContact?.guest_arrival_time },
+      { key: 'venueName', label: 'Venue Name', icon: IconMapPin, existing: existingContact?.venue_name },
+      { key: 'venueAddress', label: 'Venue Address', icon: IconMapPin, existing: existingContact?.venue_address },
+      { key: 'venueType', label: 'Venue Type', icon: IconMapPin, existing: existingContact?.venue_type },
+      { key: 'venueRoom', label: 'Venue Room', icon: IconMapPin, existing: existingContact?.venue_room },
+      { key: 'guestCount', label: 'Guest Count', icon: IconUsers, existing: existingContact?.guest_count?.toString() },
+      { key: 'budgetRange', label: 'Budget Range', icon: IconSettings, existing: existingContact?.budget_range },
+      { key: 'referralSource', label: 'Referral Source', icon: IconUsers, existing: existingContact?.referral_source },
+      { key: 'eventOccasion', label: 'Event Occasion', icon: IconCalendar, existing: existingContact?.event_occasion },
+      { key: 'eventFor', label: 'Event For', icon: IconUser, existing: existingContact?.event_for },
+      { key: 'isSurprise', label: 'Is Surprise', icon: IconCalendar, existing: existingContact?.is_surprise?.toString() },
+    ];
+
+    return allFields.map(field => {
+      // Priority: editableFields > parsedPreview > emailExtractedData
+      let detectedValue = editableFields[field.key];
+      if (!detectedValue && parsedPreview?.contact) {
+        detectedValue = (parsedPreview.contact as any)[field.key];
+      }
+      if (!detectedValue && emailExtractedData) {
+        // Map email-specific fields
+        if (field.key === 'eventTime' && emailExtractedData.grandEntrance) {
+          detectedValue = emailExtractedData.grandEntrance;
+        } else if (field.key === 'endTime' && emailExtractedData.grandExit) {
+          detectedValue = emailExtractedData.grandExit;
+        } else {
+          detectedValue = (emailExtractedData as any)[field.key];
+        }
+      }
+      return { ...field, detected: detectedValue || null };
+    }).filter(f => {
+      // Show ALL fields that have either detected OR existing value (or both) for complete comparison
+      return f.detected || f.existing;
+    });
+  }, [editableFields, parsedPreview, emailExtractedData, existingContact]);
+
   // Auto-expand comparison when data is detected (moved after parsedPreview is defined)
   useEffect(() => {
     if ((parsedPreview || emailExtractedData || Object.keys(editableFields).length > 0) && !showComparison) {
@@ -233,9 +292,33 @@ export default function FloatingAdminAssistant() {
       }
     }
 
-    // Time validation
-    if (fields.eventTime && !/^([01]?[0-9]|2[0-3]):[0-5][0-9]/.test(fields.eventTime)) {
-      errors.eventTime = 'Invalid time format (use HH:MM)';
+    // Time validation - accept various formats (7pm, 7:00 PM, 19:00, etc.)
+    // The API will normalize these, so we just check if it looks like a time
+    if (fields.eventTime) {
+      const timeStr = fields.eventTime.trim();
+      // Accept formats like: "7pm", "7:00 PM", "19:00", "7:00pm", etc.
+      const timePattern = /^(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?|\d{1,2}:\d{2})$/i;
+      if (!timePattern.test(timeStr)) {
+        errors.eventTime = 'Invalid time format';
+      }
+    }
+
+    // End time validation - same flexible format
+    if (fields.endTime) {
+      const timeStr = fields.endTime.trim();
+      const timePattern = /^(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?|\d{1,2}:\d{2})$/i;
+      if (!timePattern.test(timeStr)) {
+        errors.endTime = 'Invalid time format';
+      }
+    }
+
+    // Setup time validation - same flexible format
+    if (fields.setupTime) {
+      const timeStr = fields.setupTime.trim();
+      const timePattern = /^(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?|\d{1,2}:\d{2})$/i;
+      if (!timePattern.test(timeStr)) {
+        errors.setupTime = 'Invalid time format';
+      }
     }
 
     setValidationErrors(errors);
@@ -670,6 +753,16 @@ export default function FloatingAdminAssistant() {
 
     setImportStatus({ state: 'processing', step: 'Parsing thread...' });
 
+    // Create AbortController for request cancellation
+    // Abort any previous import request
+    if (importAbortControllerRef.current) {
+      importAbortControllerRef.current.abort();
+    }
+    
+    const abortController = new AbortController();
+    importAbortControllerRef.current = abortController;
+    const signal = abortController.signal;
+
     try {
       let targetContactId = contactId;
       
@@ -684,7 +777,14 @@ export default function FloatingAdminAssistant() {
               email: parsedPreview.contact.email,
               phone: parsedPreview.contact.phoneE164 || parsedPreview.contact.phoneDigits 
             }),
+            signal, // Add abort signal
           });
+          
+          // Check if request was aborted
+          if (signal.aborted) {
+            return;
+          }
+          
           if (checkResponse.ok) {
             const checkData = await checkResponse.json();
             targetContactId = checkData.contact?.id;
@@ -708,10 +808,18 @@ export default function FloatingAdminAssistant() {
         eventDate: editableFields.eventDate || parsedPreview?.contact.eventDate,
         venueName: editableFields.venueName || parsedPreview?.contact.venueName,
         venueAddress: editableFields.venueAddress || parsedPreview?.contact.venueAddress,
+        venueType: editableFields.venueType || parsedPreview?.contact.venueType,
+        venueRoom: editableFields.venueRoom || parsedPreview?.contact.venueRoom,
         eventTime: editableFields.eventTime || parsedPreview?.contact.eventTime,
         endTime: editableFields.endTime || parsedPreview?.contact.endTime,
+        setupTime: editableFields.setupTime || parsedPreview?.contact.setupTime,
+        guestArrivalTime: editableFields.guestArrivalTime || parsedPreview?.contact.guestArrivalTime,
         guestCount: editableFields.guestCount || parsedPreview?.contact.guestCount?.toString(),
         budgetRange: editableFields.budgetRange || parsedPreview?.contact.budgetRange,
+        referralSource: editableFields.referralSource || parsedPreview?.contact.referralSource,
+        eventOccasion: editableFields.eventOccasion || parsedPreview?.contact.eventOccasion,
+        eventFor: editableFields.eventFor || parsedPreview?.contact.eventFor,
+        isSurprise: editableFields.isSurprise || (parsedPreview?.contact.isSurprise ? 'true' : null),
       };
       
       // Only include fields that should be updated
@@ -723,6 +831,11 @@ export default function FloatingAdminAssistant() {
       });
       
       setImportStatus({ state: 'processing', step: 'Importing contact data...' });
+      
+      // Check if request was aborted before making main request
+      if (signal.aborted) {
+        return;
+      }
       
       const response = await fetch('/api/leads/import-thread', {
         method: 'POST',
@@ -736,7 +849,13 @@ export default function FloatingAdminAssistant() {
           leadSource: importOptions.leadSource,
           leadStatus: importOptions.leadStatus,
         }),
+        signal, // Add abort signal
       });
+
+      // Check if request was aborted
+      if (signal.aborted) {
+        return;
+      }
 
       const payload = await response.json();
 
@@ -768,11 +887,24 @@ export default function FloatingAdminAssistant() {
       setEditableFields({});
       setEmailExtractedData(null);
       setFieldUpdateChoices({});
+      
+      // Clear abort controller on success
+      importAbortControllerRef.current = null;
     } catch (error: any) {
+      // Don't show error if request was aborted
+      if (error?.name === 'AbortError' || signal.aborted) {
+        setImportStatus({ state: 'idle' });
+        importAbortControllerRef.current = null;
+        return;
+      }
+      
       setImportStatus({
         state: 'error',
         message: error?.message || 'Something went wrong while importing the lead.',
       });
+      
+      // Clear abort controller on error
+      importAbortControllerRef.current = null;
     }
   }, [threadText, validateFields, toast, contactId, isEmail, parsedPreview, existingContact, editableFields, importOptions, fieldUpdateChoices]);
 
@@ -848,6 +980,9 @@ export default function FloatingAdminAssistant() {
   const [scanCount, setScanCount] = useState<number | null>(null);
   const [loadingScanCount, setLoadingScanCount] = useState(false);
   
+  // Memoize Supabase client to prevent re-creation
+  const supabase = useMemo(() => createClient(), []);
+
   // Check admin status and TipJar context using centralized admin roles system
   useEffect(() => {
     const checkAdmin = async () => {
@@ -856,7 +991,6 @@ export default function FloatingAdminAssistant() {
         setIsAdmin(adminStatus);
         
         // Check if user is a TipJar admin
-        const supabase = createClientComponentClient();
         const org = await getCurrentOrganization(supabase);
         const isTipJar = user.user_metadata?.product_context === 'tipjar' || org?.product_context === 'tipjar';
         setIsTipJarAdmin(isTipJar && adminStatus);
@@ -868,7 +1002,7 @@ export default function FloatingAdminAssistant() {
     if (!loading) {
       checkAdmin();
     }
-  }, [user?.email, user?.user_metadata, loading]);
+  }, [user?.email, user?.user_metadata, loading, supabase]);
 
   // Fetch QR scan count
   const fetchQRScanCount = async () => {
@@ -1512,7 +1646,7 @@ export default function FloatingAdminAssistant() {
                             <IconSparkles className="h-4 w-4 text-blue-600" />
                             <CardTitle className="text-sm">Detected Structured Data</CardTitle>
                             <Badge variant="outline" className="text-xs">
-                              {Object.keys(fieldUpdateChoices).filter(k => fieldUpdateChoices[k] === 'update' || fieldUpdateChoices[k] === 'new').length} fields to update
+                              {detectedFields.length} fields detected
                             </Badge>
                           </div>
                           <Button
@@ -1529,56 +1663,14 @@ export default function FloatingAdminAssistant() {
                       </CardHeader>
                       {showComparison && (
                         <CardContent className="space-y-4">
-                          {/* Field comparison list - will be populated below */}
-                          {(() => {
-                            const allFields = [
-                              { key: 'firstName', label: 'First Name', icon: IconUser, existing: existingContact?.first_name },
-                              { key: 'lastName', label: 'Last Name', icon: IconUser, existing: existingContact?.last_name },
-                              { key: 'email', label: 'Email', icon: IconMail, existing: existingContact?.email_address },
-                              { key: 'phone', label: 'Phone', icon: IconPhone, existing: existingContact?.phone },
-                              { key: 'eventType', label: 'Event Type', icon: IconCalendar, existing: existingContact?.event_type },
-                              { key: 'eventDate', label: 'Event Date', icon: IconCalendar, existing: existingContact?.event_date ? dayjs(existingContact.event_date).format('YYYY-MM-DD') : null },
-                              { key: 'eventTime', label: 'Start Time', icon: IconClock, existing: existingContact?.event_time },
-                              { key: 'endTime', label: 'End Time', icon: IconClock, existing: existingContact?.end_time },
-                              { key: 'venueName', label: 'Venue Name', icon: IconMapPin, existing: existingContact?.venue_name },
-                              { key: 'venueAddress', label: 'Venue Address', icon: IconMapPin, existing: existingContact?.venue_address },
-                              { key: 'guestCount', label: 'Guest Count', icon: IconUsers, existing: existingContact?.guest_count?.toString() },
-                              { key: 'budgetRange', label: 'Budget Range', icon: IconSettings, existing: existingContact?.budget_range },
-                            ];
-
-                            const detectedFields = allFields.map(field => {
-                              // Priority: editableFields > parsedPreview > emailExtractedData
-                              let detectedValue = editableFields[field.key];
-                              if (!detectedValue && parsedPreview?.contact) {
-                                detectedValue = (parsedPreview.contact as any)[field.key];
-                              }
-                              if (!detectedValue && emailExtractedData) {
-                                // Map email-specific fields
-                                if (field.key === 'eventTime' && emailExtractedData.grandEntrance) {
-                                  detectedValue = emailExtractedData.grandEntrance;
-                                } else if (field.key === 'endTime' && emailExtractedData.grandExit) {
-                                  detectedValue = emailExtractedData.grandExit;
-                                } else {
-                                  detectedValue = (emailExtractedData as any)[field.key];
-                                }
-                              }
-                              return { ...field, detected: detectedValue || null };
-                            }).filter(f => {
-                              // Show ALL fields that have either detected OR existing value (or both) for complete comparison
-                              return f.detected || f.existing;
-                            });
-
-                            if (detectedFields.length === 0) {
-                              return (
-                                <div className="text-center py-8 text-sm text-zinc-500">
-                                  No structured data detected yet. Continue typing or paste more content.
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <div className="space-y-3">
-                                {detectedFields.map((field) => {
+                          {/* Field comparison list */}
+                          {detectedFields.length === 0 ? (
+                            <div className="text-center py-8 text-sm text-zinc-500">
+                              No structured data detected yet. Continue typing or paste more content.
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {detectedFields.map((field) => {
                                   const Icon = field.icon;
                                   const detectedValue = field.detected;
                                   const existingValue = field.existing;
@@ -1711,9 +1803,8 @@ export default function FloatingAdminAssistant() {
                                     </div>
                                   );
                                 })}
-                              </div>
-                            );
-                          })()}
+                            </div>
+                          )}
 
                           {/* Existing contact link */}
                           {existingContact && (

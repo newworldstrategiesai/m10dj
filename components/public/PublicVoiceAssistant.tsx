@@ -446,13 +446,20 @@ function VoiceAssistantControls({
 }) {
   const { localParticipant } = useLocalParticipant();
   const { transcription: liveKitTranscription, clearTranscription } = useLiveKitTranscription();
+  
+  // Use ref to store latest callback to avoid dependency issues
+  const onTranscriptionUpdateRef = useRef(onTranscriptionUpdate);
+  useEffect(() => {
+    onTranscriptionUpdateRef.current = onTranscriptionUpdate;
+  }, [onTranscriptionUpdate]);
 
   // Update parent when LiveKit transcription changes
   useEffect(() => {
     if (liveKitTranscription && liveKitTranscription !== transcription) {
-      onTranscriptionUpdate(liveKitTranscription);
+      // Use ref to avoid dependency on function reference
+      onTranscriptionUpdateRef.current(liveKitTranscription);
     }
-  }, [liveKitTranscription, transcription, onTranscriptionUpdate]);
+  }, [liveKitTranscription, transcription]); // Removed onTranscriptionUpdate from dependencies
 
   // Sync microphone with listening state
   useEffect(() => {

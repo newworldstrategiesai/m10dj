@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock, Sparkles, Link2, Unlink } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,10 +34,19 @@ interface Contact {
   event_type: string | null;
   event_date: string | null;
   event_time: string | null;
+  end_time: string | null;
+  setup_time: string | null;
+  guest_arrival_time: string | null;
   venue_name: string | null;
   venue_address: string | null;
+  venue_type: string | null;
+  venue_room: string | null;
   guest_count: number | null;
   budget_range: string | null;
+  referral_source: string | null;
+  event_occasion: string | null;
+  event_for: string | null;
+  is_surprise: boolean | null;
   quoted_price: number | null;
   final_price: number | null;
   special_requests: string | null;
@@ -127,8 +136,10 @@ export default function ContactDetailPage() {
   const [showEmailParser, setShowEmailParser] = useState(false);
   const [emailContent, setEmailContent] = useState('');
   const [parsingEmail, setParsingEmail] = useState(false);
+  const [eventStatus, setEventStatus] = useState<{ shouldHaveEvent: boolean; hasEvent: boolean; loading: boolean } | null>(null);
+  const [creatingEvent, setCreatingEvent] = useState(false);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClient(), []);
   const { toast } = useToast();
   const { id, from } = router.query as { id: string; from?: string };
 
@@ -171,9 +182,70 @@ export default function ContactDetailPage() {
       fetchSocialMessages();
       fetchContracts();
       fetchQuoteSelections();
+      checkEventStatus();
       // Communications are now handled by UnifiedCommunicationHub component
     }
   }, [user, id]);
+
+  const checkEventStatus = async () => {
+    if (!id) return;
+    
+    try {
+      setEventStatus({ shouldHaveEvent: false, hasEvent: false, loading: true });
+      const response = await fetch(`/api/admin/check-contact-events?contactId=${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setEventStatus({
+          shouldHaveEvent: data.recommendation.shouldHaveEvent,
+          hasEvent: data.recommendation.hasEvent,
+          loading: false
+        });
+      } else {
+        setEventStatus({ shouldHaveEvent: false, hasEvent: false, loading: false });
+      }
+    } catch (error) {
+      console.error('Error checking event status:', error);
+      setEventStatus({ shouldHaveEvent: false, hasEvent: false, loading: false });
+    }
+  };
+
+  const handleCreateEvent = async () => {
+    if (!id || !contact) return;
+    
+    setCreatingEvent(true);
+    try {
+      const response = await fetch('/api/admin/create-event-from-contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactId: id })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create event');
+      }
+
+      toast({
+        title: "Success",
+        description: "Event created successfully!",
+        variant: "default"
+      });
+
+      // Refresh projects and event status
+      await fetchProjects();
+      await checkEventStatus();
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to create event',
+        variant: "destructive"
+      });
+    } finally {
+      setCreatingEvent(false);
+    }
+  };
 
   // Auto-update lead_status based on payment status
   useEffect(() => {
@@ -191,8 +263,8 @@ export default function ContactDetailPage() {
     if (isFullyPaid && contact.lead_status === 'Lost') {
       const updateStatus = async () => {
         try {
-          const { error } = await supabase
-            .from('contacts')
+          const { error } = await (supabase
+            .from('contacts') as any)
             .update({ 
               lead_status: 'Booked',
               payment_status: 'paid',
@@ -228,6 +300,11 @@ export default function ContactDetailPage() {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
 
+      // Handle AbortError gracefully (component unmounted or request cancelled)
+      if (userError?.name === 'AbortError') {
+        return; // Don't navigate or update state if request was aborted
+      }
+
       if (userError || !user) {
         router.push('/signin');
         return;
@@ -246,7 +323,11 @@ export default function ContactDetailPage() {
       }
 
       setUser(user);
-    } catch (error) {
+    } catch (error: any) {
+      // Handle AbortError gracefully
+      if (error?.name === 'AbortError') {
+        return; // Don't navigate or update state if request was aborted
+      }
       console.error('Error fetching user data:', error);
       router.push('/signin');
     }
@@ -363,7 +444,7 @@ export default function ContactDetailPage() {
       } else if (quoteData && quoteData.length > 0) {
         // If no invoice_summary but we have a quote, create a synthetic invoice entry
         // This allows the UI to show that an invoice exists (since invoice page uses quote data)
-        const quote = quoteData[0];
+        const quote = quoteData[0] as any;
         const syntheticInvoice = {
           id: quote.id,
           contact_id: id,
@@ -417,8 +498,8 @@ export default function ContactDetailPage() {
 
       // Combine and sort by timestamp
       const allMessages = [
-        ...(instagramMessages || []).map(m => ({ ...m, platform: 'instagram' })),
-        ...(messengerMessages || []).map(m => ({ ...m, platform: 'messenger' }))
+        ...((instagramMessages || []) as any[]).map((m: any) => ({ ...m, platform: 'instagram' })),
+        ...((messengerMessages || []) as any[]).map((m: any) => ({ ...m, platform: 'messenger' }))
       ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
       setSocialMessages(allMessages);
@@ -456,7 +537,7 @@ export default function ContactDetailPage() {
       } else if (quoteData && quoteData.length > 0) {
         // If no contract table entry but we have a quote, create a synthetic contract entry
         // This allows the UI to show that a contract page exists (since contract page uses quote data)
-        const quote = quoteData[0];
+        const quote = quoteData[0] as any;
         const syntheticContract = {
           id: quote.id,
           contact_id: id,
@@ -536,7 +617,7 @@ export default function ContactDetailPage() {
         .order('created_at', { ascending: false });
 
       if (smsMessages) {
-        smsMessages.forEach(msg => {
+        (smsMessages as any[]).forEach((msg: any) => {
           allCommunications.push({
             id: msg.id,
             type: 'sms',
@@ -563,7 +644,7 @@ export default function ContactDetailPage() {
         .order('created_at', { ascending: false });
 
       if (emailTracking) {
-        emailTracking.forEach(email => {
+        (emailTracking as any[]).forEach((email: any) => {
           if (email.event_type === 'sent') {
             allCommunications.push({
               id: email.id,
@@ -594,7 +675,7 @@ export default function ContactDetailPage() {
           .limit(1);
 
         if (submissions && submissions.length > 0) {
-          const submissionId = submissions[0].id;
+          const submissionId = (submissions[0] as any).id;
           const { data: commLogs } = await supabase
             .from('communication_log')
             .select('*')
@@ -602,7 +683,7 @@ export default function ContactDetailPage() {
             .order('created_at', { ascending: false });
 
           if (commLogs) {
-            commLogs.forEach(comm => {
+            (commLogs as any[]).forEach((comm: any) => {
               allCommunications.push({
                 id: comm.id,
                 type: comm.communication_type,
@@ -638,8 +719,8 @@ export default function ContactDetailPage() {
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('contacts')
+      const { error } = await (supabase
+        .from('contacts') as any)
         .update({
           first_name: contact.first_name,
           last_name: contact.last_name,
@@ -761,7 +842,7 @@ export default function ContactDetailPage() {
         .limit(1);
 
       if (!venueError && venueMatches && venueMatches.length > 0) {
-        const matchedVenue = venueMatches[0];
+        const matchedVenue = venueMatches[0] as any;
         if (matchedVenue.address) {
           // Format address: "123 Main St, Memphis, TN 38103" or just "123 Main St" if city/state not available
           const formattedAddress = matchedVenue.address.includes(',')
@@ -1273,7 +1354,7 @@ export default function ContactDetailPage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Time</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Time (Start)</label>
                     {isEditing ? (
                       <Input
                         type="time"
@@ -1282,6 +1363,42 @@ export default function ContactDetailPage() {
                       />
                     ) : (
                       <p className="text-gray-900">{contact.event_time || 'Not set'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                    {isEditing ? (
+                      <Input
+                        type="time"
+                        value={contact.end_time || ''}
+                        onChange={(e) => handleInputChange('end_time', e.target.value)}
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.end_time || 'Not set'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Setup Time</label>
+                    {isEditing ? (
+                      <Input
+                        type="time"
+                        value={contact.setup_time || ''}
+                        onChange={(e) => handleInputChange('setup_time', e.target.value)}
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.setup_time || 'Not set'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Guest Arrival Time</label>
+                    {isEditing ? (
+                      <Input
+                        type="time"
+                        value={contact.guest_arrival_time || ''}
+                        onChange={(e) => handleInputChange('guest_arrival_time', e.target.value)}
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.guest_arrival_time || 'Not set'}</p>
                     )}
                   </div>
                   <div>
@@ -1335,6 +1452,30 @@ export default function ContactDetailPage() {
                     )}
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Type</label>
+                    {isEditing ? (
+                      <Input
+                        value={contact.venue_type || ''}
+                        onChange={(e) => handleInputChange('venue_type', e.target.value)}
+                        placeholder="e.g., Clubhouse, Ballroom, Restaurant"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.venue_type || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Room</label>
+                    {isEditing ? (
+                      <Input
+                        value={contact.venue_room || ''}
+                        onChange={(e) => handleInputChange('venue_room', e.target.value)}
+                        placeholder="e.g., Main Hall, Conference Room A"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.venue_room || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
                     {isEditing ? (
                       <Input
@@ -1344,6 +1485,61 @@ export default function ContactDetailPage() {
                       />
                     ) : (
                       <p className="text-gray-900">{contact.budget_range || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Referral Source</label>
+                    {isEditing ? (
+                      <Input
+                        value={contact.referral_source || ''}
+                        onChange={(e) => handleInputChange('referral_source', e.target.value)}
+                        placeholder="How did they hear about us?"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.referral_source || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Occasion</label>
+                    {isEditing ? (
+                      <Input
+                        value={contact.event_occasion || ''}
+                        onChange={(e) => handleInputChange('event_occasion', e.target.value)}
+                        placeholder="e.g., Surprise Birthday Party, Anniversary"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.event_occasion || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Event For</label>
+                    {isEditing ? (
+                      <Input
+                        value={contact.event_for || ''}
+                        onChange={(e) => handleInputChange('event_for', e.target.value)}
+                        placeholder="e.g., Wife, Daughter, Client"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{contact.event_for || 'Not specified'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Is Surprise Event</label>
+                    {isEditing ? (
+                      <Select 
+                        value={contact.is_surprise === null ? '' : contact.is_surprise ? 'true' : 'false'} 
+                        onValueChange={(value) => handleInputChange('is_surprise', value === 'true' ? true : value === 'false' ? false : null)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-gray-900">{contact.is_surprise === true ? 'Yes' : contact.is_surprise === false ? 'No' : 'Not specified'}</p>
                     )}
                   </div>
                   <div className="md:col-span-2">
@@ -1361,17 +1557,54 @@ export default function ContactDetailPage() {
                 </div>
               </div>
 
+              {/* Event Status Alert */}
+              {eventStatus && eventStatus.shouldHaveEvent && !eventStatus.hasEvent && !eventStatus.loading && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-5 w-5 text-yellow-600" />
+                      <div>
+                        <h4 className="font-semibold text-yellow-900">Event Record Missing</h4>
+                        <p className="text-sm text-yellow-700">
+                          This contact has event data but no event record exists. Create an event to link invoices, contracts, and project management.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleCreateEvent}
+                      disabled={creatingEvent}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                    >
+                      {creatingEvent ? 'Creating...' : 'Create Event'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Projects Section */}
               <div className="bg-white rounded-lg shadow-sm border p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">Projects</h3>
-                  <Button 
-                    onClick={fetchProjects}
-                    disabled={projectsLoading}
-                    className="text-sm"
-                  >
-                    {projectsLoading ? 'Loading...' : 'Refresh'}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {eventStatus && eventStatus.shouldHaveEvent && !eventStatus.hasEvent && !eventStatus.loading && (
+                      <Button
+                        onClick={handleCreateEvent}
+                        disabled={creatingEvent}
+                        variant="outline"
+                        size="sm"
+                        className="text-sm"
+                      >
+                        {creatingEvent ? 'Creating...' : 'Create Event'}
+                      </Button>
+                    )}
+                    <Button 
+                      onClick={fetchProjects}
+                      disabled={projectsLoading}
+                      className="text-sm"
+                    >
+                      {projectsLoading ? 'Loading...' : 'Refresh'}
+                    </Button>
+                  </div>
                 </div>
                 
                 {projectsLoading ? (
@@ -1644,7 +1877,7 @@ export default function ContactDetailPage() {
                     <DialogHeader>
                       <DialogTitle>Import Information from Email</DialogTitle>
                       <DialogDescription>
-                        Paste the email content below. We'll automatically extract:
+                        Paste the email content below. We&apos;ll automatically extract:
                         <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
                           <li>Spotify playlist links (first dance, wedding, cocktail hour)</li>
                           <li>Event times (ceremony, grand entrance, grand exit)</li>
@@ -1853,7 +2086,7 @@ function EmailComposeModal({
   onSuccess: () => void;
 }) {
   const { toast } = useToast();
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClient(), []);
   const [sending, setSending] = useState(false);
   const [improving, setImproving] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>(initialTemplate || 'custom');
@@ -2191,24 +2424,26 @@ djbenmurray@gmail.com`
           .eq('user_id', user.id)
           .single();
 
-        if (orgMember?.organization_id) {
-          setOrganizationId(orgMember.organization_id);
+        const orgMemberData = orgMember as any;
+        if (orgMemberData?.organization_id) {
+          setOrganizationId(orgMemberData.organization_id);
           
           const { data: org } = await supabase
             .from('organizations')
             .select('google_review_link, email_provider, gmail_email_address')
-            .eq('id', orgMember.organization_id)
+            .eq('id', orgMemberData.organization_id)
             .single();
 
           if (org) {
-            if (org.google_review_link) {
-              setGoogleReviewLink(org.google_review_link);
+            const orgData = org as any;
+            if (orgData.google_review_link) {
+              setGoogleReviewLink(orgData.google_review_link);
             }
             
             // Check Gmail status
             setGmailStatus({
-              connected: org.email_provider === 'gmail' && !!org.gmail_email_address,
-              email: org.gmail_email_address || null,
+              connected: orgData.email_provider === 'gmail' && !!orgData.gmail_email_address,
+              email: orgData.gmail_email_address || null,
               loading: false
             });
           }

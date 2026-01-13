@@ -66,10 +66,11 @@ export default async function handler(req, res) {
     let projects = [];
     
     // Build events query with organization filtering
+    // Try multiple methods to find events: contact_id (preferred), submission_id, and email
     let eventsQuery = supabase
       .from('events')
       .select('*')
-      .or(`submission_id.eq.${contactId},client_email.eq.${contact.email_address}`);
+      .or(`contact_id.eq.${contactId},submission_id.eq.${contactId}${contact.email_address ? `,client_email.eq.${contact.email_address}` : ''}`);
 
     // For SaaS users, filter by organization_id. Platform admins see all events.
     if (!isAdmin && orgId) {

@@ -5,12 +5,12 @@
  * Allows event attendees to submit song requests and shoutouts
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../components/company/Header';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '../../utils/supabase/client';
 import { getCoverPhotoUrl } from '../../utils/cover-photo-helper';
 // Organization will be loaded via API
 import { GeneralRequestsPage } from '../requests';
@@ -18,7 +18,8 @@ import { GeneralRequestsPage } from '../requests';
 export default function OrganizationRequestsPage() {
   const router = useRouter();
   const { slug } = router.query;
-  const supabase = createClientComponentClient();
+  // Use singleton client and memoize to prevent re-renders
+  const supabase = useMemo(() => createClient(), []);
   const [organization, setOrganization] = useState(null);
   const [branding, setBranding] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -141,7 +142,7 @@ export default function OrganizationRequestsPage() {
       clearInterval(refreshInterval);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [slug, supabase]);
+  }, [slug]); // Removed supabase from dependencies - it's stable via useMemo
 
   // Check owner status when auth state changes
   useEffect(() => {
@@ -176,7 +177,7 @@ export default function OrganizationRequestsPage() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [organization, supabase]);
+  }, [organization]); // Removed supabase from dependencies - it's stable via useMemo
 
   // Debug: Log when component renders
   useEffect(() => {

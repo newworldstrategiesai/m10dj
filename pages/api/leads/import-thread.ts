@@ -205,7 +205,200 @@ function detectEmailFormat(text: string): boolean {
   return emailIndicators.some(pattern => pattern.test(text));
 }
 
-// Helper function to update linked projects when contact is updated
+// Helper function to update or create linked projects when contact is updated
+async function updateOrCreateLinkedProjects(
+  contactId: string,
+  contactData: {
+    event_time?: string | null;
+    end_time?: string | null;
+    venue_name?: string | null;
+    venue_address?: string | null;
+    venue_type?: string | null;
+    venue_room?: string | null;
+    email_address?: string | null;
+    event_date?: string | null;
+    event_type?: string | null;
+    guest_count?: number | null;
+  },
+  adminClient: any
+) {
+  try {
+    // Get the contact to find email and other details
+    const result = await (adminClient as any)
+      .from('contacts')
+      .select('email_address, first_name, last_name, organization_id')
+      .eq('id', contactId)
+      .single();
+    const contact = result.data as { 
+      email_address: string | null; 
+      first_name: string | null;
+      last_name: string | null;
+      organization_id: string | null;
+    } | null;
+
+    if (!contact) {
+      console.log('[updateOrCreateLinkedProjects] Contact not found');
+      return;
+    }
+
+    const email = contact.email_address || contactData.email_address;
+    // Note: We can still create events even without email by using contact_id
+    // But we need at least some event data to create an event
+    if (!email && !contactId) {
+      console.log('[updateOrCreateLinkedProjects] ⚠️ No email or contact_id found for contact, skipping event creation');
+      return;
+    }
+    
+    console.log('[updateOrCreateLinkedProjects] 🔍 Looking for events for contact:', {
+      contact_id: contactId,
+      email: email || 'none',
+      has_event_date: !!contactData.event_date,
+      has_venue: !!contactData.venue_name,
+      has_event_type: !!contactData.event_type
+    });
+
+    // Find projects linked to this contact by contact_id (preferred), email, or submission_id
+    let projectsQuery = adminClient
+      .from('events')
+      .select('id, start_time, end_time, venue_name, venue_address, event_date, contact_id, submission_id, client_email');
+
+    // First try to match by contact_id (most reliable)
+    if (contactId) {
+      projectsQuery = projectsQuery.eq('contact_id', contactId);
+    } else if (email) {
+      // Fallback to email matching
+      projectsQuery = projectsQuery.eq('client_email', email);
+    } else {
+      // Last resort: match by submission_id
+      projectsQuery = projectsQuery.eq('submission_id', contactId);
+    }
+
+    // If we have an event date, try to match by date for more precise matching
+    if (contactData.event_date) {
+      projectsQuery = projectsQuery.eq('event_date', contactData.event_date);
+    }
+
+    const { data: projects, error: projectsError } = await projectsQuery;
+
+    if (projectsError) {
+      console.error('[updateOrCreateLinkedProjects] Error finding projects:', projectsError);
+      return;
+    }
+
+    if (projects && projects.length > 0) {
+      // Update existing projects
+      console.log(`[updateOrCreateLinkedProjects] Found ${projects.length} project(s) to update`);
+
+      const projectUpdates: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      // Map contact fields to project fields
+      if (contactData.event_time) {
+        projectUpdates.start_time = contactData.event_time;
+      }
+      if (contactData.end_time) {
+        projectUpdates.end_time = contactData.end_time;
+      }
+      if (contactData.venue_name) {
+        projectUpdates.venue_name = contactData.venue_name;
+      }
+      if (contactData.venue_address) {
+        projectUpdates.venue_address = contactData.venue_address;
+      }
+      if (contactData.venue_type) {
+        projectUpdates.venue_type = contactData.venue_type;
+      }
+      if (contactData.venue_room) {
+        projectUpdates.venue_room = contactData.venue_room;
+      }
+      if (contactData.guest_count) {
+        projectUpdates.number_of_guests = contactData.guest_count;
+      }
+      if (contactData.event_type) {
+        projectUpdates.event_type = contactData.event_type;
+      }
+
+      // Only update if we have fields to update
+      if (Object.keys(projectUpdates).length > 1) { // More than just updated_at
+        const { error: updateError } = await (adminClient
+          .from('events') as any)
+          .update(projectUpdates)
+          .eq('client_email', email);
+
+        if (updateError) {
+          console.error('[updateOrCreateLinkedProjects] Error updating projects:', updateError);
+        } else {
+          console.log(`[updateOrCreateLinkedProjects] Successfully updated ${projects.length} project(s)`);
+        }
+      }
+    } else if (contactData.event_date || contactData.venue_name || contactData.event_type) {
+      // Create new event if we have event information but no existing event
+      console.log('[updateOrCreateLinkedProjects] 📅 No existing projects found, creating new event');
+      console.log('[updateOrCreateLinkedProjects] Event data available:', {
+        event_date: contactData.event_date,
+        venue_name: contactData.venue_name,
+        event_type: contactData.event_type,
+        contact_id: contactId,
+        email: email
+      });
+      
+      const clientName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Client';
+      const eventType = contactData.event_type || 'other';
+      const eventDate = contactData.event_date || new Date().toISOString().split('T')[0];
+      const venue = contactData.venue_name ? ` - ${contactData.venue_name}` : '';
+      
+      const eventName = `${clientName} - ${eventType}${venue}`;
+
+      const newEventData: any = {
+        contact_id: contactId, // Use contact_id as primary link (more reliable than submission_id)
+        submission_id: contactId, // Keep for backward compatibility
+        event_name: eventName,
+        client_name: clientName,
+        client_email: email || null, // Allow null email if contact doesn't have one
+        event_type: contactData.event_type || 'other',
+        event_date: eventDate,
+        start_time: contactData.event_time || null,
+        end_time: contactData.end_time || null,
+        venue_name: contactData.venue_name || null,
+        venue_address: contactData.venue_address || null,
+        venue_type: contactData.venue_type || null,
+        venue_room: contactData.venue_room || null,
+        number_of_guests: contactData.guest_count || null,
+        status: 'confirmed',
+        notes: `Auto-generated from thread import on ${new Date().toLocaleDateString()}.`,
+      };
+
+      if (contact.organization_id) {
+        newEventData.organization_id = contact.organization_id;
+      }
+
+      const { data: newEvent, error: createError } = await adminClient
+        .from('events')
+        .insert([newEventData])
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('[updateOrCreateLinkedProjects] ❌ Error creating event:', createError);
+        console.error('[updateOrCreateLinkedProjects] Event data that failed:', JSON.stringify(newEventData, null, 2));
+      } else {
+        console.log('[updateOrCreateLinkedProjects] ✅ Successfully created new event:', {
+          id: newEvent?.id,
+          name: newEvent?.event_name,
+          contact_id: newEvent?.contact_id,
+          client_email: newEvent?.client_email,
+          event_date: newEvent?.event_date,
+          venue: newEvent?.venue_name
+        });
+      }
+    }
+  } catch (error) {
+    console.error('[updateOrCreateLinkedProjects] Unexpected error:', error);
+  }
+}
+
+// Keep the old function name for backward compatibility
 async function updateLinkedProjects(
   contactId: string,
   contactData: {
@@ -213,84 +406,19 @@ async function updateLinkedProjects(
     end_time?: string | null;
     venue_name?: string | null;
     venue_address?: string | null;
+    venue_type?: string | null;
+    venue_room?: string | null;
     email_address?: string | null;
   },
   adminClient: any
 ) {
-  try {
-    // Get the contact to find email
-    const result = await (adminClient as any)
-      .from('contacts')
-      .select('email_address')
-      .eq('id', contactId)
-      .single();
-    const contact = result.data as { email_address: string | null } | null;
-
-    if (!contact) {
-      console.log('[updateLinkedProjects] Contact not found');
-      return;
-    }
-
-    const email = contact.email_address || contactData.email_address;
-    if (!email) {
-      console.log('[updateLinkedProjects] No email found for contact');
-      return;
-    }
-
-    // Find all projects linked to this contact by email
-    const { data: projects, error: projectsError } = await adminClient
-      .from('events')
-      .select('id, start_time, end_time, venue_name, venue_address')
-      .eq('client_email', email);
-
-    if (projectsError) {
-      console.error('[updateLinkedProjects] Error finding projects:', projectsError);
-      return;
-    }
-
-    if (!projects || projects.length === 0) {
-      console.log('[updateLinkedProjects] No projects found for contact');
-      return;
-    }
-
-    console.log(`[updateLinkedProjects] Found ${projects.length} project(s) to update`);
-
-    // Build update payload with only fields that have new values
-    const projectUpdates: Record<string, any> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    // Map contact event_time to project start_time
-    if (contactData.event_time) {
-      projectUpdates.start_time = contactData.event_time;
-    }
-    if (contactData.end_time) {
-      projectUpdates.end_time = contactData.end_time;
-    }
-    if (contactData.venue_name) {
-      projectUpdates.venue_name = contactData.venue_name;
-    }
-    if (contactData.venue_address) {
-      projectUpdates.venue_address = contactData.venue_address;
-    }
-
-    // Only update if we have fields to update
-    if (Object.keys(projectUpdates).length > 1) { // More than just updated_at
-      // Update all linked projects
-      const { error: updateError } = await (adminClient
-        .from('events') as any)
-        .update(projectUpdates)
-        .eq('client_email', email);
-
-      if (updateError) {
-        console.error('[updateLinkedProjects] Error updating projects:', updateError);
-      } else {
-        console.log(`[updateLinkedProjects] Successfully updated ${projects.length} project(s) with:`, projectUpdates);
-      }
-    }
-  } catch (error) {
-    console.error('[updateLinkedProjects] Unexpected error:', error);
-  }
+  // Call the new function with additional fields
+  return updateOrCreateLinkedProjects(contactId, {
+    ...contactData,
+    event_date: undefined,
+    event_type: undefined,
+    guest_count: undefined,
+  }, adminClient);
 }
 
 async function handleEmailImport(
@@ -795,6 +923,21 @@ export default async function handler(
         timeStyle: 'short',
       })} by ${userEmail}.\n\n` + detailSection + developmentsSection + conversationText + rawThreadSection;
 
+    // Find the most recent message timestamp (if available)
+    let mostRecentTimestamp: string | null = null;
+    if (parsed.messages.length > 0) {
+      const timestamps = parsed.messages
+        .map(msg => msg.timestamp)
+        .filter((ts): ts is string => ts !== null && ts !== undefined)
+        .sort()
+        .reverse(); // Most recent first
+      
+      if (timestamps.length > 0) {
+        mostRecentTimestamp = timestamps[0];
+        console.log('[lead-import-thread] Most recent message timestamp:', mostRecentTimestamp);
+      }
+    }
+
     if (existingContact) {
       // Check for duplicate messages in existing notes
       const existingNotes = existingContact.notes || '';
@@ -804,10 +947,25 @@ export default async function handler(
         console.log('[lead-import-thread] Duplicate thread detected, skipping message import');
       }
 
+      // Use the most recent message timestamp if available, otherwise use current time
+      const lastContactedDate = mostRecentTimestamp || new Date().toISOString();
+      
+      // Only update last_contacted_date if the new timestamp is more recent than existing
+      let shouldUpdateLastContacted = true;
+      if (existingContact.last_contacted_date && mostRecentTimestamp) {
+        const existingDate = new Date(existingContact.last_contacted_date);
+        const newDate = new Date(mostRecentTimestamp);
+        shouldUpdateLastContacted = newDate > existingDate;
+      }
+
       const updatePayload: Record<string, any> = {
-        last_contacted_date: new Date().toISOString(),
         last_contact_type: 'sms_import',
       };
+
+      if (shouldUpdateLastContacted) {
+        updatePayload.last_contacted_date = lastContactedDate;
+        console.log('[lead-import-thread] Updating last_contacted_date to:', lastContactedDate);
+      }
 
       // Update fields intelligently - fill missing or update with more specific info
       if (parsed.contact.firstName) {
@@ -840,17 +998,26 @@ export default async function handler(
         }
       }
 
-      if (parsed.contact.eventDate) {
-        if (!existingContact.event_date) {
-          updatePayload.event_date = parsed.contact.eventDate;
-        }
-      }
-
       // Use overrides if provided (user edited fields in UI)
       const venueToUse = overrides?.venueName !== undefined ? overrides.venueName : parsed.contact.venueName;
       const eventDateToUse = overrides?.eventDate !== undefined ? overrides.eventDate : parsed.contact.eventDate;
       const eventTypeToUse = overrides?.eventType !== undefined ? overrides.eventType : parsed.contact.eventType;
       const venueAddressToUse = overrides?.venueAddress !== undefined ? overrides.venueAddress : parsed.contact.venueAddress;
+
+      // Update event_date - use override if provided, otherwise use parsed date if available
+      if (eventDateToUse) {
+        // Always update if we have a new date (from override or parsed), unless existing date is the same
+        if (!existingContact.event_date || existingContact.event_date !== eventDateToUse) {
+          updatePayload.event_date = eventDateToUse;
+          console.log('[lead-import-thread] Updating event_date:', eventDateToUse);
+        }
+      } else if (parsed.contact.eventDate) {
+        // Fallback: use parsed date if no override
+        if (!existingContact.event_date) {
+          updatePayload.event_date = parsed.contact.eventDate;
+          console.log('[lead-import-thread] Setting event_date from parsed data:', parsed.contact.eventDate);
+        }
+      }
 
       // Update venue intelligently - don't overwrite existing correct venue with wrong detection
       if (venueToUse) {
@@ -910,15 +1077,61 @@ export default async function handler(
         }
       }
 
+      if (parsed.contact.venueType) {
+        if (!existingContact.venue_type || existingContact.venue_type.trim() === '') {
+          updatePayload.venue_type = parsed.contact.venueType;
+        }
+      }
+
+      if (parsed.contact.venueRoom) {
+        if (!existingContact.venue_room || existingContact.venue_room.trim() === '') {
+          updatePayload.venue_room = parsed.contact.venueRoom;
+        }
+      }
+
+      if (parsed.contact.guestArrivalTime) {
+        if (!existingContact.guest_arrival_time) {
+          updatePayload.guest_arrival_time = normalizeTime(parsed.contact.guestArrivalTime);
+        }
+      }
+
+      if (parsed.contact.eventOccasion) {
+        if (!existingContact.event_occasion || existingContact.event_occasion.trim() === '') {
+          updatePayload.event_occasion = parsed.contact.eventOccasion;
+        }
+      }
+
+      if (parsed.contact.eventFor) {
+        if (!existingContact.event_for || existingContact.event_for.trim() === '') {
+          updatePayload.event_for = parsed.contact.eventFor;
+        }
+      }
+
+      if (parsed.contact.isSurprise !== null && existingContact.is_surprise === null) {
+        updatePayload.is_surprise = parsed.contact.isSurprise;
+      }
+
+      if (parsed.contact.referralSource) {
+        if (!existingContact.referral_source || existingContact.referral_source.trim() === '') {
+          updatePayload.referral_source = parsed.contact.referralSource;
+        }
+      }
+
       if (parsed.contact.eventTime) {
         if (!existingContact.event_time || existingContact.event_time.trim() === '') {
-          updatePayload.event_time = parsed.contact.eventTime;
+          updatePayload.event_time = normalizeTime(parsed.contact.eventTime);
         }
       }
 
       if (parsed.contact.endTime) {
         if (!existingContact.end_time || existingContact.end_time.trim() === '') {
-          updatePayload.end_time = parsed.contact.endTime;
+          updatePayload.end_time = normalizeTime(parsed.contact.endTime);
+        }
+      }
+
+      if (parsed.contact.setupTime) {
+        if (!existingContact.setup_time || existingContact.setup_time.trim() === '') {
+          updatePayload.setup_time = normalizeTime(parsed.contact.setupTime);
         }
       }
 
@@ -987,11 +1200,15 @@ export default async function handler(
         }
       }
 
-      // Save structured messages to sms_conversations table as individual rows
-      if (!isDuplicate && parsed.messages.length > 0 && existingContact) {
+      // Always save structured messages to sms_conversations table as individual rows
+      // This ensures messages appear in the communications tab, even if notes are duplicates
+      if (parsed.messages.length > 0 && existingContact) {
         const phoneNumber = parsed.contact.phoneE164 || parsed.contact.phoneDigits;
         if (phoneNumber) {
           try {
+            // Get organization_id from contact
+            const contactOrgId = existingContact.organization_id || null;
+            
             // Generate a conversation session ID for grouping these messages
             const conversationSessionId = crypto.randomUUID();
             const importTimestamp = new Date().toISOString();
@@ -1009,6 +1226,7 @@ export default async function handler(
                 direction: direction,
                 message_type: messageType,
                 customer_id: existingContact!.id,
+                organization_id: contactOrgId,
                 conversation_session_id: conversationSessionId,
                 message_status: 'sent',
                 created_at: new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString(), // Stagger timestamps slightly
@@ -1030,6 +1248,8 @@ export default async function handler(
             console.error('[lead-import-thread] Error saving structured messages:', conversationError);
             // Don't fail the import if conversation saving fails
           }
+        } else {
+          console.warn('[lead-import-thread] No phone number found, skipping SMS message save');
         }
       }
 
@@ -1054,13 +1274,18 @@ export default async function handler(
 
       console.log('[lead-import-thread] Contact updated successfully:', data.id);
 
-      // Update linked projects with new contact data
-      await updateLinkedProjects(data.id, {
+      // Update or create linked projects/events
+      await updateOrCreateLinkedProjects(data.id, {
         event_time: data.event_time,
         end_time: data.end_time,
         venue_name: data.venue_name,
         venue_address: data.venue_address,
+        venue_type: data.venue_type,
+        venue_room: data.venue_room,
         email_address: data.email_address,
+        event_date: data.event_date || eventDateToUse || null, // Use updated event_date or fallback to parsed date
+        event_type: data.event_type,
+        guest_count: data.guest_count,
       }, adminClient as any);
 
       return res.status(200).json({
@@ -1093,11 +1318,19 @@ export default async function handler(
         event_date: existingSubmission.event_date || parsed.contact.eventDate || null,
         venue_name: existingSubmission.location || parsed.contact.venueName || null,
         venue_address: parsed.contact.venueAddress || null,
-        event_time: parsed.contact.eventTime || null,
-        end_time: parsed.contact.endTime || null,
+        venue_type: parsed.contact.venueType || null,
+        venue_room: parsed.contact.venueRoom || null,
+        event_time: parsed.contact.eventTime ? normalizeTime(parsed.contact.eventTime) : null,
+        end_time: parsed.contact.endTime ? normalizeTime(parsed.contact.endTime) : null,
+        setup_time: parsed.contact.setupTime ? normalizeTime(parsed.contact.setupTime) : null,
+        guest_arrival_time: parsed.contact.guestArrivalTime ? normalizeTime(parsed.contact.guestArrivalTime) : null,
         special_requests: existingSubmission.message || parsed.contact.notes?.join('\n') || null,
+        event_occasion: parsed.contact.eventOccasion || null,
+        event_for: parsed.contact.eventFor || null,
+        is_surprise: parsed.contact.isSurprise ?? null,
+        referral_source: parsed.contact.referralSource || null,
         lead_status: existingSubmission.status || 'New',
-        lead_source: existingSubmission.source || 'Contact Form',
+        lead_source: parsed.contact.referralSource ? 'Referral' : (existingSubmission.source || 'Contact Form'),
         lead_stage: 'Initial Inquiry',
         lead_temperature: 'Warm',
         communication_preference: existingSubmission.phone ? 'any' : 'email',
@@ -1105,7 +1338,7 @@ export default async function handler(
         notes: existingSubmission.notes || importNote,
         created_at: existingSubmission.created_at || new Date().toISOString(),
         tags: ['migrated_from_submission', 'sms_import'],
-        last_contacted_date: new Date().toISOString(),
+        last_contacted_date: mostRecentTimestamp || new Date().toISOString(),
         last_contact_type: 'sms_import',
       };
 
@@ -1128,11 +1361,17 @@ export default async function handler(
         // Re-run the update logic with the migrated contact
         // (The code will fall through to the existing contact update logic above)
         // But we need to add the thread note and update fields properly
+        // Use the most recent message timestamp if available
+        const lastContactedDate = mostRecentTimestamp || new Date().toISOString();
+        
         const updatePayload: Record<string, any> = {
-          last_contacted_date: new Date().toISOString(),
+          last_contacted_date: lastContactedDate,
           last_contact_type: 'sms_import',
         };
 
+        // Use overrides if provided (user edited fields in UI)
+        const eventDateToUseForMigrated = overrides?.eventDate !== undefined ? overrides.eventDate : parsed.contact.eventDate;
+        
         // Merge thread data with migrated submission data (thread takes precedence for missing fields)
         if (parsed.contact.firstName && existingContact && !existingContact.first_name) {
           updatePayload.first_name = parsed.contact.firstName;
@@ -1140,11 +1379,21 @@ export default async function handler(
         if (parsed.contact.lastName && existingContact && !existingContact.last_name) {
           updatePayload.last_name = parsed.contact.lastName;
         }
+        if (eventDateToUseForMigrated && existingContact) {
+          // Always update event_date if we have a new date (from override or parsed)
+          if (!existingContact.event_date || existingContact.event_date !== eventDateToUseForMigrated) {
+            updatePayload.event_date = eventDateToUseForMigrated;
+            console.log('[lead-import-thread] Updating event_date for migrated contact:', eventDateToUseForMigrated);
+          }
+        }
         if (parsed.contact.eventTime && existingContact && !existingContact.event_time) {
-          updatePayload.event_time = parsed.contact.eventTime;
+          updatePayload.event_time = normalizeTime(parsed.contact.eventTime);
         }
         if (parsed.contact.endTime && existingContact && !existingContact.end_time) {
-          updatePayload.end_time = parsed.contact.endTime;
+          updatePayload.end_time = normalizeTime(parsed.contact.endTime);
+        }
+        if (parsed.contact.setupTime && existingContact && !existingContact.setup_time) {
+          updatePayload.setup_time = normalizeTime(parsed.contact.setupTime);
         }
         if (parsed.contact.venueAddress && existingContact && !existingContact.venue_address) {
           updatePayload.venue_address = parsed.contact.venueAddress;
@@ -1173,13 +1422,16 @@ export default async function handler(
             existingContact = updatedContact;
             
             // Update linked projects
-            await updateLinkedProjects(updatedContact.id, {
+            await updateOrCreateLinkedProjects(updatedContact.id, {
               event_time: updatedContact.event_time,
               end_time: updatedContact.end_time,
               venue_name: updatedContact.venue_name,
               venue_address: updatedContact.venue_address,
               email_address: updatedContact.email_address,
-            }, adminClient);
+              event_date: updatedContact.event_date || eventDateToUseForMigrated || null,
+              event_type: updatedContact.event_type,
+              guest_count: updatedContact.guest_count,
+            }, adminClient as any);
           }
 
           // Save structured messages as individual rows
@@ -1191,6 +1443,9 @@ export default async function handler(
                 const conversationSessionId = crypto.randomUUID();
                 const importTimestamp = new Date().toISOString();
 
+                // Get organization_id from contact
+                const contactOrgId = existingContact?.organization_id || null;
+                
                 // Convert parsed messages to individual sms_conversations rows
                 const messageRows = parsed.messages.map((msg, index) => {
                   // Map role to direction and message_type
@@ -1203,6 +1458,7 @@ export default async function handler(
                     direction: direction,
                     message_type: messageType,
                     customer_id: existingContact!.id,
+                    organization_id: contactOrgId,
                     conversation_session_id: conversationSessionId,
                     message_status: 'sent',
                     created_at: new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString(), // Stagger timestamps slightly
@@ -1253,8 +1509,12 @@ export default async function handler(
         event_date: parsed.contact.eventDate || null,
         venue_name: parsed.contact.venueName || null,
         venue_address: parsed.contact.venueAddress || null,
-        event_time: parsed.contact.eventTime || null,
-        end_time: parsed.contact.endTime || null,
+        venue_type: parsed.contact.venueType || null,
+        venue_room: parsed.contact.venueRoom || null,
+        event_time: parsed.contact.eventTime ? normalizeTime(parsed.contact.eventTime) : null,
+        end_time: parsed.contact.endTime ? normalizeTime(parsed.contact.endTime) : null,
+        setup_time: parsed.contact.setupTime ? normalizeTime(parsed.contact.setupTime) : null,
+        guest_arrival_time: parsed.contact.guestArrivalTime ? normalizeTime(parsed.contact.guestArrivalTime) : null,
         guest_count: parsed.contact.guestCount !== null && parsed.contact.guestCount !== undefined
           ? (typeof parsed.contact.guestCount === 'number' 
               ? parsed.contact.guestCount 
@@ -1264,13 +1524,17 @@ export default async function handler(
                 })())
           : null,
         budget_range: parsed.contact.budgetRange || null,
+        event_occasion: parsed.contact.eventOccasion || null,
+        event_for: parsed.contact.eventFor || null,
+        is_surprise: parsed.contact.isSurprise ?? null,
+        referral_source: parsed.contact.referralSource || null,
         lead_status: 'New',
-        lead_source: 'Conversation Import',
+        lead_source: parsed.contact.referralSource ? 'Referral' : 'Conversation Import',
         lead_stage: 'Initial Inquiry',
         lead_temperature: 'Warm',
         communication_preference: 'text',
         opt_in_status: true,
-        last_contacted_date: new Date().toISOString(),
+        last_contacted_date: mostRecentTimestamp || new Date().toISOString(),
         last_contact_type: 'sms_import',
         notes: importNote,
         tags: ['sms_import'],
@@ -1294,11 +1558,23 @@ export default async function handler(
               const conversationSessionId = crypto.randomUUID();
               const importTimestamp = new Date().toISOString();
 
+              // Get organization_id from new contact
+              const contactOrgId = newContact.organization_id || null;
+              
               // Convert parsed messages to individual sms_conversations rows
               const messageRows = parsed.messages.map((msg, index) => {
                 // Map role to direction and message_type
                 const direction = msg.role === 'contact' ? 'inbound' : 'outbound';
                 const messageType = msg.role === 'contact' ? 'customer' : msg.role === 'team' ? 'admin' : 'customer';
+
+                // Use actual message timestamp if available, otherwise use staggered import timestamp
+                let messageTimestamp: string;
+                if (msg.timestamp) {
+                  messageTimestamp = msg.timestamp;
+                } else {
+                  // Stagger timestamps slightly if no actual timestamp available
+                  messageTimestamp = new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString();
+                }
 
                 return {
                   phone_number: phoneNumber,
@@ -1306,9 +1582,10 @@ export default async function handler(
                   direction: direction,
                   message_type: messageType,
                   customer_id: newContact.id,
+                  organization_id: contactOrgId,
                   conversation_session_id: conversationSessionId,
                   message_status: 'sent',
-                  created_at: new Date(new Date(importTimestamp).getTime() + index * 1000).toISOString(), // Stagger timestamps slightly
+                  created_at: messageTimestamp,
                   processed_at: importTimestamp
                 };
               });
@@ -1340,6 +1617,22 @@ export default async function handler(
         }
 
         console.log('[lead-import-thread] Contact created successfully:', newContact?.id);
+
+        // Create or update linked event/project for new contacts
+        if (newContact) {
+          await updateOrCreateLinkedProjects(newContact.id, {
+            event_time: newContact.event_time,
+            end_time: newContact.end_time,
+            venue_name: newContact.venue_name,
+            venue_address: newContact.venue_address,
+            venue_type: newContact.venue_type,
+            venue_room: newContact.venue_room,
+            email_address: newContact.email_address,
+            event_date: newContact.event_date,
+            event_type: newContact.event_type,
+            guest_count: newContact.guest_count,
+          }, adminClient as any);
+        }
 
         return res.status(200).json({
           success: true,

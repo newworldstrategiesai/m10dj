@@ -3,11 +3,18 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// Singleton instance to prevent multiple client instances
+let supabaseInstance = null;
+
 // Create a dummy client if environment variables are missing (for build time)
 let supabase;
 
 if (supabaseUrl && supabaseAnonKey) {
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
+  // Use singleton pattern to prevent multiple instances
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+  }
+  supabase = supabaseInstance;
 } else {
   // Create a dummy client for build time
   console.warn('Supabase environment variables not found. Using dummy client for build.');

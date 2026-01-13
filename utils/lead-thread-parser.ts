@@ -9,10 +9,18 @@ export interface ParsedLeadContact {
   eventDate: string | null;
   venueName: string | null;
   venueAddress: string | null;
+  venueType: string | null;
+  venueRoom: string | null;
   eventTime: string | null;
   endTime: string | null;
+  setupTime: string | null;
+  guestArrivalTime: string | null;
   guestCount: number | null;
   budgetRange: string | null;
+  referralSource: string | null;
+  eventOccasion: string | null;
+  eventFor: string | null;
+  isSurprise: boolean | null;
   notes: string[];
 }
 
@@ -20,6 +28,7 @@ export interface ParsedLeadMessage {
   speakerLabel: string;
   role: 'contact' | 'team' | 'unknown';
   message: string;
+  timestamp?: string | null; // ISO timestamp if extracted from thread
 }
 
 export interface ParsedLeadThread {
@@ -121,24 +130,126 @@ function extractContactInfo(thread: string): ParsedLeadContact {
 
   const email = structured.email || selectContactEmail(emailMatch);
 
-  const possibleName = structured.name || extractName(thread);
+  // Try to extract name from email first if we have an email but no name
+  let possibleName = structured.name || extractName(thread);
+  
+  // If we have an email but no name, try extracting from email prefix
+  if (!possibleName && email) {
+    const emailPrefix = email.split('@')[0];
+    if (emailPrefix) {
+      // Remove numbers and separators to get name
+      let cleanedPrefix = emailPrefix
+        .replace(/\d+/g, '') // Remove numbers
+        .replace(/[._-]/g, ' ') // Replace separators with spaces
+        .trim();
+      
+      if (cleanedPrefix.length >= 2) {
+        // Try splitting compound names first (e.g., "Joelane" -> "Joe Lane")
+        let processedPrefix = cleanedPrefix;
+        if (!cleanedPrefix.includes(' ') && cleanedPrefix.length >= 4) {
+          processedPrefix = splitCompoundName(cleanedPrefix);
+        }
+        const candidate = sanitizeNameCandidate(processedPrefix);
+        if (candidate) {
+          possibleName = candidate;
+        }
+      }
+    }
+  }
+  
   const { firstName, lastName } = splitName(possibleName);
 
   // Try structured fields first, then fallback to extraction
-  let venueName = structured.venueName || extractVenue(thread);
+  let venueName = structured.venueName || null;
   let venueAddress = structured.venueAddress || null;
+  
+  // First, try to extract full address patterns that may include venue name
+  // Pattern: "Venue Name, Street Number Street Name, City, State ZIP, Country"
+  // e.g., "Audubon Square Condominiums, 4755 Audubon View Cir, Memphis, TN 38117, United States"
+  
+  // Look for full address lines - match on lines that start with capitalized venue name
+  // This avoids capturing conversational phrases from previous lines
+  const lines = thread.split('\n');
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+    
+    // Pattern: "Venue Name, Street Address, City, State ZIP, Country"
+    // Must start with capitalized words (venue name), not conversational phrases
+    const fullAddressPattern = /^([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,4}(?:\s+(?:Condominiums|Apartments|Complex|Building|Center|Club|Hall|Hotel|Resort|Garden|Park|Theater|Theatre|Arena|Stadium|Venue|Facility|Place|Plaza|Square|Tower|Mall|Centre|Clubhouse|Room|Ballroom|Banquet|Lounge|Bar|Restaurant|Cafe|Bistro|Grill|Pub|Tavern|Inn|Lodge|Manor|Estate|Villa|Mansion|Palace|Castle))?),\s*(\d+\s+[A-Z][A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy|Place|Pl|Terrace|Ter|Trail|Trl|View|Bend|Ridge|Heights|Hills|Valley|Grove|Woods|Meadows|Fields|Acres|Ranch|Farm|Plantation)),\s*([A-Z][A-Za-z\s]+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)(?:,\s*[^,\n]+)?$/i;
+    
+    const fullAddressMatch = trimmedLine.match(fullAddressPattern);
+    if (fullAddressMatch) {
+      const firstPart = fullAddressMatch[1].trim();
+      // Check if first part looks like a venue name (has multiple capitalized words, not just a street name)
+      // Also exclude common conversational phrases
+      const lowerFirstPart = firstPart.toLowerCase();
+      const conversationalPhrases = ['sure thing', 'sure', 'okay', 'ok', 'yes', 'yeah', 'yep', 'alright', 'all right', 'got it', 'sounds good', 'perfect', 'great', 'thanks', 'thank you'];
+      
+      if (!conversationalPhrases.some(phrase => lowerFirstPart.includes(phrase))) {
+        const wordCount = firstPart.split(/\s+/).length;
+        if (wordCount >= 2 && !/^\d+/.test(firstPart)) {
+          venueName = capitalize(firstPart);
+          // Extract the full address (everything after the venue name)
+          const commaIndex = trimmedLine.indexOf(',');
+          if (commaIndex > 0) {
+            venueAddress = trimmedLine.substring(commaIndex + 1).trim();
+          } else {
+            // Fallback: construct from captured groups
+            venueAddress = `${fullAddressMatch[2].trim()}, ${fullAddressMatch[3].trim()}, ${fullAddressMatch[4].trim()} ${fullAddressMatch[5].trim()}`;
+          }
+          break; // Found a match, stop searching
+        }
+      }
+    }
+    
+    // Also try a more flexible pattern for addresses that might span lines
+    // But only if we haven't found a match yet
+    if (!venueName && !venueAddress) {
+      // Pattern that matches venue name followed by address on same or next line
+      const flexiblePattern = /([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,4}(?:\s+(?:Condominiums|Apartments|Complex|Building|Center|Club|Hall|Hotel|Resort|Garden|Park|Theater|Theatre|Arena|Stadium|Venue|Facility|Place|Plaza|Square|Tower|Mall|Centre|Clubhouse|Room|Ballroom|Banquet|Lounge|Bar|Restaurant|Cafe|Bistro|Grill|Pub|Tavern|Inn|Lodge|Manor|Estate|Villa|Mansion|Palace|Castle))?),\s*(\d+\s+[A-Z][A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy|Place|Pl|Terrace|Ter|Trail|Trl|View|Bend|Ridge|Heights|Hills|Valley|Grove|Woods|Meadows|Fields|Acres|Ranch|Farm|Plantation)),\s*([A-Z][A-Za-z\s]+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)(?:,\s*[^,\n]+)?/i;
+      const flexibleMatch = trimmedLine.match(flexiblePattern);
+      if (flexibleMatch) {
+        const firstPart = flexibleMatch[1].trim();
+        const lowerFirstPart = firstPart.toLowerCase();
+        const conversationalPhrases = ['sure thing', 'sure', 'okay', 'ok', 'yes', 'yeah', 'yep', 'alright', 'all right', 'got it', 'sounds good', 'perfect', 'great', 'thanks', 'thank you'];
+        
+        if (!conversationalPhrases.some(phrase => lowerFirstPart.includes(phrase))) {
+          const wordCount = firstPart.split(/\s+/).length;
+          if (wordCount >= 2 && !/^\d+/.test(firstPart)) {
+            venueName = capitalize(firstPart);
+            const commaIndex = trimmedLine.indexOf(',');
+            if (commaIndex > 0) {
+              venueAddress = trimmedLine.substring(commaIndex + 1).trim();
+            } else {
+              venueAddress = `${flexibleMatch[2].trim()}, ${flexibleMatch[3].trim()}, ${flexibleMatch[4].trim()} ${flexibleMatch[5].trim()}`;
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  // If we still don't have venue name, try extractVenue (but exclude common phrases)
+  if (!venueName) {
+    venueName = extractVenue(thread);
+  }
   
   // If we have venue name but no address, try to extract address from context
   if (venueName && !venueAddress) {
     // Look for address patterns near the venue name
     const venueIndex = thread.toLowerCase().indexOf(venueName.toLowerCase());
     if (venueIndex >= 0) {
-      // Look in the next 200 characters after venue name
-      const context = thread.slice(venueIndex, venueIndex + 200);
+      // Look in the next 300 characters after venue name (increased from 200)
+      const context = thread.slice(venueIndex, venueIndex + 300);
       const addressPatterns = [
-        /\b(\d+\s+[A-Z][a-z]+(?:\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy))[^,\n]{0,50},\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?)/i,
-        /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy))[^,\n]{0,50},\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*[A-Z]{2}(?:\s+\d{5})?)/i,
-        /\baddress[:\s]+([^.\n]{10,100})/i,
+        // Full address with street number
+        /\b(\d+\s+[A-Z][A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy|Place|Pl|Terrace|Ter|Trail|Trl)[^,\n]{0,50},\s*[A-Z][A-Za-z\s]+(?:\s+[A-Z][A-Za-z\s]+)?,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?)/i,
+        // Address without street number (less preferred)
+        /\b([A-Z][A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Circle|Cir|Parkway|Pkwy)[^,\n]{0,50},\s*[A-Z][A-Za-z\s]+(?:\s+[A-Z][A-Za-z\s]+)?,\s*[A-Z]{2}(?:\s+\d{5})?)/i,
+        // Simple address pattern
+        /\baddress[:\s]+([^.\n]{10,150})/i,
       ];
       for (const pattern of addressPatterns) {
         const match = context.match(pattern);
@@ -155,12 +266,17 @@ function extractContactInfo(thread: string): ParsedLeadContact {
     const parts = venueAddress.split(',');
     if (parts.length > 0) {
       const firstPart = parts[0].trim();
-      // Check if first part looks like a venue name (not just a street number)
-      if (!/^\d+/.test(firstPart) && /^[A-Z][a-z]+/.test(firstPart)) {
+      // Check if first part looks like a venue name (not just a street number, and has multiple capitalized words)
+      if (!/^\d+/.test(firstPart) && /^[A-Z][a-z]+/.test(firstPart) && firstPart.split(/\s+/).length >= 2) {
         venueName = capitalize(firstPart);
+        // Remove venue name from address if it was included
+        if (parts.length > 1) {
+          venueAddress = parts.slice(1).map(p => p.trim()).join(', ');
+        }
       }
     }
   }
+  
   const eventType = structured.eventType || inferEventType(thread);
 
   let eventDate = structured.eventDate || null;
@@ -174,6 +290,7 @@ function extractContactInfo(thread: string): ParsedLeadContact {
   // Extract event time from natural language if not in structured fields
   let eventTime = structured.eventTime || null;
   let endTime = structured.endTime || null;
+  let setupTime = structured.setupTime || null;
   
   // First, try to extract grand entrance/exit (for reception events)
   // These take priority over ceremony times for reception/wedding events
@@ -223,65 +340,253 @@ function extractContactInfo(thread: string): ParsedLeadContact {
   }
   
   if (!eventTime) {
-    // Try to match time ranges first (e.g., "3pm-5pm", "3:00 PM to 5:00 PM", "ceremony is 3 pm-3:30")
-    const timeRangePatterns = [
-      /(?:the\s+)?ceremony\s+(?:is\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-      /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until|through)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-      /(?:from|between)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:to|until|-)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+    // First, try specific patterns for "arrive at" and "until" (common in casual conversations)
+    // Pattern: "arrive at 7" or "guests to arrive at 7" - use word boundaries to avoid partial matches
+    const arrivePatterns = [
+      /\b(?:guests?\s+to\s+)?arrive\s+at\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?/i,
+      /\barrive\s+at\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?/i,
     ];
     
-    for (const pattern of timeRangePatterns) {
+    for (const pattern of arrivePatterns) {
       const match = thread.match(pattern);
       if (match) {
-        // Only use ceremony times if we don't have grand entrance/exit
-        if (!grandEntrance) {
-          eventTime = match[1].trim();
+        const hour = parseInt(match[1]);
+        // Validate hour is reasonable (1-12)
+        if (hour >= 1 && hour <= 12) {
+          // For "arrive at 7", assume PM for event times (1-11)
+          if (hour >= 1 && hour <= 11) {
+            eventTime = `${hour}pm`;
+          } else if (hour === 12) {
+            eventTime = '12pm';
+          }
+          break;
         }
-        if (!grandExit) {
-          endTime = match[2].trim();
+      }
+    }
+    
+    // Try to match time ranges first (e.g., "3pm-5pm", "3:00 PM to 5:00 PM", "ceremony is 3 pm-3:30")
+    // Use word boundaries to avoid matching partial numbers
+    if (!eventTime) {
+      const timeRangePatterns = [
+        /\b(?:the\s+)?ceremony\s+(?:is\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+        /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until|through)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+        /\b(?:from|between)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:to|until|-)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+      ];
+      
+      for (const pattern of timeRangePatterns) {
+        const match = thread.match(pattern);
+        if (match) {
+          const startHour = parseInt(match[1].replace(/[^\d]/g, ''));
+          const endHour = parseInt(match[2].replace(/[^\d]/g, ''));
+          // Validate hours are reasonable (1-12)
+          if (startHour >= 1 && startHour <= 12 && endHour >= 1 && endHour <= 12) {
+            // Only use ceremony times if we don't have grand entrance/exit
+            if (!grandEntrance) {
+              eventTime = match[1].trim();
+            }
+            if (!grandExit) {
+              endTime = match[2].trim();
+            }
+            break;
+          }
         }
-        break;
       }
     }
     
     // If no range found, try single time patterns
+    // Use word boundaries to avoid matching partial numbers
     if (!eventTime) {
       const timePatterns = [
-        /(?:the\s+)?ceremony\s+(?:is\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-        /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-        /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
-        /(?:time|event time|start time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-        /(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)/i,
+        /\b(?:the\s+)?ceremony\s+(?:is\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+        /\b(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+        /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)\b/i,
+        /\b(?:time|event time|start time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+        /\b(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)\b/i,
       ];
       
       for (const pattern of timePatterns) {
         const match = thread.match(pattern);
         if (match && !grandEntrance) {
-          eventTime = match[1].trim();
-          break;
-        }
-      }
-    }
-    
-    // Try to extract end time separately if not already found
-    if (!endTime) {
-      const endTimePatterns = [
-        /(?:ceremony|it|event)\s+(?:will\s+)?end\s+(?:no\s+later\s+than|by|at)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-        /(?:ends?|finishes?|ends? at|finishes? at|until|till)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-        /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:end|finish)/i,
-        /(?:end time|finish time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-      ];
-      
-      for (const pattern of endTimePatterns) {
-        const match = thread.match(pattern);
-        if (match && !grandExit) {
-          endTime = match[1].trim();
-          break;
+          const hour = parseInt(match[1].replace(/[^\d]/g, ''));
+          // Validate hour is reasonable (1-12)
+          if (hour >= 1 && hour <= 12) {
+            eventTime = match[1].trim();
+            break;
+          }
         }
       }
     }
   }
   
+  // Try to extract end time separately if not already found
+  if (!endTime) {
+    // First try "until" patterns (common in casual conversations)
+    // Pattern: "go until 11" or "until 11 at the latest" - use word boundaries to avoid partial matches
+    const untilPatterns = [
+      /\b(?:probably\s+)?go\s+until\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?(?:\s+at\s+the\s+latest)?/i,
+      /\buntil\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?(?:\s+at\s+the\s+latest)?/i,
+      /\b(?:will\s+)?go\s+until\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?/i,
+    ];
+    
+    for (const pattern of untilPatterns) {
+      const match = thread.match(pattern);
+      if (match) {
+        const hour = parseInt(match[1]);
+        // Validate hour is reasonable (1-12)
+        if (hour >= 1 && hour <= 12) {
+          // For "until 11", assume PM for event times (1-11)
+          if (hour >= 1 && hour <= 11) {
+            endTime = `${hour}pm`;
+          } else if (hour === 12) {
+            endTime = '12pm';
+          }
+          break;
+        }
+      }
+    }
+    
+    // If not found, try other end time patterns
+    // Use word boundaries to avoid matching partial numbers
+    if (!endTime) {
+      const endTimePatterns = [
+        /\b(?:ceremony|it|event)\s+(?:will\s+)?end\s+(?:no\s+later\s+than|by|at)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+        /\b(?:ends?|finishes?|ends? at|finishes? at|until|till)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+        /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:end|finish)\b/i,
+        /\b(?:end time|finish time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+      ];
+      
+      for (const pattern of endTimePatterns) {
+        const match = thread.match(pattern);
+        if (match && !grandExit) {
+          const hour = parseInt(match[1].replace(/[^\d]/g, ''));
+          // Validate hour is reasonable (1-12)
+          if (hour >= 1 && hour <= 12) {
+            endTime = match[1].trim();
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  // Extract referral source (e.g., "Spike's cousin" -> "Spike")
+  let referralSource = null;
+  const referralPatterns = [
+    /\b(?:referred|referred by|got your|contacted|found you|heard about you|recommended|recommended by|told me about|said|mentioned)\s+(?:by|from|through)?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)'s\s+(?:cousin|friend|brother|sister|colleague|co-worker|neighbor|family|relative)/i,
+    /\b(?:my|a)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:referred|recommended|told me|said)/i,
+  ];
+  
+  for (const pattern of referralPatterns) {
+    const match = thread.match(pattern);
+    if (match) {
+      const candidate = match[1].trim();
+      // Validate it's not a common word or our own name
+      const commonWords = ['the', 'this', 'that', 'ben', 'benjamin', 'murray', 'm10', 'dj', 'company'];
+      if (!commonWords.includes(candidate.toLowerCase()) && candidate.length >= 2) {
+        referralSource = capitalize(candidate);
+        break;
+      }
+    }
+  }
+
+  // Extract event occasion details (e.g., "surprise birthday party", "my wife's")
+  let eventOccasion = null;
+  let eventFor = null;
+  let isSurprise = false;
+  
+  const occasionPatterns = [
+    /\b(surprise\s+(?:birthday|anniversary|party|celebration|event))/i,
+    /\b((?:birthday|anniversary|graduation|retirement|engagement)\s+party)/i,
+    /\b(surprise\s+party)/i,
+  ];
+  
+  for (const pattern of occasionPatterns) {
+    const match = thread.match(pattern);
+    if (match) {
+      eventOccasion = match[1].trim().toLowerCase();
+      if (eventOccasion.includes('surprise')) {
+        isSurprise = true;
+      }
+      break;
+    }
+  }
+  
+  // Extract who the event is for (e.g., "my wife's", "my daughter's")
+  const eventForPatterns = [
+    /\b(?:my|our)\s+(wife|husband|daughter|son|mom|dad|mother|father|parent|sister|brother|friend|boss|colleague)'s/i,
+    /\b(?:for|celebrating)\s+(?:my|our)?\s*(wife|husband|daughter|son|mom|dad|mother|father|parent|sister|brother|friend|boss|colleague)/i,
+  ];
+  
+  for (const pattern of eventForPatterns) {
+    const match = thread.match(pattern);
+    if (match) {
+      eventFor = match[1].trim().toLowerCase();
+      break;
+    }
+  }
+
+  // Extract guest arrival time (different from event start time)
+  let guestArrivalTime = null;
+  const guestArrivalPatterns = [
+    /\b(?:guests?\s+to\s+)?arrive\s+at\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?/i,
+    /\b(?:guests?\s+will\s+)?arrive\s+at\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?/i,
+    /\b(?:guests?\s+should\s+)?arrive\s+(?:at|by)\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?/i,
+    /\barrival\s+(?:time|at)\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?/i,
+  ];
+  
+  for (const pattern of guestArrivalPatterns) {
+    const match = thread.match(pattern);
+    if (match) {
+      const hour = parseInt(match[1]);
+      if (hour >= 1 && hour <= 12) {
+        let timeStr = match[1].trim();
+        if (!/[ap]m/i.test(match[0]) && hour >= 1 && hour <= 11) {
+          timeStr = `${hour}pm`;
+        } else if (!/[ap]m/i.test(match[0]) && hour === 12) {
+          timeStr = '12pm';
+        } else {
+          timeStr = match[0].match(/\d{1,2}\s*(?:am|pm)/i)?.[0] || timeStr;
+        }
+        guestArrivalTime = timeStr;
+        break;
+      }
+    }
+  }
+
+  // Extract venue type and room details (e.g., "It's the clubhouse", "We have the clubhouse")
+  let venueType = null;
+  let venueRoom = null;
+  
+  const venueTypePatterns = [
+    /\b(?:it'?s|it is|we have|the|at)\s+(?:the\s+)?(clubhouse|ballroom|banquet hall|conference room|meeting room|lounge|bar|restaurant|outdoor|patio|garden|pool|beach|park|venue|hall|room|space|area)/i,
+    /\b(?:venue|location|place)\s+(?:is|type|kind)\s+(?:a|an|the)?\s*(clubhouse|ballroom|banquet hall|conference room|meeting room|lounge|bar|restaurant|outdoor|patio|garden|pool|beach|park|venue|hall|room|space|area)/i,
+  ];
+  
+  for (const pattern of venueTypePatterns) {
+    const match = thread.match(pattern);
+    if (match) {
+      const candidate = match[1].trim().toLowerCase();
+      // Check if it's a room/area within the venue
+      const roomTypes = ['clubhouse', 'ballroom', 'banquet hall', 'conference room', 'meeting room', 'lounge', 'room', 'space', 'area'];
+      if (roomTypes.includes(candidate)) {
+        venueRoom = capitalize(candidate);
+      } else {
+        venueType = capitalize(candidate);
+      }
+      break;
+    }
+  }
+  
+  // Also check for venue room in context of venue name
+  if (venueName && !venueRoom) {
+    const roomContextPattern = /\b(?:it'?s|it is|we have|the)\s+(?:the\s+)?(clubhouse|ballroom|banquet hall|conference room|meeting room|lounge|room|space|area)/i;
+    const roomMatch = thread.match(roomContextPattern);
+    if (roomMatch) {
+      venueRoom = capitalize(roomMatch[1].trim());
+    }
+  }
+
   // Extract guest count from natural language if not in structured fields
   let guestCount = structured.guestCount ?? null;
   if (!guestCount) {
@@ -344,10 +649,18 @@ function extractContactInfo(thread: string): ParsedLeadContact {
     eventDate,
     venueName,
     venueAddress,
+    venueType,
+    venueRoom,
     eventTime,
     endTime,
+    setupTime,
+    guestArrivalTime,
     guestCount,
     budgetRange,
+    referralSource,
+    eventOccasion,
+    eventFor,
+    isSurprise,
     notes,
   };
 }
@@ -361,6 +674,9 @@ function extractName(thread: string): string | null {
     /hey[, ]+it's ([^.\n]+)/i,
     /hey[, ]+i'm ([^.\n]+)/i,
     /hey[, ]+this is ([^.\n]+)/i,
+    // Social media notification patterns
+    /([A-Za-z][A-Za-z0-9]+@[A-Za-z0-9.]+)\s+(?:Reacted|replied|commented|sent)/i, // "Joelane1865@gmail.com Reacted"
+    /([A-Za-z][A-Za-z0-9]+)\s+(?:Reacted|replied|commented|sent)/i, // "Joelane1865 Reacted"
   ];
 
   for (const regex of nameRegexes) {
@@ -378,15 +694,76 @@ function extractName(thread: string): string | null {
   const preferredEmail = selectContactEmail(emailMatch);
   if (preferredEmail) {
     const prefix = preferredEmail.split('@')[0];
-    if (prefix && !/\d/.test(prefix)) {
+    if (prefix) {
+      // Remove numbers and common separators, but keep the name part
+      // e.g., "Joelane1865" -> "Joelane", "john.doe123" -> "john doe"
+      let cleanedPrefix = prefix
+        .replace(/\d+/g, '') // Remove numbers
+        .replace(/[._-]/g, ' ') // Replace separators with spaces
+        .trim();
+      
+      // If we have a meaningful name (at least 2 characters), use it
+      if (cleanedPrefix.length >= 2) {
+        // Try splitting compound names first (e.g., "Joelane" -> "Joe Lane")
+        let processedPrefix = cleanedPrefix;
+        if (!cleanedPrefix.includes(' ') && cleanedPrefix.length >= 4) {
+          processedPrefix = splitCompoundName(cleanedPrefix);
+        }
+        const candidate = sanitizeNameCandidate(processedPrefix);
+        if (candidate) {
+          return candidate;
+        }
+      }
+      
+      // Fallback: try original prefix without numbers check
       const candidate = sanitizeNameCandidate(prefix.replace(/[._]/g, ' '));
-      if (candidate) {
+      if (candidate && candidate.length >= 2) {
         return candidate;
       }
     }
   }
 
   return null;
+}
+
+/**
+ * Intelligently split compound names (e.g., "Joelane" -> "Joe Lane")
+ */
+function splitCompoundName(name: string): string {
+  if (!name || name.length < 4) return name;
+  
+  // Check for camelCase pattern (lowercase followed by uppercase)
+  // e.g., "Joelane" -> "Joe" + "Lane"
+  const camelCaseMatch = name.match(/^([a-z]+)([A-Z][a-z]+)$/);
+  if (camelCaseMatch) {
+    const firstPart = camelCaseMatch[1];
+    const secondPart = camelCaseMatch[2];
+    // Both parts should be at least 2 characters
+    if (firstPart.length >= 2 && secondPart.length >= 2) {
+      return `${firstPart} ${secondPart}`;
+    }
+  }
+  
+  // Try splitting at common first name lengths (3-6 characters)
+  // This handles cases like "Joelane" where there's no camelCase
+  for (let i = 3; i <= Math.min(6, name.length - 2); i++) {
+    const firstPart = name.substring(0, i);
+    const secondPart = name.substring(i);
+    
+    // Both parts should be at least 2 characters and look like names
+    if (firstPart.length >= 2 && secondPart.length >= 2) {
+      // Check if both parts start with a letter and are reasonable length
+      if (/^[A-Za-z]/.test(firstPart) && /^[A-Za-z]/.test(secondPart)) {
+        // Capitalize both parts
+        const capitalized = 
+          firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase() + ' ' +
+          secondPart.charAt(0).toUpperCase() + secondPart.slice(1).toLowerCase();
+        return capitalized;
+      }
+    }
+  }
+  
+  return name;
 }
 
 function sanitizeNameCandidate(raw: string): string | null {
@@ -410,6 +787,12 @@ function sanitizeNameCandidate(raw: string): string | null {
       value = value.slice(0, idx);
       break;
     }
+  }
+  
+  // Try to split compound names before further processing
+  // Only if it's a single word (no spaces)
+  if (!value.includes(' ') && value.length >= 4) {
+    value = splitCompoundName(value);
   }
 
   value = value.replace(/[^A-Za-z\s'-]/g, ' ');
@@ -520,13 +903,18 @@ function sanitizeVenueCandidate(raw: string): string | null {
   const lower = value.toLowerCase();
   
   // Enhanced blocklist - exclude common conversational phrases
-  const enhancedBlocklist = [...VENUE_BLOCKLIST, 'i know', 'how it goes', 'by the way', 'got your', 'reaching out'];
+  const enhancedBlocklist = [...VENUE_BLOCKLIST, 'i know', 'how it goes', 'by the way', 'got your', 'reaching out', 'we have', 'we have the', 'have the', 'have the clubhouse', 'have the venue'];
   if (enhancedBlocklist.some(phrase => lower.includes(phrase))) {
     return null;
   }
 
   // Remove conversational phrases that might be captured
-  value = value.replace(/\b(?:i know|how it goes|by the way|got your|reaching out|was reaching|to see if)\b/gi, '').trim();
+  value = value.replace(/\b(?:i know|how it goes|by the way|got your|reaching out|was reaching|to see if|we have|we have the|have the|have the clubhouse|have the venue)\b/gi, '').trim();
+  
+  // If value is too short or looks like a partial phrase, reject it
+  if (value.length < 3 || /^(we|have|the|at|in|for|is|are|was|were)$/i.test(value.trim())) {
+    return null;
+  }
   
   const punctuationBreak = value.search(/[.!?🙂😊\n]/);
   if (punctuationBreak >= 0) {
@@ -588,11 +976,19 @@ interface StructuredFields {
   eventDate: string | null;
   eventTime: string | null;
   endTime: string | null;
+  setupTime: string | null;
+  guestArrivalTime: string | null;
   venueName: string | null;
   venueAddress: string | null;
+  venueType: string | null;
+  venueRoom: string | null;
   guestCount: number | null;
   budgetRange: string | null;
   eventType: string | null;
+  referralSource: string | null;
+  eventOccasion: string | null;
+  eventFor: string | null;
+  isSurprise: boolean | null;
   notes: string[];
 }
 
@@ -603,11 +999,19 @@ function extractStructuredFields(thread: string): StructuredFields {
     eventDate: null,
     eventTime: null,
     endTime: null,
+    setupTime: null,
+    guestArrivalTime: null,
     venueName: null,
     venueAddress: null,
+    venueType: null,
+    venueRoom: null,
     guestCount: null,
     budgetRange: null,
     eventType: null,
+    referralSource: null,
+    eventOccasion: null,
+    eventFor: null,
+    isSurprise: null,
     notes: [],
   };
 
@@ -629,10 +1033,16 @@ function extractStructuredFields(thread: string): StructuredFields {
     // More flexible label matching - handles various formats
     // Updated regex to be more permissive with label format (allows numbers, hyphens, etc.)
     // Pattern: Start with letter, then allow letters, numbers, spaces, hyphens, underscores
+    // Also handle cases where there might be extra whitespace or formatting
     const labeledMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9\s\-_]{0,49}):\s*(.+)$/);
     if (labeledMatch) {
-      const label = labeledMatch[1].toLowerCase().trim();
+      const label = labeledMatch[1].toLowerCase().trim().replace(/\s+/g, ' ');
       const value = labeledMatch[2].trim();
+      
+      // Debug logging for structured field detection
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Structured Field Detection] Label:', label, 'Value:', value.substring(0, 50));
+      }
       
       // Debug logging for venue name detection
       if (label.includes('venue') && label.includes('name')) {
@@ -863,54 +1273,124 @@ function extractStructuredFields(thread: string): StructuredFields {
     }
 
     // Enhanced event time extraction
+    // Use word boundaries to avoid matching partial numbers
     if (!fields.eventTime) {
-      // Try time ranges first
-      const rangePatterns = [
-        /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-        /(?:from|between)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:to|until|-)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-      ];
+      // First, try specific "arrive at" and "until" patterns
+      const arriveMatch = trimmed.match(/\b(?:guests?\s+to\s+)?arrive\s+at\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?/i);
+      if (arriveMatch) {
+        const hour = parseInt(arriveMatch[1]);
+        if (hour >= 1 && hour <= 12) {
+          fields.eventTime = hour >= 1 && hour <= 11 ? `${hour}pm` : '12pm';
+        }
+      }
       
-      for (const pattern of rangePatterns) {
-        const rangeMatch = trimmed.match(pattern);
-        if (rangeMatch) {
-          fields.eventTime = rangeMatch[1].trim();
-          fields.endTime = rangeMatch[2].trim();
-          break;
+      // Try "until" patterns for end time
+      if (!fields.endTime) {
+        const untilMatch = trimmed.match(/\b(?:probably\s+)?go\s+until\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?(?:\s+at\s+the\s+latest)?/i);
+        if (untilMatch) {
+          const hour = parseInt(untilMatch[1]);
+          if (hour >= 1 && hour <= 12) {
+            fields.endTime = hour >= 1 && hour <= 11 ? `${hour}pm` : '12pm';
+          }
+        } else {
+          const untilMatch2 = trimmed.match(/\buntil\s+(\d{1,2})\b(?:\s*(?:pm|PM|am|AM))?(?:\s+at\s+the\s+latest)?/i);
+          if (untilMatch2) {
+            const hour = parseInt(untilMatch2[1]);
+            if (hour >= 1 && hour <= 12) {
+              fields.endTime = hour >= 1 && hour <= 11 ? `${hour}pm` : '12pm';
+            }
+          }
+        }
+      }
+      
+      // Try time ranges first (only if we haven't found times yet)
+      if (!fields.eventTime) {
+        const rangePatterns = [
+          /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+          /\b(?:from|between)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:to|until|-)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+        ];
+        
+        for (const pattern of rangePatterns) {
+          const rangeMatch = trimmed.match(pattern);
+          if (rangeMatch) {
+            const startHour = parseInt(rangeMatch[1].replace(/[^\d]/g, ''));
+            const endHour = parseInt(rangeMatch[2].replace(/[^\d]/g, ''));
+            if (startHour >= 1 && startHour <= 12 && endHour >= 1 && endHour <= 12) {
+              fields.eventTime = rangeMatch[1].trim();
+              if (!fields.endTime) {
+                fields.endTime = rangeMatch[2].trim();
+              }
+              break;
+            }
+          }
         }
       }
       
       // If no range found, try single time patterns
       if (!fields.eventTime) {
         const timePatterns = [
-          /(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
-          /(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)/i,
-          /(?:time|event time|start time)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?)/i,
-          /(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)/i,
+          /\b(?:at|starts?|begins?|starts? at|beginning at)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+          /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:start|begin|ceremony|reception)\b/i,
+          /\b(?:time|event time|start time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+          /\b(\d{1,2}\s*(?:am|pm|AM|PM))\s+(?:start|begin|ceremony)\b/i,
         ];
         
         for (const pattern of timePatterns) {
           const timeMatch = trimmed.match(pattern);
           if (timeMatch) {
-            fields.eventTime = timeMatch[1].trim();
+            const hour = parseInt(timeMatch[1].replace(/[^\d]/g, ''));
+            if (hour >= 1 && hour <= 12) {
+              fields.eventTime = timeMatch[1].trim();
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    // Enhanced end time extraction (if not already found)
+    if (!fields.endTime) {
+      const endTimePatterns = [
+        /\b(?:ends?|finishes?|ends? at|finishes? at|until|till)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+        /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:end|finish)\b/i,
+        /\b(?:end time|finish time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
+      ];
+      
+      for (const pattern of endTimePatterns) {
+        const endMatch = trimmed.match(pattern);
+        if (endMatch) {
+          const hour = parseInt(endMatch[1].replace(/[^\d]/g, ''));
+          if (hour >= 1 && hour <= 12) {
+            fields.endTime = endMatch[1].trim();
             break;
           }
         }
       }
     }
     
-    // Extract end time separately if not already found
-    if (!fields.endTime) {
-      const endTimePatterns = [
-        /(?:ends?|finishes?|ends? at|finishes? at|until|till)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
-        /(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:end|finish)/i,
-        /(?:end time|finish time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+    // Enhanced setup time extraction
+    if (!fields.setupTime) {
+      const setupPatterns = [
+        /\b(?:get\s+there|arrive|be\s+there|show\s+up)\s+(?:around|at|by|before)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+to\s+(?:set\s+up|setup)/i,
+        /\b(?:set\s+up|setup)\s+(?:at|is\s+at|time\s+is|around|by)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+        /\b(?:setup\s+time|set\s+up\s+time)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)/i,
+        /\b(?:arrive|get\s+there|be\s+there)\s+(?:around|at|by)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:for\s+)?(?:setup|set\s+up)/i,
       ];
       
-      for (const pattern of endTimePatterns) {
-        const endMatch = trimmed.match(pattern);
-        if (endMatch) {
-          fields.endTime = endMatch[1].trim();
-          break;
+      for (const pattern of setupPatterns) {
+        const setupMatch = trimmed.match(pattern);
+        if (setupMatch) {
+          const hour = parseInt(setupMatch[1].replace(/[^\d]/g, ''));
+          if (hour >= 1 && hour <= 12) {
+            let timeStr = setupMatch[1].trim();
+            if (!/[ap]m/i.test(timeStr) && hour >= 1 && hour <= 11) {
+              timeStr = `${hour}pm`;
+            } else if (!/[ap]m/i.test(timeStr) && hour === 12) {
+              timeStr = '12pm';
+            }
+            fields.setupTime = timeStr;
+            break;
+          }
         }
       }
     }
@@ -1031,6 +1511,67 @@ function extractMessages(thread: string, contactName: string | null, phoneDigits
 
   let currentSpeaker: string | null = null;
   let buffer: string[] = [];
+  let currentTimestamp: string | null = null;
+
+  // Patterns to extract timestamps from various formats
+  const timestampPatterns = [
+    // Format: "Jan 31, 2024 7:00 PM" or "January 31, 2024 at 7:00 PM"
+    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}\s+(?:at\s+)?(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)|\d{1,2}\s*(?:am|pm|AM|PM))/i,
+    // Format: "1/31/2024 7:00 PM" or "01/31/2024 at 7:00 PM"
+    /\b(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(?:at\s+)?(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)|\d{1,2}\s*(?:am|pm|AM|PM))/i,
+    // Format: "2024-01-31 19:00" or "2024-01-31T19:00:00"
+    /\b(\d{4}-\d{2}-\d{2})(?:T|\s+)(\d{2}:\d{2}(?::\d{2})?)/,
+    // Format: "Today at 7:00 PM" or "Yesterday at 7:00 PM"
+    /\b(Today|Yesterday|Tomorrow)\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)|\d{1,2}\s*(?:am|pm|AM|PM))/i,
+  ];
+
+  const parseTimestamp = (dateStr: string, timeStr?: string): string | null => {
+    try {
+      // Handle relative dates
+      if (dateStr.toLowerCase().includes('today')) {
+        const today = new Date();
+        if (timeStr) {
+          const [hour, minute] = timeStr.match(/\d{1,2}/g) || [];
+          const ampm = timeStr.match(/[ap]m/i)?.[0]?.toLowerCase();
+          if (hour && minute) {
+            let h = parseInt(hour);
+            const m = parseInt(minute);
+            if (ampm === 'pm' && h !== 12) h += 12;
+            if (ampm === 'am' && h === 12) h = 0;
+            today.setHours(h, m, 0, 0);
+            return today.toISOString();
+          }
+        }
+        return today.toISOString();
+      }
+      if (dateStr.toLowerCase().includes('yesterday')) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (timeStr) {
+          const [hour, minute] = timeStr.match(/\d{1,2}/g) || [];
+          const ampm = timeStr.match(/[ap]m/i)?.[0]?.toLowerCase();
+          if (hour && minute) {
+            let h = parseInt(hour);
+            const m = parseInt(minute);
+            if (ampm === 'pm' && h !== 12) h += 12;
+            if (ampm === 'am' && h === 12) h = 0;
+            yesterday.setHours(h, m, 0, 0);
+          }
+        }
+        return yesterday.toISOString();
+      }
+
+      // Try to parse as ISO date or standard date format
+      const dateTimeStr = timeStr ? `${dateStr} ${timeStr}` : dateStr;
+      const parsed = new Date(dateTimeStr);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString();
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
+    return null;
+  };
 
   const pushBuffer = () => {
     if (!currentSpeaker) return;
@@ -1044,6 +1585,7 @@ function extractMessages(thread: string, contactName: string | null, phoneDigits
       speakerLabel: normalizedSpeaker,
       role,
       message,
+      timestamp: currentTimestamp,
     });
   };
 
@@ -1051,12 +1593,27 @@ function extractMessages(thread: string, contactName: string | null, phoneDigits
     const trimmed = line.trim();
     if (!trimmed) continue;
 
+    // Check if line contains a timestamp
+    let foundTimestamp: string | null = null;
+    for (const pattern of timestampPatterns) {
+      const match = trimmed.match(pattern);
+      if (match) {
+        foundTimestamp = parseTimestamp(match[1], match[2]);
+        if (foundTimestamp) break;
+      }
+    }
+
     const speakerMatch = trimmed.match(/^([^:]{2,}):\s*(.*)$/);
     if (speakerMatch) {
       pushBuffer();
       currentSpeaker = speakerMatch[1];
       buffer = speakerMatch[2] ? [speakerMatch[2]] : [];
+      currentTimestamp = foundTimestamp;
     } else if (currentSpeaker) {
+      // If we found a timestamp on a continuation line, use it
+      if (foundTimestamp) {
+        currentTimestamp = foundTimestamp;
+      }
       buffer.push(trimmed);
     }
   }

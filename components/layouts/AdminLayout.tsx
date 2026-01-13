@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import AdminSidebar from '@/components/ui/Sidebar/AdminSidebar';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -26,7 +26,7 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children, title, description, showPageTitle, pageTitle, pageDescription, newButton }: AdminLayoutProps) {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const { theme, systemTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -51,7 +51,7 @@ export default function AdminLayout({ children, title, description, showPageTitl
         }
 
         // Fetch organization to get brand colors
-        const org = await getCurrentOrganization(supabase) as any;
+        const org = await getCurrentOrganization(supabase as any) as any;
         if (org) {
           setOrganization(org);
           
