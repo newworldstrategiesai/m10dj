@@ -204,7 +204,7 @@ export default function SignatureCapture({
         </label>
       )}
 
-      {/* Method Selector */}
+      {/* Method Selector - Only show Draw on mobile */}
       <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
         {isMobile && (
           <button

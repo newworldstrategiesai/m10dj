@@ -39,11 +39,13 @@ export default function SignContractPage() {
   const [contractData, setContractData] = useState<ContractData | null>(null);
   const [signatureName, setSignatureName] = useState('');
   const [signatureData, setSignatureData] = useState('');
+  const [ownerSignatureData, setOwnerSignatureData] = useState('');
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'type'>('draw');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [signed, setSigned] = useState(false);
   const [redirectingToPayment, setRedirectingToPayment] = useState(false);
+  const [contractHtmlWithSignatures, setContractHtmlWithSignatures] = useState<string>('');
 
   useEffect(() => {
     if (token) {
@@ -108,7 +110,13 @@ export default function SignContractPage() {
       }
 
       setContractData(data.contract);
-      setSignatureName(`${data.contract.contact?.first_name || ''} ${data.contract.contact?.last_name || ''}`.trim() || 'Client');
+      const clientName = `${data.contract.contact?.first_name || ''} ${data.contract.contact?.last_name || ''}`.trim() || 'Client';
+      setSignatureName(clientName);
+      
+      // Initialize contract HTML with signature areas
+      if (data.contract.contract_html) {
+        setContractHtmlWithSignatures(data.contract.contract_html);
+      }
 
       // Mark as viewed
       await fetch('/api/contracts/mark-viewed', {
@@ -124,9 +132,30 @@ export default function SignContractPage() {
     }
   };
 
-  const handleSignatureChange = (data: string, method: 'draw' | 'type') => {
-    setSignatureData(data);
-    setSignatureMethod(method);
+  const handleSignatureChange = (data: string, method: 'draw' | 'type', signerType?: 'client' | 'owner') => {
+    if (signerType === 'owner') {
+      setOwnerSignatureData(data);
+    } else {
+      setSignatureData(data);
+      setSignatureMethod(method);
+    }
+    
+    // Update contract HTML to show signature in the signature area
+    if (data && contractData?.contract_html) {
+      const signatureId = signerType === 'owner' ? 'owner-signature-area' : 'client-signature-area';
+      const signatureAreaRegex = new RegExp(
+        `<div id="${signatureId}"[^>]*>.*?</div>`,
+        's'
+      );
+      
+      const signatureImg = `<img src="${data}" alt="Signature" style="max-width: 100%; height: auto; border: 1px solid #ddd; background: white; padding: 10px; border-radius: 4px;" />`;
+      
+      const updatedHtml = contractData.contract_html.replace(
+        signatureAreaRegex,
+        `<div id="${signatureId}" class="signature-capture-area" data-signer-type="${signerType || 'client'}">${signatureImg}</div>`
+      );
+      setContractHtmlWithSignatures(updatedHtml);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -407,35 +436,25 @@ export default function SignContractPage() {
 
         {/* Contract Content */}
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
-          <div className="max-h-[50vh] sm:max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 bg-gray-50">
+          <div className="max-h-[50vh] sm:max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 bg-gray-50">
             <div 
+              id="contract-content"
               className="prose prose-sm sm:prose-base max-w-none text-xs sm:text-sm"
-              dangerouslySetInnerHTML={{ __html: contractData?.contract_html || '' }}
+              dangerouslySetInnerHTML={{ __html: contractHtmlWithSignatures || contractData?.contract_html || '' }}
             />
           </div>
 
-          {/* Signature Section */}
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-            {/* Signer Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Legal Name *
-              </label>
-              <input
-                type="text"
-                value={signatureName}
-                onChange={(e) => setSignatureName(e.target.value)}
-                required
-                className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Enter your full legal name"
+          {/* Signature Capture - Only show if signature not yet captured */}
+          {!signatureData && (
+            <div className="mt-4 mb-4">
+              <SignatureCapture
+                onSignatureChange={(data, method) => handleSignatureChange(data, method, 'client')}
+                defaultMethod="type"
+                initialName={signatureName}
+                label=""
               />
             </div>
-
-            {/* Signature Capture */}
-            <SignatureCapture
-              onSignatureChange={handleSignatureChange}
-              label="Signature *"
-            />
+          )}
 
             {/* Agreement Checkbox */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">

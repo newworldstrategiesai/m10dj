@@ -363,15 +363,19 @@ li { margin: 5px 0; }
 
 <div class="signature-box">
 <h3>CLIENT SIGNATURE</h3>
-<p>{{signature_area}}</p>
-<p>Name: {{editable_signer_name}}</p>
+<div id="client-signature-area" class="signature-capture-area" data-signer-type="client">
+  <div class="signature-placeholder">Signature will appear here</div>
+</div>
+<p>Name: <span id="client-signature-name">{{editable_signer_name}}</span></p>
 <p>Date: {{signature_date}}</p>
 </div>
 
 <div class="signature-box">
 <h3>{{company_name}} - AUTHORIZED REPRESENTATIVE</h3>
-<p>{{signature_area}}</p>
-<p>Name: {{editable_company_name}}</p>
+<div id="owner-signature-area" class="signature-capture-area" data-signer-type="owner">
+  <div class="signature-placeholder">Signature will appear here</div>
+</div>
+<p>Name: <span id="owner-signature-name">{{editable_company_name}}</span></p>
 <p>Date: {{signature_date}}</p>
 </div>
 
