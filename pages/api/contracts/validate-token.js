@@ -136,6 +136,24 @@ export default async function handler(req, res) {
           }
         }
         
+        // If still no event but invoice has project_id, fetch event directly
+        if (!event && invoice && invoice.project_id) {
+          const { data: eventData } = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', invoice.project_id)
+            .single();
+          
+          if (eventData) {
+            event = eventData;
+            console.log('[validate-token] Fetched event directly:', {
+              event_name: event.event_name,
+              event_date: event.event_date,
+              venue_name: event.venue_name
+            });
+          }
+        }
+        
         console.log('[validate-token] Regeneration data:', {
           has_contact: !!contact,
           has_invoice: !!invoice,
