@@ -82,8 +82,20 @@ export default function SignContractPage() {
 
       // Check if contract_html is missing
       if (!data.contract.contract_html) {
-        console.warn('[sign-contract] Contract HTML is missing');
-        setError('Contract content is not available. Please contact us for assistance.');
+        console.warn('[sign-contract] Contract HTML is missing after API call');
+        // Try refreshing once more - the API might have regenerated it
+        console.log('[sign-contract] Attempting to refresh contract data...');
+        setTimeout(async () => {
+          const retryRes = await fetch(`/api/contracts/validate-token?token=${token}`);
+          const retryData = await retryRes.json();
+          if (retryData.contract?.contract_html) {
+            setContractData(retryData.contract);
+            setLoading(false);
+          } else {
+            setError('Contract content is not available. Please contact us for assistance.');
+            setLoading(false);
+          }
+        }, 1000);
         return;
       }
 

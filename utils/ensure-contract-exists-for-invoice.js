@@ -354,11 +354,45 @@ export async function ensureContractExistsForInvoice(invoiceId, supabaseClient =
       return { success: false, error: 'Invoice not found' };
     }
 
+    // Extract contact and event from invoice (Supabase returns them as objects from the join)
+    // Note: Supabase returns joined data as objects (not arrays) for single relationships
+    const contact = invoice.contacts || null;
+    const event = invoice.events || null;
+    
+    console.log('[ensureContractExistsForInvoice] Invoice data:', {
+      invoiceId,
+      hasContact: !!contact,
+      hasEvent: !!event,
+      contactId: invoice.contact_id,
+      projectId: invoice.project_id,
+      contactData: contact ? {
+        first_name: contact.first_name,
+        last_name: contact.last_name,
+        event_type: contact.event_type,
+        event_date: contact.event_date,
+        venue_name: contact.venue_name,
+        venue_address: contact.venue_address,
+        guest_count: contact.guest_count
+      } : null,
+      eventData: event ? {
+        event_name: event.event_name,
+        event_type: event.event_type,
+        event_date: event.event_date,
+        venue_name: event.venue_name,
+        venue_address: event.venue_address,
+        number_of_guests: event.number_of_guests
+      } : null
+    });
+    
+    if (!contact) {
+      return { success: false, error: 'Contact not found for invoice' };
+    }
+
     // Check if contract already exists for this invoice
     if (invoice.contract_id) {
       const { data: existingContract } = await supabase
         .from('contracts')
-        .select('id, status, signing_token, signing_token_expires_at, contract_html')
+        .select('id, status, signing_token, signing_token_expires_at, contract_html, contract_number')
         .eq('id', invoice.contract_id)
         .single();
 
@@ -399,13 +433,6 @@ export async function ensureContractExistsForInvoice(invoiceId, supabaseClient =
           contract: existingContract
         };
       }
-    }
-
-    // Get contact info
-    const contact = invoice.contacts || null;
-    
-    if (!contact) {
-      return { success: false, error: 'Contact not found for invoice' };
     }
 
     // Check if there's already a contract for this contact (prevent duplicates)
@@ -474,8 +501,7 @@ export async function ensureContractExistsForInvoice(invoiceId, supabaseClient =
       };
     }
 
-    // Get event/project info if available
-    const event = invoice.events || null;
+    // Event already extracted above (line 360)
 
     // Generate contract number (consistent format: CONT-YYYYMMDD-XXX)
     const today = new Date();

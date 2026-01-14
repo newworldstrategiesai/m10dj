@@ -104,11 +104,11 @@ export default async function handler(req, res) {
           : null;
         let event = null;
         
-        // Try to find invoice by contract_id (invoice has contract_id field)
+        // Try to find invoice by invoice_id (contracts have invoice_id field)
         const { data: invoiceData } = await supabase
           .from('invoices')
           .select('*, contacts:contact_id(*), events:project_id(*)')
-          .eq('contract_id', contract.id)
+          .eq('id', contract.invoice_id)
           .maybeSingle();
         
         if (invoiceData) {
@@ -178,7 +178,10 @@ export default async function handler(req, res) {
             if (updateError) {
               console.error('[validate-token] Error updating contract HTML:', updateError);
             } else {
+              // IMPORTANT: Update the contract object with the regenerated HTML
+              // so it's included in the response
               contract.contract_html = contractHtml.contractHtml;
+              contract.contract_template = contractHtml.templateName || 'Default Contract';
               console.log('[validate-token] Contract HTML regenerated and saved successfully');
             }
           } else {
@@ -191,6 +194,11 @@ export default async function handler(req, res) {
         console.error('[validate-token] Error generating contract HTML:', genError);
         // Don't fail the request, just log the error
       }
+    }
+    
+    // If contract_html is still missing after regeneration attempt, log a warning
+    if (!contract.contract_html) {
+      console.warn('[validate-token] Contract HTML is still missing after regeneration attempt');
     }
 
     // Handle both contact-based and standalone contracts
