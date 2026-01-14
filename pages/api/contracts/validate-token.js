@@ -94,8 +94,23 @@ export default async function handler(req, res) {
       contract.contract_html.includes('COMPENSATION') &&
       !contract.contract_html.includes('Deposit') &&
       !contract.contract_html.includes('deposit');
+    
+    // Check if event details are missing/empty in the HTML
+    // This detects when template variables were replaced with empty strings
+    const missingEventDetails = contract.contract_html && 
+      contract.contract_html.includes('EVENT DETAILS') && (
+        // Check if Event Date field is empty (shows "Event Date:</strong>" followed by nothing or just whitespace)
+        (contract.contract_html.includes('Event Date:</strong>') && 
+         !contract.contract_html.match(/Event Date:<\/strong>[^<]*[A-Za-z0-9]/)) ||
+        // Check if Venue field is empty
+        (contract.contract_html.includes('Venue:</strong>') && 
+         !contract.contract_html.match(/Venue:<\/strong>[^<]*[A-Za-z0-9]/)) ||
+        // Check if the description has empty event details (shows "on at, .")
+        contract.contract_html.includes('on at, .') ||
+        contract.contract_html.includes('approximately guests')
+      );
 
-    if (!contract.contract_html || hasUnprocessedVariables || hasOutdatedCancellationPolicy || missingDepositInfo) {
+    if (!contract.contract_html || hasUnprocessedVariables || hasOutdatedCancellationPolicy || missingDepositInfo || missingEventDetails) {
       console.warn('[validate-token] Contract HTML is missing or has unprocessed variables, attempting to regenerate...');
       try {
         // Import the HTML generation function
