@@ -222,9 +222,32 @@ ${paymentScheduleHtml}`
 
   // Replace template variables
   let contractHtml = template.template_content;
+  
+  // Log event-related variables for debugging
+  console.log('[generateContractHtml] Event variables:', {
+    event_date: variables.event_date,
+    event_date_short: variables.event_date_short,
+    event_type: variables.event_type,
+    venue_name: variables.venue_name,
+    venue_address: variables.venue_address,
+    guest_count: variables.guest_count,
+    has_event: !!event,
+    has_contact: !!contact,
+    event_date_raw: event?.event_date || contact?.event_date
+  });
+  
   Object.keys(variables).forEach(key => {
     const regex = new RegExp(`{{${key}}}`, 'g');
-    contractHtml = contractHtml.replace(regex, variables[key] || '');
+    const value = variables[key] || '';
+    contractHtml = contractHtml.replace(regex, value);
+    
+    // Log if event_date variable wasn't replaced
+    if (key === 'event_date' && value) {
+      const wasReplaced = !contractHtml.includes(`{{${key}}}`);
+      if (!wasReplaced) {
+        console.warn(`[generateContractHtml] Variable {{${key}}} was not replaced in template`);
+      }
+    }
   });
 
   return { contractHtml, templateName };

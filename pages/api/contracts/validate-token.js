@@ -140,7 +140,23 @@ export default async function handler(req, res) {
           has_contact: !!contact,
           has_invoice: !!invoice,
           has_event: !!event,
-          contact_id: contract.contact_id
+          contact_id: contract.contact_id,
+          invoice_id: contract.invoice_id,
+          event_data: event ? {
+            event_name: event.event_name,
+            event_type: event.event_type,
+            event_date: event.event_date,
+            venue_name: event.venue_name,
+            venue_address: event.venue_address,
+            number_of_guests: event.number_of_guests
+          } : null,
+          contact_data: contact ? {
+            event_type: contact.event_type,
+            event_date: contact.event_date,
+            venue_name: contact.venue_name,
+            venue_address: contact.venue_address,
+            guest_count: contact.guest_count
+          } : null
         });
         
         // If we have contact info, generate the HTML
@@ -148,7 +164,9 @@ export default async function handler(req, res) {
           console.log('[validate-token] Generating contract HTML with contact:', {
             contact_name: `${contact.first_name} ${contact.last_name}`,
             has_invoice: !!invoice,
-            has_event: !!event
+            has_event: !!event,
+            event_date: event?.event_date || contact.event_date,
+            venue_name: event?.venue_name || contact.venue_name
           });
           
           const contractHtml = await generateContractHtml(
