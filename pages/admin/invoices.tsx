@@ -3,9 +3,9 @@
  * Comprehensive view of all invoices with filtering, stats, and management
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { 
   FileText,
   DollarSign,
@@ -20,7 +20,8 @@ import {
   User,
   Download,
   Mail,
-  Eye
+  Eye,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +68,7 @@ interface DashboardStats {
 
 export default function InvoicesDashboard() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClient(), []);
   
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -116,7 +117,8 @@ export default function InvoicesDashboard() {
     const isAdmin = isPlatformAdmin(user.email);
     
     if (!isAdmin) {
-      const access = await canAccessAdminPage(supabase, user.email, 'invoices');
+      // Type assertion for supabase client to avoid type mismatch
+      const access = await canAccessAdminPage(supabase as any, user.email, 'invoices');
       
       if (!access.canAccess) {
         // Redirect to starter dashboard with upgrade prompt
@@ -140,13 +142,13 @@ export default function InvoicesDashboard() {
       console.log('👤 User ID:', user.id);
 
       // Get user's organization
-      const { data: org } = await supabase
+      const { data: org, error: orgError } = await supabase
         .from('organizations')
         .select('id')
         .eq('owner_id', user.id)
         .single();
       
-      console.log('🏢 Organization:', org);
+      console.log('🏢 Organization:', org, 'Error:', orgError);
 
       // Check if invoices exist at all (bypass RLS check)
       try {
@@ -157,24 +159,40 @@ export default function InvoicesDashboard() {
         console.warn('Could not check invoices:', checkError);
       }
 
-      if (!org) {
-        console.warn('No organization found for user');
+      if (orgError || !org) {
+        console.warn('No organization found for user:', orgError);
         setInvoices([]);
         calculateStats([]);
         setLoading(false);
         return;
       }
 
-      console.log(`🔍 Fetching invoices for organization: ${org.id}`);
+      const orgId = (org as any).id;
+      console.log(`🔍 Fetching invoices for organization: ${orgId}`);
       
       // First, try to fetch invoices filtered by organization
+      // Add cache-busting to ensure fresh data
       let { data, error } = await supabase
         .from('invoice_summary')
         .select('*')
-        .eq('organization_id', org.id)
-        .order('invoice_date', { ascending: false });
+        .eq('organization_id', orgId)
+        .order('invoice_date', { ascending: false })
+        .limit(1000); // Increase limit to catch all invoices
       
-      console.log(`📊 Query result:`, { dataCount: data?.length || 0, error: error?.message });
+      // Type assertion for invoice data
+      const invoiceData = (data || []) as any[];
+      
+      console.log(`📊 Query result:`, { 
+        dataCount: invoiceData?.length || 0, 
+        error: error?.message,
+        organization_id: orgId,
+        sampleInvoice: invoiceData?.[0] ? {
+          id: invoiceData[0].id,
+          invoice_number: invoiceData[0].invoice_number,
+          organization_id: invoiceData[0].organization_id,
+          contact_id: invoiceData[0].contact_id
+        } : null
+      });
       
       if (error) {
         console.error('Error fetching invoices:', error);
@@ -187,20 +205,21 @@ export default function InvoicesDashboard() {
           
           if (fallbackError) throw fallbackError;
           
-          console.log(`📊 Fallback query found ${fallbackData?.length || 0} invoices`);
+          const fallbackInvoices = (fallbackData || []) as any[];
+          console.log(`📊 Fallback query found ${fallbackInvoices.length} invoices`);
           // Filter client-side by organization_id if available
-          const filtered = (fallbackData || []).filter(inv => 
-            !inv.organization_id || inv.organization_id === org.id
+          const filtered = fallbackInvoices.filter((inv: any) => 
+            !inv.organization_id || inv.organization_id === orgId
           );
           console.log(`✅ Filtered to ${filtered.length} invoices`);
-          await enrichInvoicesWithQuoteData(filtered, supabase);
+          await enrichInvoicesWithQuoteData(filtered as Invoice[], supabase);
         } else {
           throw error;
         }
       } else {
         // If no invoices found, also check for invoices without organization_id
         // (they may need backfilling, but we'll show them temporarily)
-        if (!data || data.length === 0) {
+        if (!invoiceData || invoiceData.length === 0) {
           console.log('⚠️ No invoices found with organization_id filter, checking for all invoices...');
           
           // Fetch ALL invoices to see what exists
@@ -209,10 +228,12 @@ export default function InvoicesDashboard() {
             .select('*')
             .order('invoice_date', { ascending: false });
           
+          const allInvoicesData = (allInvoices || []) as any[];
+          
           console.log(`📊 All invoices query:`, { 
-            count: allInvoices?.length || 0, 
+            count: allInvoicesData.length, 
             error: allError?.message,
-            sample: allInvoices?.slice(0, 2).map(inv => ({ 
+            sample: allInvoicesData.slice(0, 2).map((inv: any) => ({ 
               id: inv.id, 
               invoice_number: inv.invoice_number,
               organization_id: inv.organization_id,
@@ -220,20 +241,20 @@ export default function InvoicesDashboard() {
             }))
           });
           
-          if (allInvoices && allInvoices.length > 0) {
-            console.log(`Found ${allInvoices.length} total invoices`);
+          if (allInvoicesData.length > 0) {
+            console.log(`Found ${allInvoicesData.length} total invoices`);
             // Show invoices that either match organization_id OR don't have one yet (need backfilling)
-            const filtered = allInvoices.filter(inv => 
-              !inv.organization_id || inv.organization_id === org.id
+            const filtered = allInvoicesData.filter((inv: any) => 
+              !inv.organization_id || inv.organization_id === orgId
             );
-            console.log(`✅ Showing ${filtered.length} invoices (${filtered.filter(inv => !inv.organization_id).length} need organization_id backfill)`);
-            console.log(`📋 Invoice details:`, filtered.map(inv => ({
+            console.log(`✅ Showing ${filtered.length} invoices (${filtered.filter((inv: any) => !inv.organization_id).length} need organization_id backfill)`);
+            console.log(`📋 Invoice details:`, filtered.map((inv: any) => ({
               id: inv.id,
               invoice_number: inv.invoice_number,
               organization_id: inv.organization_id,
               contact_id: inv.contact_id
             })));
-            await enrichInvoicesWithQuoteData(filtered, supabase);
+            await enrichInvoicesWithQuoteData(filtered as Invoice[], supabase);
           } else {
             console.log('❌ No invoices found in invoice_summary view, checking invoices table directly...');
             
@@ -243,20 +264,22 @@ export default function InvoicesDashboard() {
               .select('*, contacts:contact_id(id, organization_id, first_name, last_name, email_address, phone, event_type, event_date)')
               .order('invoice_date', { ascending: false });
             
+            const directInvoicesData = (directInvoices || []) as any[];
+            
             console.log(`📊 Direct invoices query:`, { 
-              count: directInvoices?.length || 0, 
+              count: directInvoicesData.length, 
               error: directError?.message 
             });
             
-            if (directInvoices && directInvoices.length > 0) {
+            if (directInvoicesData.length > 0) {
               // Filter by organization_id from invoice or contact
-              const filtered = directInvoices.filter(inv => {
+              const filtered = directInvoicesData.filter((inv: any) => {
                 const invOrgId = inv.organization_id || inv.contacts?.organization_id;
-                return !invOrgId || invOrgId === org.id;
+                return !invOrgId || invOrgId === orgId;
               });
               
               // Transform to match invoice_summary format
-              const transformed = filtered.map(inv => ({
+              const transformed = filtered.map((inv: any) => ({
                 ...inv,
                 first_name: inv.contacts?.first_name,
                 last_name: inv.contacts?.last_name,
@@ -272,7 +295,7 @@ export default function InvoicesDashboard() {
               }));
               
               console.log(`✅ Found ${transformed.length} invoices in invoices table`);
-              await enrichInvoicesWithQuoteData(transformed, supabase);
+              await enrichInvoicesWithQuoteData(transformed as Invoice[], supabase);
             } else {
               console.log('❌ No invoices found in database at all');
               setInvoices([]);
@@ -281,15 +304,15 @@ export default function InvoicesDashboard() {
             }
           }
         } else {
-          console.log(`✅ Loaded ${data.length} invoices for organization ${org.id}`);
-          console.log(`📋 Invoice details:`, data.map(inv => ({
+          console.log(`✅ Loaded ${invoiceData.length} invoices for organization ${orgId}`);
+          console.log(`📋 Invoice details:`, invoiceData.map((inv: any) => ({
             id: inv.id,
             invoice_number: inv.invoice_number,
             organization_id: inv.organization_id
           })));
           
           // Fetch quote data for all invoices to get accurate totals
-          await enrichInvoicesWithQuoteData(data, supabase);
+          await enrichInvoicesWithQuoteData(invoiceData as Invoice[], supabase);
         }
       }
     } catch (error) {
@@ -565,13 +588,27 @@ export default function InvoicesDashboard() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Invoices Dashboard</h1>
             <p className="text-gray-600">Manage all your invoices and billing</p>
           </div>
-          <Button
-            onClick={() => router.push('/admin/invoices/new')}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            New Invoice
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => {
+                console.log('🔄 Manually refreshing invoices...');
+                fetchInvoices();
+              }}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              onClick={() => router.push('/admin/invoices/new')}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              New Invoice
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}

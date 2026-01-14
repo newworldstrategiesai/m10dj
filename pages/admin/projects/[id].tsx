@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, Mic, MicOff } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, Mic, MicOff, FileText, ExternalLink, Plus } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,19 @@ const PROJECT_STATUSES = [
   'cancelled'
 ];
 
+interface Invoice {
+  id: string;
+  invoice_number: string;
+  invoice_status: string;
+  invoice_title: string;
+  invoice_date: string;
+  due_date: string;
+  total_amount: number;
+  amount_paid: number;
+  balance_due: number;
+  contact_id: string;
+}
+
 export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -60,10 +73,75 @@ export default function ProjectDetailPage() {
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClient(), []);
   const { toast } = useToast();
   const { id, from } = router.query as { id: string; from?: string };
+
+  const fetchInvoices = async () => {
+    if (!id) return;
+    
+    setInvoicesLoading(true);
+    try {
+      // Fetch invoices linked to this project by project_id
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('invoice_summary')
+        .select('*')
+        .eq('project_id', id)
+        .order('invoice_date', { ascending: false });
+      
+      if (invoiceError) {
+        console.error('Error fetching invoices:', invoiceError);
+        // Fallback: try querying invoices table directly
+        const { data: directInvoices, error: directError } = await supabase
+          .from('invoices')
+          .select('*')
+          .eq('project_id', id)
+          .order('invoice_date', { ascending: false });
+        
+        if (!directError && directInvoices) {
+          // Transform to match Invoice interface
+          const transformed = (directInvoices as any[]).map(inv => ({
+            id: inv.id,
+            invoice_number: inv.invoice_number,
+            invoice_status: inv.invoice_status,
+            invoice_title: inv.invoice_title || '',
+            invoice_date: inv.invoice_date,
+            due_date: inv.due_date,
+            total_amount: parseFloat(inv.total_amount) || 0,
+            amount_paid: parseFloat(inv.amount_paid) || 0,
+            balance_due: parseFloat(inv.balance_due) || 0,
+            contact_id: inv.contact_id
+          }));
+          setInvoices(transformed);
+        } else {
+          setInvoices([]);
+        }
+      } else {
+        // Transform invoice_summary data to Invoice interface
+        const transformed = ((invoiceData || []) as any[]).map(inv => ({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          invoice_status: inv.invoice_status,
+          invoice_title: inv.invoice_title || '',
+          invoice_date: inv.invoice_date,
+          due_date: inv.due_date,
+          total_amount: parseFloat(inv.total_amount) || 0,
+          amount_paid: parseFloat(inv.amount_paid) || 0,
+          balance_due: parseFloat(inv.balance_due) || 0,
+          contact_id: inv.contact_id
+        }));
+        setInvoices(transformed);
+      }
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      setInvoices([]);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
 
   useEffect(() => {
     checkUser();
@@ -72,6 +150,7 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     if (user && id) {
       fetchProject();
+      fetchInvoices();
     }
   }, [user, id]);
 
@@ -145,8 +224,8 @@ export default function ProjectDetailPage() {
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('events')
+      const { error } = await (supabase
+        .from('events') as any)
         .update({
           event_name: project.event_name,
           client_name: project.client_name,
@@ -213,8 +292,8 @@ export default function ProjectDetailPage() {
     
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('events')
+      const { error } = await (supabase
+        .from('events') as any)
         .update({
           audio_tracking_enabled: enabled,
           updated_at: new Date().toISOString()
@@ -322,6 +401,7 @@ export default function ProjectDetailPage() {
             <TabsList className="bg-white border rounded-lg p-1 inline-flex min-w-max sm:w-auto">
               <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-4">Details</TabsTrigger>
               <TabsTrigger value="client" className="text-xs sm:text-sm px-2 sm:px-4">Client</TabsTrigger>
+              <TabsTrigger value="invoices" className="text-xs sm:text-sm px-2 sm:px-4">Invoices</TabsTrigger>
               <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-4">Notes</TabsTrigger>
               <TabsTrigger value="audio" className="text-xs sm:text-sm px-2 sm:px-4">Audio</TabsTrigger>
               <TabsTrigger value="journey" className="text-xs sm:text-sm px-2 sm:px-4">Journey</TabsTrigger>
@@ -518,6 +598,113 @@ export default function ProjectDetailPage() {
                   )}
                 </div>
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="invoices">
+            <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base sm:text-lg font-semibold">Invoices</h3>
+                {project?.client_email && (
+                  <Button
+                    onClick={() => {
+                      // Find contact by email to create invoice
+                      router.push(`/admin/invoices/new?projectId=${id}&contactEmail=${encodeURIComponent(project.client_email)}`);
+                    }}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    New Invoice
+                  </Button>
+                )}
+              </div>
+              
+              {invoicesLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-gray-500 text-sm">Loading invoices...</p>
+                </div>
+              ) : invoices.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-2">No invoices found for this project</p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Create an invoice for this project to track billing and payments.
+                  </p>
+                  {project?.client_email && (
+                    <Button
+                      onClick={() => {
+                        router.push(`/admin/invoices/new?projectId=${id}&contactEmail=${encodeURIComponent(project.client_email)}`);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Create Invoice
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {invoices.map((invoice) => {
+                    const getStatusColor = (status: string) => {
+                      switch (status?.toLowerCase()) {
+                        case 'paid':
+                          return 'bg-green-100 text-green-800 border-green-200';
+                        case 'overdue':
+                          return 'bg-red-100 text-red-800 border-red-200';
+                        case 'partial':
+                          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                        case 'sent':
+                        case 'viewed':
+                          return 'bg-blue-100 text-blue-800 border-blue-200';
+                        default:
+                          return 'bg-gray-100 text-gray-600 border-gray-200';
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={invoice.id}
+                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Link
+                              href={`/admin/invoices/${invoice.id}`}
+                              className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              {invoice.invoice_number}
+                            </Link>
+                            <Badge className={`${getStatusColor(invoice.invoice_status)} text-xs px-2 py-1`}>
+                              {invoice.invoice_status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-1">{invoice.invoice_title || 'Invoice'}</p>
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span>Due: {new Date(invoice.due_date).toLocaleDateString()}</span>
+                            <span>Total: ${invoice.total_amount.toFixed(2)}</span>
+                            {invoice.balance_due > 0 && (
+                              <span className="text-red-600 font-semibold">
+                                Balance: ${invoice.balance_due.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/admin/invoices/${invoice.id}`}
+                            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded"
+                            title="View Invoice"
+                          >
+                            <ExternalLink className="h-5 w-5" />
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </TabsContent>
 

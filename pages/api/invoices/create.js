@@ -170,6 +170,10 @@ export default async function handler(req, res) {
     const clientName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Client';
     const title = invoiceTitle || `${contact.event_type || 'Event'} - ${clientName}`.trim();
 
+    // Generate payment token for invoice (secure random token)
+    const crypto = require('crypto');
+    const paymentToken = crypto.randomBytes(32).toString('hex');
+
     // Create invoice
     const invoiceData = {
       contact_id: contact.id,
@@ -193,7 +197,8 @@ export default async function handler(req, res) {
       deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
       line_items: lineItems || [],
       notes: notes || null,
-      internal_notes: internalNotes || null
+      internal_notes: internalNotes || null,
+      payment_token: paymentToken // Generate payment token for secure payment links
     };
 
     console.log('[create-invoice] Attempting to create invoice:', {

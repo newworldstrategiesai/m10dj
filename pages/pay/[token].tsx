@@ -23,18 +23,26 @@ interface Invoice {
   id: string;
   invoice_number: string;
   total_amount: number;
+  subtotal?: number;
+  tax?: number;
+  tax_rate?: number | null;
+  discount_amount?: number;
   status: string;
   due_date: string;
+  issue_date?: string;
   line_items: Array<{
     description: string;
     quantity: number;
     rate: number;
     total: number;
   }>;
+  notes?: string | null;
   contacts: {
+    id: string;
     first_name: string;
     last_name: string;
     email_address: string;
+    phone?: string | null;
   };
 }
 
@@ -215,40 +223,54 @@ export default function PaymentPage() {
                   )}
                 </div>
 
-                {/* Line Items */}
+                  {/* Line Items */}
                 <div className="border-t border-gray-200 pt-4">
                   <h3 className="font-semibold text-gray-900 mb-3">Services</h3>
-                  <div className="space-y-3">
-                    {invoice.line_items?.map((item, index) => (
-                      <div key={index} className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{item.description}</p>
-                          <p className="text-sm text-gray-600">
-                            {item.quantity} × ${item.rate.toFixed(2)}
-                          </p>
-                        </div>
-                        <p className="font-semibold text-gray-900">${item.total.toFixed(2)}</p>
+                  {invoice.line_items && invoice.line_items.length > 0 ? (
+                    <>
+                      <div className="space-y-3">
+                        {invoice.line_items.map((item: any, index: number) => (
+                          <div key={index} className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900">{item.description || 'Line Item'}</p>
+                              <p className="text-sm text-gray-600">
+                                {item.quantity || 1} × ${(item.rate || 0).toFixed(2)}
+                              </p>
+                            </div>
+                            <p className="font-semibold text-gray-900">${((item.total || item.amount || 0)).toFixed(2)}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Totals */}
-                  <div className="border-t border-gray-200 mt-4 pt-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal:</span>
-                      <span className="font-medium text-gray-900">${subtotal.toFixed(2)}</span>
-                    </div>
-                    {tax > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Tax:</span>
-                        <span className="font-medium text-gray-900">${tax.toFixed(2)}</span>
+                      {/* Totals */}
+                      <div className="border-t border-gray-200 mt-4 pt-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Subtotal:</span>
+                          <span className="font-medium text-gray-900">${(invoice.subtotal || subtotal).toFixed(2)}</span>
+                        </div>
+                        {invoice.tax_rate && invoice.tax_rate > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Tax ({invoice.tax_rate}%):</span>
+                            <span className="font-medium text-gray-900">${(invoice.tax || 0).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {invoice.discount_amount && invoice.discount_amount > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Discount:</span>
+                            <span className="font-medium text-gray-900">-${(invoice.discount_amount || 0).toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-2">
+                          <span className="text-gray-900">Total:</span>
+                          <span className="text-[#fcba00]">${(invoice.total_amount || total).toFixed(2)}</span>
+                        </div>
                       </div>
-                    )}
-                    <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-2">
-                      <span className="text-gray-900">Total:</span>
-                      <span className="text-[#fcba00]">${total.toFixed(2)}</span>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No line items found for this invoice.</p>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

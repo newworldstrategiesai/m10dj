@@ -1526,7 +1526,50 @@ function normalizeFlexibleDate(value: string): string | null {
     sanitized = sanitized.replace(regex, full);
   }
 
-  // Try to parse the date - if no year is provided, assume current year
+  // Parse date components manually to avoid timezone issues
+  // Extract month, day, and year from the sanitized string
+  const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
+                      'july', 'august', 'september', 'october', 'november', 'december'];
+  
+  let monthNum = -1;
+  let dayNum = -1;
+  let yearNum = -1;
+  
+  // Find the month and extract day that follows it
+  for (let i = 0; i < monthNames.length; i++) {
+    const monthName = monthNames[i];
+    const monthRegex = new RegExp(`\\b${monthName}\\b`, 'i');
+    const monthMatch = sanitized.match(monthRegex);
+    if (monthMatch) {
+      monthNum = i + 1; // 1-12
+      // Extract day that comes after the month name
+      const afterMonth = sanitized.substring(monthMatch.index! + monthMatch[0].length);
+      const dayMatch = afterMonth.match(/\b(\d{1,2})\b/);
+      if (dayMatch) {
+        dayNum = parseInt(dayMatch[1], 10);
+      }
+      break;
+    }
+  }
+  
+  // Extract year (4 digits)
+  const yearMatch = sanitized.match(/\b(\d{4})\b/);
+  if (yearMatch) {
+    yearNum = parseInt(yearMatch[1], 10);
+  } else {
+    // No year provided, use current year
+    yearNum = new Date().getFullYear();
+  }
+  
+  // Validate we have all components
+  if (monthNum > 0 && dayNum > 0 && yearNum > 1900) {
+    // Use Date.UTC to create the date without timezone conversion issues
+    // This ensures "Jan 31" stays as January 31st regardless of timezone
+    const iso = new Date(Date.UTC(yearNum, monthNum - 1, dayNum)).toISOString();
+    return iso.split('T')[0];
+  }
+  
+  // Fallback: Try to parse with Date constructor (but this can have timezone issues)
   let parsed = new Date(sanitized);
   
   // If parsing failed or year is 1901 (default for dates without year), try adding current year
@@ -1537,8 +1580,13 @@ function normalizeFlexibleDate(value: string): string | null {
     parsed = new Date(withYear);
   }
   
+  // For fallback, use UTC methods to avoid timezone issues
   if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
-    return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()))
+    // Use UTC methods to get the date components without timezone conversion
+    const year = parsed.getUTCFullYear();
+    const month = parsed.getUTCMonth();
+    const day = parsed.getUTCDate();
+    return new Date(Date.UTC(year, month, day))
       .toISOString()
       .split('T')[0];
   }

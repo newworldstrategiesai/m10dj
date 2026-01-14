@@ -4,6 +4,7 @@
  */
 
 const PDFDocument = require('pdfkit');
+const QRCode = require('qrcode');
 const { createServerSupabaseClient } = require('@supabase/auth-helpers-nextjs');
 const { createClient } = require('@supabase/supabase-js');
 const { isPlatformAdmin } = require('@/utils/auth-helpers/platform-admin');
@@ -11,6 +12,7 @@ const { getOrganizationContext } = require('@/utils/organization-helpers');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -79,15 +81,129 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    // Fetch line items
-    const { data: lineItems, error: lineItemsError } = await supabase
+    // Fetch line items from invoice_line_items table
+    const { data: lineItemsFromTable, error: lineItemsError } = await supabase
       .from('invoice_line_items')
       .select('*')
       .eq('invoice_id', invoiceId)
       .order('created_at', { ascending: true });
 
     if (lineItemsError) {
-      console.error('Error fetching line items:', lineItemsError);
+      console.error('Error fetching line items from table:', lineItemsError);
+    }
+
+    // If no line items from table, check the line_items JSONB field on the invoice
+    let lineItems = lineItemsFromTable || [];
+    if (lineItems.length === 0) {
+      // Fetch invoice directly to get line_items JSONB field (invoice_summary view might not include it)
+      const { data: directInvoiceData, error: directInvoiceError } = await supabase
+        .from('invoices')
+        .select('line_items')
+        .eq('id', invoiceId)
+        .single();
+      
+      console.log('📦 PDF: Checking invoice.line_items JSONB field:', {
+        has_data: !!directInvoiceData,
+        line_items: directInvoiceData?.line_items,
+        error: directInvoiceError
+      });
+      
+      if (directInvoiceData?.line_items) {
+        try {
+          // Parse the JSONB line_items field
+          const jsonLineItems = typeof directInvoiceData.line_items === 'string' 
+            ? JSON.parse(directInvoiceData.line_items) 
+            : directInvoiceData.line_items;
+          
+          if (Array.isArray(jsonLineItems) && jsonLineItems.length > 0) {
+            // Convert JSONB format to invoice_line_items format for PDF
+            lineItems = jsonLineItems.map((item, index) => {
+              const unitPrice = item.rate || item.unit_price || 0;
+              const quantity = item.quantity || 1;
+              const amount = item.amount || (unitPrice * quantity);
+              
+              return {
+                id: `json-${index}`,
+                description: item.description || '',
+                quantity: quantity,
+                unit_price: unitPrice,
+                total_amount: amount,
+                item_type: item.type || 'custom',
+                notes: item.notes || null
+              };
+            });
+            console.log('📦 PDF: Using line items from invoice.line_items JSONB field:', lineItems.length);
+          }
+        } catch (e) {
+          console.error('Error parsing invoice.line_items JSONB in PDF generation:', e);
+        }
+      }
+    }
+    
+    console.log('📦 PDF: Final line items count:', lineItems.length);
+
+    // Fetch invoice directly to get payment_token (invoice_summary view might not include it)
+    // If no payment_token exists, generate one and save it to the invoice
+    let paymentToken = invoice.payment_token || invoice.qr_code_data;
+    if (!paymentToken) {
+      const { data: directInvoiceForToken, error: tokenError } = await supabase
+        .from('invoices')
+        .select('payment_token, qr_code_data')
+        .eq('id', invoiceId)
+        .single();
+      
+      if (directInvoiceForToken) {
+        paymentToken = directInvoiceForToken.payment_token || directInvoiceForToken.qr_code_data;
+      }
+      
+      // If still no token, generate one and save it to the invoice
+      if (!paymentToken) {
+        const crypto = require('crypto');
+        paymentToken = crypto.randomBytes(32).toString('hex');
+        
+        // Save the generated token to the invoice
+        const { error: updateTokenError } = await supabase
+          .from('invoices')
+          .update({ payment_token: paymentToken })
+          .eq('id', invoiceId);
+        
+        if (updateTokenError) {
+          console.error('Error saving payment_token to invoice:', updateTokenError);
+        } else {
+          console.log('📦 PDF: Generated and saved payment_token for invoice:', paymentToken.substring(0, 20) + '...');
+        }
+      } else {
+        console.log('📦 PDF: Fetched payment_token from invoice:', {
+          has_token: !!paymentToken,
+          token: paymentToken ? paymentToken.substring(0, 20) + '...' : null
+        });
+      }
+    }
+
+    // Generate payment URL - always use payment_token route for invoices
+    // This ensures customers go to the invoice payment page, not the quote selection page
+    const paymentUrl = paymentToken 
+      ? `${siteUrl}/pay/${paymentToken}`
+      : null; // Don't show QR code if we can't generate a token
+    
+    console.log('📦 PDF: Using payment_token URL:', paymentUrl);
+
+    // Generate QR code as data URL
+    let qrCodeDataUrl;
+    try {
+      qrCodeDataUrl = await QRCode.toDataURL(paymentUrl, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      console.log('📦 PDF: Generated QR code for payment URL:', paymentUrl);
+    } catch (qrError) {
+      console.error('Error generating QR code:', qrError);
+      // Continue without QR code if generation fails
+      qrCodeDataUrl = null;
     }
 
     // Create PDF document
@@ -118,7 +234,17 @@ export default async function handler(req, res) {
       
       // Generate PDF content
       try {
-        generateInvoicePDF(doc, invoice, lineItems || []);
+        console.log('📄 PDF: Generating PDF with data:', {
+          invoice_id: invoice.id,
+          invoice_number: invoice.invoice_number,
+          line_items_count: lineItems.length,
+          line_items: lineItems,
+          subtotal: invoice.subtotal,
+          total_amount: invoice.total_amount,
+          payment_url: paymentUrl,
+          has_qr_code: !!qrCodeDataUrl
+        });
+        generateInvoicePDF(doc, invoice, lineItems || [], paymentUrl, qrCodeDataUrl);
       } catch (pdfError) {
         console.error('Error in generateInvoicePDF:', pdfError);
         reject(pdfError);
@@ -155,7 +281,7 @@ export default async function handler(req, res) {
   }
 }
 
-function generateInvoicePDF(doc, invoice, lineItems) {
+function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -402,7 +528,16 @@ function generateInvoicePDF(doc, invoice, lineItems) {
   yPosition += 30;
 
   // Table Rows
-  lineItems.forEach((item, index) => {
+  if (lineItems.length === 0) {
+    // Show message if no line items
+    doc
+      .fontSize(10)
+      .fillColor(mediumGray)
+      .font('Helvetica')
+      .text('No line items', descCol, yPosition);
+    yPosition += 20;
+  } else {
+    lineItems.forEach((item, index) => {
     if (yPosition > 700) {
       doc.addPage();
       yPosition = 50;
@@ -445,7 +580,8 @@ function generateInvoicePDF(doc, invoice, lineItems) {
       .text(formatCurrency(item.total_amount), amountCol, itemYPos, { width: 55, align: 'right' });
 
     yPosition += 20;
-  });
+    });
+  }
 
   // Final line
   doc
@@ -459,6 +595,13 @@ function generateInvoicePDF(doc, invoice, lineItems) {
 
   // Totals Section
   const totalsX = 370;
+  // Right-aligned position for amounts (consistent across all totals)
+  const amountX = 535; // Position near right edge to prevent wrapping
+  const amountWidth = 65; // Sufficient width for currency values
+  
+  // Calculate subtotal from line items if invoice subtotal is 0 or missing
+  const calculatedSubtotal = lineItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+  const subtotalToUse = invoice.subtotal && invoice.subtotal > 0 ? invoice.subtotal : calculatedSubtotal;
   
   doc
     .fontSize(10)
@@ -467,7 +610,7 @@ function generateInvoicePDF(doc, invoice, lineItems) {
     .text('Subtotal:', totalsX, yPosition)
     .font('Helvetica-Bold')
     .fillColor(darkGray)
-    .text(formatCurrency(invoice.subtotal), totalsX + 120, yPosition, { width: 55, align: 'right' });
+    .text(formatCurrency(subtotalToUse), amountX, yPosition, { width: amountWidth, align: 'right' });
 
   yPosition += 16;
 
@@ -477,7 +620,7 @@ function generateInvoicePDF(doc, invoice, lineItems) {
     .text('Tax:', totalsX, yPosition)
     .font('Helvetica-Bold')
     .fillColor(darkGray)
-    .text(formatCurrency(invoice.tax_amount || 0), totalsX + 120, yPosition, { width: 55, align: 'right' });
+    .text(formatCurrency(invoice.tax_amount || 0), amountX, yPosition, { width: amountWidth, align: 'right' });
 
   yPosition += 20;
 
@@ -491,12 +634,18 @@ function generateInvoicePDF(doc, invoice, lineItems) {
 
   yPosition += 12;
 
+  // Calculate total from subtotal + tax - discount if invoice total is 0 or missing
+  const taxAmount = invoice.tax_amount || 0;
+  const discountAmount = invoice.discount_amount || 0;
+  const calculatedTotal = subtotalToUse + taxAmount - discountAmount;
+  const totalToUse = invoice.total_amount && invoice.total_amount > 0 ? invoice.total_amount : calculatedTotal;
+  
   doc
     .fontSize(14)
     .font('Helvetica-Bold')
     .fillColor(darkGray)
     .text('Total:', totalsX, yPosition)
-    .text(formatCurrency(invoice.total_amount), totalsX + 120, yPosition, { width: 55, align: 'right' });
+    .text(formatCurrency(totalToUse), amountX, yPosition, { width: amountWidth, align: 'right' });
 
   if (invoice.amount_paid > 0) {
     yPosition += 20;
@@ -506,7 +655,7 @@ function generateInvoicePDF(doc, invoice, lineItems) {
       .fillColor('#10b981')
       .font('Helvetica-Bold')
       .text('Paid:', totalsX, yPosition)
-      .text(formatCurrency(invoice.amount_paid), totalsX + 120, yPosition, { width: 55, align: 'right' });
+      .text(formatCurrency(invoice.amount_paid), amountX, yPosition, { width: amountWidth, align: 'right' });
   }
 
   yPosition += 20;
@@ -521,12 +670,167 @@ function generateInvoicePDF(doc, invoice, lineItems) {
 
   yPosition += 12;
 
+  // Calculate balance due from total - amount paid
+  const balanceDueToUse = invoice.balance_due && invoice.balance_due > 0 
+    ? invoice.balance_due 
+    : (totalToUse - (invoice.amount_paid || 0));
+  
   doc
     .fontSize(16)
     .font('Helvetica-Bold')
     .fillColor('#f59e0b')
     .text('Balance Due:', totalsX, yPosition)
-    .text(formatCurrency(invoice.balance_due), totalsX + 120, yPosition, { width: 55, align: 'right' });
+    .text(formatCurrency(balanceDueToUse), amountX, yPosition, { width: amountWidth, align: 'right' });
+
+  // Payment section with QR code (if payment URL and QR code are provided)
+  // Only show if we have a valid payment token URL (not quote selection route)
+  if (paymentUrl && qrCodeDataUrl && paymentUrl.includes('/pay/')) {
+    yPosition += 40;
+    
+    // Check if we need a new page
+    if (yPosition > 600) {
+      doc.addPage();
+      yPosition = 50;
+    }
+
+    const paymentBoxStartY = yPosition;
+    const paymentBoxHeight = 120;
+    const paymentBoxPadding = 20;
+    const leftColX = 50 + paymentBoxPadding;
+    const rightColX = 380; // Start of right column
+    
+    // Payment box with styling - rounded corners effect with background
+    // Main box background
+    doc
+      .rect(50, paymentBoxStartY, 495, paymentBoxHeight)
+      .fill('#f0f9ff');
+    
+    // Top border accent
+    doc
+      .rect(50, paymentBoxStartY, 495, 4)
+      .fill(brandGold);
+    
+    // Bottom border
+    doc
+      .rect(50, paymentBoxStartY + paymentBoxHeight - 4, 495, 4)
+      .fill(brandGold);
+    
+    // Left border accent
+    doc
+      .rect(50, paymentBoxStartY, 4, paymentBoxHeight)
+      .fill(brandGold);
+    
+    // Right border accent
+    doc
+      .rect(50 + 495 - 4, paymentBoxStartY, 4, paymentBoxHeight)
+      .fill(brandGold);
+
+    // Reset yPosition for content inside the box
+    let paymentContentY = paymentBoxStartY + paymentBoxPadding;
+
+    // Left side: Payment instructions with better hierarchy
+    doc
+      .fontSize(16)
+      .fillColor(darkGray)
+      .font('Helvetica-Bold')
+      .text('PAY ONLINE', leftColX, paymentContentY);
+
+    paymentContentY += 22;
+
+    doc
+      .fontSize(9)
+      .fillColor(mediumGray)
+      .font('Helvetica')
+      .text('Click here to pay:', leftColX, paymentContentY);
+
+    paymentContentY += 12;
+
+    // Clickable payment link with better styling
+    const displayText = 'Pay Online';
+    doc
+      .fontSize(11)
+      .fillColor('#2563eb')
+      .font('Helvetica-Bold')
+      .text(displayText, leftColX, paymentContentY, { 
+        link: paymentUrl,
+        underline: true
+      });
+    
+    // Full URL below in smaller text for reference - ensure it stays on one line
+    paymentContentY += 14;
+    // Calculate font size to fit URL on one line
+    let urlFontSize = 9;
+    doc.font('Helvetica');
+    let urlWidth = doc.widthOfString(paymentUrl, { fontSize: urlFontSize });
+    const maxUrlWidth = 320; // Max width available in left column
+    
+    // Try to increase font size first if there's room
+    let testSize = 10;
+    let testWidth = doc.widthOfString(paymentUrl, { fontSize: testSize });
+    if (testWidth <= maxUrlWidth) {
+      urlFontSize = testSize;
+      urlWidth = testWidth;
+    } else {
+      // Reduce font size until URL fits on one line
+      while (urlWidth > maxUrlWidth && urlFontSize > 6) {
+        urlFontSize -= 0.5;
+        urlWidth = doc.widthOfString(paymentUrl, { fontSize: urlFontSize });
+      }
+    }
+    
+    doc
+      .fontSize(urlFontSize)
+      .fillColor(mediumGray)
+      .text(paymentUrl, leftColX, paymentContentY, { 
+        width: maxUrlWidth + 50, // Add buffer to prevent wrapping
+        link: null
+      });
+
+    // Right side: QR Code with better positioning
+    try {
+      // Convert data URL to buffer
+      const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
+      const qrBuffer = Buffer.from(base64Data, 'base64');
+      
+      // Position QR code on the right side, centered vertically in the box
+      const qrCodeSize = 100;
+      const qrCodeX = rightColX;
+      
+      // Calculate QR code position - center it vertically in the payment box
+      const boxCenterY = paymentBoxStartY + (paymentBoxHeight / 2);
+      const qrCodeY = boxCenterY - (qrCodeSize / 2); // Center the QR code vertically
+      
+      // Ensure QR code doesn't go outside the box boundaries
+      const minQRY = paymentBoxStartY + 10; // Minimum Y with padding
+      const maxQRY = paymentBoxStartY + paymentBoxHeight - qrCodeSize - 10;
+      const finalQRY = Math.max(minQRY, Math.min(qrCodeY, maxQRY));
+      
+      // Add white background behind QR code for better contrast (within box bounds)
+      const bgPadding = 5;
+      const bgX = qrCodeX - bgPadding;
+      const bgY = finalQRY - bgPadding;
+      const bgSize = qrCodeSize + (bgPadding * 2);
+      
+      // Ensure background doesn't extend outside box
+      if (bgY >= paymentBoxStartY && bgY + bgSize <= paymentBoxStartY + paymentBoxHeight) {
+        doc
+          .rect(bgX, bgY, bgSize, bgSize)
+          .fill('#ffffff')
+          .stroke(lightGray)
+          .lineWidth(1);
+      }
+      
+      // Add QR code image
+      doc.image(qrBuffer, qrCodeX, finalQRY, { 
+        width: qrCodeSize,
+        height: qrCodeSize
+      });
+    } catch (imgError) {
+      console.error('Error adding QR code image to invoice PDF:', imgError);
+    }
+
+    yPosition = paymentBoxStartY + paymentBoxHeight + 20;
+  }
 
   // Notes
   if (invoice.notes) {

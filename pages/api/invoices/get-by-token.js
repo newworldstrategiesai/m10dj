@@ -22,30 +22,103 @@ export default async function handler(req, res) {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get invoice by payment token
+    console.log('[get-by-token] Looking up invoice with token:', token.substring(0, 20) + '...');
+
+    // First, try to get the invoice by payment token
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select(`
-        *,
-        contacts (
-          id,
-          first_name,
-          last_name,
-          email_address,
-          phone
-        )
-      `)
+      .select('*')
       .eq('payment_token', token)
       .is('deleted_at', null)
       .single();
 
-    if (invoiceError || !invoice) {
-      console.error('Invoice not found:', invoiceError);
+    if (invoiceError) {
+      console.error('[get-by-token] Query error:', {
+        error: invoiceError,
+        code: invoiceError?.code,
+        message: invoiceError?.message,
+        details: invoiceError?.details,
+        hint: invoiceError?.hint,
+        token: token.substring(0, 20) + '...'
+      });
+      
+      // Check if it's a column doesn't exist error (PostgreSQL error code 42703 = undefined_column)
+      const errorMessage = invoiceError?.message || '';
+      const errorDetails = invoiceError?.details || '';
+      const isColumnError = invoiceError?.code === '42703' || 
+                           (errorMessage.includes('column') && errorMessage.includes('does not exist')) ||
+                           (errorDetails.includes('column') && errorDetails.includes('does not exist')) ||
+                           errorMessage.includes('payment_token') ||
+                           errorDetails.includes('payment_token');
+      
+      if (isColumnError) {
+        return res.status(500).json({ 
+          error: 'Database schema error',
+          message: 'Payment token column not found. Please run database migrations.',
+          code: 'MIGRATION_REQUIRED',
+          hint: 'Run migration: 20250129000001_add_payment_token_to_invoices.sql'
+        });
+      }
+      
+      // If it's a "no rows returned" error (PGRST116), return 404
+      if (invoiceError?.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Invoice not found or link expired' });
+      }
+      
       return res.status(404).json({ error: 'Invoice not found or link expired' });
+    }
+
+    if (!invoice) {
+      console.error('[get-by-token] Invoice not found (no data returned):', {
+        token: token.substring(0, 20) + '...'
+      });
+      return res.status(404).json({ error: 'Invoice not found or link expired' });
+    }
+
+    // Verify that the invoice actually has the payment_token we're looking for
+    // (in case of race condition or data inconsistency)
+    if (invoice.payment_token !== token) {
+      console.error('[get-by-token] Token mismatch:', {
+        invoice_id: invoice.id,
+        expected_token: token.substring(0, 20) + '...',
+        actual_token: invoice.payment_token ? invoice.payment_token.substring(0, 20) + '...' : 'NULL'
+      });
+      return res.status(404).json({ error: 'Invoice not found or link expired' });
+    }
+
+    console.log('[get-by-token] Invoice found:', {
+      id: invoice.id,
+      invoice_number: invoice.invoice_number,
+      contact_id: invoice.contact_id
+    });
+
+    // Then fetch contact details separately to avoid RLS issues
+    let contact = null;
+    if (invoice.contact_id) {
+      const { data: contactData, error: contactError } = await supabase
+        .from('contacts')
+        .select('id, first_name, last_name, email_address, phone')
+        .eq('id', invoice.contact_id)
+        .single();
+      
+      if (contactError) {
+        console.warn('Error fetching contact (non-critical):', contactError);
+        // Continue even if contact fetch fails
+      } else {
+        contact = contactData;
+      }
     }
 
     // Check if token is expired (optional: add expiry logic)
     // For now, just check if invoice exists and isn't deleted
+
+    // Map line items to ensure consistent format (amount -> total)
+    const lineItems = (invoice.line_items || []).map(item => ({
+      description: item.description || '',
+      quantity: item.quantity || 1,
+      rate: item.rate || item.unit_price || 0,
+      total: item.total || item.amount || (item.rate || item.unit_price || 0) * (item.quantity || 1)
+    }));
 
     // Don't send sensitive data
     const safeInvoice = {
@@ -53,13 +126,21 @@ export default async function handler(req, res) {
       invoice_number: invoice.invoice_number,
       total_amount: invoice.total_amount,
       subtotal: invoice.subtotal,
-      tax: invoice.tax,
-      status: invoice.status,
+      tax: invoice.tax_amount || invoice.tax || 0,
+      tax_rate: invoice.tax_rate || null,
+      discount_amount: invoice.discount_amount || 0,
+      status: invoice.invoice_status || invoice.status,
       due_date: invoice.due_date,
-      issue_date: invoice.issue_date,
-      line_items: invoice.line_items || [],
+      issue_date: invoice.invoice_date || invoice.issue_date,
+      line_items: lineItems,
       notes: invoice.notes,
-      contacts: invoice.contacts
+      contacts: contact || {
+        id: invoice.contact_id || null,
+        first_name: 'Client',
+        last_name: '',
+        email_address: null,
+        phone: null
+      }
     };
 
     res.status(200).json({
@@ -68,10 +149,16 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error fetching invoice:', error);
+    console.error('[get-by-token] Unexpected error:', {
+      error: error,
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    });
     res.status(500).json({
       error: 'Failed to fetch invoice',
-      message: error.message
+      message: error?.message || 'An unexpected error occurred',
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
     });
   }
 }

@@ -1423,21 +1423,28 @@ export default function InvoiceDetailPage() {
             invoice_number: invoice.invoice_number,
             contact_id: invoice.contact_id,
             total_amount: invoice.total_amount,
-            invoice_status: invoice.invoice_status
+            invoice_status: invoice.invoice_status,
+            has_line_items_field: !!invoice.line_items,
+            line_items_type: typeof invoice.line_items,
+            line_items_value: invoice.line_items
           });
           
           if (isMountedRef.current) {
             setInvoice(invoice);
           }
           
-          // Use the invoice variable for subsequent operations
-
-          // Fetch line items
+          // Fetch line items from invoice_line_items table
       const { data: lineItemsData, error: lineItemsError } = await supabase
         .from('invoice_line_items')
         .select('*')
         .eq('invoice_id', id)
         .order('created_at', { ascending: true });
+      
+      console.log('📦 Line items from invoice_line_items table:', {
+        count: lineItemsData?.length || 0,
+        data: lineItemsData,
+        error: lineItemsError
+      });
       
       if (lineItemsError) {
         // 404 is OK - invoice might not have line items yet
@@ -1445,10 +1452,71 @@ export default function InvoiceDetailPage() {
           console.warn('Error fetching invoice line items:', lineItemsError);
         }
       }
-      if (isMountedRef.current) {
-        setLineItems(lineItemsData || []);
+      
+      // If no line items from table, fetch the invoice directly to get line_items JSONB field
+      let finalLineItems: InvoiceLineItem[] = (lineItemsData || []) as InvoiceLineItem[];
+      if (finalLineItems.length === 0) {
+        // Fetch invoice directly to get line_items JSONB field (invoice_summary view might not include it)
+        const { data: directInvoiceData, error: directInvoiceError } = await supabase
+          .from('invoices')
+          .select('line_items')
+          .eq('id', id)
+          .single();
+        
+        // Type assertion for the invoice data
+        const invoiceData = directInvoiceData as { line_items?: any } | null;
+        
+        console.log('📦 Direct invoice fetch for line_items:', {
+          has_data: !!invoiceData,
+          line_items: invoiceData?.line_items,
+          error: directInvoiceError
+        });
+        
+        if (invoiceData?.line_items) {
+          try {
+            // Parse the JSONB line_items field
+            const jsonLineItems = typeof invoiceData.line_items === 'string' 
+              ? JSON.parse(invoiceData.line_items) 
+              : invoiceData.line_items;
+            
+            console.log('📦 Parsed JSON line items:', {
+              is_array: Array.isArray(jsonLineItems),
+              length: Array.isArray(jsonLineItems) ? jsonLineItems.length : 0,
+              items: jsonLineItems
+            });
+            
+            if (Array.isArray(jsonLineItems) && jsonLineItems.length > 0) {
+              // Convert JSONB format to invoice_line_items format for display
+              finalLineItems = jsonLineItems.map((item: any, index: number) => {
+                const unitPrice = item.rate || item.unit_price || 0;
+                const quantity = item.quantity || 1;
+                const amount = item.amount || (unitPrice * quantity);
+                
+                return {
+                  id: `json-${index}`, // Generate a temporary ID
+                  description: item.description || '',
+                  quantity: quantity,
+                  unit_price: unitPrice,
+                  total_amount: amount,
+                  item_type: item.type || 'custom',
+                  notes: item.notes || null
+                };
+              });
+              console.log('📦 Converted line items for display:', finalLineItems);
+            }
+          } catch (e) {
+            console.error('Error parsing invoice.line_items JSONB:', e, invoiceData?.line_items);
+          }
+        }
       }
-      console.log('📦 Invoice line items:', lineItemsData?.length || 0);
+      
+      if (isMountedRef.current) {
+        setLineItems(finalLineItems);
+      }
+      console.log('📦 Invoice line items (final):', {
+        count: finalLineItems?.length || 0,
+        items: finalLineItems
+      });
 
       // Fetch payments - use same API endpoint as quote page for consistency
       let paymentsData = [];
@@ -1691,16 +1759,22 @@ export default function InvoiceDetailPage() {
       e.stopPropagation();
     }
     
-    if (!invoice || !invoice.contact_id) {
-      console.error('Invoice or contact_id is missing');
+    if (!invoice || !invoice.id) {
+      console.error('Invoice or invoice ID is missing');
       return;
     }
 
     setDownloading(true);
     try {
-      // Use the same API endpoint as quote page - it uses contact_id (lead_id)
-      const response = await fetch(`/api/quote/${invoice.contact_id}/generate-invoice-pdf`, {
-        method: 'GET',
+      // Use the invoice PDF generation endpoint
+      const response = await fetch('/api/invoices/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          invoiceId: invoice.id
+        }),
       });
 
       if (!response.ok) {
@@ -1787,7 +1861,7 @@ export default function InvoiceDetailPage() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <img
-            src="/M10-Rotating-Logo.gif"
+            src="/assets/m10 dj company logo white.gif"
             alt="M10 DJ Company Loading"
             className="w-24 h-24 object-contain mx-auto mb-4"
           />
@@ -1986,73 +2060,119 @@ export default function InvoiceDetailPage() {
                   }
                   
                   // Show speaker rental first if present
-                  const hasItems = packageLineItems.length > 0 || speakerRental;
+                  const hasQuoteItems = packageLineItems.length > 0 || speakerRental;
                   
-                  if (!hasItems && lineItems.length > 0) {
-                    // Fallback to invoice line items if no quote data
-                    return lineItems.map((item) => (
-                      <tr key={item.id}>
-                        <td className="py-4 px-6">
-                          <p className="font-medium text-gray-900">{item.description}</p>
-                          {item.notes && <p className="text-sm text-gray-600 mt-1">{item.notes}</p>}
-                        </td>
-                        <td className="py-4 px-6 text-center text-gray-700">{item.quantity || 1}</td>
-                        <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.unit_price)}</td>
-                        <td className="py-4 px-6 text-right font-semibold text-gray-900">{formatCurrency(item.total_amount)}</td>
-                      </tr>
-                    ));
-                  }
-                  
-                  if (!hasItems) {
+                  // Prioritize invoice line items (from JSONB or invoice_line_items table)
+                  // These are the actual line items added when creating the invoice
+                  if (lineItems.length > 0) {
                     return (
-                      <tr>
-                        <td colSpan={4} className="py-8 px-6 text-center text-gray-500">
-                          No line items found
-                        </td>
-                      </tr>
+                      <>
+                        {lineItems.map((item) => (
+                          <tr key={item.id || `line-item-${item.description}`}>
+                            <td className="py-4 px-6">
+                              <p className="font-medium text-gray-900">{item.description || 'Line Item'}</p>
+                              {item.notes && <p className="text-sm text-gray-600 mt-1">{item.notes}</p>}
+                            </td>
+                            <td className="py-4 px-6 text-center text-gray-700">{item.quantity || 1}</td>
+                            <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.unit_price || 0)}</td>
+                            <td className="py-4 px-6 text-right font-semibold text-gray-900">{formatCurrency(item.total_amount || 0)}</td>
+                          </tr>
+                        ))}
+                        {/* Also show quote/package items if they exist (for reference) */}
+                        {hasQuoteItems && (
+                          <>
+                            {speakerRental && speakerRental.price && (
+                              <tr>
+                                <td className="py-4 px-6">
+                                  <p className="font-medium text-gray-900">Speaker Rental</p>
+                                  {speakerRental.description && (
+                                    <p className="text-sm text-gray-600 mt-1">{speakerRental.description}</p>
+                                  )}
+                                </td>
+                                <td className="py-4 px-6 text-center text-gray-700">1</td>
+                                <td className="py-4 px-6 text-right text-gray-700">
+                                  {showPrices ? formatCurrency(speakerRental.price) : '—'}
+                                </td>
+                                <td className="py-4 px-6 text-right font-semibold text-gray-900">
+                                  {showPrices ? formatCurrency(speakerRental.price) : '—'}
+                                </td>
+                              </tr>
+                            )}
+                            {packageLineItems.map((item, index) => (
+                              <tr key={`quote-item-${index}`}>
+                                <td className="py-4 px-6">
+                                  <p className="font-medium text-gray-900">{item.item || item.description || 'Line Item'}</p>
+                                  {item.description && item.description !== item.item && (
+                                    <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                                  )}
+                                </td>
+                                <td className="py-4 px-6 text-center text-gray-700">1</td>
+                                <td className="py-4 px-6 text-right text-gray-700">
+                                  {showPrices && item.price ? formatCurrency(item.price) : '—'}
+                                </td>
+                                <td className="py-4 px-6 text-right font-semibold text-gray-900">
+                                  {showPrices && item.price ? formatCurrency(item.price) : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        )}
+                      </>
                     );
                   }
                   
+                  // Fallback: show quote items if no invoice line items
+                  if (hasQuoteItems) {
+                    return (
+                      <>
+                        {/* Speaker Rental (if present) */}
+                        {speakerRental && speakerRental.price && (
+                          <tr>
+                            <td className="py-4 px-6">
+                              <p className="font-medium text-gray-900">Speaker Rental</p>
+                              {speakerRental.description && (
+                                <p className="text-sm text-gray-600 mt-1">{speakerRental.description}</p>
+                              )}
+                            </td>
+                            <td className="py-4 px-6 text-center text-gray-700">1</td>
+                            <td className="py-4 px-6 text-right text-gray-700">
+                              {showPrices ? formatCurrency(speakerRental.price) : '—'}
+                            </td>
+                            <td className="py-4 px-6 text-right font-semibold text-gray-900">
+                              {showPrices ? formatCurrency(speakerRental.price) : '—'}
+                            </td>
+                          </tr>
+                        )}
+                        
+                        {/* Package Line Items */}
+                        {packageLineItems.map((item, index) => (
+                          <tr key={`quote-item-${index}`}>
+                            <td className="py-4 px-6">
+                              <p className="font-medium text-gray-900">{item.item || item.description || 'Line Item'}</p>
+                              {item.description && item.description !== item.item && (
+                                <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                              )}
+                            </td>
+                            <td className="py-4 px-6 text-center text-gray-700">1</td>
+                            <td className="py-4 px-6 text-right text-gray-700">
+                              {showPrices && item.price ? formatCurrency(item.price) : '—'}
+                            </td>
+                            <td className="py-4 px-6 text-right font-semibold text-gray-900">
+                              {showPrices && item.price ? formatCurrency(item.price) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </>
+                    );
+                  }
+                  
+                  // Final fallback: no items at all
                   return (
-                    <>
-                      {/* Speaker Rental (if present) */}
-                      {speakerRental && speakerRental.price && (
-                        <tr>
-                          <td className="py-4 px-6">
-                            <p className="font-medium text-gray-900">Speaker Rental</p>
-                            {speakerRental.description && (
-                              <p className="text-sm text-gray-600 mt-1">{speakerRental.description}</p>
-                            )}
-                          </td>
-                          <td className="py-4 px-6 text-center text-gray-700">1</td>
-                          <td className="py-4 px-6 text-right text-gray-700">
-                            {showPrices ? formatCurrency(speakerRental.price) : '—'}
-                          </td>
-                          <td className="py-4 px-6 text-right font-semibold text-gray-900">
-                            {showPrices ? formatCurrency(speakerRental.price) : '—'}
-                          </td>
-                        </tr>
-                      )}
-                      
-                      {/* Package Line Items */}
-                      {packageLineItems.map((item, index) => (
-                        <tr key={`quote-item-${index}`}>
-                          <td className="py-4 px-6">
-                            <p className="font-medium text-gray-900">{item.item || item.description || 'Line Item'}</p>
-                            {item.description && item.description !== item.item && (
-                              <p className="text-sm text-gray-600 mt-1">{item.description}</p>
-                            )}
-                          </td>
-                          <td className="py-4 px-6 text-center text-gray-700">1</td>
-                          <td className="py-4 px-6 text-right text-gray-700">
-                            {showPrices && item.price ? formatCurrency(item.price) : '—'}
-                          </td>
-                          <td className="py-4 px-6 text-right font-semibold text-gray-900">
-                            {showPrices && item.price ? formatCurrency(item.price) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </>
+                    <tr>
+                      <td colSpan={4} className="py-8 px-6 text-center text-gray-500">
+                        No line items found
+                      </td>
+                    </tr>
                   );
                 })()}
               </tbody>
