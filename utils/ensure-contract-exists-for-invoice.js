@@ -308,6 +308,8 @@ li { margin: 5px 0; }
 .signature-section { margin-top: 40px; padding-top: 20px; border-top: 2px solid #333; }
 .signature-box { margin: 20px 0; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9; }
 .signature-line { border-bottom: 1px solid #333; height: 50px; margin: 20px 0; }
+.signature-capture-area { min-height: 80px; margin: 10px 0; padding: 10px; border: 1px dashed #ccc; background-color: #fafafa; }
+.signature-placeholder { color: #999; font-style: italic; text-align: center; padding: 20px; }
 </style>
 </head>
 <body>

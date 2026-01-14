@@ -444,14 +444,15 @@ export default function SignContractPage() {
             />
           </div>
 
-          {/* Signature Capture - Only show if signature not yet captured */}
+          {/* Signature Capture - Only show if signature not yet captured, positioned to appear in contract */}
           {!signatureData && (
-            <div className="mt-4 mb-4">
+            <div className="mt-4 mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-sm text-gray-600 mb-3">Please sign the contract above in the signature area.</p>
               <SignatureCapture
                 onSignatureChange={(data, method) => handleSignatureChange(data, method, 'client')}
                 defaultMethod="type"
                 initialName={signatureName}
-                label=""
+                label="Your Signature *"
               />
             </div>
           )}
