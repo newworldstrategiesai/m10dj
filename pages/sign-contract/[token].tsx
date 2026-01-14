@@ -474,64 +474,65 @@ export default function SignContractPage() {
           dangerouslySetInnerHTML={{ __html: contractHtmlWithSignatures || contractData?.contract_html || '' }}
         />
 
-          {/* Signature Capture - Only show if signature not yet captured, positioned to appear in contract */}
-          {!signatureData && (
-            <div className="mt-4 mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-sm text-gray-600 mb-3">Please sign the contract above in the signature area.</p>
-              <SignatureCapture
-                onSignatureChange={(data, method) => handleSignatureChange(data, method, 'client')}
-                defaultMethod="type"
-                initialName={signatureName}
-                label="Your Signature *"
-              />
-            </div>
-          )}
-
-          {/* Agreement Checkbox */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-            <label className="flex items-start gap-2 sm:gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreeToTerms}
-                onChange={(e) => setAgreeToTerms(e.target.checked)}
-                required
-                className="mt-1 w-4 h-4 sm:w-5 sm:h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 flex-shrink-0"
-              />
-              <span className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                I acknowledge that I have read, understood, and agree to the terms and conditions outlined in this contract. 
-                I understand that this electronic signature is legally binding and has the same effect as a handwritten signature.
-              </span>
-            </label>
+        {/* Signature Capture - Only show if signature not yet captured */}
+        {!signatureData && (
+          <div className="mt-8 mb-6" style={{ borderTop: '1px solid #ddd', paddingTop: '20px' }}>
+            <p className="mb-4" style={{ fontSize: '11pt', color: '#666' }}>Please sign the contract above in the signature area.</p>
+            <SignatureCapture
+              onSignatureChange={(data, method) => handleSignatureChange(data, method, 'client')}
+              defaultMethod="type"
+              initialName={signatureName}
+              label="Your Signature *"
+            />
           </div>
+        )}
 
-          {/* Submit Button */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 pt-4 border-t border-gray-200">
-            <p className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
-              By signing, you agree to the terms of this contract
-            </p>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting || !signatureData || !agreeToTerms}
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-            >
-              {submitting ? (
-                <>
-                  <Loader className="w-4 h-4 animate-spin" />
-                  Signing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Sign Contract
-                </>
-              )}
-            </button>
-          </div>
+        {/* Agreement Checkbox */}
+        <div className="mt-6 mb-6" style={{ borderTop: '1px solid #ddd', paddingTop: '20px' }}>
+          <label className="flex items-start gap-3 cursor-pointer" style={{ fontSize: '11pt' }}>
+            <input
+              type="checkbox"
+              checked={agreeToTerms}
+              onChange={(e) => setAgreeToTerms(e.target.checked)}
+              required
+              className="mt-1 w-4 h-4 border-gray-300 rounded focus:ring-purple-500 flex-shrink-0"
+              style={{ marginTop: '2px' }}
+            />
+            <span style={{ lineHeight: '1.6' }}>
+              I acknowledge that I have read, understood, and agree to the terms and conditions outlined in this contract. 
+              I understand that this electronic signature is legally binding and has the same effect as a handwritten signature.
+            </span>
+          </label>
+        </div>
+
+        {/* Submit Button */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-300 mb-8">
+          <p style={{ fontSize: '10pt', color: '#666' }}>
+            By signing, you agree to the terms of this contract
+          </p>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting || !signatureData || !agreeToTerms}
+            className="px-8 py-3 bg-purple-600 text-white rounded font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            style={{ fontSize: '12pt' }}
+          >
+            {submitting ? (
+              <>
+                <Loader className="w-4 h-4 animate-spin" />
+                Signing...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                Sign Contract
+              </>
+            )}
+          </button>
         </div>
 
         {/* Security Notice */}
-        <div className="text-center text-xs sm:text-sm text-gray-500 px-2">
+        <div className="text-center mb-4" style={{ fontSize: '9pt', color: '#999', borderTop: '1px solid #eee', paddingTop: '15px' }}>
           <p>🔒 This is a secure signing page. Your signature is encrypted and legally binding.</p>
           <p className="mt-1">Questions? Contact us at m10djcompany@gmail.com</p>
         </div>
