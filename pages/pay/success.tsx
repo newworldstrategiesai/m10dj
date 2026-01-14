@@ -14,8 +14,10 @@ import {
   Mail,
   Calendar,
   Loader,
-  PartyPopper
+  PartyPopper,
+  FileText
 } from 'lucide-react';
+import { triggerConfetti } from '@/utils/confetti';
 
 export default function PaymentSuccess() {
   const router = useRouter();
@@ -23,12 +25,24 @@ export default function PaymentSuccess() {
   
   const [loading, setLoading] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
+  const [confettiTriggered, setConfettiTriggered] = useState(false);
 
   useEffect(() => {
     if (session_id) {
       fetchPaymentDetails();
     }
   }, [session_id]);
+
+  useEffect(() => {
+    // Trigger confetti when page loads and payment is confirmed
+    if (!loading && paymentDetails && !confettiTriggered) {
+      triggerConfetti({
+        duration: 3000,
+        colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#9333ea', '#ec4899']
+      });
+      setConfettiTriggered(true);
+    }
+  }, [loading, paymentDetails, confettiTriggered]);
 
   const fetchPaymentDetails = async () => {
     try {
@@ -108,6 +122,73 @@ export default function PaymentSuccess() {
                   )}
                 </div>
 
+                {/* Contract Signing Section */}
+                {paymentDetails?.contract && paymentDetails.contract.signing_url && (
+                  <div className={`border-2 rounded-xl p-6 mb-6 ${
+                    paymentDetails.contract.status === 'signed'
+                      ? 'bg-green-50 border-green-300'
+                      : 'bg-blue-50 border-blue-300'
+                  }`}>
+                    <div className="flex items-start gap-4">
+                      <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+                        paymentDetails.contract.status === 'signed'
+                          ? 'bg-green-100'
+                          : 'bg-blue-100'
+                      }`}>
+                        {paymentDetails.contract.status === 'signed' ? (
+                          <CheckCircle className="w-6 h-6 text-green-600" />
+                        ) : (
+                          <FileText className="w-6 h-6 text-blue-600" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className={`font-semibold mb-2 ${
+                          paymentDetails.contract.status === 'signed'
+                            ? 'text-green-900'
+                            : 'text-blue-900'
+                        }`}>
+                          {paymentDetails.contract.status === 'signed' 
+                            ? 'Contract Signed ✓' 
+                            : 'Sign Your Contract'}
+                        </h3>
+                        <p className={`text-sm mb-4 ${
+                          paymentDetails.contract.status === 'signed'
+                            ? 'text-green-700'
+                            : 'text-blue-700'
+                        }`}>
+                          {paymentDetails.contract.status === 'signed'
+                            ? 'Your service agreement has been signed. A copy has been sent to your email.'
+                            : 'Please sign your service agreement to complete your booking. You can review and sign it now.'}
+                        </p>
+                        {paymentDetails.contract.contract_number && (
+                          <p className={`text-xs mb-4 ${
+                            paymentDetails.contract.status === 'signed'
+                              ? 'text-green-600'
+                              : 'text-blue-600'
+                          }`}>
+                            Contract #{paymentDetails.contract.contract_number}
+                          </p>
+                        )}
+                        <a
+                          href={paymentDetails.contract.signing_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
+                            paymentDetails.contract.status === 'signed'
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
+                        >
+                          <FileText className="w-5 h-5" />
+                          {paymentDetails.contract.status === 'signed'
+                            ? 'View Signed Contract'
+                            : 'Sign Contract Now'}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* What's Next */}
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
                   <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
@@ -119,6 +200,12 @@ export default function PaymentSuccess() {
                       <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       <span>You'll receive a payment confirmation email shortly</span>
                     </li>
+                    {paymentDetails?.contract && paymentDetails.contract.status !== 'signed' && (
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span>Sign your service agreement using the button above</span>
+                      </li>
+                    )}
                     <li className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       <span>Stripe will send you a receipt for your records</span>

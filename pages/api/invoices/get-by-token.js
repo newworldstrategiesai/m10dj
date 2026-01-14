@@ -114,20 +114,36 @@ export default async function handler(req, res) {
       const { ensureContractExistsForInvoice } = await import('../../../utils/ensure-contract-exists-for-invoice');
       const contractResult = await ensureContractExistsForInvoice(invoice.id, supabase);
       
+      console.log('[get-by-token] Contract result:', {
+        success: contractResult.success,
+        contract_id: contractResult.contract_id,
+        error: contractResult.error
+      });
+      
       if (contractResult.success && contractResult.contract_id) {
         // Fetch contract with signing token
         const { data: contractData, error: contractError } = await supabase
           .from('contracts')
-          .select('id, contract_number, status, signing_token, signing_token_expires_at')
+          .select('id, contract_number, status, signing_token, signing_token_expires_at, client_signature_data, signed_by_client, signed_at')
           .eq('id', contractResult.contract_id)
           .single();
         
-        if (!contractError && contractData) {
+        if (contractError) {
+          console.error('[get-by-token] Error fetching contract:', contractError);
+        } else if (contractData) {
           contract = contractData;
+          console.log('[get-by-token] Contract fetched:', {
+            id: contract.id,
+            contract_number: contract.contract_number,
+            status: contract.status,
+            has_signing_token: !!contract.signing_token
+          });
         }
+      } else {
+        console.warn('[get-by-token] Contract creation failed:', contractResult.error);
       }
     } catch (contractErr) {
-      console.warn('Error ensuring contract exists (non-critical):', contractErr);
+      console.error('[get-by-token] Exception ensuring contract exists:', contractErr);
       // Continue even if contract creation fails - invoice can still be paid
     }
 
