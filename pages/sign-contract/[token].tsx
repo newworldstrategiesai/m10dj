@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SignatureCapture from '@/components/SignatureCapture';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   FileText, 
   CheckCircle, 
@@ -158,8 +164,7 @@ export default function SignContractPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
 
     if (!signatureData) {
       alert('Please provide your signature');
@@ -469,23 +474,30 @@ export default function SignContractPage() {
       <div className="contract-container">
         {/* Contract Content - Full Screen Document Style */}
         <div 
+          ref={contractContentRef}
           id="contract-content"
           className="contract-content"
           dangerouslySetInnerHTML={{ __html: contractHtmlWithSignatures || contractData?.contract_html || '' }}
         />
 
-        {/* Signature Capture - Only show if signature not yet captured */}
-        {!signatureData && (
-          <div className="mt-8 mb-6" style={{ borderTop: '1px solid #ddd', paddingTop: '20px' }}>
-            <p className="mb-4" style={{ fontSize: '11pt', color: '#666' }}>Please sign the contract above in the signature area.</p>
-            <SignatureCapture
-              onSignatureChange={(data, method) => handleSignatureChange(data, method, 'client')}
-              defaultMethod="type"
-              initialName={signatureName}
-              label="Your Signature *"
-            />
-          </div>
-        )}
+        {/* Signature Modal */}
+        <Dialog open={signatureModalOpen} onOpenChange={setSignatureModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {signingFor === 'client' ? 'Sign Contract' : 'Authorized Representative Signature'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              <SignatureCapture
+                onSignatureChange={(data, method) => handleSignatureChange(data, method)}
+                defaultMethod="type"
+                initialName={signingFor === 'client' ? signatureName : ''}
+                label={signingFor === 'client' ? 'Your Signature' : 'Signature'}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Agreement Checkbox */}
         <div className="mt-6 mb-6" style={{ borderTop: '1px solid #ddd', paddingTop: '20px' }}>

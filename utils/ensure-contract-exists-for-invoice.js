@@ -365,18 +365,28 @@ li {
   height: 50px; 
   margin: 20px 0; 
 }
-.signature-capture-area { 
-  min-height: 60pt; 
-  margin: 8pt 0; 
-  padding: 8pt; 
-  border: 1px dashed #ccc; 
-  background-color: #fafafa; 
+.signature-line-area {
+  margin: 8pt 0;
 }
-.signature-placeholder { 
-  color: #999; 
-  font-style: italic; 
-  text-align: center; 
-  padding: 20px; 
+.signature-line {
+  border-bottom: 1px solid #000;
+  height: 50px;
+  margin: 20px 0;
+  position: relative;
+}
+.signature-line-area:hover .signature-line {
+  border-bottom-color: #666;
+}
+.signature-placeholder-text {
+  position: absolute;
+  bottom: 5px;
+  left: 0;
+  color: #999;
+  font-style: italic;
+  font-size: 10pt;
+}
+.signature-line-area:hover .signature-placeholder-text {
+  color: #666;
 }
 strong {
   font-weight: bold;
@@ -436,8 +446,10 @@ strong {
 
 <div class="signature-box">
 <h3>CLIENT SIGNATURE</h3>
-<div id="client-signature-area" class="signature-capture-area" data-signer-type="client">
-  <div class="signature-placeholder">Signature will appear here</div>
+<div id="client-signature-area" class="signature-line-area" data-signer-type="client" style="cursor: pointer; position: relative;">
+  <div class="signature-line" style="border-bottom: 1px solid #000; height: 50px; margin: 20px 0; position: relative;">
+    <span class="signature-placeholder-text" style="position: absolute; bottom: 5px; left: 0; color: #999; font-style: italic; font-size: 10pt;">Click to sign</span>
+  </div>
 </div>
 <p>Name: <span id="client-signature-name">{{editable_signer_name}}</span></p>
 <p>Date: {{signature_date}}</p>
@@ -445,8 +457,10 @@ strong {
 
 <div class="signature-box">
 <h3>{{company_name}} - AUTHORIZED REPRESENTATIVE</h3>
-<div id="owner-signature-area" class="signature-capture-area" data-signer-type="owner">
-  <div class="signature-placeholder">Signature will appear here</div>
+<div id="owner-signature-area" class="signature-line-area" data-signer-type="owner" style="cursor: pointer; position: relative;">
+  <div class="signature-line" style="border-bottom: 1px solid #000; height: 50px; margin: 20px 0; position: relative;">
+    <span class="signature-placeholder-text" style="position: absolute; bottom: 5px; left: 0; color: #999; font-style: italic; font-size: 10pt;">Click to sign</span>
+  </div>
 </div>
 <p>Name: <span id="owner-signature-name">{{editable_company_name}}</span></p>
 <p>Date: {{signature_date}}</p>
