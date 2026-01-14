@@ -177,8 +177,8 @@ export default function App({ Component, pageProps }) {
       {isAdminRoute && !isSignInPage && <AdminNavbar />}
       <Component {...pageProps} />
       {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
-      {/* Only show chat widget on m10djcompany.com, not on djdash.net */}
-      {!isSignInPage && !isRequestsPage && !isBidPage && !isAdminRoute && !isDJDashPage && <GlobalChatWidget />}
+      {/* Only show chat widget on m10djcompany.com, not on djdash.net or sign-contract pages */}
+      {!isSignInPage && !isRequestsPage && !isBidPage && !isAdminRoute && !isDJDashPage && !isSignContractPage && <GlobalChatWidget />}
       {/* Toast notifications for Pages Router */}
       <Toaster />
       {/* Temporarily disabled to prevent rate limiting issues */}

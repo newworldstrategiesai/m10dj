@@ -263,9 +263,9 @@ export default function SignContractPage() {
 
   if (loading || redirectingToPayment) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="text-center max-w-sm w-full">
-          <Loader className="w-8 h-8 sm:w-10 sm:h-10 animate-spin text-purple-600 mx-auto mb-4" />
+          <Loader className="w-8 h-8 sm:w-10 sm:h-10 animate-spin text-black mx-auto mb-4" />
           <p className="text-sm sm:text-base text-gray-600">
             {redirectingToPayment ? 'Redirecting to payment page...' : 'Loading contract...'}
           </p>
@@ -281,14 +281,14 @@ export default function SignContractPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8 text-center">
-          <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Unable to Load Contract</h1>
-          <p className="text-sm sm:text-base text-gray-600 mb-6">{error}</p>
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white border border-gray-300 p-6 sm:p-8 text-center">
+          <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-black mx-auto mb-4" />
+          <h1 className="text-xl sm:text-2xl font-bold text-black mb-2">Unable to Load Contract</h1>
+          <p className="text-sm sm:text-base text-gray-700 mb-6">{error}</p>
           <a
             href="mailto:m10djcompany@gmail.com"
-            className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm sm:text-base w-full sm:w-auto"
+            className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors text-sm sm:text-base w-full sm:w-auto"
           >
             <Mail className="w-4 h-4" />
             Contact Us
@@ -553,7 +553,7 @@ export default function SignContractPage() {
               checked={agreeToTerms}
               onChange={(e) => setAgreeToTerms(e.target.checked)}
               required
-              className="mt-1 w-4 h-4 border-gray-300 rounded focus:ring-purple-500 flex-shrink-0"
+              className="mt-1 w-4 h-4 border-gray-300 rounded focus:ring-black flex-shrink-0"
               style={{ marginTop: '2px' }}
             />
             <span style={{ lineHeight: '1.6' }}>
@@ -572,7 +572,7 @@ export default function SignContractPage() {
             type="button"
             onClick={handleSubmit}
             disabled={submitting || !signatureData || !agreeToTerms}
-            className="px-8 py-3 bg-purple-600 text-white rounded font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="px-8 py-3 bg-black text-white rounded font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             style={{ fontSize: '12pt' }}
           >
             {submitting ? (
