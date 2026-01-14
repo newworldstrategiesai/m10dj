@@ -368,7 +368,7 @@ export default function SignContractPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 py-4 sm:py-8 px-4">
+    <div className="min-h-screen bg-white">
       <Head>
         <title>Sign Contract - {contractData?.event_name} - M10 DJ Company</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
@@ -377,72 +377,102 @@ export default function SignContractPage() {
           rel="stylesheet"
         />
         <style jsx global>{`
-          /* Mobile-friendly contract content */
-          @media (max-width: 640px) {
-            .prose {
-              font-size: 0.875rem !important;
-              line-height: 1.6 !important;
+          /* Google Doc-like styling */
+          body {
+            font-family: 'Times New Roman', Times, serif !important;
+            background: white !important;
+          }
+          
+          .contract-container {
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 0.75in;
+            background: white;
+            min-height: 100vh;
+          }
+          
+          .contract-content {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #000;
+          }
+          
+          .contract-content h1 {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 18pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20pt;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10pt;
+          }
+          
+          .contract-content h2 {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 18pt;
+            margin-bottom: 12pt;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 4pt;
+          }
+          
+          .contract-content p {
+            margin: 6pt 0;
+            text-align: justify;
+          }
+          
+          .contract-content ul, .contract-content ol {
+            margin: 6pt 0;
+            padding-left: 30pt;
+          }
+          
+          .contract-content li {
+            margin: 3pt 0;
+          }
+          
+          .signature-section {
+            margin-top: 30pt;
+            padding-top: 15pt;
+            border-top: 2px solid #000;
+          }
+          
+          .signature-box {
+            margin: 15pt 0;
+            padding: 12pt;
+            border: 1px solid #ddd;
+            background-color: #fafafa;
+          }
+          
+          .signature-capture-area {
+            min-height: 60pt;
+            margin: 8pt 0;
+            padding: 8pt;
+            border: 1px dashed #ccc;
+            background-color: #fafafa;
+          }
+          
+          /* Mobile adjustments */
+          @media (max-width: 768px) {
+            .contract-container {
+              padding: 20px;
             }
-            .prose h1 {
-              font-size: 1.25rem !important;
-              margin-bottom: 0.75rem !important;
-            }
-            .prose h2 {
-              font-size: 1.125rem !important;
-              margin-top: 1rem !important;
-              margin-bottom: 0.5rem !important;
-            }
-            .prose p {
-              margin-bottom: 0.75rem !important;
-            }
-            .prose ul, .prose ol {
-              padding-left: 1.25rem !important;
-            }
-            .prose li {
-              margin-bottom: 0.5rem !important;
+            
+            .contract-content {
+              font-size: 11pt;
             }
           }
         `}</style>
       </Head>
 
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-            <div className="flex items-start gap-3 sm:gap-4 flex-1 w-full sm:w-auto">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
-                  Contract for Services
-                </h1>
-                <p className="text-sm sm:text-base text-gray-600 break-words">
-                  {contractData?.event_name} - {contractData?.event_date ? new Date(contractData.event_date).toLocaleDateString() : 'N/A'}
-                </p>
-                <p className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
-                  Contract #{contractData?.contract_number}
-                </p>
-              </div>
-            </div>
-            <div className="text-left sm:text-right w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 mt-3 sm:mt-0">
-              <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                ${contractData?.total_amount.toLocaleString()}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-500">Total Amount</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Contract Content */}
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
-          <div className="max-h-[50vh] sm:max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 bg-gray-50">
-            <div 
-              id="contract-content"
-              className="prose prose-sm sm:prose-base max-w-none text-xs sm:text-sm"
-              dangerouslySetInnerHTML={{ __html: contractHtmlWithSignatures || contractData?.contract_html || '' }}
-            />
-          </div>
+      <div className="contract-container">
+        {/* Contract Content - Full Screen Document Style */}
+        <div 
+          id="contract-content"
+          className="contract-content"
+          dangerouslySetInnerHTML={{ __html: contractHtmlWithSignatures || contractData?.contract_html || '' }}
+        />
 
           {/* Signature Capture - Only show if signature not yet captured, positioned to appear in contract */}
           {!signatureData && (

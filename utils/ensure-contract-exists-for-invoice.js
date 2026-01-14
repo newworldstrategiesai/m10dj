@@ -298,18 +298,89 @@ function getDefaultContractTemplate() {
 <html>
 <head>
 <style>
-body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
-h1 { color: #1a1a1a; text-align: center; margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-h2 { color: #333; margin-top: 25px; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-p { margin: 10px 0; }
-ul { margin: 10px 0; padding-left: 25px; }
-li { margin: 5px 0; }
-.section { margin: 20px 0; }
-.signature-section { margin-top: 40px; padding-top: 20px; border-top: 2px solid #333; }
-.signature-box { margin: 20px 0; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9; }
-.signature-line { border-bottom: 1px solid #333; height: 50px; margin: 20px 0; }
-.signature-capture-area { min-height: 80px; margin: 10px 0; padding: 10px; border: 1px dashed #ccc; background-color: #fafafa; }
-.signature-placeholder { color: #999; font-style: italic; text-align: center; padding: 20px; }
+body { 
+  font-family: 'Times New Roman', Times, serif; 
+  line-height: 1.5; 
+  color: #000; 
+  max-width: 8.5in; 
+  margin: 0 auto; 
+  padding: 0.75in;
+  background: white;
+  font-size: 12pt;
+}
+h1 { 
+  font-family: 'Times New Roman', Times, serif;
+  color: #000; 
+  text-align: center; 
+  margin-bottom: 20pt; 
+  border-bottom: 2px solid #000; 
+  padding-bottom: 10pt;
+  font-size: 18pt;
+  font-weight: bold;
+}
+h2 { 
+  font-family: 'Times New Roman', Times, serif;
+  color: #000; 
+  margin-top: 18pt; 
+  margin-bottom: 12pt; 
+  border-bottom: 1px solid #ddd; 
+  padding-bottom: 4pt;
+  font-size: 14pt;
+  font-weight: bold;
+}
+h3 {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  font-weight: bold;
+  margin-top: 12pt;
+  margin-bottom: 8pt;
+}
+p { 
+  margin: 6pt 0; 
+  text-align: justify;
+}
+ul, ol { 
+  margin: 6pt 0; 
+  padding-left: 30pt; 
+}
+li { 
+  margin: 3pt 0; 
+}
+.section { 
+  margin: 15pt 0; 
+}
+.signature-section { 
+  margin-top: 30pt; 
+  padding-top: 15pt; 
+  border-top: 2px solid #000; 
+}
+.signature-box { 
+  margin: 15pt 0; 
+  padding: 12pt; 
+  border: 1px solid #ddd; 
+  background-color: #fafafa; 
+}
+.signature-line { 
+  border-bottom: 1px solid #333; 
+  height: 50px; 
+  margin: 20px 0; 
+}
+.signature-capture-area { 
+  min-height: 60pt; 
+  margin: 8pt 0; 
+  padding: 8pt; 
+  border: 1px dashed #ccc; 
+  background-color: #fafafa; 
+}
+.signature-placeholder { 
+  color: #999; 
+  font-style: italic; 
+  text-align: center; 
+  padding: 20px; 
+}
+strong {
+  font-weight: bold;
+}
 </style>
 </head>
 <body>
