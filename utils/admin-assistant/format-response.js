@@ -565,23 +565,21 @@ function formatContactDetails(result) {
     const adminSigned = !!contract.signed_by_vendor_at || !!contract.vendor_signature_data;
     
     if (contract.id) {
-      // Use client-facing quote URL if quote_id is available
-      if (contractQuoteId) {
-        contractActions.push({
-          label: 'View Contract',
-          action: 'link',
-          value: `/quote/${contractQuoteId}/contract`,
-          variant: 'default'
-        });
-      } else {
-        // Fallback to admin URL if no quote_id
-        contractActions.push({
-          label: 'View Contract',
-          action: 'link',
-          value: `/admin/contracts/${contract.id}`,
-          variant: 'default'
-        });
-      }
+      // Prioritize signing token URL for direct signing access
+      // Then use client-facing quote URL if quote_id is available
+      // Finally fallback to admin URL
+      const contractUrl = contract.signing_token
+        ? `/sign-contract/${contract.signing_token}`
+        : (contractQuoteId
+          ? `/quote/${contractQuoteId}/contract`
+          : `/admin/contracts/${contract.id}`);
+      
+      contractActions.push({
+        label: 'View Contract',
+        action: 'link',
+        value: contractUrl,
+        variant: 'default'
+      });
       // Add PDF link if available
       contractActions.push({
         label: 'View PDF',
@@ -630,7 +628,9 @@ function formatContactDetails(result) {
         ...(contract.total_amount ? [{ label: 'Amount', value: `$${contract.total_amount.toLocaleString()}` }] : []),
         ...(contract.deposit_amount ? [{ label: 'Deposit', value: `$${contract.deposit_amount.toLocaleString()}` }] : [])
       ],
-      link: contractQuoteId ? `/quote/${contractQuoteId}/contract` : (contract.id ? `/admin/contracts/${contract.id}` : undefined),
+      link: contract.signing_token 
+        ? `/sign-contract/${contract.signing_token}`
+        : (contractQuoteId ? `/quote/${contractQuoteId}/contract` : (contract.id ? `/admin/contracts/${contract.id}` : undefined)),
       actions: contractActions.length > 0 ? contractActions : undefined
     });
   }
@@ -1464,10 +1464,14 @@ function formatContract(result) {
   const quoteId = result.quote_id || contract.quote_id || contactId;
   const actions = [];
   
-  // Build the contract URL - prioritize quote-based URL (quote_id = contact_id)
-  const contractUrl = quoteId 
-    ? `/quote/${quoteId}/contract`
-    : (contract.id ? `/admin/contracts/${contract.id}` : null);
+  // Build the contract URL - prioritize signing token URL for direct signing access
+  // If signing_token is available, use the public signing page
+  // Otherwise, fall back to quote-based URL or admin contract page
+  const contractUrl = contract.signing_token
+    ? `/sign-contract/${contract.signing_token}`
+    : (quoteId 
+      ? `/quote/${quoteId}/contract`
+      : (contract.id ? `/admin/contracts/${contract.id}` : null));
   
   if (contract.id) {
     // Primary action: View Contract (always show this first and prominently)

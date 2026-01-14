@@ -66,6 +66,8 @@ export default function ContractManager() {
   const [selectedContact, setSelectedContact] = useState('');
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [selectedContracts, setSelectedContracts] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   useEffect(() => {
     fetchContracts();
@@ -264,6 +266,68 @@ export default function ContractManager() {
   const handlePreview = (contract: Contract) => {
     setSelectedContract(contract);
     setShowPreview(true);
+  };
+
+  const handleSelectContract = (contractId: string) => {
+    setSelectedContracts(prev =>
+      prev.includes(contractId)
+        ? prev.filter(id => id !== contractId)
+        : [...prev, contractId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedContracts.length === filteredContracts.length) {
+      setSelectedContracts([]);
+    } else {
+      setSelectedContracts(filteredContracts.map(c => c.id));
+    }
+  };
+
+  const handleBulkSend = async () => {
+    if (selectedContracts.length === 0) return;
+
+    try {
+      const contractsToSend = filteredContracts.filter(c => selectedContracts.includes(c.id) && c.status === 'draft');
+
+      for (const contract of contractsToSend) {
+        await handleSendContract(contract);
+      }
+
+      setSelectedContracts([]);
+      toast({
+        title: 'Bulk Send Complete',
+        description: `Sent ${contractsToSend.length} contracts for signature`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Some contracts failed to send. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleBulkDownload = async () => {
+    if (selectedContracts.length === 0) return;
+
+    try {
+      const contractsToDownload = filteredContracts.filter(c => selectedContracts.includes(c.id));
+
+      for (const contract of contractsToDownload) {
+        await handleDownload(contract);
+        // Small delay to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      setSelectedContracts([]);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Some PDFs failed to download. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleDownload = async (contract: Contract) => {
@@ -483,6 +547,39 @@ export default function ContractManager() {
         </button>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedContracts.length > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                {selectedContracts.length} contract{selectedContracts.length !== 1 ? 's' : ''} selected
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBulkSend}
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                Send Selected
+              </button>
+              <button
+                onClick={handleBulkDownload}
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              >
+                Download PDFs
+              </button>
+              <button
+                onClick={() => setSelectedContracts([])}
+                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="flex-1 relative">
@@ -570,12 +667,19 @@ export default function ContractManager() {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredContracts.map((contract) => (
-                  <tr 
-                    key={contract.id} 
-                    onClick={() => handlePreview(contract)}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+                  <tr
+                    key={contract.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedContracts.includes(contract.id)}
+                        onChange={() => handleSelectContract(contract.id)}
+                        className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handlePreview(contract)}>
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
                         {contract.contract_number}
                       </div>
@@ -585,7 +689,7 @@ export default function ContractManager() {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handlePreview(contract)}>
                       {contract.contacts ? (
                         <>
                           <div className="text-sm text-gray-900 dark:text-white">
@@ -601,7 +705,7 @@ export default function ContractManager() {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handlePreview(contract)}>
                       <div className="text-sm text-gray-900 dark:text-white">
                         {contract.event_name}
                       </div>
@@ -609,13 +713,13 @@ export default function ContractManager() {
                         {contract.event_date ? new Date(contract.event_date).toLocaleDateString() : 'N/A'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer text-sm text-gray-900 dark:text-white" onClick={() => handlePreview(contract)}>
                       ${contract.total_amount?.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handlePreview(contract)}>
                       {getStatusBadge(contract.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer text-sm text-gray-500 dark:text-gray-400" onClick={() => handlePreview(contract)}>
                       {new Date(contract.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

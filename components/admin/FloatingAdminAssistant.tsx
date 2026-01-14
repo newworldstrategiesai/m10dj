@@ -1007,7 +1007,7 @@ export default function FloatingAdminAssistant() {
   
   // Memoize Supabase client to prevent re-creation
   const supabase = useMemo(() => createClient(), []);
-
+  
   // Check admin status and TipJar context using centralized admin roles system
   useEffect(() => {
     const checkAdmin = async () => {
@@ -1690,12 +1690,12 @@ export default function FloatingAdminAssistant() {
                         <CardContent className="space-y-4">
                           {/* Field comparison list */}
                           {detectedFields.length === 0 ? (
-                            <div className="text-center py-8 text-sm text-zinc-500">
-                              No structured data detected yet. Continue typing or paste more content.
-                            </div>
+                                <div className="text-center py-8 text-sm text-zinc-500">
+                                  No structured data detected yet. Continue typing or paste more content.
+                                </div>
                           ) : (
-                            <div className="space-y-3">
-                              {detectedFields.map((field) => {
+                              <div className="space-y-3">
+                                {detectedFields.map((field) => {
                                   const Icon = field.icon;
                                   const detectedValue = field.detected;
                                   const existingValue = field.existing;
@@ -1828,7 +1828,7 @@ export default function FloatingAdminAssistant() {
                                     </div>
                                   );
                                 })}
-                            </div>
+                              </div>
                           )}
 
                           {/* Existing contact link */}

@@ -274,9 +274,9 @@ function extractContactInfo(thread: string): ParsedLeadContact {
         // Remove venue name from address if it was included
         if (parts.length > 1) {
           venueAddress = parts.slice(1).map(p => p.trim()).join(', ');
-        }
       }
     }
+  }
   }
   
   const eventType = structured.eventType || inferEventType(thread);
@@ -369,27 +369,27 @@ function extractContactInfo(thread: string): ParsedLeadContact {
     // Try to match time ranges first (e.g., "3pm-5pm", "3:00 PM to 5:00 PM", "ceremony is 3 pm-3:30")
     // Use word boundaries to avoid matching partial numbers
     if (!eventTime) {
-      const timeRangePatterns = [
+    const timeRangePatterns = [
         /\b(?:the\s+)?ceremony\s+(?:is\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
         /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until|through)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
         /\b(?:from|between)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:to|until|-)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
-      ];
-      
-      for (const pattern of timeRangePatterns) {
-        const match = thread.match(pattern);
-        if (match) {
+    ];
+    
+    for (const pattern of timeRangePatterns) {
+      const match = thread.match(pattern);
+      if (match) {
           const startHour = parseInt(match[1].replace(/[^\d]/g, ''));
           const endHour = parseInt(match[2].replace(/[^\d]/g, ''));
           // Validate hours are reasonable (1-12)
           if (startHour >= 1 && startHour <= 12 && endHour >= 1 && endHour <= 12) {
-            // Only use ceremony times if we don't have grand entrance/exit
-            if (!grandEntrance) {
-              eventTime = match[1].trim();
-            }
-            if (!grandExit) {
-              endTime = match[2].trim();
-            }
-            break;
+        // Only use ceremony times if we don't have grand entrance/exit
+        if (!grandEntrance) {
+          eventTime = match[1].trim();
+        }
+        if (!grandExit) {
+          endTime = match[2].trim();
+        }
+        break;
           }
         }
       }
@@ -412,15 +412,15 @@ function extractContactInfo(thread: string): ParsedLeadContact {
           const hour = parseInt(match[1].replace(/[^\d]/g, ''));
           // Validate hour is reasonable (1-12)
           if (hour >= 1 && hour <= 12) {
-            eventTime = match[1].trim();
-            break;
+          eventTime = match[1].trim();
+          break;
           }
+        }
         }
       }
     }
-  }
-  
-  // Try to extract end time separately if not already found
+    
+    // Try to extract end time separately if not already found
   if (!endTime) {
     // First try "until" patterns (common in casual conversations)
     // Pattern: "go until 11" or "until 11 at the latest" - use word boundaries to avoid partial matches
@@ -463,10 +463,10 @@ function extractContactInfo(thread: string): ParsedLeadContact {
           const hour = parseInt(match[1].replace(/[^\d]/g, ''));
           // Validate hour is reasonable (1-12)
           if (hour >= 1 && hour <= 12) {
-            endTime = match[1].trim();
-            break;
-          }
+          endTime = match[1].trim();
+          break;
         }
+      }
       }
     }
   }
@@ -631,7 +631,7 @@ function extractContactInfo(thread: string): ParsedLeadContact {
       console.log('[lead-thread-parser] Extracted venue room (standalone):', venueRoom, 'from match:', standaloneMatch[0]);
     }
   }
-
+  
   // Extract guest count from natural language if not in structured fields
   let guestCount = structured.guestCount ?? null;
   if (!guestCount) {
@@ -755,7 +755,7 @@ function extractName(thread: string): string | null {
           processedPrefix = splitCompoundName(cleanedPrefix);
         }
         const candidate = sanitizeNameCandidate(processedPrefix);
-        if (candidate) {
+      if (candidate) {
           return candidate;
         }
       }
@@ -1350,22 +1350,22 @@ function extractStructuredFields(thread: string): StructuredFields {
       
       // Try time ranges first (only if we haven't found times yet)
       if (!fields.eventTime) {
-        const rangePatterns = [
+      const rangePatterns = [
           /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s*(?:-|to|until)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
           /\b(?:from|between)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\s+(?:to|until|-)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)\b/i,
-        ];
-        
-        for (const pattern of rangePatterns) {
-          const rangeMatch = trimmed.match(pattern);
-          if (rangeMatch) {
+      ];
+      
+      for (const pattern of rangePatterns) {
+        const rangeMatch = trimmed.match(pattern);
+        if (rangeMatch) {
             const startHour = parseInt(rangeMatch[1].replace(/[^\d]/g, ''));
             const endHour = parseInt(rangeMatch[2].replace(/[^\d]/g, ''));
             if (startHour >= 1 && startHour <= 12 && endHour >= 1 && endHour <= 12) {
-              fields.eventTime = rangeMatch[1].trim();
+          fields.eventTime = rangeMatch[1].trim();
               if (!fields.endTime) {
-                fields.endTime = rangeMatch[2].trim();
+          fields.endTime = rangeMatch[2].trim();
               }
-              break;
+          break;
             }
           }
         }
@@ -1385,8 +1385,8 @@ function extractStructuredFields(thread: string): StructuredFields {
           if (timeMatch) {
             const hour = parseInt(timeMatch[1].replace(/[^\d]/g, ''));
             if (hour >= 1 && hour <= 12) {
-              fields.eventTime = timeMatch[1].trim();
-              break;
+            fields.eventTime = timeMatch[1].trim();
+            break;
             }
           }
         }
@@ -1406,8 +1406,8 @@ function extractStructuredFields(thread: string): StructuredFields {
         if (endMatch) {
           const hour = parseInt(endMatch[1].replace(/[^\d]/g, ''));
           if (hour >= 1 && hour <= 12) {
-            fields.endTime = endMatch[1].trim();
-            break;
+          fields.endTime = endMatch[1].trim();
+          break;
           }
         }
       }

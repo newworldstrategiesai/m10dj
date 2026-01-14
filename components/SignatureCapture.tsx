@@ -2,12 +2,15 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Pen, Type, Eraser, RotateCcw } from 'lucide-react';
 
 interface SignatureCaptureProps {
-  onSignatureChange: (signatureData: string, method: 'draw' | 'type') => void;
+  onSignatureChange: (signatureData: string, method: 'draw' | 'type', isComplete?: boolean) => void;
   defaultValue?: string;
   defaultMethod?: 'draw' | 'type';
   label?: string;
   disabled?: boolean;
   initialName?: string;
+  requireAgreement?: boolean;
+  agreedToTerms?: boolean;
+  onAgreementChange?: (agreed: boolean) => void;
 }
 
 export default function SignatureCapture({
@@ -16,7 +19,10 @@ export default function SignatureCapture({
   defaultMethod = 'draw',
   label = 'Your Signature',
   disabled = false,
-  initialName = ''
+  initialName = '',
+  requireAgreement = false,
+  agreedToTerms = false,
+  onAgreementChange
 }: SignatureCaptureProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -92,7 +98,7 @@ export default function SignatureCapture({
     }
   }, [signatureMethod]);
 
-  const renderTypedSignature = () => {
+  const renderTypedSignature = (notifyParent: boolean = false) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -112,18 +118,23 @@ export default function SignatureCapture({
       ctx.textBaseline = 'middle';
       ctx.fillText(typedName, rect.width / 2, rect.height / 2);
 
-      // Convert to data URL and notify parent
-      const dataUrl = canvas.toDataURL('image/png');
-      onSignatureChange(dataUrl, 'type');
-      setHasSignature(true);
+      // Only notify parent if explicitly requested (for preview updates, not on every keystroke)
+      if (notifyParent) {
+        const dataUrl = canvas.toDataURL('image/png');
+        onSignatureChange(dataUrl, 'type', false); // false = not complete yet
+        setHasSignature(true);
+      }
     }
   };
 
+  // Render signature preview as user types (without notifying parent on every keystroke)
   useEffect(() => {
     if (signatureMethod === 'type') {
-      renderTypedSignature();
+      renderTypedSignature(false); // Don't notify parent on every keystroke
+      // Set hasSignature to true when there's a typed name (for visual feedback)
+      setHasSignature(!!typedName);
     }
-  }, [typedName, selectedFont]);
+  }, [typedName, selectedFont, signatureMethod]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (disabled || signatureMethod !== 'draw') return;
@@ -170,7 +181,7 @@ export default function SignatureCapture({
 
     // Convert canvas to data URL
     const dataUrl = canvas.toDataURL('image/png');
-    onSignatureChange(dataUrl, 'draw');
+    onSignatureChange(dataUrl, 'draw', true); // true = signature is complete
     setHasSignature(true);
   };
 
@@ -187,7 +198,7 @@ export default function SignatureCapture({
 
     setTypedName('');
     setHasSignature(false);
-    onSignatureChange('', signatureMethod);
+    onSignatureChange('', signatureMethod, false);
   };
 
   const switchMethod = (method: 'draw' | 'type') => {
@@ -196,7 +207,7 @@ export default function SignatureCapture({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-2">
       {/* Label */}
       {label && (
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -304,8 +315,26 @@ export default function SignatureCapture({
         )}
       </div>
 
+      {/* Agreement Checkbox - Show above controls for better visibility */}
+      {requireAgreement && (signatureMethod === 'type' ? typedName && typedName.trim().length > 0 : hasSignature) && (
+        <div className="pt-2 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => onAgreementChange?.(e.target.checked)}
+              className="mt-0.5 w-4 h-4 border-gray-300 rounded focus:ring-black flex-shrink-0"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              I acknowledge that I have read, understood, and agree to the terms and conditions outlined in this contract. 
+              I understand that this electronic signature is legally binding and has the same effect as a handwritten signature.
+            </span>
+          </label>
+        </div>
+      )}
+
       {/* Controls */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-2">
         <button
           type="button"
           onClick={clearSignature}
@@ -316,14 +345,54 @@ export default function SignatureCapture({
           Clear
         </button>
 
-        {hasSignature && (
-          <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            Signature captured
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {signatureMethod === 'type' && typedName && typedName.trim().length > 0 && (
+            <>
+              {hasSignature && (
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Signature ready</span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  const canvas = canvasRef.current;
+                  if (canvas && typedName) {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      const rect = canvas.getBoundingClientRect();
+                      ctx.fillStyle = '#ffffff';
+                      ctx.fillRect(0, 0, rect.width, rect.height);
+                      ctx.fillStyle = '#000000';
+                      ctx.font = `48px '${selectedFont}', cursive`;
+                      ctx.textAlign = 'center';
+                      ctx.textBaseline = 'middle';
+                      ctx.fillText(typedName, rect.width / 2, rect.height / 2);
+                      const dataUrl = canvas.toDataURL('image/png');
+                      onSignatureChange(dataUrl, 'type', true); // true = complete
+                      setHasSignature(true);
+                    }
+                  }
+                }}
+                disabled={disabled || !typedName || typedName.trim().length === 0 || (requireAgreement && !agreedToTerms)}
+                className="px-6 py-2.5 text-base font-semibold text-white bg-black hover:bg-gray-800 active:bg-gray-900 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md min-w-[100px]"
+              >
+                Sign
+              </button>
+            </>
+          )}
+          {signatureMethod === 'draw' && hasSignature && (
+            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span>Signature ready</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

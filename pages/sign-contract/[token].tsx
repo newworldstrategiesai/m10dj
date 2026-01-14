@@ -5,6 +5,7 @@ import SignatureCapture from '@/components/SignatureCapture';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -62,57 +63,78 @@ export default function SignContractPage() {
     }
   }, [token]);
 
-  // Use event delegation on the contract content container
+  // Attach click handlers directly to signature areas
   useEffect(() => {
-    const contractContent = contractContentRef.current;
-    if (!contractContent) {
-      // Retry if ref not ready yet
-      const timer = setTimeout(() => {
-        const retryContent = contractContentRef.current;
-        if (retryContent && (contractHtmlWithSignatures || contractData?.contract_html)) {
-          setupEventDelegation(retryContent);
-        }
-      }, 200);
-      return () => clearTimeout(timer);
+    if (!contractHtmlWithSignatures && !contractData?.contract_html) {
+      return;
     }
 
-    setupEventDelegation(contractContent);
-  }, [contractHtmlWithSignatures, contractData?.contract_html, signatureData, ownerSignatureData]);
+    const attachHandlers = () => {
+      const contractContent = contractContentRef.current;
+      if (!contractContent) {
+        console.log('[sign-contract] Contract content not found, will retry...');
+        setTimeout(attachHandlers, 200);
+        return;
+      }
 
-  const setupEventDelegation = (contractContent: HTMLDivElement) => {
-    const handleSignatureClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      // Check if click is on signature area or its children
-      const signatureArea = target.closest('#client-signature-area, #owner-signature-area') as HTMLElement;
-      
-      if (!signatureArea) return;
-      
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const signerType = signatureArea.getAttribute('data-signer-type') as 'client' | 'owner';
-      const hasSignature = signerType === 'client' ? !!signatureData : !!ownerSignatureData;
-      
-      console.log('[sign-contract] Signature area clicked:', {
-        signerType,
-        hasSignature,
-        signatureAreaId: signatureArea.id,
-        target: target.tagName,
-        targetId: target.id
+      const clientArea = contractContent.querySelector('#client-signature-area') as HTMLElement;
+      const ownerArea = contractContent.querySelector('#owner-signature-area') as HTMLElement;
+
+      console.log('[sign-contract] Looking for signature areas:', {
+        hasClientArea: !!clientArea,
+        hasOwnerArea: !!ownerArea,
+        contractContentId: contractContent.id
       });
-      
-      if (!hasSignature) {
-        setSigningFor(signerType);
-        setSignatureModalOpen(true);
+
+      // Attach handler to client signature area
+      if (clientArea) {
+        // Remove any existing handlers by cloning
+        const newClientArea = clientArea.cloneNode(true) as HTMLElement;
+        clientArea.parentNode?.replaceChild(newClientArea, clientArea);
+        const freshClientArea = contractContent.querySelector('#client-signature-area') as HTMLElement;
+        
+        if (freshClientArea) {
+          freshClientArea.style.cursor = 'pointer';
+          freshClientArea.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[sign-contract] Client signature area clicked');
+            if (!signatureData) {
+              setSigningFor('client');
+              setSignatureModalOpen(true);
+            }
+          });
+          console.log('[sign-contract] Client signature handler attached');
+        }
+      }
+
+      // Attach handler to owner signature area
+      if (ownerArea) {
+        // Remove any existing handlers by cloning
+        const newOwnerArea = ownerArea.cloneNode(true) as HTMLElement;
+        ownerArea.parentNode?.replaceChild(newOwnerArea, ownerArea);
+        const freshOwnerArea = contractContent.querySelector('#owner-signature-area') as HTMLElement;
+        
+        if (freshOwnerArea) {
+          freshOwnerArea.style.cursor = 'pointer';
+          freshOwnerArea.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[sign-contract] Owner signature area clicked');
+            if (!ownerSignatureData) {
+              setSigningFor('owner');
+              setSignatureModalOpen(true);
+            }
+          });
+          console.log('[sign-contract] Owner signature handler attached');
+        }
       }
     };
 
-    // Remove any existing listener first
-    contractContent.removeEventListener('click', handleSignatureClick as EventListener);
-    contractContent.addEventListener('click', handleSignatureClick);
-    
-    console.log('[sign-contract] Event delegation set up on contract content');
-  };
+    // Wait for HTML to be rendered
+    const timer = setTimeout(attachHandlers, 500);
+    return () => clearTimeout(timer);
+  }, [contractHtmlWithSignatures, contractData?.contract_html, signatureData, ownerSignatureData]);
 
   const validateToken = async () => {
     setLoading(true);
@@ -193,7 +215,7 @@ export default function SignContractPage() {
     }
   };
 
-  const handleSignatureChange = (data: string, method: 'draw' | 'type') => {
+  const handleSignatureChange = (data: string, method: 'draw' | 'type', isComplete: boolean = false) => {
     if (signingFor === 'owner') {
       setOwnerSignatureData(data);
     } else {
@@ -218,13 +240,20 @@ export default function SignContractPage() {
       );
       setContractHtmlWithSignatures(updatedHtml);
       
-      // Close modal after signature is captured
-      setSignatureModalOpen(false);
+      // Only close modal when signature is complete (user finished drawing or clicked confirm)
+      if (isComplete) {
+        setSignatureModalOpen(false);
+        
+        // Auto-submit contract if client signature is complete and terms are agreed
+        if (signingFor === 'client' && agreeToTerms && !submitting && !signed) {
+          // Small delay to ensure modal closes smoothly
+          setTimeout(() => {
+            handleSubmit();
+          }, 300);
+        }
+      }
       
-      // Re-attach click handlers for other signature areas
-      setTimeout(() => {
-        setupSignatureAreaClickHandlers();
-      }, 100);
+      // Handlers will be re-attached automatically via useEffect when contractHtmlWithSignatures changes
     }
   };
 
@@ -546,66 +575,40 @@ export default function SignContractPage() {
 
         {/* Signature Modal */}
         <Dialog open={signatureModalOpen} onOpenChange={setSignatureModalOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {signingFor === 'client' ? 'Sign Contract' : 'Authorized Representative Signature'}
               </DialogTitle>
+              <DialogDescription>
+                {signingFor === 'client' 
+                  ? 'Please provide your signature to complete the contract.'
+                  : 'Please provide the authorized representative signature.'}
+              </DialogDescription>
             </DialogHeader>
-            <div className="mt-4">
+            <div className="mt-4 pb-2">
               <SignatureCapture
-                onSignatureChange={(data, method) => handleSignatureChange(data, method)}
+                onSignatureChange={(data, method, isComplete) => handleSignatureChange(data, method, isComplete)}
                 defaultMethod="type"
                 initialName={signingFor === 'client' ? signatureName : ''}
                 label={signingFor === 'client' ? 'Your Signature' : 'Signature'}
+                requireAgreement={signingFor === 'client'}
+                agreedToTerms={agreeToTerms}
+                onAgreementChange={(agreed) => setAgreeToTerms(agreed)}
               />
             </div>
+            {/* Full Agreement Text - Show below signature capture for client */}
+            {signingFor === 'client' && (
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                  By signing, you acknowledge that you have read, understood, and agree to the terms and conditions outlined in this contract. 
+                  You understand that this electronic signature is legally binding and has the same effect as a handwritten signature.
+                </p>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 
-        {/* Agreement Checkbox */}
-        <div className="mt-6 mb-6" style={{ borderTop: '1px solid #ddd', paddingTop: '20px' }}>
-          <label className="flex items-start gap-3 cursor-pointer" style={{ fontSize: '11pt' }}>
-            <input
-              type="checkbox"
-              checked={agreeToTerms}
-              onChange={(e) => setAgreeToTerms(e.target.checked)}
-              required
-              className="mt-1 w-4 h-4 border-gray-300 rounded focus:ring-black flex-shrink-0"
-              style={{ marginTop: '2px' }}
-            />
-            <span style={{ lineHeight: '1.6' }}>
-              I acknowledge that I have read, understood, and agree to the terms and conditions outlined in this contract. 
-              I understand that this electronic signature is legally binding and has the same effect as a handwritten signature.
-            </span>
-          </label>
-        </div>
-
-        {/* Submit Button */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-300 mb-8">
-          <p style={{ fontSize: '10pt', color: '#666' }}>
-            By signing, you agree to the terms of this contract
-          </p>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || !signatureData || !agreeToTerms}
-            className="px-8 py-3 bg-black text-white rounded font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            style={{ fontSize: '12pt' }}
-          >
-            {submitting ? (
-              <>
-                <Loader className="w-4 h-4 animate-spin" />
-                Signing...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4 h-4" />
-                Sign Contract
-              </>
-            )}
-          </button>
-        </div>
 
         {/* Security Notice */}
         <div className="text-center mb-4" style={{ fontSize: '9pt', color: '#999', borderTop: '1px solid #eee', paddingTop: '15px' }}>
