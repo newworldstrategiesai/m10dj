@@ -118,7 +118,7 @@ export async function ensureContractExists(quoteId, supabaseClient = null) {
       contact_id: quote.lead_id,
       quote_selection_id: quote.id, // Link to quote_selections (NEW!)
       contract_number: contractNumber,
-      contract_type: 'service_agreement',
+      contract_type: 'quote_based', // Unified contract type for quote-based contracts
       event_name: contact.event_type ? `${contact.first_name || ''} ${contact.last_name || ''} ${contact.event_type}`.trim() : null,
       event_type: contact.event_type || null,
       event_date: contact.event_date || null,

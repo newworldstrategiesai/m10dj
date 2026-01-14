@@ -124,13 +124,8 @@ export default async function handler(req, res) {
       contractHtml = contractHtml.replace(regex, value || '');
     });
 
-    // Determine contract type
-    let contractType = template.template_type || 'general';
-    if (contractType === 'personal_agreement') {
-      contractType = 'personal_agreement';
-    } else if (template.name?.includes('nda')) {
-      contractType = 'nda';
-    }
+    // Determine contract type for unified system
+    let contractType = isPersonal ? 'personal_agreement' : 'nda';
 
     // Create contract
     const contractData = {

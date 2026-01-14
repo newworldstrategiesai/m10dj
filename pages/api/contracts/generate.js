@@ -367,10 +367,12 @@ export default async function handler(req, res) {
         status: 'draft',
         contract_template: template.name || 'Default Contract',
         contract_html: contractHtml,
-        
+
+        contract_type: 'quote_based', // Always quote-based for this API
+
         signing_token: signingToken,
         signing_token_expires_at: expiresAt.toISOString(),
-        
+
         effective_date: new Date().toISOString()
       })
       .select()

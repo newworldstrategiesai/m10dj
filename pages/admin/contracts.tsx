@@ -6,13 +6,14 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import ContractTemplateEditor from '@/components/admin/ContractTemplateEditor';
 import ContractManager from '@/components/admin/ContractManager';
 import CreateStandaloneContract from '@/components/admin/CreateStandaloneContract';
-import { FileText, Settings, Plus, Shield } from 'lucide-react';
+import { FileText, Settings, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 export default function ContractsPage() {
   const router = useRouter();
   const supabase = createClientComponentClient();
-  const [activeTab, setActiveTab] = useState<'templates' | 'contracts'>('templates');
+  const [activeTab, setActiveTab] = useState<'templates' | 'contracts'>('contracts');
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -53,10 +54,10 @@ export default function ContractsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -64,19 +65,19 @@ export default function ContractsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="space-y-4 sm:space-y-6">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Contract Management</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Contract Management</h1>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
                 Create templates and manage client contracts
               </p>
             </div>
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 flex items-center gap-2"
+              className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 flex items-center gap-2 w-full sm:w-auto"
             >
               <Shield className="w-4 h-4" />
               <span className="hidden sm:inline">Send NDA / Agreement</span>
@@ -85,45 +86,34 @@ export default function ContractsPage() {
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('templates')}
-                className={`
-                  flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                  ${
-                    activeTab === 'templates'
-                      ? 'border-purple-500 text-purple-600 dark:text-purple-400'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }
-                `}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'templates' | 'contracts')} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 h-auto p-1 bg-gray-100 dark:bg-gray-800">
+              <TabsTrigger 
+                value="templates" 
+                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900"
               >
                 <Settings className="w-4 h-4" />
-                Templates
-              </button>
-              <button
-                onClick={() => setActiveTab('contracts')}
-                className={`
-                  flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                  ${
-                    activeTab === 'contracts'
-                      ? 'border-purple-500 text-purple-600 dark:text-purple-400'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }
-                `}
+                <span className="hidden xs:inline">Templates</span>
+                <span className="xs:hidden">Templates</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="contracts"
+                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900"
               >
                 <FileText className="w-4 h-4" />
-                Contracts
-              </button>
-            </nav>
-          </div>
+                <span className="hidden xs:inline">Contracts</span>
+                <span className="xs:hidden">Contracts</span>
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Content */}
-          {activeTab === 'templates' ? (
-            <ContractTemplateEditor />
-          ) : (
-            <ContractManager />
-          )}
+            <TabsContent value="templates" className="mt-4 sm:mt-6">
+              <ContractTemplateEditor />
+            </TabsContent>
+
+            <TabsContent value="contracts" className="mt-4 sm:mt-6">
+              <ContractManager />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

@@ -15,7 +15,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  * Generate contract HTML from template
  * Returns { contractHtml, templateName }
  */
-export async function generateContractHtml(invoice, contact, event, contractNumber, supabase) {
+export async function generateContractHtml(invoice, contact, event, contractNumber, supabase, contractId = null) {
   // Fetch organization owner name dynamically
   let ownerName = 'Ben Murray'; // Default fallback
   try {
@@ -199,6 +199,33 @@ export async function generateContractHtml(invoice, contact, event, contractNumb
   
   const depositPercentage = depositAmount !== null && totalAmount > 0 ? Math.round((depositAmount / totalAmount) * 100) : 0;
 
+  // Helper function to format time from HH:mm:ss to 12-hour format
+  const formatTimeForDisplay = (timeStr) => {
+    if (!timeStr) return '';
+    
+    try {
+      // Handle different time formats (HH:mm:ss, HH:mm, etc.)
+      const timeParts = timeStr.split(':');
+      const hours = parseInt(timeParts[0], 10);
+      const minutes = timeParts[1] || '00';
+      
+      if (isNaN(hours)) return timeStr; // Return original if can't parse
+      
+      const hour12 = hours % 12 || 12;
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const minutesStr = minutes.padStart(2, '0');
+      
+      return `${hour12}:${minutesStr} ${ampm}`;
+    } catch {
+      return timeStr; // Return original if error
+    }
+  };
+
+  const startTime = event?.start_time || contact.event_time || '';
+  const endTime = event?.end_time || contact.end_time || '';
+  const formattedStartTime = formatTimeForDisplay(startTime);
+  const formattedEndTime = formatTimeForDisplay(endTime);
+
   const variables = {
     client_name: `${contact.first_name} ${contact.last_name}`,
     client_first_name: contact.first_name || '',
@@ -213,6 +240,10 @@ export async function generateContractHtml(invoice, contact, event, contractNumb
       new Date(event?.event_date || contact.event_date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '',
     event_date_short: (event?.event_date || contact.event_date) ? 
       new Date(event?.event_date || contact.event_date).toLocaleDateString('en-US') : '',
+    event_time: startTime,
+    event_time_display: formattedStartTime ? `<p><strong>Start Time:</strong> ${formattedStartTime}</p>` : '',
+    end_time: endTime,
+    end_time_display: formattedEndTime ? `<p><strong>End Time:</strong> ${formattedEndTime}</p>` : '',
     venue_name: event?.venue_name || contact.venue_name || '',
     venue_address: event?.venue_address || contact.venue_address || '',
     guest_count: (event?.number_of_guests || contact.guest_count) ? String(event?.number_of_guests || contact.guest_count) : '',
@@ -256,8 +287,49 @@ ${paymentScheduleHtml}`
     signature_date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
     editable_company_name: ownerName,
     signature_title: 'Owner',
-    editable_company_email: ''
+    editable_company_email: '',
+    participants_signatures: '' // Will be populated if contract has participants
   };
+
+  // Fetch participants if contractId is provided
+  if (contractId) {
+    try {
+      const { data: participants, error: participantsError } = await supabase
+        .from('contract_participants')
+        .select('*')
+        .eq('contract_id', contractId)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (!participantsError && participants && participants.length > 0) {
+        // Generate participant signature sections HTML
+        const participantsHtml = participants.map(participant => {
+          const participantSignatureId = `participant-signature-${participant.id}`;
+          const signatureHtml = participant.signature_data
+            ? `<img src="${participant.signature_data}" alt="${participant.name} Signature" style="max-width: 100%; height: auto; max-height: 50px; display: block; margin-bottom: 5px;" />`
+            : '';
+          
+          return `
+<div class="signature-box">
+<h3>${participant.role || 'ADDITIONAL SIGNER'}${participant.title ? ` - ${participant.title}` : ''}</h3>
+<div id="${participantSignatureId}" class="signature-line-area" data-signer-type="participant" data-participant-id="${participant.id}" style="cursor: ${participant.signature_data ? 'default' : 'pointer'}; position: relative;">
+  ${signatureHtml}
+  <div class="signature-line" style="border-bottom: 1px solid #000; height: ${participant.signature_data ? '1px' : '50px'}; margin: 20px 0; position: relative;">
+    ${!participant.signature_data ? '<span class="signature-placeholder-text" style="position: absolute; bottom: 5px; left: 0; color: #999; font-style: italic; font-size: 10pt;">Click to sign</span>' : ''}
+  </div>
+</div>
+<p>Name: <span id="participant-signature-name-${participant.id}">${participant.signed_by || participant.name}</span></p>
+<p>Date: ${participant.signed_at ? new Date(participant.signed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+</div>`;
+        }).join('\n');
+
+        variables.participants_signatures = participantsHtml;
+      }
+    } catch (error) {
+      console.warn('[generateContractHtml] Error fetching participants:', error);
+      // Continue without participants if there's an error
+    }
+  }
 
   // Replace template variables
   let contractHtml = template.template_content;
@@ -416,6 +488,8 @@ strong {
 <div class="section">
 <h2>2. EVENT DETAILS</h2>
 <p><strong>Event Date:</strong> {{event_date}}</p>
+{{event_time_display}}
+{{end_time_display}}
 <p><strong>Venue:</strong> {{venue_name}}</p>
 <p><strong>Address:</strong> {{venue_address}}</p>
 </div>
@@ -685,6 +759,7 @@ export async function ensureContractExistsForInvoice(invoiceId, supabaseClient =
       event_type: event?.event_type || contact.event_type || null,
       event_date: event?.event_date || contact.event_date || null,
       event_time: event?.start_time || contact.event_time || null,
+      end_time: event?.end_time || contact.end_time || null,
       venue_name: event?.venue_name || contact.venue_name || null,
       venue_address: event?.venue_address || contact.venue_address || null,
       guest_count: event?.number_of_guests || contact.guest_count || null,

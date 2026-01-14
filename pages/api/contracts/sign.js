@@ -10,13 +10,40 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { token, signature_name, signature_data, signature_method } = req.body;
+  const { token, signature_name, signature_data, signature_method, signer_type } = req.body;
 
   if (!token || !signature_name || !signature_data) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  // signer_type can be 'client' or 'owner' (vendor)
+  const isOwnerSignature = signer_type === 'owner' || signer_type === 'vendor';
+
   try {
+    // SECURITY: If trying to sign as owner, verify user is an admin
+    if (isOwnerSignature) {
+      try {
+        const { createServerSupabaseClient } = require('@supabase/auth-helpers-nextjs');
+        const { isPlatformAdmin } = require('@/utils/auth-helpers/platform-admin');
+        const serverSupabase = createServerSupabaseClient({ req, res });
+        const { data: { session } } = await serverSupabase.auth.getSession();
+        
+        if (!session || !session.user || !isPlatformAdmin(session.user.email)) {
+          return res.status(403).json({ 
+            error: 'Unauthorized',
+            message: 'Only authorized administrators can sign as the owner. Please sign as the client.'
+          });
+        }
+      } catch (authError) {
+        // If auth check fails, deny owner signature
+        console.error('[sign] Auth check failed for owner signature:', authError);
+        return res.status(403).json({ 
+          error: 'Unauthorized',
+          message: 'Only authorized administrators can sign as the owner. Please sign as the client.'
+        });
+      }
+    }
+
     // Get client IP address
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
 
@@ -31,7 +58,9 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Invalid contract link' });
     }
 
-    if (contract.status === 'signed') {
+    // Only prevent signing if it's a client signature and contract is already fully signed
+    // Allow owner signatures even if contract is signed (for admin to add their signature later)
+    if (!isOwnerSignature && contract.status === 'signed' && contract.client_signature_data) {
       return res.status(400).json({ error: 'This contract has already been signed' });
     }
 
@@ -43,17 +72,33 @@ export default async function handler(req, res) {
     const signerEmail = contract.contacts?.email_address || contract.recipient_email || null;
 
     // Update contract with signature
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (isOwnerSignature) {
+      // Owner/vendor signature
+      updateData.signed_by_vendor = signature_name;
+      updateData.signed_by_vendor_at = new Date().toISOString();
+      updateData.vendor_signature_data = signature_data;
+      // Don't change status to 'signed' if only owner has signed (wait for client)
+      // Only update status if client has already signed
+      if (contract.status === 'signed' || contract.client_signature_data) {
+        updateData.status = 'signed';
+      }
+    } else {
+      // Client signature
+      updateData.status = 'signed';
+      updateData.signed_at = new Date().toISOString();
+      updateData.signed_by_client = signature_name;
+      updateData.signed_by_client_email = signerEmail;
+      updateData.signed_by_client_ip = clientIp;
+      updateData.client_signature_data = signature_data;
+    }
+
     const { error: updateError } = await supabase
       .from('contracts')
-      .update({
-        status: 'signed',
-        signed_at: new Date().toISOString(),
-        signed_by_client: signature_name,
-        signed_by_client_email: signerEmail,
-        signed_by_client_ip: clientIp,
-        client_signature_data: signature_data,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', contract.id);
 
     if (updateError) {
@@ -61,6 +106,32 @@ export default async function handler(req, res) {
     }
 
     console.log(`✅ Contract ${contract.contract_number} signed by ${signature_name}`);
+
+    // Check if contract should be marked as completed (all required signers have signed)
+    if (updateData.status === 'signed') {
+      // Check if all participants have signed
+      const { data: participants, error: participantsError } = await supabase
+        .from('contract_participants')
+        .select('status')
+        .eq('contract_id', contract.id);
+
+      if (!participantsError && participants) {
+        const allParticipantsSigned = participants.length === 0 || participants.every(p => p.status === 'signed');
+        const clientSigned = updateData.client_signature_data || contract.client_signature_data;
+        const vendorSigned = updateData.vendor_signature_data || contract.vendor_signature_data;
+
+        // Mark as completed if all parties have signed
+        if (allParticipantsSigned && clientSigned && vendorSigned) {
+          await supabase
+            .from('contracts')
+            .update({
+              status: 'completed',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', contract.id);
+        }
+      }
+    }
 
     // TODO: Generate PDF with signature
 
