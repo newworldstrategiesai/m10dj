@@ -52,12 +52,49 @@ export default function SignContractPage() {
   const [signed, setSigned] = useState(false);
   const [redirectingToPayment, setRedirectingToPayment] = useState(false);
   const [contractHtmlWithSignatures, setContractHtmlWithSignatures] = useState<string>('');
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [signingFor, setSigningFor] = useState<'client' | 'owner'>('client');
+  const contractContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (token) {
       validateToken();
     }
   }, [token]);
+
+  const setupSignatureAreaClickHandlers = () => {
+    const clientArea = document.querySelector('#client-signature-area');
+    const ownerArea = document.querySelector('#owner-signature-area');
+    
+    if (clientArea && !clientArea.hasAttribute('data-handler-attached')) {
+      clientArea.setAttribute('data-handler-attached', 'true');
+      clientArea.addEventListener('click', () => {
+        if (!signatureData) {
+          setSigningFor('client');
+          setSignatureModalOpen(true);
+        }
+      });
+    }
+    
+    if (ownerArea && !ownerArea.hasAttribute('data-handler-attached')) {
+      ownerArea.setAttribute('data-handler-attached', 'true');
+      ownerArea.addEventListener('click', () => {
+        if (!ownerSignatureData) {
+          setSigningFor('owner');
+          setSignatureModalOpen(true);
+        }
+      });
+    }
+  };
+
+  // Set up signature area click handlers when contract HTML is loaded
+  useEffect(() => {
+    if (contractHtmlWithSignatures || contractData?.contract_html) {
+      setTimeout(() => {
+        setupSignatureAreaClickHandlers();
+      }, 100);
+    }
+  }, [contractHtmlWithSignatures, contractData?.contract_html, signatureData, ownerSignatureData]);
 
   const validateToken = async () => {
     setLoading(true);
@@ -138,8 +175,8 @@ export default function SignContractPage() {
     }
   };
 
-  const handleSignatureChange = (data: string, method: 'draw' | 'type', signerType?: 'client' | 'owner') => {
-    if (signerType === 'owner') {
+  const handleSignatureChange = (data: string, method: 'draw' | 'type') => {
+    if (signingFor === 'owner') {
       setOwnerSignatureData(data);
     } else {
       setSignatureData(data);
@@ -148,19 +185,28 @@ export default function SignContractPage() {
     
     // Update contract HTML to show signature in the signature area
     if (data && contractData?.contract_html) {
-      const signatureId = signerType === 'owner' ? 'owner-signature-area' : 'client-signature-area';
+      const signatureId = signingFor === 'owner' ? 'owner-signature-area' : 'client-signature-area';
+      // Match the signature area div and its contents (including the signature line)
       const signatureAreaRegex = new RegExp(
         `<div id="${signatureId}"[^>]*>.*?</div>`,
         's'
       );
       
-      const signatureImg = `<img src="${data}" alt="Signature" style="max-width: 100%; height: auto; border: 1px solid #ddd; background: white; padding: 10px; border-radius: 4px;" />`;
+      const signatureImg = `<img src="${data}" alt="Signature" style="max-width: 100%; height: auto; max-height: 50px; display: block; margin-bottom: 5px;" />`;
       
-      const updatedHtml = contractData.contract_html.replace(
+      const updatedHtml = (contractHtmlWithSignatures || contractData.contract_html).replace(
         signatureAreaRegex,
-        `<div id="${signatureId}" class="signature-capture-area" data-signer-type="${signerType || 'client'}">${signatureImg}</div>`
+        `<div id="${signatureId}" class="signature-line-area" data-signer-type="${signingFor}" style="cursor: default;">${signatureImg}<div class="signature-line" style="border-bottom: 1px solid #000; height: 1px; margin: 0;"></div></div>`
       );
       setContractHtmlWithSignatures(updatedHtml);
+      
+      // Close modal after signature is captured
+      setSignatureModalOpen(false);
+      
+      // Re-attach click handlers for other signature areas
+      setTimeout(() => {
+        setupSignatureAreaClickHandlers();
+      }, 100);
     }
   };
 
