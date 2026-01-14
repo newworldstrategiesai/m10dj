@@ -155,6 +155,110 @@ export default async function handler(req, res) {
           }
         }
 
+        // Handle invoice payment from checkout session
+        const invoiceId = session.metadata?.invoice_id;
+        if (invoiceId) {
+          const paymentAmount = session.amount_total / 100;
+          const gratuityAmount = session.metadata?.gratuity_amount ? parseFloat(session.metadata.gratuity_amount) : 0;
+          const gratuityType = session.metadata?.gratuity_type || null;
+          const gratuityPercentage = session.metadata?.gratuity_percentage ? parseInt(session.metadata.gratuity_percentage) : null;
+          
+          console.log('💰 Invoice payment completed:', {
+            invoiceId,
+            paymentAmount,
+            gratuityAmount,
+            sessionId: session.id
+          });
+
+          try {
+            // Update invoice status and payment info
+            const invoiceUpdate = {
+              invoice_status: 'Paid',
+              amount_paid: paymentAmount - gratuityAmount, // Base payment amount (excluding gratuity)
+              balance_due: 0, // Invoice is fully paid
+              paid_date: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+
+            const { error: invoiceUpdateError } = await supabase
+              .from('invoices')
+              .update(invoiceUpdate)
+              .eq('id', invoiceId);
+
+            if (invoiceUpdateError) {
+              console.error('⚠️ Error updating invoice status:', invoiceUpdateError);
+            } else {
+              console.log(`✅ Invoice ${invoiceId} marked as paid`);
+            }
+
+            // Build payment notes with gratuity info if applicable
+            let paymentNotes = `Stripe Payment Intent: ${session.payment_intent || session.id}`;
+            if (gratuityAmount > 0) {
+              if (gratuityType === 'percentage' && gratuityPercentage) {
+                paymentNotes += ` | Gratuity: ${gratuityPercentage}% ($${gratuityAmount.toFixed(2)})`;
+              } else {
+                paymentNotes += ` | Gratuity: $${gratuityAmount.toFixed(2)}`;
+              }
+            }
+
+            // Create payment record in payments table
+            const { data: invoiceData } = await supabase
+              .from('invoices')
+              .select('contact_id, organization_id')
+              .eq('id', invoiceId)
+              .single();
+
+            if (invoiceData?.contact_id) {
+              const paymentRecord = {
+                contact_id: invoiceData.contact_id,
+                invoice_id: invoiceId,
+                payment_name: 'Invoice Payment',
+                total_amount: paymentAmount, // Total including gratuity
+                gratuity: gratuityAmount,
+                payment_status: 'Paid',
+                payment_method: 'Credit Card',
+                transaction_date: new Date().toISOString().split('T')[0],
+                payment_notes: paymentNotes,
+                organization_id: invoiceData.organization_id || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+
+              const { error: paymentError } = await supabase
+                .from('payments')
+                .insert(paymentRecord);
+
+              if (paymentError) {
+                console.error('⚠️ Error creating payment record from invoice checkout:', paymentError);
+                if (paymentError.code !== '23505') { // Ignore duplicate key errors
+                  console.error('Payment record error details:', paymentError);
+                }
+              } else {
+                console.log('✅ Payment record created from invoice checkout for invoice:', invoiceId);
+              }
+            }
+
+            // Ensure contract exists for invoice (invoice-first workflow)
+            (async () => {
+              try {
+                const { ensureContractExistsForInvoice } = await import('../../../utils/ensure-contract-exists-for-invoice');
+                const contractResult = await ensureContractExistsForInvoice(invoiceId, supabase);
+                
+                if (contractResult.success) {
+                  console.log(`✅ Contract ${contractResult.created ? 'created' : 'exists'} for invoice ${invoiceId}:`, contractResult.contract_id);
+                } else {
+                  console.warn(`⚠️ Could not ensure contract exists for invoice ${invoiceId}:`, contractResult.error);
+                }
+              } catch (err) {
+                console.error('Error ensuring contract exists for invoice:', err);
+              }
+            })();
+
+          } catch (err) {
+            console.error('❌ Error processing invoice payment from checkout:', err);
+          }
+        }
+
         // Handle quote/lead payment from checkout session
         if (leadId) {
           const paymentAmount = session.amount_total / 100;

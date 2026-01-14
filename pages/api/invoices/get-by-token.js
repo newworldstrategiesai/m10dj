@@ -29,7 +29,6 @@ export default async function handler(req, res) {
       .from('invoices')
       .select('*')
       .eq('payment_token', token)
-      .is('deleted_at', null)
       .single();
 
     if (invoiceError) {
@@ -109,6 +108,29 @@ export default async function handler(req, res) {
       }
     }
 
+    // Ensure contract exists for invoice (creates one if it doesn't exist)
+    let contract = null;
+    try {
+      const { ensureContractExistsForInvoice } = await import('../../../utils/ensure-contract-exists-for-invoice');
+      const contractResult = await ensureContractExistsForInvoice(invoice.id, supabase);
+      
+      if (contractResult.success && contractResult.contract_id) {
+        // Fetch contract with signing token
+        const { data: contractData, error: contractError } = await supabase
+          .from('contracts')
+          .select('id, contract_number, status, signing_token, signing_token_expires_at')
+          .eq('id', contractResult.contract_id)
+          .single();
+        
+        if (!contractError && contractData) {
+          contract = contractData;
+        }
+      }
+    } catch (contractErr) {
+      console.warn('Error ensuring contract exists (non-critical):', contractErr);
+      // Continue even if contract creation fails - invoice can still be paid
+    }
+
     // Check if token is expired (optional: add expiry logic)
     // For now, just check if invoice exists and isn't deleted
 
@@ -140,7 +162,17 @@ export default async function handler(req, res) {
         last_name: '',
         email_address: null,
         phone: null
-      }
+      },
+      // Include contract info if available
+      contract: contract ? {
+        id: contract.id,
+        contract_number: contract.contract_number,
+        status: contract.status,
+        signing_token: contract.signing_token, // Needed for signing link
+        signing_url: contract.signing_token ? 
+          `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/sign-contract/${contract.signing_token}` : 
+          null
+      } : null
     };
 
     res.status(200).json({

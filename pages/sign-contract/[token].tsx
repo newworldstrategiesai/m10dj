@@ -39,6 +39,7 @@ export default function SignContractPage() {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [signed, setSigned] = useState(false);
+  const [redirectingToPayment, setRedirectingToPayment] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -122,6 +123,17 @@ export default function SignContractPage() {
         throw new Error(data.error || 'Failed to sign contract');
       }
 
+      // If invoice payment is needed, redirect to payment page
+      if (data.needs_payment && data.payment_token) {
+        // Show redirecting state
+        setRedirectingToPayment(true);
+        // Redirect to payment page after a brief delay
+        setTimeout(() => {
+          window.location.href = `/pay/${data.payment_token}`;
+        }, 1000);
+        return;
+      }
+
       setSigned(true);
     } catch (err: any) {
       alert(err.message || 'Failed to sign contract');
@@ -130,12 +142,19 @@ export default function SignContractPage() {
     }
   };
 
-  if (loading) {
+  if (loading || redirectingToPayment) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <Loader className="w-8 h-8 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading contract...</p>
+          <p className="text-gray-600">
+            {redirectingToPayment ? 'Redirecting to payment page...' : 'Loading contract...'}
+          </p>
+          {redirectingToPayment && (
+            <p className="text-sm text-gray-500 mt-2">
+              Please complete your payment to finalize your booking.
+            </p>
+          )}
         </div>
       </div>
     );

@@ -235,6 +235,23 @@ export default async function handler(req, res) {
       });
     }
 
+    // Ensure contract exists for invoice (invoice-first workflow)
+    // This runs asynchronously so it doesn't block the response
+    (async () => {
+      try {
+        const { ensureContractExistsForInvoice } = await import('../../../utils/ensure-contract-exists-for-invoice');
+        const contractResult = await ensureContractExistsForInvoice(invoice.id, adminSupabase);
+        
+        if (contractResult.success) {
+          console.log(`✅ Contract ${contractResult.created ? 'created' : 'exists'} for invoice ${invoice.id}:`, contractResult.contract_id);
+        } else {
+          console.warn(`⚠️ Could not ensure contract exists for invoice ${invoice.id}:`, contractResult.error);
+        }
+      } catch (err) {
+        console.error('Error ensuring contract exists for invoice (non-blocking):', err);
+      }
+    })();
+
     return res.status(200).json({
       success: true,
       invoice: invoice,

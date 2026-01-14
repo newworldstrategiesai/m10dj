@@ -64,6 +64,30 @@ export default async function handler(req, res) {
 
     // TODO: Generate PDF with signature
 
+    // Check if there's an associated invoice and if it's unpaid
+    let paymentToken = null;
+    let invoiceId = null;
+    if (contract.invoice_id) {
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('id, payment_token, invoice_status, status, total_amount, balance_due, amount_paid')
+        .eq('id', contract.invoice_id)
+        .single();
+
+      if (!invoiceError && invoice) {
+        invoiceId = invoice.id;
+        // Check if invoice is unpaid (status not 'paid' and balance_due > 0)
+        const isPaid = invoice.invoice_status === 'paid' || invoice.status === 'paid' || 
+                      (invoice.balance_due !== null && invoice.balance_due <= 0) ||
+                      (invoice.amount_paid !== null && invoice.total_amount !== null && 
+                       invoice.amount_paid >= invoice.total_amount);
+        
+        if (!isPaid && invoice.payment_token) {
+          paymentToken = invoice.payment_token;
+        }
+      }
+    }
+
     // Determine contract details - handle both contact-based and standalone contracts
     const isStandalone = !contract.contacts;
     const signerFirstName = contract.contacts?.first_name || contract.recipient_name?.split(' ')[0] || 'Recipient';
@@ -176,7 +200,10 @@ export default async function handler(req, res) {
     res.status(200).json({
       success: true,
       message: 'Contract signed successfully',
-      contract_number: contract.contract_number
+      contract_number: contract.contract_number,
+      invoice_id: invoiceId,
+      payment_token: paymentToken, // Include payment token if invoice is unpaid
+      needs_payment: !!paymentToken // Flag indicating if payment is needed
     });
   } catch (error) {
     console.error('Error signing contract:', error);
