@@ -16,6 +16,45 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  * Returns { contractHtml, templateName }
  */
 export async function generateContractHtml(invoice, contact, event, contractNumber, supabase) {
+  // Fetch organization owner name dynamically
+  let ownerName = 'Ben Murray'; // Default fallback
+  try {
+    const organizationId = invoice.organization_id || contact?.organization_id;
+    if (organizationId) {
+      // Get organization with owner info
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .select('owner_id')
+        .eq('id', organizationId)
+        .maybeSingle();
+      
+      if (!orgError && org?.owner_id) {
+        // Create service role client to access auth.admin methods
+        const serviceRoleClient = createClient(supabaseUrl, supabaseKey);
+        
+        // Get owner user info from auth.users
+        const { data: ownerUser, error: userError } = await serviceRoleClient.auth.admin.getUserById(org.owner_id);
+        
+        if (!userError && ownerUser?.user) {
+          // Try to get full_name from user metadata
+          const fullName = ownerUser.user.user_metadata?.full_name || 
+                          ownerUser.user.user_metadata?.name ||
+                          `${ownerUser.user.user_metadata?.first_name || ''} ${ownerUser.user.user_metadata?.last_name || ''}`.trim();
+          
+          if (fullName) {
+            ownerName = fullName;
+          } else if (ownerUser.user.email) {
+            // Fallback to email if no name available
+            ownerName = ownerUser.user.email.split('@')[0];
+          }
+        }
+      }
+    }
+  } catch (ownerError) {
+    console.warn('[generateContractHtml] Error fetching owner name, using default:', ownerError);
+    // Keep default fallback
+  }
+
   // Get contract template - prefer service_agreement type for invoices
   let template;
   try {
@@ -209,15 +248,15 @@ ${paymentScheduleHtml}`
     company_address: '65 Stewart Rd, Eads, Tennessee 38028',
     company_email: 'm10djcompany@gmail.com',
     company_phone: '(901) 410-2020',
-    owner_name: 'Ben Murray',
+    owner_name: ownerName,
     
     signature_area: '',
-    editable_signer_name: '',
+    editable_signer_name: contact ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : '',
     editable_signer_email: '',
-    signature_date: '',
-    editable_company_name: 'M10 DJ Company',
+    signature_date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    editable_company_name: ownerName,
     signature_title: 'Owner',
-    editable_company_email: 'm10djcompany@gmail.com'
+    editable_company_email: ''
   };
 
   // Replace template variables
@@ -325,16 +364,14 @@ li { margin: 5px 0; }
 <div class="signature-box">
 <h3>CLIENT SIGNATURE</h3>
 <p>{{signature_area}}</p>
-<p>Name (Print or Type): {{editable_signer_name}}</p>
-<p>Email: {{editable_signer_email}}</p>
+<p>Name: {{editable_signer_name}}</p>
 <p>Date: {{signature_date}}</p>
 </div>
 
 <div class="signature-box">
 <h3>{{company_name}} - AUTHORIZED REPRESENTATIVE</h3>
-<p>Authorized By: {{editable_company_name}}</p>
-<p>Title: {{signature_title}}</p>
-<p>Email: {{editable_company_email}}</p>
+<p>{{signature_area}}</p>
+<p>Name: {{editable_company_name}}</p>
 <p>Date: {{signature_date}}</p>
 </div>
 
