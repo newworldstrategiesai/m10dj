@@ -62,80 +62,42 @@ export default function SignContractPage() {
     }
   }, [token]);
 
-  const setupSignatureAreaClickHandlers = () => {
-    // Find signature areas within the contract content container
-    const contractContent = document.getElementById('contract-content');
-    if (!contractContent) {
-      console.log('[sign-contract] Contract content not found, retrying...');
-      return;
-    }
-    
-    const clientArea = contractContent.querySelector('#client-signature-area');
-    const ownerArea = contractContent.querySelector('#owner-signature-area');
-    
-    console.log('[sign-contract] Setting up click handlers:', {
-      clientArea: !!clientArea,
-      ownerArea: !!ownerArea,
-      hasSignatureData: !!signatureData,
-      hasOwnerSignatureData: !!ownerSignatureData
-    });
-    
-    if (clientArea && !clientArea.hasAttribute('data-handler-attached')) {
-      clientArea.setAttribute('data-handler-attached', 'true');
-      // Remove any existing listeners first
-      const newClientArea = clientArea.cloneNode(true);
-      clientArea.parentNode?.replaceChild(newClientArea, clientArea);
-      const freshClientArea = contractContent.querySelector('#client-signature-area');
-      
-      if (freshClientArea) {
-        freshClientArea.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('[sign-contract] Client signature area clicked');
-          if (!signatureData) {
-            setSigningFor('client');
-            setSignatureModalOpen(true);
-          }
-        });
-        // Make it visually clear it's clickable
-        freshClientArea.style.cursor = 'pointer';
-      }
-    }
-    
-    if (ownerArea && !ownerArea.hasAttribute('data-handler-attached')) {
-      ownerArea.setAttribute('data-handler-attached', 'true');
-      // Remove any existing listeners first
-      const newOwnerArea = ownerArea.cloneNode(true);
-      ownerArea.parentNode?.replaceChild(newOwnerArea, ownerArea);
-      const freshOwnerArea = contractContent.querySelector('#owner-signature-area');
-      
-      if (freshOwnerArea) {
-        freshOwnerArea.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('[sign-contract] Owner signature area clicked');
-          if (!ownerSignatureData) {
-            setSigningFor('owner');
-            setSignatureModalOpen(true);
-          }
-        });
-        // Make it visually clear it's clickable
-        freshOwnerArea.style.cursor = 'pointer';
-      }
-    }
-  };
-
-  // Set up signature area click handlers when contract HTML is loaded
+  // Use event delegation on the contract content container
   useEffect(() => {
-    if (contractHtmlWithSignatures || contractData?.contract_html) {
-      // Use a longer timeout to ensure DOM is ready
-      const timer = setTimeout(() => {
-        setupSignatureAreaClickHandlers();
-      }, 300);
+    const contractContent = contractContentRef.current;
+    if (!contractContent) return;
+
+    const handleSignatureClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Check if click is on signature area or its children
+      const signatureArea = target.closest('#client-signature-area, #owner-signature-area') as HTMLElement;
       
-      return () => clearTimeout(timer);
-    }
-  }, [contractHtmlWithSignatures, contractData?.contract_html, signatureData, ownerSignatureData]);
+      if (!signatureArea) return;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const signerType = signatureArea.getAttribute('data-signer-type') as 'client' | 'owner';
+      const hasSignature = signerType === 'client' ? !!signatureData : !!ownerSignatureData;
+      
+      console.log('[sign-contract] Signature area clicked:', {
+        signerType,
+        hasSignature,
+        signatureAreaId: signatureArea.id
+      });
+      
+      if (!hasSignature) {
+        setSigningFor(signerType);
+        setSignatureModalOpen(true);
+      }
+    };
+
+    contractContent.addEventListener('click', handleSignatureClick);
+    
+    return () => {
+      contractContent.removeEventListener('click', handleSignatureClick);
+    };
+  }, [contractContentRef, signatureData, ownerSignatureData]);
 
   const validateToken = async () => {
     setLoading(true);
