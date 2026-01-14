@@ -279,7 +279,7 @@ li { margin: 5px 0; }
 
 <div class="section">
 <h2>1. DESCRIPTION OF SERVICES</h2>
-<p>The Company agrees to provide professional DJ services for {{event_type}} on {{event_date}} at {{venue_name}}, {{venue_address}}. The event is scheduled to accommodate approximately {{guest_count}} guests.</p>
+<p>The Company agrees to provide professional DJ services on {{event_date}} at {{venue_name}}, {{venue_address}}.</p>
 <p><strong>Services Include:</strong></p>
 <ul>
 <li>Professional DJ and MC services</li>
@@ -294,10 +294,8 @@ li { margin: 5px 0; }
 <div class="section">
 <h2>2. EVENT DETAILS</h2>
 <p><strong>Event Date:</strong> {{event_date}}</p>
-<p><strong>Event Type:</strong> {{event_type}}</p>
 <p><strong>Venue:</strong> {{venue_name}}</p>
 <p><strong>Address:</strong> {{venue_address}}</p>
-<p><strong>Expected Guest Count:</strong> {{guest_count}}</p>
 </div>
 
 <div class="section">
