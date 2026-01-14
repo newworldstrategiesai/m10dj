@@ -63,36 +63,77 @@ export default function SignContractPage() {
   }, [token]);
 
   const setupSignatureAreaClickHandlers = () => {
-    const clientArea = document.querySelector('#client-signature-area');
-    const ownerArea = document.querySelector('#owner-signature-area');
+    // Find signature areas within the contract content container
+    const contractContent = document.getElementById('contract-content');
+    if (!contractContent) {
+      console.log('[sign-contract] Contract content not found, retrying...');
+      return;
+    }
+    
+    const clientArea = contractContent.querySelector('#client-signature-area');
+    const ownerArea = contractContent.querySelector('#owner-signature-area');
+    
+    console.log('[sign-contract] Setting up click handlers:', {
+      clientArea: !!clientArea,
+      ownerArea: !!ownerArea,
+      hasSignatureData: !!signatureData,
+      hasOwnerSignatureData: !!ownerSignatureData
+    });
     
     if (clientArea && !clientArea.hasAttribute('data-handler-attached')) {
       clientArea.setAttribute('data-handler-attached', 'true');
-      clientArea.addEventListener('click', () => {
-        if (!signatureData) {
-          setSigningFor('client');
-          setSignatureModalOpen(true);
-        }
-      });
+      // Remove any existing listeners first
+      const newClientArea = clientArea.cloneNode(true);
+      clientArea.parentNode?.replaceChild(newClientArea, clientArea);
+      const freshClientArea = contractContent.querySelector('#client-signature-area');
+      
+      if (freshClientArea) {
+        freshClientArea.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('[sign-contract] Client signature area clicked');
+          if (!signatureData) {
+            setSigningFor('client');
+            setSignatureModalOpen(true);
+          }
+        });
+        // Make it visually clear it's clickable
+        freshClientArea.style.cursor = 'pointer';
+      }
     }
     
     if (ownerArea && !ownerArea.hasAttribute('data-handler-attached')) {
       ownerArea.setAttribute('data-handler-attached', 'true');
-      ownerArea.addEventListener('click', () => {
-        if (!ownerSignatureData) {
-          setSigningFor('owner');
-          setSignatureModalOpen(true);
-        }
-      });
+      // Remove any existing listeners first
+      const newOwnerArea = ownerArea.cloneNode(true);
+      ownerArea.parentNode?.replaceChild(newOwnerArea, ownerArea);
+      const freshOwnerArea = contractContent.querySelector('#owner-signature-area');
+      
+      if (freshOwnerArea) {
+        freshOwnerArea.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('[sign-contract] Owner signature area clicked');
+          if (!ownerSignatureData) {
+            setSigningFor('owner');
+            setSignatureModalOpen(true);
+          }
+        });
+        // Make it visually clear it's clickable
+        freshOwnerArea.style.cursor = 'pointer';
+      }
     }
   };
 
   // Set up signature area click handlers when contract HTML is loaded
   useEffect(() => {
     if (contractHtmlWithSignatures || contractData?.contract_html) {
-      setTimeout(() => {
+      // Use a longer timeout to ensure DOM is ready
+      const timer = setTimeout(() => {
         setupSignatureAreaClickHandlers();
-      }, 100);
+      }, 300);
+      
+      return () => clearTimeout(timer);
     }
   }, [contractHtmlWithSignatures, contractData?.contract_html, signatureData, ownerSignatureData]);
 
