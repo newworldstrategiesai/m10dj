@@ -26,7 +26,11 @@ export default async function handler(req, res) {
         contract_html,
         contract_type,
         event_name,
+        event_type,
         event_date,
+        venue_name,
+        venue_address,
+        guest_count,
         total_amount,
         status,
         signing_token,
@@ -36,6 +40,7 @@ export default async function handler(req, res) {
         signed_by_client_email,
         client_signature_data,
         contact_id,
+        invoice_id,
         recipient_name,
         recipient_email,
         sender_name,
@@ -179,18 +184,41 @@ export default async function handler(req, res) {
         
         // If we have contact info, generate the HTML
         if (contact) {
+          // Use event data from contract record if available (fallback)
+          // The contract record itself stores event details, so use those if event join didn't work
+          let eventData = event;
+          if (!eventData && (contract.event_date || contract.venue_name)) {
+            // Contract record has event data, use it
+            eventData = {
+              event_name: contract.event_name,
+              event_type: contract.event_type || contact?.event_type,
+              event_date: contract.event_date,
+              venue_name: contract.venue_name,
+              venue_address: contract.venue_address,
+              number_of_guests: contract.guest_count
+            };
+            console.log('[validate-token] Using event data from contract record:', {
+              event_name: eventData.event_name,
+              event_date: eventData.event_date,
+              venue_name: eventData.venue_name,
+              venue_address: eventData.venue_address,
+              guest_count: eventData.number_of_guests
+            });
+          }
+          
           console.log('[validate-token] Generating contract HTML with contact:', {
             contact_name: `${contact.first_name} ${contact.last_name}`,
             has_invoice: !!invoice,
-            has_event: !!event,
-            event_date: event?.event_date || contact.event_date,
-            venue_name: event?.venue_name || contact.venue_name
+            has_event: !!eventData,
+            event_date: eventData?.event_date || contact.event_date,
+            venue_name: eventData?.venue_name || contact.venue_name,
+            using_contract_event_data: !event && !!contract.event_date
           });
           
           const contractHtml = await generateContractHtml(
             invoice || { total_amount: contract.total_amount || 0, line_items: [] },
             contact,
-            event,
+            eventData, // Use eventData which may come from contract record
             contract.contract_number || '',
             supabase
           );
