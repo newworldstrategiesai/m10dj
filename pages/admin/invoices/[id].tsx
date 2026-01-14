@@ -28,6 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import PaymentPlanConfig from '@/components/admin/PaymentPlanConfig';
 import { getPackageLineItemsFromQuote, calculateQuoteTotals } from '@/utils/quote-calculations';
 
 interface InvoiceDetail {
@@ -155,6 +156,7 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
     notes: '',
     internalNotes: ''
   });
+  const [paymentPlan, setPaymentPlan] = useState<any>(null);
   const [lineItems, setLineItems] = useState<Array<{
     description: string;
     quantity: number;
@@ -797,6 +799,7 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
           paymentTerms: formData.paymentTerms || null,
           lateFeePercentage: formData.lateFeePercentage ? parseFloat(formData.lateFeePercentage) : null,
           depositAmount: formData.depositAmount ? parseFloat(formData.depositAmount) : null,
+          paymentPlan: paymentPlan, // Include payment plan
           lineItems: lineItems.length > 0 ? lineItems
             .filter(item => item.description.trim() !== '')
             .map(({ source, selectedItemId, ...item }) => item) : [], // Remove internal fields
@@ -1282,10 +1285,24 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
             </div>
           </div>
 
-          {/* Deposit Amount */}
+          {/* Payment Plan Configuration */}
+          <div>
+            <PaymentPlanConfig
+              totalAmount={(parseFloat(formData.subtotal) || 0) + (parseFloat(formData.taxAmount) || 0) - (parseFloat(formData.discountAmount) || 0)}
+              value={paymentPlan}
+              onChange={setPaymentPlan}
+              eventDate={events.find(e => e.id === formData.projectId)?.event_date || null}
+              invoiceDueDate={formData.dueDate || null}
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              Configure payment installments that will be reflected in the contract. This overrides the default 50/50 split.
+            </p>
+          </div>
+
+          {/* Deposit Amount (Legacy - kept for backward compatibility) */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Deposit Amount (Optional)
+              Deposit Amount (Optional - Legacy)
             </label>
             <input
               type="number"
@@ -1296,7 +1313,7 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
               placeholder="0.00"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
             />
-            <p className="text-xs text-gray-500 mt-1">Optional deposit amount for this invoice</p>
+            <p className="text-xs text-gray-500 mt-1">Optional: If payment plan is not configured, this will be used as the deposit amount</p>
           </div>
 
           {/* Notes Section */}

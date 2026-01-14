@@ -52,12 +52,145 @@ export default async function handler(req, res) {
       .single();
 
     if (error || !contract) {
+      console.error('[validate-token] Contract not found:', error);
       return res.status(404).json({ error: 'Invalid or expired contract link' });
     }
+
+    console.log('[validate-token] Contract found:', {
+      id: contract.id,
+      contract_number: contract.contract_number,
+      has_contract_html: !!contract.contract_html,
+      contract_html_length: contract.contract_html?.length || 0,
+      status: contract.status
+    });
 
     // Check if token is expired
     if (contract.signing_token_expires_at && new Date(contract.signing_token_expires_at) < new Date()) {
       return res.status(400).json({ error: 'This contract link has expired' });
+    }
+
+    // Check if contract_html is missing, has unprocessed template variables, or has outdated cancellation policy
+    const hasUnprocessedVariables = contract.contract_html && (
+      contract.contract_html.includes('{{party_a_name}}') ||
+      contract.contract_html.includes('{{party_b_name}}') ||
+      contract.contract_html.includes('{{term_years}}') ||
+      contract.contract_html.includes('{{governing_state}}') ||
+      (contract.contract_html.includes('{{') && contract.contract_html.match(/\{\{[^}]+\}\}/g)?.length > 5)
+    );
+    
+    // Check if cancellation policy is outdated (doesn't mention deposit is non-refundable)
+    const hasOutdatedCancellationPolicy = contract.contract_html && 
+      contract.contract_html.includes('CANCELLATION POLICY') &&
+      !contract.contract_html.includes('deposit') && 
+      !contract.contract_html.includes('non-refundable');
+    
+    // Also check if deposit section is missing from compensation
+    const missingDepositInfo = contract.contract_html && 
+      contract.contract_html.includes('COMPENSATION') &&
+      !contract.contract_html.includes('Deposit') &&
+      !contract.contract_html.includes('deposit');
+
+    if (!contract.contract_html || hasUnprocessedVariables || hasOutdatedCancellationPolicy || missingDepositInfo) {
+      console.warn('[validate-token] Contract HTML is missing or has unprocessed variables, attempting to regenerate...');
+      try {
+        // Import the HTML generation function
+        const { generateContractHtml } = await import('../../../utils/ensure-contract-exists-for-invoice');
+        
+        // Fetch invoice if contract is linked to one
+        let invoice = null;
+        // contract.contacts is an object from the join, extract it properly
+        let contact = (contract.contacts && typeof contract.contacts === 'object' && !Array.isArray(contract.contacts)) 
+          ? contract.contacts 
+          : null;
+        let event = null;
+        
+        // Try to find invoice by contract_id (invoice has contract_id field)
+        const { data: invoiceData } = await supabase
+          .from('invoices')
+          .select('*, contacts:contact_id(*), events:project_id(*)')
+          .eq('contract_id', contract.id)
+          .maybeSingle();
+        
+        if (invoiceData) {
+          invoice = invoiceData;
+          // Extract contact from invoice join
+          if (invoiceData.contacts && typeof invoiceData.contacts === 'object' && !Array.isArray(invoiceData.contacts)) {
+            contact = invoiceData.contacts;
+          }
+          // Extract event from invoice join
+          if (invoiceData.events && typeof invoiceData.events === 'object' && !Array.isArray(invoiceData.events)) {
+            event = invoiceData.events;
+          }
+        }
+        
+        // If still no contact but we have contact_id, fetch contact directly
+        if (!contact && contract.contact_id) {
+          const { data: contactData } = await supabase
+            .from('contacts')
+            .select('*')
+            .eq('id', contract.contact_id)
+            .single();
+          
+          if (contactData) {
+            contact = contactData;
+          }
+        }
+        
+        console.log('[validate-token] Regeneration data:', {
+          has_contact: !!contact,
+          has_invoice: !!invoice,
+          has_event: !!event,
+          contact_id: contract.contact_id
+        });
+        
+        // If we have contact info, generate the HTML
+        if (contact) {
+          console.log('[validate-token] Generating contract HTML with contact:', {
+            contact_name: `${contact.first_name} ${contact.last_name}`,
+            has_invoice: !!invoice,
+            has_event: !!event
+          });
+          
+          const contractHtml = await generateContractHtml(
+            invoice || { total_amount: contract.total_amount || 0, line_items: [] },
+            contact,
+            event,
+            contract.contract_number || '',
+            supabase
+          );
+          
+          console.log('[validate-token] Generated HTML result:', {
+            has_html: !!contractHtml?.contractHtml,
+            html_length: contractHtml?.contractHtml?.length || 0,
+            template_name: contractHtml?.templateName
+          });
+          
+          if (contractHtml && contractHtml.contractHtml) {
+            // Update the contract with generated HTML
+            const { error: updateError } = await supabase
+              .from('contracts')
+              .update({ 
+                contract_html: contractHtml.contractHtml,
+                contract_template: contractHtml.templateName || 'Default Contract'
+              })
+              .eq('id', contract.id);
+            
+            if (updateError) {
+              console.error('[validate-token] Error updating contract HTML:', updateError);
+            } else {
+              contract.contract_html = contractHtml.contractHtml;
+              console.log('[validate-token] Contract HTML regenerated and saved successfully');
+            }
+          } else {
+            console.warn('[validate-token] Contract HTML generation returned no HTML');
+          }
+        } else {
+          console.warn('[validate-token] Cannot regenerate HTML: no contact data available');
+        }
+      } catch (genError) {
+        console.error('[validate-token] Error generating contract HTML:', genError);
+        // Don't fail the request, just log the error
+      }
     }
 
     // Handle both contact-based and standalone contracts

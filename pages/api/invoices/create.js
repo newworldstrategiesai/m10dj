@@ -85,6 +85,7 @@ export default async function handler(req, res) {
       paymentTerms,
       lateFeePercentage,
       depositAmount,
+      paymentPlan, // Payment plan configuration
       lineItems, 
       notes,
       internalNotes
@@ -195,6 +196,7 @@ export default async function handler(req, res) {
       payment_terms: paymentTerms || null,
       late_fee_percentage: lateFeePercentage !== null && lateFeePercentage !== undefined && lateFeePercentage !== '' ? parseFloat(lateFeePercentage) : null,
       deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
+      payment_plan: paymentPlan || null, // Store payment plan configuration
       line_items: lineItems || [],
       notes: notes || null,
       internal_notes: internalNotes || null,

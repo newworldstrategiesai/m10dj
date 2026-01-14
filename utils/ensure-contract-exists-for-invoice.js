@@ -15,27 +15,59 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  * Generate contract HTML from template
  * Returns { contractHtml, templateName }
  */
-async function generateContractHtml(invoice, contact, event, contractNumber, supabase) {
-  // Get contract template
+export async function generateContractHtml(invoice, contact, event, contractNumber, supabase) {
+  // Get contract template - prefer service_agreement type for invoices
   let template;
   try {
-    const { data: defaultTemplate, error: templateError } = await supabase
+    // First try to get default service agreement template
+    let { data: defaultTemplate, error: templateError } = await supabase
       .from('contract_templates')
       .select('*')
       .eq('is_active', true)
-      .order('is_default', { ascending: false })
-      .limit(1)
+      .eq('template_type', 'service_agreement')
+      .eq('is_default', true)
       .maybeSingle();
 
+    // If no default service agreement, get any active service agreement
+    if (templateError || !defaultTemplate) {
+      const { data: serviceTemplate, error: serviceError } = await supabase
+        .from('contract_templates')
+        .select('*')
+        .eq('is_active', true)
+        .eq('template_type', 'service_agreement')
+        .order('is_default', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (!serviceError && serviceTemplate) {
+        defaultTemplate = serviceTemplate;
+        templateError = null;
+      }
+    }
+
+    // If still no service agreement template, use the default inline template
+    // DO NOT fall back to personal/NDA templates - always use service agreement
     if (templateError || !defaultTemplate || !defaultTemplate.template_content) {
+      console.log('[generateContractHtml] No service agreement template found, using default inline template');
       template = {
-        name: 'Default Contract',
+        name: 'Default Service Agreement',
         template_content: getDefaultContractTemplate()
       };
     } else {
-      template = defaultTemplate;
+      // Verify the template is actually a service agreement type
+      if (defaultTemplate.template_type !== 'service_agreement') {
+        console.warn('[generateContractHtml] Template found is not service_agreement type, using default instead');
+        template = {
+          name: 'Default Service Agreement',
+          template_content: getDefaultContractTemplate()
+        };
+      } else {
+        template = defaultTemplate;
+        console.log('[generateContractHtml] Using service agreement template:', template.name);
+      }
     }
   } catch (templateErr) {
+    console.error('Error fetching contract template:', templateErr);
     template = {
       name: 'Default Contract',
       template_content: getDefaultContractTemplate()
@@ -52,17 +84,81 @@ async function generateContractHtml(invoice, contact, event, contractNumber, sup
   // Prepare template variables
 
   const totalAmount = invoice.total_amount || 0;
-  const depositAmount = invoice.deposit_amount || (totalAmount * 0.5);
-  const remainingBalance = totalAmount - depositAmount;
-
-  // Build payment schedule HTML
+  
+  // Check if invoice has a custom payment plan
   let paymentScheduleHtml = '';
-  if (invoice.line_items && invoice.line_items.length > 0) {
+  let depositAmount = null;
+  let remainingBalance = null;
+  let hasPaymentPlan = false;
+  
+  if (invoice.payment_plan && invoice.payment_plan.type === 'custom' && invoice.payment_plan.installments && invoice.payment_plan.installments.length > 0) {
+    // Use custom payment plan
+    hasPaymentPlan = true;
     paymentScheduleHtml = '<ul>';
-    paymentScheduleHtml += `<li>50% deposit ($${depositAmount.toFixed(2)}) due upon signing</li>`;
-    paymentScheduleHtml += `<li>50% balance ($${remainingBalance.toFixed(2)}) due 30 days before event</li>`;
+    const installments = invoice.payment_plan.installments;
+    
+    installments.forEach((inst: any) => {
+      const amount = inst.amount !== null && inst.amount !== undefined 
+        ? inst.amount 
+        : (inst.percentage && totalAmount > 0 ? (totalAmount * inst.percentage) / 100 : 0);
+      const percentage = inst.percentage !== null && inst.percentage !== undefined
+        ? inst.percentage
+        : (inst.amount && totalAmount > 0 ? (inst.amount / totalAmount) * 100 : 0);
+      
+      let dueDateText = '';
+      if (inst.due_date_type === 'upon_signing') {
+        dueDateText = 'due upon signing this contract';
+      } else if (inst.due_date_type === 'days_before_event') {
+        const days = inst.days_before_event || 30;
+        dueDateText = `due ${days} day${days !== 1 ? 's' : ''} before the event date`;
+      } else if (inst.due_date_type === 'specific_date' && inst.specific_date) {
+        const date = new Date(inst.specific_date);
+        dueDateText = `due on ${date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+      } else if (inst.due_date_type === 'invoice_due_date') {
+        dueDateText = 'due on the invoice due date';
+      } else {
+        dueDateText = 'due as specified';
+      }
+      
+      const name = inst.name || 'Payment';
+      const description = inst.description ? ` - ${inst.description}` : '';
+      paymentScheduleHtml += `<li><strong>${name} ($${amount.toFixed(2)}${percentage > 0 ? `, ${percentage.toFixed(1)}%` : ''})</strong> ${dueDateText}${description}</li>`;
+      
+      // Set deposit amount to first installment if it's "upon_signing"
+      if (inst.due_date_type === 'upon_signing' && installments.indexOf(inst) === 0) {
+        depositAmount = amount;
+      }
+    });
+    
     paymentScheduleHtml += '</ul>';
+    
+    // Calculate remaining balance (total minus all installments)
+    const totalAllocated = installments.reduce((sum: number, inst: any) => {
+      const amount = inst.amount !== null && inst.amount !== undefined 
+        ? inst.amount 
+        : (inst.percentage && totalAmount > 0 ? (totalAmount * inst.percentage) / 100 : 0);
+      return sum + amount;
+    }, 0);
+    remainingBalance = totalAmount - totalAllocated;
+  } else {
+    // No payment plan - no split by default
+    // Only use deposit_amount if explicitly set on invoice
+    if (invoice.deposit_amount !== null && invoice.deposit_amount !== undefined) {
+      depositAmount = invoice.deposit_amount;
+      remainingBalance = totalAmount - depositAmount;
+      hasPaymentPlan = true;
+      // Generate a simple payment schedule if deposit is set
+      const depositPercentage = totalAmount > 0 ? Math.round((depositAmount / totalAmount) * 100) : 0;
+      paymentScheduleHtml = '<ul>';
+      paymentScheduleHtml += `<li><strong>${depositPercentage}% deposit ($${depositAmount.toFixed(2)})</strong> due upon signing this contract</li>`;
+      if (remainingBalance > 0) {
+        paymentScheduleHtml += `<li><strong>Remaining balance ($${remainingBalance.toFixed(2)})</strong> due 30 days before the event date</li>`;
+      }
+      paymentScheduleHtml += '</ul>';
+    }
   }
+  
+  const depositPercentage = depositAmount !== null && totalAmount > 0 ? Math.round((depositAmount / totalAmount) * 100) : 0;
 
   const variables = {
     client_name: `${contact.first_name} ${contact.last_name}`,
@@ -84,9 +180,24 @@ async function generateContractHtml(invoice, contact, event, contractNumber, sup
     
     invoice_total: `$${totalAmount.toFixed(2)}`,
     invoice_subtotal: `$${totalAmount.toFixed(2)}`,
-    deposit_amount: `$${depositAmount.toFixed(2)}`,
-    remaining_balance: `$${remainingBalance.toFixed(2)}`,
-    payment_schedule: paymentScheduleHtml,
+    deposit_amount: depositAmount !== null ? `$${depositAmount.toFixed(2)}` : 'N/A',
+    remaining_balance: remainingBalance !== null ? `$${remainingBalance.toFixed(2)}` : 'N/A',
+    payment_schedule: hasPaymentPlan ? paymentScheduleHtml : '',
+    compensation_section: hasPaymentPlan 
+      ? `<p><strong>Initial Deposit (Due upon signing this contract):</strong> ${depositAmount !== null ? `$${depositAmount.toFixed(2)}` : 'N/A'}</p>
+<p><strong>Remaining Balance (Due 30 days before event):</strong> ${remainingBalance !== null ? `$${remainingBalance.toFixed(2)}` : 'N/A'}</p>
+<p><strong>Payment Schedule:</strong></p>
+${paymentScheduleHtml}`
+      : '<p>Payment terms are as specified in the associated invoice.</p>',
+    cancellation_policy_section: hasPaymentPlan
+      ? `<p><strong>Important:</strong> The initial deposit of ${depositAmount !== null ? `$${depositAmount.toFixed(2)}` : 'N/A'} is <strong>non-refundable</strong> for client-initiated cancellations once this contract is signed. The deposit will only be refunded if the Company cancels the event.</p>
+<ul>
+<li><strong>Client cancellations made 60+ days before event:</strong> Deposit is non-refundable. Remaining balance (if paid) will be refunded in full.</li>
+<li><strong>Client cancellations made 30-60 days before event:</strong> Deposit is non-refundable. 50% of remaining balance (if paid) will be refunded.</li>
+<li><strong>Client cancellations made less than 30 days before event:</strong> All payments are non-refundable.</li>
+<li><strong>In case of Company cancellation:</strong> Full refund of all payments, including deposit.</li>
+</ul>`
+      : '<p>Cancellation terms are as specified in the associated invoice and payment agreement.</p>',
     total_amount: `$${totalAmount.toFixed(2)}`,
     
     contract_number: contractNumber,
@@ -169,19 +280,12 @@ li { margin: 5px 0; }
 <div class="section">
 <h2>3. COMPENSATION</h2>
 <p><strong>Total Contract Amount:</strong> {{invoice_total}}</p>
-<p><strong>Initial Deposit (Due upon signing):</strong> {{deposit_amount}}</p>
-<p><strong>Remaining Balance:</strong> {{remaining_balance}}</p>
-<p>{{payment_schedule}}</p>
+{{compensation_section}}
 </div>
 
 <div class="section">
 <h2>4. CANCELLATION POLICY</h2>
-<ul>
-<li>Cancellations made 60+ days before event: Full refund minus 10% booking fee</li>
-<li>Cancellations made 30-60 days before event: 50% of total amount refunded</li>
-<li>Cancellations made less than 30 days before event: Non-refundable</li>
-<li>In case of Company cancellation: Full refund of all payments</li>
-</ul>
+{{cancellation_policy_section}}
 </div>
 
 <div class="section">
