@@ -103,6 +103,7 @@ export default function App({ Component, pageProps }) {
   const router = useRouter();
   const isAdminRoute = router.pathname.startsWith('/admin') || router.pathname.startsWith('/chat');
   const isSignInPage = router.pathname.startsWith('/signin');
+  const isSignContractPage = router.pathname.startsWith('/sign-contract');
   // Check for requests pages - includes both /requests and /organizations/[slug]/requests
   const isRequestsPage = router.pathname === '/requests' || 
     router.pathname.startsWith('/crowd-request') || 
