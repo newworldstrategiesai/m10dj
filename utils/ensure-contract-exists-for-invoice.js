@@ -97,7 +97,7 @@ export async function generateContractHtml(invoice, contact, event, contractNumb
     paymentScheduleHtml = '<ul>';
     const installments = invoice.payment_plan.installments;
     
-    installments.forEach((inst: any) => {
+    installments.forEach((inst) => {
       const amount = inst.amount !== null && inst.amount !== undefined 
         ? inst.amount 
         : (inst.percentage && totalAmount > 0 ? (totalAmount * inst.percentage) / 100 : 0);
@@ -133,7 +133,7 @@ export async function generateContractHtml(invoice, contact, event, contractNumb
     paymentScheduleHtml += '</ul>';
     
     // Calculate remaining balance (total minus all installments)
-    const totalAllocated = installments.reduce((sum: number, inst: any) => {
+    const totalAllocated = installments.reduce((sum, inst) => {
       const amount = inst.amount !== null && inst.amount !== undefined 
         ? inst.amount 
         : (inst.percentage && totalAmount > 0 ? (totalAmount * inst.percentage) / 100 : 0);
