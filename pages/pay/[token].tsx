@@ -242,27 +242,70 @@ export default function PaymentPage() {
                 </div>
               </div>
 
-              {/* Contract Status Banner */}
-              {invoice?.contract?.status === 'signed' && (
-                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-4 shadow-sm">
+              {/* Contract Status Banner - Always Show */}
+              {invoice?.contract && invoice.contract.signing_url && (
+                <div className={`border-2 rounded-xl p-4 shadow-sm ${
+                  invoice.contract.status === 'signed' 
+                    ? 'bg-green-50 border-green-300' 
+                    : 'bg-blue-50 border-blue-300'
+                }`}>
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        invoice.contract.status === 'signed' 
+                          ? 'bg-green-100' 
+                          : 'bg-blue-100'
+                      }`}>
+                        {invoice.contract.status === 'signed' ? (
+                          <CheckCircle className="w-6 h-6 text-green-600" />
+                        ) : (
+                          <FileText className="w-6 h-6 text-blue-600" />
+                        )}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-green-900 mb-1 flex items-center gap-2">
-                        Contract Signed ✓
+                      <h3 className={`font-semibold mb-1 ${
+                        invoice.contract.status === 'signed' 
+                          ? 'text-green-900' 
+                          : 'text-blue-900'
+                      }`}>
+                        {invoice.contract.status === 'signed' 
+                          ? 'Contract Signed ✓' 
+                          : 'Contract Not Yet Signed'}
                       </h3>
-                      <p className="text-sm text-green-700">
-                        Your service agreement has been signed. Complete your payment below to finalize your booking.
+                      <p className={`text-sm mb-3 ${
+                        invoice.contract.status === 'signed' 
+                          ? 'text-green-700' 
+                          : 'text-blue-700'
+                      }`}>
+                        {invoice.contract.status === 'signed' 
+                          ? 'Your service agreement has been signed. Complete your payment below to finalize your booking.'
+                          : 'Please sign your service agreement. Click the button below to view and sign your contract.'}
                       </p>
-                      {invoice?.contract?.contract_number && (
-                        <p className="text-xs text-green-600 mt-2">
+                      {invoice.contract.contract_number && (
+                        <p className={`text-xs mb-3 ${
+                          invoice.contract.status === 'signed' 
+                            ? 'text-green-600' 
+                            : 'text-blue-600'
+                        }`}>
                           Contract #{invoice.contract.contract_number}
                         </p>
                       )}
+                      <a
+                        href={invoice.contract.signing_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          invoice.contract.status === 'signed'
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
+                      >
+                        <FileText className="w-4 h-4" />
+                        {invoice.contract.status === 'signed' 
+                          ? 'View Signed Contract' 
+                          : 'Sign Contract Now'}
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -477,39 +520,70 @@ export default function PaymentPage() {
                       )}
                     </div>
 
-                    {/* Contract Status Section */}
-                    {invoice?.contract?.signing_url && invoice.contract.status !== 'signed' && (
-                      <a
-                        href={invoice.contract.signing_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 mb-3"
-                      >
-                        <FileText className="w-5 h-5" />
-                        Sign Contract
-                      </a>
-                    )}
-
-                    {invoice?.contract?.status === 'signed' && (
-                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg p-4 mb-4">
-                        <div className="flex items-center gap-3">
+                    {/* Contract Status Section in Sidebar - Always Show */}
+                    {invoice?.contract && invoice.contract.signing_url && (
+                      <div className={`mb-4 rounded-lg p-4 border-2 ${
+                        invoice.contract.status === 'signed' 
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' 
+                          : 'bg-blue-50 border-blue-300'
+                      }`}>
+                        <div className="flex items-start gap-3 mb-3">
                           <div className="flex-shrink-0">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                              <CheckCircle className="w-6 h-6 text-green-600" />
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              invoice.contract.status === 'signed' 
+                                ? 'bg-green-100' 
+                                : 'bg-blue-100'
+                            }`}>
+                              {invoice.contract.status === 'signed' ? (
+                                <CheckCircle className="w-5 h-5 text-green-600" />
+                              ) : (
+                                <FileText className="w-5 h-5 text-blue-600" />
+                              )}
                             </div>
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-green-900 mb-1">Contract Signed ✓</p>
-                            <p className="text-sm text-green-700">
-                              Your service agreement has been executed. You're ready to complete payment.
+                            <p className={`font-semibold mb-1 ${
+                              invoice.contract.status === 'signed' 
+                                ? 'text-green-900' 
+                                : 'text-blue-900'
+                            }`}>
+                              {invoice.contract.status === 'signed' ? 'Contract Signed ✓' : 'Contract Status'}
                             </p>
-                            {invoice?.contract?.contract_number && (
-                              <p className="text-xs text-green-600 mt-1">
+                            <p className={`text-sm ${
+                              invoice.contract.status === 'signed' 
+                                ? 'text-green-700' 
+                                : 'text-blue-700'
+                            }`}>
+                              {invoice.contract.status === 'signed' 
+                                ? "Your service agreement has been executed."
+                                : "Please sign your service agreement before payment."}
+                            </p>
+                            {invoice.contract.contract_number && (
+                              <p className={`text-xs mt-1 ${
+                                invoice.contract.status === 'signed' 
+                                  ? 'text-green-600' 
+                                  : 'text-blue-600'
+                              }`}>
                                 Contract #{invoice.contract.contract_number}
                               </p>
                             )}
                           </div>
                         </div>
+                        <a
+                          href={invoice.contract.signing_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            invoice.contract.status === 'signed'
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
+                        >
+                          <FileText className="w-4 h-4" />
+                          {invoice.contract.status === 'signed' 
+                            ? 'View Signed Contract' 
+                            : 'Sign Contract'}
+                        </a>
                       </div>
                     )}
 

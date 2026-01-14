@@ -19,6 +19,10 @@ interface ContractData {
   event_date: string;
   total_amount: number;
   status: string;
+  signed_at?: string;
+  signed_by_client?: string;
+  signed_by_client_email?: string;
+  client_signature_data?: string;
   contact: {
     first_name: string;
     last_name: string;
@@ -59,13 +63,16 @@ export default function SignContractPage() {
         throw new Error(data.error || 'Invalid or expired contract link');
       }
 
-      if (data.contract.status === 'signed') {
-        setError('This contract has already been signed.');
+      if (data.contract.status === 'expired') {
+        setError('This contract link has expired. Please contact us for a new link.');
         return;
       }
 
-      if (data.contract.status === 'expired') {
-        setError('This contract link has expired. Please contact us for a new link.');
+      // If contract is already signed, show it in view-only mode
+      if (data.contract.status === 'signed') {
+        setContractData(data.contract);
+        setSigned(true); // Show signed view
+        setLoading(false);
         return;
       }
 
@@ -186,43 +193,89 @@ export default function SignContractPage() {
           <title>Contract Signed - M10 DJ Company</title>
         </Head>
 
-        <div className="max-w-3xl mx-auto">
-          {/* Success Header */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-10 h-10 text-green-600" />
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+                  Contract Signed ✓
+                </h1>
+                <p className="text-gray-600">
+                  {contractData?.event_name} - {contractData?.event_date ? new Date(contractData.event_date).toLocaleDateString() : 'N/A'}
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Contract #{contractData?.contract_number}
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-gray-900">
+                  ${contractData?.total_amount.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-500">Total Amount</div>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Contract Signed Successfully! 🎉
-            </h1>
-            <p className="text-gray-600">
-              Thank you for signing the contract. A copy has been sent to your email.
-            </p>
           </div>
 
-          {/* Contract Details */}
+          {/* Contract Content */}
           <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Contract Details</h2>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Contract Number:</span>
-                <span className="font-semibold text-gray-900">{contractData?.contract_number}</span>
+            <div className="mb-6">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-2 text-green-800 mb-2">
+                  <CheckCircle className="w-5 h-5" />
+                  <p className="font-semibold">This contract has been signed</p>
+                </div>
+                {contractData && (
+                  <div className="mt-3 text-sm text-green-700 space-y-1">
+                    {contractData.signed_by_client && (
+                      <p>Signed by: <strong>{contractData.signed_by_client}</strong></p>
+                    )}
+                    {contractData.signed_at && (
+                      <p>Signed on: <strong>{new Date(contractData.signed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong></p>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Event:</span>
-                <span className="font-semibold text-gray-900">{contractData?.event_name}</span>
+            </div>
+
+            {/* Contract HTML Content */}
+            <div className="max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg p-6 mb-6 bg-gray-50">
+              <div 
+                className="prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: contractData?.contract_html || '' }}
+              />
+            </div>
+
+            {/* Signature Display (if available) */}
+            {contractData?.client_signature_data && (
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Signature</h3>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <img 
+                    src={contractData.client_signature_data} 
+                    alt="Contract Signature" 
+                    className="max-w-xs h-auto border border-gray-300 bg-white p-2 rounded"
+                  />
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Event Date:</span>
-                <span className="font-semibold text-gray-900">
-                  {contractData?.event_date ? new Date(contractData.event_date).toLocaleDateString() : 'N/A'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Amount:</span>
-                <span className="font-semibold text-gray-900">
-                  ${contractData?.total_amount.toLocaleString()}
-                </span>
+            )}
+
+            {/* Download/Print Options */}
+            <div className="flex items-center justify-between pt-6 border-t border-gray-200 mt-6">
+              <p className="text-sm text-gray-500">
+                A copy of this signed contract has been sent to your email.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Print
+                </button>
               </div>
             </div>
           </div>
