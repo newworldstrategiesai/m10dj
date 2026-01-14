@@ -396,19 +396,19 @@ export default function SignContractPage() {
           </div>
 
           {/* Next Steps */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-            <h3 className="font-semibold text-blue-900 mb-3">What's Next?</h3>
-            <ul className="space-y-2 text-sm text-blue-800">
+          <div className="bg-gray-50 border border-gray-300 p-6">
+            <h3 className="font-semibold text-black mb-3">What's Next?</h3>
+            <ul className="space-y-2 text-sm text-gray-700">
               <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-black" />
                 <span>A signed copy of the contract has been sent to your email</span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-black" />
                 <span>You will receive an invoice for the deposit payment</span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-black" />
                 <span>We'll be in touch to finalize event details</span>
               </li>
             </ul>
