@@ -300,7 +300,7 @@ export default function SignContractPage() {
 
   if (signed) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-4 sm:py-8 px-4">
+      <div className="min-h-screen bg-white py-4 sm:py-8 px-4">
         <Head>
           <title>Contract Signed - M10 DJ Company</title>
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
@@ -308,43 +308,43 @@ export default function SignContractPage() {
 
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
+          <div className="bg-white border border-gray-300 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
             <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
               <div className="flex items-start gap-3 sm:gap-4 flex-1 w-full sm:w-auto">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 border border-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-bold text-black mb-1 flex items-center gap-2">
                     Contract Signed ✓
                   </h1>
-                  <p className="text-sm sm:text-base text-gray-600 break-words">
+                  <p className="text-sm sm:text-base text-gray-700 break-words">
                     {contractData?.event_name} - {contractData?.event_date ? new Date(contractData.event_date).toLocaleDateString() : 'N/A'}
                   </p>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2">
                     Contract #{contractData?.contract_number}
                   </p>
                 </div>
               </div>
               <div className="text-left sm:text-right w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 mt-3 sm:mt-0">
-                <div className="text-xl sm:text-2xl font-bold text-gray-900">
+                <div className="text-xl sm:text-2xl font-bold text-black">
                   ${contractData?.total_amount.toLocaleString()}
                 </div>
-                <div className="text-xs sm:text-sm text-gray-500">Total Amount</div>
+                <div className="text-xs sm:text-sm text-gray-600">Total Amount</div>
               </div>
             </div>
           </div>
 
           {/* Contract Content */}
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
+          <div className="bg-white border border-gray-300 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
             <div className="mb-4 sm:mb-6">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-                <div className="flex items-center gap-2 text-green-800 mb-2">
+              <div className="bg-gray-50 border border-gray-300 p-3 sm:p-4 mb-4 sm:mb-6">
+                <div className="flex items-center gap-2 text-black mb-2">
                   <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                   <p className="font-semibold text-sm sm:text-base">This contract has been signed</p>
                 </div>
                 {contractData && (
-                  <div className="mt-3 text-xs sm:text-sm text-green-700 space-y-1">
+                  <div className="mt-3 text-xs sm:text-sm text-gray-700 space-y-1">
                     {contractData.signed_by_client && (
                       <p>Signed by: <strong>{contractData.signed_by_client}</strong></p>
                     )}
