@@ -65,8 +65,21 @@ export default function SignContractPage() {
   // Use event delegation on the contract content container
   useEffect(() => {
     const contractContent = contractContentRef.current;
-    if (!contractContent) return;
+    if (!contractContent) {
+      // Retry if ref not ready yet
+      const timer = setTimeout(() => {
+        const retryContent = contractContentRef.current;
+        if (retryContent && (contractHtmlWithSignatures || contractData?.contract_html)) {
+          setupEventDelegation(retryContent);
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    }
 
+    setupEventDelegation(contractContent);
+  }, [contractHtmlWithSignatures, contractData?.contract_html, signatureData, ownerSignatureData]);
+
+  const setupEventDelegation = (contractContent: HTMLDivElement) => {
     const handleSignatureClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       // Check if click is on signature area or its children
@@ -83,7 +96,9 @@ export default function SignContractPage() {
       console.log('[sign-contract] Signature area clicked:', {
         signerType,
         hasSignature,
-        signatureAreaId: signatureArea.id
+        signatureAreaId: signatureArea.id,
+        target: target.tagName,
+        targetId: target.id
       });
       
       if (!hasSignature) {
@@ -92,12 +107,12 @@ export default function SignContractPage() {
       }
     };
 
+    // Remove any existing listener first
+    contractContent.removeEventListener('click', handleSignatureClick as EventListener);
     contractContent.addEventListener('click', handleSignatureClick);
     
-    return () => {
-      contractContent.removeEventListener('click', handleSignatureClick);
-    };
-  }, [contractContentRef, signatureData, ownerSignatureData]);
+    console.log('[sign-contract] Event delegation set up on contract content');
+  };
 
   const validateToken = async () => {
     setLoading(true);
