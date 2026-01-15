@@ -429,7 +429,7 @@ export default function InvoiceEmailActions({
 
             {/* Preview Tab */}
             <TabsContent value="preview" className="flex-1 flex flex-col overflow-hidden m-0 px-6 pb-6 data-[state=active]:flex">
-              {loading === 'preview' ? (
+              {(loading === 'preview' || savingEmail) ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
                     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#fcba00]" />
