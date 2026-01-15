@@ -596,8 +596,9 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
   // Totals Section
   const totalsX = 370;
   // Right-aligned position for amounts (consistent across all totals)
-  const amountX = 535; // Position near right edge to prevent wrapping
-  const amountWidth = 65; // Sufficient width for currency values
+  // Page width is 545 (50 margin + 495 content), so we'll end at 540 with 5px padding
+  const amountX = 540; // Position near right edge with padding
+  const amountWidth = 70; // Sufficient width for currency values (allows for large amounts)
   
   // Calculate subtotal from line items if invoice subtotal is 0 or missing
   const calculatedSubtotal = lineItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);

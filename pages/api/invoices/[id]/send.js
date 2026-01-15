@@ -71,7 +71,12 @@ export default async function handler(req, res) {
     let pdfBuffer = null;
     if (attachPDF) {
       try {
-        pdfBuffer = await generateInvoicePDFBuffer(invoice, supabaseAdmin);
+        // Ensure invoice has contact info for PDF generation
+        const invoiceWithContact = {
+          ...invoice,
+          contacts: invoice.contacts
+        };
+        pdfBuffer = await generateInvoicePDFBuffer(invoiceWithContact, supabaseAdmin);
         console.log(`✅ Generated PDF buffer: ${pdfBuffer.length} bytes`);
       } catch (pdfError) {
         console.error('Error generating PDF for attachment:', pdfError);

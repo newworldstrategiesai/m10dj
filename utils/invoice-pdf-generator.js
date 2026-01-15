@@ -297,25 +297,30 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
   const tax = invoice.tax || 0;
   const total = invoice.total_amount || (subtotal + tax);
 
+  // Totals section - ensure proper alignment with padding from right edge
+  const totalsLabelX = 400;
+  const totalsAmountX = 540; // End at 540 with 5px padding from right edge (545)
+  const totalsAmountWidth = 70; // Sufficient width for currency values
+
   doc
     .fontSize(11)
     .fillColor(darkGray)
     .font('Helvetica')
-    .text('Subtotal:', 400, yPosition, { align: 'right', width: 145 })
-    .text(formatCurrency(subtotal), 500, yPosition, { align: 'right' });
+    .text('Subtotal:', totalsLabelX, yPosition)
+    .text(formatCurrency(subtotal), totalsAmountX, yPosition, { align: 'right', width: totalsAmountWidth });
 
   if (tax > 0) {
     yPosition += 18;
     doc
-      .text('Tax:', 400, yPosition, { align: 'right', width: 145 })
-      .text(formatCurrency(tax), 500, yPosition, { align: 'right' });
+      .text('Tax:', totalsLabelX, yPosition)
+      .text(formatCurrency(tax), totalsAmountX, yPosition, { align: 'right', width: totalsAmountWidth });
   }
 
   yPosition += 20;
   doc
     .strokeColor(brandGold)
     .lineWidth(2)
-    .moveTo(400, yPosition)
+    .moveTo(totalsLabelX, yPosition)
     .lineTo(545, yPosition)
     .stroke();
 
@@ -324,8 +329,8 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
     .fontSize(14)
     .fillColor(darkGray)
     .font('Helvetica-Bold')
-    .text('Total:', 400, yPosition, { align: 'right', width: 145 })
-    .text(formatCurrency(total), 500, yPosition, { align: 'right' });
+    .text('Total:', totalsLabelX, yPosition)
+    .text(formatCurrency(total), totalsAmountX, yPosition, { align: 'right', width: totalsAmountWidth });
 
   yPosition += 40;
 
