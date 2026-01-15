@@ -2379,7 +2379,7 @@ export default function InvoiceDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
             {/* Client Info */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Bill To</h3>
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-500 uppercase mb-3">Bill To</h3>
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
                   <User className="h-5 w-5 text-gray-400 mt-0.5" />
@@ -2491,9 +2491,9 @@ export default function InvoiceDetailPage() {
 
             {/* Email Tracking */}
             {emailTracking.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Email Status</h3>
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+              <div className="mb-4 sm:mb-6">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-500 uppercase mb-3">Email Status</h3>
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
                   {emailTracking.map((track: any) => {
                     const sentEvent = emailTracking.find((t: any) => t.email_id === track.email_id && t.event_type === 'sent');
                     const openedEvent = emailTracking.find((t: any) => t.email_id === track.email_id && t.event_type === 'opened');
@@ -3072,31 +3072,31 @@ export default function InvoiceDetailPage() {
 
         {/* Payment History */}
         {payments.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">Payment History</h2>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4 sm:mb-6">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Payment History</h2>
             </div>
-            <div className="p-6">
-              <div className="space-y-4">
+            <div className="p-4 sm:p-6">
+              <div className="space-y-3 sm:space-y-4">
                 {payments.map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-green-100 p-3 rounded-full">
-                        <CreditCard className="h-5 w-5 text-green-600" />
+                  <div key={payment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200 gap-3">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1">
+                      <div className="bg-green-100 p-2 sm:p-3 rounded-full flex-shrink-0">
+                        <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{formatCurrency(payment.amount)}</p>
-                        <p className="text-sm text-gray-600">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm sm:text-base">{formatCurrency(payment.amount)}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">
                           {formatDate(payment.payment_date)} • {payment.payment_method}
                         </p>
                         {payment.transaction_id && (
-                          <p className="text-xs text-gray-500 mt-1">Transaction: {payment.transaction_id}</p>
+                          <p className="text-xs text-gray-500 mt-1 break-all">Transaction: {payment.transaction_id}</p>
                         )}
                       </div>
                     </div>
-                    <Badge className="bg-green-100 text-green-800 border-green-200">
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      {payment.payment_status}
+                    <Badge className="bg-green-100 text-green-800 border-green-200 self-start sm:self-auto">
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                      <span className="text-xs sm:text-sm">{payment.payment_status}</span>
                     </Badge>
                   </div>
                 ))}
@@ -3107,9 +3107,9 @@ export default function InvoiceDetailPage() {
 
         {/* Notes */}
         {invoice.notes && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-3">Notes</h3>
-            <p className="text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3">Notes</h3>
+            <p className="text-sm sm:text-base text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
           </div>
         )}
       </div>
