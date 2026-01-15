@@ -82,7 +82,8 @@ interface InvoiceLineItem {
 
 interface Payment {
   id: string;
-  payment_date: string;
+  transaction_date: string; // Database column is transaction_date, not payment_date
+  payment_date?: string; // Keep for backward compatibility
   amount: number;
   payment_method: string;
   payment_status: string;
@@ -1820,17 +1821,21 @@ export default function InvoiceDetailPage() {
               .from('payments')
               .select('*')
               .eq('invoice_id', id)
-              .order('payment_date', { ascending: false });
+              .order('transaction_date', { ascending: false });
             
             if (paymentsError) {
               console.warn('Error fetching payments:', paymentsError);
             } else if (fallbackPayments) {
-              paymentsData = fallbackPayments;
-              const totalPaid = fallbackPayments.reduce((sum: number, p: any) => 
-                sum + (parseFloat(p.amount?.toString() || '0') || 0), 0);
+              // Map transaction_date to payment_date for backward compatibility
+              paymentsData = fallbackPayments.map((p: any) => ({
+                ...p,
+                payment_date: p.transaction_date || p.payment_date
+              }));
+              const totalPaid = paymentsData.reduce((sum: number, p: any) => 
+                sum + (parseFloat(p.total_amount?.toString() || p.amount?.toString() || '0') || 0), 0);
               hasPayment = totalPaid > 0;
               if (hasPayment) {
-                paymentData = { totalPaid, payments: fallbackPayments };
+                paymentData = { totalPaid, payments: paymentsData };
               }
             }
           } catch (fallbackError) {
@@ -3090,7 +3095,7 @@ export default function InvoiceDetailPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 text-sm sm:text-base">{formatCurrency(payment.amount)}</p>
                         <p className="text-xs sm:text-sm text-gray-600">
-                          {formatDate(payment.payment_date)} • {payment.payment_method}
+                          {formatDate(payment.transaction_date || payment.payment_date)} • {payment.payment_method}
                         </p>
                         {payment.transaction_id && (
                           <p className="text-xs text-gray-500 mt-1 break-all">Transaction: {payment.transaction_id}</p>
