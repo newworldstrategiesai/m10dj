@@ -50,12 +50,20 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
+    // Use invoice_email_address if present, otherwise use contact email
+    const invoiceEmail = invoice.invoice_email_address || invoice.contacts?.email_address;
+    
     // Allow preview even without email (use placeholder)
     const contact = invoice.contacts || {
       first_name: 'Client',
       last_name: '',
       email_address: null
     };
+    
+    // Override contact email with invoice email if present
+    if (invoiceEmail) {
+      contact.email_address = invoiceEmail;
+    }
 
     // Ensure invoice has payment token (generate if needed for preview)
     let paymentToken = invoice.payment_token;
@@ -64,7 +72,7 @@ export default async function handler(req, res) {
     }
 
     // Return special code if email is missing (so component can prompt admin)
-    const hasEmail = contact.email_address;
+    const hasEmail = !!invoiceEmail;
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
     const paymentLink = `${baseUrl}/pay/${paymentToken}`;
     const logoUrl = `${baseUrl}/m10-black-clear-png.png`;
