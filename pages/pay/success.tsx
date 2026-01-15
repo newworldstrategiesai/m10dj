@@ -66,15 +66,19 @@ export default function PaymentSuccess() {
   };
 
   useEffect(() => {
-    // Trigger confetti when page loads and payment is confirmed
-    if (!loading && paymentDetails && !confettiTriggered) {
-      triggerConfetti({
-        duration: 3000,
-        colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#9333ea', '#ec4899']
-      });
-      setConfettiTriggered(true);
+    // Trigger confetti when payment is confirmed (session_id means payment was successful)
+    // For standalone invoices, trigger confetti even without full paymentDetails
+    if (!loading && !confettiTriggered) {
+      if (session_id || paymentDetails) {
+        triggerConfetti({
+          duration: 4000,
+          particleCount: 150,
+          colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#9333ea', '#ec4899', '#fcba00']
+        });
+        setConfettiTriggered(true);
+      }
     }
-  }, [loading, paymentDetails, confettiTriggered]);
+  }, [loading, paymentDetails, session_id, confettiTriggered]);
 
   const fetchPaymentDetails = async () => {
     try {
@@ -82,9 +86,26 @@ export default function PaymentSuccess() {
       if (response.ok) {
         const data = await response.json();
         setPaymentDetails(data);
+      } else {
+        // Even if API call fails, payment was successful (we have session_id)
+        // Set minimal payment details so success screen can still show
+        setPaymentDetails({
+          success: true,
+          status: 'paid',
+          amount: null, // Will be shown as "processed successfully" without amount
+          transaction_id: session_id
+        });
       }
     } catch (error) {
       console.error('Error fetching payment details:', error);
+      // Payment was successful even if we can't fetch details
+      // Set minimal payment details for helpful default screen
+      setPaymentDetails({
+        success: true,
+        status: 'paid',
+        amount: null,
+        transaction_id: session_id
+      });
     } finally {
       setLoading(false);
     }
@@ -260,38 +281,44 @@ export default function PaymentSuccess() {
                       Payment Details
                     </h2>
                     
-                    {paymentDetails ? (
-                      <div className="space-y-3">
-                        {paymentDetails.invoice_number && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Invoice Number:</span>
-                            <span className="font-semibold text-gray-900">{paymentDetails.invoice_number}</span>
-                          </div>
-                        )}
-                        {paymentDetails.amount && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Amount Paid:</span>
-                            <span className="font-semibold text-green-600 text-lg">${paymentDetails.amount.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Payment Date:</span>
-                          <span className="font-semibold text-gray-900">{new Date().toLocaleDateString()}</span>
+                    <div className="space-y-3">
+                      {paymentDetails?.invoice_number && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Invoice Number:</span>
+                          <span className="font-semibold text-gray-900">{paymentDetails.invoice_number}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Payment Method:</span>
-                          <span className="font-semibold text-gray-900">Credit Card</span>
+                      )}
+                      {paymentDetails?.amount ? (
+                        <div className="flex justify-between items-center pt-3 pb-3 border-t border-gray-200 border-b border-gray-200">
+                          <span className="text-gray-600 font-medium text-base">Amount Paid:</span>
+                          <span className="font-bold text-green-600 text-3xl">${paymentDetails.amount.toFixed(2)}</span>
                         </div>
-                        {paymentDetails.transaction_id && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Transaction ID:</span>
-                            <span className="font-mono text-xs text-gray-900">{paymentDetails.transaction_id}</span>
+                      ) : (
+                        <div className="flex items-center justify-center py-6 pt-3 pb-3 border-t border-gray-200 border-b border-gray-200">
+                          <div className="text-center">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                              <CheckCircle className="w-10 h-10 text-green-600" />
+                            </div>
+                            <p className="text-gray-700 font-bold text-lg mb-1">Payment Processed Successfully!</p>
+                            <p className="text-sm text-gray-600">A receipt will be sent to your email shortly.</p>
                           </div>
-                        )}
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
+                        <span className="text-gray-600">Payment Date:</span>
+                        <span className="font-semibold text-gray-900">{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                       </div>
-                    ) : (
-                      <p className="text-gray-600">Your payment has been processed successfully.</p>
-                    )}
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Payment Method:</span>
+                        <span className="font-semibold text-gray-900">Credit Card (Stripe)</span>
+                      </div>
+                      {paymentDetails?.transaction_id && (
+                        <div className="flex justify-between items-start pt-2 border-t border-gray-200">
+                          <span className="text-gray-600 text-xs">Transaction ID:</span>
+                          <span className="font-mono text-xs text-gray-500 break-all text-right max-w-[60%]">{paymentDetails.transaction_id}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -415,15 +442,17 @@ export default function PaymentSuccess() {
                 <div className={`border rounded-xl p-6 mb-6 ${
                   paymentDetails?.contract?.status === 'signed'
                     ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+                    : session_id && !paymentDetails?.contract
+                    ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' // Standalone invoice payment
                     : 'bg-blue-50 border-blue-200'
                 }`}>
                   <h3 className={`font-semibold mb-4 flex items-center gap-2 ${
-                    paymentDetails?.contract?.status === 'signed'
+                    paymentDetails?.contract?.status === 'signed' || (session_id && !paymentDetails?.contract)
                       ? 'text-green-900'
                       : 'text-blue-900'
                   }`}>
                     <Calendar className="w-5 h-5" />
-                    {paymentDetails?.contract?.status === 'signed' 
+                    {paymentDetails?.contract?.status === 'signed' || (session_id && !paymentDetails?.contract)
                       ? 'What Happens Next?' 
                       : 'What\'s Next?'}
                   </h3>
@@ -449,6 +478,35 @@ export default function PaymentSuccess() {
                           <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                           <span className="text-green-800">We'll be in touch soon to finalize event details</span>
                         </li>
+                      </>
+                    ) : session_id && !paymentDetails?.contract ? (
+                      <>
+                        {/* Standalone invoice payment - helpful default message */}
+                        <li className="flex items-start gap-3">
+                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <span className="font-semibold text-green-900">Payment confirmed!</span>
+                            <span className="text-green-800"> Your invoice payment has been processed successfully.</span>
+                          </div>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span className="text-green-800">A receipt has been sent to your email address</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span className="text-green-800">Stripe will also send you a payment confirmation</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span className="text-green-800">Your payment records are updated and secure</span>
+                        </li>
+                        {paymentDetails?.invoice_number && (
+                          <li className="flex items-start gap-3">
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                            <span className="text-green-800">Invoice <strong>{paymentDetails.invoice_number}</strong> has been marked as paid</span>
+                          </li>
+                        )}
                       </>
                     ) : (
                       <>
@@ -513,7 +571,7 @@ export default function PaymentSuccess() {
                     <Home className="w-4 h-4" />
                     Back to Website
                   </a>
-                  {paymentDetails?.invoice_id && (
+                  {(paymentDetails?.invoice_id || session_id) && (
                     <button
                       onClick={() => window.print()}
                       className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold rounded-lg transition-colors"
