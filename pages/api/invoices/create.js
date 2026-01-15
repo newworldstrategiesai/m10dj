@@ -139,7 +139,37 @@ export default async function handler(req, res) {
     }
 
     // Ensure organization_id is set (required for RLS)
-    const finalOrgId = contact.organization_id || orgId;
+    let finalOrgId = contact.organization_id || orgId;
+    
+    // If super admin and no organization_id found, default to M10 platform owner organization
+    if (!finalOrgId && isAdmin) {
+      console.log('[create-invoice] Super admin creating invoice without organization_id, finding M10 platform owner org...');
+      const { data: m10Org, error: m10OrgError } = await adminSupabase
+        .from('organizations')
+        .select('id')
+        .eq('is_platform_owner', true)
+        .single();
+      
+      if (m10Org && !m10OrgError) {
+        finalOrgId = m10Org.id;
+        console.log('[create-invoice] Using M10 platform owner organization:', finalOrgId);
+      } else {
+        console.warn('[create-invoice] Could not find M10 platform owner organization:', m10OrgError);
+        // Fallback: try to find any organization with M10 in the name
+        const { data: fallbackOrg } = await adminSupabase
+          .from('organizations')
+          .select('id')
+          .or('name.ilike.%m10%,slug.ilike.%m10%')
+          .limit(1)
+          .single();
+        
+        if (fallbackOrg) {
+          finalOrgId = fallbackOrg.id;
+          console.log('[create-invoice] Using fallback M10 organization:', finalOrgId);
+        }
+      }
+    }
+    
     if (!finalOrgId && !isAdmin) {
       console.error('Missing organization_id for invoice creation:', { contactId, orgId, contactOrgId: contact.organization_id });
       return res.status(400).json({ 

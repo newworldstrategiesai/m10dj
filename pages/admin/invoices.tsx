@@ -141,43 +141,49 @@ export default function InvoicesDashboard() {
 
       console.log('👤 User ID:', user.id);
 
-      // Get user's organization
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single();
+      // Check if user is platform admin
+      const { isPlatformAdmin } = await import('@/utils/auth-helpers/platform-admin');
+      const isAdmin = isPlatformAdmin(user.email);
       
-      console.log('🏢 Organization:', org, 'Error:', orgError);
+      console.log('👑 Is Platform Admin:', isAdmin);
 
-      // Check if invoices exist at all (bypass RLS check)
-      try {
-        const checkResponse = await fetch('/api/admin/check-invoices');
-        const checkData = await checkResponse.json();
-        console.log('📊 Invoice check:', checkData);
-      } catch (checkError) {
-        console.warn('Could not check invoices:', checkError);
+      // Get user's organization (only needed for non-admins)
+      let orgId = null;
+      if (!isAdmin) {
+        const { data: org, error: orgError } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('owner_id', user.id)
+          .single();
+        
+        console.log('🏢 Organization:', org, 'Error:', orgError);
+
+        if (orgError || !org) {
+          console.warn('No organization found for user:', orgError);
+          setInvoices([]);
+          calculateStats([]);
+          setLoading(false);
+          return;
+        }
+
+        orgId = (org as any).id;
       }
 
-      if (orgError || !org) {
-        console.warn('No organization found for user:', orgError);
-        setInvoices([]);
-        calculateStats([]);
-        setLoading(false);
-        return;
-      }
-
-      const orgId = (org as any).id;
-      console.log(`🔍 Fetching invoices for organization: ${orgId}`);
+      console.log(`🔍 Fetching invoices${isAdmin ? ' (all - platform admin)' : ` for organization: ${orgId}`}`);
       
-      // First, try to fetch invoices filtered by organization
-      // Add cache-busting to ensure fresh data
-      let { data, error } = await supabase
+      // Fetch invoices - platform admins see all, others filtered by organization
+      let query = supabase
         .from('invoice_summary')
         .select('*')
-        .eq('organization_id', orgId)
         .order('invoice_date', { ascending: false })
         .limit(1000); // Increase limit to catch all invoices
+      
+      // Only filter by organization if not platform admin
+      if (!isAdmin && orgId) {
+        query = query.eq('organization_id', orgId);
+      }
+      
+      let { data, error } = await query;
       
       // Type assertion for invoice data
       const invoiceData = (data || []) as any[];
@@ -185,6 +191,7 @@ export default function InvoicesDashboard() {
       console.log(`📊 Query result:`, { 
         dataCount: invoiceData?.length || 0, 
         error: error?.message,
+        isAdmin,
         organization_id: orgId,
         sampleInvoice: invoiceData?.[0] ? {
           id: invoiceData[0].id,
@@ -196,60 +203,42 @@ export default function InvoicesDashboard() {
       
       if (error) {
         console.error('Error fetching invoices:', error);
-        // If the view doesn't have organization_id yet, try without filter
-        if (error.message?.includes('organization_id')) {
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('invoice_summary')
-            .select('*')
-            .order('invoice_date', { ascending: false });
-          
-          if (fallbackError) throw fallbackError;
-          
-          const fallbackInvoices = (fallbackData || []) as any[];
-          console.log(`📊 Fallback query found ${fallbackInvoices.length} invoices`);
-          // Filter client-side by organization_id if available
-          const filtered = fallbackInvoices.filter((inv: any) => 
+        throw error;
+      }
+      
+      // If not admin and no invoices found, also check for invoices without organization_id
+      // (they may need backfilling, but we'll show them temporarily)
+      if (!isAdmin && (!invoiceData || invoiceData.length === 0)) {
+        console.log('⚠️ No invoices found with organization_id filter, checking for all invoices...');
+        
+        // Fetch ALL invoices to see what exists
+        const { data: allInvoices, error: allError } = await supabase
+          .from('invoice_summary')
+          .select('*')
+          .order('invoice_date', { ascending: false });
+        
+        const allInvoicesData = (allInvoices || []) as any[];
+        
+        console.log(`📊 All invoices query:`, { 
+          count: allInvoicesData.length, 
+          error: allError?.message,
+          sample: allInvoicesData.slice(0, 2).map((inv: any) => ({ 
+            id: inv.id, 
+            invoice_number: inv.invoice_number,
+            organization_id: inv.organization_id,
+            contact_id: inv.contact_id
+          }))
+        });
+        
+        if (allInvoicesData.length > 0) {
+          console.log(`Found ${allInvoicesData.length} total invoices`);
+          // Show invoices that either match organization_id OR don't have one yet (need backfilling)
+          const filtered = allInvoicesData.filter((inv: any) => 
             !inv.organization_id || inv.organization_id === orgId
           );
-          console.log(`✅ Filtered to ${filtered.length} invoices`);
-          await enrichInvoicesWithQuoteData(filtered as Invoice[], supabase);
-        } else {
-          throw error;
-        }
-      } else {
-        // If no invoices found, also check for invoices without organization_id
-        // (they may need backfilling, but we'll show them temporarily)
-        if (!invoiceData || invoiceData.length === 0) {
-          console.log('⚠️ No invoices found with organization_id filter, checking for all invoices...');
-          
-          // Fetch ALL invoices to see what exists
-          const { data: allInvoices, error: allError } = await supabase
-            .from('invoice_summary')
-            .select('*')
-            .order('invoice_date', { ascending: false });
-          
-          const allInvoicesData = (allInvoices || []) as any[];
-          
-          console.log(`📊 All invoices query:`, { 
-            count: allInvoicesData.length, 
-            error: allError?.message,
-            sample: allInvoicesData.slice(0, 2).map((inv: any) => ({ 
-              id: inv.id, 
-              invoice_number: inv.invoice_number,
-              organization_id: inv.organization_id,
-              contact_id: inv.contact_id
-            }))
-          });
-          
-          if (allInvoicesData.length > 0) {
-            console.log(`Found ${allInvoicesData.length} total invoices`);
-            // Show invoices that either match organization_id OR don't have one yet (need backfilling)
-            const filtered = allInvoicesData.filter((inv: any) => 
-              !inv.organization_id || inv.organization_id === orgId
-            );
-            console.log(`✅ Showing ${filtered.length} invoices (${filtered.filter((inv: any) => !inv.organization_id).length} need organization_id backfill)`);
-            console.log(`📋 Invoice details:`, filtered.map((inv: any) => ({
-              id: inv.id,
+          console.log(`✅ Showing ${filtered.length} invoices (${filtered.filter((inv: any) => !inv.organization_id).length} need organization_id backfill)`);
+          console.log(`📋 Invoice details:`, filtered.map((inv: any) => ({
+            id: inv.id,
               invoice_number: inv.invoice_number,
               organization_id: inv.organization_id,
               contact_id: inv.contact_id
@@ -272,11 +261,13 @@ export default function InvoicesDashboard() {
             });
             
             if (directInvoicesData.length > 0) {
-              // Filter by organization_id from invoice or contact
-              const filtered = directInvoicesData.filter((inv: any) => {
-                const invOrgId = inv.organization_id || inv.contacts?.organization_id;
-                return !invOrgId || invOrgId === orgId;
-              });
+              // Filter by organization_id from invoice or contact (only if not admin)
+              const filtered = isAdmin 
+                ? directInvoicesData 
+                : directInvoicesData.filter((inv: any) => {
+                    const invOrgId = inv.organization_id || inv.contacts?.organization_id;
+                    return !invOrgId || invOrgId === orgId;
+                  });
               
               // Transform to match invoice_summary format
               const transformed = filtered.map((inv: any) => ({
