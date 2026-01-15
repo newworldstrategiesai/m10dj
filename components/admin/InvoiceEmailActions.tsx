@@ -55,7 +55,33 @@ export default function InvoiceEmailActions({
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle missing email address with helpful message
+        if (data.code === 'MISSING_EMAIL' && contactId) {
+          const shouldNavigate = confirm(
+            'This invoice requires a contact email address to send.\n\n' +
+            'Would you like to add an email address to the contact now?'
+          );
+          if (shouldNavigate) {
+            window.location.href = `/admin/contacts/${contactId}`;
+            return;
+          }
+          throw new Error(data.message || 'Contact email address is required. Please add an email address to the contact.');
+        }
         throw new Error(data.error || 'Failed to preview email');
+      }
+
+      // Check if email is missing and show warning
+      if (!data.hasEmail && data.contactId) {
+        const shouldNavigate = confirm(
+          '⚠️ This invoice doesn\'t have a contact email address.\n\n' +
+          'You can preview the email, but it cannot be sent without an email address.\n\n' +
+          'Would you like to add an email address to the contact now?'
+        );
+        if (shouldNavigate) {
+          window.location.href = `/admin/contacts/${data.contactId}`;
+          setLoading(null);
+          return;
+        }
       }
 
       setPreviewHtml(data.html);
@@ -64,7 +90,7 @@ export default function InvoiceEmailActions({
       
       toast({
         title: 'Preview Ready',
-        description: 'Email preview loaded successfully'
+        description: data.hasEmail ? 'Email preview loaded successfully' : 'Preview loaded (email address needed to send)'
       });
     } catch (error: any) {
       console.error('Error previewing email:', error);

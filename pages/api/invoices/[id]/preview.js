@@ -50,10 +50,12 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    // Validate contact
-    if (!invoice.contacts || !invoice.contacts.email_address) {
-      return res.status(400).json({ error: 'Contact email address is required' });
-    }
+    // Allow preview even without email (use placeholder)
+    const contact = invoice.contacts || {
+      first_name: 'Client',
+      last_name: '',
+      email_address: null
+    };
 
     // Ensure invoice has payment token (generate if needed for preview)
     let paymentToken = invoice.payment_token;
@@ -61,7 +63,8 @@ export default async function handler(req, res) {
       paymentToken = generatePaymentToken();
     }
 
-    const contact = invoice.contacts;
+    // Return special code if email is missing (so component can prompt admin)
+    const hasEmail = contact.email_address;
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
     const paymentLink = `${baseUrl}/pay/${paymentToken}`;
     const logoUrl = `${baseUrl}/m10-black-clear-png.png`;
@@ -229,7 +232,9 @@ export default async function handler(req, res) {
     res.status(200).json({
       success: true,
       html: emailHtml,
-      subject: `Invoice ${invoice.invoice_number || 'N/A'} from M10 DJ Company`
+      subject: `Invoice ${invoice.invoice_number || 'N/A'} from M10 DJ Company`,
+      hasEmail: !!hasEmail,
+      contactId: invoice.contact_id || invoice.contacts?.id
     });
   } catch (error) {
     console.error('Error previewing invoice email:', error);
