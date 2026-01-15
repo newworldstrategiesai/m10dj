@@ -41,6 +41,9 @@ export default function InvoiceEmailActions({
   const [previewContactId, setPreviewContactId] = useState<string | undefined>(contactId);
   const [attachPDF, setAttachPDF] = useState<boolean>(false);
   const [downloadingPDF, setDownloadingPDF] = useState<boolean>(false);
+  const [showTestDialog, setShowTestDialog] = useState<boolean>(false);
+  const [testEmails, setTestEmails] = useState<string>('');
+  const [testAttachPDF, setTestAttachPDF] = useState<boolean>(false);
 
   const handlePreview = async () => {
     setLoading('preview');
@@ -208,11 +211,39 @@ export default function InvoiceEmailActions({
   };
 
   const handleTest = async () => {
+    // Validate email addresses
+    const emails = testEmails.split(',').map(e => e.trim()).filter(e => e.length > 0);
+    if (emails.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please enter at least one email address',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = emails.filter(e => !emailRegex.test(e));
+    if (invalidEmails.length > 0) {
+      toast({
+        title: 'Error',
+        description: `Invalid email addresses: ${invalidEmails.join(', ')}`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setLoading('test');
+    setShowTestDialog(false);
     try {
       const response = await fetch(`/api/invoices/${invoiceId}/test`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          testEmails: emails,
+          attachPDF: testAttachPDF
+        })
       });
 
       // Check if response is JSON before parsing
@@ -231,7 +262,7 @@ export default function InvoiceEmailActions({
 
       toast({
         title: 'Test Email Sent',
-        description: `Test email sent to ${data.testEmail || 'admin email'}`
+        description: `Test email sent to ${data.testEmails?.join(', ') || data.testEmail || 'admin email'}`
       });
     } catch (error: any) {
       console.error('Error sending test email:', error);
@@ -271,7 +302,7 @@ export default function InvoiceEmailActions({
         <Button
           variant="outline"
           size="sm"
-          onClick={handleTest}
+          onClick={() => setShowTestDialog(true)}
           disabled={disabled || loading !== null}
           className="flex items-center gap-2"
         >
@@ -422,6 +453,79 @@ export default function InvoiceEmailActions({
                 </div>
               </div>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Email Configuration Dialog */}
+      <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Test Email</DialogTitle>
+            <DialogDescription>
+              Configure test email recipients and options
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="test-emails" className="text-sm font-medium">
+                Email Addresses
+              </Label>
+              <input
+                id="test-emails"
+                type="text"
+                value={testEmails}
+                onChange={(e) => setTestEmails(e.target.value)}
+                placeholder="email1@example.com, email2@example.com"
+                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:ring-offset-gray-950 dark:placeholder:text-gray-400 dark:focus-visible:ring-gray-300"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Enter email addresses separated by commas
+              </p>
+            </div>
+            <div className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <Checkbox
+                id="test-attach-pdf"
+                checked={testAttachPDF}
+                onCheckedChange={(checked) => setTestAttachPDF(checked === true)}
+              />
+              <Label
+                htmlFor="test-attach-pdf"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Attach PDF to test email
+              </Label>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowTestDialog(false);
+                setTestEmails('');
+                setTestAttachPDF(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleTest}
+              disabled={loading === 'test'}
+              className="bg-[#fcba00] hover:bg-[#f5a500] text-black"
+            >
+              {loading === 'test' ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Test Email
+                </>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -28,14 +28,19 @@ export default async function handler(req, res) {
   }
 
   const { id: invoiceId } = req.query;
-  const { adminEmail: customAdminEmail } = req.body;
+  const { testEmails, attachPDF } = req.body;
 
   if (!invoiceId) {
     return res.status(400).json({ error: 'Invoice ID is required' });
   }
 
-  if (customAdminEmail) {
-    testEmail = customAdminEmail;
+  // Use provided test emails or default to admin email
+  let testEmailAddresses = [testEmail];
+  if (testEmails && Array.isArray(testEmails) && testEmails.length > 0) {
+    testEmailAddresses = testEmails;
+  } else if (testEmails && typeof testEmails === 'string') {
+    // Handle single email string
+    testEmailAddresses = [testEmails];
   }
 
   if (!resend) {
@@ -248,20 +253,52 @@ export default async function handler(req, res) {
       </html>
     `;
 
-    // Send test email to admin
-    await resend.emails.send({
+    // Generate PDF buffer if attachment requested
+    let pdfBuffer = null;
+    if (attachPDF) {
+      try {
+        const { generateInvoicePDFBuffer } = require('@/utils/invoice-pdf-generator');
+        // Ensure invoice has contact info for PDF generation
+        const invoiceWithContact = {
+          ...invoice,
+          contacts: invoice.contacts
+        };
+        pdfBuffer = await generateInvoicePDFBuffer(invoiceWithContact, supabaseAdmin);
+        console.log(`✅ Generated PDF buffer for test email: ${pdfBuffer.length} bytes`);
+      } catch (pdfError) {
+        console.error('Error generating PDF for test email attachment:', pdfError);
+        // Continue without PDF attachment if generation fails
+      }
+    }
+
+    // Prepare email options
+    const emailOptions = {
       from: 'M10 DJ Company <noreply@m10djcompany.com>',
-      to: testEmail,
+      to: testEmailAddresses,
       subject: `[TEST] Invoice ${invoice.invoice_number || 'N/A'} from M10 DJ Company`,
       html: emailHtml
-    });
+    };
 
-    console.log(`✅ Test invoice email sent to ${testEmail}`);
+    // Attach PDF if provided
+    if (pdfBuffer) {
+      emailOptions.attachments = [
+        {
+          filename: `Invoice-${invoice.invoice_number}.pdf`,
+          content: pdfBuffer.toString('base64')
+        }
+      ];
+    }
+
+    // Send test email(s)
+    await resend.emails.send(emailOptions);
+
+    console.log(`✅ Test invoice email sent to ${testEmailAddresses.join(', ')}`);
 
     res.status(200).json({
       success: true,
       message: 'Test email sent successfully',
-      testEmail
+      testEmails: testEmailAddresses,
+      testEmail: testEmailAddresses[0] // Keep for backward compatibility
     });
   } catch (error) {
     console.error('Error sending test invoice email:', error);
