@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/utils/auth-helpers/api-auth';
-import { sendContractAndInvoiceEmail } from '../../../../utils/payment-link-helper';
+import { sendContractAndInvoiceEmail } from '@/utils/payment-link-helper';
 import { Resend } from 'resend';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/utils/auth-helpers/api-auth';
-import { sendContractAndInvoiceEmail } from '../../../../utils/payment-link-helper';
+import { sendContractAndInvoiceEmail, generatePaymentToken } from '@/utils/payment-link-helper';
 import { Resend } from 'resend';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -66,7 +66,6 @@ export default async function handler(req, res) {
     // Ensure invoice has payment token (generate if needed)
     let paymentToken = invoice.payment_token;
     if (!paymentToken) {
-      const { generatePaymentToken } = require('../../../../utils/payment-link-helper');
       paymentToken = generatePaymentToken();
     }
 

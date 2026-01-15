@@ -208,14 +208,12 @@ export function useEmailTemplateRecommendations({
     const titleText = `${rec.urgency_level === 'critical' ? '🚨 ' : ''}${rec.template_name}`;
 
     toast({
-      id: `recommendation-${rec.template_key}-${index}`,
       title: titleText,
       description: (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             {urgencyIcons[rec.urgency_level]}
           </div>
-        <div className="space-y-1">
           <p className="text-sm">{rec.recommendation_reason}</p>
           {rec.urgency_level === 'critical' && (
             <p className="text-xs font-semibold text-red-600 dark:text-red-400">
@@ -233,7 +231,6 @@ export function useEmailTemplateRecommendations({
         </div>
       ),
       variant: urgencyColors[rec.urgency_level],
-      duration: rec.urgency_level === 'critical' ? 10000 : 5000, // Longer for critical
       action: (
         <div className="flex flex-col gap-1">
           <ToastAction

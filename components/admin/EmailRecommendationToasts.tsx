@@ -250,7 +250,6 @@ export default function EmailRecommendationToasts({
       }
     };
 
-    const toastId = `recommendation-${rec.template_key}`;
     const scoreColor = rec.recommendation_score >= 0.8 
       ? 'text-green-600 dark:text-green-400' 
       : rec.recommendation_score >= 0.6 
@@ -261,7 +260,6 @@ export default function EmailRecommendationToasts({
     const titleText = `${rec.urgency_level === 'critical' ? '🚨 ' : ''}${rec.template_name}${rec.time_sensitive ? ' ⏰' : ''}`;
 
     toast({
-      id: toastId,
       title: titleText,
       description: (
         <div className="space-y-2 mt-2">
@@ -278,7 +276,6 @@ export default function EmailRecommendationToasts({
               </span>
             )}
           </div>
-        <div className="space-y-2 mt-2">
           <p className="text-sm text-gray-700 dark:text-gray-300">
             {rec.recommendation_reason}
           </p>
@@ -302,7 +299,6 @@ export default function EmailRecommendationToasts({
         </div>
       ),
       variant: urgencyColors[rec.urgency_level],
-      duration: rec.urgency_level === 'critical' ? 15000 : rec.urgency_level === 'high' ? 10000 : 7000,
       action: (
         <div className="flex flex-col gap-1.5 mt-2 w-full">
           <ToastAction
