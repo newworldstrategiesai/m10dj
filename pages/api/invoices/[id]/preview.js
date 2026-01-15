@@ -6,6 +6,52 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
+ * Generate context-aware footer message for invoice emails
+ */
+function generateInvoiceFooterMessage(invoice, contact = null) {
+  // Check if event has already happened
+  const eventDate = invoice.event_date || contact?.event_date || null;
+  const isPastEvent = eventDate ? new Date(eventDate) < new Date() : false;
+  
+  // Check if this is equipment rental
+  const isEquipmentRental = (() => {
+    // Check invoice title
+    const title = (invoice.invoice_title || '').toLowerCase();
+    if (title.includes('rental') || title.includes('equipment')) {
+      return true;
+    }
+    
+    // Check line items for rental keywords
+    const lineItems = invoice.line_items || [];
+    const rentalKeywords = ['rental', 'rent', 'equipment', 'speaker', 'sound system', 'lighting'];
+    const hasRentalItems = lineItems.some(item => {
+      const description = (item.description || '').toLowerCase();
+      return rentalKeywords.some(keyword => description.includes(keyword));
+    });
+    
+    // If it's equipment rental and no DJ service keywords, it's likely rental-only
+    const djServiceKeywords = ['dj', 'mc', 'emcee', 'music', 'entertainment', 'coordination'];
+    const hasDjServices = lineItems.some(item => {
+      const description = (item.description || '').toLowerCase();
+      return djServiceKeywords.some(keyword => description.includes(keyword));
+    });
+    
+    return hasRentalItems && !hasDjServices;
+  })();
+  
+  // Generate appropriate message based on context
+  if (isPastEvent && isEquipmentRental) {
+    return 'Thank you for your business!';
+  } else if (isPastEvent) {
+    return 'Thank you for choosing M10 DJ Company!';
+  } else if (isEquipmentRental) {
+    return 'Looking forward to providing your equipment!';
+  } else {
+    return 'Looking forward to making your event amazing!';
+  }
+}
+
+/**
  * Preview the invoice email HTML
  * Returns the rendered HTML without sending
  */
