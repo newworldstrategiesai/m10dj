@@ -4,6 +4,8 @@
  */
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * Generate a secure payment token
@@ -213,9 +215,208 @@ async function sendInvoiceWithPaymentLink(invoice, contact, supabase, resend) {
   }
 }
 
+/**
+ * Send contract and invoice email to client with next steps
+ * Uses the contract-invoice-ready.html template
+ */
+async function sendContractAndInvoiceEmail(contract, invoice, contact, supabase, resend) {
+  try {
+    // Ensure contract has signing token
+    if (!contract.signing_token) {
+      throw new Error('Contract must have a signing_token to send email');
+    }
+
+    // Ensure invoice has payment token
+    let paymentToken = invoice.payment_token;
+    if (!paymentToken) {
+      paymentToken = generatePaymentToken();
+      
+      // Update invoice with payment token
+      await supabase
+        .from('invoices')
+        .update({ payment_token: paymentToken })
+        .eq('id', invoice.id);
+    }
+
+    // Build URLs
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
+    const contractSigningUrl = `${baseUrl}/sign-contract/${contract.signing_token}`;
+    const invoicePaymentUrl = `${baseUrl}/pay/${paymentToken}`;
+
+    // Read the email template
+    const templatePath = path.join(process.cwd(), 'email-templates', 'contract-invoice-ready.html');
+    let emailHtml;
+    
+    try {
+      emailHtml = fs.readFileSync(templatePath, 'utf8');
+    } catch (templateError) {
+      console.error('Error reading email template, using inline fallback:', templateError);
+      // Fallback to inline template if file read fails
+      emailHtml = getInlineTemplate();
+    }
+
+    // Format dates
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      try {
+        return new Date(dateString).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+      } catch {
+        return dateString;
+      }
+    };
+
+    const formatDateTime = (dateString, timeString) => {
+      if (!dateString) return '';
+      const date = formatDate(dateString);
+      if (timeString) {
+        return `${date} at ${timeString}`;
+      }
+      return date;
+    };
+
+    // Replace template variables
+    emailHtml = emailHtml
+      .replace(/\{\{client_first_name\}\}/g, contact.first_name || 'Client')
+      .replace(/\{\{event_name\}\}/g, contract.event_name || invoice.event_name || 'Your Event')
+      .replace(/\{\{event_date\}\}/g, formatDate(contract.event_date || invoice.event_date))
+      .replace(/\{\{event_time\}\}/g, contract.event_time || '')
+      .replace(/\{\{end_time\}\}/g, contract.end_time || '')
+      .replace(/\{\{venue_name\}\}/g, contract.venue_name || '')
+      .replace(/\{\{venue_address\}\}/g, contract.venue_address || '')
+      .replace(/\{\{guest_count\}\}/g, contract.guest_count?.toString() || '')
+      .replace(/\{\{contract_number\}\}/g, contract.contract_number || '')
+      .replace(/\{\{invoice_number\}\}/g, invoice.invoice_number || '')
+      .replace(/\{\{total_amount\}\}/g, (contract.total_amount || invoice.total_amount || 0).toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }))
+      .replace(/\{\{deposit_amount\}\}/g, contract.deposit_amount ? contract.deposit_amount.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }) : '')
+      .replace(/\{\{contract_signing_url\}\}/g, contractSigningUrl)
+      .replace(/\{\{invoice_payment_url\}\}/g, invoicePaymentUrl)
+      .replace(/\{\{contract_expires_at\}\}/g, contract.signing_token_expires_at ? formatDate(contract.signing_token_expires_at) : '')
+      .replace(/\{\{invoice_due_date\}\}/g, invoice.due_date ? formatDate(invoice.due_date) : '')
+      .replace(/\{\{year\}\}/g, new Date().getFullYear().toString())
+      // Remove conditional blocks if conditions aren't met
+      .replace(/\{\{#if\s+(\w+)\}\}[\s\S]*?\{\{\/if\}\}/g, (match, condition) => {
+        // Simple conditional removal - if variable is empty, remove the block
+        // This is a basic implementation; for production, use a proper templating engine
+        return match;
+      });
+
+    // Remove empty conditional blocks (basic cleanup)
+    emailHtml = emailHtml
+      .replace(/\{\{#if\s+\w+\}\}/g, '')
+      .replace(/\{\{\/if\}\}/g, '')
+      .replace(/\{\{\#if\s+end_time\}\}/g, '')
+      .replace(/\{\{\#if\s+venue_address\}\}/g, '')
+      .replace(/\{\{\#if\s+guest_count\}\}/g, '')
+      .replace(/\{\{\#if\s+deposit_amount\}\}/g, '')
+      .replace(/\{\{\#if\s+contract_expires_at\}\}/g, '')
+      .replace(/\{\{\#if\s+invoice_due_date\}\}/g, '');
+
+    // Handle conditional content for optional fields
+    if (!contract.end_time) {
+      emailHtml = emailHtml.replace(/<tr>[\s\S]*?\{\{#if\s+end_time\}[\s\S]*?\{\{\/if\}[\s\S]*?<\/tr>/g, '');
+    }
+    if (!contract.venue_address) {
+      emailHtml = emailHtml.replace(/\{\{venue_address\}\}/g, '');
+    }
+    if (!contract.guest_count) {
+      emailHtml = emailHtml.replace(/<tr>[\s\S]*?Expected Guests[\s\S]*?<\/tr>/g, '');
+    }
+    if (!contract.deposit_amount) {
+      emailHtml = emailHtml.replace(/<tr>[\s\S]*?Deposit Required[\s\S]*?<\/tr>/g, '');
+    }
+
+    // Send email via Resend
+    if (resend) {
+      const emailSubject = `Contract & Invoice Ready - ${contract.event_name || 'Your Event'}`;
+      
+      await resend.emails.send({
+        from: 'M10 DJ Company <noreply@m10djcompany.com>',
+        to: contact.email_address,
+        subject: emailSubject,
+        html: emailHtml
+      });
+
+      console.log(`✅ Contract & Invoice email sent to ${contact.email_address}`);
+      
+      // Update contract status to 'sent' if not already
+      if (contract.status !== 'sent') {
+        await supabase
+          .from('contracts')
+          .update({
+            status: 'sent',
+            sent_at: new Date().toISOString()
+          })
+          .eq('id', contract.id);
+      }
+    }
+
+    return {
+      success: true,
+      contractSigningUrl,
+      invoicePaymentUrl,
+      paymentToken
+    };
+
+  } catch (error) {
+    console.error('Error sending contract and invoice email:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Fallback inline template if file read fails
+ */
+function getInlineTemplate() {
+  // Return a simplified version if template file can't be read
+  // This ensures the function still works even if template file is missing
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f8fafc;">
+      <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px;">
+        <h1 style="color: #1a1a1a;">Your Contract & Invoice Are Ready!</h1>
+        <p>Hi {{client_first_name}},</p>
+        <p>Your contract and invoice for {{event_name}} are ready for review.</p>
+        <div style="margin: 30px 0;">
+          <a href="{{contract_signing_url}}" style="display: inline-block; background: #fcba00; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-right: 10px;">
+            Review & Sign Contract
+          </a>
+          <a href="{{invoice_payment_url}}" style="display: inline-block; background: #1a1a1a; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+            View Invoice & Make Payment
+          </a>
+        </div>
+        <p>Questions? Contact us at (901) 410-2020 or m10djcompany@gmail.com</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
 module.exports = {
   generatePaymentToken,
   generatePaymentLink,
-  sendInvoiceWithPaymentLink
+  sendInvoiceWithPaymentLink,
+  sendContractAndInvoiceEmail
 };
 

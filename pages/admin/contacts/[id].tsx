@@ -20,6 +20,9 @@ import InvoiceList from '@/components/admin/InvoiceList';
 import PipelineView from '@/components/admin/PipelineView';
 import UnifiedCommunicationHub from '@/components/admin/UnifiedCommunicationHub';
 import CustomerTimeline from '@/components/admin/CustomerTimeline';
+import ContractInvoiceEmailActions from '@/components/admin/ContractInvoiceEmailActions';
+import SmartEmailTemplateSelector from '@/components/admin/SmartEmailTemplateSelector';
+import EmailRecommendationToasts from '@/components/admin/EmailRecommendationToasts';
 import { syncVenueFromContactToProjects } from '@/utils/sync-venue-data';
 
 interface Contact {
@@ -1010,6 +1013,21 @@ export default function ContactDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Email Recommendation Toasts - Shows toast notifications for recommended templates */}
+      <EmailRecommendationToasts
+        contactId={id}
+        contractId={contracts[0]?.id}
+        invoiceId={invoices[0]?.id}
+        contractNumber={contracts[0]?.contract_number}
+        invoiceNumber={invoices[0]?.invoice_number}
+        eventName={contracts[0]?.event_name || contact?.event_type}
+        minUrgencyLevel="high" // Only show high/critical as toasts
+        maxToasts={3}
+        onTemplateSent={() => {
+          fetchContracts();
+          fetchInvoices();
+        }}
+      />
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
@@ -1730,6 +1748,23 @@ export default function ContactDetailPage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Smart Email Template Recommendations */}
+              <div className="mb-6">
+                <SmartEmailTemplateSelector
+                  contactId={id}
+                  contractId={contracts[0]?.id}
+                  invoiceId={invoices[0]?.id}
+                  contractNumber={contracts[0]?.contract_number}
+                  invoiceNumber={invoices[0]?.invoice_number}
+                  eventName={contracts[0]?.event_name || contact?.event_type}
+                  onTemplateSent={() => {
+                    // Refresh data after email sent
+                    fetchContracts();
+                    fetchInvoices();
+                  }}
+                />
               </div>
 
               {/* Invoice List Section */}

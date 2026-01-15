@@ -1177,9 +1177,48 @@ export default function SignContractPage() {
     }
   };
 
+  // Build default metadata for loading/error states
+  const defaultBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+  const defaultUrl = token ? `${defaultBaseUrl}/sign-contract/${token}` : `${defaultBaseUrl}/sign-contract`;
+  const defaultTitle = 'Sign Contract - M10 DJ Company';
+  const defaultDescription = 'Review and sign your event contract securely online.';
+  const defaultOgImage = `${defaultBaseUrl}/assets/contract-og-image.png`;
+  const defaultFallbackOgImage = `${defaultBaseUrl}/logo-static.jpg`;
+
   if (loading || redirectingToPayment) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <Head>
+          <title>{defaultTitle}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+          
+          {/* Open Graph / Facebook */}
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={defaultUrl} />
+          <meta property="og:title" content={defaultTitle} />
+          <meta property="og:description" content={defaultDescription} />
+          <meta property="og:image" content={defaultOgImage} />
+          <meta property="og:image:secure_url" content={defaultOgImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="M10 DJ Company Contract" />
+          <meta property="og:image:type" content="image/png" />
+          <meta property="og:site_name" content="M10 DJ Company" />
+          <meta property="og:locale" content="en_US" />
+          
+          {/* Twitter Card */}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:url" content={defaultUrl} />
+          <meta name="twitter:title" content={defaultTitle} />
+          <meta name="twitter:description" content={defaultDescription} />
+          <meta name="twitter:image" content={defaultOgImage} />
+          <meta name="twitter:image:alt" content="M10 DJ Company Contract" />
+          <meta name="twitter:creator" content="@m10djcompany" />
+          <meta name="twitter:site" content="@m10djcompany" />
+          
+          <meta name="description" content={defaultDescription} />
+          <meta name="robots" content="noindex, nofollow" />
+        </Head>
         <div className="text-center max-w-sm w-full">
           <Loader className="w-8 h-8 sm:w-10 sm:h-10 animate-spin text-black mx-auto mb-4" />
           <p className="text-sm sm:text-base text-gray-600">
@@ -1198,6 +1237,37 @@ export default function SignContractPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <Head>
+          <title>Contract Error - M10 DJ Company</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+          
+          {/* Open Graph / Facebook */}
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={defaultUrl} />
+          <meta property="og:title" content="Contract Error - M10 DJ Company" />
+          <meta property="og:description" content="Unable to load contract. Please contact us for assistance." />
+          <meta property="og:image" content={defaultOgImage} />
+          <meta property="og:image:secure_url" content={defaultOgImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="M10 DJ Company" />
+          <meta property="og:image:type" content="image/png" />
+          <meta property="og:site_name" content="M10 DJ Company" />
+          <meta property="og:locale" content="en_US" />
+          
+          {/* Twitter Card */}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:url" content={defaultUrl} />
+          <meta name="twitter:title" content="Contract Error - M10 DJ Company" />
+          <meta name="twitter:description" content="Unable to load contract. Please contact us for assistance." />
+          <meta name="twitter:image" content={defaultOgImage} />
+          <meta name="twitter:image:alt" content="M10 DJ Company" />
+          <meta name="twitter:creator" content="@m10djcompany" />
+          <meta name="twitter:site" content="@m10djcompany" />
+          
+          <meta name="description" content="Unable to load contract. Please contact us for assistance." />
+          <meta name="robots" content="noindex, nofollow" />
+        </Head>
         <div className="max-w-md w-full bg-white border border-gray-300 p-6 sm:p-8 text-center">
           <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-black mx-auto mb-4" />
           <h1 className="text-xl sm:text-2xl font-bold text-black mb-2">Unable to Load Contract</h1>
@@ -1214,12 +1284,52 @@ export default function SignContractPage() {
     );
   }
 
+  // Build signed page metadata
+  const signedBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+  const signedUrl = `${signedBaseUrl}/sign-contract/${token}`;
+  const signedTitle = contractData 
+    ? `Contract Signed: ${contractData.event_name || 'Event Contract'} - M10 DJ Company`
+    : 'Contract Signed - M10 DJ Company';
+  const signedDescription = contractData
+    ? `Contract #${contractData.contract_number || ''} has been signed${contractData.event_date ? ` for ${new Date(contractData.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}${contractData.venue_name ? ` at ${contractData.venue_name}` : ''}.`
+    : 'Your contract has been signed successfully.';
+  const signedOgImage = `${signedBaseUrl}/assets/contract-og-image.png`;
+  const signedFallbackOgImage = `${signedBaseUrl}/logo-static.jpg`;
+
   if (signed) {
     return (
       <div className="min-h-screen bg-white py-4 sm:py-8 px-4">
         <Head>
-          <title>{isParticipantSigning ? 'Contract Signed' : 'Contract Signed'} - M10 DJ Company</title>
+          <title>{signedTitle}</title>
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+          
+          {/* Open Graph / Facebook */}
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={signedUrl} />
+          <meta property="og:title" content={signedTitle} />
+          <meta property="og:description" content={signedDescription} />
+          <meta property="og:image" content={signedOgImage} />
+          <meta property="og:image:secure_url" content={signedOgImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content={contractData?.event_name ? `Signed contract for ${contractData.event_name}` : 'M10 DJ Company Contract'} />
+          <meta property="og:image:type" content="image/png" />
+          <meta property="og:site_name" content="M10 DJ Company" />
+          <meta property="og:locale" content="en_US" />
+          
+          {/* Twitter Card */}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:url" content={signedUrl} />
+          <meta name="twitter:title" content={signedTitle} />
+          <meta name="twitter:description" content={signedDescription} />
+          <meta name="twitter:image" content={signedOgImage} />
+          <meta name="twitter:image:alt" content={contractData?.event_name ? `Signed contract for ${contractData.event_name}` : 'M10 DJ Company Contract'} />
+          <meta name="twitter:creator" content="@m10djcompany" />
+          <meta name="twitter:site" content="@m10djcompany" />
+          
+          {/* Additional Meta Tags */}
+          <meta name="description" content={signedDescription} />
+          <meta name="robots" content="noindex, nofollow" />
         </Head>
 
         <div className="max-w-4xl mx-auto">
@@ -1414,11 +1524,52 @@ export default function SignContractPage() {
     );
   }
 
+  // Build Open Graph metadata
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+  const contractUrl = `${baseUrl}/sign-contract/${token}`;
+  const ogTitle = contractData 
+    ? `Sign Contract: ${contractData.event_name || 'Event Contract'} - M10 DJ Company`
+    : 'Sign Contract - M10 DJ Company';
+  const ogDescription = contractData
+    ? `Please review and sign your event contract${contractData.event_date ? ` for ${new Date(contractData.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}${contractData.venue_name ? ` at ${contractData.venue_name}` : ''}. Contract #${contractData.contract_number || ''}.`
+    : 'Review and sign your event contract securely online.';
+  const ogImage = `${baseUrl}/assets/contract-og-image.png`;
+  const fallbackOgImage = `${baseUrl}/logo-static.jpg`;
+
   return (
     <div className="min-h-screen bg-white">
       <Head>
-        <title>Sign Contract - {contractData?.event_name} - M10 DJ Company</title>
+        <title>Sign Contract - {contractData?.event_name || 'Event Contract'} - M10 DJ Company</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={contractUrl} />
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={ogDescription} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:secure_url" content={ogImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={contractData?.event_name ? `Contract for ${contractData.event_name}` : 'M10 DJ Company Contract'} />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:site_name" content="M10 DJ Company" />
+        <meta property="og:locale" content="en_US" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={contractUrl} />
+        <meta name="twitter:title" content={ogTitle} />
+        <meta name="twitter:description" content={ogDescription} />
+        <meta name="twitter:image" content={ogImage} />
+        <meta name="twitter:image:alt" content={contractData?.event_name ? `Contract for ${contractData.event_name}` : 'M10 DJ Company Contract'} />
+        <meta name="twitter:creator" content="@m10djcompany" />
+        <meta name="twitter:site" content="@m10djcompany" />
+        
+        {/* Additional Meta Tags */}
+        <meta name="description" content={ogDescription} />
+        <meta name="robots" content="noindex, nofollow" />
+        
         <link
           href="https://fonts.googleapis.com/css2?family=Allura&family=Dancing+Script&family=Great+Vibes&family=Pacifico&family=Sacramento&display=swap"
           rel="stylesheet"
@@ -1618,125 +1769,234 @@ export default function SignContractPage() {
       </Head>
 
       <div className={`contract-container ${signatureModalOpen ? 'modal-open' : ''}`}>
-        {/* Admin Edit Mode Toolbar */}
+        {/* Admin Edit Mode Toolbar - Mobile Optimized */}
         {isAdmin && isEditMode && (
-          <div className="sticky top-0 z-50 bg-white border-b border-gray-300 shadow-sm mb-4 p-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Edit Mode</span>
-              {hasUnsavedChanges && (
-                <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                  Unsaved changes
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Formatting Buttons */}
-              <div className="flex items-center gap-1 border-r border-gray-300 pr-2 mr-2">
+          <div className="sticky top-0 z-50 bg-white border-b border-gray-300 shadow-sm mb-4">
+            {/* Mobile: Compact toolbar */}
+            <div className="sm:hidden p-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <span className="text-xs font-medium text-gray-700 whitespace-nowrap">Edit</span>
+                {hasUnsavedChanges && (
+                  <span className="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded whitespace-nowrap">
+                    Unsaved
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Formatting Buttons - Smaller on mobile */}
                 <button
                   onClick={() => handleFormatText('bold')}
-                  className="p-2 hover:bg-gray-100 rounded transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded transition-colors touch-manipulation"
                   title="Bold"
                 >
-                  <Bold className="w-4 h-4 text-black" />
+                  <Bold className="w-3.5 h-3.5 text-black" />
                 </button>
                 <button
                   onClick={() => handleFormatText('italic')}
-                  className="p-2 hover:bg-gray-100 rounded transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded transition-colors touch-manipulation"
                   title="Italic"
                 >
-                  <Italic className="w-4 h-4 text-black" />
+                  <Italic className="w-3.5 h-3.5 text-black" />
                 </button>
                 <button
                   onClick={() => handleFormatText('underline')}
-                  className="p-2 hover:bg-gray-100 rounded transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded transition-colors touch-manipulation"
                   title="Underline"
                 >
-                  <Underline className="w-4 h-4 text-black" />
+                  <Underline className="w-3.5 h-3.5 text-black" />
                 </button>
               </div>
               <button
                 onClick={handleCancelEdit}
-                className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center gap-2"
+                className="px-2.5 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5 touch-manipulation"
                 disabled={isSaving}
               >
-                <X className="w-4 h-4" />
-                Cancel
+                <X className="w-3.5 h-3.5" />
               </button>
               <button
                 id="save-contract-btn"
                 onClick={handleSaveContractHtml}
-                className="px-4 py-2 text-sm bg-black text-white rounded hover:bg-gray-800 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2.5 py-1.5 text-xs bg-black text-white rounded hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-w-[44px] justify-center"
                 disabled={isSaving || !hasUnsavedChanges}
               >
                 {isSaving ? (
-                  <>
-                    <Loader className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </>
+                  <Loader className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save
-                  </>
+                  <Save className="w-3.5 h-3.5" />
                 )}
               </button>
+            </div>
+            
+            {/* Desktop: Full toolbar */}
+            <div className="hidden sm:flex items-center justify-between p-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Edit Mode</span>
+                {hasUnsavedChanges && (
+                  <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                    Unsaved changes
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Formatting Buttons */}
+                <div className="flex items-center gap-1 border-r border-gray-300 pr-2 mr-2">
+                  <button
+                    onClick={() => handleFormatText('bold')}
+                    className="p-2 hover:bg-gray-100 rounded transition-colors"
+                    title="Bold"
+                  >
+                    <Bold className="w-4 h-4 text-black" />
+                  </button>
+                  <button
+                    onClick={() => handleFormatText('italic')}
+                    className="p-2 hover:bg-gray-100 rounded transition-colors"
+                    title="Italic"
+                  >
+                    <Italic className="w-4 h-4 text-black" />
+                  </button>
+                  <button
+                    onClick={() => handleFormatText('underline')}
+                    className="p-2 hover:bg-gray-100 rounded transition-colors"
+                    title="Underline"
+                  >
+                    <Underline className="w-4 h-4 text-black" />
+                  </button>
+                </div>
+                <button
+                  onClick={handleCancelEdit}
+                  className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center gap-2"
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+                <button
+                  id="save-contract-btn"
+                  onClick={handleSaveContractHtml}
+                  className="px-4 py-2 text-sm bg-black text-white rounded hover:bg-gray-800 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSaving || !hasUnsavedChanges}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Admin Edit Toggle Button and Unsign Button */}
+        {/* Admin Edit Toggle Button and Unsign Button - Mobile Optimized */}
         {isAdmin && !isEditMode && (
-          <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-            <button
-              onClick={() => {
-                setIsEditMode(true);
-                setOriginalHtml(contractHtmlWithSignatures || contractData?.contract_html || '');
-                // Set innerHTML after a brief delay to ensure ref is ready
-                setTimeout(() => {
-                  if (contractContentRef.current) {
-                    contractContentRef.current.innerHTML = contractHtmlWithSignatures || contractData?.contract_html || '';
-                  }
-                }, 100);
-              }}
-              className="px-4 py-2 bg-black text-white rounded-lg shadow-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
-              title="Edit Contract (Admin Only)"
-            >
-              <Edit className="w-4 h-4" />
-              <span className="hidden sm:inline">Edit Contract</span>
-            </button>
-            {/* Unsign Button - Only show if vendor has signed but client hasn't */}
-            {(contractData?.vendor_signature_data || contractData?.signed_by_vendor) && !contractData?.client_signature_data && (
+          <div className="fixed bottom-4 right-4 sm:top-4 sm:bottom-auto z-50 flex flex-col gap-2 sm:gap-2">
+            {/* Mobile: Compact icon-only buttons */}
+            <div className="sm:hidden flex flex-col gap-2">
               <button
-                onClick={async () => {
-                  if (!confirm('Are you sure you want to remove your signature from this contract?')) {
-                    return;
-                  }
-                  
-                  try {
-                    const res = await fetch(`/api/contracts/${contractData.id}/unsign`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                    });
-
-                    const data = await res.json();
-
-                    if (!res.ok) {
-                      throw new Error(data.error || 'Failed to unsign contract');
+                onClick={() => {
+                  setIsEditMode(true);
+                  setOriginalHtml(contractHtmlWithSignatures || contractData?.contract_html || '');
+                  setTimeout(() => {
+                    if (contractContentRef.current) {
+                      contractContentRef.current.innerHTML = contractHtmlWithSignatures || contractData?.contract_html || '';
                     }
-
-                    // Refresh the contract data
-                    await validateToken();
-                  } catch (error: any) {
-                    alert(error.message || 'Failed to unsign contract');
-                  }
+                  }, 100);
                 }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                title="Remove Your Signature (Admin Only)"
+                className="w-12 h-12 bg-black text-white rounded-full shadow-lg hover:bg-gray-800 active:bg-gray-900 transition-colors flex items-center justify-center touch-manipulation"
+                title="Edit Contract (Admin Only)"
               >
-                <X className="w-4 h-4" />
-                <span className="hidden sm:inline">Unsign Contract</span>
+                <Edit className="w-5 h-5" />
               </button>
-            )}
+              {/* Unsign Button - Only show if vendor has signed but client hasn't */}
+              {(contractData?.vendor_signature_data || contractData?.signed_by_vendor) && !contractData?.client_signature_data && (
+                <button
+                  onClick={async () => {
+                    if (!confirm('Are you sure you want to remove your signature from this contract?')) {
+                      return;
+                    }
+                    
+                    try {
+                      const res = await fetch(`/api/contracts/${contractData.id}/unsign`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                      });
+
+                      const data = await res.json();
+
+                      if (!res.ok) {
+                        throw new Error(data.error || 'Failed to unsign contract');
+                      }
+
+                      await validateToken();
+                    } catch (error: any) {
+                      alert(error.message || 'Failed to unsign contract');
+                    }
+                  }}
+                  className="w-12 h-12 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 active:bg-red-800 transition-colors flex items-center justify-center touch-manipulation"
+                  title="Remove Your Signature (Admin Only)"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            
+            {/* Desktop: Full buttons with text */}
+            <div className="hidden sm:flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setIsEditMode(true);
+                  setOriginalHtml(contractHtmlWithSignatures || contractData?.contract_html || '');
+                  setTimeout(() => {
+                    if (contractContentRef.current) {
+                      contractContentRef.current.innerHTML = contractHtmlWithSignatures || contractData?.contract_html || '';
+                    }
+                  }, 100);
+                }}
+                className="px-4 py-2 bg-black text-white rounded-lg shadow-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+                title="Edit Contract (Admin Only)"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Edit Contract</span>
+              </button>
+              {/* Unsign Button - Only show if vendor has signed but client hasn't */}
+              {(contractData?.vendor_signature_data || contractData?.signed_by_vendor) && !contractData?.client_signature_data && (
+                <button
+                  onClick={async () => {
+                    if (!confirm('Are you sure you want to remove your signature from this contract?')) {
+                      return;
+                    }
+                    
+                    try {
+                      const res = await fetch(`/api/contracts/${contractData.id}/unsign`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                      });
+
+                      const data = await res.json();
+
+                      if (!res.ok) {
+                        throw new Error(data.error || 'Failed to unsign contract');
+                      }
+
+                      await validateToken();
+                    } catch (error: any) {
+                      alert(error.message || 'Failed to unsign contract');
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                  title="Remove Your Signature (Admin Only)"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Unsign Contract</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 

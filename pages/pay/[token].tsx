@@ -16,7 +16,8 @@ import {
   DollarSign,
   FileText,
   Lock,
-  Shield
+  Shield,
+  Download
 } from 'lucide-react';
 
 interface Invoice {
@@ -58,6 +59,7 @@ export default function PaymentPage() {
   const [tipPercentage, setTipPercentage] = useState(15);
   const [customTipAmount, setCustomTipAmount] = useState('');
   const [showLineItems, setShowLineItems] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     if (token && typeof token === 'string') {
@@ -155,6 +157,73 @@ export default function PaymentPage() {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    if (!token || typeof token !== 'string') return;
+
+    setDownloadingPdf(true);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/invoices/download-pdf-by-token?token=${token}`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('PDF generation failed:', response.status, errorText);
+        throw new Error(`Failed to generate PDF: ${response.status}`);
+      }
+
+      // Check if response is actually a PDF
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/pdf')) {
+        console.error('Response is not a PDF:', contentType);
+        throw new Error('Server returned invalid PDF format');
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('PDF file is empty');
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Create filename
+      const invoiceNumber = invoice?.invoice_number || 'Invoice';
+      const firstName = invoice?.contacts?.first_name || '';
+      const lastName = invoice?.contacts?.last_name || '';
+      const eventDate = invoice?.due_date ? 
+        new Date(invoice.due_date).toISOString().split('T')[0] : '';
+      
+      let filename = 'Invoice';
+      if (firstName || lastName) {
+        filename = `Invoice-${firstName}${lastName ? `-${lastName}` : ''}`;
+      } else {
+        filename = `Invoice-${invoiceNumber}`;
+      }
+      if (eventDate) {
+        filename += `-${eventDate}`;
+      }
+      filename += '.pdf';
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (err: any) {
+      setError(err.message || 'Failed to download PDF');
+      console.error('PDF download error:', err);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   // Handle router query not ready yet
   if (!router.isReady) {
     return (
@@ -167,9 +236,45 @@ export default function PaymentPage() {
     );
   }
 
+  // Build default metadata for loading state
+  const defaultBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+  const defaultPaymentUrl = token ? `${defaultBaseUrl}/pay/${token}` : `${defaultBaseUrl}/pay`;
+  const defaultOgTitle = 'Invoice Payment - M10 DJ Company';
+  const defaultOgDescription = 'Complete your secure payment online. Powered by Stripe.';
+  const defaultOgImage = `${defaultBaseUrl}/assets/payment-og-image.png`;
+  const defaultFallbackOgImage = `${defaultBaseUrl}/logo-static.jpg`;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <Head>
+          <title>{defaultOgTitle}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+          <meta name="robots" content="noindex, nofollow" />
+          <meta name="description" content={defaultOgDescription} />
+          
+          {/* Open Graph / Facebook */}
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={defaultPaymentUrl} />
+          <meta property="og:title" content={defaultOgTitle} />
+          <meta property="og:description" content={defaultOgDescription} />
+          <meta property="og:image" content={defaultOgImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="M10 DJ Company Payment" />
+          <meta property="og:site_name" content="M10 DJ Company" />
+          <meta property="og:locale" content="en_US" />
+          
+          {/* Twitter Card */}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:url" content={defaultPaymentUrl} />
+          <meta name="twitter:title" content={defaultOgTitle} />
+          <meta name="twitter:description" content={defaultOgDescription} />
+          <meta name="twitter:image" content={defaultOgImage} />
+          <meta name="twitter:image:alt" content="M10 DJ Company Payment" />
+          <meta name="twitter:creator" content="@m10djcompany" />
+          <meta name="twitter:site" content="@m10djcompany" />
+        </Head>
         <div className="text-center">
           <Loader className="w-12 h-12 animate-spin text-[#fcba00] mx-auto mb-4" />
           <p className="text-gray-600">Loading invoice...</p>
@@ -183,6 +288,31 @@ export default function PaymentPage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
         <Head>
           <title>Error - M10 DJ Company Payment</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+          <meta name="robots" content="noindex, nofollow" />
+          <meta name="description" content="Unable to load invoice. Please contact us for assistance." />
+          
+          {/* Open Graph / Facebook */}
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={defaultPaymentUrl} />
+          <meta property="og:title" content="Payment Error - M10 DJ Company" />
+          <meta property="og:description" content="Unable to load invoice. Please contact us for assistance." />
+          <meta property="og:image" content={defaultOgImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="M10 DJ Company Payment" />
+          <meta property="og:site_name" content="M10 DJ Company" />
+          <meta property="og:locale" content="en_US" />
+          
+          {/* Twitter Card */}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:url" content={defaultPaymentUrl} />
+          <meta name="twitter:title" content="Payment Error - M10 DJ Company" />
+          <meta name="twitter:description" content="Unable to load invoice. Please contact us for assistance." />
+          <meta name="twitter:image" content={defaultOgImage} />
+          <meta name="twitter:image:alt" content="M10 DJ Company Payment" />
+          <meta name="twitter:creator" content="@m10djcompany" />
+          <meta name="twitter:site" content="@m10djcompany" />
         </Head>
         
         <div className="max-w-md w-full">
@@ -210,11 +340,46 @@ export default function PaymentPage() {
   const tax = 0; // Calculate if needed
   const total = invoice.total_amount || subtotal;
 
+  // Build Open Graph metadata
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+  const paymentUrl = `${baseUrl}/pay/${token}`;
+  const ogTitle = `Pay Invoice ${invoice.invoice_number} - M10 DJ Company`;
+  const ogDescription = `Complete your secure payment${invoice.total_amount ? ` of $${invoice.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}${invoice.due_date ? `. Due ${new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}. Powered by Stripe.`;
+  // Use payment-specific OG image if available, fallback to default logo
+  const ogImage = `${baseUrl}/assets/payment-og-image.png`;
+  const fallbackOgImage = `${baseUrl}/logo-static.jpg`;
+
   return (
     <>
       <Head>
-        <title>Pay Invoice {invoice.invoice_number} - M10 DJ Company</title>
+        <title>{ogTitle}</title>
         <meta name="robots" content="noindex, nofollow" />
+        <meta name="description" content={ogDescription} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={paymentUrl} />
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={ogDescription} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:secure_url" content={ogImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={`Payment for Invoice ${invoice.invoice_number} - M10 DJ Company`} />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:site_name" content="M10 DJ Company" />
+        <meta property="og:locale" content="en_US" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={paymentUrl} />
+        <meta name="twitter:title" content={ogTitle} />
+        <meta name="twitter:description" content={ogDescription} />
+        <meta name="twitter:image" content={ogImage} />
+        <meta name="twitter:image:alt" content={`Payment for Invoice ${invoice.invoice_number} - M10 DJ Company`} />
+        <meta name="twitter:creator" content="@m10djcompany" />
+        <meta name="twitter:site" content="@m10djcompany" />
+        
         <style dangerouslySetInnerHTML={{__html: `
           @keyframes pulse-slow {
             0%, 100% {
@@ -322,6 +487,27 @@ export default function PaymentPage() {
                   </div>
                 </div>
 
+                {/* Download PDF Button */}
+                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={handleDownloadPDF}
+                    disabled={downloadingPdf}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                  >
+                    {downloadingPdf ? (
+                      <>
+                        <Loader className="w-4 h-4 animate-spin" />
+                        <span>Generating PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        <span>Download Invoice PDF</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
                 {/* Invoice Summary - Always Visible */}
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-sm">
@@ -332,11 +518,33 @@ export default function PaymentPage() {
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Due Date:</span>
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {new Date(invoice.due_date).toLocaleDateString('en-US', { 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
+                        {(() => {
+                          try {
+                            const date = new Date(invoice.due_date);
+                            if (isNaN(date.getTime())) {
+                              // If date parsing fails, try to extract just the day if it's just a number
+                              const dayOnly = parseInt(invoice.due_date);
+                              if (!isNaN(dayOnly) && dayOnly >= 1 && dayOnly <= 31) {
+                                // Assume it's the day of the current month/year
+                                const now = new Date();
+                                const fullDate = new Date(now.getFullYear(), now.getMonth(), dayOnly);
+                                return fullDate.toLocaleDateString('en-US', { 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric' 
+                                });
+                              }
+                              return invoice.due_date; // Fallback to raw value
+                            }
+                            return date.toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            });
+                          } catch (e) {
+                            return invoice.due_date; // Fallback to raw value
+                          }
+                        })()}
                       </span>
                     </div>
                   )}

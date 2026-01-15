@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract & Invoice Ready - M10 DJ Company</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f8fafc;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .logo-img {
+            height: auto;
+            max-width: 200px;
+            width: 100%;
+            display: block;
+        }
+
+        .logo-text {
+            color: #fcba00;
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: none;
+            margin-top: 10px;
+            letter-spacing: 2px;
+        }
+
+        .tagline {
+            color: #ffffff;
+            font-size: 16px;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 50px 30px;
+        }
+
+        .title {
+            color: #1a1a1a;
+            font-size: 28px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            color: #4a5568;
+            font-size: 16px;
+            text-align: left;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        .event-details {
+            background-color: #f9fafb;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 30px 0;
+            border-left: 4px solid #fcba00;
+        }
+
+        .event-details h3 {
+            color: #1a1a1a;
+            font-size: 18px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .event-details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .event-details td {
+            padding: 8px 0;
+            font-size: 15px;
+        }
+
+        .event-details td:first-child {
+            color: #6b7280;
+            font-weight: 500;
+            width: 40%;
+        }
+
+        .event-details td:last-child {
+            color: #111827;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .next-steps {
+            background-color: #fff8e1;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 30px 0;
+            border-left: 4px solid #fcba00;
+        }
+
+        .next-steps h3 {
+            color: #1a1a1a;
+            font-size: 18px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .next-steps ol {
+            margin: 0;
+            padding-left: 20px;
+            color: #374151;
+        }
+
+        .next-steps li {
+            margin: 12px 0;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .next-steps li strong {
+            color: #1a1a1a;
+        }
+
+        .cta-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin: 30px 0;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background-color: #fcba00;
+            color: #000000;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .cta-button:hover {
+            background-color: #f5a500;
+        }
+
+        .cta-button.secondary {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+
+        .cta-button.secondary:hover {
+            background-color: #2d2d2d;
+        }
+
+        .info-box {
+            background-color: #f0fdf4;
+            border-left: 4px solid #22c55e;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 4px;
+        }
+
+        .info-box h4 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #166534;
+        }
+
+        .info-box p {
+            margin: 0;
+            font-size: 14px;
+            color: #166534;
+            line-height: 1.6;
+        }
+
+        .footer {
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8e0;
+            padding: 40px 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .footer p {
+            margin: 10px 0;
+        }
+
+        .contact-info {
+            margin: 20px 0;
+            padding: 16px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .contact-info p {
+            margin: 8px 0;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .contact-info a {
+            color: #fcba00;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .contact-info a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                box-shadow: none;
+            }
+
+            .header, .content, .footer {
+                padding: 30px 20px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
+
+            .message {
+                font-size: 15px;
+            }
+
+            .cta-button {
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .logo-img {
+                max-width: 200px;
+            }
+        }
+
+        /* Dark mode support for some email clients */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+            }
+
+            .container {
+                background-color: #2a2a2a;
+            }
+
+            .content {
+                background-color: #2a2a2a;
+            }
+
+            .title {
+                color: #ffffff;
+            }
+
+            .message {
+                color: #d1d5db;
+            }
+
+            .event-details {
+                background-color: #1f2937;
+                border-left-color: #fcba00;
+            }
+
+            .event-details h3 {
+                color: #ffffff;
+            }
+
+            .event-details td:first-child {
+                color: #9ca3af;
+            }
+
+            .event-details td:last-child {
+                color: #f3f4f6;
+            }
+
+            .next-steps {
+                background-color: #1f2937;
+                border-left-color: #fcba00;
+            }
+
+            .next-steps h3 {
+                color: #ffffff;
+            }
+
+            .next-steps li {
+                color: #d1d5db;
+            }
+
+            .next-steps li strong {
+                color: #ffffff;
+            }
+
+            .info-box {
+                background-color: #1a3a1a;
+                border-left-color: #10b981;
+            }
+
+            .info-box h4 {
+                color: #86efac;
+            }
+
+            .info-box p {
+                color: #86efac;
+            }
+
+            .footer {
+                background-color: #1a1a1a;
+                border-top-color: #404040;
+                color: #9ca3af;
+            }
+
+            .contact-info {
+                background-color: #1f2937;
+                border-color: #374151;
+            }
+
+            .contact-info p {
+                color: #d1d5db;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Animated Logo -->
+        <div class="header">
+            <div class="logo-container">
+                <img 
+                    src="https://m10djcompany.com/M10-Rotating-Logo-200px-Small.gif" 
+                    alt="M10 DJ Company Animated Logo" 
+                    class="logo-img"
+                    width="200"
+                    height="200"
+                    style="width: auto; height: auto; max-width: 200px;"
+                />
+            </div>
+            <div class="logo-text">M10 DJ COMPANY</div>
+            <p class="tagline">Premium DJ Services in Memphis & Beyond</p>
+        </div>
+
+        <!-- Content Section -->
+        <div class="content">
+            <h1 class="title">Your Contract & Invoice Are Ready! 🎵</h1>
+            
+            <p class="message">
+                Hi {{client_first_name}},
+            </p>
+
+            <p class="message">
+                Thank you for choosing M10 DJ Company! We're thrilled to be part of your special day. Your contract and invoice are ready for review and signing.
+            </p>
+
+            <!-- Event Details -->
+            <div class="event-details">
+                <h3>📅 Event Details</h3>
+                <table>
+                    <tr>
+                        <td>Event:</td>
+                        <td>{{event_name}}</td>
+                    </tr>
+                    <tr>
+                        <td>Date:</td>
+                        <td>{{event_date}}</td>
+                    </tr>
+                    {{#if event_time}}
+                    <tr>
+                        <td>Time:</td>
+                        <td>{{event_time}}{{#if end_time}} - {{end_time}}{{/if}}</td>
+                    </tr>
+                    {{/if}}
+                    {{#if venue_name}}
+                    <tr>
+                        <td>Venue:</td>
+                        <td>{{venue_name}}{{#if venue_address}}, {{venue_address}}{{/if}}</td>
+                    </tr>
+                    {{/if}}
+                    {{#if guest_count}}
+                    <tr>
+                        <td>Expected Guests:</td>
+                        <td>{{guest_count}}</td>
+                    </tr>
+                    {{/if}}
+                    <tr>
+                        <td>Contract Number:</td>
+                        <td>{{contract_number}}</td>
+                    </tr>
+                    <tr>
+                        <td>Invoice Number:</td>
+                        <td>{{invoice_number}}</td>
+                    </tr>
+                    <tr style="border-top: 2px solid #e5e7eb; margin-top: 12px;">
+                        <td style="padding-top: 12px;">Total Amount:</td>
+                        <td style="padding-top: 12px; font-size: 18px;">${{total_amount}}</td>
+                    </tr>
+                    {{#if deposit_amount}}
+                    <tr>
+                        <td>Deposit Required:</td>
+                        <td>${{deposit_amount}}</td>
+                    </tr>
+                    {{/if}}
+                </table>
+            </div>
+
+            <!-- Next Steps -->
+            <div class="next-steps">
+                <h3>✅ Next Steps</h3>
+                <ol>
+                    <li><strong>Review & Sign Your Contract</strong><br/>
+                        Click the button below to review and electronically sign your service agreement. This secures your booking and confirms all event details.</li>
+                    <li><strong>Submit Your Payment</strong><br/>
+                        After signing, you'll be directed to our secure payment portal. You can pay the full amount or submit your deposit to reserve your date.</li>
+                    <li><strong>Confirmation</strong><br/>
+                        Once both are completed, we'll send you a confirmation email with all the details. We'll also reach out closer to your event date to finalize your music preferences and timeline.</li>
+                </ol>
+            </div>
+
+            <!-- CTA Buttons -->
+            <div class="cta-buttons">
+                <a href="{{contract_signing_url}}" class="cta-button">
+                    📄 Review & Sign Contract
+                </a>
+                <a href="{{invoice_payment_url}}" class="cta-button secondary">
+                    💳 View Invoice & Make Payment
+                </a>
+            </div>
+
+            <!-- Important Info -->
+            <div class="info-box">
+                <h4>⏰ Important Timeline</h4>
+                <p>
+                    {{#if contract_expires_at}}
+                    Your contract signing link expires on <strong>{{contract_expires_at}}</strong>. Please sign within this timeframe to secure your booking.
+                    {{else}}
+                    Please review and sign your contract as soon as possible to secure your event date.
+                    {{/if}}
+                    {{#if invoice_due_date}}
+                    Your invoice is due on <strong>{{invoice_due_date}}</strong>.
+                    {{/if}}
+                </p>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="contact-info">
+                <p style="margin: 0 0 12px; font-weight: 600; color: #1a1a1a; font-size: 16px;">Questions or Need Assistance?</p>
+                <p style="margin: 4px 0;">
+                    📞 <a href="tel:9014102020">(901) 410-2020</a>
+                </p>
+                <p style="margin: 4px 0;">
+                    ✉️ <a href="mailto:m10djcompany@gmail.com">m10djcompany@gmail.com</a>
+                </p>
+                <p style="margin: 12px 0 0; font-size: 13px; color: #6b7280;">
+                    We're here to help! Don't hesitate to reach out if you have any questions about your contract, invoice, or event planning.
+                </p>
+            </div>
+
+            <p class="message" style="margin-top: 30px; text-align: center; font-size: 14px; color: #6b7280;">
+                We're excited to make your event unforgettable! 🎉
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>M10 DJ COMPANY</strong></p>
+            <p>Premium DJ Services | Memphis, TN & Surrounding Areas</p>
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8e0;">
+                <p style="font-size: 12px; opacity: 0.8;">
+                    © {{year}} M10 DJ Company. All rights reserved.<br/>
+                    You're receiving this email because you've engaged with our services.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -176,25 +176,25 @@ export default function ContractFieldsEditor({
 
   return (
     <>
-      {/* Toggle Button - Always visible when minimized or closed */}
+      {/* Toggle Button - Always visible when minimized or closed - Mobile Optimized */}
       {(!isOpen || isMinimized) && (
         <button
           onClick={() => {
             setIsOpen(true);
             setIsMinimized(false);
           }}
-          className="fixed right-4 top-4 z-50 p-2 bg-black text-white rounded-lg shadow-lg hover:bg-gray-800 transition-colors"
+          className="fixed bottom-28 right-4 sm:top-4 sm:bottom-auto z-40 w-12 h-12 sm:w-auto sm:h-auto sm:p-2 bg-black text-white rounded-full sm:rounded-lg shadow-lg hover:bg-gray-800 active:bg-gray-900 transition-colors flex items-center justify-center touch-manipulation"
           title="Open Contract Fields Editor"
         >
-          <Settings className="w-5 h-5" />
+          <Settings className="w-5 h-5 sm:w-5 sm:h-5" />
         </button>
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Mobile Optimized */}
       {isOpen && (
         <div
           className={`fixed right-0 top-0 h-full bg-white border-l border-gray-300 shadow-xl z-50 transition-all duration-300 ${
-            isMinimized ? 'w-16' : 'w-96'
+            isMinimized ? 'w-16' : 'w-full sm:w-96'
           }`}
         >
           {/* Header */}
