@@ -50,12 +50,16 @@ export default function InvoiceEmailActions({
 
   // Auto-load preview when modal opens
   useEffect(() => {
-    if (showEmailCenter && !previewLoaded && loading === null) {
-      console.log('Auto-loading preview...');
-      handlePreview();
+    if (showEmailCenter && !previewLoaded && loading === null && invoiceId) {
+      console.log('Auto-loading preview for invoice:', invoiceId);
+      // Small delay to ensure modal is fully rendered
+      const timer = setTimeout(() => {
+        handlePreview();
+      }, 100);
+      return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showEmailCenter, previewLoaded]);
+  }, [showEmailCenter]);
 
   const handlePreview = async () => {
     if (loading === 'preview') {
@@ -365,15 +369,15 @@ export default function InvoiceEmailActions({
             </TabsList>
 
             {/* Preview Tab */}
-            <TabsContent value="preview" className="flex-1 flex flex-col overflow-hidden m-0 px-6 pb-6">
-              {!previewLoaded && loading === 'preview' ? (
+            <TabsContent value="preview" className="flex-1 flex flex-col overflow-hidden m-0 px-6 pb-6 data-[state=active]:flex">
+              {loading === 'preview' ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
                     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#fcba00]" />
                     <p className="text-sm text-gray-500">Loading email preview...</p>
                   </div>
                 </div>
-              ) : previewLoaded ? (
+              ) : previewLoaded && previewHtml ? (
                 <>
                   <div className="flex-1 overflow-auto border rounded-lg bg-gray-50 dark:bg-gray-900 p-4 mt-4">
                     <div 
@@ -411,34 +415,25 @@ export default function InvoiceEmailActions({
               ) : (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
-                    {loading === 'preview' ? (
-                      <>
-                        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#fcba00]" />
-                        <p className="text-sm text-gray-500">Loading email preview...</p>
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                        <p className="text-sm text-gray-500 mb-4">Preview not loaded</p>
-                        <Button 
-                          onClick={handlePreview} 
-                          variant="outline"
-                          disabled={loading !== null}
-                        >
-                          {loading === 'preview' ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Loading...
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="w-4 h-4 mr-2" />
-                              Load Preview
-                            </>
-                          )}
-                        </Button>
-                      </>
-                    )}
+                    <Eye className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-sm text-gray-500 mb-4">Preview not loaded</p>
+                    <Button 
+                      onClick={handlePreview} 
+                      variant="outline"
+                      disabled={loading !== null}
+                    >
+                      {loading === 'preview' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Load Preview
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               )}
