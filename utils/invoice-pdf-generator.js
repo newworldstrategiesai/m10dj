@@ -350,10 +350,12 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       .font('Helvetica')
       .text('Venue:', rightCol, rightYPos);
     
+    // Ensure venue name doesn't extend beyond page edge (545)
+    // rightCol + 80 = 400, so max width is 545 - 400 = 145
     doc
       .fillColor(darkGray)
       .font('Helvetica-Bold')
-      .text(invoice.venue_name, rightCol + 80, rightYPos, { width: 165 });
+      .text(invoice.venue_name, rightCol + 80, rightYPos, { width: 145 });
   }
 
   yPosition += 80;
@@ -643,11 +645,15 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       }
     }
     
+    // Ensure URL doesn't extend beyond page edge (545)
+    // leftColX = 70, so max width is 545 - 70 = 475, but we want to leave room for QR code
+    // QR code starts at 380, so max width should be 380 - 70 - 10 (padding) = 300
+    const maxUrlDisplayWidth = Math.min(maxUrlWidth, 300);
     doc
       .fontSize(urlFontSize)
       .fillColor(mediumGray)
       .text(paymentUrl, leftColX, paymentContentY, { 
-        width: maxUrlWidth + 50, // Add buffer to prevent wrapping
+        width: maxUrlDisplayWidth,
         link: null
       });
 
@@ -670,14 +676,20 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       const maxQRY = paymentBoxStartY + paymentBoxHeight - qrCodeSize - 10;
       const finalQRY = Math.max(minQRY, Math.min(qrCodeY, maxQRY));
       
+      // Ensure QR code doesn't extend beyond page edge (545)
+      // qrCodeX = 380, qrCodeSize = 100, so it extends to 480, which is fine
+      // But add a check to ensure it stays within bounds
+      const maxQRX = 545 - qrCodeSize - 5; // 5px padding from edge
+      const finalQRX = Math.min(qrCodeX, maxQRX);
+      
       // Add white background behind QR code for better contrast (within box bounds)
       const bgPadding = 5;
-      const bgX = qrCodeX - bgPadding;
+      const bgX = finalQRX - bgPadding;
       const bgY = finalQRY - bgPadding;
       const bgSize = qrCodeSize + (bgPadding * 2);
       
-      // Ensure background doesn't extend outside box
-      if (bgY >= paymentBoxStartY && bgY + bgSize <= paymentBoxStartY + paymentBoxHeight) {
+      // Ensure background doesn't extend outside box or page
+      if (bgY >= paymentBoxStartY && bgY + bgSize <= paymentBoxStartY + paymentBoxHeight && bgX + bgSize <= 545) {
         doc
           .rect(bgX, bgY, bgSize, bgSize)
           .fill('#ffffff')
@@ -686,7 +698,7 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       }
       
       // Add QR code image
-      doc.image(qrBuffer, qrCodeX, finalQRY, { 
+      doc.image(qrBuffer, finalQRX, finalQRY, { 
         width: qrCodeSize,
         height: qrCodeSize
       });
