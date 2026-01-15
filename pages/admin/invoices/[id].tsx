@@ -2204,11 +2204,11 @@ export default function InvoiceDetailPage() {
               <Download className={`h-4 w-4 mr-2 ${downloading ? 'animate-spin' : ''}`} />
               {downloading ? 'Generating...' : 'Download PDF'}
             </Button>
-            {invoice && invoice.id && invoice.contact_id && (
+            {invoice && invoice.id && (
               <InvoiceEmailActions
                 invoiceId={invoice.id}
                 invoiceNumber={invoice.invoice_number}
-                disabled={!invoice.email_address}
+                disabled={!invoice.contact_id || !invoice.email_address}
               />
             )}
             {invoice.contact_id && (
