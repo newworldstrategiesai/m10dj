@@ -256,6 +256,7 @@ async function sendInvoiceWithPaymentLink(invoice, contact, supabase, resend, pd
     `;
 
     // Send email via Resend
+    let resendEmailId = null;
     if (resend) {
       const emailOptions = {
         from: 'M10 DJ Company <noreply@m10djcompany.com>',
@@ -274,7 +275,33 @@ async function sendInvoiceWithPaymentLink(invoice, contact, supabase, resend, pd
         ];
       }
 
-      await resend.emails.send(emailOptions);
+      const emailResult = await resend.emails.send(emailOptions);
+      resendEmailId = emailResult.data?.id || null;
+
+      // Create email tracking record
+      if (resendEmailId && contact.id) {
+        try {
+          await supabase.from('email_tracking').insert({
+            email_id: resendEmailId,
+            recipient_email: contact.email_address,
+            sender_email: 'noreply@m10djcompany.com',
+            subject: `Invoice ${invoice.invoice_number} from M10 DJ Company`,
+            event_type: 'sent',
+            contact_id: contact.id,
+            metadata: {
+              invoice_id: invoice.id,
+              invoice_number: invoice.invoice_number,
+              email_type: 'invoice',
+              has_pdf_attachment: !!pdfBuffer
+            },
+            created_at: new Date().toISOString()
+          });
+          console.log('✅ Invoice email tracking record created');
+        } catch (trackingError) {
+          console.warn('⚠️ Failed to create email tracking record:', trackingError.message);
+          // Don't fail if tracking fails
+        }
+      }
     }
 
     console.log(`✅ Invoice email sent with payment link: ${paymentLink}`);

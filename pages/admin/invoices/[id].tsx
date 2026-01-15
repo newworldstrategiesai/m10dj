@@ -26,7 +26,10 @@ import {
   X,
   Eye,
   Send,
-  TestTube
+  TestTube,
+  Mail,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -1619,6 +1622,7 @@ export default function InvoiceDetailPage() {
   const [editingEmail, setEditingEmail] = useState(false);
   const [emailValue, setEmailValue] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
+  const [emailTracking, setEmailTracking] = useState<any[]>([]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -2406,6 +2410,64 @@ export default function InvoiceDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* Email Tracking */}
+            {emailTracking.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Email Status</h3>
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                  {emailTracking.map((track: any) => {
+                    const sentEvent = emailTracking.find((t: any) => t.email_id === track.email_id && t.event_type === 'sent');
+                    const openedEvent = emailTracking.find((t: any) => t.email_id === track.email_id && t.event_type === 'opened');
+                    const clickedEvent = emailTracking.find((t: any) => t.email_id === track.email_id && t.event_type === 'clicked');
+                    
+                    if (track.event_type !== 'sent') return null;
+                    
+                    return (
+                      <div key={track.id} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              Invoice Email Sent
+                            </span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {openedEvent ? (
+                              <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Opened
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                                <Clock className="h-3 w-3" />
+                                Sent
+                              </span>
+                            )}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 pl-6">
+                          <p>Sent: {new Date(track.created_at).toLocaleString()}</p>
+                          {openedEvent && (
+                            <p className="text-green-600 dark:text-green-400">
+                              Opened: {new Date(openedEvent.opened_at || openedEvent.created_at).toLocaleString()}
+                            </p>
+                          )}
+                          {clickedEvent && (
+                            <p className="text-blue-600 dark:text-blue-400">
+                              Clicked: {new Date(clickedEvent.clicked_at || clickedEvent.created_at).toLocaleString()}
+                            </p>
+                          )}
+                          {!openedEvent && (
+                            <p className="text-gray-400 italic">Not opened yet</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Invoice Details */}
             <div>
