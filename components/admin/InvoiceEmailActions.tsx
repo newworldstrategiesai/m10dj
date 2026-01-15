@@ -523,9 +523,9 @@ export default function InvoiceEmailActions({
                     <Button 
                       onClick={handlePreview} 
                       variant="outline"
-                      disabled={loading !== null}
+                      disabled={loading !== null || savingEmail}
                     >
-                      {loading === 'preview' ? (
+                      {(loading === 'preview' || savingEmail) ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Loading...
