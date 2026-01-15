@@ -132,6 +132,7 @@ export default async function handler(req, res) {
 
     // Return special code if email is missing (so component can prompt admin)
     const hasEmail = !!invoiceEmail;
+    const currentEmail = invoiceEmail || '';
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
     const paymentLink = `${baseUrl}/pay/${paymentToken}`;
     const logoUrl = `${baseUrl}/m10-black-clear-png.png`;

@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface InvoiceEmailActionsProps {
@@ -47,6 +48,9 @@ export default function InvoiceEmailActions({
   const [testEmails, setTestEmails] = useState<string>('');
   const [testAttachPDF, setTestAttachPDF] = useState<boolean>(false);
   const [previewLoaded, setPreviewLoaded] = useState<boolean>(false);
+  const [editingEmail, setEditingEmail] = useState<boolean>(false);
+  const [emailInput, setEmailInput] = useState<string>('');
+  const [savingEmail, setSavingEmail] = useState<boolean>(false);
 
   // Auto-load preview when modal opens
   useEffect(() => {
@@ -328,6 +332,59 @@ export default function InvoiceEmailActions({
     setPreviewLoaded(false);
     setTestEmails('');
     setTestAttachPDF(false);
+    setEditingEmail(false);
+    setEmailInput('');
+  };
+
+  const handleSaveEmail = async () => {
+    // Validate email format
+    if (emailInput.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.trim())) {
+      toast({
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setSavingEmail(true);
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/update-email`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_address: emailInput.trim() || '' })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update email address');
+      }
+
+      // Reload preview with new email
+      setPreviewLoaded(false);
+      setEditingEmail(false);
+      setPreviewHasEmail(!!emailInput.trim());
+      
+      toast({
+        title: 'Email Updated',
+        description: 'Invoice email address has been updated. Reloading preview...'
+      });
+
+      // Reload preview after a short delay
+      setTimeout(() => {
+        handlePreview();
+      }, 500);
+    } catch (error: any) {
+      console.error('Error saving email:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update email address',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingEmail(false);
+    }
   };
 
   return (
@@ -391,22 +448,66 @@ export default function InvoiceEmailActions({
                     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mt-4">
                       <div className="flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-                            Email Address Required
-                          </p>
-                          <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                            This invoice requires a contact email address to send. Please add an email address to the contact.
-                          </p>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              window.location.href = `/admin/contacts/${previewContactId}`;
-                            }}
-                            className="bg-amber-600 hover:bg-amber-700 text-white"
-                          >
-                            Add Email Address
-                          </Button>
+                        <div className="flex-1 space-y-3">
+                          <div>
+                            <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                              Email Address Required
+                            </p>
+                            <p className="text-sm text-amber-700 dark:text-amber-300">
+                              This invoice requires an email address to send. Add one below:
+                            </p>
+                          </div>
+                          {editingEmail ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="email"
+                                value={emailInput}
+                                onChange={(e) => setEmailInput(e.target.value)}
+                                placeholder="client@example.com"
+                                className="flex-1"
+                                disabled={savingEmail}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !savingEmail) {
+                                    handleSaveEmail();
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="sm"
+                                onClick={handleSaveEmail}
+                                disabled={savingEmail}
+                                className="bg-amber-600 hover:bg-amber-700 text-white"
+                              >
+                                {savingEmail ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Saving...
+                                  </>
+                                ) : (
+                                  'Save'
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingEmail(false);
+                                  setEmailInput('');
+                                }}
+                                disabled={savingEmail}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => setEditingEmail(true)}
+                              className="bg-amber-600 hover:bg-amber-700 text-white"
+                            >
+                              Add Email Address
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
