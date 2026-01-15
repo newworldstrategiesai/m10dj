@@ -64,6 +64,7 @@ export default async function handler(req, res) {
     const contact = invoice.contacts;
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
     const paymentLink = `${baseUrl}/pay/${paymentToken}`;
+    const logoUrl = `${baseUrl}/assets/M10-Nightclub-Logo.png`;
 
     // Format line items for email
     const lineItems = invoice.line_items || [];
@@ -84,9 +85,6 @@ export default async function handler(req, res) {
         </tr>
       `;
     }).join('');
-
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
-    const logoUrl = `${baseUrl}/assets/M10-Nightclub-Logo.png`;
 
     // Generate email HTML (same as sendInvoiceWithPaymentLink)
     const emailHtml = `
