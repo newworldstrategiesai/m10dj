@@ -96,6 +96,10 @@ export default function SignContractPage() {
       const supabase = createClientComponentClient();
       const { data: { user } } = await supabase.auth.getUser();
       const admin = await isAdminEmail(user?.email);
+      console.log('[sign-contract] Admin status check:', { 
+        userEmail: user?.email, 
+        isAdmin: admin 
+      });
       setIsAdmin(admin);
     } catch (error) {
       console.error('Error checking admin status:', error);
@@ -334,9 +338,13 @@ export default function SignContractPage() {
 
           // SECURITY: Prevent clients from signing as owner
           // Only allow owner signatures if user is an admin
-          if (signerType === 'owner' && !isAdmin) {
-            alert('Only authorized administrators can sign as the owner. Please sign as the client.');
-            return;
+          if (signerType === 'owner') {
+            if (!isAdmin) {
+              alert('Only authorized administrators can sign as the owner. Please sign as the client.');
+              return;
+            }
+            // Admin can sign as owner - proceed
+            console.log('[sign-contract] Admin signing as owner');
           }
 
           if (!hasSignature) {
@@ -458,6 +466,50 @@ export default function SignContractPage() {
     const cleanup = setupClickHandlers();
     return cleanup;
   }, [contractHtmlWithSignatures, contractData, signatureData, ownerSignatureData, isAdmin, isEditMode]);
+
+  // Update signature areas when admin status changes
+  useEffect(() => {
+    if (!contractContentRef.current || !contractData) return;
+
+    const contractContent = contractContentRef.current;
+    const ownerArea = contractContent.querySelector('#owner-signature-area') as HTMLElement;
+    
+    if (ownerArea) {
+      if (isAdmin && !ownerSignatureData) {
+        // Admin can sign as owner - enable it
+        console.log('[sign-contract] Enabling owner signature area for admin');
+        ownerArea.style.cursor = 'pointer';
+        ownerArea.style.userSelect = 'none';
+        ownerArea.style.opacity = '1';
+        ownerArea.style.pointerEvents = 'auto';
+        ownerArea.classList.remove('signature-disabled');
+        // Make all children non-interactive for pointer events so clicks bubble to parent
+        const children = ownerArea.querySelectorAll('*');
+        children.forEach((child) => {
+          (child as HTMLElement).style.pointerEvents = 'none';
+        });
+        // Update placeholder text for admin
+        const placeholder = ownerArea.querySelector('.signature-placeholder-text');
+        if (placeholder) {
+          (placeholder as HTMLElement).textContent = 'Click to sign as owner';
+          (placeholder as HTMLElement).style.color = '#666';
+        }
+      } else if (!isAdmin) {
+        // Client cannot sign as owner - disable it
+        console.log('[sign-contract] Disabling owner signature area for non-admin');
+        ownerArea.style.cursor = 'not-allowed';
+        ownerArea.style.opacity = '0.5';
+        ownerArea.style.pointerEvents = 'none';
+        ownerArea.classList.add('signature-disabled');
+        // Update placeholder text
+        const placeholder = ownerArea.querySelector('.signature-placeholder-text');
+        if (placeholder) {
+          (placeholder as HTMLElement).textContent = 'Owner signature only';
+          (placeholder as HTMLElement).style.color = '#999';
+        }
+      }
+    }
+  }, [isAdmin, ownerSignatureData, contractData]);
 
   const validateToken = async () => {
     setLoading(true);
