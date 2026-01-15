@@ -302,6 +302,7 @@ export default async function handler(req, res) {
       html: emailHtml,
       subject: `Invoice ${invoice.invoice_number || 'N/A'} from M10 DJ Company`,
       hasEmail: !!hasEmail,
+      email: invoiceEmail || '',
       contactId: invoice.contact_id || invoice.contacts?.id
     });
   } catch (error) {
