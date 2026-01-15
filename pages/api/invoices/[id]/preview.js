@@ -54,6 +54,8 @@ function generateInvoiceFooterMessage(invoice, contact = null) {
 /**
  * Preview the invoice email HTML
  * Returns the rendered HTML without sending
+ * 
+ * Route: POST /api/invoices/[id]/preview
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
