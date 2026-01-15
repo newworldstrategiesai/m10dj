@@ -1683,6 +1683,33 @@ export default function InvoiceDetailPage() {
           
           if (isMountedRef.current) {
             setInvoice(invoice);
+            // Initialize email value for editing
+            setEmailValue(invoice.email_address || '');
+          }
+
+          // Fetch email tracking data for this invoice
+          if (invoice.contact_id) {
+            try {
+              const { data: trackingData } = await supabase
+                .from('email_tracking')
+                .select('*')
+                .eq('contact_id', invoice.contact_id)
+                .order('created_at', { ascending: false });
+              
+              if (trackingData && isMountedRef.current) {
+                // Filter to only invoice-related emails
+                const invoiceTracking = trackingData.filter((track: any) => 
+                  track.metadata?.email_type === 'invoice' || 
+                  track.subject?.includes(invoice.invoice_number) ||
+                  track.metadata?.invoice_id === invoice.id ||
+                  track.metadata?.invoice_number === invoice.invoice_number
+                );
+                setEmailTracking(invoiceTracking);
+              }
+            } catch (trackingError) {
+              console.warn('Error fetching email tracking:', trackingError);
+              // Don't fail if tracking table doesn't exist
+            }
           }
           
           // Fetch line items from invoice_line_items table
