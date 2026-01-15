@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AccessToken } from 'livekit-server-sdk';
 import { createClient } from '@/utils/supabase/server';
 import { checkRateLimit } from './rate-limit';
+import { isPlatformAdmin } from '@/utils/auth-helpers/platform-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,19 +33,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { roomName, participantName, participantIdentity, roomType } = body;
 
-    // Get authenticated user
+    // Get authenticated user (may be null for anonymous viewers)
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    
+    // Note: We allow authError or no user for public streams (require_auth = false)
 
     // Handle admin-assistant room type (no roomName required, auto-generated)
     if (roomType === 'admin-assistant') {
+      // Admin assistant requires authentication
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
       const apiKey = process.env.LIVEKIT_API_KEY;
       const apiSecret = process.env.LIVEKIT_API_SECRET;
 
@@ -99,23 +102,67 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user has access to this room (check if they own it or it's public)
-    const { data: stream } = await supabase
+    // We need to get the stream owner's email to check if they're an admin
+    const { data: stream, error: streamError } = await supabase
       .from('live_streams')
-      .select('id, user_id, is_live, ppv_price_cents')
+      .select('id, user_id, is_live, ppv_price_cents, require_auth')
       .eq('room_name', roomName)
       .single();
 
-    if (!stream) {
+    if (streamError || !stream) {
       return NextResponse.json(
         { error: 'Stream not found' },
         { status: 404 }
       );
     }
 
-    const typedStream = stream as { id: string; user_id: string; is_live: boolean; ppv_price_cents: number | null };
+    const typedStream = stream as { 
+      id: string; 
+      user_id: string; 
+      is_live: boolean; 
+      ppv_price_cents: number | null;
+      require_auth: boolean | null;
+    };
+
+    // Get stream owner's email to check if they're an admin
+    let streamOwnerEmail: string | null = null;
+    let isStreamOwnerAdmin = false;
+    
+    if (typedStream.user_id) {
+      // Use service role to get user email (for admin check)
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceRoleKey) {
+        const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+        const serviceSupabase = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          serviceRoleKey
+        );
+        const { data: ownerData } = await serviceSupabase.auth.admin.getUserById(typedStream.user_id);
+        if (ownerData?.user?.email) {
+          streamOwnerEmail = ownerData.user.email;
+          isStreamOwnerAdmin = isPlatformAdmin(streamOwnerEmail);
+        }
+      }
+    }
+
+    // Check if authentication is required
+    const requireAuth = typedStream.require_auth === true;
+    const isOwner = user && typedStream.user_id === user.id;
+    
+    // Allow anonymous access if:
+    // 1. Stream doesn't require auth (require_auth = false), OR
+    // 2. Stream owner is an admin (admins can broadcast public links)
+    const allowsAnonymousAccess = !requireAuth || isStreamOwnerAdmin;
+    
+    // If stream requires auth and user is not logged in, deny access
+    if (requireAuth && !user && !isStreamOwnerAdmin) {
+      return NextResponse.json(
+        { error: 'This stream requires you to be logged in' },
+        { status: 401 }
+      );
+    }
 
     // Check PPV access
-    const isOwner = typedStream.user_id === user.id;
     const isPublic = typedStream.is_live && (!typedStream.ppv_price_cents || typedStream.ppv_price_cents === 0);
     const ppvToken = body.ppvToken;
 
@@ -156,9 +203,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Set token expiry to 2 hours
+    // For anonymous users, generate a unique identity
+    const participantId = participantIdentity || user?.id || `anon-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const participantDisplayName = participantName || user?.email?.split('@')[0] || 'Anonymous';
+    
     const at = new AccessToken(apiKey, apiSecret, {
-      identity: participantIdentity || user.id,
-      name: participantName || user.email || 'Anonymous',
+      identity: participantId,
+      name: participantDisplayName,
       ttl: '2h', // 2-hour expiry for security
     });
 

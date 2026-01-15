@@ -133,6 +133,10 @@ export default function App({ Component, pageProps }) {
     }
   }, [router.asPath, isAdminRoute, isDJDashPage, isSignInPage]);
   
+  // Check if we're on a page that has custom OG images (don't include default OG tags)
+  const isPaymentPage = router.pathname.startsWith('/pay/');
+  const isContractPage = router.pathname.startsWith('/sign-contract/');
+
   return (
     <ThemeProviderWrapper>
       <ErrorBoundary
@@ -150,16 +154,26 @@ export default function App({ Component, pageProps }) {
         <meta name="msapplication-TileColor" content="#fcba00" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
         
-        {/* Open Graph default image */}
-        <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
+        {/* Open Graph default image - Exclude for pages with custom OG images */}
+        {!isPaymentPage && !isContractPage && (
+          <>
+            <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+          </>
+        )}
         <meta property="og:site_name" content="M10 DJ Company" />
         
-        {/* Twitter Card default image */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content="https://m10djcompany.com/logo-static.jpg" />
-        <meta name="twitter:site" content="@m10djcompany" />
+        {/* Twitter Card default image - Exclude for pages with custom OG images */}
+        {!isPaymentPage && !isContractPage && (
+          <>
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:image" content="https://m10djcompany.com/logo-static.jpg" />
+          </>
+        )}
+        {!isPaymentPage && !isContractPage && (
+          <meta name="twitter:site" content="@m10djcompany" />
+        )}
         
         {/* Google Site Verification */}
         <meta name="google-site-verification" content="gvyoj4VOR-ZSnrkrcpUfKdX4Qh81QsZBuIviCWJDSAI" />

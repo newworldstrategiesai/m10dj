@@ -98,12 +98,9 @@ export default function LiveStreamPage() {
 
         const typedStreamData = streamData as LiveStream;
         
-        // Check if authentication is required
-        if (typedStreamData.require_auth && !user) {
-          setError('This stream requires you to be logged in');
-          setLoading(false);
-          return;
-        }
+        // Note: We don't block here if require_auth is true - let the API route handle
+        // authorization (it will check if stream owner is admin and allow public access)
+        // This allows admins to broadcast public links even if require_auth is set
         
         setStream(typedStreamData);
 

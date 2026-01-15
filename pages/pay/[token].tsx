@@ -472,38 +472,38 @@ export default function PaymentPage() {
         `}} />
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 sm:py-12 lg:py-16 px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-8 sm:mb-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#fcba00] to-[#e5a800] rounded-2xl mb-4 sm:mb-6 shadow-lg transform transition-transform hover:scale-105 active:scale-95">
-              <FileText className="w-8 h-8 sm:w-10 sm:h-10 text-black" />
+          <div className="text-center mb-8 sm:mb-10 lg:mb-12">
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-[#fcba00] to-[#e5a800] rounded-2xl mb-4 sm:mb-6 shadow-lg transform transition-transform hover:scale-105 active:scale-95">
+              <FileText className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-black" />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">Invoice Payment</h1>
-            <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg">Complete your payment securely with Stripe</p>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">Invoice Payment</h1>
+            <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg lg:text-xl">Complete your payment securely with Stripe</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-5 xl:grid-cols-12 gap-6 sm:gap-8 lg:gap-10">
             {/* Main Content - Invoice Details */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-3 xl:col-span-7 space-y-6 lg:space-y-8">
               {/* Customer Info */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-5 sm:p-6 transition-all duration-300 hover:shadow-lg hover:scale-[1.01]">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-5 sm:p-6 lg:p-8 transition-all duration-300 hover:shadow-lg hover:scale-[1.01]">
                 <div className="flex items-center gap-2 mb-4">
                   <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Bill To</h2>
                 </div>
-                <div className="text-gray-700 dark:text-gray-300">
-                  <p className="font-medium text-base">{invoice.contacts.first_name} {invoice.contacts.last_name}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{invoice.contacts.email_address}</p>
+                  <div className="text-gray-700 dark:text-gray-300">
+                  <p className="font-medium text-base lg:text-lg">{invoice.contacts.first_name} {invoice.contacts.last_name}</p>
+                  <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400 mt-1">{invoice.contacts.email_address}</p>
                 </div>
               </div>
 
               {/* Invoice Details */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-5 sm:p-6 transition-all duration-300 hover:shadow-lg hover:scale-[1.01]">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Invoice Details</h2>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-5 sm:p-6 lg:p-8 transition-all duration-300 hover:shadow-lg hover:scale-[1.01]">
+                <div className="flex items-center justify-between mb-6 lg:mb-8">
+                  <div className="flex items-center gap-2 lg:gap-3">
+                    <FileText className="w-5 h-5 lg:w-6 lg:h-6 text-gray-600 dark:text-gray-400" />
+                    <h2 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-white">Invoice Details</h2>
                   </div>
                   <div className="flex items-center gap-2">
                     {invoice?.contract?.status === 'signed' && (
@@ -544,13 +544,13 @@ export default function PaymentPage() {
                 </div>
 
                 {/* Invoice Summary - Always Visible */}
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-3 lg:space-y-4 mb-6 lg:mb-8">
+                  <div className="flex justify-between text-sm lg:text-base">
                     <span className="text-gray-600 dark:text-gray-400">Invoice Number:</span>
                     <span className="font-medium text-gray-900 dark:text-white">{invoice.invoice_number}</span>
                   </div>
                   {invoice.due_date && (
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-sm lg:text-base">
                       <span className="text-gray-600 dark:text-gray-400">Due Date:</span>
                       <span className="font-medium text-gray-900 dark:text-white">
                         {(() => {
@@ -583,9 +583,9 @@ export default function PaymentPage() {
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <span className="text-base font-semibold text-gray-900 dark:text-white">Total Amount:</span>
-                    <span className="text-2xl font-bold text-[#fcba00]">${(invoice.total_amount || total).toFixed(2)}</span>
+                  <div className="flex justify-between items-center pt-3 lg:pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <span className="text-base lg:text-lg font-semibold text-gray-900 dark:text-white">Total Amount:</span>
+                    <span className="text-2xl lg:text-3xl font-bold text-[#fcba00]">${(invoice.total_amount || total).toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -657,8 +657,8 @@ export default function PaymentPage() {
             </div>
 
             {/* Sidebar - Payment Action */}
-            <div className="lg:col-span-1 order-2 lg:order-1">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-5 sm:p-6 lg:sticky lg:top-6 transition-shadow hover:shadow-2xl">
+            <div className="lg:col-span-2 xl:col-span-5 order-2 lg:order-1">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-5 sm:p-6 lg:p-8 xl:sticky xl:top-8 transition-shadow hover:shadow-2xl">
                 {invoice.status === 'paid' ? (
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-300 dark:border-green-700 rounded-xl p-6 text-center">
                     <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400 mx-auto mb-3" />
@@ -735,14 +735,14 @@ export default function PaymentPage() {
                     )}
 
                     {/* Amount Display - Prominent */}
-                    <div className="text-center mb-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-xl p-5 sm:p-6 border border-gray-200 dark:border-gray-700">
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg animate-pulse-slow">
-                        <DollarSign className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+                    <div className="text-center mb-6 lg:mb-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-xl p-5 sm:p-6 lg:p-8 border border-gray-200 dark:border-gray-700">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg animate-pulse-slow">
+                        <DollarSign className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-white" />
                       </div>
-                      <h3 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight transition-all duration-300">
+                      <h3 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 dark:text-white mb-2 lg:mb-3 tracking-tight transition-all duration-300">
                         ${finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </h3>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Amount</p>
+                      <p className="text-sm lg:text-base font-medium text-gray-600 dark:text-gray-400">Total Amount</p>
                       {gratuityAmount > 0 && (
                         <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
                           Includes ${gratuityAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gratuity
@@ -751,13 +751,13 @@ export default function PaymentPage() {
                     </div>
 
                     {/* Gratuity Section - Redesigned */}
-                    <div className="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
-                      <label className="block text-sm font-bold text-gray-900 dark:text-white mb-4">
+                    <div className="border-b border-gray-200 dark:border-gray-700 pb-6 lg:pb-8 mb-6 lg:mb-8">
+                      <label className="block text-sm lg:text-base font-bold text-gray-900 dark:text-white mb-4 lg:mb-5">
                         Add Gratuity (Optional)
                       </label>
                       
                       {/* Preset Percentage Buttons - 2x2 Grid */}
-                      <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3">
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-4 mb-3 lg:mb-4">
                         {[10, 15, 20, 25].map((percent) => {
                           const isSelected = tipType === 'percentage' && tipPercentage === percent;
                           const calculatedAmount = invoice ? (invoice.total_amount || 0) * (percent / 100) : 0;
@@ -770,14 +770,14 @@ export default function PaymentPage() {
                                 setTipPercentage(percent);
                                 setCustomTipAmount('');
                               }}
-                              className={`py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl border-2 transition-all transform hover:scale-105 active:scale-95 touch-manipulation min-h-[60px] ${
+                              className={`py-3 sm:py-3.5 lg:py-4 px-3 sm:px-4 lg:px-5 rounded-xl border-2 transition-all transform hover:scale-105 active:scale-95 touch-manipulation min-h-[60px] lg:min-h-[70px] ${
                                 isSelected
                                   ? 'border-[#fcba00] bg-[#fcba00]/10 dark:bg-[#fcba00]/20 text-[#fcba00] shadow-md'
                                   : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-[#fcba00] dark:hover:border-[#fcba00] bg-white dark:bg-gray-700'
                               }`}
                             >
-                              <div className="font-bold text-sm sm:text-base">{percent}%</div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              <div className="font-bold text-sm sm:text-base lg:text-lg">{percent}%</div>
+                              <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                                 ${calculatedAmount.toFixed(2)}
                               </div>
                             </button>
@@ -793,7 +793,7 @@ export default function PaymentPage() {
                             setTipType('custom');
                             setCustomTipAmount('');
                           }}
-                          className={`w-full py-3 px-4 rounded-xl border-2 transition-all text-sm font-semibold transform hover:scale-105 active:scale-95 touch-manipulation min-h-[48px] ${
+                          className={`w-full py-3 lg:py-3.5 px-4 rounded-xl border-2 transition-all text-sm lg:text-base font-semibold transform hover:scale-105 active:scale-95 touch-manipulation min-h-[48px] lg:min-h-[52px] ${
                             tipType === 'custom'
                               ? 'border-[#fcba00] bg-[#fcba00]/10 dark:bg-[#fcba00]/20 text-[#fcba00] shadow-md'
                               : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-[#fcba00] dark:hover:border-[#fcba00] bg-white dark:bg-gray-700'
@@ -829,7 +829,7 @@ export default function PaymentPage() {
                             setTipType('none');
                             setCustomTipAmount('');
                           }}
-                          className={`w-full py-3 px-4 rounded-xl border-2 transition-all text-sm font-semibold transform hover:scale-105 active:scale-95 touch-manipulation min-h-[48px] ${
+                          className={`w-full py-3 lg:py-3.5 px-4 rounded-xl border-2 transition-all text-sm lg:text-base font-semibold transform hover:scale-105 active:scale-95 touch-manipulation min-h-[48px] lg:min-h-[52px] ${
                             tipType === 'none'
                               ? 'border-gray-400 dark:border-gray-500 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                               : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 bg-white dark:bg-gray-700'
@@ -853,9 +853,9 @@ export default function PaymentPage() {
                     </div>
 
                     {/* Security Badges - Above Payment Button */}
-                    <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
-                      <p className="text-xs font-semibold text-green-900 dark:text-green-300 mb-3 text-center">Your payment is secure</p>
-                      <div className="space-y-2.5 text-xs text-green-800 dark:text-green-300">
+                    <div className="mb-6 lg:mb-8 p-4 lg:p-5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                      <p className="text-xs lg:text-sm font-semibold text-green-900 dark:text-green-300 mb-3 lg:mb-4 text-center">Your payment is secure</p>
+                      <div className="space-y-2.5 lg:space-y-3 text-xs lg:text-sm text-green-800 dark:text-green-300">
                         <div className="flex items-center gap-2.5">
                           <Shield className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
                           <span className="font-medium">Secured by Stripe</span>
@@ -875,19 +875,19 @@ export default function PaymentPage() {
                     <button
                       onClick={handlePayment}
                       disabled={processing}
-                      className={`w-full bg-gradient-to-r from-[#fcba00] to-[#e5a800] hover:from-[#e5a800] hover:to-[#d99800] active:from-[#d99800] active:to-[#c88600] text-black font-bold py-4 sm:py-5 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 mb-4 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 touch-manipulation min-h-[56px] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-md ${
+                      className={`w-full bg-gradient-to-r from-[#fcba00] to-[#e5a800] hover:from-[#e5a800] hover:to-[#d99800] active:from-[#d99800] active:to-[#c88600] text-black font-bold py-4 sm:py-5 lg:py-6 px-6 lg:px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 mb-4 lg:mb-6 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 touch-manipulation min-h-[56px] lg:min-h-[64px] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-md ${
                         processing ? 'cursor-wait' : ''
                       }`}
                     >
                       {processing ? (
                         <>
-                          <Loader className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-                          <span className="text-base sm:text-lg">Processing...</span>
+                          <Loader className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 animate-spin" />
+                          <span className="text-base sm:text-lg lg:text-xl">Processing...</span>
                         </>
                       ) : (
                         <>
-                          <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
-                          <span className="text-base sm:text-lg">Pay Securely</span>
+                          <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+                          <span className="text-base sm:text-lg lg:text-xl">Pay Securely</span>
                         </>
                       )}
                     </button>
@@ -905,12 +905,12 @@ export default function PaymentPage() {
               </div>
 
               {/* Help Section */}
-              <div className="mt-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
-                <p className="font-bold text-gray-900 dark:text-white mb-2 text-base">Need Help?</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Contact us anytime:</p>
+              <div className="mt-6 lg:mt-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-5 lg:p-6 border border-gray-200 dark:border-gray-700">
+                <p className="font-bold text-gray-900 dark:text-white mb-2 lg:mb-3 text-base lg:text-lg">Need Help?</p>
+                <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400 mb-3 lg:mb-4">Contact us anytime:</p>
                 <a 
                   href="tel:9014102020" 
-                  className="inline-flex items-center gap-2 text-[#fcba00] hover:text-[#e5a800] font-bold text-lg transition-colors group"
+                  className="inline-flex items-center gap-2 text-[#fcba00] hover:text-[#e5a800] font-bold text-lg lg:text-xl transition-colors group"
                 >
                   <span>(901) 410-2020</span>
                   <svg 
