@@ -126,7 +126,7 @@ export default async function handler(req, res) {
             
             <!-- Logo -->
             <div style="position: relative; z-index: 1; margin-bottom: 20px;">
-              <img src="${baseUrl}/assets/M10-Nightclub-Logo.png" alt="M10 DJ Company" style="max-width: 180px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));" />
+              <img src="${baseUrl}/m10-black-clear-png.png" alt="M10 DJ Company" style="max-width: 180px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));" />
             </div>
             
             <!-- Invoice Badge -->

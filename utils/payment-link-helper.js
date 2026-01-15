@@ -60,7 +60,7 @@ async function sendInvoiceWithPaymentLink(invoice, contact, supabase, resend) {
     `).join('');
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
-    const logoUrl = `${baseUrl}/assets/M10-Nightclub-Logo.png`;
+    const logoUrl = `${baseUrl}/m10-black-clear-png.png`;
 
     const emailHtml = `
       <!DOCTYPE html>
