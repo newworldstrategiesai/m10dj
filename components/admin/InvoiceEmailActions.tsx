@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Mail, Eye, Send, TestTube, Loader2, X, AlertCircle, FileText } from 'lucide-react';
+import { Mail, Eye, Send, TestTube, Loader2, X, AlertCircle, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/Toasts/use-toast';
@@ -40,6 +40,7 @@ export default function InvoiceEmailActions({
   const [previewHasEmail, setPreviewHasEmail] = useState<boolean>(true);
   const [previewContactId, setPreviewContactId] = useState<string | undefined>(contactId);
   const [attachPDF, setAttachPDF] = useState<boolean>(false);
+  const [downloadingPDF, setDownloadingPDF] = useState<boolean>(false);
 
   const handlePreview = async () => {
     setLoading('preview');
@@ -84,6 +85,64 @@ export default function InvoiceEmailActions({
       });
     } finally {
       setLoading(null);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    setDownloadingPDF(true);
+    try {
+      const response = await fetch('/api/invoices/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          invoiceId
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('PDF generation failed:', response.status, errorText);
+        throw new Error(`Failed to generate PDF: ${response.status}`);
+      }
+
+      // Check if response is actually a PDF
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/pdf')) {
+        console.error('Response is not a PDF:', contentType);
+        throw new Error('Server returned invalid PDF format');
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('PDF file is empty');
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${invoiceNumber || invoiceId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'PDF Downloaded',
+        description: 'Invoice PDF has been downloaded successfully',
+      });
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to download PDF. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setDownloadingPDF(false);
     }
   };
 
@@ -301,19 +360,42 @@ export default function InvoiceEmailActions({
               </div>
             )}
             <div className="flex flex-col gap-3">
-              <div className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <Checkbox
-                  id="attach-pdf"
-                  checked={attachPDF}
-                  onCheckedChange={(checked) => setAttachPDF(checked === true)}
-                />
-                <Label
-                  htmlFor="attach-pdf"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  Attach PDF version of invoice
-                </Label>
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="attach-pdf"
+                    checked={attachPDF}
+                    onCheckedChange={(checked) => setAttachPDF(checked === true)}
+                  />
+                  <Label
+                    htmlFor="attach-pdf"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Attach PDF version of invoice
+                  </Label>
+                </div>
+                {attachPDF && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadPDF}
+                    disabled={downloadingPDF}
+                    className="flex items-center gap-2"
+                  >
+                    {downloadingPDF ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Download PDF
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
