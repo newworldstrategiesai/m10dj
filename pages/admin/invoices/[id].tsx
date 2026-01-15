@@ -1616,6 +1616,9 @@ export default function InvoiceDetailPage() {
   const [leadData, setLeadData] = useState<any>(null);
   const [downloading, setDownloading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailValue, setEmailValue] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -2305,7 +2308,88 @@ export default function InvoiceDetailPage() {
                     >
                       {invoice.first_name} {invoice.last_name}
                     </Link>
-                    <p className="text-sm text-gray-600">{invoice.email_address}</p>
+                    <div className="flex items-center gap-2">
+                      {editingEmail ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <input
+                            type="email"
+                            value={emailValue}
+                            onChange={(e) => setEmailValue(e.target.value)}
+                            className="flex h-8 w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:ring-offset-gray-950 dark:placeholder:text-gray-400 dark:focus-visible:ring-gray-300"
+                            placeholder="Enter email address"
+                            disabled={savingEmail}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              setSavingEmail(true);
+                              try {
+                                const response = await fetch(`/api/invoices/${invoice.id}/update-email`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ email_address: emailValue })
+                                });
+
+                                const data = await response.json();
+
+                                if (!response.ok) {
+                                  throw new Error(data.error || 'Failed to update email');
+                                }
+
+                                // Refresh invoice data
+                                await fetchInvoiceDetails();
+                                setEditingEmail(false);
+                                toast({
+                                  title: 'Email Updated',
+                                  description: 'Invoice email address has been updated successfully'
+                                });
+                              } catch (error: any) {
+                                toast({
+                                  title: 'Error',
+                                  description: error.message || 'Failed to update email address',
+                                  variant: 'destructive'
+                                });
+                              } finally {
+                                setSavingEmail(false);
+                              }
+                            }}
+                            disabled={savingEmail}
+                            className="h-8"
+                          >
+                            {savingEmail ? 'Saving...' : 'Save'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingEmail(false);
+                              setEmailValue(invoice.email_address || '');
+                            }}
+                            disabled={savingEmail}
+                            className="h-8"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm text-gray-600">{invoice.email_address || 'No email address'}</p>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingEmail(true);
+                              setEmailValue(invoice.email_address || '');
+                            }}
+                            className="h-6 w-6 p-0"
+                            title="Edit email address"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                     {invoice.phone && <p className="text-sm text-gray-600">{invoice.phone}</p>}
                   </div>
                 </div>

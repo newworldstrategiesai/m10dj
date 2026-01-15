@@ -57,13 +57,16 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    // Validate contact
-    if (!invoice.contacts || !invoice.contacts.email_address) {
+    // Use invoice_email_address if present, otherwise use contact email
+    const invoiceEmail = invoice.invoice_email_address || invoice.contacts?.email_address;
+    
+    // Validate email address
+    if (!invoiceEmail) {
       return res.status(400).json({ 
-        error: 'Contact email address is required',
+        error: 'Email address is required',
         code: 'MISSING_EMAIL',
         contactId: invoice.contacts?.id || invoice.contact_id,
-        message: 'Please add an email address to the contact before sending the invoice.'
+        message: 'Please add an email address to the invoice or contact before sending.'
       });
     }
 
@@ -84,10 +87,16 @@ export default async function handler(req, res) {
       }
     }
 
+    // Create contact object with invoice email if present
+    const contactForEmail = {
+      ...invoice.contacts,
+      email_address: invoiceEmail
+    };
+
     // Send email using the helper function
     const result = await sendInvoiceWithPaymentLink(
       invoice,
-      invoice.contacts,
+      contactForEmail,
       supabaseAdmin,
       resend,
       pdfBuffer

@@ -22,14 +22,15 @@ function normalizeInvoiceData(invoice) {
       ...invoice,
       first_name: invoice.contacts.first_name || invoice.first_name,
       last_name: invoice.contacts.last_name || invoice.last_name,
-      email_address: invoice.contacts.email_address || invoice.email_address,
+      // Use invoice_email_address if present, otherwise use contact email
+      email_address: invoice.invoice_email_address || invoice.contacts.email_address || invoice.email_address,
       phone: invoice.contacts.phone || invoice.phone,
       address: invoice.contacts.address || invoice.address,
       city: invoice.contacts.city || invoice.city,
       state: invoice.contacts.state || invoice.state
     };
   }
-  // Already normalized (from invoice_summary)
+  // Already normalized (from invoice_summary) - invoice_summary already handles invoice_email_address
   return invoice;
 }
 
@@ -274,10 +275,12 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
 
   yPosition += 14;
 
-  if (invoice.email_address) {
+  // Use invoice_email_address if present, otherwise use email_address from contact
+  const displayEmail = invoice.invoice_email_address || invoice.email_address;
+  if (displayEmail) {
     doc
       .font('Helvetica')
-      .text(invoice.email_address, leftCol, yPosition);
+      .text(displayEmail, leftCol, yPosition);
     yPosition += 14;
   }
 
