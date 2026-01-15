@@ -1,10 +1,11 @@
 /**
  * Invoice Email Actions Component
- * Provides buttons to preview, send, and test invoice emails
+ * Unified email center with preview, options, and actions
+ * Improved UX with single entry point and progressive disclosure
  */
 
-import React, { useState } from 'react';
-import { Mail, Eye, Send, TestTube, Loader2, X, AlertCircle, FileText, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Eye, Send, TestTube, Loader2, X, AlertCircle, FileText, Download, CheckCircle2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/Toasts/use-toast';
@@ -16,6 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface InvoiceEmailActionsProps {
   invoiceId: string;
@@ -33,17 +35,25 @@ export default function InvoiceEmailActions({
   contactId
 }: InvoiceEmailActionsProps) {
   const { toast } = useToast();
+  const [showEmailCenter, setShowEmailCenter] = useState(false);
+  const [activeTab, setActiveTab] = useState<'preview' | 'options'>('preview');
   const [loading, setLoading] = useState<'preview' | 'send' | 'test' | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [previewSubject, setPreviewSubject] = useState<string>('');
   const [previewHasEmail, setPreviewHasEmail] = useState<boolean>(true);
   const [previewContactId, setPreviewContactId] = useState<string | undefined>(contactId);
   const [attachPDF, setAttachPDF] = useState<boolean>(false);
   const [downloadingPDF, setDownloadingPDF] = useState<boolean>(false);
-  const [showTestDialog, setShowTestDialog] = useState<boolean>(false);
   const [testEmails, setTestEmails] = useState<string>('');
   const [testAttachPDF, setTestAttachPDF] = useState<boolean>(false);
+  const [previewLoaded, setPreviewLoaded] = useState<boolean>(false);
+
+  // Auto-load preview when modal opens
+  useEffect(() => {
+    if (showEmailCenter && !previewLoaded) {
+      handlePreview();
+    }
+  }, [showEmailCenter]);
 
   const handlePreview = async () => {
     setLoading('preview');
@@ -53,7 +63,6 @@ export default function InvoiceEmailActions({
         headers: { 'Content-Type': 'application/json' }
       });
 
-      // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
@@ -73,11 +82,11 @@ export default function InvoiceEmailActions({
       if (data.contactId) {
         setPreviewContactId(data.contactId);
       }
-      setShowPreview(true);
+      setPreviewLoaded(true);
       
       toast({
-        title: 'Preview Ready',
-        description: 'Email preview loaded successfully'
+        title: 'Preview Loaded',
+        description: 'Email preview is ready'
       });
     } catch (error: any) {
       console.error('Error previewing email:', error);
@@ -110,14 +119,12 @@ export default function InvoiceEmailActions({
         throw new Error(`Failed to generate PDF: ${response.status}`);
       }
 
-      // Check if response is actually a PDF
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/pdf')) {
         console.error('Response is not a PDF:', contentType);
         throw new Error('Server returned invalid PDF format');
       }
 
-      // Create blob and download
       const blob = await response.blob();
       
       if (!blob || blob.size === 0) {
@@ -150,6 +157,15 @@ export default function InvoiceEmailActions({
   };
 
   const handleSend = async () => {
+    if (!previewHasEmail) {
+      toast({
+        title: 'Email Address Required',
+        description: 'Please add an email address to the contact to send the invoice',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     if (!confirm(`Are you sure you want to send the invoice email to the client?`)) {
       return;
     }
@@ -162,7 +178,6 @@ export default function InvoiceEmailActions({
         body: JSON.stringify({ attachPDF })
       });
 
-      // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
@@ -173,9 +188,7 @@ export default function InvoiceEmailActions({
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle missing email address - show error in modal UI
         if (data.code === 'MISSING_EMAIL') {
-          // Keep modal open and show error message in UI
           setPreviewHasEmail(false);
           if (data.contactId) {
             setPreviewContactId(data.contactId);
@@ -186,7 +199,7 @@ export default function InvoiceEmailActions({
             description: 'Please add an email address to the contact to send the invoice',
             variant: 'destructive'
           });
-          return; // Don't throw error, just show in modal
+          return;
         }
         throw new Error(data.error || data.message || 'Failed to send email');
       }
@@ -196,8 +209,9 @@ export default function InvoiceEmailActions({
         description: 'Invoice email sent successfully to client'
       });
 
-      // Close preview if open
-      setShowPreview(false);
+      // Close modal and reset
+      setShowEmailCenter(false);
+      setPreviewLoaded(false);
     } catch (error: any) {
       console.error('Error sending email:', error);
       toast({
@@ -235,7 +249,6 @@ export default function InvoiceEmailActions({
     }
 
     setLoading('test');
-    setShowTestDialog(false);
     try {
       const response = await fetch(`/api/invoices/${invoiceId}/test`, {
         method: 'POST',
@@ -246,7 +259,6 @@ export default function InvoiceEmailActions({
         })
       });
 
-      // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
@@ -276,256 +288,275 @@ export default function InvoiceEmailActions({
     }
   };
 
+  const handleOpenEmailCenter = () => {
+    setShowEmailCenter(true);
+    setPreviewLoaded(false);
+    setActiveTab('preview');
+  };
+
+  const handleCloseEmailCenter = () => {
+    setShowEmailCenter(false);
+    setPreviewLoaded(false);
+    setTestEmails('');
+    setTestAttachPDF(false);
+  };
+
   return (
     <>
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handlePreview}
-          disabled={disabled || loading !== null}
-          className="flex items-center gap-2"
-        >
-          {loading === 'preview' ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Previewing...
-            </>
-          ) : (
-            <>
-              <Eye className="w-4 h-4" />
-              Preview Email
-            </>
-          )}
-        </Button>
+      {/* Single Primary Button */}
+      <Button
+        size="sm"
+        onClick={handleOpenEmailCenter}
+        disabled={disabled}
+        className="flex items-center gap-2 bg-[#fcba00] hover:bg-[#f5a500] text-black"
+      >
+        <Mail className="w-4 h-4" />
+        Send Email
+      </Button>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowTestDialog(true)}
-          disabled={disabled || loading !== null}
-          className="flex items-center gap-2"
-        >
-          {loading === 'test' ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Sending Test...
-            </>
-          ) : (
-            <>
-              <TestTube className="w-4 h-4" />
-              Send Test Email
-            </>
-          )}
-        </Button>
-
-        <Button
-          size="sm"
-          onClick={handleSend}
-          disabled={disabled || loading !== null || !hasEmail}
-          className="flex items-center gap-2 bg-[#fcba00] hover:bg-[#f5a500] text-black"
-        >
-          {loading === 'send' ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Sending...
-            </>
-          ) : (
-            <>
-              <Send className="w-4 h-4" />
-              Send to Client
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Email Preview Dialog */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Email Preview: {previewSubject || `Invoice ${invoiceNumber || ''}`}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowPreview(false)}
-                className="h-6 w-6 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+      {/* Unified Email Center Modal */}
+      <Dialog open={showEmailCenter} onOpenChange={handleCloseEmailCenter}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Mail className="w-5 h-5" />
+              Send Invoice Email
             </DialogTitle>
             <DialogDescription>
-              Preview how the email will appear to the client
+              Preview, configure, and send the invoice email to your client
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-auto border rounded-lg bg-gray-50 dark:bg-gray-900 p-4">
-            <div 
-              className="email-preview-container bg-white dark:bg-gray-800 rounded-lg shadow-lg mx-auto"
-              style={{ maxWidth: '600px' }}
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
-          </div>
-          <div className="flex flex-col gap-3 pt-4 border-t">
-            {!previewHasEmail && previewContactId && (
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-                      Email Address Required
+
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'preview' | 'options')} className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="mx-6 mt-4 mb-0">
+              <TabsTrigger value="preview" className="flex items-center gap-2">
+                <Eye className="w-4 h-4" />
+                Preview
+              </TabsTrigger>
+              <TabsTrigger value="options" className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Options & Test
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Preview Tab */}
+            <TabsContent value="preview" className="flex-1 flex flex-col overflow-hidden m-0 px-6 pb-6">
+              {!previewLoaded && loading === 'preview' ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#fcba00]" />
+                    <p className="text-sm text-gray-500">Loading email preview...</p>
+                  </div>
+                </div>
+              ) : previewLoaded ? (
+                <>
+                  <div className="flex-1 overflow-auto border rounded-lg bg-gray-50 dark:bg-gray-900 p-4 mt-4">
+                    <div 
+                      className="email-preview-container bg-white dark:bg-gray-800 rounded-lg shadow-lg mx-auto"
+                      style={{ maxWidth: '600px' }}
+                      dangerouslySetInnerHTML={{ __html: previewHtml }}
+                    />
+                  </div>
+                  
+                  {!previewHasEmail && previewContactId && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mt-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                            Email Address Required
+                          </p>
+                          <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                            This invoice requires a contact email address to send. Please add an email address to the contact.
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              window.location.href = `/admin/contacts/${previewContactId}`;
+                            }}
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                          >
+                            Add Email Address
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <Eye className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-sm text-gray-500 mb-4">Preview not loaded</p>
+                    <Button onClick={handlePreview} variant="outline">
+                      Load Preview
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Options & Test Tab */}
+            <TabsContent value="options" className="flex-1 flex flex-col overflow-auto m-0 px-6 pb-6">
+              <div className="space-y-6 mt-4">
+                {/* Email Settings */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Email Settings</h3>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-4">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="attach-pdf"
+                        checked={attachPDF}
+                        onCheckedChange={(checked) => setAttachPDF(checked === true)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <Label
+                          htmlFor="attach-pdf"
+                          className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Attach PDF version of invoice
+                        </Label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          The invoice PDF will be attached to the email sent to the client
+                        </p>
+                        {attachPDF && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDownloadPDF}
+                            disabled={downloadingPDF}
+                            className="mt-2 flex items-center gap-2"
+                          >
+                            {downloadingPDF ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="w-4 h-4" />
+                                Preview PDF
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Test Email Section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Send Test Email</h3>
+                  
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-4">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      Send a test email to verify the invoice looks correct before sending to the client.
                     </p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                      This invoice requires a contact email address to send. Please add an email address to the contact.
-                    </p>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="test-emails" className="text-sm font-medium">
+                        Recipient Email Addresses
+                      </Label>
+                      <input
+                        id="test-emails"
+                        type="text"
+                        value={testEmails}
+                        onChange={(e) => setTestEmails(e.target.value)}
+                        placeholder="your-email@example.com, colleague@example.com"
+                        className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:ring-offset-gray-950 dark:placeholder:text-gray-400 dark:focus-visible:ring-gray-300"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Enter one or more email addresses separated by commas
+                      </p>
+                    </div>
+
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="test-attach-pdf"
+                        checked={testAttachPDF}
+                        onCheckedChange={(checked) => setTestAttachPDF(checked === true)}
+                        className="mt-1"
+                      />
+                      <Label
+                        htmlFor="test-attach-pdf"
+                        className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Attach PDF to test email
+                      </Label>
+                    </div>
+
                     <Button
-                      size="sm"
-                      onClick={() => {
-                        window.location.href = `/admin/contacts/${previewContactId}`;
-                      }}
-                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      onClick={handleTest}
+                      disabled={loading === 'test' || !testEmails.trim()}
+                      variant="outline"
+                      className="w-full"
                     >
-                      Add Email Address
+                      {loading === 'test' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sending Test Email...
+                        </>
+                      ) : (
+                        <>
+                          <TestTube className="w-4 h-4 mr-2" />
+                          Send Test Email
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
               </div>
-            )}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="attach-pdf"
-                    checked={attachPDF}
-                    onCheckedChange={(checked) => setAttachPDF(checked === true)}
-                  />
-                  <Label
-                    htmlFor="attach-pdf"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Attach PDF version of invoice
-                  </Label>
-                </div>
-                {attachPDF && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDownloadPDF}
-                    disabled={downloadingPDF}
-                    className="flex items-center gap-2"
-                  >
-                    {downloadingPDF ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4" />
-                        Download PDF
-                      </>
-                    )}
-                  </Button>
+            </TabsContent>
+          </Tabs>
+
+          {/* Footer Actions */}
+          <div className="border-t px-6 py-4 bg-gray-50 dark:bg-gray-900">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                {previewHasEmail ? (
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    Ready to send
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    Email address required
+                  </span>
                 )}
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  This is a preview. The actual email will be sent to the client.
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowPreview(false)}
-                  >
-                    Close
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowPreview(false);
-                      handleSend();
-                    }}
-                    disabled={!previewHasEmail}
-                    className="bg-[#fcba00] hover:bg-[#f5a500] text-black disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Send Email
-                  </Button>
-                </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleCloseEmailCenter}
+                  disabled={loading !== null}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSend}
+                  disabled={loading !== null || !previewHasEmail}
+                  className="bg-[#fcba00] hover:bg-[#f5a500] text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading === 'send' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Send to Client
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Test Email Configuration Dialog */}
-      <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Send Test Email</DialogTitle>
-            <DialogDescription>
-              Configure test email recipients and options
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-4 py-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="test-emails" className="text-sm font-medium">
-                Email Addresses
-              </Label>
-              <input
-                id="test-emails"
-                type="text"
-                value={testEmails}
-                onChange={(e) => setTestEmails(e.target.value)}
-                placeholder="email1@example.com, email2@example.com"
-                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:ring-offset-gray-950 dark:placeholder:text-gray-400 dark:focus-visible:ring-gray-300"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Enter email addresses separated by commas
-              </p>
-            </div>
-            <div className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <Checkbox
-                id="test-attach-pdf"
-                checked={testAttachPDF}
-                onCheckedChange={(checked) => setTestAttachPDF(checked === true)}
-              />
-              <Label
-                htmlFor="test-attach-pdf"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Attach PDF to test email
-              </Label>
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowTestDialog(false);
-                setTestEmails('');
-                setTestAttachPDF(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleTest}
-              disabled={loading === 'test'}
-              className="bg-[#fcba00] hover:bg-[#f5a500] text-black"
-            >
-              {loading === 'test' ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Test Email
-                </>
-              )}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
