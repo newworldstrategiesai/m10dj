@@ -23,13 +23,17 @@ import {
   DollarSign,
   CreditCard,
   Plus,
-  X
+  X,
+  Eye,
+  Send,
+  TestTube
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import PaymentPlanConfig from '@/components/admin/PaymentPlanConfig';
 import { getPackageLineItemsFromQuote, calculateQuoteTotals } from '@/utils/quote-calculations';
+import InvoiceEmailActions from '@/components/admin/InvoiceEmailActions';
 
 interface InvoiceDetail {
   id: string;
@@ -2157,10 +2161,13 @@ export default function InvoiceDetailPage() {
               <Download className={`h-4 w-4 mr-2 ${downloading ? 'animate-spin' : ''}`} />
               {downloading ? 'Generating...' : 'Download PDF'}
             </Button>
-            <Button variant="slim">
-              <Mail className="h-4 w-4 mr-2" />
-              Send Email
-            </Button>
+            {invoice && invoice.id && invoice.email_address && (
+              <InvoiceEmailActions
+                invoiceId={invoice.id}
+                invoiceNumber={invoice.invoice_number}
+                disabled={false}
+              />
+            )}
             {invoice.contact_id && (
               <Link href={`/quote/${invoice.contact_id}/invoice`}>
                 <Button variant="slim">
