@@ -1724,15 +1724,15 @@ export default function InvoiceDetailPage() {
             .single();
           
           // Type assertion for the invoice data
-          const invoiceData = directInvoiceData as { line_items?: any } | null;
+          const lineItemsData = directInvoiceData as { line_items?: any } | null;
           
           console.log('📦 Direct invoice fetch for line_items:', {
-            has_data: !!invoiceData,
-            line_items: invoiceData?.line_items,
+            has_data: !!lineItemsData,
+            line_items: lineItemsData?.line_items,
             error: directInvoiceError
           });
           
-          if (invoiceData?.line_items) {
+          if (lineItemsData?.line_items) {
             try {
               // Parse the JSONB line_items field
               const jsonLineItems = typeof invoiceData.line_items === 'string' 
@@ -1765,7 +1765,7 @@ export default function InvoiceDetailPage() {
                 console.log('📦 Converted line items for display:', finalLineItems);
               }
             } catch (e) {
-              console.error('Error parsing invoice.line_items JSONB:', e, invoiceData?.line_items);
+              console.error('Error parsing invoice.line_items JSONB:', e, lineItemsData?.line_items);
             }
           }
       
