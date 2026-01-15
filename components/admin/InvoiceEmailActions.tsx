@@ -393,12 +393,12 @@ export default function InvoiceEmailActions({
     <>
       {/* Single Primary Button */}
       <Button
-        size="sm"
+        size="default"
         onClick={handleOpenEmailCenter}
         disabled={disabled}
-        className="flex items-center gap-2 bg-[#fcba00] hover:bg-[#f5a500] text-black"
+        className="flex items-center gap-2 bg-[#fcba00] hover:bg-[#f5a500] text-black font-semibold w-full sm:w-auto h-11 sm:h-10 text-base sm:text-sm"
       >
-        <Mail className="w-4 h-4" />
+        <Mail className="w-5 h-5 sm:w-4 sm:h-4" />
         Send Email
       </Button>
 

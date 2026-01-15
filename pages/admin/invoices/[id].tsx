@@ -2211,32 +2211,49 @@ export default function InvoiceDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <Button
-            variant="slim"
-            onClick={() => router.push('/admin/invoices')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Invoices
-          </Button>
-          <div className="flex items-center gap-3">
-            <Button variant="slim" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
-            <Button 
-              variant="slim" 
-              onClick={handleDownloadPDF}
-              disabled={downloading}
+        {/* Mobile-First Header */}
+        <div className="mb-4 sm:mb-6">
+          {/* Back Button - Mobile */}
+          <div className="mb-4 sm:mb-0 sm:flex sm:items-center sm:justify-between">
+            <Button
+              variant="slim"
+              onClick={() => router.push('/admin/invoices')}
+              className="flex items-center gap-2 w-full sm:w-auto mb-4 sm:mb-0"
             >
-              <Download className={`h-4 w-4 mr-2 ${downloading ? 'animate-spin' : ''}`} />
-              {downloading ? 'Generating...' : 'Download PDF'}
+              <ArrowLeft className="h-4 w-4" />
+              Back to Invoices
             </Button>
-            {invoice && invoice.id && (
+            
+            {/* Desktop Actions Row */}
+            <div className="hidden sm:flex items-center gap-3">
+              <Button variant="slim" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print
+              </Button>
+              <Button 
+                variant="slim" 
+                onClick={handleDownloadPDF}
+                disabled={downloading}
+              >
+                <Download className={`h-4 w-4 mr-2 ${downloading ? 'animate-spin' : ''}`} />
+                {downloading ? 'Generating...' : 'Download PDF'}
+              </Button>
+              {invoice.contact_id && (
+                <Link href={`/quote/${invoice.contact_id}/invoice`}>
+                  <Button variant="slim">
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Quote Page
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile: Primary Action - Send Email (Prominent) */}
+          {invoice && invoice.id && (
+            <div className="mb-4 sm:hidden">
               <InvoiceEmailActions
                 invoiceId={invoice.id}
                 invoiceNumber={invoice.invoice_number}
@@ -2244,32 +2261,68 @@ export default function InvoiceDetailPage() {
                 hasEmail={!!invoice.email_address}
                 contactId={invoice.contact_id}
               />
-            )}
-            {invoice.contact_id && (
-              <Link href={`/quote/${invoice.contact_id}/invoice`}>
-                <Button variant="slim">
-                  <FileText className="h-4 w-4 mr-2" />
-                  View Quote Page
-                </Button>
-              </Link>
-            )}
+            </div>
+          )}
+
+          {/* Mobile: Secondary Actions Row */}
+          <div className="grid grid-cols-2 gap-2 sm:hidden mb-4">
+            <Button 
+              variant="outline" 
+              onClick={handlePrint}
+              className="w-full"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Print
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleDownloadPDF}
+              disabled={downloading}
+              className="w-full"
+            >
+              <Download className={`h-4 w-4 mr-2 ${downloading ? 'animate-spin' : ''}`} />
+              {downloading ? 'Generating...' : 'PDF'}
+            </Button>
           </div>
+
+          {/* Desktop: Email Actions (in header row) */}
+          {invoice && invoice.id && (
+            <div className="hidden sm:block">
+              <InvoiceEmailActions
+                invoiceId={invoice.id}
+                invoiceNumber={invoice.invoice_number}
+                disabled={false}
+                hasEmail={!!invoice.email_address}
+                contactId={invoice.contact_id}
+              />
+            </div>
+          )}
+
+          {/* Mobile: Additional Actions */}
+          {invoice.contact_id && (
+            <Link href={`/quote/${invoice.contact_id}/invoice`} className="block sm:hidden">
+              <Button variant="outline" className="w-full">
+                <FileText className="h-4 w-4 mr-2" />
+                View Quote Page
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Invoice Header Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{invoice.invoice_number}</h1>
-              <p className="text-lg text-gray-600">{invoice.invoice_title}</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-8 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 sm:mb-8 gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{invoice.invoice_number}</h1>
+              <p className="text-base sm:text-lg text-gray-600">{invoice.invoice_title}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               <Select
                 value={invoice.invoice_status}
                 onValueChange={handleStatusChange}
                 disabled={updatingStatus}
               >
-                <SelectTrigger className={`w-[180px] ${getStatusColor(invoice.invoice_status)} border`}>
+                <SelectTrigger className={`w-full sm:w-[180px] ${getStatusColor(invoice.invoice_status)} border`}>
                   <div className="flex items-center gap-2">
                     {getStatusIcon(invoice.invoice_status)}
                     <SelectValue placeholder="Select status" />
@@ -2323,7 +2376,7 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
             {/* Client Info */}
             <div>
               <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Bill To</h3>
@@ -2547,18 +2600,18 @@ export default function InvoiceDetailPage() {
         </div>
 
         {/* Line Items */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Line Items</h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4 sm:mb-6 overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-gray-200">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Line Items</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left py-3 px-6 text-xs font-semibold text-gray-700 uppercase">Description</th>
-                  <th className="text-center py-3 px-6 text-xs font-semibold text-gray-700 uppercase">Qty</th>
-                  <th className="text-right py-3 px-6 text-xs font-semibold text-gray-700 uppercase">Unit Price</th>
-                  <th className="text-right py-3 px-6 text-xs font-semibold text-gray-700 uppercase">Amount</th>
+                  <th className="text-left py-3 px-3 sm:px-6 text-xs font-semibold text-gray-700 uppercase">Description</th>
+                  <th className="text-center py-3 px-2 sm:px-6 text-xs font-semibold text-gray-700 uppercase">Qty</th>
+                  <th className="text-right py-3 px-3 sm:px-6 text-xs font-semibold text-gray-700 uppercase hidden sm:table-cell">Unit Price</th>
+                  <th className="text-right py-3 px-3 sm:px-6 text-xs font-semibold text-gray-700 uppercase">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -2585,13 +2638,18 @@ export default function InvoiceDetailPage() {
                       <>
                         {lineItems.map((item) => (
                           <tr key={item.id || `line-item-${item.description}`}>
-                            <td className="py-4 px-6">
-                              <p className="font-medium text-gray-900">{item.description || 'Line Item'}</p>
-                              {item.notes && <p className="text-sm text-gray-600 mt-1">{item.notes}</p>}
+                            <td className="py-3 sm:py-4 px-3 sm:px-6">
+                              <p className="font-medium text-gray-900 text-sm sm:text-base">{item.description || 'Line Item'}</p>
+                              {item.notes && <p className="text-xs sm:text-sm text-gray-600 mt-1">{item.notes}</p>}
                             </td>
-                            <td className="py-4 px-6 text-center text-gray-700">{item.quantity || 1}</td>
-                            <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.unit_price || 0)}</td>
-                            <td className="py-4 px-6 text-right font-semibold text-gray-900">{formatCurrency(item.total_amount || 0)}</td>
+                            <td className="py-3 sm:py-4 px-2 sm:px-6 text-center text-gray-700 text-sm sm:text-base">{item.quantity || 1}</td>
+                            <td className="py-3 sm:py-4 px-3 sm:px-6 text-right text-gray-700 text-sm sm:text-base hidden sm:table-cell">{formatCurrency(item.unit_price || 0)}</td>
+                            <td className="py-3 sm:py-4 px-3 sm:px-6 text-right font-semibold text-gray-900 text-sm sm:text-base">
+                              {formatCurrency(item.total_amount || 0)}
+                              <span className="sm:hidden block text-xs text-gray-500 font-normal mt-1">
+                                {item.quantity || 1} × {formatCurrency(item.unit_price || 0)}
+                              </span>
+                            </td>
                           </tr>
                         ))}
                         {/* Also show quote/package items if they exist (for reference) */}
@@ -2694,8 +2752,8 @@ export default function InvoiceDetailPage() {
               </tbody>
             </table>
           </div>
-          <div className="bg-gray-50 p-6 border-t border-gray-200">
-            <div className="max-w-sm ml-auto space-y-2">
+          <div className="bg-gray-50 p-4 sm:p-6 border-t border-gray-200">
+            <div className="max-w-sm ml-auto space-y-2 text-sm sm:text-base">
               {(() => {
                 // Calculate totals from quote data (same as quote page)
                 // Always use quote totals if quoteData exists, as it's the source of truth
@@ -2753,7 +2811,7 @@ export default function InvoiceDetailPage() {
                         <span className="font-medium">{formatCurrency(taxAmount)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-300">
+                    <div className="flex justify-between text-base sm:text-lg font-bold text-gray-900 pt-2 border-t border-gray-300">
                       <span>Total:</span>
                       <span>{formatCurrency(total)}</span>
                     </div>
@@ -2766,8 +2824,8 @@ export default function InvoiceDetailPage() {
                         
                         {/* Payment History - Show individual payments (same as quote page) */}
                         {paymentData?.payments && paymentData.payments.length > 0 && (
-                          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <h4 className="font-semibold text-sm text-blue-900 mb-2">
+                          <div className="mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h4 className="font-semibold text-xs sm:text-sm text-blue-900 mb-2">
                               Payment History
                             </h4>
                             <div className="space-y-2">
@@ -2842,11 +2900,11 @@ export default function InvoiceDetailPage() {
 
         {/* Quote Details Section */}
         {quoteData && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">Quote Details</h2>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4 sm:mb-6">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Quote Details</h2>
             </div>
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* Package Information */}
               {quoteData.package_id && (
                 <div>
