@@ -495,6 +495,35 @@ export default async function handler(req, res) {
       };
     }
 
+    // Check if payment is needed (if contract is signed and has invoice)
+    let paymentToken = null;
+    let needsPayment = false;
+    if (contract.status === 'signed' && contract.invoice_id) {
+      try {
+        const { data: invoice } = await supabase
+          .from('invoices')
+          .select('payment_token, invoice_status, status, balance_due, amount_paid, total_amount')
+          .eq('id', contract.invoice_id)
+          .single();
+        
+        if (invoice) {
+          // Check if invoice is unpaid
+          const isPaid = invoice.invoice_status === 'paid' || invoice.status === 'paid' || 
+                        (invoice.balance_due !== null && invoice.balance_due <= 0) ||
+                        (invoice.amount_paid !== null && invoice.total_amount !== null && 
+                         invoice.amount_paid >= invoice.total_amount);
+          
+          if (!isPaid && invoice.payment_token) {
+            paymentToken = invoice.payment_token;
+            needsPayment = true;
+          }
+        }
+      } catch (err) {
+        console.error('Error checking payment status:', err);
+        // Don't fail the request if payment check fails
+      }
+    }
+
     // Format response
     const response = {
       valid: true,
@@ -525,8 +554,11 @@ export default async function handler(req, res) {
         is_standalone: !contract.contact_id,
         sender_name: contract.sender_name,
         sender_email: contract.sender_email,
+        invoice_id: contract.invoice_id || null,
         contact: contactInfo
-      }
+      },
+      needs_payment: needsPayment,
+      payment_token: paymentToken
     };
 
     res.status(200).json(response);

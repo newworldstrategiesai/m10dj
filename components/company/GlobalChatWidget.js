@@ -17,9 +17,13 @@ export default function GlobalChatWidget() {
   const [chatData, setChatData] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
   const [isDJDashDomain, setIsDJDashDomain] = useState(false);
+  const [paymentContext, setPaymentContext] = useState(null);
 
   // Check if we're on a quote page - use micro view there
   const isQuotePage = router.pathname?.includes('/quote/');
+  
+  // Check if we're on a payment page
+  const isPaymentPage = router.pathname?.startsWith('/pay/') && router.query?.token;
   
   // Don't show chat widget on DJ Dash pages (djdash.net)
   const isDJDashPage = router.pathname?.startsWith('/djdash') || router.pathname?.startsWith('/dj/');
@@ -31,6 +35,52 @@ export default function GlobalChatWidget() {
       setIsDJDashDomain(window.location.hostname.includes('djdash.net'));
     }
   }, []);
+
+  // Fetch invoice context when on payment page
+  useEffect(() => {
+    const fetchPaymentContext = async () => {
+      if (isPaymentPage && router.query?.token && typeof router.query.token === 'string') {
+        try {
+          const response = await fetch(`/api/invoices/get-by-token?token=${router.query.token}`);
+          if (response.ok) {
+            const invoiceData = await response.json();
+            if (invoiceData.invoice) {
+              setPaymentContext({
+                pageType: 'payment',
+                invoice: {
+                  id: invoiceData.invoice.id,
+                  invoice_number: invoiceData.invoice.invoice_number,
+                  total_amount: invoiceData.invoice.total_amount,
+                  status: invoiceData.invoice.status,
+                  due_date: invoiceData.invoice.due_date,
+                  contact: invoiceData.invoice.contacts ? {
+                    name: `${invoiceData.invoice.contacts.first_name} ${invoiceData.invoice.contacts.last_name}`,
+                    email: invoiceData.invoice.contacts.email_address,
+                    phone: invoiceData.invoice.contacts.phone
+                  } : null,
+                  contract: invoiceData.invoice.contract ? {
+                    id: invoiceData.invoice.contract.id,
+                    contract_number: invoiceData.invoice.contract.contract_number,
+                    status: invoiceData.invoice.contract.status,
+                    signing_url: invoiceData.invoice.contract.signing_url
+                  } : null
+                }
+              });
+            }
+          }
+        } catch (error) {
+          console.warn('Could not fetch payment context:', error);
+        }
+      } else {
+        // Clear payment context when not on payment page
+        setPaymentContext(null);
+      }
+    };
+
+    if (router.isReady) {
+      fetchPaymentContext();
+    }
+  }, [isPaymentPage, router.query?.token, router.isReady]);
   
   // Restore chat data from sessionStorage
   useEffect(() => {
@@ -157,6 +207,7 @@ export default function GlobalChatWidget() {
             isMinimized={false}
             isMicro={true}
             onMinimize={handleMinimize}
+            paymentContext={paymentContext}
           />
         ) : (
           <div 
@@ -177,6 +228,7 @@ export default function GlobalChatWidget() {
                   console.warn('Could not save chat state:', e);
                 }
               }}
+              paymentContext={paymentContext}
             />
           </div>
         ),

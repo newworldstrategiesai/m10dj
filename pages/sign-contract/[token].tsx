@@ -5,6 +5,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { isAdminEmail } from '@/utils/auth-helpers/admin-roles';
 import SignatureCapture from '@/components/SignatureCapture';
 import ContractFieldsEditor from '@/components/admin/ContractFieldsEditor';
+import { triggerConfetti } from '@/utils/confetti';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,8 @@ import {
   X,
   Bold,
   Italic,
-  Underline
+  Underline,
+  CreditCard
 } from 'lucide-react';
 
 interface ContractData {
@@ -83,6 +85,10 @@ export default function SignContractPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [originalHtml, setOriginalHtml] = useState<string>('');
   const [focusedField, setFocusedField] = useState<string | undefined>(undefined);
+  const [paymentToken, setPaymentToken] = useState<string | null>(null);
+  const [needsPayment, setNeedsPayment] = useState(false);
+  const [confettiTriggered, setConfettiTriggered] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     if (router.isReady && token) {
@@ -624,6 +630,14 @@ export default function SignContractPage() {
       if (data.contract.status === 'signed') {
         setContractData(data.contract);
         setSigned(true); // Show signed view
+        
+        // Check if payment info is provided in the response
+        if (data.needs_payment && data.payment_token) {
+          // Redirect to success page with payment token
+          router.push(`/pay/success?payment_token=${data.payment_token}&contract_signed=true`);
+          return;
+        }
+        
         setLoading(false);
         return;
       }
@@ -847,14 +861,9 @@ export default function SignContractPage() {
         return;
       }
 
-      // If invoice payment is needed, redirect to payment page
+      // Redirect to success page if payment is needed
       if (data.needs_payment && data.payment_token) {
-        // Show redirecting state
-        setRedirectingToPayment(true);
-        // Redirect to payment page after a brief delay
-        setTimeout(() => {
-          window.location.href = `/pay/${data.payment_token}`;
-        }, 1000);
+        router.push(`/pay/success?payment_token=${data.payment_token}&contract_signed=true`);
         return;
       }
 
@@ -1037,14 +1046,9 @@ export default function SignContractPage() {
         return;
       }
 
-      // If invoice payment is needed, redirect to payment page
+      // Redirect to success page if payment is needed
       if (data.needs_payment && data.payment_token) {
-        // Show redirecting state
-        setRedirectingToPayment(true);
-        // Redirect to payment page after a brief delay
-        setTimeout(() => {
-          window.location.href = `/pay/${data.payment_token}`;
-        }, 1000);
+        router.push(`/pay/success?payment_token=${data.payment_token}&contract_signed=true`);
         return;
       }
 
@@ -1120,6 +1124,57 @@ export default function SignContractPage() {
   const handleFormatText = (command: string) => {
     document.execCommand(command, false);
     handleContentChange();
+  };
+
+  // Trigger confetti when signed page loads
+  useEffect(() => {
+    if (signed && !confettiTriggered && !isParticipantSigning) {
+      triggerConfetti({
+        duration: 3000,
+        particleCount: 100,
+      });
+      setConfettiTriggered(true);
+    }
+  }, [signed, confettiTriggered, isParticipantSigning]);
+
+  // Trigger confetti when signed page loads (must be before early returns)
+  useEffect(() => {
+    if (signed && !confettiTriggered && !isParticipantSigning) {
+      triggerConfetti({
+        duration: 3000,
+        particleCount: 100,
+      });
+      setConfettiTriggered(true);
+    }
+  }, [signed, confettiTriggered, isParticipantSigning]);
+
+  // Handle PDF download
+  const handleDownloadPdf = async () => {
+    if (!contractData?.id || !token) return;
+    
+    setDownloadingPdf(true);
+    try {
+      const res = await fetch(`/api/contracts/download-pdf-by-token?token=${token}`);
+      
+      if (!res.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${contractData.contract_number || 'contract'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('PDF download error:', err);
+      alert(err.message || 'Failed to download PDF. Please try again.');
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   if (loading || redirectingToPayment) {
@@ -1278,6 +1333,23 @@ export default function SignContractPage() {
               </p>
               <div className="flex gap-3 justify-center sm:justify-end">
                 <button
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {downloadingPdf ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      Download PDF
+                    </>
+                  )}
+                </button>
+                <button
                   onClick={() => window.print()}
                   className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
@@ -1288,6 +1360,30 @@ export default function SignContractPage() {
             </div>
           </div>
 
+          {/* Payment Section - Show if payment is needed */}
+          {needsPayment && paymentToken && !isParticipantSigning && (
+            <div className="bg-white border border-gray-300 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 border border-yellow-300 rounded-full flex items-center justify-center flex-shrink-0">
+                  <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-700" />
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-black">Complete Your Payment</h2>
+                  <p className="text-sm sm:text-base text-gray-600">Secure payment via Stripe</p>
+                </div>
+              </div>
+              <div className="mt-6">
+                <a
+                  href={`/pay/${paymentToken}`}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors text-sm sm:text-base w-full sm:w-auto"
+                >
+                  <CreditCard className="w-5 h-5" />
+                  Pay Now
+                </a>
+              </div>
+            </div>
+          )}
+
           {/* Next Steps */}
           <div className="bg-gray-50 border border-gray-300 p-6">
             <h3 className="font-semibold text-black mb-3">What&apos;s Next?</h3>
@@ -1296,10 +1392,17 @@ export default function SignContractPage() {
                 <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-black" />
                 <span>A signed copy of the contract has been sent to your email</span>
               </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-black" />
-                <span>You will receive an invoice for the deposit payment</span>
-              </li>
+              {needsPayment ? (
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-black" />
+                  <span>Complete your payment using the secure payment form above</span>
+                </li>
+              ) : (
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-black" />
+                  <span>You will receive an invoice for the deposit payment</span>
+                </li>
+              )}
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-black" />
                 <span>We&apos;ll be in touch to finalize event details</span>
@@ -1488,6 +1591,19 @@ export default function SignContractPage() {
             cursor: text;
           }
           
+          /* Blur effect when modal is open (desktop only) */
+          @media (min-width: 769px) {
+            .contract-container.modal-open {
+              filter: blur(4px);
+              transition: filter 0.2s ease-in-out;
+              pointer-events: none;
+            }
+            
+            .contract-container.modal-open .contract-content {
+              pointer-events: none;
+            }
+          }
+          
           /* Mobile adjustments */
           @media (max-width: 768px) {
             .contract-container {
@@ -1501,7 +1617,7 @@ export default function SignContractPage() {
         `}</style>
       </Head>
 
-      <div className="contract-container">
+      <div className={`contract-container ${signatureModalOpen ? 'modal-open' : ''}`}>
         {/* Admin Edit Mode Toolbar */}
         {isAdmin && isEditMode && (
           <div className="sticky top-0 z-50 bg-white border-b border-gray-300 shadow-sm mb-4 p-3 flex items-center justify-between">

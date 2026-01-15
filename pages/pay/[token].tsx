@@ -57,6 +57,7 @@ export default function PaymentPage() {
   const [tipType, setTipType] = useState<'none' | 'percentage' | 'custom'>('none');
   const [tipPercentage, setTipPercentage] = useState(15);
   const [customTipAmount, setCustomTipAmount] = useState('');
+  const [showLineItems, setShowLineItems] = useState(false);
 
   useEffect(() => {
     if (token && typeof token === 'string') {
@@ -214,230 +215,334 @@ export default function PaymentPage() {
       <Head>
         <title>Pay Invoice {invoice.invoice_number} - M10 DJ Company</title>
         <meta name="robots" content="noindex, nofollow" />
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes pulse-slow {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.7;
+            }
+          }
+          .animate-pulse-slow {
+            animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          }
+          @keyframes fade-in {
+            from {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          @keyframes slide-in-from-top {
+            from {
+              opacity: 0;
+              transform: translateY(-20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          @keyframes slide-in-from-bottom {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          .animate-in {
+            animation: fade-in 0.3s ease-out;
+          }
+          .fade-in {
+            animation: fade-in 0.3s ease-out;
+          }
+          .slide-in-from-top-2 {
+            animation: slide-in-from-top 0.3s ease-out;
+          }
+          .slide-in-from-bottom-2 {
+            animation: slide-in-from-bottom 0.3s ease-out;
+          }
+        `}} />
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#fcba00] rounded-full mb-4">
-              <FileText className="w-8 h-8 text-black" />
+          <div className="text-center mb-8 sm:mb-10">
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#fcba00] to-[#e5a800] rounded-2xl mb-4 sm:mb-6 shadow-lg transform transition-transform hover:scale-105 active:scale-95">
+              <FileText className="w-8 h-8 sm:w-10 sm:h-10 text-black" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Invoice Payment</h1>
-            <p className="text-gray-600">Complete your payment securely with Stripe</p>
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">Invoice Payment</h1>
+            <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg">Complete your payment securely with Stripe</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
             {/* Main Content - Invoice Details */}
             <div className="lg:col-span-2 space-y-6">
               {/* Customer Info */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-5 sm:p-6 transition-all duration-300 hover:shadow-lg hover:scale-[1.01]">
                 <div className="flex items-center gap-2 mb-4">
-                  <User className="w-5 h-5 text-gray-600" />
-                  <h2 className="text-lg font-semibold text-gray-900">Bill To</h2>
+                  <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Bill To</h2>
                 </div>
-                <div className="text-gray-700">
-                  <p className="font-medium">{invoice.contacts.first_name} {invoice.contacts.last_name}</p>
-                  <p className="text-sm text-gray-600">{invoice.contacts.email_address}</p>
+                <div className="text-gray-700 dark:text-gray-300">
+                  <p className="font-medium text-base">{invoice.contacts.first_name} {invoice.contacts.last_name}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{invoice.contacts.email_address}</p>
                 </div>
               </div>
 
-              {/* Contract Status Banner - Always Show */}
-              {invoice?.contract && invoice.contract.signing_url && (
-                <div className={`border-2 rounded-xl p-4 shadow-sm ${
-                  invoice.contract.status === 'signed' 
-                    ? 'bg-green-50 border-green-300' 
-                    : 'bg-blue-50 border-blue-300'
-                }`}>
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        invoice.contract.status === 'signed' 
-                          ? 'bg-green-100' 
-                          : 'bg-blue-100'
-                      }`}>
-                        {invoice.contract.status === 'signed' ? (
-                          <CheckCircle className="w-6 h-6 text-green-600" />
-                        ) : (
-                          <FileText className="w-6 h-6 text-blue-600" />
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className={`font-semibold mb-1 ${
-                        invoice.contract.status === 'signed' 
-                          ? 'text-green-900' 
-                          : 'text-blue-900'
-                      }`}>
-                        {invoice.contract.status === 'signed' 
-                          ? 'Contract Signed ✓' 
-                          : 'Contract Not Yet Signed'}
-                      </h3>
-                      <p className={`text-sm mb-3 ${
-                        invoice.contract.status === 'signed' 
-                          ? 'text-green-700' 
-                          : 'text-blue-700'
-                      }`}>
-                        {invoice.contract.status === 'signed' 
-                          ? 'Your service agreement has been signed. Complete your payment below to finalize your booking.'
-                          : 'Please sign your service agreement. Click the button below to view and sign your contract.'}
-                      </p>
-                      {invoice.contract.contract_number && (
-                        <p className={`text-xs mb-3 ${
-                          invoice.contract.status === 'signed' 
-                            ? 'text-green-600' 
-                            : 'text-blue-600'
-                        }`}>
-                          Contract #{invoice.contract.contract_number}
-                        </p>
-                      )}
-                      <a
-                        href={invoice.contract.signing_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          invoice.contract.status === 'signed'
-                            ? 'bg-green-600 hover:bg-green-700 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }`}
-                      >
-                        <FileText className="w-4 h-4" />
-                        {invoice.contract.status === 'signed' 
-                          ? 'View Signed Contract' 
-                          : 'Sign Contract Now'}
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Invoice Details */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-5 sm:p-6 transition-all duration-300 hover:shadow-lg hover:scale-[1.01]">
+                <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-gray-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">Invoice Details</h2>
+                    <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Invoice Details</h2>
                   </div>
                   <div className="flex items-center gap-2">
                     {invoice?.contract?.status === 'signed' && (
-                      <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium flex items-center gap-1">
+                      <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-xs font-medium flex items-center gap-1">
                         <CheckCircle className="w-3 h-3" />
                         Contract Signed
                       </span>
                     )}
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      invoice.status === 'paid' 
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+                        : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                    }`}>
                       {invoice.status === 'paid' ? 'Paid' : 'Pending'}
                     </span>
                   </div>
                 </div>
 
-                <div className="space-y-2 mb-6">
+                {/* Invoice Summary - Always Visible */}
+                <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Invoice Number:</span>
-                    <span className="font-medium text-gray-900">{invoice.invoice_number}</span>
+                    <span className="text-gray-600 dark:text-gray-400">Invoice Number:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{invoice.invoice_number}</span>
                   </div>
                   {invoice.due_date && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Due Date:</span>
-                      <span className="font-medium text-gray-900">
-                        {new Date(invoice.due_date).toLocaleDateString()}
+                      <span className="text-gray-600 dark:text-gray-400">Due Date:</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {new Date(invoice.due_date).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
                       </span>
                     </div>
                   )}
+                  <div className="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <span className="text-base font-semibold text-gray-900 dark:text-white">Total Amount:</span>
+                    <span className="text-2xl font-bold text-[#fcba00]">${(invoice.total_amount || total).toFixed(2)}</span>
+                  </div>
                 </div>
 
-                  {/* Line Items */}
-                <div className="border-t border-gray-200 pt-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">Services</h3>
-                  {invoice.line_items && invoice.line_items.length > 0 ? (
-                    <>
-                      <div className="space-y-3">
+                {/* Line Items - Progressive Disclosure */}
+                {invoice.line_items && invoice.line_items.length > 0 && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <button
+                      onClick={() => setShowLineItems(!showLineItems)}
+                      className="w-full flex items-center justify-between text-left mb-3 group"
+                    >
+                      <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-[#fcba00] transition-colors">
+                        Service Details
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {invoice.line_items.length} {invoice.line_items.length === 1 ? 'item' : 'items'}
+                        </span>
+                        <svg
+                          className={`w-5 h-5 text-gray-500 dark:text-gray-400 transform transition-transform ${
+                            showLineItems ? 'rotate-180' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </button>
+                    
+                    {showLineItems && (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                         {invoice.line_items.map((item: any, index: number) => (
-                          <div key={index} className="flex justify-between items-start">
+                          <div key={index} className="flex justify-between items-start p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                             <div className="flex-1">
-                              <p className="font-medium text-gray-900">{item.description || 'Line Item'}</p>
-                              <p className="text-sm text-gray-600">
+                              <p className="font-medium text-gray-900 dark:text-white">{item.description || 'Line Item'}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                 {item.quantity || 1} × ${(item.rate || 0).toFixed(2)}
                               </p>
                             </div>
-                            <p className="font-semibold text-gray-900">${((item.total || item.amount || 0)).toFixed(2)}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">${((item.total || item.amount || 0)).toFixed(2)}</p>
                           </div>
                         ))}
-                      </div>
 
-                      {/* Totals */}
-                      <div className="border-t border-gray-200 mt-4 pt-4 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Subtotal:</span>
-                          <span className="font-medium text-gray-900">${(invoice.subtotal || subtotal).toFixed(2)}</span>
-                        </div>
-                        {invoice.tax_rate && invoice.tax_rate > 0 && (
+                        {/* Detailed Totals */}
+                        <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4 space-y-2">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Tax ({invoice.tax_rate}%):</span>
-                            <span className="font-medium text-gray-900">${(invoice.tax || 0).toFixed(2)}</span>
+                            <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
+                            <span className="font-medium text-gray-900 dark:text-white">${(invoice.subtotal || subtotal).toFixed(2)}</span>
                           </div>
-                        )}
-                        {invoice.discount_amount && invoice.discount_amount > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Discount:</span>
-                            <span className="font-medium text-gray-900">-${(invoice.discount_amount || 0).toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-2">
-                          <span className="text-gray-900">Total:</span>
-                          <span className="text-[#fcba00]">${(invoice.total_amount || total).toFixed(2)}</span>
+                          {invoice.tax_rate && invoice.tax_rate > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600 dark:text-gray-400">Tax ({invoice.tax_rate}%):</span>
+                              <span className="font-medium text-gray-900 dark:text-white">${(invoice.tax || 0).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {invoice.discount_amount && invoice.discount_amount > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600 dark:text-gray-400">Discount:</span>
+                              <span className="font-medium text-green-600 dark:text-green-400">-${(invoice.discount_amount || 0).toFixed(2)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>No line items found for this invoice.</p>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Sidebar - Payment Action */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
+            <div className="lg:col-span-1 order-2 lg:order-1">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-5 sm:p-6 lg:sticky lg:top-6 transition-shadow hover:shadow-2xl">
                 {invoice.status === 'paid' ? (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                    <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                    <p className="font-semibold text-green-900">Already Paid</p>
-                    <p className="text-sm text-green-700 mt-1">This invoice has been paid</p>
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-300 dark:border-green-700 rounded-xl p-6 text-center">
+                    <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400 mx-auto mb-3" />
+                    <p className="font-bold text-lg text-green-900 dark:text-green-100">Already Paid</p>
+                    <p className="text-sm text-green-700 dark:text-green-300 mt-2">This invoice has been paid</p>
                   </div>
                 ) : (
                   <>
-                    {/* Gratuity Section */}
-                    <div className="border-b border-gray-200 pb-4 mb-4">
-                      <label className="block text-sm font-semibold text-gray-900 mb-3">
-                        Gratuity (Optional)
+                    {/* Contract Status */}
+                    {invoice?.contract && invoice.contract.signing_url && (
+                      <div className={`mb-6 rounded-xl p-4 border-2 transition-all ${
+                        invoice.contract.status === 'signed' 
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-700' 
+                          : 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-700'
+                      }`}>
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="flex-shrink-0">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              invoice.contract.status === 'signed' 
+                                ? 'bg-green-100 dark:bg-green-900/50' 
+                                : 'bg-blue-100 dark:bg-blue-900/50'
+                            }`}>
+                              {invoice.contract.status === 'signed' ? (
+                                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                              ) : (
+                                <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-bold mb-1 text-sm ${
+                              invoice.contract.status === 'signed' 
+                                ? 'text-green-900 dark:text-green-100' 
+                                : 'text-blue-900 dark:text-blue-100'
+                            }`}>
+                              {invoice.contract.status === 'signed' ? 'Contract Signed ✓' : 'Service Agreement'}
+                            </p>
+                            <p className={`text-xs ${
+                              invoice.contract.status === 'signed' 
+                                ? 'text-green-700 dark:text-green-300' 
+                                : 'text-blue-700 dark:text-blue-300'
+                            }`}>
+                              {invoice.contract.status === 'signed' 
+                                ? "Your service agreement has been executed."
+                                : "Review and sign your service agreement. You can complete payment at any time."}
+                            </p>
+                            {invoice.contract.contract_number && (
+                              <p className={`text-xs mt-1 ${
+                                invoice.contract.status === 'signed' 
+                                  ? 'text-green-600 dark:text-green-400' 
+                                  : 'text-blue-600 dark:text-blue-400'
+                              }`}>
+                                Contract #{invoice.contract.contract_number}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <a
+                          href={invoice.contract.signing_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all transform hover:scale-105 ${
+                            invoice.contract.status === 'signed'
+                              ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                          }`}
+                        >
+                          <FileText className="w-4 h-4" />
+                          {invoice.contract.status === 'signed' 
+                            ? 'View Signed Contract' 
+                            : 'Sign Contract'}
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Amount Display - Prominent */}
+                    <div className="text-center mb-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-xl p-5 sm:p-6 border border-gray-200 dark:border-gray-700">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg animate-pulse-slow">
+                        <DollarSign className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+                      </div>
+                      <h3 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight transition-all duration-300">
+                        ${finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </h3>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Amount</p>
+                      {gratuityAmount > 0 && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                          Includes ${gratuityAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gratuity
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Gratuity Section - Redesigned */}
+                    <div className="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
+                      <label className="block text-sm font-bold text-gray-900 dark:text-white mb-4">
+                        Add Gratuity (Optional)
                       </label>
                       
-                      {/* Preset Percentage Buttons */}
-                      <div className="grid grid-cols-4 gap-2 mb-3">
-                        {[10, 15, 20, 25].map((percent) => (
-                          <button
-                            key={percent}
-                            type="button"
-                            onClick={() => {
-                              setTipType('percentage');
-                              setTipPercentage(percent);
-                              setCustomTipAmount('');
-                            }}
-                            className={`py-2 px-2 rounded-lg border-2 transition-all text-xs font-medium ${
-                              tipType === 'percentage' && tipPercentage === percent
-                                ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
-                                : 'border-gray-300 text-gray-700 hover:border-[#fcba00]'
-                            }`}
-                          >
-                            {percent}%
-                          </button>
-                        ))}
+                      {/* Preset Percentage Buttons - 2x2 Grid */}
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3">
+                        {[10, 15, 20, 25].map((percent) => {
+                          const isSelected = tipType === 'percentage' && tipPercentage === percent;
+                          const calculatedAmount = invoice ? (invoice.total_amount || 0) * (percent / 100) : 0;
+                          return (
+                            <button
+                              key={percent}
+                              type="button"
+                              onClick={() => {
+                                setTipType('percentage');
+                                setTipPercentage(percent);
+                                setCustomTipAmount('');
+                              }}
+                              className={`py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl border-2 transition-all transform hover:scale-105 active:scale-95 touch-manipulation min-h-[60px] ${
+                                isSelected
+                                  ? 'border-[#fcba00] bg-[#fcba00]/10 dark:bg-[#fcba00]/20 text-[#fcba00] shadow-md'
+                                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-[#fcba00] dark:hover:border-[#fcba00] bg-white dark:bg-gray-700'
+                              }`}
+                            >
+                              <div className="font-bold text-sm sm:text-base">{percent}%</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                ${calculatedAmount.toFixed(2)}
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                       
-                      {/* Custom Amount Option */}
+                      {/* Custom Amount & No Tip Options */}
                       <div className="space-y-2">
                         <button
                           type="button"
@@ -445,18 +550,18 @@ export default function PaymentPage() {
                             setTipType('custom');
                             setCustomTipAmount('');
                           }}
-                          className={`w-full py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                          className={`w-full py-3 px-4 rounded-xl border-2 transition-all text-sm font-semibold transform hover:scale-105 active:scale-95 touch-manipulation min-h-[48px] ${
                             tipType === 'custom'
-                              ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
-                              : 'border-gray-300 text-gray-700 hover:border-[#fcba00]'
+                              ? 'border-[#fcba00] bg-[#fcba00]/10 dark:bg-[#fcba00]/20 text-[#fcba00] shadow-md'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-[#fcba00] dark:hover:border-[#fcba00] bg-white dark:bg-gray-700'
                           }`}
                         >
                           Custom Amount
                         </button>
                         
                         {tipType === 'custom' && (
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                          <div className="relative animate-in fade-in slide-in-from-top-2 duration-200">
+                            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 text-lg font-semibold">$</span>
                             <input
                               type="number"
                               value={customTipAmount}
@@ -469,7 +574,7 @@ export default function PaymentPage() {
                               min="0"
                               step="0.01"
                               placeholder="0.00"
-                              className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                              className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base font-medium focus:ring-2 focus:ring-[#fcba00] focus:border-[#fcba00] transition-all"
                             />
                           </div>
                         )}
@@ -481,10 +586,10 @@ export default function PaymentPage() {
                             setTipType('none');
                             setCustomTipAmount('');
                           }}
-                          className={`w-full py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                          className={`w-full py-3 px-4 rounded-xl border-2 transition-all text-sm font-semibold transform hover:scale-105 active:scale-95 touch-manipulation min-h-[48px] ${
                             tipType === 'none'
-                              ? 'border-gray-400 bg-gray-100 text-gray-700'
-                              : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                              ? 'border-gray-400 dark:border-gray-500 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 bg-white dark:bg-gray-700'
                           }`}
                         >
                           No Gratuity
@@ -493,137 +598,63 @@ export default function PaymentPage() {
                       
                       {/* Display Selected Gratuity */}
                       {gratuityAmount > 0 && (
-                        <div className="flex justify-between text-gray-600 pt-3 mt-3 border-t border-gray-200">
-                          <span>
+                        <div className="flex justify-between items-center pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             Gratuity {tipType === 'percentage' ? `(${tipPercentage}%)` : ''}:
                           </span>
-                          <span className="font-medium text-gray-900">
+                          <span className="font-bold text-lg text-[#fcba00]">
                             ${gratuityAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {/* Amount Display */}
-                    <div className="text-center mb-6">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <DollarSign className="w-6 h-6 text-green-600" />
+                    {/* Security Badges - Above Payment Button */}
+                    <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                      <p className="text-xs font-semibold text-green-900 dark:text-green-300 mb-3 text-center">Your payment is secure</p>
+                      <div className="space-y-2.5 text-xs text-green-800 dark:text-green-300">
+                        <div className="flex items-center gap-2.5">
+                          <Shield className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                          <span className="font-medium">Secured by Stripe</span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <Lock className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                          <span className="font-medium">256-bit SSL encryption</span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                          <span className="font-medium">PCI compliant</span>
+                        </div>
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                        ${finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </h3>
-                      <p className="text-sm text-gray-600">Total Amount</p>
-                      {gratuityAmount > 0 && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Includes ${gratuityAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gratuity
-                        </p>
-                      )}
                     </div>
 
-                    {/* Contract Status Section in Sidebar - Always Show */}
-                    {invoice?.contract && invoice.contract.signing_url && (
-                      <div className={`mb-4 rounded-lg p-4 border-2 ${
-                        invoice.contract.status === 'signed' 
-                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' 
-                          : 'bg-blue-50 border-blue-300'
-                      }`}>
-                        <div className="flex items-start gap-3 mb-3">
-                          <div className="flex-shrink-0">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                              invoice.contract.status === 'signed' 
-                                ? 'bg-green-100' 
-                                : 'bg-blue-100'
-                            }`}>
-                              {invoice.contract.status === 'signed' ? (
-                                <CheckCircle className="w-5 h-5 text-green-600" />
-                              ) : (
-                                <FileText className="w-5 h-5 text-blue-600" />
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <p className={`font-semibold mb-1 ${
-                              invoice.contract.status === 'signed' 
-                                ? 'text-green-900' 
-                                : 'text-blue-900'
-                            }`}>
-                              {invoice.contract.status === 'signed' ? 'Contract Signed ✓' : 'Contract Status'}
-                            </p>
-                            <p className={`text-sm ${
-                              invoice.contract.status === 'signed' 
-                                ? 'text-green-700' 
-                                : 'text-blue-700'
-                            }`}>
-                              {invoice.contract.status === 'signed' 
-                                ? "Your service agreement has been executed."
-                                : "Please sign your service agreement before payment."}
-                            </p>
-                            {invoice.contract.contract_number && (
-                              <p className={`text-xs mt-1 ${
-                                invoice.contract.status === 'signed' 
-                                  ? 'text-green-600' 
-                                  : 'text-blue-600'
-                              }`}>
-                                Contract #{invoice.contract.contract_number}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <a
-                          href={invoice.contract.signing_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            invoice.contract.status === 'signed'
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'bg-blue-600 hover:bg-blue-700 text-white'
-                          }`}
-                        >
-                          <FileText className="w-4 h-4" />
-                          {invoice.contract.status === 'signed' 
-                            ? 'View Signed Contract' 
-                            : 'Sign Contract'}
-                        </a>
-                      </div>
-                    )}
-
+                    {/* Payment Button - Enhanced */}
                     <button
                       onClick={handlePayment}
                       disabled={processing}
-                      className="w-full bg-[#fcba00] hover:bg-[#e5a800] active:bg-[#d99800] text-black font-semibold py-4 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`w-full bg-gradient-to-r from-[#fcba00] to-[#e5a800] hover:from-[#e5a800] hover:to-[#d99800] active:from-[#d99800] active:to-[#c88600] text-black font-bold py-4 sm:py-5 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 mb-4 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 touch-manipulation min-h-[56px] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-md ${
+                        processing ? 'cursor-wait' : ''
+                      }`}
                     >
                       {processing ? (
                         <>
-                          <Loader className="w-5 h-5 animate-spin" />
-                          Processing...
+                          <Loader className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                          <span className="text-base sm:text-lg">Processing...</span>
                         </>
                       ) : (
                         <>
-                          <CreditCard className="w-5 h-5" />
-                          Pay Securely
+                          <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
+                          <span className="text-base sm:text-lg">Pay Securely</span>
                         </>
                       )}
                     </button>
 
-                    {/* Security Badges */}
-                    <div className="space-y-3 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        <span>Secured by Stripe</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        <span>256-bit SSL encryption</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        <span>PCI compliant</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                      <p className="text-xs text-gray-500 text-center">
-                        By completing this payment, you agree to our terms of service
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 text-center leading-relaxed">
+                        By completing this payment, you agree to our{' '}
+                        <a href="/terms" className="text-[#fcba00] hover:underline font-medium" target="_blank" rel="noopener noreferrer">
+                          terms of service
+                        </a>
                       </p>
                     </div>
                   </>
@@ -631,11 +662,22 @@ export default function PaymentPage() {
               </div>
 
               {/* Help Section */}
-              <div className="mt-6 bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
-                <p className="font-semibold text-gray-900 mb-2">Need Help?</p>
-                <p className="mb-2">Contact us anytime:</p>
-                <a href="tel:9014102020" className="text-[#fcba00] hover:underline font-medium">
-                  (901) 410-2020
+              <div className="mt-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+                <p className="font-bold text-gray-900 dark:text-white mb-2 text-base">Need Help?</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Contact us anytime:</p>
+                <a 
+                  href="tel:9014102020" 
+                  className="inline-flex items-center gap-2 text-[#fcba00] hover:text-[#e5a800] font-bold text-lg transition-colors group"
+                >
+                  <span>(901) 410-2020</span>
+                  <svg 
+                    className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </a>
               </div>
             </div>
