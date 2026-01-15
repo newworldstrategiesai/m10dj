@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   try {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch invoice with contact details
+    // Fetch invoice with contact details including event_date
     const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from('invoices')
       .select(`
@@ -47,7 +47,8 @@ export default async function handler(req, res) {
           id,
           first_name,
           last_name,
-          email_address
+          email_address,
+          event_date
         )
       `)
       .eq('id', invoiceId)
