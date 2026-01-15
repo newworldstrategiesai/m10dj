@@ -106,7 +106,7 @@ export default async function handler(req, res) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
       </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9fafb;">
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
           <!-- Test Email Banner -->
           <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 20px; text-align: center;">
@@ -118,10 +118,21 @@ export default async function handler(req, res) {
             </p>
           </div>
 
-          <!-- Header -->
-          <div style="background: linear-gradient(135deg, #fcba00 0%, #d97706 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="margin: 0; color: #000; font-size: 28px;">M10 DJ Company</h1>
-            <p style="margin: 10px 0 0; color: #000; font-size: 16px; opacity: 0.9;">Invoice</p>
+          <!-- Premium Header -->
+          <div style="background: linear-gradient(135deg, #fcba00 0%, #f5a500 50%, #d97706 100%); padding: 50px 30px; text-align: center; border-radius: 0; box-shadow: 0 8px 24px rgba(252, 186, 0, 0.3); position: relative; overflow: hidden;">
+            <!-- Decorative elements -->
+            <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255, 255, 255, 0.1); border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: -30px; left: -30px; width: 150px; height: 150px; background: rgba(255, 255, 255, 0.08); border-radius: 50%;"></div>
+            
+            <!-- Logo -->
+            <div style="position: relative; z-index: 1; margin-bottom: 20px;">
+              <img src="${baseUrl}/assets/M10-Nightclub-Logo.png" alt="M10 DJ Company" style="max-width: 180px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));" />
+            </div>
+            
+            <!-- Invoice Badge -->
+            <div style="position: relative; z-index: 1; display: inline-block; background: rgba(0, 0, 0, 0.2); padding: 8px 24px; border-radius: 20px; margin-top: 10px;">
+              <p style="margin: 0; color: #000; font-size: 14px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Invoice</p>
+            </div>
           </div>
 
           <!-- Content -->
