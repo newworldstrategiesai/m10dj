@@ -1121,7 +1121,7 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
             {lineItems.length === 0 ? (
               <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
                 <p className="text-gray-500 text-sm">No line items added yet</p>
-                <p className="text-gray-400 text-xs mt-1">Click "Add Line Item" to get started</p>
+                <p className="text-gray-400 text-xs mt-1">Click &quot;Add Line Item&quot; to get started</p>
               </div>
             ) : (
               <div className="space-y-3">

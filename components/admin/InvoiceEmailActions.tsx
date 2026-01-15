@@ -50,54 +50,74 @@ export default function InvoiceEmailActions({
 
   // Auto-load preview when modal opens
   useEffect(() => {
-    if (showEmailCenter && !previewLoaded && !loading) {
+    if (showEmailCenter && !previewLoaded && loading === null) {
+      console.log('Auto-loading preview...');
       handlePreview();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showEmailCenter]);
+  }, [showEmailCenter, previewLoaded]);
 
   const handlePreview = async () => {
+    if (loading === 'preview') {
+      console.log('Preview already loading, skipping...');
+      return; // Prevent multiple simultaneous requests
+    }
+    
     setLoading('preview');
+    console.log('Starting preview load for invoice:', invoiceId);
+    
     try {
       const response = await fetch(`/api/invoices/${invoiceId}/preview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
 
+      console.log('Preview response status:', response.status, response.statusText);
+
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
-        console.error('Non-JSON response:', text);
+        console.error('Non-JSON response:', text.substring(0, 500));
         throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('Preview data received:', { 
+        hasHtml: !!data.html, 
+        hasSubject: !!data.subject,
+        hasEmail: data.hasEmail 
+      });
 
       if (!response.ok) {
+        console.error('Preview API error:', data);
         throw new Error(data.error || 'Failed to preview email');
       }
 
+      if (!data.html) {
+        throw new Error('Preview HTML is empty');
+      }
+
       setPreviewHtml(data.html);
-      setPreviewSubject(data.subject);
+      setPreviewSubject(data.subject || `Invoice ${invoiceNumber || ''}`);
       setPreviewHasEmail(data.hasEmail !== false);
       if (data.contactId) {
         setPreviewContactId(data.contactId);
       }
       setPreviewLoaded(true);
       
-      // Only show toast if not auto-loading (user clicked button)
-      if (loading === 'preview') {
-        toast({
-          title: 'Preview Loaded',
-          description: 'Email preview is ready'
-        });
-      }
+      console.log('Preview loaded successfully');
+      
+      // Show toast notification
+      toast({
+        title: 'Preview Loaded',
+        description: 'Email preview is ready'
+      });
     } catch (error: any) {
       console.error('Error previewing email:', error);
       setPreviewLoaded(false); // Reset on error so user can retry
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to preview email',
+        title: 'Error Loading Preview',
+        description: error.message || 'Failed to preview email. Please check the console for details.',
         variant: 'destructive'
       });
     } finally {
