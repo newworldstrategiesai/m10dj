@@ -118,22 +118,20 @@ export default async function handler(req, res) {
             </p>
           </div>
 
-          <!-- Premium Header -->
-          <div style="background: linear-gradient(135deg, #fcba00 0%, #f5a500 50%, #d97706 100%); padding: 25px 20px; text-align: center; border-radius: 0; box-shadow: 0 4px 12px rgba(252, 186, 0, 0.2); position: relative; overflow: hidden;">
-            <!-- Decorative elements (subtle) -->
-            <div style="position: absolute; top: -30px; right: -30px; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.08); border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: -20px; left: -20px; width: 100px; height: 100px; background: rgba(255, 255, 255, 0.06); border-radius: 50%;"></div>
-            
-            <!-- Logo -->
-            <div style="position: relative; z-index: 1; margin-bottom: 12px;">
-              <img src="${baseUrl}/m10-black-clear-png.png" alt="M10 DJ Company" style="max-width: 140px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
-              <div style="display: none; color: #000; font-size: 20px; font-weight: 700; letter-spacing: 1px;">M10 DJ COMPANY</div>
-            </div>
-            
-            <!-- Invoice Badge -->
-            <div style="position: relative; z-index: 1; display: inline-block; background: rgba(0, 0, 0, 0.15); padding: 6px 18px; border-radius: 16px;">
-              <p style="margin: 0; color: #000; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Invoice</p>
-            </div>
+          <!-- Compact Premium Header -->
+          <div style="background: linear-gradient(135deg, #fcba00 0%, #f5a500 50%, #d97706 100%); padding: 16px 20px; text-align: center; border-radius: 0; box-shadow: 0 2px 8px rgba(252, 186, 0, 0.15);">
+            <!-- Logo and Badge in one line -->
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="text-align: center; vertical-align: middle;">
+                  <img src="${baseUrl}/m10-black-clear-png.png" alt="M10 DJ Company" style="max-width: 100px; height: auto; display: inline-block; vertical-align: middle; margin-right: 12px; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                  <div style="display: none; color: #000; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; vertical-align: middle;">M10</div>
+                  <span style="display: inline-block; background: rgba(0, 0, 0, 0.12); padding: 4px 12px; border-radius: 12px; vertical-align: middle;">
+                    <span style="color: #000; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Invoice</span>
+                  </span>
+                </td>
+              </tr>
+            </table>
           </div>
 
           <!-- Content -->
