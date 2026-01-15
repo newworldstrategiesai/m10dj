@@ -1712,82 +1712,62 @@ export default function InvoiceDetailPage() {
             }
           }
           
-          // Fetch line items from invoice_line_items table
-      const { data: lineItemsData, error: lineItemsError } = await supabase
-        .from('invoice_line_items')
-        .select('*')
-        .eq('invoice_id', id)
-        .order('created_at', { ascending: true });
-      
-      console.log('📦 Line items from invoice_line_items table:', {
-        count: lineItemsData?.length || 0,
-        data: lineItemsData,
-        error: lineItemsError
-      });
-      
-      if (lineItemsError) {
-        // 404 is OK - invoice might not have line items yet
-        if (lineItemsError.code !== 'PGRST116') {
-          console.warn('Error fetching invoice line items:', lineItemsError);
-        }
-      }
-      
-      // If no line items from table, fetch the invoice directly to get line_items JSONB field
-      let finalLineItems: InvoiceLineItem[] = (lineItemsData || []) as InvoiceLineItem[];
-      if (finalLineItems.length === 0) {
-        // Fetch invoice directly to get line_items JSONB field (invoice_summary view might not include it)
-        const { data: directInvoiceData, error: directInvoiceError } = await supabase
-          .from('invoices')
-          .select('line_items')
-          .eq('id', id)
-          .single();
-        
-        // Type assertion for the invoice data
-        const invoiceData = directInvoiceData as { line_items?: any } | null;
-        
-        console.log('📦 Direct invoice fetch for line_items:', {
-          has_data: !!invoiceData,
-          line_items: invoiceData?.line_items,
-          error: directInvoiceError
-        });
-        
-        if (invoiceData?.line_items) {
-          try {
-            // Parse the JSONB line_items field
-            const jsonLineItems = typeof invoiceData.line_items === 'string' 
-              ? JSON.parse(invoiceData.line_items) 
-              : invoiceData.line_items;
-            
-            console.log('📦 Parsed JSON line items:', {
-              is_array: Array.isArray(jsonLineItems),
-              length: Array.isArray(jsonLineItems) ? jsonLineItems.length : 0,
-              items: jsonLineItems
-            });
-            
-            if (Array.isArray(jsonLineItems) && jsonLineItems.length > 0) {
-              // Convert JSONB format to invoice_line_items format for display
-              finalLineItems = jsonLineItems.map((item: any, index: number) => {
-                const unitPrice = item.rate || item.unit_price || 0;
-                const quantity = item.quantity || 1;
-                const amount = item.amount || (unitPrice * quantity);
-                
-                return {
-                  id: `json-${index}`, // Generate a temporary ID
-                  description: item.description || '',
-                  quantity: quantity,
-                  unit_price: unitPrice,
-                  total_amount: amount,
-                  item_type: item.type || 'custom',
-                  notes: item.notes || null
-                };
+          // Fetch line items from invoice line_items JSONB column
+          // Note: invoice_line_items table doesn't exist - invoices use line_items JSONB column
+          let finalLineItems: InvoiceLineItem[] = [];
+          
+          // Fetch invoice directly to get line_items JSONB field
+          const { data: directInvoiceData, error: directInvoiceError } = await supabase
+            .from('invoices')
+            .select('line_items')
+            .eq('id', id)
+            .single();
+          
+          // Type assertion for the invoice data
+          const invoiceData = directInvoiceData as { line_items?: any } | null;
+          
+          console.log('📦 Direct invoice fetch for line_items:', {
+            has_data: !!invoiceData,
+            line_items: invoiceData?.line_items,
+            error: directInvoiceError
+          });
+          
+          if (invoiceData?.line_items) {
+            try {
+              // Parse the JSONB line_items field
+              const jsonLineItems = typeof invoiceData.line_items === 'string' 
+                ? JSON.parse(invoiceData.line_items) 
+                : invoiceData.line_items;
+              
+              console.log('📦 Parsed JSON line items:', {
+                is_array: Array.isArray(jsonLineItems),
+                length: Array.isArray(jsonLineItems) ? jsonLineItems.length : 0,
+                items: jsonLineItems
               });
-              console.log('📦 Converted line items for display:', finalLineItems);
+              
+              if (Array.isArray(jsonLineItems) && jsonLineItems.length > 0) {
+                // Convert JSONB format to invoice_line_items format for display
+                finalLineItems = jsonLineItems.map((item: any, index: number) => {
+                  const unitPrice = item.rate || item.unit_price || 0;
+                  const quantity = item.quantity || 1;
+                  const amount = item.amount || (unitPrice * quantity);
+                  
+                  return {
+                    id: `json-${index}`, // Generate a temporary ID
+                    description: item.description || '',
+                    quantity: quantity,
+                    unit_price: unitPrice,
+                    total_amount: amount,
+                    item_type: item.type || 'custom',
+                    notes: item.notes || null
+                  };
+                });
+                console.log('📦 Converted line items for display:', finalLineItems);
+              }
+            } catch (e) {
+              console.error('Error parsing invoice.line_items JSONB:', e, invoiceData?.line_items);
             }
-          } catch (e) {
-            console.error('Error parsing invoice.line_items JSONB:', e, invoiceData?.line_items);
           }
-        }
-      }
       
       if (isMountedRef.current) {
         setLineItems(finalLineItems);
@@ -1813,28 +1793,48 @@ export default function InvoiceDetailPage() {
             const paymentsResult = await paymentsResponse.json();
             if (paymentsResult.payments && paymentsResult.payments.length > 0) {
               // Filter for paid payments (same as quote page)
-              const paidPayments = paymentsResult.payments.filter((p: any) => p.payment_status === 'Paid');
+              const paidPayments = paymentsResult.payments.filter((p: any) => 
+                p.payment_status === 'Paid' || 
+                p.payment_status === 'succeeded' ||
+                p.status === 'paid' ||
+                p.status === 'succeeded'
+              );
               if (paidPayments.length > 0) {
                 hasPayment = true;
-                const totalPaid = paidPayments.reduce((sum: number, p: any) => sum + (parseFloat(p.total_amount) || 0), 0);
+                const totalPaid = paidPayments.reduce((sum: number, p: any) => 
+                  sum + (parseFloat(p.total_amount?.toString() || p.amount?.toString() || '0') || 0), 0);
                 paymentData = { totalPaid, payments: paidPayments };
                 paymentsData = paidPayments;
               }
             }
+          } else if (paymentsResponse.status === 404) {
+            // API route doesn't exist - use fallback
+            console.log('⚠️ Payments API route not found, using direct query');
+            throw new Error('API route not found');
           }
         } catch (error) {
-          console.error('Error fetching payments from API:', error);
+          console.warn('Error fetching payments from API, using fallback:', error);
           // Fallback to direct query
-          const { data: fallbackPayments, error: paymentsError } = await supabase
-            .from('payments')
-            .select('*')
-            .eq('invoice_id', id)
-            .order('payment_date', { ascending: false });
-          
-          if (paymentsError) {
-            console.warn('Error fetching payments:', paymentsError);
-          } else {
-            paymentsData = fallbackPayments || [];
+          try {
+            const { data: fallbackPayments, error: paymentsError } = await supabase
+              .from('payments')
+              .select('*')
+              .eq('invoice_id', id)
+              .order('payment_date', { ascending: false });
+            
+            if (paymentsError) {
+              console.warn('Error fetching payments:', paymentsError);
+            } else if (fallbackPayments) {
+              paymentsData = fallbackPayments;
+              const totalPaid = fallbackPayments.reduce((sum: number, p: any) => 
+                sum + (parseFloat(p.amount?.toString() || '0') || 0), 0);
+              hasPayment = totalPaid > 0;
+              if (hasPayment) {
+                paymentData = { totalPaid, payments: fallbackPayments };
+              }
+            }
+          } catch (fallbackError) {
+            console.error('Error in payments fallback query:', fallbackError);
           }
         }
       }
@@ -1908,6 +1908,9 @@ export default function InvoiceDetailPage() {
                 .update({ invoice_id: id })
                 .eq('id', (quote as any).id);
             }
+          } else if (quoteResponse.status === 404) {
+            // API route doesn't exist - skip quote data gracefully
+            console.log('⚠️ Quote API route not found, skipping quote data');
           } else {
             const errorData = await quoteResponse.json().catch(() => ({}));
             console.warn('⚠️ Failed to fetch quote from API:', quoteResponse.status, errorData);
