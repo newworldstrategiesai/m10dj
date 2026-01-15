@@ -365,20 +365,18 @@ export default function InvoiceEmailActions({
         throw new Error(data.error || 'Failed to update email address');
       }
 
-      // Reload preview with new email
-      setPreviewLoaded(false);
-      setEditingEmail(false);
+      // Update state immediately - hide warning and show preview
       setPreviewHasEmail(!!emailInput.trim());
+      setEditingEmail(false);
       
       toast({
         title: 'Email Updated',
-        description: 'Invoice email address has been updated. Reloading preview...'
+        description: 'Invoice email address has been updated successfully'
       });
 
-      // Reload preview after a short delay
-      setTimeout(() => {
-        handlePreview();
-      }, 500);
+      // Reload preview immediately to show updated email
+      setPreviewLoaded(false);
+      await handlePreview();
     } catch (error: any) {
       console.error('Error saving email:', error);
       toast({
