@@ -445,20 +445,22 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
 
   // Totals Section
   const totalsStartY = yPosition;
-  const totalsRightCol = 400;
+  const totalsLabelX = 400; // Left position for labels
+  const totalsAmountX = 535; // Right position for amounts
+  const totalsAmountWidth = 65; // Width for right-aligned amounts
 
   if (invoice.subtotal && invoice.subtotal !== invoice.total_amount) {
     doc
       .fontSize(9)
       .fillColor(mediumGray)
       .font('Helvetica')
-      .text('Subtotal:', totalsRightCol, yPosition, { width: 145, align: 'right' });
+      .text('Subtotal:', totalsLabelX, yPosition);
     
     doc
       .fontSize(9)
       .fillColor(darkGray)
       .font('Helvetica-Bold')
-      .text(formatCurrency(invoice.subtotal), totalsRightCol, yPosition, { width: 145, align: 'right' });
+      .text(formatCurrency(invoice.subtotal), totalsAmountX, yPosition, { width: totalsAmountWidth, align: 'right' });
     
     yPosition += 15;
   }
@@ -468,13 +470,13 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       .fontSize(9)
       .fillColor(mediumGray)
       .font('Helvetica')
-      .text(`Tax (${invoice.tax_rate}%):`, totalsRightCol, yPosition, { width: 145, align: 'right' });
+      .text(`Tax (${invoice.tax_rate}%):`, totalsLabelX, yPosition);
     
     doc
       .fontSize(9)
       .fillColor(darkGray)
       .font('Helvetica-Bold')
-      .text(formatCurrency(invoice.tax_amount || 0), totalsRightCol, yPosition, { width: 145, align: 'right' });
+      .text(formatCurrency(invoice.tax_amount || 0), totalsAmountX, yPosition, { width: totalsAmountWidth, align: 'right' });
     
     yPosition += 15;
   }
@@ -484,13 +486,13 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       .fontSize(9)
       .fillColor(mediumGray)
       .font('Helvetica')
-      .text('Discount:', totalsRightCol, yPosition, { width: 145, align: 'right' });
+      .text('Discount:', totalsLabelX, yPosition);
     
     doc
       .fontSize(9)
       .fillColor('#10b981')
       .font('Helvetica-Bold')
-      .text(`-${formatCurrency(invoice.discount_amount)}`, totalsRightCol, yPosition, { width: 145, align: 'right' });
+      .text(`-${formatCurrency(invoice.discount_amount)}`, totalsAmountX, yPosition, { width: totalsAmountWidth, align: 'right' });
     
     yPosition += 15;
   }
@@ -499,23 +501,24 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
   doc
     .strokeColor(lightGray)
     .lineWidth(1)
-    .moveTo(totalsRightCol, yPosition)
+    .moveTo(totalsLabelX, yPosition)
     .lineTo(545, yPosition)
     .stroke();
 
   yPosition += 10;
 
+  // Total label on left, amount on right
   doc
     .fontSize(11)
     .fillColor(darkGray)
     .font('Helvetica-Bold')
-    .text('Total:', totalsRightCol, yPosition, { width: 145, align: 'right' });
+    .text('Total:', totalsLabelX, yPosition);
   
   doc
     .fontSize(16)
     .fillColor(brandGold)
     .font('Helvetica-Bold')
-    .text(formatCurrency(invoice.total_amount), totalsRightCol, yPosition, { width: 145, align: 'right' });
+    .text(formatCurrency(invoice.total_amount || 0), totalsAmountX, yPosition, { width: totalsAmountWidth, align: 'right' });
 
   yPosition += 40;
 
