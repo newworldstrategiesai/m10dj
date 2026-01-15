@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/ui/Toasts/use-toast';
 import Link from 'next/link';
 import PaymentPlanConfig from '@/components/admin/PaymentPlanConfig';
 import { getPackageLineItemsFromQuote, calculateQuoteTotals } from '@/utils/quote-calculations';
@@ -1602,6 +1604,7 @@ export default function InvoiceDetailPage() {
   const { id } = router.query;
   const supabase = createClient();
   const isMountedRef = useRef(true);
+  const { toast } = useToast();
   
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
@@ -1612,6 +1615,7 @@ export default function InvoiceDetailPage() {
   const [hasPayment, setHasPayment] = useState(false);
   const [leadData, setLeadData] = useState<any>(null);
   const [downloading, setDownloading] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1996,6 +2000,45 @@ export default function InvoiceDetailPage() {
     });
   };
 
+  const handleStatusChange = async (newStatus: string) => {
+    if (!invoice || updatingStatus) return;
+
+    setUpdatingStatus(true);
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/update-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_status: newStatus })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update invoice status');
+      }
+
+      // Update local state
+      setInvoice({ ...invoice, invoice_status: newStatus });
+
+      toast({
+        title: 'Status Updated',
+        description: `Invoice status changed to ${newStatus}`,
+      });
+
+      // Refresh invoice details to get latest data
+      await fetchInvoiceDetails();
+    } catch (error: any) {
+      console.error('Error updating invoice status:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update invoice status',
+        variant: 'destructive'
+      });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   const handleDownloadPDF = async (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
@@ -2186,10 +2229,64 @@ export default function InvoiceDetailPage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{invoice.invoice_number}</h1>
               <p className="text-lg text-gray-600">{invoice.invoice_title}</p>
             </div>
-            <Badge className={`${getStatusColor(invoice.invoice_status)} border flex items-center gap-2 text-base px-4 py-2`}>
-              {getStatusIcon(invoice.invoice_status)}
-              {invoice.invoice_status}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Select
+                value={invoice.invoice_status}
+                onValueChange={handleStatusChange}
+                disabled={updatingStatus}
+              >
+                <SelectTrigger className={`w-[180px] ${getStatusColor(invoice.invoice_status)} border`}>
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(invoice.invoice_status)}
+                    <SelectValue placeholder="Select status" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Draft">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <span>Draft</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Sent">
+                    <div className="flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      <span>Sent</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Viewed">
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      <span>Viewed</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Paid">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Paid</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Partial">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>Partial</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Overdue">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>Overdue</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Cancelled">
+                    <div className="flex items-center gap-2">
+                      <X className="h-4 w-4" />
+                      <span>Cancelled</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">

@@ -74,12 +74,12 @@ export default async function handler(req, res) {
       });
     }
 
-    // Update invoice status to 'sent' if not already
-    if (invoice.invoice_status !== 'sent' && invoice.status !== 'sent') {
+    // Update invoice status to 'Sent' if not already
+    if (invoice.invoice_status !== 'Sent' && invoice.status !== 'Sent') {
       await supabaseAdmin
         .from('invoices')
         .update({
-          invoice_status: 'sent',
+          invoice_status: 'Sent',
           sent_at: new Date().toISOString()
         })
         .eq('id', invoice.id);
