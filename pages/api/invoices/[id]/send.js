@@ -57,7 +57,12 @@ export default async function handler(req, res) {
 
     // Validate contact
     if (!invoice.contacts || !invoice.contacts.email_address) {
-      return res.status(400).json({ error: 'Contact email address is required' });
+      return res.status(400).json({ 
+        error: 'Contact email address is required',
+        code: 'MISSING_EMAIL',
+        contactId: invoice.contacts?.id || invoice.contact_id,
+        message: 'Please add an email address to the contact before sending the invoice.'
+      });
     }
 
     // Send email using the helper function

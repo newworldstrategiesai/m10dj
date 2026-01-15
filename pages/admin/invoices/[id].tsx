@@ -2210,6 +2210,7 @@ export default function InvoiceDetailPage() {
                 invoiceNumber={invoice.invoice_number}
                 disabled={false}
                 hasEmail={!!invoice.email_address}
+                contactId={invoice.contact_id}
               />
             )}
             {invoice.contact_id && (

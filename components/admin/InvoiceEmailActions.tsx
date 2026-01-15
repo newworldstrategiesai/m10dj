@@ -20,13 +20,15 @@ interface InvoiceEmailActionsProps {
   invoiceNumber?: string;
   disabled?: boolean;
   hasEmail?: boolean;
+  contactId?: string;
 }
 
 export default function InvoiceEmailActions({
   invoiceId,
   invoiceNumber,
   disabled = false,
-  hasEmail = true
+  hasEmail = true,
+  contactId
 }: InvoiceEmailActionsProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState<'preview' | 'send' | 'test' | null>(null);
@@ -99,7 +101,19 @@ export default function InvoiceEmailActions({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to send email');
+        // Handle missing email address with helpful message
+        if (data.code === 'MISSING_EMAIL' && contactId) {
+          const shouldNavigate = confirm(
+            'This invoice requires a contact email address to send.\n\n' +
+            'Would you like to add an email address to the contact now?'
+          );
+          if (shouldNavigate) {
+            window.location.href = `/admin/contacts/${contactId}`;
+            return;
+          }
+          throw new Error(data.message || 'Contact email address is required. Please add an email address to the contact.');
+        }
+        throw new Error(data.error || data.message || 'Failed to send email');
       }
 
       toast({
