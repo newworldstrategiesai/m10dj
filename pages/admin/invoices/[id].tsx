@@ -1735,9 +1735,9 @@ export default function InvoiceDetailPage() {
           if (lineItemsData?.line_items) {
             try {
               // Parse the JSONB line_items field
-              const jsonLineItems = typeof invoiceData.line_items === 'string' 
-                ? JSON.parse(invoiceData.line_items) 
-                : invoiceData.line_items;
+              const jsonLineItems = typeof lineItemsData.line_items === 'string' 
+                ? JSON.parse(lineItemsData.line_items) 
+                : lineItemsData.line_items;
               
               console.log('📦 Parsed JSON line items:', {
                 is_array: Array.isArray(jsonLineItems),
