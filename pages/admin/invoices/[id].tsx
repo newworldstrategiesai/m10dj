@@ -3095,7 +3095,7 @@ export default function InvoiceDetailPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 text-sm sm:text-base">{formatCurrency(payment.amount)}</p>
                         <p className="text-xs sm:text-sm text-gray-600">
-                          {formatDate(payment.transaction_date || payment.payment_date)} • {payment.payment_method}
+                          {formatDate(payment.transaction_date || payment.payment_date || '')} • {payment.payment_method || 'N/A'}
                         </p>
                         {payment.transaction_id && (
                           <p className="text-xs text-gray-500 mt-1 break-all">Transaction: {payment.transaction_id}</p>
