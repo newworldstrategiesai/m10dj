@@ -35,7 +35,7 @@ export default function InvoiceEmailActions({
   const handlePreview = async () => {
     setLoading('preview');
     try {
-      const response = await fetch(`/api/invoices/${invoiceId}/preview`, {
+      const response = await fetch(`/api/invoices/preview/${invoiceId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -73,7 +73,7 @@ export default function InvoiceEmailActions({
 
     setLoading('send');
     try {
-      const response = await fetch(`/api/invoices/${invoiceId}/send`, {
+      const response = await fetch(`/api/invoices/send/${invoiceId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -106,7 +106,7 @@ export default function InvoiceEmailActions({
   const handleTest = async () => {
     setLoading('test');
     try {
-      const response = await fetch(`/api/invoices/${invoiceId}/test`, {
+      const response = await fetch(`/api/invoices/test/${invoiceId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });

@@ -171,7 +171,7 @@ export default function InvoicesDashboard() {
 
       console.log(`🔍 Fetching invoices${isAdmin ? ' (all - platform admin)' : ` for organization: ${orgId}`}`);
       
-      // Fetch invoices - platform admins see all, others filtered by organization
+      // Fetch invoices - platform admins see all (including null org_id), others filtered by organization
       let query = supabase
         .from('invoice_summary')
         .select('*')
@@ -181,12 +181,17 @@ export default function InvoicesDashboard() {
       // Only filter by organization if not platform admin
       if (!isAdmin && orgId) {
         query = query.eq('organization_id', orgId);
+      } else if (isAdmin) {
+        // Platform admins: include invoices with null organization_id too
+        // Use .or() to include both null and non-null organization_id
+        // Actually, for platform admins, we want ALL invoices, so no filter needed
+        // But RLS might be blocking null org_id invoices, so we'll handle that separately
       }
       
       let { data, error } = await query;
       
       // Type assertion for invoice data
-      const invoiceData = (data || []) as any[];
+      let invoiceData = (data || []) as any[];
       
       console.log(`📊 Query result:`, { 
         dataCount: invoiceData?.length || 0, 
@@ -204,6 +209,79 @@ export default function InvoicesDashboard() {
       if (error) {
         console.error('Error fetching invoices:', error);
         throw error;
+      }
+      
+      // For platform admins, also fetch invoices with null organization_id directly from invoices table
+      // (RLS might be filtering them out from the view)
+      if (isAdmin && !error) {
+        try {
+          const { data: directInvoices, error: directError } = await supabase
+            .from('invoices')
+            .select(`
+              *,
+              contacts:contact_id(
+                id,
+                first_name,
+                last_name,
+                email_address,
+                phone,
+                event_type,
+                event_date,
+                organization_id
+              ),
+              events:project_id(
+                id,
+                event_name
+              )
+            `)
+            .is('organization_id', null)
+            .order('invoice_date', { ascending: false })
+            .limit(100);
+          
+          if (!directError && directInvoices && directInvoices.length > 0) {
+            console.log(`📊 Found ${directInvoices.length} invoices with null organization_id`);
+            
+            // Transform to match invoice_summary format
+            const transformed = directInvoices.map((inv: any) => ({
+              id: inv.id,
+              invoice_number: inv.invoice_number,
+              invoice_status: inv.invoice_status,
+              invoice_title: inv.invoice_title,
+              invoice_date: inv.invoice_date,
+              due_date: inv.due_date,
+              sent_date: inv.sent_date,
+              paid_date: inv.paid_date,
+              total_amount: inv.total_amount,
+              amount_paid: inv.amount_paid,
+              balance_due: inv.balance_due,
+              contact_id: inv.contact_id,
+              organization_id: inv.organization_id || inv.contacts?.organization_id || null,
+              first_name: inv.contacts?.first_name,
+              last_name: inv.contacts?.last_name,
+              email_address: inv.contacts?.email_address,
+              phone: inv.contacts?.phone,
+              event_type: inv.contacts?.event_type,
+              event_date: inv.contacts?.event_date,
+              project_id: inv.project_id,
+              project_name: inv.events?.event_name,
+              payment_count: 0, // Will be calculated by enrichInvoicesWithQuoteData
+              last_payment_date: null,
+              days_overdue: inv.due_date && new Date(inv.due_date) < new Date() && inv.invoice_status !== 'Paid' && inv.invoice_status !== 'Cancelled'
+                ? Math.floor((new Date().getTime() - new Date(inv.due_date).getTime()) / (1000 * 60 * 60 * 24))
+                : 0
+            }));
+            
+            // Merge with existing invoiceData, avoiding duplicates
+            const existingIds = new Set(invoiceData.map((inv: any) => inv.id));
+            const newInvoices = transformed.filter((inv: any) => !existingIds.has(inv.id));
+            invoiceData = [...invoiceData, ...newInvoices];
+            
+            console.log(`✅ Added ${newInvoices.length} invoices with null organization_id to results`);
+          }
+        } catch (directQueryError) {
+          console.warn('Could not fetch invoices with null organization_id:', directQueryError);
+          // Continue with existing results
+        }
       }
       
       // If not admin and no invoices found, also check for invoices without organization_id
@@ -239,72 +317,73 @@ export default function InvoicesDashboard() {
           console.log(`✅ Showing ${filtered.length} invoices (${filtered.filter((inv: any) => !inv.organization_id).length} need organization_id backfill)`);
           console.log(`📋 Invoice details:`, filtered.map((inv: any) => ({
             id: inv.id,
-              invoice_number: inv.invoice_number,
-              organization_id: inv.organization_id,
-              contact_id: inv.contact_id
-            })));
-            await enrichInvoicesWithQuoteData(filtered as Invoice[], supabase);
-          } else {
-            console.log('❌ No invoices found in invoice_summary view, checking invoices table directly...');
-            
-            // Try querying invoices table directly (bypassing view)
-            const { data: directInvoices, error: directError } = await supabase
-              .from('invoices')
-              .select('*, contacts:contact_id(id, organization_id, first_name, last_name, email_address, phone, event_type, event_date)')
-              .order('invoice_date', { ascending: false });
-            
-            const directInvoicesData = (directInvoices || []) as any[];
-            
-            console.log(`📊 Direct invoices query:`, { 
-              count: directInvoicesData.length, 
-              error: directError?.message 
-            });
-            
-            if (directInvoicesData.length > 0) {
-              // Filter by organization_id from invoice or contact (only if not admin)
-              const filtered = isAdmin 
-                ? directInvoicesData 
-                : directInvoicesData.filter((inv: any) => {
-                    const invOrgId = inv.organization_id || inv.contacts?.organization_id;
-                    return !invOrgId || invOrgId === orgId;
-                  });
-              
-              // Transform to match invoice_summary format
-              const transformed = filtered.map((inv: any) => ({
-                ...inv,
-                first_name: inv.contacts?.first_name,
-                last_name: inv.contacts?.last_name,
-                email_address: inv.contacts?.email_address,
-                phone: inv.contacts?.phone,
-                event_type: inv.contacts?.event_type,
-                event_date: inv.contacts?.event_date,
-                payment_count: 0,
-                last_payment_date: null,
-                days_overdue: inv.due_date && new Date(inv.due_date) < new Date() && inv.invoice_status !== 'Paid' && inv.invoice_status !== 'Cancelled'
-                  ? Math.floor((new Date().getTime() - new Date(inv.due_date).getTime()) / (1000 * 60 * 60 * 24))
-                  : 0
-              }));
-              
-              console.log(`✅ Found ${transformed.length} invoices in invoices table`);
-              await enrichInvoicesWithQuoteData(transformed as Invoice[], supabase);
-            } else {
-              console.log('❌ No invoices found in database at all');
-              setInvoices([]);
-              calculateStats([]);
-              return;
-            }
-          }
-        } else {
-          console.log(`✅ Loaded ${invoiceData.length} invoices for organization ${orgId}`);
-          console.log(`📋 Invoice details:`, invoiceData.map((inv: any) => ({
-            id: inv.id,
             invoice_number: inv.invoice_number,
-            organization_id: inv.organization_id
+            organization_id: inv.organization_id,
+            contact_id: inv.contact_id
           })));
+          await enrichInvoicesWithQuoteData(filtered as Invoice[], supabase);
+        } else {
+          console.log('❌ No invoices found in invoice_summary view, checking invoices table directly...');
           
-          // Fetch quote data for all invoices to get accurate totals
-          await enrichInvoicesWithQuoteData(invoiceData as Invoice[], supabase);
+          // Try querying invoices table directly (bypassing view)
+          const { data: directInvoices, error: directError } = await supabase
+            .from('invoices')
+            .select('*, contacts:contact_id(id, organization_id, first_name, last_name, email_address, phone, event_type, event_date)')
+            .order('invoice_date', { ascending: false });
+          
+          const directInvoicesData = (directInvoices || []) as any[];
+          
+          console.log(`📊 Direct invoices query:`, { 
+            count: directInvoicesData.length, 
+            error: directError?.message 
+          });
+          
+          if (directInvoicesData.length > 0) {
+            // Filter by organization_id from invoice or contact (only if not admin)
+            const filtered = isAdmin 
+              ? directInvoicesData 
+              : directInvoicesData.filter((inv: any) => {
+                  const invOrgId = inv.organization_id || inv.contacts?.organization_id;
+                  return !invOrgId || invOrgId === orgId;
+                });
+            
+            // Transform to match invoice_summary format
+            const transformed = filtered.map((inv: any) => ({
+              ...inv,
+              first_name: inv.contacts?.first_name,
+              last_name: inv.contacts?.last_name,
+              email_address: inv.contacts?.email_address,
+              phone: inv.contacts?.phone,
+              event_type: inv.contacts?.event_type,
+              event_date: inv.contacts?.event_date,
+              payment_count: 0,
+              last_payment_date: null,
+              days_overdue: inv.due_date && new Date(inv.due_date) < new Date() && inv.invoice_status !== 'Paid' && inv.invoice_status !== 'Cancelled'
+                ? Math.floor((new Date().getTime() - new Date(inv.due_date).getTime()) / (1000 * 60 * 60 * 24))
+                : 0
+            }));
+            
+            console.log(`✅ Found ${transformed.length} invoices in invoices table`);
+            await enrichInvoicesWithQuoteData(transformed as Invoice[], supabase);
+          } else {
+            console.log('❌ No invoices found in database at all');
+            setInvoices([]);
+            calculateStats([]);
+            setLoading(false);
+            return;
+          }
         }
+      } else {
+        // We have invoices, proceed to enrich them
+        console.log(`✅ Loaded ${invoiceData.length} invoices${isAdmin ? ' (all - platform admin)' : ` for organization ${orgId}`}`);
+        console.log(`📋 Invoice details:`, invoiceData.map((inv: any) => ({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          organization_id: inv.organization_id
+        })));
+        
+        // Fetch quote data for all invoices to get accurate totals
+        await enrichInvoicesWithQuoteData(invoiceData as Invoice[], supabase);
       }
     } catch (error) {
       console.error('Error fetching invoices:', error);
