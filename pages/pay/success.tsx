@@ -17,7 +17,9 @@ import {
   PartyPopper,
   FileText,
   ArrowRight,
-  CreditCard
+  CreditCard,
+  Star,
+  ExternalLink
 } from 'lucide-react';
 import { triggerConfetti } from '@/utils/confetti';
 
@@ -535,6 +537,38 @@ export default function PaymentSuccess() {
                     )}
                   </ul>
                 </div>
+
+                {/* Google Review Section - Show for standalone invoice payments */}
+                {session_id && !paymentDetails?.contract && (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 mb-6 shadow-lg">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
+                        <Star className="w-7 h-7 text-blue-600 fill-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg mb-2 text-blue-900">
+                          Love Your Experience? Leave Us a Review! ⭐
+                        </h3>
+                        <p className="text-sm mb-4 text-blue-800">
+                          Your feedback means the world to us and helps other Memphis couples find quality DJ services. It only takes 2 minutes!
+                        </p>
+                        <a
+                          href="https://g.page/r/CSD9ayo7-MivEBE/review"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-md"
+                        >
+                          <Star className="w-5 h-5 fill-white" />
+                          <span>Leave a Google Review</span>
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                        <p className="text-xs text-blue-700 mt-3 italic">
+                          Every review helps! Even a quick 5-star rating makes a huge difference. 💙
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Contact Section */}
                 <div className="text-center">
