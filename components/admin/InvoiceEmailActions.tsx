@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Mail, Eye, Send, TestTube, Loader2, X } from 'lucide-react';
+import { Mail, Eye, Send, TestTube, Loader2, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import {
@@ -35,6 +35,8 @@ export default function InvoiceEmailActions({
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [previewSubject, setPreviewSubject] = useState<string>('');
+  const [previewHasEmail, setPreviewHasEmail] = useState<boolean>(true);
+  const [previewContactId, setPreviewContactId] = useState<string | undefined>(contactId);
 
   const handlePreview = async () => {
     setLoading('preview');
@@ -60,6 +62,10 @@ export default function InvoiceEmailActions({
 
       setPreviewHtml(data.html);
       setPreviewSubject(data.subject);
+      setPreviewHasEmail(data.hasEmail !== false);
+      if (data.contactId) {
+        setPreviewContactId(data.contactId);
+      }
       setShowPreview(true);
       
       toast({
@@ -101,17 +107,20 @@ export default function InvoiceEmailActions({
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle missing email address with helpful message
-        if (data.code === 'MISSING_EMAIL' && contactId) {
-          const shouldNavigate = confirm(
-            'This invoice requires a contact email address to send.\n\n' +
-            'Would you like to add an email address to the contact now?'
-          );
-          if (shouldNavigate) {
-            window.location.href = `/admin/contacts/${contactId}`;
-            return;
+        // Handle missing email address - show error in modal UI
+        if (data.code === 'MISSING_EMAIL') {
+          // Keep modal open and show error message in UI
+          setPreviewHasEmail(false);
+          if (data.contactId) {
+            setPreviewContactId(data.contactId);
           }
-          throw new Error(data.message || 'Contact email address is required. Please add an email address to the contact.');
+          setLoading(null);
+          toast({
+            title: 'Email Address Required',
+            description: 'Please add an email address to the contact to send the invoice',
+            variant: 'destructive'
+          });
+          return; // Don't throw error, just show in modal
         }
         throw new Error(data.error || data.message || 'Failed to send email');
       }
@@ -262,27 +271,54 @@ export default function InvoiceEmailActions({
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
           </div>
-          <div className="flex items-center justify-between pt-4 border-t">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              This is a preview. The actual email will be sent to the client.
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowPreview(false)}
-              >
-                Close
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowPreview(false);
-                  handleSend();
-                }}
-                className="bg-[#fcba00] hover:bg-[#f5a500] text-black"
-              >
-                <Send className="w-4 h-4 mr-2" />
-                Send Email
-              </Button>
+          <div className="flex flex-col gap-3 pt-4 border-t">
+            {!previewHasEmail && previewContactId && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                      Email Address Required
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                      This invoice requires a contact email address to send. Please add an email address to the contact.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        window.location.href = `/admin/contacts/${previewContactId}`;
+                      }}
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      Add Email Address
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                This is a preview. The actual email will be sent to the client.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPreview(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowPreview(false);
+                    handleSend();
+                  }}
+                  disabled={!previewHasEmail}
+                  className="bg-[#fcba00] hover:bg-[#f5a500] text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Email
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
