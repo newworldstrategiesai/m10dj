@@ -111,6 +111,10 @@ export default function InvoiceEmailActions({
       if (data.contactId) {
         setPreviewContactId(data.contactId);
       }
+      // Initialize email input with current email if available
+      if (data.email) {
+        setEmailInput(data.email);
+      }
       setPreviewLoaded(true);
       
       console.log('Preview loaded successfully');
