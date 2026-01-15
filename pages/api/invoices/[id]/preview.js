@@ -64,6 +64,19 @@ export default async function handler(req, res) {
     if (invoiceEmail) {
       contact.email_address = invoiceEmail;
     }
+    
+    // Fetch full contact details including event_date if not already loaded
+    let fullContact = contact;
+    if (contact.id && !contact.event_date) {
+      const { data: contactData } = await supabaseAdmin
+        .from('contacts')
+        .select('event_date')
+        .eq('id', contact.id)
+        .single();
+      if (contactData) {
+        fullContact = { ...contact, event_date: contactData.event_date };
+      }
+    }
 
     // Ensure invoice has payment token (generate if needed for preview)
     let paymentToken = invoice.payment_token;
@@ -228,7 +241,7 @@ export default async function handler(req, res) {
 
             <!-- Footer -->
             <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #9ca3af;">
-              <p style="margin: 0;">Looking forward to making your event amazing!</p>
+              <p style="margin: 0;">${generateInvoiceFooterMessage(invoice, fullContact)}</p>
               <p style="margin: 10px 0 0;">Best, Ben Murray | M10 DJ Company</p>
             </div>
           </div>

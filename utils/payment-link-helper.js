@@ -8,6 +8,55 @@ const fs = require('fs');
 const path = require('path');
 
 /**
+ * Generate context-aware footer message for invoice emails
+ * @param {Object} invoice - Invoice object
+ * @param {Object} contact - Contact object (optional)
+ * @returns {string} Footer message
+ */
+function generateInvoiceFooterMessage(invoice, contact = null) {
+  // Check if event has already happened
+  const eventDate = invoice.event_date || contact?.event_date || null;
+  const isPastEvent = eventDate ? new Date(eventDate) < new Date() : false;
+  
+  // Check if this is equipment rental
+  const isEquipmentRental = (() => {
+    // Check invoice title
+    const title = (invoice.invoice_title || '').toLowerCase();
+    if (title.includes('rental') || title.includes('equipment')) {
+      return true;
+    }
+    
+    // Check line items for rental keywords
+    const lineItems = invoice.line_items || [];
+    const rentalKeywords = ['rental', 'rent', 'equipment', 'speaker', 'sound system', 'lighting'];
+    const hasRentalItems = lineItems.some(item => {
+      const description = (item.description || '').toLowerCase();
+      return rentalKeywords.some(keyword => description.includes(keyword));
+    });
+    
+    // If it's equipment rental and no DJ service keywords, it's likely rental-only
+    const djServiceKeywords = ['dj', 'mc', 'emcee', 'music', 'entertainment', 'coordination'];
+    const hasDjServices = lineItems.some(item => {
+      const description = (item.description || '').toLowerCase();
+      return djServiceKeywords.some(keyword => description.includes(keyword));
+    });
+    
+    return hasRentalItems && !hasDjServices;
+  })();
+  
+  // Generate appropriate message based on context
+  if (isPastEvent && isEquipmentRental) {
+    return 'Thank you for your business!';
+  } else if (isPastEvent) {
+    return 'Thank you for choosing M10 DJ Company!';
+  } else if (isEquipmentRental) {
+    return 'Looking forward to providing your equipment!';
+  } else {
+    return 'Looking forward to making your event amazing!';
+  }
+}
+
+/**
  * Generate a secure payment token
  */
 function generatePaymentToken() {
@@ -197,7 +246,7 @@ async function sendInvoiceWithPaymentLink(invoice, contact, supabase, resend, pd
 
             <!-- Footer -->
             <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #9ca3af;">
-              <p style="margin: 0;">Looking forward to making your event amazing!</p>
+              <p style="margin: 0;">${generateInvoiceFooterMessage(invoice, contact)}</p>
               <p style="margin: 10px 0 0;">Best, Ben Murray | M10 DJ Company</p>
             </div>
           </div>
