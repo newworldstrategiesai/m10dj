@@ -19,12 +19,14 @@ interface InvoiceEmailActionsProps {
   invoiceId: string;
   invoiceNumber?: string;
   disabled?: boolean;
+  hasEmail?: boolean;
 }
 
 export default function InvoiceEmailActions({
   invoiceId,
   invoiceNumber,
-  disabled = false
+  disabled = false,
+  hasEmail = true
 }: InvoiceEmailActionsProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState<'preview' | 'send' | 'test' | null>(null);
@@ -203,7 +205,7 @@ export default function InvoiceEmailActions({
         <Button
           size="sm"
           onClick={handleSend}
-          disabled={disabled || loading !== null}
+          disabled={disabled || loading !== null || !hasEmail}
           className="flex items-center gap-2 bg-[#fcba00] hover:bg-[#f5a500] text-black"
         >
           {loading === 'send' ? (

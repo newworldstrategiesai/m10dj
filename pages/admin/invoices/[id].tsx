@@ -2208,7 +2208,8 @@ export default function InvoiceDetailPage() {
               <InvoiceEmailActions
                 invoiceId={invoice.id}
                 invoiceNumber={invoice.invoice_number}
-                disabled={!invoice.contact_id || !invoice.email_address}
+                disabled={false}
+                hasEmail={!!invoice.email_address}
               />
             )}
             {invoice.contact_id && (
