@@ -130,6 +130,18 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showNewContactModal, setShowNewContactModal] = useState(false);
+  const [creatingContact, setCreatingContact] = useState(false);
+  const [newContactForm, setNewContactForm] = useState({
+    first_name: '',
+    last_name: '',
+    email_address: '',
+    phone: '',
+    event_type: 'wedding',
+    event_date: '',
+    venue_name: '',
+    notes: ''
+  });
   const isMountedRef = useRef(true);
   
   // Get contactId from router query params
@@ -767,6 +779,63 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
     }
   };
 
+  const handleCreateContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingContact(true);
+
+    try {
+      const response = await fetch('/api/contacts/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newContactForm)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorMessage = data.details 
+          ? `${data.error}: ${data.details}` 
+          : data.error || 'Failed to create contact';
+        throw new Error(errorMessage);
+      }
+
+      // Add the new contact to the list
+      const newContact: Contact = {
+        id: data.contact.id,
+        first_name: data.contact.first_name,
+        last_name: data.contact.last_name,
+        email_address: data.contact.email_address || '',
+        event_type: data.contact.event_type || 'other',
+        event_date: data.contact.event_date || null,
+        organization_id: data.contact.organization_id || null
+      };
+
+      setContacts(prev => [newContact, ...prev]);
+      
+      // Select the new contact
+      setFormData(prev => ({ ...prev, contactId: newContact.id, projectId: '' }));
+
+      // Reset form and close modal
+      setNewContactForm({
+        first_name: '',
+        last_name: '',
+        email_address: '',
+        phone: '',
+        event_type: 'wedding',
+        event_date: '',
+        venue_name: '',
+        notes: ''
+      });
+      setShowNewContactModal(false);
+    } catch (error: any) {
+      console.error('Error creating contact:', error);
+      const errorMessage = error.message || 'Failed to create contact';
+      alert(errorMessage);
+    } finally {
+      setCreatingContact(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -932,9 +1001,19 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
           {/* Contact Selection */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Contact <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Contact <span className="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowNewContactModal(true)}
+                className="flex items-center gap-1 text-sm text-[#fcba00] hover:text-[#e5a800] font-medium"
+              >
+                <Plus className="h-4 w-4" />
+                Add New Contact
+              </button>
+            </div>
             <select
               required
               value={formData.contactId}
@@ -1367,6 +1446,149 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
           </div>
         </form>
       </div>
+
+      {/* New Contact Modal */}
+      {showNewContactModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#fcba00] to-[#d99f00] px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <User className="w-6 h-6 text-gray-900" />
+                <h2 className="text-xl font-bold text-gray-900">Create New Contact</h2>
+              </div>
+              <button 
+                onClick={() => setShowNewContactModal(false)} 
+                className="text-gray-800 hover:text-black p-1 hover:bg-black/10 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCreateContact} className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    First Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newContactForm.first_name}
+                    onChange={(e) => setNewContactForm({ ...newContactForm, first_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Last Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newContactForm.last_name}
+                    onChange={(e) => setNewContactForm({ ...newContactForm, last_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={newContactForm.email_address}
+                  onChange={(e) => setNewContactForm({ ...newContactForm, email_address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={newContactForm.phone}
+                  onChange={(e) => setNewContactForm({ ...newContactForm, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+                  <select
+                    value={newContactForm.event_type}
+                    onChange={(e) => setNewContactForm({ ...newContactForm, event_type: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                  >
+                    <option value="wedding">Wedding</option>
+                    <option value="corporate">Corporate Event</option>
+                    <option value="school_dance">School Dance</option>
+                    <option value="holiday_party">Holiday Party</option>
+                    <option value="private_party">Private Party</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
+                  <input
+                    type="date"
+                    value={newContactForm.event_date}
+                    onChange={(e) => setNewContactForm({ ...newContactForm, event_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
+                <input
+                  type="text"
+                  value={newContactForm.venue_name}
+                  onChange={(e) => setNewContactForm({ ...newContactForm, venue_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={newContactForm.notes}
+                  onChange={(e) => setNewContactForm({ ...newContactForm, notes: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowNewContactModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingContact}
+                  className="flex-1 px-4 py-2 bg-[#fcba00] text-black rounded-lg hover:bg-[#e5a800] font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {creatingContact ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Contact'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

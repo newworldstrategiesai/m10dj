@@ -224,10 +224,48 @@ export default function PaymentPage() {
     }
   };
 
+  // Build default metadata for loading state
+  const defaultBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
+  const defaultPaymentUrl = token ? `${defaultBaseUrl}/pay/${token}` : `${defaultBaseUrl}/pay`;
+  const defaultOgTitle = 'Invoice Payment - M10 DJ Company';
+  const defaultOgDescription = 'Complete your secure payment online. Powered by Stripe.';
+  const defaultOgImage = `${defaultBaseUrl}/assets/payment-og-image.png`;
+  const defaultFallbackOgImage = `${defaultBaseUrl}/logo-static.jpg`;
+
   // Handle router query not ready yet
   if (!router.isReady) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <Head>
+          <title>{defaultOgTitle}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+          <meta name="robots" content="noindex, nofollow" />
+          <meta name="description" content={defaultOgDescription} />
+          
+          {/* Open Graph / Facebook - Override defaults from _app.js */}
+          <meta key="og:type" property="og:type" content="website" />
+          <meta key="og:url" property="og:url" content={defaultPaymentUrl} />
+          <meta key="og:title" property="og:title" content={defaultOgTitle} />
+          <meta key="og:description" property="og:description" content={defaultOgDescription} />
+          <meta key="og:image" property="og:image" content={defaultOgImage} />
+          <meta key="og:image:secure_url" property="og:image:secure_url" content={defaultOgImage} />
+          <meta key="og:image:width" property="og:image:width" content="1200" />
+          <meta key="og:image:height" property="og:image:height" content="630" />
+          <meta key="og:image:alt" property="og:image:alt" content="M10 DJ Company Payment" />
+          <meta key="og:image:type" property="og:image:type" content="image/png" />
+          <meta key="og:site_name" property="og:site_name" content="M10 DJ Company" />
+          <meta key="og:locale" property="og:locale" content="en_US" />
+          
+          {/* Twitter Card - Override defaults from _app.js */}
+          <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
+          <meta key="twitter:url" name="twitter:url" content={defaultPaymentUrl} />
+          <meta key="twitter:title" name="twitter:title" content={defaultOgTitle} />
+          <meta key="twitter:description" name="twitter:description" content={defaultOgDescription} />
+          <meta key="twitter:image" name="twitter:image" content={defaultOgImage} />
+          <meta key="twitter:image:alt" name="twitter:image:alt" content="M10 DJ Company Payment" />
+          <meta key="twitter:creator" name="twitter:creator" content="@m10djcompany" />
+          <meta key="twitter:site" name="twitter:site" content="@m10djcompany" />
+        </Head>
         <div className="text-center">
           <Loader className="w-8 h-8 animate-spin text-[#fcba00] mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
@@ -236,13 +274,6 @@ export default function PaymentPage() {
     );
   }
 
-  // Build default metadata for loading state
-  const defaultBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
-  const defaultPaymentUrl = token ? `${defaultBaseUrl}/pay/${token}` : `${defaultBaseUrl}/pay`;
-  const defaultOgTitle = 'Invoice Payment - M10 DJ Company';
-  const defaultOgDescription = 'Complete your secure payment online. Powered by Stripe.';
-  const defaultOgImage = `${defaultBaseUrl}/assets/payment-og-image.png`;
-  const defaultFallbackOgImage = `${defaultBaseUrl}/logo-static.jpg`;
 
   if (loading) {
     return (
@@ -253,27 +284,29 @@ export default function PaymentPage() {
           <meta name="robots" content="noindex, nofollow" />
           <meta name="description" content={defaultOgDescription} />
           
-          {/* Open Graph / Facebook */}
-          <meta property="og:type" content="website" />
-          <meta property="og:url" content={defaultPaymentUrl} />
-          <meta property="og:title" content={defaultOgTitle} />
-          <meta property="og:description" content={defaultOgDescription} />
-          <meta property="og:image" content={defaultOgImage} />
-          <meta property="og:image:width" content="1200" />
-          <meta property="og:image:height" content="630" />
-          <meta property="og:image:alt" content="M10 DJ Company Payment" />
-          <meta property="og:site_name" content="M10 DJ Company" />
-          <meta property="og:locale" content="en_US" />
+          {/* Open Graph / Facebook - Override defaults from _app.js */}
+          <meta key="og:type" property="og:type" content="website" />
+          <meta key="og:url" property="og:url" content={defaultPaymentUrl} />
+          <meta key="og:title" property="og:title" content={defaultOgTitle} />
+          <meta key="og:description" property="og:description" content={defaultOgDescription} />
+          <meta key="og:image" property="og:image" content={defaultOgImage} />
+          <meta key="og:image:secure_url" property="og:image:secure_url" content={defaultOgImage} />
+          <meta key="og:image:width" property="og:image:width" content="1200" />
+          <meta key="og:image:height" property="og:image:height" content="630" />
+          <meta key="og:image:alt" property="og:image:alt" content="M10 DJ Company Payment" />
+          <meta key="og:image:type" property="og:image:type" content="image/png" />
+          <meta key="og:site_name" property="og:site_name" content="M10 DJ Company" />
+          <meta key="og:locale" property="og:locale" content="en_US" />
           
-          {/* Twitter Card */}
-          <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:url" content={defaultPaymentUrl} />
-          <meta name="twitter:title" content={defaultOgTitle} />
-          <meta name="twitter:description" content={defaultOgDescription} />
-          <meta name="twitter:image" content={defaultOgImage} />
-          <meta name="twitter:image:alt" content="M10 DJ Company Payment" />
-          <meta name="twitter:creator" content="@m10djcompany" />
-          <meta name="twitter:site" content="@m10djcompany" />
+          {/* Twitter Card - Override defaults from _app.js */}
+          <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
+          <meta key="twitter:url" name="twitter:url" content={defaultPaymentUrl} />
+          <meta key="twitter:title" name="twitter:title" content={defaultOgTitle} />
+          <meta key="twitter:description" name="twitter:description" content={defaultOgDescription} />
+          <meta key="twitter:image" name="twitter:image" content={defaultOgImage} />
+          <meta key="twitter:image:alt" name="twitter:image:alt" content="M10 DJ Company Payment" />
+          <meta key="twitter:creator" name="twitter:creator" content="@m10djcompany" />
+          <meta key="twitter:site" name="twitter:site" content="@m10djcompany" />
         </Head>
         <div className="text-center">
           <Loader className="w-12 h-12 animate-spin text-[#fcba00] mx-auto mb-4" />
@@ -292,27 +325,29 @@ export default function PaymentPage() {
           <meta name="robots" content="noindex, nofollow" />
           <meta name="description" content="Unable to load invoice. Please contact us for assistance." />
           
-          {/* Open Graph / Facebook */}
-          <meta property="og:type" content="website" />
-          <meta property="og:url" content={defaultPaymentUrl} />
-          <meta property="og:title" content="Payment Error - M10 DJ Company" />
-          <meta property="og:description" content="Unable to load invoice. Please contact us for assistance." />
-          <meta property="og:image" content={defaultOgImage} />
-          <meta property="og:image:width" content="1200" />
-          <meta property="og:image:height" content="630" />
-          <meta property="og:image:alt" content="M10 DJ Company Payment" />
-          <meta property="og:site_name" content="M10 DJ Company" />
-          <meta property="og:locale" content="en_US" />
+          {/* Open Graph / Facebook - Override defaults from _app.js */}
+          <meta key="og:type" property="og:type" content="website" />
+          <meta key="og:url" property="og:url" content={defaultPaymentUrl} />
+          <meta key="og:title" property="og:title" content="Payment Error - M10 DJ Company" />
+          <meta key="og:description" property="og:description" content="Unable to load invoice. Please contact us for assistance." />
+          <meta key="og:image" property="og:image" content={defaultOgImage} />
+          <meta key="og:image:secure_url" property="og:image:secure_url" content={defaultOgImage} />
+          <meta key="og:image:width" property="og:image:width" content="1200" />
+          <meta key="og:image:height" property="og:image:height" content="630" />
+          <meta key="og:image:alt" property="og:image:alt" content="M10 DJ Company Payment" />
+          <meta key="og:image:type" property="og:image:type" content="image/png" />
+          <meta key="og:site_name" property="og:site_name" content="M10 DJ Company" />
+          <meta key="og:locale" property="og:locale" content="en_US" />
           
-          {/* Twitter Card */}
-          <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:url" content={defaultPaymentUrl} />
-          <meta name="twitter:title" content="Payment Error - M10 DJ Company" />
-          <meta name="twitter:description" content="Unable to load invoice. Please contact us for assistance." />
-          <meta name="twitter:image" content={defaultOgImage} />
-          <meta name="twitter:image:alt" content="M10 DJ Company Payment" />
-          <meta name="twitter:creator" content="@m10djcompany" />
-          <meta name="twitter:site" content="@m10djcompany" />
+          {/* Twitter Card - Override defaults from _app.js */}
+          <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
+          <meta key="twitter:url" name="twitter:url" content={defaultPaymentUrl} />
+          <meta key="twitter:title" name="twitter:title" content="Payment Error - M10 DJ Company" />
+          <meta key="twitter:description" name="twitter:description" content="Unable to load invoice. Please contact us for assistance." />
+          <meta key="twitter:image" name="twitter:image" content={defaultOgImage} />
+          <meta key="twitter:image:alt" name="twitter:image:alt" content="M10 DJ Company Payment" />
+          <meta key="twitter:creator" name="twitter:creator" content="@m10djcompany" />
+          <meta key="twitter:site" name="twitter:site" content="@m10djcompany" />
         </Head>
         
         <div className="max-w-md w-full">
@@ -356,29 +391,29 @@ export default function PaymentPage() {
         <meta name="robots" content="noindex, nofollow" />
         <meta name="description" content={ogDescription} />
         
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content={paymentUrl} />
-        <meta property="og:title" content={ogTitle} />
-        <meta property="og:description" content={ogDescription} />
-        <meta property="og:image" content={ogImage} />
-        <meta property="og:image:secure_url" content={ogImage} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content={`Payment for Invoice ${invoice.invoice_number} - M10 DJ Company`} />
-        <meta property="og:image:type" content="image/png" />
-        <meta property="og:site_name" content="M10 DJ Company" />
-        <meta property="og:locale" content="en_US" />
+        {/* Open Graph / Facebook - Override defaults from _app.js */}
+        <meta key="og:type" property="og:type" content="website" />
+        <meta key="og:url" property="og:url" content={paymentUrl} />
+        <meta key="og:title" property="og:title" content={ogTitle} />
+        <meta key="og:description" property="og:description" content={ogDescription} />
+        <meta key="og:image" property="og:image" content={ogImage} />
+        <meta key="og:image:secure_url" property="og:image:secure_url" content={ogImage} />
+        <meta key="og:image:width" property="og:image:width" content="1200" />
+        <meta key="og:image:height" property="og:image:height" content="630" />
+        <meta key="og:image:alt" property="og:image:alt" content={`Payment for Invoice ${invoice.invoice_number} - M10 DJ Company`} />
+        <meta key="og:image:type" property="og:image:type" content="image/png" />
+        <meta key="og:site_name" property="og:site_name" content="M10 DJ Company" />
+        <meta key="og:locale" property="og:locale" content="en_US" />
         
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:url" content={paymentUrl} />
-        <meta name="twitter:title" content={ogTitle} />
-        <meta name="twitter:description" content={ogDescription} />
-        <meta name="twitter:image" content={ogImage} />
-        <meta name="twitter:image:alt" content={`Payment for Invoice ${invoice.invoice_number} - M10 DJ Company`} />
-        <meta name="twitter:creator" content="@m10djcompany" />
-        <meta name="twitter:site" content="@m10djcompany" />
+        {/* Twitter Card - Override defaults from _app.js */}
+        <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
+        <meta key="twitter:url" name="twitter:url" content={paymentUrl} />
+        <meta key="twitter:title" name="twitter:title" content={ogTitle} />
+        <meta key="twitter:description" name="twitter:description" content={ogDescription} />
+        <meta key="twitter:image" name="twitter:image" content={ogImage} />
+        <meta key="twitter:image:alt" name="twitter:image:alt" content={`Payment for Invoice ${invoice.invoice_number} - M10 DJ Company`} />
+        <meta key="twitter:creator" name="twitter:creator" content="@m10djcompany" />
+        <meta key="twitter:site" name="twitter:site" content="@m10djcompany" />
         
         <style dangerouslySetInnerHTML={{__html: `
           @keyframes pulse-slow {

@@ -1,10 +1,11 @@
 /**
  * Payment Plan Configuration Component
  * Allows admins to configure custom payment plans for invoices
+ * Features preset options for common payment schedules
  */
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Calendar, DollarSign, Percent } from 'lucide-react';
+import { Plus, Trash2, Calendar, DollarSign, Percent, Check } from 'lucide-react';
 
 interface PaymentInstallment {
   name: string;
@@ -17,7 +18,7 @@ interface PaymentInstallment {
 }
 
 interface PaymentPlan {
-  type: 'default' | 'custom';
+  type: 'pay_in_full' | 'preset_50_50' | 'preset_3_way' | 'preset_4_way' | 'custom';
   installments: PaymentInstallment[];
 }
 
@@ -36,29 +37,123 @@ export default function PaymentPlanConfig({
   eventDate,
   invoiceDueDate
 }: PaymentPlanConfigProps) {
-  const [planType, setPlanType] = useState<'default' | 'custom'>(value?.type || 'default');
-  const [installments, setInstallments] = useState<PaymentInstallment[]>(
-    value?.installments || [
-      {
-        name: 'Deposit',
-        amount: null,
-        percentage: 50,
-        due_date_type: 'upon_signing',
-        days_before_event: null,
-        specific_date: null,
-        description: 'Initial deposit due upon signing'
-      },
-      {
-        name: 'Balance',
-        amount: null,
-        percentage: 50,
-        due_date_type: 'days_before_event',
-        days_before_event: 30,
-        specific_date: null,
-        description: 'Remaining balance due before event'
-      }
-    ]
+  const [planType, setPlanType] = useState<'pay_in_full' | 'preset_50_50' | 'preset_3_way' | 'preset_4_way' | 'custom'>(
+    value?.type || 'preset_50_50'
   );
+  const [installments, setInstallments] = useState<PaymentInstallment[]>(
+    value?.installments || getPresetInstallments('preset_50_50')
+  );
+
+  // Generate preset installments
+  function getPresetInstallments(preset: 'pay_in_full' | 'preset_50_50' | 'preset_3_way' | 'preset_4_way'): PaymentInstallment[] {
+    switch (preset) {
+      case 'pay_in_full':
+        return [
+          {
+            name: 'Full Payment',
+            amount: null,
+            percentage: 100,
+            due_date_type: 'upon_signing',
+            days_before_event: null,
+            specific_date: null,
+            description: 'Full payment due upon signing'
+          }
+        ];
+      
+      case 'preset_50_50':
+        return [
+          {
+            name: 'Deposit',
+            amount: null,
+            percentage: 50,
+            due_date_type: 'upon_signing',
+            days_before_event: null,
+            specific_date: null,
+            description: 'Initial deposit due upon signing'
+          },
+          {
+            name: 'Balance',
+            amount: null,
+            percentage: 50,
+            due_date_type: 'days_before_event',
+            days_before_event: 30,
+            specific_date: null,
+            description: 'Remaining balance due before event'
+          }
+        ];
+      
+      case 'preset_3_way':
+        return [
+          {
+            name: 'Deposit',
+            amount: null,
+            percentage: 33.33,
+            due_date_type: 'upon_signing',
+            days_before_event: null,
+            specific_date: null,
+            description: 'Initial deposit due upon signing'
+          },
+          {
+            name: 'Second Payment',
+            amount: null,
+            percentage: 33.33,
+            due_date_type: 'days_before_event',
+            days_before_event: 60,
+            specific_date: null,
+            description: 'Second payment due before event'
+          },
+          {
+            name: 'Final Payment',
+            amount: null,
+            percentage: 33.34,
+            due_date_type: 'days_before_event',
+            days_before_event: 30,
+            specific_date: null,
+            description: 'Final payment due before event'
+          }
+        ];
+      
+      case 'preset_4_way':
+        return [
+          {
+            name: 'Deposit',
+            amount: null,
+            percentage: 25,
+            due_date_type: 'upon_signing',
+            days_before_event: null,
+            specific_date: null,
+            description: 'Initial deposit due upon signing'
+          },
+          {
+            name: 'Second Payment',
+            amount: null,
+            percentage: 25,
+            due_date_type: 'days_before_event',
+            days_before_event: 90,
+            specific_date: null,
+            description: 'Second payment due before event'
+          },
+          {
+            name: 'Third Payment',
+            amount: null,
+            percentage: 25,
+            due_date_type: 'days_before_event',
+            days_before_event: 60,
+            specific_date: null,
+            description: 'Third payment due before event'
+          },
+          {
+            name: 'Final Payment',
+            amount: null,
+            percentage: 25,
+            due_date_type: 'days_before_event',
+            days_before_event: 30,
+            specific_date: null,
+            description: 'Final payment due before event'
+          }
+        ];
+    }
+  }
 
   useEffect(() => {
     if (value) {
@@ -73,6 +168,19 @@ export default function PaymentPlanConfig({
       installments: installments
     });
   }, [planType, installments]);
+
+  const handlePresetSelect = (preset: 'pay_in_full' | 'preset_50_50' | 'preset_3_way' | 'preset_4_way') => {
+    setPlanType(preset);
+    setInstallments(getPresetInstallments(preset));
+  };
+
+  const handleCustomPlan = () => {
+    setPlanType('custom');
+    // If switching from a preset, keep the current installments as a starting point
+    if (installments.length === 0) {
+      setInstallments(getPresetInstallments('preset_50_50'));
+    }
+  };
 
   const calculateAmount = (installment: PaymentInstallment): number => {
     if (installment.amount !== null && installment.amount !== undefined) {
@@ -130,6 +238,11 @@ export default function PaymentPlanConfig({
       updated[index].amount = (totalAmount * value) / 100;
     }
     
+    // When using custom plan, update type to custom if it was a preset
+    if (planType !== 'custom' && (field === 'amount' || field === 'percentage' || field === 'name' || field === 'description')) {
+      setPlanType('custom');
+    }
+    
     setInstallments(updated);
   };
 
@@ -137,30 +250,161 @@ export default function PaymentPlanConfig({
   const remaining = totalAmount - totalAllocated;
   const isValid = Math.abs(remaining) < 0.01; // Allow small rounding differences
 
-  if (planType === 'default') {
+  // Preset selection view
+  if (planType !== 'custom') {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <label className="block text-sm font-semibold text-gray-700">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-3">
             Payment Plan
           </label>
+          
+          {/* Preset Buttons */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <button
+              type="button"
+              onClick={() => handlePresetSelect('pay_in_full')}
+              className={`p-4 border-2 rounded-lg text-sm font-medium transition-all ${
+                planType === 'pay_in_full'
+                  ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2 mb-1">
+                {planType === 'pay_in_full' && <Check className="w-4 h-4" />}
+                <span>Pay in Full</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">100% upon signing</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePresetSelect('preset_50_50')}
+              className={`p-4 border-2 rounded-lg text-sm font-medium transition-all ${
+                planType === 'preset_50_50'
+                  ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2 mb-1">
+                {planType === 'preset_50_50' && <Check className="w-4 h-4" />}
+                <span>50/50 Split</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">50% deposit, 50% balance</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePresetSelect('preset_3_way')}
+              className={`p-4 border-2 rounded-lg text-sm font-medium transition-all ${
+                planType === 'preset_3_way'
+                  ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2 mb-1">
+                {planType === 'preset_3_way' && <Check className="w-4 h-4" />}
+                <span>3 Payments</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">33% each installment</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePresetSelect('preset_4_way')}
+              className={`p-4 border-2 rounded-lg text-sm font-medium transition-all ${
+                planType === 'preset_4_way'
+                  ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2 mb-1">
+                {planType === 'preset_4_way' && <Check className="w-4 h-4" />}
+                <span>4 Payments</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">25% each installment</div>
+            </button>
+          </div>
+
+          {/* Custom Plan Button */}
           <button
             type="button"
-            onClick={() => setPlanType('custom')}
-            className="text-sm text-[#fcba00] hover:text-[#e5a800] font-medium"
+            onClick={handleCustomPlan}
+            className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-[#fcba00] hover:text-[#fcba00] transition-colors flex items-center justify-center gap-2 text-sm font-medium"
           >
-            Use Custom Plan
+            <Plus className="w-4 h-4" />
+            Create Custom Plan
           </button>
         </div>
+
+        {/* Preset Summary */}
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <p className="text-sm text-gray-600">
-            Using default payment plan: 50% deposit upon signing, 50% balance 30 days before event.
-          </p>
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h4 className="font-medium text-gray-900 mb-1">
+                {planType === 'pay_in_full' && 'Pay in Full'}
+                {planType === 'preset_50_50' && '50/50 Payment Plan'}
+                {planType === 'preset_3_way' && '3-Payment Plan'}
+                {planType === 'preset_4_way' && '4-Payment Plan'}
+              </h4>
+              <p className="text-sm text-gray-600">
+                {planType === 'pay_in_full' && 'Full payment due upon signing contract.'}
+                {planType === 'preset_50_50' && '50% deposit upon signing, 50% balance 30 days before event.'}
+                {planType === 'preset_3_way' && 'Three equal payments: deposit upon signing, then 60 and 30 days before event.'}
+                {planType === 'preset_4_way' && 'Four equal payments: deposit upon signing, then 90, 60, and 30 days before event.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Payment Breakdown */}
+          <div className="space-y-2 pt-3 border-t border-gray-200">
+            {installments.map((installment, index) => {
+              const amount = calculateAmount(installment);
+              const percentage = calculatePercentage(installment);
+              const dueDateText = 
+                installment.due_date_type === 'upon_signing' 
+                  ? 'Upon signing contract'
+                  : installment.due_date_type === 'days_before_event'
+                  ? `${installment.days_before_event} days before event`
+                  : installment.due_date_type === 'specific_date' && installment.specific_date
+                  ? new Date(installment.specific_date).toLocaleDateString()
+                  : 'Invoice due date';
+
+              return (
+                <div key={index} className="flex items-center justify-between text-sm">
+                  <div className="flex-1">
+                    <span className="font-medium text-gray-900">{installment.name}</span>
+                    {installment.description && (
+                      <span className="text-gray-500 ml-2">• {installment.description}</span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold text-gray-900">
+                      ${amount.toFixed(2)} ({percentage.toFixed(1)}%)
+                    </div>
+                    <div className="text-xs text-gray-500">{dueDateText}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Total Validation */}
+          {!isValid && (
+            <div className="mt-3 pt-3 border-t border-yellow-200 bg-yellow-50 rounded p-2">
+              <p className="text-xs text-yellow-800">
+                {remaining > 0 
+                  ? `Remaining: $${remaining.toFixed(2)} - Click "Create Custom Plan" to adjust`
+                  : `Over-allocated: $${Math.abs(remaining).toFixed(2)} - Click "Create Custom Plan" to adjust`}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
+  // Custom plan editor view
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -169,10 +413,10 @@ export default function PaymentPlanConfig({
         </label>
         <button
           type="button"
-          onClick={() => setPlanType('default')}
+          onClick={() => handlePresetSelect('preset_50_50')}
           className="text-sm text-gray-500 hover:text-gray-700 font-medium"
         >
-          Use Default Plan
+          ← Use Preset
         </button>
       </div>
 
