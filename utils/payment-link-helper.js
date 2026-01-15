@@ -29,8 +29,13 @@ function generatePaymentLink(invoice, baseUrl) {
 
 /**
  * Send invoice with payment link
+ * @param {Object} invoice - Invoice object
+ * @param {Object} contact - Contact object
+ * @param {Object} supabase - Supabase admin client
+ * @param {Object} resend - Resend client
+ * @param {Buffer} pdfBuffer - Optional PDF buffer to attach
  */
-async function sendInvoiceWithPaymentLink(invoice, contact, supabase, resend) {
+async function sendInvoiceWithPaymentLink(invoice, contact, supabase, resend, pdfBuffer = null) {
   try {
     // Generate payment link if doesn't exist
     let paymentToken = invoice.payment_token;
@@ -203,12 +208,24 @@ async function sendInvoiceWithPaymentLink(invoice, contact, supabase, resend) {
 
     // Send email via Resend
     if (resend) {
-      await resend.emails.send({
+      const emailOptions = {
         from: 'M10 DJ Company <noreply@m10djcompany.com>',
         to: contact.email_address,
         subject: `Invoice ${invoice.invoice_number} from M10 DJ Company`,
         html: emailHtml
-      });
+      };
+
+      // Attach PDF if provided
+      if (pdfBuffer) {
+        emailOptions.attachments = [
+          {
+            filename: `Invoice-${invoice.invoice_number}.pdf`,
+            content: pdfBuffer.toString('base64')
+          }
+        ];
+      }
+
+      await resend.emails.send(emailOptions);
     }
 
     console.log(`✅ Invoice email sent with payment link: ${paymentLink}`);

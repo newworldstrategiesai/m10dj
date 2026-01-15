@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/utils/auth-helpers/api-auth';
 import { sendInvoiceWithPaymentLink } from '@/utils/payment-link-helper';
+import { generateInvoicePDFBuffer } from '@/utils/invoice-pdf-generator';
 import { Resend } from 'resend';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -24,6 +25,7 @@ export default async function handler(req, res) {
   }
 
   const { id: invoiceId } = req.query;
+  const { attachPDF } = req.body || {};
 
   if (!invoiceId) {
     return res.status(400).json({ error: 'Invoice ID is required' });
@@ -65,12 +67,25 @@ export default async function handler(req, res) {
       });
     }
 
+    // Generate PDF buffer if attachment requested
+    let pdfBuffer = null;
+    if (attachPDF) {
+      try {
+        pdfBuffer = await generateInvoicePDFBuffer(invoice, supabaseAdmin);
+        console.log(`✅ Generated PDF buffer: ${pdfBuffer.length} bytes`);
+      } catch (pdfError) {
+        console.error('Error generating PDF for attachment:', pdfError);
+        // Continue without PDF attachment if generation fails
+      }
+    }
+
     // Send email using the helper function
     const result = await sendInvoiceWithPaymentLink(
       invoice,
       invoice.contacts,
       supabaseAdmin,
-      resend
+      resend,
+      pdfBuffer
     );
 
     if (!result.success) {

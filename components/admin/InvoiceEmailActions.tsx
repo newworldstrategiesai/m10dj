@@ -4,8 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { Mail, Eye, Send, TestTube, Loader2, X, AlertCircle } from 'lucide-react';
+import { Mail, Eye, Send, TestTube, Loader2, X, AlertCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import {
   Dialog,
@@ -14,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 interface InvoiceEmailActionsProps {
   invoiceId: string;
@@ -37,6 +39,7 @@ export default function InvoiceEmailActions({
   const [previewSubject, setPreviewSubject] = useState<string>('');
   const [previewHasEmail, setPreviewHasEmail] = useState<boolean>(true);
   const [previewContactId, setPreviewContactId] = useState<string | undefined>(contactId);
+  const [attachPDF, setAttachPDF] = useState<boolean>(false);
 
   const handlePreview = async () => {
     setLoading('preview');
@@ -93,7 +96,8 @@ export default function InvoiceEmailActions({
     try {
       const response = await fetch(`/api/invoices/${invoiceId}/send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attachPDF })
       });
 
       // Check if response is JSON before parsing
@@ -296,28 +300,44 @@ export default function InvoiceEmailActions({
                 </div>
               </div>
             )}
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                This is a preview. The actual email will be sent to the client.
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowPreview(false)}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <Checkbox
+                  id="attach-pdf"
+                  checked={attachPDF}
+                  onCheckedChange={(checked) => setAttachPDF(checked === true)}
+                />
+                <Label
+                  htmlFor="attach-pdf"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
                 >
-                  Close
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowPreview(false);
-                    handleSend();
-                  }}
-                  disabled={!previewHasEmail}
-                  className="bg-[#fcba00] hover:bg-[#f5a500] text-black disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Email
-                </Button>
+                  <FileText className="w-4 h-4" />
+                  Attach PDF version of invoice
+                </Label>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  This is a preview. The actual email will be sent to the client.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPreview(false)}
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowPreview(false);
+                      handleSend();
+                    }}
+                    disabled={!previewHasEmail}
+                    className="bg-[#fcba00] hover:bg-[#f5a500] text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Email
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
