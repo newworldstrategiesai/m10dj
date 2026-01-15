@@ -1,3 +1,4 @@
+// Preview route for invoice emails
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/utils/auth-helpers/api-auth';
 import { generatePaymentToken } from '@/utils/payment-link-helper';
