@@ -525,7 +525,7 @@ export default function InvoiceEmailActions({
                       variant="outline"
                       disabled={loading !== null || savingEmail}
                     >
-                      {(loading === 'preview' || savingEmail) ? (
+                      {((loading as string) === 'preview' || savingEmail) ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Loading...
