@@ -36,15 +36,19 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    // Fetch line items
-    const { data: lineItems, error: lineItemsError } = await supabase
-      .from('invoice_line_items')
-      .select('*')
-      .eq('invoice_id', invoiceId)
-      .order('created_at', { ascending: true });
-
-    if (lineItemsError) {
-      console.error('Error fetching line items:', lineItemsError);
+    // Fetch line items from line_items JSONB column
+    // Note: invoice_line_items table doesn't exist - invoices use line_items JSONB column
+    let lineItems = [];
+    if (invoice.line_items) {
+      try {
+        const parsed = typeof invoice.line_items === 'string' 
+          ? JSON.parse(invoice.line_items) 
+          : invoice.line_items;
+        lineItems = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('Error parsing invoice.line_items JSONB:', e);
+        lineItems = [];
+      }
     }
 
     // Generate HTML for PDF

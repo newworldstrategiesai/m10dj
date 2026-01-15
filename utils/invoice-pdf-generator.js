@@ -44,17 +44,10 @@ async function generateInvoicePDFBuffer(invoice, supabaseAdmin) {
   // Normalize invoice data structure
   const normalizedInvoice = normalizeInvoiceData(invoice);
 
-  // Fetch line items from invoice_line_items table
-  const { data: lineItemsFromTable } = await supabaseAdmin
-    .from('invoice_line_items')
-    .select('*')
-    .eq('invoice_id', normalizedInvoice.id)
-    .order('created_at', { ascending: true });
-
-  let lineItems = lineItemsFromTable || [];
-  
-  // If no line items from table, check the line_items JSONB field
-  if (lineItems.length === 0 && normalizedInvoice.line_items) {
+  // Fetch line items from line_items JSONB column
+  // Note: invoice_line_items table doesn't exist - invoices use line_items JSONB column
+  let lineItems = [];
+  if (normalizedInvoice.line_items) {
     try {
       const parsed = typeof normalizedInvoice.line_items === 'string' 
         ? JSON.parse(normalizedInvoice.line_items) 

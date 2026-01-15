@@ -52,17 +52,19 @@ export default async function handler(req, res) {
       contact = contactData;
     }
 
-    // Fetch line items
-    const { data: lineItemsFromTable } = await supabase
-      .from('invoice_line_items')
-      .select('*')
-      .eq('invoice_id', invoice.id)
-      .order('created_at', { ascending: true });
-
-    let lineItems = lineItemsFromTable || [];
-    if (lineItems.length === 0 && invoice.line_items) {
-      // Fallback to JSONB field if table is empty
-      lineItems = Array.isArray(invoice.line_items) ? invoice.line_items : [];
+    // Fetch line items from line_items JSONB column
+    // Note: invoice_line_items table doesn't exist - invoices use line_items JSONB column
+    let lineItems = [];
+    if (invoice.line_items) {
+      try {
+        const parsed = typeof invoice.line_items === 'string' 
+          ? JSON.parse(invoice.line_items) 
+          : invoice.line_items;
+        lineItems = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('Error parsing invoice.line_items JSONB:', e);
+        lineItems = [];
+      }
     }
 
     // Map line items to consistent format
