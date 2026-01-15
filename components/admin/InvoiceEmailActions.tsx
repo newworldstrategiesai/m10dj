@@ -50,9 +50,10 @@ export default function InvoiceEmailActions({
 
   // Auto-load preview when modal opens
   useEffect(() => {
-    if (showEmailCenter && !previewLoaded) {
+    if (showEmailCenter && !previewLoaded && !loading) {
       handlePreview();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showEmailCenter]);
 
   const handlePreview = async () => {
@@ -84,12 +85,16 @@ export default function InvoiceEmailActions({
       }
       setPreviewLoaded(true);
       
-      toast({
-        title: 'Preview Loaded',
-        description: 'Email preview is ready'
-      });
+      // Only show toast if not auto-loading (user clicked button)
+      if (loading === 'preview') {
+        toast({
+          title: 'Preview Loaded',
+          description: 'Email preview is ready'
+        });
+      }
     } catch (error: any) {
       console.error('Error previewing email:', error);
+      setPreviewLoaded(false); // Reset on error so user can retry
       toast({
         title: 'Error',
         description: error.message || 'Failed to preview email',
@@ -386,11 +391,34 @@ export default function InvoiceEmailActions({
               ) : (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
-                    <Eye className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-sm text-gray-500 mb-4">Preview not loaded</p>
-                    <Button onClick={handlePreview} variant="outline">
-                      Load Preview
-                    </Button>
+                    {loading === 'preview' ? (
+                      <>
+                        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#fcba00]" />
+                        <p className="text-sm text-gray-500">Loading email preview...</p>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                        <p className="text-sm text-gray-500 mb-4">Preview not loaded</p>
+                        <Button 
+                          onClick={handlePreview} 
+                          variant="outline"
+                          disabled={loading !== null}
+                        >
+                          {loading === 'preview' ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Load Preview
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
