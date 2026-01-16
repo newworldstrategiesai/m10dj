@@ -105,21 +105,19 @@ export default async function handler(req, res) {
     const grandEntranceTime = customFields.grand_entrance_time || null;
     const grandExitTime = customFields.grand_exit_time || null;
 
-    // Format event_date to ensure it's YYYY-MM-DD without time component
-    // This prevents timezone conversion issues when the date is parsed on the client
-    let formattedEventDate = null;
-    if (data.event_date) {
-      const dateStr = String(data.event_date);
-      // Extract just the date part (YYYY-MM-DD) if there's a time component
-      const dateMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
-      if (dateMatch) {
-        formattedEventDate = dateMatch[1];
-      } else {
-        formattedEventDate = dateStr;
+      // Format event_date to ensure it's YYYY-MM-DD without time component
+      // This prevents timezone conversion issues when the date is parsed on the client
+      let formattedEventDate = null;
+      if (data.event_date) {
+        const dateStr = String(data.event_date);
+        // Extract just the date part (YYYY-MM-DD) if there's a time component
+        const dateMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          formattedEventDate = dateMatch[1];
+        } else {
+          formattedEventDate = dateStr;
+        }
       }
-      // Debug logging to verify date formatting
-      console.log('[get-lead] Raw event_date:', data.event_date, 'Formatted:', formattedEventDate);
-    }
 
     // Set cache-control headers to prevent caching
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

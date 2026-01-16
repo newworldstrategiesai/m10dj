@@ -104,8 +104,6 @@ export default function PersonalizedQuote() {
       if (leadResponse.ok) {
         const data = await leadResponse.json();
         if (data && data.id) {
-          // Debug logging to verify date received from API
-          console.log('[Quote Page] eventDate from API:', data.eventDate, 'Type:', typeof data.eventDate);
           setLeadData(data);
           setError(null);
           
