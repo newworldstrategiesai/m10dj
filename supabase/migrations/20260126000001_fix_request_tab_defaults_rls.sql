@@ -2,9 +2,11 @@
 -- The tab visibility settings are not sensitive and should be readable by anyone
 -- This fixes 500 errors when querying from client-side code
 
--- Drop the restrictive SELECT policies
+-- Drop ALL existing policies first to avoid conflicts
 DROP POLICY IF EXISTS "Platform admins can view all request tab defaults" ON request_tab_defaults;
 DROP POLICY IF EXISTS "Org admins can view their org request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Platform admins can manage platform request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Org admins can manage their org request tab defaults" ON request_tab_defaults;
 
 -- Allow anyone to read platform defaults (organization_id IS NULL)
 CREATE POLICY "Anyone can view platform request tab defaults"
@@ -16,8 +18,7 @@ CREATE POLICY "Anyone can view organization request tab defaults"
   ON request_tab_defaults FOR SELECT
   USING (organization_id IS NOT NULL);
 
--- Keep the existing admin policies for INSERT/UPDATE/DELETE
--- Platform admins can manage platform defaults
+-- Platform admins can manage platform defaults (INSERT/UPDATE/DELETE)
 CREATE POLICY "Platform admins can manage platform request tab defaults"
   ON request_tab_defaults FOR ALL
   USING (
