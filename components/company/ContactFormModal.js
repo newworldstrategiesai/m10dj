@@ -3,11 +3,16 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import ContactForm from './ContactForm';
 
-export default function ContactFormModal({ isOpen, onClose }) {
+export default function ContactFormModal({ isOpen, onClose, organizationId = null }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    
     if (isOpen) {
       console.log('ContactFormModal: Opening modal');
       // Prevent body scroll when modal is open
@@ -27,9 +32,9 @@ export default function ContactFormModal({ isOpen, onClose }) {
       document.body.style.width = '';
       document.body.style.height = '';
     };
-  }, [isOpen]);
+  }, [isOpen, mounted]);
 
-  if (!mounted || !isOpen) return null;
+  if (!mounted || !isOpen || typeof document === 'undefined') return null;
 
   const modalContent = (
     <div 
@@ -80,12 +85,14 @@ export default function ContactFormModal({ isOpen, onClose }) {
           WebkitOverflowScrolling: 'touch',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)'
         }}>
-          <ContactForm className="modal-form" modalLayout={true} />
+          <ContactForm className="modal-form" modalLayout={true} organizationId={organizationId} />
         </div>
       </div>
     </div>
   );
 
-  return createPortal(modalContent, document.body);
+  return typeof document !== 'undefined' && document.body 
+    ? createPortal(modalContent, document.body)
+    : null;
 }
 

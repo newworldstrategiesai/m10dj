@@ -25,6 +25,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import BiddingInterface from '../components/bidding/BiddingInterface';
 import BidSuccessModal from '../components/bidding/BidSuccessModal';
 import FullScreenLoader from '@/components/ui/FullScreenLoader';
+import ContactFormModal from '@/components/company/ContactFormModal';
 
 const logger = createLogger('GeneralRequestsPage');
 
@@ -320,6 +321,7 @@ export function GeneralRequestsPage({
   });
   const [amountType, setAmountType] = useState('preset'); // 'preset' or 'custom'
   const [presetAmount, setPresetAmount] = useState(500); // $5.00 in cents
+  const [showBookingModal, setShowBookingModal] = useState(false); // Booking form modal
   const [customAmount, setCustomAmount] = useState('');
   const [initialPresetSet, setInitialPresetSet] = useState(false); // Track if initial preset amount has been set
   const [initialCalculatedMax, setInitialCalculatedMax] = useState(null); // Track the initial max preset we calculated
@@ -5873,6 +5875,29 @@ export function GeneralRequestsPage({
           </div>
         </main>
 
+        {/* Booking Button - Show if enabled by super admin or TipJar user */}
+        {organizationData?.requests_show_booking_button && (
+          <div className="mt-8 mb-4 text-center">
+            <button
+              onClick={() => setShowBookingModal(true)}
+              className={`w-full max-w-sm mx-auto px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] ${
+                effectiveButtonStyle === 'gradient'
+                  ? 'bg-gradient-to-r from-brand-500 to-brand-600 dark:from-brand-400 dark:to-brand-500 hover:from-brand-600 hover:to-brand-700 dark:hover:from-brand-500 dark:hover:to-brand-600'
+                  : effectiveButtonStyle === 'solid'
+                  ? 'bg-brand-500 hover:bg-brand-600 dark:bg-brand-400 dark:hover:bg-brand-500'
+                  : 'border-2 border-brand-500 bg-transparent text-brand-500 hover:bg-brand-500 hover:text-white dark:border-brand-400 dark:text-brand-400 dark:hover:bg-brand-400'
+              }`}
+              style={
+                effectiveButtonStyle === 'gradient' || effectiveButtonStyle === 'solid'
+                  ? { background: effectiveButtonStyle === 'solid' ? effectiveAccentColor : undefined }
+                  : { borderColor: effectiveAccentColor, color: effectiveAccentColor }
+              }
+            >
+              Get Your Free Quote
+            </button>
+          </div>
+        )}
+
         {/* Footer: "Create Your Page" link for new DJs OR "Claim Your Page" for unclaimed orgs */}
         <footer className="mt-8 mb-4 text-center">
           {organizationData && (organizationData.is_claimed === false || organizationData.owner_id === null) && organizationData.claim_token ? (
@@ -5913,6 +5938,13 @@ export function GeneralRequestsPage({
           onSelect={handleAccountSelect}
         />
       )}
+
+      {/* Booking Form Modal */}
+      <ContactFormModal 
+        isOpen={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        organizationId={organizationId}
+      />
     </>
   );
 }

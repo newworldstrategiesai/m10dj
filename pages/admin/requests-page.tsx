@@ -356,7 +356,8 @@ export default function RequestsPageSettings() {
     requests_show_audio_upload: true,
     requests_show_fast_track: true,
     requests_show_next_song: true,
-    requests_show_bundle_discount: true
+    requests_show_bundle_discount: true,
+    requests_show_booking_button: false
   });
 
   // Master toggle for song requests (TipJar users only)
@@ -776,6 +777,7 @@ export default function RequestsPageSettings() {
         setFeatureToggles({
           requests_show_audio_upload: org.requests_show_audio_upload !== false,
           requests_show_fast_track: org.requests_show_fast_track !== false,
+          requests_show_booking_button: org.requests_show_booking_button === true,
           requests_show_next_song: org.requests_show_next_song !== false,
           requests_show_bundle_discount: org.requests_show_bundle_discount !== false
         });
@@ -4932,6 +4934,28 @@ export default function RequestsPageSettings() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Booking Button Toggle - Super Admin and TipJar Users Only */}
+                  {(isSuperAdmin || organization?.product_context === 'tipjar') && (
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
+                            Booking Button
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Show a booking button at the bottom of the requests page. The button opens a full-screen contact form modal (same as m10djcompany.com).
+                          </p>
+                        </div>
+                        <div className="ml-4">
+                          <Switch
+                            checked={featureToggles.requests_show_booking_button}
+                            onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_booking_button', checked)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Advanced Fast Track & Next Song Controls */}
                   {(featureToggles.requests_show_fast_track || featureToggles.requests_show_next_song) && (
