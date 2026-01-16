@@ -413,7 +413,7 @@ export default function LiveStreamPage() {
       <TipAlertOverlay roomName={stream.room_name} />
 
       {/* Stream Info Bar - Below TipJar header */}
-      <div className="absolute top-16 md:top-20 left-0 right-0 bg-gradient-to-b from-black/90 via-black/50 to-transparent px-3 sm:px-4 py-2 z-20 pointer-events-none">
+      <div className="absolute top-12 md:top-14 left-0 right-0 bg-gradient-to-b from-black/90 via-black/50 to-transparent px-3 sm:px-4 py-2 z-20 pointer-events-none">
         <div className="flex items-center justify-between gap-2 pointer-events-auto">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse flex-shrink-0"></div>

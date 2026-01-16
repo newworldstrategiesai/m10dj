@@ -5358,44 +5358,46 @@ export function GeneralRequestsPage({
                     </div>
                   )}
 
-                  {/* Requester Information - Optional for tips, required for song requests and shoutouts */}
-                  {/* Always show name field - it's optional for tips but required for other request types */}
-                  <div className="mt-2 sm:mt-3 md:mt-4 space-y-2 sm:space-y-3">
-                    <div>
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Your Name {requestType !== 'tip' && <span className="text-red-500">*</span>}
-                      </label>
-                      <input
-                        type="text"
-                        name="requesterName"
-                        value={formData.requesterName}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                        placeholder={requestType === 'tip' ? "Enter your name (optional)" : "Enter your name"}
-                        required={requestType !== 'tip'}
-                        autoComplete="name"
-                      />
-                      {/* Only show help text when there's a name validation error */}
-                      {error === 'Please enter your name' && (
-                        <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                          Required: Helps us match your payment to your request
-                        </p>
-                      )}
+                  {/* Requester Information - Optional for tips, required for song requests, hidden for shoutouts */}
+                  {/* Always show name field - it's optional for tips but required for other request types (except shoutouts) */}
+                  {requestType !== 'shoutout' && (
+                    <div className="mt-2 sm:mt-3 md:mt-4 space-y-2 sm:space-y-3">
+                      <div>
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                          Your Name {requestType !== 'tip' && <span className="text-red-500">*</span>}
+                        </label>
+                        <input
+                          type="text"
+                          name="requesterName"
+                          value={formData.requesterName}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                          placeholder={requestType === 'tip' ? "Enter your name (optional)" : "Enter your name"}
+                          required={requestType !== 'tip'}
+                          autoComplete="name"
+                        />
+                        {/* Only show help text when there's a name validation error */}
+                        {error === 'Please enter your name' && (
+                          <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                            Required: Helps us match your payment to your request
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                          Additional Notes (optional)
+                        </label>
+                        <textarea
+                          name="message"
+                          value={formData.message}
+                          onChange={handleInputChange}
+                          rows={2}
+                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+                          placeholder="Any additional information..."
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Additional Notes (optional)
-                      </label>
-                      <textarea
-                        name="message"
-                        value={formData.message}
-                        onChange={handleInputChange}
-                        rows={2}
-                        className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
-                        placeholder="Any additional information..."
-                      />
-                    </div>
-                  </div>
+                  )}
 
                 </div>
 

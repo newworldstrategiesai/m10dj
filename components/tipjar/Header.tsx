@@ -60,12 +60,12 @@ export default function TipJarHeader() {
       }`}
     >
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-20">
+        <div className={`flex items-center justify-between ${isLivePage ? 'h-12 md:h-14' : 'h-16 md:h-20'}`}>
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group">
             {isArtistPage ? (
               // Use full white logo for artist pages
-              <div className="relative h-10 md:h-12 group-hover:scale-105 transition-transform">
+              <div className={`relative ${isLivePage ? 'h-8 md:h-9' : 'h-10 md:h-12'} group-hover:scale-105 transition-transform`}>
                 <Image
                   src="/assets/TipJar-Logo-White.png"
                   alt="TipJar Logo"
@@ -78,7 +78,7 @@ export default function TipJarHeader() {
             ) : (
               // Use icon + text for marketing pages
               <>
-                <div className="relative w-10 h-10 group-hover:scale-105 transition-transform">
+                <div className={`relative ${isLivePage ? 'w-8 h-8' : 'w-10 h-10'} group-hover:scale-105 transition-transform`}>
                   <Image
                     src="/assets/TipJar-Logo-Icon.png"
                     alt="TipJar Logo"
@@ -88,14 +88,14 @@ export default function TipJarHeader() {
                     priority
                   />
                 </div>
-                <span className={`text-2xl font-bold transition-colors ${
+                <span className={`${isLivePage ? 'text-xl' : 'text-2xl'} font-bold transition-colors ${
                   isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                     ? 'text-white' 
                     : 'text-gray-900 dark:text-white'
                 }`}>
                   TipJar
                 </span>
-                <span className={`text-sm font-medium transition-colors ${
+                <span className={`${isLivePage ? 'text-xs' : 'text-sm'} font-medium transition-colors ${
                   isLivePage || isPricingPage || (isEmbedPage && !isScrolled) || !isScrolled
                     ? 'text-white font-semibold' 
                     : 'text-gray-600 dark:text-gray-400'
