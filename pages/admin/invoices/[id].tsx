@@ -1743,11 +1743,12 @@ export default function InvoiceDetailPage() {
           let finalLineItems: InvoiceLineItem[] = [];
           
           // Fetch invoice directly to get line_items JSONB field
+          // Note: PostgREST requires at least one scalar column, so we select id along with line_items
           // Handle 406 errors gracefully (may occur with certain RLS policies or query formats)
           try {
             const { data: directInvoiceData, error: directInvoiceError } = await supabase
               .from('invoices')
-              .select('line_items')
+              .select('id, line_items')
               .eq('id', id)
               .single();
             
