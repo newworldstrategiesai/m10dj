@@ -151,7 +151,6 @@ export default async function handler(req, res) {
       
       // Third pass: match by name + phone for contacts without emails
       // This catches cases like "Ben Murray" with same phone but no email
-      const namePhoneMap = new Map();
       for (const contact of contacts) {
         if (processedIds.has(contact.id)) continue;
         
