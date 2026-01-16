@@ -57,6 +57,9 @@ function generateInvoiceFooterMessage(invoice, contact = null) {
  * Returns the rendered HTML without sending
  * 
  * Route: POST /api/invoices/[id]/preview
+ * 
+ * This route is used by the InvoiceEmailActions component to preview
+ * invoice emails before sending them to clients.
  */
 export default async function handler(req, res) {
   // Set CORS headers
