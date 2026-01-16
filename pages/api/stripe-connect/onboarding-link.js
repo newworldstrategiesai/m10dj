@@ -73,6 +73,9 @@ export default async function handler(req, res) {
       baseUrl = 'https://m10djcompany.com';
     }
 
+    // Get product context from organization
+    const productContext = organization.product_context || null;
+    
     // Create account onboarding link
     // According to Stripe docs:
     // - return_url: Where user goes after completing onboarding
@@ -81,11 +84,14 @@ export default async function handler(req, res) {
     const accountLink = await createAccountLink(
       organization.stripe_connect_account_id,
       `${baseUrl}/onboarding/stripe-complete`, // return_url
-      `${baseUrl}/onboarding/stripe-setup`     // refresh_url - auto-refreshes link
+      `${baseUrl}/onboarding/stripe-setup`,     // refresh_url - auto-refreshes link
+      {
+        productContext: productContext
+      }
     );
 
     // Check current account status
-    const accountStatus = await getAccountStatus(organization.stripe_connect_account_id);
+    const accountStatus = await getAccountStatus(organization.stripe_connect_account_id, productContext);
 
     // Update organization with current status
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);

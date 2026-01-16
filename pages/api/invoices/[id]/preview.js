@@ -59,7 +59,18 @@ function generateInvoiceFooterMessage(invoice, contact = null) {
  * Route: POST /api/invoices/[id]/preview
  */
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
+    console.error('[Invoice Preview API] Invalid method:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -68,14 +79,18 @@ export default async function handler(req, res) {
     await requireAdmin(req, res);
   } catch (error) {
     if (res.headersSent) return;
+    console.error('[Invoice Preview API] Auth error:', error);
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const { id: invoiceId } = req.query;
 
   if (!invoiceId) {
+    console.error('[Invoice Preview API] Missing invoice ID');
     return res.status(400).json({ error: 'Invoice ID is required' });
   }
+
+  console.log('[Invoice Preview API] Processing preview for invoice:', invoiceId);
 
   try {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -300,6 +315,8 @@ export default async function handler(req, res) {
       </html>
     `;
 
+    console.log('[Invoice Preview API] Successfully generated preview for invoice:', invoiceId);
+    
     res.status(200).json({
       success: true,
       html: emailHtml,
@@ -309,7 +326,11 @@ export default async function handler(req, res) {
       contactId: invoice.contact_id || invoice.contacts?.id
     });
   } catch (error) {
-    console.error('Error previewing invoice email:', error);
-    res.status(500).json({ error: 'Failed to preview email' });
+    console.error('[Invoice Preview API] Error previewing invoice email:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to preview email';
+    res.status(500).json({ 
+      error: 'Failed to preview email',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 }

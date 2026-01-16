@@ -286,6 +286,8 @@ export default function InvoiceEmailActions({
     }
 
     setLoading('test');
+    console.log('[InvoiceEmailActions] Sending test email to:', emails);
+    
     try {
       const response = await fetch(`/api/invoices/${invoiceId}/test`, {
         method: 'POST',
@@ -296,22 +298,41 @@ export default function InvoiceEmailActions({
         })
       });
 
+      console.log('[InvoiceEmailActions] Test email response status:', response.status, response.statusText);
+
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
-        console.error('Non-JSON response:', text);
+        console.error('[InvoiceEmailActions] Non-JSON response:', text);
         throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('[InvoiceEmailActions] Test email response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to send test email');
       }
 
+      // Show success toast with the emails that were sent
+      const sentToEmails = data.testEmails?.join(', ') || data.testEmail || emails.join(', ');
+      const emailCount = emails.length;
+      
+      console.log('[InvoiceEmailActions] Showing success toast for test email sent to:', sentToEmails);
+      
       toast({
-        title: 'Test Email Sent',
-        description: `Test email sent to ${data.testEmails?.join(', ') || data.testEmail || 'admin email'}`
+        title: '✅ Test Email Sent Successfully',
+        description: emailCount === 1 
+          ? `Test email sent to ${sentToEmails}`
+          : `Test email sent to ${emailCount} recipient${emailCount > 1 ? 's' : ''}: ${sentToEmails}`,
+        duration: 6000, // Show for 6 seconds so user can read it
+      });
+
+      // Also log to console for debugging
+      console.log('[InvoiceEmailActions] ✅ Test email sent successfully!', {
+        emails: sentToEmails,
+        count: emailCount,
+        attachPDF: testAttachPDF
       });
     } catch (error: any) {
       console.error('Error sending test email:', error);

@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
       const { data: orgData, error: orgError } = await supabaseAdmin
       .from('organizations')
-      .select('id, stripe_connect_account_id, stripe_connect_onboarding_url, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, stripe_connect_details_submitted, stripe_connect_onboarding_complete, platform_fee_percentage, platform_fee_fixed')
+      .select('id, stripe_connect_account_id, stripe_connect_onboarding_url, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, stripe_connect_details_submitted, stripe_connect_onboarding_complete, platform_fee_percentage, platform_fee_fixed, product_context')
       .eq('owner_id', user.id)
       .single();
 
@@ -67,8 +67,11 @@ export default async function handler(req, res) {
       });
     }
 
+    // Get product context from organization
+    const productContext = organization.product_context || null;
+    
     // Get current account status from Stripe
-    const accountStatus = await getAccountStatus(organization.stripe_connect_account_id);
+    const accountStatus = await getAccountStatus(organization.stripe_connect_account_id, productContext);
 
     // Check if this is a newly completed setup (wasn't complete before, but is now)
     const wasCompleteBefore = organization.stripe_connect_onboarding_complete;

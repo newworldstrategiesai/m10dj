@@ -159,6 +159,10 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
   const mediumGray = '#6b7280';
   const lightGray = '#e5e7eb';
 
+  // Page dimensions - A4 is 595.28 x 841.89 points
+  // With 50pt margins, content area is 495.28 x 741.89
+  const pageContentEnd = 545; // Right edge of content area (50 + 495)
+
   let yPosition = 50;
 
   // Header - Company Name
@@ -180,12 +184,12 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
 
   yPosition += 40;
 
-  // Divider Line
+  // Divider Line - ensure it doesn't extend beyond page edge
   doc
     .strokeColor(brandGold)
     .lineWidth(3)
     .moveTo(50, yPosition)
-    .lineTo(545, yPosition)
+    .lineTo(pageContentEnd, yPosition)
     .stroke();
 
   yPosition += 25;
@@ -367,15 +371,16 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
 
   yPosition += 20;
 
-  // Table Header
+  // Table Header - ensure table doesn't extend beyond page edge
   const tableTop = yPosition;
   const descCol = 50;
   const qtyCol = 350;
   const priceCol = 420;
-  const amountCol = 490;
+  const amountCol = 460; // Moved left to ensure amount column fits within page
+  const tableWidth = pageContentEnd - 50; // Table width that fits within page bounds
 
   doc
-    .rect(50, tableTop, 495, 25)
+    .rect(50, tableTop, tableWidth, 25)
     .fill('#f9fafb');
 
   doc
@@ -405,21 +410,24 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       yPosition = 50;
     }
 
-    // Draw line
+    // Draw line - ensure it doesn't extend beyond page edge
     doc
       .strokeColor(lightGray)
       .lineWidth(1)
       .moveTo(50, yPosition)
-      .lineTo(545, yPosition)
+      .lineTo(pageContentEnd, yPosition)
       .stroke();
 
     yPosition += 10;
 
+    // Adjust description width to ensure it doesn't overlap with amount column
+    const descWidth = amountCol - descCol - 20; // Leave 20px gap before amount column
+    
     doc
       .fontSize(10)
       .fillColor(darkGray)
       .font('Helvetica-Bold')
-      .text(item.description, descCol, yPosition, { width: 280 });
+      .text(item.description, descCol, yPosition, { width: descWidth });
 
     if (item.notes) {
       yPosition += 12;
@@ -427,11 +435,14 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
         .fontSize(9)
         .fillColor(mediumGray)
         .font('Helvetica')
-        .text(item.notes, descCol, yPosition, { width: 280 });
+        .text(item.notes, descCol, yPosition, { width: descWidth });
     }
 
     const itemYPos = yPosition - (item.notes ? 12 : 0);
 
+    // Ensure amount column text doesn't extend beyond page edge
+    const amountColWidth = pageContentEnd - amountCol - 10; // Width with 10px padding from edge
+    
     doc
       .fontSize(10)
       .fillColor(darkGray)
@@ -439,18 +450,18 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       .text((item.quantity || 1).toString(), qtyCol, itemYPos, { width: 50, align: 'center' })
       .text(formatCurrency(item.unit_price || 0), priceCol, itemYPos, { width: 60, align: 'right' })
       .font('Helvetica-Bold')
-      .text(formatCurrency(item.total_amount || 0), amountCol, itemYPos, { width: 55, align: 'right' });
+      .text(formatCurrency(item.total_amount || 0), amountCol, itemYPos, { width: amountColWidth, align: 'right' });
 
     yPosition += 20;
     });
   }
 
-  // Final line
+  // Final line - ensure it doesn't extend beyond page edge
   doc
     .strokeColor(lightGray)
     .lineWidth(1)
     .moveTo(50, yPosition)
-    .lineTo(545, yPosition)
+    .lineTo(pageContentEnd, yPosition)
     .stroke();
 
   yPosition += 20;
@@ -458,9 +469,9 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
   // Totals Section
   const totalsX = 370;
   // Right-aligned position for amounts (consistent across all totals)
-  // Page width is 545 (50 margin + 495 content), so we'll end at 540 with 5px padding
-  const amountX = 540; // Position near right edge with padding
-  const amountWidth = 70; // Sufficient width for currency values (allows for large amounts)
+  // Page width is 545 (50 margin + 495 content), so we'll end at 535 with 10px padding from edge
+  const amountX = 435; // Position to ensure text doesn't extend beyond 535 (with width 70 = 505, safe margin)
+  const amountWidth = 110; // Increased width to allow for large currency values while staying within bounds
   
   // Calculate subtotal from line items if invoice subtotal is 0 or missing
   const calculatedSubtotal = lineItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
@@ -487,12 +498,12 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
 
   yPosition += 20;
 
-  // Total line
+  // Total line - ensure it doesn't extend beyond page edge
   doc
     .strokeColor(lightGray)
     .lineWidth(1)
     .moveTo(totalsX, yPosition)
-    .lineTo(545, yPosition)
+    .lineTo(pageContentEnd, yPosition)
     .stroke();
 
   yPosition += 12;
@@ -560,22 +571,24 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
     const paymentBoxHeight = 120;
     const paymentBoxPadding = 20;
     const leftColX = 50 + paymentBoxPadding;
-    const rightColX = 380; // Start of right column
+    const rightColX = 360; // Start of right column (moved left to ensure QR code fits within page)
     
-    // Payment box with styling - rounded corners effect with background
+    // Payment box with styling - ensure it doesn't extend beyond page edge (545)
+    const paymentBoxWidth = pageContentEnd - 50; // Width that fits within page bounds (495)
+    
     // Main box background
     doc
-      .rect(50, paymentBoxStartY, 495, paymentBoxHeight)
+      .rect(50, paymentBoxStartY, paymentBoxWidth, paymentBoxHeight)
       .fill('#f0f9ff');
     
     // Top border accent
     doc
-      .rect(50, paymentBoxStartY, 495, 4)
+      .rect(50, paymentBoxStartY, paymentBoxWidth, 4)
       .fill(brandGold);
     
     // Bottom border
     doc
-      .rect(50, paymentBoxStartY + paymentBoxHeight - 4, 495, 4)
+      .rect(50, paymentBoxStartY + paymentBoxHeight - 4, paymentBoxWidth, 4)
       .fill(brandGold);
     
     // Left border accent
@@ -583,9 +596,9 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       .rect(50, paymentBoxStartY, 4, paymentBoxHeight)
       .fill(brandGold);
     
-    // Right border accent
+    // Right border accent - ensure it doesn't extend beyond page edge
     doc
-      .rect(50 + 495 - 4, paymentBoxStartY, 4, paymentBoxHeight)
+      .rect(pageContentEnd - 4, paymentBoxStartY, 4, paymentBoxHeight)
       .fill(brandGold);
 
     // Reset yPosition for content inside the box
@@ -625,7 +638,8 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
     let urlFontSize = 9;
     doc.font('Helvetica');
     let urlWidth = doc.widthOfString(paymentUrl, { fontSize: urlFontSize });
-    const maxUrlWidth = 320; // Max width available in left column
+    // Max width available in left column: QR code starts at 360, leftColX = 70, so max is 360 - 70 - 10 (padding) = 280
+    const maxUrlWidth = 280;
     
     // Try to increase font size first if there's room
     let testSize = 10;
@@ -641,10 +655,8 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       }
     }
     
-    // Ensure URL doesn't extend beyond page edge (545)
-    // leftColX = 70, so max width is 545 - 70 = 475, but we want to leave room for QR code
-    // QR code starts at 380, so max width should be 380 - 70 - 10 (padding) = 300
-    const maxUrlDisplayWidth = Math.min(maxUrlWidth, 300);
+    // Ensure URL doesn't extend beyond QR code position or page edge
+    const maxUrlDisplayWidth = Math.min(maxUrlWidth, rightColX - leftColX - 10);
     doc
       .fontSize(urlFontSize)
       .fillColor(mediumGray)
@@ -661,7 +673,9 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       
       // Position QR code on the right side, centered vertically in the box
       const qrCodeSize = 100;
-      const qrCodeX = rightColX;
+      const qrCodePadding = 10; // Padding from right edge
+      const maxQRX = pageContentEnd - qrCodeSize - qrCodePadding; // Ensure QR code fits within page
+      const qrCodeX = Math.min(rightColX, maxQRX); // Position QR code, ensuring it doesn't extend beyond page
       
       // Calculate QR code position - center it vertically in the payment box
       const boxCenterY = paymentBoxStartY + (paymentBoxHeight / 2);
@@ -672,11 +686,8 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       const maxQRY = paymentBoxStartY + paymentBoxHeight - qrCodeSize - 10;
       const finalQRY = Math.max(minQRY, Math.min(qrCodeY, maxQRY));
       
-      // Ensure QR code doesn't extend beyond page edge (545)
-      // qrCodeX = 380, qrCodeSize = 100, so it extends to 480, which is fine
-      // But add a check to ensure it stays within bounds
-      const maxQRX = 545 - qrCodeSize - 5; // 5px padding from edge
-      const finalQRX = Math.min(qrCodeX, maxQRX);
+      // Final X position - ensure it doesn't extend beyond page edge
+      const finalQRX = Math.min(qrCodeX, pageContentEnd - qrCodeSize - qrCodePadding);
       
       // Add white background behind QR code for better contrast (within box bounds)
       const bgPadding = 5;
@@ -685,7 +696,7 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       const bgSize = qrCodeSize + (bgPadding * 2);
       
       // Ensure background doesn't extend outside box or page
-      if (bgY >= paymentBoxStartY && bgY + bgSize <= paymentBoxStartY + paymentBoxHeight && bgX + bgSize <= 545) {
+      if (bgY >= paymentBoxStartY && bgY + bgSize <= paymentBoxStartY + paymentBoxHeight && bgX + bgSize <= pageContentEnd) {
         doc
           .rect(bgX, bgY, bgSize, bgSize)
           .fill('#ffffff')
@@ -714,8 +725,10 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       yPosition = 50;
     }
 
+    const notesBoxWidth = pageContentEnd - 50; // Notes box width that fits within page bounds
+    
     doc
-      .rect(50, yPosition, 495, 80)
+      .rect(50, yPosition, notesBoxWidth, 80)
       .fillAndStroke('#f9fafb', lightGray);
 
     doc
@@ -728,19 +741,19 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       .fontSize(10)
       .font('Helvetica')
       .fillColor(mediumGray)
-      .text(invoice.notes, 60, yPosition + 28, { width: 475 });
+      .text(invoice.notes, 60, yPosition + 28, { width: notesBoxWidth - 20 }); // 20px for padding (10px each side)
 
     yPosition += 90;
   }
 
-  // Footer
+  // Footer - ensure it doesn't extend beyond page edge
   yPosition = 750;
 
   doc
     .strokeColor(lightGray)
     .lineWidth(2)
     .moveTo(50, yPosition)
-    .lineTo(545, yPosition)
+    .lineTo(pageContentEnd, yPosition)
     .stroke();
 
   yPosition += 15;
@@ -749,7 +762,7 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
     .fontSize(10)
     .fillColor(mediumGray)
     .font('Helvetica')
-    .text('Thank you for your business!', 50, yPosition, { align: 'center', width: 495 });
+    .text('Thank you for your business!', 50, yPosition, { align: 'center', width: pageContentEnd - 50 });
 
   yPosition += 18;
 
@@ -761,7 +774,7 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
       `M10 DJ Company • (901) 410-2020 • djbenmurray@gmail.com`,
       50,
       yPosition,
-      { align: 'center', width: 495 }
+      { align: 'center', width: pageContentEnd - 50 }
     );
 
   // Add page numbers
@@ -776,7 +789,7 @@ function generateInvoicePDF(doc, invoice, lineItems, paymentUrl, qrCodeDataUrl) 
         `Page ${i + 1} of ${pageCount}`,
         50,
         780,
-        { align: 'right', width: 495 }
+        { align: 'right', width: pageContentEnd - 50 }
       );
   }
 }

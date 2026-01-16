@@ -6,36 +6,33 @@
  */
 
 import Stripe from 'stripe';
-import { stripe } from './config';
+import { getStripeInstance, getStripeInstanceByAccountId, stripe } from './config';
 
 const PLATFORM_FEE_PERCENTAGE = 3.50; // 3.5%
 const PLATFORM_FEE_FIXED = 0.30; // $0.30
-
-// Validate Stripe is configured
-if (!stripe) {
-  throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY or STRIPE_SECRET_KEY_LIVE in your environment variables.');
-}
 
 /**
  * Check if the platform account can create connected accounts
  * This helps provide better error messages before attempting account creation
  */
-export async function canCreateConnectedAccounts(): Promise<{
+export async function canCreateConnectedAccounts(productContext?: 'tipjar' | 'djdash' | 'm10dj' | null): Promise<{
   canCreate: boolean;
   reason?: string;
   error?: string;
 }> {
-  if (!stripe) {
+  const stripeInstance = getStripeInstance(productContext);
+  
+  if (!stripeInstance) {
     return {
       canCreate: false,
-      reason: 'Stripe is not configured',
+      reason: `Stripe is not configured for product: ${productContext || 'm10dj'}`,
     };
   }
 
   try {
     // Try to retrieve the platform account to check Connect status
     // If this fails or Connect isn't enabled, we'll get an error
-    const account = await stripe.accounts.retrieve();
+    const account = await stripeInstance.accounts.retrieve();
     
     // Check if account has Connect enabled by attempting a minimal account creation test
     // Note: We don't actually create an account, but we check if the API would allow it
@@ -165,8 +162,11 @@ export async function createConnectAccount(
     }
   }
 
-  if (!stripe) {
-    throw new Error('Stripe is not configured');
+  // Get product-specific Stripe instance
+  const stripeInstance = getStripeInstance(productContext);
+  
+  if (!stripeInstance) {
+    throw new Error(`Stripe is not configured for product: ${productContext || 'm10dj'}`);
   }
 
   try {
@@ -174,7 +174,7 @@ export async function createConnectAccount(
     // If that doesn't work, fall back to v1 API with compatible structure
     try {
       // Attempt v2 API via SDK request method (using type assertion since request method may not be in types)
-      const account = await (stripe as any).request({
+      const account = await (stripeInstance as any).request({
         method: 'POST',
         path: '/v2/core/accounts',
         body: accountData,
@@ -241,7 +241,7 @@ export async function createConnectAccount(
         }
       }
 
-      const account = await stripe.accounts.create(v1AccountData);
+      const account = await stripeInstance.accounts.create(v1AccountData);
       return account;
     }
   } catch (stripeError: any) {
@@ -276,9 +276,15 @@ export async function createAccountLink(
   refreshUrl: string,
   options?: {
     onboardingType?: 'upfront' | 'incremental'; // Default: upfront
+    productContext?: 'tipjar' | 'djdash' | 'm10dj' | null; // Product context to determine Stripe instance
   }
 ): Promise<Stripe.AccountLink> {
-  if (!stripe) {
+  // Try to determine Stripe instance from account ID, or use product context
+  const stripeInstance = options?.productContext 
+    ? getStripeInstance(options.productContext)
+    : await getStripeInstanceByAccountId(accountId);
+  
+  if (!stripeInstance) {
     throw new Error('Stripe is not configured');
   }
   
@@ -303,7 +309,7 @@ export async function createAccountLink(
   try {
     // Try v2 API first, fall back to v1 if not available
     try {
-      const accountLink = await (stripe as any).request({
+      const accountLink = await (stripeInstance as any).request({
         method: 'POST',
         path: '/v2/core/account_links',
         body: accountLinkData,
@@ -323,7 +329,7 @@ export async function createAccountLink(
         collect: 'currently_due', // or 'eventually_due' for upfront collection
       };
 
-      const accountLink = await stripe.accountLinks.create(v1LinkData);
+      const accountLink = await stripeInstance.accountLinks.create(v1LinkData);
       return accountLink;
     }
   } catch (error: any) {
@@ -337,7 +343,8 @@ export async function createAccountLink(
  * Reference: https://docs.stripe.com/api/accounts/retrieve
  */
 export async function getAccountStatus(
-  accountId: string
+  accountId: string,
+  productContext?: 'tipjar' | 'djdash' | 'm10dj' | null
 ): Promise<{
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
@@ -348,14 +355,19 @@ export async function getAccountStatus(
     pastDue: string[];
   };
 }> {
-  if (!stripe) {
+  // Try to determine Stripe instance from account ID, or use product context
+  const stripeInstance = productContext 
+    ? getStripeInstance(productContext)
+    : await getStripeInstanceByAccountId(accountId);
+  
+  if (!stripeInstance) {
     throw new Error('Stripe is not configured');
   }
   
   try {
     // Retrieve account with expanded requirements
     // Reference: https://docs.stripe.com/api/accounts/retrieve
-    const account = await stripe.accounts.retrieve(accountId, {
+    const account = await stripeInstance.accounts.retrieve(accountId, {
       expand: ['requirements', 'capabilities'],
     });
 
@@ -408,9 +420,15 @@ export async function createPaymentWithPlatformFee(
   amount: number,
   connectAccountId: string,
   platformFeePercentage: number = PLATFORM_FEE_PERCENTAGE,
-  platformFeeFixed: number = PLATFORM_FEE_FIXED
+  platformFeeFixed: number = PLATFORM_FEE_FIXED,
+  productContext?: 'tipjar' | 'djdash' | 'm10dj' | null
 ): Promise<Stripe.PaymentIntent> {
-  if (!stripe) {
+  // Try to determine Stripe instance from account ID, or use product context
+  const stripeInstance = productContext 
+    ? getStripeInstance(productContext)
+    : await getStripeInstanceByAccountId(connectAccountId);
+  
+  if (!stripeInstance) {
     throw new Error('Stripe is not configured');
   }
   
@@ -419,7 +437,7 @@ export async function createPaymentWithPlatformFee(
   const percentageFee = Math.round((amount * platformFeePercentage) / 100);
   const applicationFeeAmount = percentageFee + Math.round(platformFeeFixed * 100);
 
-  const paymentIntent = await stripe.paymentIntents.create({
+  const paymentIntent = await stripeInstance.paymentIntents.create({
     amount: amount,
     currency: 'usd',
     application_fee_amount: applicationFeeAmount,
@@ -456,7 +474,8 @@ export async function createCheckoutSessionWithPlatformFee(
     name?: string;
     email?: string;
     phone?: string;
-  }
+  },
+  productContext?: 'tipjar' | 'djdash' | 'm10dj' | null
 ): Promise<Stripe.Checkout.Session> {
   // Calculate platform fee
   const percentageFee = Math.round((amount * platformFeePercentage) / 100);
@@ -506,12 +525,17 @@ export async function createCheckoutSessionWithPlatformFee(
     }),
   };
 
-  if (!stripe) {
+  // Try to determine Stripe instance from account ID, or use product context
+  const stripeInstance = productContext 
+    ? getStripeInstance(productContext)
+    : await getStripeInstanceByAccountId(connectAccountId);
+  
+  if (!stripeInstance) {
     throw new Error('Stripe is not configured');
   }
   
   try {
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    const session = await stripeInstance.checkout.sessions.create(sessionParams);
     return session;
   } catch (error: any) {
     console.error('Error creating checkout session:', error);

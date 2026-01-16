@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { createConnectAccount } from '@/utils/stripe/connect';
-import { stripe } from '@/utils/stripe/config';
+import { getStripeInstance } from '@/utils/stripe/config';
 import { getCurrentOrganization } from '@/utils/organization-context';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -159,14 +159,7 @@ export default async function handler(req, res) {
       // Continue without branding if there's an error
     }
     
-    // Validate Stripe is configured
-    if (!stripe) {
-      console.error('Stripe not initialized - check STRIPE_SECRET_KEY environment variable');
-      return res.status(500).json({ 
-        error: 'Stripe not configured',
-        details: 'Stripe secret key is missing or invalid. Please check your environment variables.'
-      });
-    }
+    // Product context will be determined below, but we'll validate Stripe after detection
     
     // Optional: Pre-check if platform can create connected accounts
     // This provides better error messages but adds an extra API call
@@ -226,6 +219,16 @@ export default async function handler(req, res) {
     }
     
     console.log('Detected product context:', productContext, 'Using baseUrl:', baseUrl);
+    
+    // Validate Stripe is configured for the detected product context
+    const stripeInstance = getStripeInstance(productContext);
+    if (!stripeInstance) {
+      console.error(`Stripe not configured for product context: ${productContext}`);
+      return res.status(500).json({ 
+        error: 'Stripe not configured',
+        details: `Stripe secret key is missing or invalid for product: ${productContext || 'm10dj'}. Please check your environment variables (STRIPE_SECRET_KEY_TIPJAR for TipJar, STRIPE_SECRET_KEY for M10 DJ/DJ Dash).`
+      });
+    }
     
     // Update organization's product_context if it was missing but we detected it from request
     if (productContext && !organization.product_context) {

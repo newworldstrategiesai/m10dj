@@ -154,16 +154,41 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
   
   // Get contactId from router query params
   const contactIdFromQuery = router.query?.contactId as string | undefined;
+  
+  // Initialize dates on client-side only to prevent hydration mismatches
+  const getInitialInvoiceDate = () => {
+    if (typeof window === 'undefined') return ''; // Server-side: return empty to prevent mismatch
+    return new Date().toISOString().split('T')[0];
+  };
+  
+  const getInitialDueDate = () => {
+    if (typeof window === 'undefined') return ''; // Server-side: return empty to prevent mismatch
+    const date = new Date();
+    date.setDate(date.getDate() + 30);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Format date for display - client-side only to prevent hydration errors
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      // Use consistent format that matches server and client
+      const year = date.getFullYear();
+      const month = date.toLocaleString('en-US', { month: 'long' });
+      const day = date.getDate();
+      return `${month} ${day}, ${year}`;
+    } catch (e) {
+      return 'N/A';
+    }
+  };
+  
   const [formData, setFormData] = useState({
     contactId: '',
     projectId: '',
     invoiceTitle: '',
-    invoiceDate: new Date().toISOString().split('T')[0],
-    dueDate: (() => {
-      const date = new Date();
-      date.setDate(date.getDate() + 30);
-      return date.toISOString().split('T')[0];
-    })(),
+    invoiceDate: getInitialInvoiceDate(),
+    dueDate: getInitialDueDate(),
     subtotal: '',
     taxRate: '',
     taxAmount: '',
@@ -1051,7 +1076,7 @@ function CreateInvoiceForm({ router, supabase }: { router: any; supabase: any })
               <option value="">No event selected</option>
               {filteredEvents.map(event => (
                 <option key={event.id} value={event.id}>
-                  {event.event_name || 'Untitled Event'} - {new Date(event.event_date).toLocaleDateString()}
+                  {event.event_name || 'Untitled Event'} - {event.event_date ? formatDate(event.event_date) : 'No date'}
                 </option>
               ))}
             </select>
@@ -2031,13 +2056,39 @@ export default function InvoiceDetailPage() {
     }).format(amount || 0);
   };
 
+  // Format date for display - client-side only to prevent hydration errors
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      // Use consistent format that matches server and client
+      const year = date.getFullYear();
+      const month = date.toLocaleString('en-US', { month: 'long' });
+      const day = date.getDate();
+      return `${month} ${day}, ${year}`;
+    } catch (e) {
+      return 'N/A';
+    }
+  };
+
+  // Client-side date formatter to prevent hydration mismatches
+  const formatDateTime = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      // Use consistent ISO-based format, then format on client only
+      const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      };
+      return date.toLocaleString('en-US', options);
+    } catch (e) {
+      return 'N/A';
+    }
   };
 
   const handleStatusChange = async (newStatus: string) => {
@@ -2533,15 +2584,15 @@ export default function InvoiceDetailPage() {
                           </Badge>
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 pl-6">
-                          <p>Sent: {new Date(track.created_at).toLocaleString()}</p>
+                          <p>Sent: {formatDateTime(track.created_at)}</p>
                           {openedEvent && (
                             <p className="text-green-600 dark:text-green-400">
-                              Opened: {new Date(openedEvent.opened_at || openedEvent.created_at).toLocaleString()}
+                              Opened: {formatDateTime(openedEvent.opened_at || openedEvent.created_at)}
                             </p>
                           )}
                           {clickedEvent && (
                             <p className="text-blue-600 dark:text-blue-400">
-                              Clicked: {new Date(clickedEvent.clicked_at || clickedEvent.created_at).toLocaleString()}
+                              Clicked: {formatDateTime(clickedEvent.clicked_at || clickedEvent.created_at)}
                             </p>
                           )}
                           {!openedEvent && (
@@ -2839,9 +2890,9 @@ export default function InvoiceDetailPage() {
                             <div className="space-y-2">
                               {paymentData.payments.map((payment: any, idx: number) => {
                                 const paymentDate = payment.transaction_date 
-                                  ? new Date(payment.transaction_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                                  ? formatDate(payment.transaction_date)
                                   : payment.created_at 
-                                    ? new Date(payment.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                                    ? formatDate(payment.created_at)
                                     : 'Date not available';
                                 
                                 // Determine if this is a retainer/deposit payment
