@@ -148,12 +148,31 @@ export default async function handler(req, res) {
         }
       }
       
-      // Combine email and phone deduplicated contacts, plus any remaining unique contacts
-      deduplicatedContacts = [
-        ...Array.from(emailMap.values()),
-        ...Array.from(phoneMap.values()),
-        ...contacts.filter(c => !processedIds.has(c.id))
-      ];
+      // Build final deduplicated list
+      // Start with all unique contacts from email and phone maps
+      const uniqueContactsSet = new Map();
+      
+      // Add all email-deduplicated contacts
+      for (const contact of emailMap.values()) {
+        uniqueContactsSet.set(contact.id, contact);
+      }
+      
+      // Add phone-deduplicated contacts (only if not already added via email)
+      for (const contact of phoneMap.values()) {
+        if (!uniqueContactsSet.has(contact.id)) {
+          uniqueContactsSet.set(contact.id, contact);
+        }
+      }
+      
+      // Add any remaining contacts that weren't processed (no email or phone)
+      for (const contact of contacts) {
+        if (!processedIds.has(contact.id) && !uniqueContactsSet.has(contact.id)) {
+          uniqueContactsSet.set(contact.id, contact);
+        }
+      }
+      
+      // Convert to array
+      deduplicatedContacts = Array.from(uniqueContactsSet.values());
       
       // Sort by created_at descending to maintain chronological order
       deduplicatedContacts.sort((a, b) => {
@@ -162,12 +181,14 @@ export default async function handler(req, res) {
         return dateB - dateA;
       });
       
-      console.log('Deduplication:', {
+      console.log('Deduplication results:', {
         originalCount: contacts.length,
         deduplicatedCount: deduplicatedContacts.length,
         removed: contacts.length - deduplicatedContacts.length,
         emailMatches: emailMap.size,
-        phoneMatches: phoneMap.size
+        phoneMatches: phoneMap.size,
+        processedIds: processedIds.size,
+        uniqueContactsInFinal: uniqueContactsSet.size
       });
     }
 
