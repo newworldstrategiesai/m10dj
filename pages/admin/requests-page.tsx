@@ -29,7 +29,9 @@ import {
   Sparkles,
   Video,
   Link as LinkIcon,
-  MessageCircle
+  MessageCircle,
+  Mic,
+  Gift
 } from 'lucide-react';
 import {
   Dialog,
@@ -329,6 +331,14 @@ export default function RequestsPageSettings() {
     requests_show_next_song: true,
     requests_show_bundle_discount: true
   });
+
+  // Request tab visibility settings (for super admin and TipJar users)
+  const [requestTabSettings, setRequestTabSettings] = useState({
+    song_request_enabled: true,
+    shoutout_enabled: true,
+    tip_enabled: true,
+  });
+  const [requestTabSettingsLoading, setRequestTabSettingsLoading] = useState(false);
 
   // Assistant settings
   const [assistantEnabled, setAssistantEnabled] = useState(true);
@@ -784,12 +794,89 @@ export default function RequestsPageSettings() {
           requests_page_description: org.requests_page_description || '',
           requests_default_request_type: org.requests_default_request_type || 'song_request'
         });
+
+        // Fetch request tab visibility settings (for super admin and TipJar users)
+        if (isSuperAdmin || org.product_context === 'tipjar') {
+          fetchRequestTabSettings(org.id);
+        }
       }
     } catch (error) {
       console.error('Error:', error);
       setError('Failed to load organization');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch request tab visibility settings
+  const fetchRequestTabSettings = async (orgId: string) => {
+    try {
+      setRequestTabSettingsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        return;
+      }
+
+      const response = await fetch(`/api/admin/request-tabs?organizationId=${orgId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.effective) {
+          setRequestTabSettings({
+            song_request_enabled: data.effective.song_request_enabled ?? true,
+            shoutout_enabled: data.effective.shoutout_enabled ?? true,
+            tip_enabled: data.effective.tip_enabled ?? true,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching request tab settings:', error);
+    } finally {
+      setRequestTabSettingsLoading(false);
+    }
+  };
+
+  // Save request tab visibility settings
+  const saveRequestTabSettings = async () => {
+    if (!organization) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        setError('Not authenticated');
+        return;
+      }
+
+      const response = await fetch('/api/admin/request-tabs', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          organizationId: organization.id,
+          song_request_enabled: requestTabSettings.song_request_enabled,
+          shoutout_enabled: requestTabSettings.shoutout_enabled,
+          tip_enabled: requestTabSettings.tip_enabled,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save request tab settings');
+      }
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (error: any) {
+      console.error('Error saving request tab settings:', error);
+      setError(error.message || 'Failed to save request tab settings');
     }
   };
 
@@ -4503,53 +4590,157 @@ export default function RequestsPageSettings() {
                   </div>
                 </div>
               ) : activeTab === 'features' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
-                    Feature Toggles
-                  </h2>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">Show Audio Upload Option</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Display the audio file upload option on the requests page</p>
+                <div className="space-y-6">
+                  {/* Request Tab Visibility (Super Admin and TipJar users only) */}
+                  {(isSuperAdmin || organization?.product_context === 'tipjar') && (
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Music className="w-5 h-5" />
+                            Request Tab Visibility
+                          </h2>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Control which tabs (Song Request, Shoutout, Tip) are visible on your requests page
+                          </p>
+                        </div>
+                        <button
+                          onClick={saveRequestTabSettings}
+                          disabled={requestTabSettingsLoading}
+                          className="px-4 py-2 bg-[#fcba00] text-black rounded-lg hover:bg-[#d99f00] transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                          {requestTabSettingsLoading ? 'Saving...' : 'Save Tab Settings'}
+                        </button>
                       </div>
-                      <Switch
-                        checked={featureToggles.requests_show_audio_upload}
-                        onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_audio_upload', checked)}
-                      />
+                      
+                      {requestTabSettingsLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 dark:border-gray-50"></div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Music className="w-5 h-5 text-gray-400" />
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">Song Request Tab</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to request songs</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={requestTabSettings.song_request_enabled}
+                              onCheckedChange={(checked) => {
+                                // Ensure at least one tab is enabled
+                                if (!checked && !requestTabSettings.shoutout_enabled && !requestTabSettings.tip_enabled) {
+                                  setError('At least one tab must be enabled');
+                                  return;
+                                }
+                                setRequestTabSettings(prev => ({ ...prev, song_request_enabled: checked }));
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Mic className="w-5 h-5 text-gray-400" />
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">Shoutout Tab</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to send shoutouts</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={requestTabSettings.shoutout_enabled}
+                              onCheckedChange={(checked) => {
+                                // Ensure at least one tab is enabled
+                                if (!checked && !requestTabSettings.song_request_enabled && !requestTabSettings.tip_enabled) {
+                                  setError('At least one tab must be enabled');
+                                  return;
+                                }
+                                setRequestTabSettings(prev => ({ ...prev, shoutout_enabled: checked }));
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Gift className="w-5 h-5 text-gray-400" />
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">Tip Tab</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to send tips</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={requestTabSettings.tip_enabled}
+                              onCheckedChange={(checked) => {
+                                // Ensure at least one tab is enabled
+                                if (!checked && !requestTabSettings.song_request_enabled && !requestTabSettings.shoutout_enabled) {
+                                  setError('At least one tab must be enabled');
+                                  return;
+                                }
+                                setRequestTabSettings(prev => ({ ...prev, tip_enabled: checked }));
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">Show Fast Track Option</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to pay extra to play their request immediately</p>
+                  )}
+
+                  {/* Feature Toggles */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
+                      Feature Toggles
+                    </h2>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">Show Audio Upload Option</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Display the audio file upload option on the requests page</p>
+                        </div>
+                        <Switch
+                          checked={featureToggles.requests_show_audio_upload}
+                          onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_audio_upload', checked)}
+                        />
                       </div>
-                      <Switch
-                        checked={featureToggles.requests_show_fast_track}
-                        onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_fast_track', checked)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">Show Next Song Option</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to pay extra to play their request as the next song</p>
+                      
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">Show Fast Track Option</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to pay extra to play their request immediately</p>
+                        </div>
+                        <Switch
+                          checked={featureToggles.requests_show_fast_track}
+                          onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_fast_track', checked)}
+                        />
                       </div>
-                      <Switch
-                        checked={featureToggles.requests_show_next_song}
-                        onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_next_song', checked)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">Show Bundle Discount</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Display bundle discount options for multiple song requests</p>
+                      
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">Show Next Song Option</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to pay extra to play their request as the next song</p>
+                        </div>
+                        <Switch
+                          checked={featureToggles.requests_show_next_song}
+                          onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_next_song', checked)}
+                        />
                       </div>
-                      <Switch
-                        checked={featureToggles.requests_show_bundle_discount}
-                        onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_bundle_discount', checked)}
-                      />
+                      
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">Show Bundle Discount</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Display bundle discount options for multiple song requests</p>
+                        </div>
+                        <Switch
+                          checked={featureToggles.requests_show_bundle_discount}
+                          onCheckedChange={(checked) => handleFeatureToggleChange('requests_show_bundle_discount', checked)}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

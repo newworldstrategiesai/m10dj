@@ -1196,20 +1196,40 @@ export default async function handler(req, res) {
       `;
 
       try {
-        // Send customer confirmation email with tracking
-        const customerEmailResult = await resend.emails.send({
+        // Check email controls before sending customer email
+        let customerEmailAllowed = true;
+        try {
+          const { canSendEmail, logBlockedEmail } = await import('@/lib/email/email-controls');
+          const emailCheck = await canSendEmail('CUSTOMER', email, organizationId);
+          if (!emailCheck.allowed) {
+            await logBlockedEmail('CUSTOMER', email, organizationId, emailCheck.reason || 'Blocked by email controls');
+            customerEmailAllowed = false;
+            console.warn('[Contact Form] Customer email blocked:', emailCheck.reason);
+          }
+        } catch (controlError) {
+          // Log error but don't block (fail open for now)
+          console.warn('[Contact Form] Email controls check error (continuing):', controlError);
+        }
+
+        // Send customer confirmation email with tracking (only if allowed)
+        let customerEmailResult = null;
+        if (customerEmailAllowed) {
+          customerEmailResult = await resend.emails.send({
           from: 'M10 DJ Company <hello@m10djcompany.com>', // Using verified custom domain
           to: [email],
           subject: `Thank you for contacting M10 DJ Company - ${eventType} Inquiry`,
           html: customerEmailHtml,
           // Enable email open tracking via Resend webhooks
           headers: {
-            'X-Entity-Ref-ID': criticalOperations.contactRecord.id || 'unknown'
-          }
-        });
+              'X-Entity-Ref-ID': criticalOperations.contactRecord.id || 'unknown'
+            }
+          });
+        } else {
+          console.log('⚠️ Customer confirmation email blocked by email controls');
+        }
 
         // Store email tracking record for sent event
-        if (customerEmailResult.data?.id && criticalOperations.contactRecord.id) {
+        if (customerEmailResult?.data?.id && criticalOperations.contactRecord.id) {
           try {
             const { createClient } = require('@supabase/supabase-js');
             const supabase = createClient(
@@ -1218,7 +1238,7 @@ export default async function handler(req, res) {
             );
             
             await supabase.from('email_tracking').insert({
-              email_id: customerEmailResult.data.id,
+              email_id: customerEmailResult?.data?.id,
               recipient_email: email,
               sender_email: 'hello@m10djcompany.com',
               subject: `Thank you for contacting M10 DJ Company - ${eventType} Inquiry`,
@@ -1233,7 +1253,7 @@ export default async function handler(req, res) {
             });
             
             console.log('✅ Customer confirmation email sent and tracking record created');
-            console.log(`   Email ID: ${customerEmailResult.data.id}`);
+            console.log(`   Email ID: ${customerEmailResult?.data?.id}`);
           } catch (trackingError) {
             console.warn('⚠️ Failed to create email tracking record:', trackingError.message);
             // Don't fail if tracking fails
@@ -1248,14 +1268,35 @@ export default async function handler(req, res) {
           process.env.EMERGENCY_CONTACT_EMAIL // Backup 3 (from env)
         ].filter(email => email && email.trim()); // Remove empty values
         
-        await resend.emails.send({
+        // Check email controls for admin notifications (ADMIN_DEV category)
+        let adminEmailAllowed = true;
+        try {
+          const { canSendEmail, logBlockedEmail } = await import('@/lib/email/email-controls');
+          // Check first admin email (they should all be admin emails)
+          if (adminEmails.length > 0) {
+            const emailCheck = await canSendEmail('ADMIN_DEV', adminEmails[0], organizationId);
+            if (!emailCheck.allowed) {
+              await logBlockedEmail('ADMIN_DEV', adminEmails[0], organizationId, emailCheck.reason || 'Blocked by email controls');
+              adminEmailAllowed = false;
+              console.warn('[Contact Form] Admin notification email blocked:', emailCheck.reason);
+            }
+          }
+        } catch (controlError) {
+          console.warn('[Contact Form] Email controls check error for admin email (continuing):', controlError);
+        }
+
+        if (adminEmailAllowed) {
+          await resend.emails.send({
           from: 'M10 DJ Company <hello@m10djcompany.com>', // Using verified custom domain
           to: adminEmails,
           subject: `🎉 New ${eventType} Inquiry from ${name}`,
-          html: adminEmailHtml,
-        });
-        
-        console.log(`✅ Admin notification sent to ${adminEmails.length} email address(es):`, adminEmails.join(', '));
+            html: adminEmailHtml,
+          });
+          
+          console.log(`✅ Admin notification sent to ${adminEmails.length} email address(es):`, adminEmails.join(', '));
+        } else {
+          console.log('⚠️ Admin notification email blocked by email controls');
+        }
 
         console.log('Emails sent successfully');
       } catch (emailError) {

@@ -453,7 +453,7 @@ export default function ProjectDetailPage() {
               </Link>
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
-                  {id === 'new' ? 'New Project' : (project.event_name || 'Project')}
+                  {id === 'new' ? 'New Project' : (project?.event_name || 'Project')}
                 </h1>
                 <p className="text-sm text-gray-600">Project Details</p>
               </div>
@@ -499,17 +499,17 @@ export default function ProjectDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
                   {isEditing ? (
                     <Input
-                      value={project.event_name}
+                      value={project?.event_name || ''}
                       onChange={(e) => handleInputChange('event_name', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{project.event_name}</p>
+                    <p className="text-gray-900">{project?.event_name || ''}</p>
                   )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   {isEditing ? (
-                    <Select value={project.status} onValueChange={(value) => handleInputChange('status', value)}>
+                    <Select value={project?.status || 'pending'} onValueChange={(value) => handleInputChange('status', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -525,32 +525,32 @@ export default function ProjectDetailPage() {
                     <div className="flex items-center gap-2">
                       <Badge 
                         className={
-                          project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          project.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          project.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                          project?.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          project?.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          project?.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          project?.status === 'completed' ? 'bg-gray-100 text-gray-800' :
                           'bg-red-100 text-red-800'
                         }
                       >
-                        {project.status}
+                        {project?.status || 'pending'}
                       </Badge>
                     </div>
                   )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                  <p className="text-gray-900">{project.event_type}</p>
+                  <p className="text-gray-900">{project?.event_type || ''}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
                   {isEditing ? (
                     <Input
                       type="date"
-                      value={formatDate(project.event_date)}
+                      value={project?.event_date ? formatDate(project.event_date) : ''}
                       onChange={(e) => handleInputChange('event_date', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{project.event_date}</p>
+                    <p className="text-gray-900">{project?.event_date || ''}</p>
                   )}
                 </div>
                 <div>
@@ -558,11 +558,11 @@ export default function ProjectDetailPage() {
                   {isEditing ? (
                     <Input
                       type="time"
-                      value={project.event_time || ''}
+                      value={project?.event_time || ''}
                       onChange={(e) => handleInputChange('event_time', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{project.event_time || 'Not set'}</p>
+                    <p className="text-gray-900">{project?.event_time || 'Not set'}</p>
                   )}
                 </div>
                 <div>
@@ -570,11 +570,11 @@ export default function ProjectDetailPage() {
                   {isEditing ? (
                     <Input
                       type="number"
-                      value={project.event_duration || ''}
+                      value={project?.event_duration || ''}
                       onChange={(e) => handleInputChange('event_duration', e.target.value ? parseInt(e.target.value) : null)}
                     />
                   ) : (
-                    <p className="text-gray-900">{project.event_duration ? `${project.event_duration} hours` : 'Not specified'}</p>
+                    <p className="text-gray-900">{project?.event_duration ? `${project.event_duration} hours` : 'Not specified'}</p>
                   )}
                 </div>
                 <div>
@@ -582,45 +582,45 @@ export default function ProjectDetailPage() {
                   {isEditing ? (
                     <Input
                       type="number"
-                      value={project.number_of_guests || ''}
+                      value={project?.number_of_guests || ''}
                       onChange={(e) => handleInputChange('number_of_guests', e.target.value ? parseInt(e.target.value) : null)}
                     />
                   ) : (
-                    <p className="text-gray-900">{project.number_of_guests || 'Not specified'}</p>
+                    <p className="text-gray-900">{project?.number_of_guests || 'Not specified'}</p>
                   )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
                   {isEditing ? (
                     <Input
-                      value={project.venue_name || ''}
+                      value={project?.venue_name || ''}
                       onChange={(e) => handleInputChange('venue_name', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{project.venue_name || 'Not specified'}</p>
+                    <p className="text-gray-900">{project?.venue_name || 'Not specified'}</p>
                   )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Venue Address</label>
                   {isEditing ? (
                     <Input
-                      value={project.venue_address || ''}
+                      value={project?.venue_address || ''}
                       onChange={(e) => handleInputChange('venue_address', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{project.venue_address || 'Not specified'}</p>
+                    <p className="text-gray-900">{project?.venue_address || 'Not specified'}</p>
                   )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
                   {isEditing ? (
                     <Textarea
-                      value={project.special_requests || ''}
+                      value={project?.special_requests || ''}
                       onChange={(e) => handleInputChange('special_requests', e.target.value)}
                       rows={3}
                     />
                   ) : (
-                    <p className="text-gray-900 whitespace-pre-wrap">{project.special_requests || 'None'}</p>
+                    <p className="text-gray-900 whitespace-pre-wrap">{project?.special_requests || 'None'}</p>
                   )}
                 </div>
               </div>
@@ -635,11 +635,11 @@ export default function ProjectDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
                   {isEditing ? (
                     <Input
-                      value={project.client_name}
+                      value={project?.client_name || ''}
                       onChange={(e) => handleInputChange('client_name', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{project.client_name}</p>
+                    <p className="text-gray-900">{project?.client_name || ''}</p>
                   )}
                 </div>
                 <div>
@@ -647,15 +647,19 @@ export default function ProjectDetailPage() {
                   {isEditing ? (
                     <Input
                       type="email"
-                      value={project.client_email}
+                      value={project?.client_email || ''}
                       onChange={(e) => handleInputChange('client_email', e.target.value)}
                     />
                   ) : (
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-gray-400" />
-                      <a href={`mailto:${project.client_email}`} className="text-blue-600 hover:text-blue-800">
-                        {project.client_email}
-                      </a>
+                      {project?.client_email ? (
+                        <a href={`mailto:${project.client_email}`} className="text-blue-600 hover:text-blue-800">
+                          {project.client_email}
+                        </a>
+                      ) : (
+                        <span className="text-gray-500">Not provided</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -664,13 +668,13 @@ export default function ProjectDetailPage() {
                   {isEditing ? (
                     <Input
                       type="tel"
-                      value={project.client_phone || ''}
+                      value={project?.client_phone || ''}
                       onChange={(e) => handleInputChange('client_phone', e.target.value)}
                     />
                   ) : (
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-gray-400" />
-                      {project.client_phone ? (
+                      {project?.client_phone ? (
                         <a href={`tel:${project.client_phone}`} className="text-blue-600 hover:text-blue-800">
                           {project.client_phone}
                         </a>
@@ -799,14 +803,14 @@ export default function ProjectDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Project Notes</label>
                   {isEditing ? (
                     <Textarea
-                      value={project.timeline_notes || ''}
+                      value={project?.timeline_notes || ''}
                       onChange={(e) => handleInputChange('timeline_notes', e.target.value)}
                       rows={6}
                       placeholder="Add notes about this project..."
                     />
                   ) : (
                     <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-gray-900 whitespace-pre-wrap">{project.timeline_notes || 'No notes added yet.'}</p>
+                      <p className="text-gray-900 whitespace-pre-wrap">{project?.timeline_notes || 'No notes added yet.'}</p>
                     </div>
                   )}
                 </div>
@@ -814,21 +818,23 @@ export default function ProjectDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Playlist Notes</label>
                   {isEditing ? (
                     <Textarea
-                      value={project.playlist_notes || ''}
+                      value={project?.playlist_notes || ''}
                       onChange={(e) => handleInputChange('playlist_notes', e.target.value)}
                       rows={4}
                       placeholder="Add notes about music preferences, playlist, do-not-play list..."
                     />
                   ) : (
                     <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-gray-900 whitespace-pre-wrap">{project.playlist_notes || 'No playlist notes added yet.'}</p>
+                      <p className="text-gray-900 whitespace-pre-wrap">{project?.playlist_notes || 'No playlist notes added yet.'}</p>
                     </div>
                   )}
                 </div>
-                <div className="text-sm text-gray-500">
-                  <p><strong>Created:</strong> {new Date(project.created_at).toLocaleString()}</p>
-                  <p><strong>Last Updated:</strong> {new Date(project.updated_at).toLocaleString()}</p>
-                </div>
+                {project && (
+                  <div className="text-sm text-gray-500">
+                    <p><strong>Created:</strong> {new Date(project.created_at).toLocaleString()}</p>
+                    <p><strong>Last Updated:</strong> {new Date(project.updated_at).toLocaleString()}</p>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>
@@ -845,7 +851,7 @@ export default function ProjectDetailPage() {
               {/* Toggle Switch */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-lg border">
                 <div className="flex items-center gap-3">
-                  {project.audio_tracking_enabled ? (
+                  {project?.audio_tracking_enabled ? (
                     <Mic className="h-5 w-5 text-green-600 flex-shrink-0" />
                   ) : (
                     <MicOff className="h-5 w-5 text-gray-400 flex-shrink-0" />
@@ -855,7 +861,7 @@ export default function ProjectDetailPage() {
                       Enable Audio Tracking
                     </Label>
                     <p className="text-xs sm:text-sm text-gray-500">
-                      {project.audio_tracking_enabled 
+                      {project?.audio_tracking_enabled 
                         ? 'Audio recognition is active'
                         : 'Turn on to detect and track songs'}
                     </p>
@@ -863,7 +869,7 @@ export default function ProjectDetailPage() {
                 </div>
                 <Switch
                   id="audio-tracking"
-                  checked={project.audio_tracking_enabled ?? false}
+                  checked={project?.audio_tracking_enabled ?? false}
                   onCheckedChange={handleToggleAudioTracking}
                   disabled={saving}
                   className="self-end sm:self-auto"
@@ -871,7 +877,7 @@ export default function ProjectDetailPage() {
               </div>
 
               {/* Song Recognition Component */}
-              {project.audio_tracking_enabled && (
+              {project?.audio_tracking_enabled && project?.id && (
                 <div className="mt-6">
                   <SongRecognition
                     eventId={project.id}
@@ -887,7 +893,7 @@ export default function ProjectDetailPage() {
                 </div>
               )}
 
-              {!project.audio_tracking_enabled && (
+              {!project?.audio_tracking_enabled && (
                 <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-xs sm:text-sm text-blue-800">
                     <strong>How it works:</strong> When enabled, place your phone near the speakers and the system will automatically detect songs being played. Matching song requests will be marked as "played" automatically.
@@ -900,8 +906,8 @@ export default function ProjectDetailPage() {
           <TabsContent value="journey">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
               <CustomerTimeline 
-                email={project.client_email || undefined}
-                phone={project.client_phone || undefined}
+                email={project?.client_email || undefined}
+                phone={project?.client_phone || undefined}
                 showHeader={true}
                 limit={100}
               />

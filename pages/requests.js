@@ -236,6 +236,41 @@ export function GeneralRequestsPage({
   allowedRequestTypes = null, // Array of allowed request types (e.g., ['song_request']). If null, all types allowed.
   minimalHeader = false // Use minimal header (for bid page)
 } = {}) {
+  
+  // State for tab visibility settings
+  const [tabVisibilitySettings, setTabVisibilitySettings] = useState(null);
+  const [effectiveAllowedTypes, setEffectiveAllowedTypes] = useState(allowedRequestTypes);
+  
+  // Fetch tab visibility settings when organizationId is available
+  useEffect(() => {
+    async function fetchTabSettings() {
+      // If allowedRequestTypes is explicitly provided (e.g., from /bid page), use that
+      if (allowedRequestTypes !== null) {
+        setEffectiveAllowedTypes(allowedRequestTypes);
+        return;
+      }
+
+      // Only fetch if we have an organizationId
+      if (!organizationId) {
+        // Default to all types if no org
+        setEffectiveAllowedTypes(['song_request', 'shoutout', 'tip']);
+        return;
+      }
+
+      try {
+        const { getAllowedRequestTypes } = await import('@/lib/requests/tab-visibility');
+        const allowed = await getAllowedRequestTypes(organizationId);
+        setEffectiveAllowedTypes(allowed);
+        console.log('[Requests] Tab visibility settings loaded:', allowed);
+      } catch (error) {
+        console.warn('[Requests] Error fetching tab visibility settings:', error);
+        // Default to all types on error
+        setEffectiveAllowedTypes(['song_request', 'shoutout', 'tip']);
+      }
+    }
+
+    fetchTabSettings();
+  }, [organizationId, allowedRequestTypes]);
   // CRITICAL: Initialize router FIRST before any other code to prevent TDZ errors
   const router = useRouter();
   
@@ -716,14 +751,17 @@ export function GeneralRequestsPage({
 
   // Lock request type if only one type is allowed (e.g., on /bid page)
   useEffect(() => {
-    if (allowedRequestTypes && allowedRequestTypes.length === 1) {
-      setRequestType(allowedRequestTypes[0]);
+    if (effectiveAllowedTypes && effectiveAllowedTypes.length === 1) {
+      setRequestType(effectiveAllowedTypes[0]);
+    } else if (effectiveAllowedTypes && effectiveAllowedTypes.length > 0 && !effectiveAllowedTypes.includes(requestType)) {
+      // If current request type is not allowed, switch to first allowed type
+      setRequestType(effectiveAllowedTypes[0]);
     }
-  }, [allowedRequestTypes]);
+  }, [effectiveAllowedTypes, requestType]);
   
-  // Wrapper for setRequestType that respects allowedRequestTypes
+  // Wrapper for setRequestType that respects effectiveAllowedTypes
   const handleRequestTypeChange = (newType) => {
-    if (!allowedRequestTypes || allowedRequestTypes.includes(newType)) {
+    if (!effectiveAllowedTypes || effectiveAllowedTypes.includes(newType)) {
       setRequestType(newType);
       // When switching to "Tip Me", default to custom amount input
       if (newType === 'tip') {
@@ -4977,7 +5015,7 @@ export function GeneralRequestsPage({
                   {/* Request Type Selection - Hide if only one type is allowed */}
                   {(!allowedRequestTypes || allowedRequestTypes.length > 1) && (
                     <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3">
-                      {(!allowedRequestTypes || allowedRequestTypes.includes('song_request')) && (
+                      {(!effectiveAllowedTypes || effectiveAllowedTypes.includes('song_request')) && (
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('song_request')}
@@ -5005,7 +5043,7 @@ export function GeneralRequestsPage({
                         </button>
                       )}
                       
-                      {(!allowedRequestTypes || allowedRequestTypes.includes('shoutout')) && (
+                      {(!effectiveAllowedTypes || effectiveAllowedTypes.includes('shoutout')) && (
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('shoutout')}
@@ -5033,7 +5071,7 @@ export function GeneralRequestsPage({
                         </button>
                       )}
 
-                      {(!allowedRequestTypes || allowedRequestTypes.includes('tip')) && (
+                      {(!effectiveAllowedTypes || effectiveAllowedTypes.includes('tip')) && (
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('tip')}

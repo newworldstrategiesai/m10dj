@@ -528,6 +528,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No recipient email' }, { status: 400 });
     }
 
+    // Check email controls (auth emails are CRITICAL and always allowed, but check for logging)
+    try {
+      const { canSendEmail } = await import('@/lib/email/email-controls');
+      const emailCheck = await canSendEmail('CRITICAL', recipientEmail, null);
+      if (!emailCheck.allowed) {
+        // Critical emails should always be allowed, but log if somehow blocked
+        console.warn('[Auth Hook] Email control check failed (unexpected for CRITICAL):', emailCheck.reason);
+      }
+    } catch (error) {
+      // Don't block auth emails if email controls check fails
+      console.warn('[Auth Hook] Email controls check error (continuing anyway):', error);
+    }
+
     // Send email via appropriate provider
     let emailId: string | undefined;
     

@@ -88,6 +88,23 @@ export default async function handler(req, res) {
     }
   }
 
+  // Check email controls (admin communications are ADMIN_DEV category)
+  try {
+    const { canSendEmail, logBlockedEmail } = await import('@/lib/email/email-controls');
+    const emailCheck = await canSendEmail('ADMIN_DEV', emailTo, organizationId);
+    if (!emailCheck.allowed) {
+      await logBlockedEmail('ADMIN_DEV', emailTo, organizationId, emailCheck.reason || 'Blocked by email controls');
+      return res.status(403).json({ 
+        error: 'Email sending is blocked',
+        reason: emailCheck.reason,
+        blocked: true
+      });
+    }
+  } catch (error) {
+    // Log error but don't block (fail open for now, can be made stricter later)
+    console.warn('[Admin Communications] Email controls check error:', error);
+  }
+
   // Check if Gmail is connected for this organization
   let useGmail = false;
   if (organizationId) {
