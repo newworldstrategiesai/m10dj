@@ -62,6 +62,9 @@ function generateInvoiceFooterMessage(invoice, contact = null) {
  * invoice emails before sending them to clients.
  */
 export default async function handler(req, res) {
+  // CRITICAL: Always set JSON content type first to prevent HTML 404 responses
+  res.setHeader('Content-Type', 'application/json');
+  
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -93,7 +96,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invoice ID is required' });
   }
 
-  console.log('[Invoice Preview API] Processing preview for invoice:', invoiceId);
+  // Validate invoiceId is a string (not an array)
+  const invoiceIdString = Array.isArray(invoiceId) ? invoiceId[0] : invoiceId;
+  
+  if (!invoiceIdString || typeof invoiceIdString !== 'string') {
+    console.error('[Invoice Preview API] Invalid invoice ID format:', invoiceId);
+    return res.status(400).json({ error: 'Invalid invoice ID format' });
+  }
+
+  console.log('[Invoice Preview API] Processing preview for invoice:', invoiceIdString);
 
   try {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -110,7 +121,7 @@ export default async function handler(req, res) {
           email_address
         )
       `)
-      .eq('id', invoiceId)
+      .eq('id', invoiceIdString)
       .single();
 
     if (invoiceError || !invoice) {
@@ -318,8 +329,10 @@ export default async function handler(req, res) {
       </html>
     `;
 
-    console.log('[Invoice Preview API] Successfully generated preview for invoice:', invoiceId);
+    console.log('[Invoice Preview API] Successfully generated preview for invoice:', invoiceIdString);
     
+    // Ensure JSON response
+    res.setHeader('Content-Type', 'application/json');
     res.status(200).json({
       success: true,
       html: emailHtml,
@@ -331,6 +344,12 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('[Invoice Preview API] Error previewing invoice email:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to preview email';
+    
+    // Ensure JSON response even on error
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/json');
+    }
+    
     res.status(500).json({ 
       error: 'Failed to preview email',
       details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
