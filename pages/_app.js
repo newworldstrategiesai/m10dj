@@ -136,6 +136,7 @@ export default function App({ Component, pageProps }) {
   // Check if we're on a page that has custom OG images (don't include default OG tags)
   const isPaymentPage = router.pathname.startsWith('/pay/');
   const isContractPage = router.pathname.startsWith('/sign-contract/');
+  const isQuotePage = router.pathname.startsWith('/quote/');
 
   return (
     <ThemeProviderWrapper>
@@ -155,7 +156,7 @@ export default function App({ Component, pageProps }) {
         <meta name="msapplication-config" content="/browserconfig.xml" />
         
         {/* Open Graph default image - Exclude for pages with custom OG images */}
-        {!isPaymentPage && !isContractPage && (
+        {!isPaymentPage && !isContractPage && !isQuotePage && (
           <>
             <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
             <meta property="og:image:width" content="1200" />
@@ -165,13 +166,13 @@ export default function App({ Component, pageProps }) {
         <meta property="og:site_name" content="M10 DJ Company" />
         
         {/* Twitter Card default image - Exclude for pages with custom OG images */}
-        {!isPaymentPage && !isContractPage && (
+        {!isPaymentPage && !isContractPage && !isQuotePage && (
           <>
             <meta name="twitter:card" content="summary_large_image" />
             <meta name="twitter:image" content="https://m10djcompany.com/logo-static.jpg" />
           </>
         )}
-        {!isPaymentPage && !isContractPage && (
+        {!isPaymentPage && !isContractPage && !isQuotePage && (
           <meta name="twitter:site" content="@m10djcompany" />
         )}
         

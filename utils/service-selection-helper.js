@@ -212,11 +212,22 @@ If you have any questions, just reply to this email or give us a call.
       text: emailText
     });
 
-    console.log(`✅ Service selection email sent to ${contact.email_address}`);
-    return { success: true, emailId: result.data?.id };
+    // Check for errors in the response (Resend returns errors in the response object)
+    if (result.error) {
+      console.error(`❌ Resend API error sending to ${contact.email_address}:`, result.error);
+      return { success: false, error: result.error.message || JSON.stringify(result.error) };
+    }
+
+    if (!result.data?.id) {
+      console.error(`❌ No email ID returned for ${contact.email_address}`);
+      return { success: false, error: 'No email ID returned from Resend API' };
+    }
+
+    console.log(`✅ Service selection email sent to ${contact.email_address} (ID: ${result.data.id})`);
+    return { success: true, emailId: result.data.id };
   } catch (error) {
-    console.error('❌ Failed to send service selection email:', error);
-    return { success: false, error: error.message };
+    console.error('❌ Exception sending service selection email:', error);
+    return { success: false, error: error.message || 'Unknown error' };
   }
 }
 

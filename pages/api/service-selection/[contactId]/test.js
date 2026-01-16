@@ -252,23 +252,63 @@ If you have any questions, just reply to this email or give us a call.
     `;
 
     // Send test emails to all specified addresses
-    const emailPromises = testEmailAddresses.map(email => 
-      resend.emails.send({
-        from: 'M10 DJ Company <hello@m10djcompany.com>',
-        to: [email],
-        subject,
-        html,
-        text
-      })
-    );
+    const emailPromises = testEmailAddresses.map(async (email) => {
+      try {
+        const result = await resend.emails.send({
+          from: 'M10 DJ Company <hello@m10djcompany.com>',
+          to: [email],
+          subject,
+          html,
+          text
+        });
+
+        // Check for errors in the response (Resend returns errors in the response object)
+        if (result.error) {
+          console.error(`❌ Resend API error for ${email}:`, result.error);
+          return { email, success: false, error: result.error.message || JSON.stringify(result.error) };
+        }
+
+        if (!result.data?.id) {
+          console.error(`❌ No email ID returned for ${email}`);
+          return { email, success: false, error: 'No email ID returned from Resend API' };
+        }
+
+        console.log(`✅ Test email sent successfully to ${email} (ID: ${result.data.id})`);
+        return { email, success: true, id: result.data.id };
+      } catch (error) {
+        console.error(`❌ Exception sending test email to ${email}:`, error);
+        return { email, success: false, error: error.message || 'Unknown error' };
+      }
+    });
 
     const results = await Promise.all(emailPromises);
 
+    // Check if any emails failed
+    const failed = results.filter(r => !r.success);
+    const succeeded = results.filter(r => r.success);
+
+    if (failed.length > 0 && succeeded.length === 0) {
+      // All failed
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send test emails',
+        message: 'All emails failed to send',
+        testEmails: testEmailAddresses,
+        results,
+        errors: failed.map(f => ({ email: f.email, error: f.error }))
+      });
+    }
+
+    // Some or all succeeded
     res.status(200).json({
       success: true,
-      message: `Test email sent successfully to ${testEmailAddresses.length} recipient(s)`,
+      message: succeeded.length === testEmailAddresses.length
+        ? `Test email sent successfully to ${succeeded.length} recipient(s)`
+        : `Test email sent to ${succeeded.length} of ${testEmailAddresses.length} recipient(s)`,
       testEmails: testEmailAddresses,
-      results: results.map(r => ({ id: r.data?.id, error: r.error }))
+      results,
+      succeeded: succeeded.length,
+      failed: failed.length
     });
   } catch (error) {
     console.error('Error sending test email:', error);
