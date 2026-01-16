@@ -18,9 +18,9 @@ CREATE POLICY "Anyone can view organization request tab defaults"
   ON request_tab_defaults FOR SELECT
   USING (organization_id IS NOT NULL);
 
--- Platform admins can manage platform defaults (INSERT/UPDATE/DELETE)
+-- Platform admins can manage platform defaults (INSERT/UPDATE/DELETE only, not SELECT)
 CREATE POLICY "Platform admins can manage platform request tab defaults"
-  ON request_tab_defaults FOR ALL
+  ON request_tab_defaults FOR INSERT, UPDATE, DELETE
   USING (
     organization_id IS NULL
     AND EXISTS (
@@ -40,9 +40,9 @@ CREATE POLICY "Platform admins can manage platform request tab defaults"
     )
   );
 
--- Organization owners/admins can manage their org defaults
+-- Organization owners/admins can manage their org defaults (INSERT/UPDATE/DELETE only, not SELECT)
 CREATE POLICY "Org admins can manage their org request tab defaults"
-  ON request_tab_defaults FOR ALL
+  ON request_tab_defaults FOR INSERT, UPDATE, DELETE
   USING (
     organization_id IS NOT NULL
     AND (
