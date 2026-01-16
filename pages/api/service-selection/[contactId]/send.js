@@ -27,6 +27,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Contact ID is required' });
   }
 
+  const contactIdString = Array.isArray(contactId) ? contactId[0] : contactId;
+
+  if (!contactIdString || typeof contactIdString !== 'string') {
+    return res.status(400).json({ error: 'Invalid contact ID format' });
+  }
+
   try {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -34,7 +40,7 @@ export default async function handler(req, res) {
     const { data: contact, error: contactError } = await supabaseAdmin
       .from('contacts')
       .select('*')
-      .eq('id', contactId)
+      .eq('id', contactIdString)
       .single();
 
     if (contactError || !contact) {
