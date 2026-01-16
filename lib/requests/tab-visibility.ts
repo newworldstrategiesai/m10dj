@@ -111,6 +111,7 @@ export async function getRequestTabSettings(
 /**
  * Get allowed request types array based on tab visibility settings
  * Returns array like ['song_request', 'shoutout', 'tip'] or subset
+ * Also respects the master toggle for song requests (requests_song_requests_enabled)
  */
 export async function getAllowedRequestTypes(
   organizationId?: string | null
@@ -118,7 +119,31 @@ export async function getAllowedRequestTypes(
   const settings = await getRequestTabSettings(organizationId);
   const allowed: string[] = [];
 
-  if (settings.song_request_enabled) {
+  // Check master toggle for song requests (only for TipJar organizations)
+  let songRequestsMasterEnabled = true;
+  if (organizationId) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .select('product_context, requests_song_requests_enabled')
+        .eq('id', organizationId)
+        .maybeSingle();
+
+      if (!orgError && org) {
+        // Only check master toggle for TipJar organizations
+        if (org.product_context === 'tipjar') {
+          songRequestsMasterEnabled = org.requests_song_requests_enabled !== false;
+        }
+      }
+    } catch (error) {
+      console.warn('[Request Tabs] Error checking master toggle:', error);
+      // Default to enabled on error
+    }
+  }
+
+  // Only include song_request if both tab visibility AND master toggle allow it
+  if (settings.song_request_enabled && songRequestsMasterEnabled) {
     allowed.push('song_request');
   }
   if (settings.shoutout_enabled) {
@@ -128,12 +153,13 @@ export async function getAllowedRequestTypes(
     allowed.push('tip');
   }
 
-  // Always return at least one type (default to song_request if all disabled)
-  return allowed.length > 0 ? allowed : ['song_request'];
+  // Always return at least one type (default to shoutout or tip if song_request disabled)
+  return allowed.length > 0 ? allowed : (settings.shoutout_enabled ? ['shoutout'] : ['tip']);
 }
 
 /**
  * Check if a specific request type is allowed
+ * Also respects the master toggle for song requests (requests_song_requests_enabled)
  */
 export async function isRequestTypeAllowed(
   requestType: 'song_request' | 'shoutout' | 'tip',
@@ -143,6 +169,28 @@ export async function isRequestTypeAllowed(
   
   switch (requestType) {
     case 'song_request':
+      // Check master toggle for song requests (only for TipJar organizations)
+      if (organizationId) {
+        try {
+          const supabase = getSupabaseClient();
+          const { data: org, error: orgError } = await supabase
+            .from('organizations')
+            .select('product_context, requests_song_requests_enabled')
+            .eq('id', organizationId)
+            .maybeSingle();
+
+          if (!orgError && org) {
+            // Only check master toggle for TipJar organizations
+            if (org.product_context === 'tipjar') {
+              const masterEnabled = org.requests_song_requests_enabled !== false;
+              return settings.song_request_enabled && masterEnabled;
+            }
+          }
+        } catch (error) {
+          console.warn('[Request Tabs] Error checking master toggle:', error);
+          // Default to tab visibility setting on error
+        }
+      }
       return settings.song_request_enabled;
     case 'shoutout':
       return settings.shoutout_enabled;

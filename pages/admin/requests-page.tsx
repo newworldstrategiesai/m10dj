@@ -332,6 +332,10 @@ export default function RequestsPageSettings() {
     requests_show_bundle_discount: true
   });
 
+  // Master toggle for song requests (TipJar users only)
+  const [songRequestsEnabled, setSongRequestsEnabled] = useState(true);
+  const [songRequestsSaving, setSongRequestsSaving] = useState(false);
+
   // Request tab visibility settings (for super admin and TipJar users)
   const [requestTabSettings, setRequestTabSettings] = useState({
     song_request_enabled: true,
@@ -780,6 +784,11 @@ export default function RequestsPageSettings() {
           requests_step_2_text: org.requests_step_2_text || 'Step 2 of 2: Payment'
         });
         
+        // Set master toggle for song requests (default to true if not set, only for TipJar)
+        if (org.product_context === 'tipjar') {
+          setSongRequestsEnabled(org.requests_song_requests_enabled !== false);
+        }
+
         // Set feature toggles (default to true if not set)
         setFeatureToggles({
           requests_show_audio_upload: org.requests_show_audio_upload !== false,
@@ -838,6 +847,45 @@ export default function RequestsPageSettings() {
       console.error('Error fetching request tab settings:', error);
     } finally {
       setRequestTabSettingsLoading(false);
+    }
+  };
+
+  // Auto-save master toggle for song requests
+  const handleSongRequestsToggle = async (enabled: boolean) => {
+    if (!organization || organization.product_context !== 'tipjar') return;
+
+    setSongRequestsEnabled(enabled);
+    setSongRequestsSaving(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        setError('Not authenticated');
+        setSongRequestsSaving(false);
+        return;
+      }
+
+      // Save directly to organization
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ requests_song_requests_enabled: enabled })
+        .eq('id', organization.id);
+
+      if (updateError) {
+        throw new Error(updateError.message || 'Failed to save song requests setting');
+      }
+
+      // Show success feedback
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('Error saving song requests setting:', error);
+      setError(error.message || 'Failed to save song requests setting');
+      // Revert on error
+      setSongRequestsEnabled(!enabled);
+    } finally {
+      setSongRequestsSaving(false);
     }
   };
 
@@ -1174,6 +1222,8 @@ export default function RequestsPageSettings() {
         ...headerFields,
         // Label fields
         ...labelFields,
+        // Master toggle for song requests (TipJar only)
+        ...(organization?.product_context === 'tipjar' ? { requests_song_requests_enabled: songRequestsEnabled } : {}),
         // Feature toggles
         ...featureToggles,
         // SEO fields - convert empty strings to null so defaults are used
@@ -4591,6 +4641,52 @@ export default function RequestsPageSettings() {
                 </div>
               ) : activeTab === 'features' ? (
                 <div className="space-y-6">
+                  {/* Master Toggle for Song Requests (TipJar users only) */}
+                  {organization?.product_context === 'tipjar' && (
+                    <div className="bg-gradient-to-r from-[#fcba00]/10 to-[#fcba00]/5 dark:from-[#fcba00]/20 dark:to-[#fcba00]/10 border-2 border-[#fcba00]/30 dark:border-[#fcba00]/40 rounded-xl shadow-lg p-6 sm:p-8">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className={`p-2 rounded-lg ${songRequestsEnabled ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                              <Music className={`w-6 h-6 ${songRequestsEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
+                            </div>
+                            <div>
+                              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                                Song Requests
+                              </h2>
+                              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                {songRequestsEnabled 
+                                  ? 'Song requests are currently enabled. Users can submit song requests on your requests page.'
+                                  : 'Song requests are currently disabled. The song request tab will be hidden and users cannot submit song requests.'}
+                              </p>
+                            </div>
+                          </div>
+                          {!songRequestsEnabled && (
+                            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                              <p className="text-sm text-amber-800 dark:text-amber-200">
+                                <strong>Note:</strong> When disabled, the song request tab will be automatically hidden on your requests page. You can still control Shoutout and Tip tabs independently using the settings below.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <Switch
+                            checked={songRequestsEnabled}
+                            onCheckedChange={handleSongRequestsToggle}
+                            disabled={songRequestsSaving}
+                            className="scale-125"
+                          />
+                          {songRequestsSaving && (
+                            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span>Saving...</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Request Tab Visibility (Super Admin and TipJar users only) */}
                   {(isSuperAdmin || organization?.product_context === 'tipjar') && (
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
@@ -4601,7 +4697,7 @@ export default function RequestsPageSettings() {
                             Request Tab Visibility
                           </h2>
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Control which tabs (Song Request, Shoutout, Tip) are visible on your requests page
+                            Control which tabs (Shoutout, Tip) are visible on your requests page. Song requests are controlled by the master toggle above.
                           </p>
                         </div>
                         <button
@@ -4619,18 +4715,34 @@ export default function RequestsPageSettings() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                          <div className={`flex items-center justify-between p-4 rounded-lg ${
+                            !songRequestsEnabled ? 'bg-gray-100 dark:bg-gray-800/50 opacity-60' : 'bg-gray-50 dark:bg-gray-700/50'
+                          }`}>
                             <div className="flex items-center gap-3">
                               <Music className="w-5 h-5 text-gray-400" />
                               <div>
-                                <p className="font-medium text-gray-900 dark:text-white">Song Request Tab</p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Allow users to request songs</p>
+                                <p className="font-medium text-gray-900 dark:text-white">
+                                  Song Request Tab
+                                  {!songRequestsEnabled && (
+                                    <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(Disabled by master toggle)</span>
+                                  )}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {!songRequestsEnabled 
+                                    ? 'Song requests are disabled via the master toggle above'
+                                    : 'Allow users to request songs'}
+                                </p>
                               </div>
                             </div>
                             <Switch
-                              checked={requestTabSettings.song_request_enabled}
+                              checked={requestTabSettings.song_request_enabled && songRequestsEnabled}
                               onCheckedChange={(checked) => {
-                                // Ensure at least one tab is enabled
+                                // If master toggle is off, don't allow enabling via tab visibility
+                                if (!songRequestsEnabled) {
+                                  setError('Enable song requests using the master toggle above first');
+                                  return;
+                                }
+                                // Ensure at least one tab is enabled (only check shoutout and tip since song_request can be disabled)
                                 if (!checked && !requestTabSettings.shoutout_enabled && !requestTabSettings.tip_enabled) {
                                   setError('At least one tab must be enabled');
                                   return;
@@ -4639,6 +4751,7 @@ export default function RequestsPageSettings() {
                                 setError(null);
                                 setSuccess(false);
                               }}
+                              disabled={!songRequestsEnabled}
                             />
                           </div>
                           
@@ -4654,7 +4767,9 @@ export default function RequestsPageSettings() {
                               checked={requestTabSettings.shoutout_enabled}
                               onCheckedChange={(checked) => {
                                 // Ensure at least one tab is enabled
-                                if (!checked && !requestTabSettings.song_request_enabled && !requestTabSettings.tip_enabled) {
+                                // If song requests are disabled via master toggle, only check shoutout and tip
+                                const songRequestAvailable = songRequestsEnabled && requestTabSettings.song_request_enabled;
+                                if (!checked && !songRequestAvailable && !requestTabSettings.tip_enabled) {
                                   setError('At least one tab must be enabled');
                                   return;
                                 }
@@ -4677,7 +4792,9 @@ export default function RequestsPageSettings() {
                               checked={requestTabSettings.tip_enabled}
                               onCheckedChange={(checked) => {
                                 // Ensure at least one tab is enabled
-                                if (!checked && !requestTabSettings.song_request_enabled && !requestTabSettings.shoutout_enabled) {
+                                // If song requests are disabled via master toggle, only check shoutout and tip
+                                const songRequestAvailable = songRequestsEnabled && requestTabSettings.song_request_enabled;
+                                if (!checked && !songRequestAvailable && !requestTabSettings.shoutout_enabled) {
                                   setError('At least one tab must be enabled');
                                   return;
                                 }

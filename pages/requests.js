@@ -240,6 +240,7 @@ export function GeneralRequestsPage({
   // State for tab visibility settings
   const [tabVisibilitySettings, setTabVisibilitySettings] = useState(null);
   const [effectiveAllowedTypes, setEffectiveAllowedTypes] = useState(allowedRequestTypes);
+  const [songRequestsDisabled, setSongRequestsDisabled] = useState(false);
   
   // Fetch tab visibility settings when organizationId is available
   useEffect(() => {
@@ -254,6 +255,7 @@ export function GeneralRequestsPage({
       if (!organizationId) {
         // Default to all types if no org
         setEffectiveAllowedTypes(['song_request', 'shoutout', 'tip']);
+        setSongRequestsDisabled(false);
         return;
       }
 
@@ -261,16 +263,27 @@ export function GeneralRequestsPage({
         const { getAllowedRequestTypes } = await import('@/lib/requests/tab-visibility');
         const allowed = await getAllowedRequestTypes(organizationId);
         setEffectiveAllowedTypes(allowed);
-        console.log('[Requests] Tab visibility settings loaded:', allowed);
+        
+        // Check if song requests are disabled via master toggle
+        // This is separate from tab visibility - master toggle takes precedence
+        if (organizationData?.product_context === 'tipjar') {
+          const isDisabled = organizationData?.requests_song_requests_enabled === false;
+          setSongRequestsDisabled(isDisabled);
+        } else {
+          setSongRequestsDisabled(false);
+        }
+        
+        console.log('[Requests] Tab visibility settings loaded:', allowed, 'Song requests disabled:', organizationData?.requests_song_requests_enabled === false);
       } catch (error) {
         console.warn('[Requests] Error fetching tab visibility settings:', error);
         // Default to all types on error
         setEffectiveAllowedTypes(['song_request', 'shoutout', 'tip']);
+        setSongRequestsDisabled(false);
       }
     }
 
     fetchTabSettings();
-  }, [organizationId, allowedRequestTypes]);
+  }, [organizationId, allowedRequestTypes, organizationData]);
   // CRITICAL: Initialize router FIRST before any other code to prevent TDZ errors
   const router = useRouter();
   
@@ -1799,6 +1812,13 @@ export function GeneralRequestsPage({
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+    
+    // Prevent submission if song requests are disabled
+    if (requestType === 'song_request' && songRequestsDisabled) {
+      logger.warn('[handleSubmit] Song requests are disabled, preventing submission');
+      setError('Song requests are currently unavailable. Please use Shoutout or Tip instead.');
+      return;
     }
     
     // Prevent double submission
@@ -5104,6 +5124,24 @@ export function GeneralRequestsPage({
                   {/* Song Request Fields */}
                   {requestType === 'song_request' && (
                     <div className="space-y-2 sm:space-y-2.5">
+                      {/* Notice when song requests are disabled */}
+                      {songRequestsDisabled && (
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-lg p-4 sm:p-5 mb-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-sm sm:text-base font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                                Song Requests Currently Unavailable
+                              </h3>
+                              <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                                Song requests have been temporarily disabled. Please use the <strong>Shoutout</strong> or <strong>Tip</strong> options instead, or check back later.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       {/* Unified Song Name/URL Input */}
                       <div>
                         <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
