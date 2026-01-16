@@ -2349,6 +2349,28 @@ export default function PersonalizedQuote() {
       <>
         <Head>
           <title>Loading Your Quote | M10 DJ Company</title>
+          <meta name="description" content="Loading your personalized DJ services quote" />
+          <meta name="robots" content="noindex, nofollow" />
+          
+          {/* Open Graph / Facebook */}
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
+          <meta property="og:title" content="Your Personalized Quote | M10 DJ Company" />
+          <meta property="og:description" content="Select your perfect DJ package and customize your event" />
+          <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
+          <meta property="og:image:secure_url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="Service Selection - M10 DJ Company" />
+          <meta property="og:image:type" content="image/png" />
+          <meta property="og:site_name" content="M10 DJ Company" />
+          
+          {/* Twitter Card */}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
+          <meta name="twitter:title" content="Your Personalized Quote | M10 DJ Company" />
+          <meta name="twitter:description" content="Select your perfect DJ package and customize your event" />
+          <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
         </Head>
         {/* Simplified Header with Logo Only */}
         <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
@@ -2382,6 +2404,28 @@ export default function PersonalizedQuote() {
       <>
         <Head>
           <title>Quote Not Found | M10 DJ Company</title>
+          <meta name="description" content="Quote not found. Please contact us to get your personalized quote." />
+          <meta name="robots" content="noindex, nofollow" />
+          
+          {/* Open Graph / Facebook */}
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
+          <meta property="og:title" content="Quote Not Found | M10 DJ Company" />
+          <meta property="og:description" content="Quote not found. Please contact us to get your personalized quote." />
+          <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
+          <meta property="og:image:secure_url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="Service Selection - M10 DJ Company" />
+          <meta property="og:image:type" content="image/png" />
+          <meta property="og:site_name" content="M10 DJ Company" />
+          
+          {/* Twitter Card */}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
+          <meta name="twitter:title" content="Quote Not Found | M10 DJ Company" />
+          <meta name="twitter:description" content="Quote not found. Please contact us to get your personalized quote." />
+          <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
         </Head>
         {/* Simplified Header with Logo Only */}
         <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
