@@ -24,8 +24,13 @@ export interface RequestTabDefaults {
   notes: string | null;
 }
 
+// Singleton client instances to prevent multiple GoTrueClient instances
+let clientSideSupabaseInstance: ReturnType<typeof createClient> | null = null;
+let serverSideSupabaseInstance: ReturnType<typeof createClient> | null = null;
+
 /**
  * Get Supabase client (server-side with service role, client-side with anon key)
+ * Uses singleton pattern to prevent multiple GoTrueClient instances
  */
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -36,13 +41,29 @@ function getSupabaseClient() {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL is not configured');
   }
 
-  // Prefer service role key for server-side operations
-  const key = serviceRoleKey || anonKey;
-  if (!key) {
-    throw new Error('Supabase key is not configured');
-  }
+  // Check if we're on the client side
+  const isClient = typeof window !== 'undefined';
 
-  return createClient(supabaseUrl, key);
+  if (isClient) {
+    // Client-side: use anon key and singleton pattern
+    if (!anonKey) {
+      throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured');
+    }
+    if (!clientSideSupabaseInstance) {
+      clientSideSupabaseInstance = createClient(supabaseUrl, anonKey);
+    }
+    return clientSideSupabaseInstance;
+  } else {
+    // Server-side: use service role key and singleton pattern
+    const key = serviceRoleKey || anonKey;
+    if (!key) {
+      throw new Error('Supabase key is not configured');
+    }
+    if (!serverSideSupabaseInstance) {
+      serverSideSupabaseInstance = createClient(supabaseUrl, key);
+    }
+    return serverSideSupabaseInstance;
+  }
 }
 
 /**
