@@ -7,10 +7,12 @@ import { ClientIdempotencyTracker } from '../../utils/idempotency';
 import { validateContactForm } from '../../utils/form-validator';
 import ContactFormChat from './ContactFormChat';
 import VenueInput from './VenueInput';
+import { useToast } from '@/components/ui/Toasts/use-toast';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackLead, trackContactAction } from '../EnhancedTracking';
 
 export default function ContactForm({ className = '', showSubmitButton = true, isSubmitOnly = false, modalLayout = false, organizationId = null }) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -487,6 +489,14 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
             console.log('✅ Will use form data fallback for quote page');
           }
         }
+        
+        // Show success toast notification
+        toast({
+          title: 'Form Submitted Successfully!',
+          description: 'Thank you for your submission. We\'ll get back to you soon!',
+          duration: 3000,
+        });
+        
         setSubmitted(true);
         
         // Reset idempotency key for potential future submissions
