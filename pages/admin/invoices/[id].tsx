@@ -1822,12 +1822,30 @@ export default function InvoiceDetailPage() {
       let paymentsData = [];
       let paymentData = null;
       let hasPayment = false;
-      
-      if (invoice && invoice.contact_id) {
+
+      // First check if this invoice is associated with a quote_selection
+      let quoteSelectionId: string | null = null;
+      if (invoice && invoice.id) {
+        try {
+          const { data: quoteSelection } = await supabase
+            .from('quote_selections')
+            .select('id')
+            .eq('invoice_id', invoice.id)
+            .single();
+
+          if (quoteSelection && (quoteSelection as any)?.id) {
+            quoteSelectionId = (quoteSelection as any).id;
+          }
+        } catch (error) {
+          console.log('No quote selection found for this invoice, skipping quote-related fetches');
+        }
+      }
+
+      if (invoice && quoteSelectionId) {
         try {
           const timestamp = new Date().getTime();
-          const paymentsResponse = await fetch(`/api/quote/${invoice.contact_id}/payments?_t=${timestamp}`, { 
-            cache: 'no-store' 
+          const paymentsResponse = await fetch(`/api/quote/${quoteSelectionId}/payments?_t=${timestamp}`, {
+            cache: 'no-store'
           });
           
           if (paymentsResponse.ok) {
@@ -1893,11 +1911,11 @@ export default function InvoiceDetailPage() {
 
       // Fetch lead/contact data using the same API endpoint as the quote page
       // This ensures we get the accurate event date (same as quote page)
-      if (invoice && invoice.contact_id) {
+      if (invoice && quoteSelectionId) {
         try {
           const timestamp = new Date().getTime();
-          const leadResponse = await fetch(`/api/leads/get-lead?id=${invoice.contact_id}&_t=${timestamp}`, { 
-            cache: 'no-store' 
+          const leadResponse = await fetch(`/api/leads/get-lead?id=${quoteSelectionId}&_t=${timestamp}`, {
+            cache: 'no-store'
           });
           
           if (leadResponse.ok) {
@@ -1917,12 +1935,12 @@ export default function InvoiceDetailPage() {
       // Fetch quote_selections data using the same API endpoint as the quote page
       // This ensures consistency and handles all the same parsing logic
       let quoteData = null;
-      
-      if (invoice && invoice.contact_id) {
-        console.log('🔍 Fetching quote data for contact_id:', invoice.contact_id);
+
+      if (invoice && quoteSelectionId) {
+        console.log('🔍 Fetching quote data for quote_selection_id:', quoteSelectionId);
         try {
           const timestamp = new Date().getTime();
-          const quoteResponse = await fetch(`/api/quote/${invoice.contact_id}?_t=${timestamp}`, { 
+          const quoteResponse = await fetch(`/api/quote/${quoteSelectionId}?_t=${timestamp}`, { 
             cache: 'no-store' 
           });
           
