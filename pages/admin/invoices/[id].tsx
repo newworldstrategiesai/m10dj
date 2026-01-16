@@ -1743,55 +1743,69 @@ export default function InvoiceDetailPage() {
           let finalLineItems: InvoiceLineItem[] = [];
           
           // Fetch invoice directly to get line_items JSONB field
-          const { data: directInvoiceData, error: directInvoiceError } = await supabase
-            .from('invoices')
-            .select('line_items')
-            .eq('id', id)
-            .single();
-          
-          // Type assertion for the invoice data
-          const lineItemsData = directInvoiceData as { line_items?: any } | null;
-          
-          console.log('📦 Direct invoice fetch for line_items:', {
-            has_data: !!lineItemsData,
-            line_items: lineItemsData?.line_items,
-            error: directInvoiceError
-          });
-          
-          if (lineItemsData?.line_items) {
-            try {
-              // Parse the JSONB line_items field
-              const jsonLineItems = typeof lineItemsData.line_items === 'string' 
-                ? JSON.parse(lineItemsData.line_items) 
-                : lineItemsData.line_items;
-              
-              console.log('📦 Parsed JSON line items:', {
-                is_array: Array.isArray(jsonLineItems),
-                length: Array.isArray(jsonLineItems) ? jsonLineItems.length : 0,
-                items: jsonLineItems
+          // Handle 406 errors gracefully (may occur with certain RLS policies or query formats)
+          try {
+            const { data: directInvoiceData, error: directInvoiceError } = await supabase
+              .from('invoices')
+              .select('line_items')
+              .eq('id', id)
+              .single();
+            
+            // Type assertion for the invoice data
+            const lineItemsData = directInvoiceData as { line_items?: any } | null;
+            
+            // Only log errors that aren't 406 (406 is handled gracefully)
+            if (directInvoiceError && directInvoiceError.code !== 'PGRST116' && !directInvoiceError.message?.includes('406')) {
+              console.log('📦 Line items query info:', {
+                has_data: !!lineItemsData,
+                error_code: directInvoiceError.code,
+                error_message: directInvoiceError.message
               });
-              
-              if (Array.isArray(jsonLineItems) && jsonLineItems.length > 0) {
-                // Convert JSONB format to invoice_line_items format for display
-                finalLineItems = jsonLineItems.map((item: any, index: number) => {
-                  const unitPrice = item.rate || item.unit_price || 0;
-                  const quantity = item.quantity || 1;
-                  const amount = item.amount || (unitPrice * quantity);
-                  
-                  return {
-                    id: `json-${index}`, // Generate a temporary ID
-                    description: item.description || '',
-                    quantity: quantity,
-                    unit_price: unitPrice,
-                    total_amount: amount,
-                    item_type: item.type || 'custom',
-                    notes: item.notes || null
-                  };
+            }
+            
+            if (lineItemsData?.line_items) {
+              try {
+                // Parse the JSONB line_items field
+                const jsonLineItems = typeof lineItemsData.line_items === 'string' 
+                  ? JSON.parse(lineItemsData.line_items) 
+                  : lineItemsData.line_items;
+                
+                console.log('📦 Parsed JSON line items:', {
+                  is_array: Array.isArray(jsonLineItems),
+                  length: Array.isArray(jsonLineItems) ? jsonLineItems.length : 0,
+                  items: jsonLineItems
                 });
-                console.log('📦 Converted line items for display:', finalLineItems);
+                
+                if (Array.isArray(jsonLineItems) && jsonLineItems.length > 0) {
+                  // Convert JSONB format to invoice_line_items format for display
+                  finalLineItems = jsonLineItems.map((item: any, index: number) => {
+                    const unitPrice = item.rate || item.unit_price || 0;
+                    const quantity = item.quantity || 1;
+                    const amount = item.amount || (unitPrice * quantity);
+                    
+                    return {
+                      id: `json-${index}`, // Generate a temporary ID
+                      description: item.description || '',
+                      quantity: quantity,
+                      unit_price: unitPrice,
+                      total_amount: amount,
+                      item_type: item.type || 'custom',
+                      notes: item.notes || null
+                    };
+                  });
+                  console.log('📦 Converted line items for display:', finalLineItems);
+                }
+              } catch (e) {
+                console.error('Error parsing invoice.line_items JSONB:', e, lineItemsData?.line_items);
               }
-            } catch (e) {
-              console.error('Error parsing invoice.line_items JSONB:', e, lineItemsData?.line_items);
+            }
+          } catch (queryError: any) {
+            // Handle 406 or other query errors gracefully
+            if (queryError?.status === 406 || queryError?.message?.includes('406')) {
+              // 406 Not Acceptable - can occur with certain query formats, continue without line items
+              console.log('📦 Line items query returned 406, skipping (this is expected in some cases)');
+            } else {
+              console.warn('Error fetching line items (non-critical):', queryError);
             }
           }
       
@@ -1834,12 +1848,14 @@ export default function InvoiceDetailPage() {
               }
             }
           } else if (paymentsResponse.status === 404) {
-            // API route doesn't exist - use fallback
-            console.log('⚠️ Payments API route not found, using direct query');
+            // API route doesn't exist - use fallback (expected if API route not implemented)
             throw new Error('API route not found');
           }
-        } catch (error) {
-          console.warn('Error fetching payments from API, using fallback:', error);
+        } catch (error: any) {
+          // Only log if it's not a 404 (404 is expected and handled by fallback)
+          if (error?.message !== 'API route not found') {
+            console.warn('Error fetching payments from API, using fallback:', error);
+          }
           // Fallback to direct query
           try {
             const { data: fallbackPayments, error: paymentsError } = await supabase
@@ -1939,8 +1955,8 @@ export default function InvoiceDetailPage() {
                 .eq('id', (quote as any).id);
             }
           } else if (quoteResponse.status === 404) {
-            // API route doesn't exist - skip quote data gracefully
-            console.log('⚠️ Quote API route not found, skipping quote data');
+            // API route doesn't exist - skip quote data gracefully (expected if no quote exists)
+            // Don't log this as it's normal for invoices without quotes
           } else {
             const errorData = await quoteResponse.json().catch(() => ({}));
             console.warn('⚠️ Failed to fetch quote from API:', quoteResponse.status, errorData);
@@ -1989,7 +2005,7 @@ export default function InvoiceDetailPage() {
         
         setQuoteData(parsedQuoteData);
       } else {
-        console.warn('⚠️ No quote data found for invoice:', id);
+        // No quote data is expected for invoices created without quotes - don't warn
         setQuoteData(null);
       }
 
