@@ -609,9 +609,45 @@ export default function CrowdRequestSuccessPage() {
                   ? 'Your song is playing right now! Enjoy!'
                   : request?.status === 'played'
                     ? 'Your song has been played. Thanks for making the party great!'
-                    : 'Payment successful! Your request has been submitted.'
+                    : request?.payment_method === 'cash'
+                      ? 'Request submitted! Please see cash payment instructions below.'
+                      : 'Payment successful! Your request has been submitted.'
                 }
               </p>
+
+              {/* Cash Payment Instructions - Show special message for cash payments */}
+              {request?.payment_method === 'cash' && (
+                <div className="bg-yellow-50 dark:bg-amber-950/30 border-2 border-yellow-400 dark:border-amber-600/50 rounded-xl p-6 md:p-8 mb-6 md:mb-8">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-full bg-yellow-100 dark:bg-amber-900/50 flex items-center justify-center">
+                      <svg className="w-7 h-7 md:w-8 md:h-8 text-yellow-700 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg md:text-xl font-bold text-yellow-900 dark:text-yellow-100 mb-3">
+                        💵 Cash Payment Instructions
+                      </h3>
+                      <div className="space-y-3 text-base md:text-lg text-yellow-800 dark:text-yellow-200">
+                        <p className="font-semibold">
+                          Please hand your cash payment directly to the DJ or place it in the tip jar.
+                        </p>
+                        <div className="bg-white dark:bg-amber-900/20 rounded-lg p-4 mt-4">
+                          <p className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                            Payment Amount:
+                          </p>
+                          <p className="text-2xl md:text-3xl font-bold text-yellow-700 dark:text-yellow-300">
+                            ${((request?.amount_paid || request?.amount_requested) / 100).toFixed(2)}
+                          </p>
+                        </div>
+                        <p className="text-sm md:text-base text-yellow-700 dark:text-yellow-300/90 mt-4 pt-4 border-t border-yellow-300 dark:border-yellow-700/50">
+                          <strong>Note:</strong> Your request has been submitted and will be processed once the DJ receives your cash payment.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {request && (
                 <div className="bg-blue-50 dark:bg-neutral-900/80 dark:border dark:border-neutral-800 rounded-xl p-5 md:p-6 mb-6 md:mb-8 text-left dark:backdrop-blur-sm">
