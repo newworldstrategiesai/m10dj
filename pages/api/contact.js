@@ -564,41 +564,71 @@ export default async function handler(req, res) {
     // Don't filter by user_id since contact forms can create unassigned contacts
     let existingContact = null;
     try {
-      if (email) {
-        const { data: emailMatch, error: emailError } = await supabase
+      // Normalize email for comparison
+      const normalizedEmail = email ? email.toLowerCase().trim() : null;
+      
+      if (normalizedEmail) {
+        // Check for existing contact by email (case-insensitive using LOWER)
+        // Use a query that handles case-insensitive matching
+        const { data: emailMatches, error: emailError } = await supabase
           .from('contacts')
           .select('*')
-          .eq('email_address', email)
           .is('deleted_at', null)
-          .maybeSingle(); // Use maybeSingle() instead of single() to handle no results
+          .not('email_address', 'is', null);
           
-        if (emailError && emailError.code !== 'PGRST116') {
-          // PGRST116 is "not found" which is fine
+        if (!emailError && emailMatches) {
+          // Find match by normalized email (case-insensitive)
+          const emailMatch = emailMatches.find(c => {
+            const contactEmail = (c.email_address || '').toLowerCase().trim();
+            return contactEmail === normalizedEmail && contactEmail.length > 0;
+          });
+          
+          if (emailMatch) {
+            existingContact = emailMatch;
+            console.log('✅ Found existing contact by email:', emailMatch.id, emailMatch.email_address);
+          }
+        } else if (emailError && emailError.code !== 'PGRST116') {
           console.warn('Error checking for existing email:', emailError);
-        } else {
-          existingContact = emailMatch;
         }
       }
       
+      // If no email match, check by phone (normalized)
       if (!existingContact && phone) {
         const cleanPhone = phone.replace(/\D/g, ''); // Remove non-digits
         if (cleanPhone.length >= 10) { // Only search if phone is valid
-          const { data: phoneMatch, error: phoneError } = await supabase
+          const last10Digits = cleanPhone.slice(-10); // Last 10 digits for matching
+          
+          // Get contacts with phone numbers and check normalized
+          const { data: phoneMatches, error: phoneError } = await supabase
             .from('contacts')
             .select('*')
-            .ilike('phone', `%${cleanPhone}%`)
             .is('deleted_at', null)
-            .maybeSingle();
+            .not('phone', 'is', null);
             
-          if (phoneError && phoneError.code !== 'PGRST116') {
+          if (!phoneError && phoneMatches) {
+            // Find match by normalized phone (last 10 digits)
+            const phoneMatch = phoneMatches.find(c => {
+              const contactPhone = (c.phone || '').replace(/\D/g, '');
+              if (contactPhone.length >= 10) {
+                const contactLast10 = contactPhone.slice(-10);
+                return contactLast10 === last10Digits;
+              }
+              return false;
+            });
+            
+            if (phoneMatch) {
+              existingContact = phoneMatch;
+              console.log('✅ Found existing contact by phone:', phoneMatch.id, phoneMatch.phone);
+            }
+          } else if (phoneError && phoneError.code !== 'PGRST116') {
             console.warn('Error checking for existing phone:', phoneError);
-          } else {
-            existingContact = phoneMatch;
           }
         }
       }
     } catch (lookupError) {
-      console.warn('Error during contact lookup (continuing):', lookupError);
+      console.error('❌ Error during contact lookup:', lookupError);
+      // Don't create duplicate if lookup fails - log error but continue
+      // We'll handle this more gracefully by checking before insert
     }
     
     // CRITICAL: Contact creation with retry logic
