@@ -149,10 +149,40 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (user && id) {
-      fetchProject();
-      fetchInvoices();
+      if (id === 'new') {
+        // Initialize new project form
+        setProject({
+          id: '',
+          event_name: '',
+          client_name: '',
+          client_email: '',
+          client_phone: null,
+          event_type: '',
+          event_date: new Date().toISOString().split('T')[0],
+          start_time: null,
+          end_time: null,
+          event_time: null,
+          venue_name: null,
+          venue_address: null,
+          number_of_guests: null,
+          event_duration: null,
+          special_requests: null,
+          playlist_notes: null,
+          timeline_notes: null,
+          status: 'pending',
+          audio_tracking_enabled: false,
+          organization_id: organizationId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+        setIsEditing(true);
+        setLoading(false);
+      } else {
+        fetchProject();
+        fetchInvoices();
+      }
     }
-  }, [user, id]);
+  }, [user, id, organizationId]);
 
   const checkUser = async () => {
     try {
@@ -223,10 +253,12 @@ export default function ProjectDetailPage() {
     if (!project) return;
 
     setSaving(true);
+    const isNewProject = id === 'new' || !project.id;
     try {
-      const { error } = await (supabase
-        .from('events') as any)
-        .update({
+      
+      if (isNewProject) {
+        // Create new project
+        const projectData: any = {
           event_name: project.event_name,
           client_name: project.client_name,
           client_email: project.client_email,
@@ -244,37 +276,86 @@ export default function ProjectDetailPage() {
           timeline_notes: project.timeline_notes,
           status: project.status,
           audio_tracking_enabled: project.audio_tracking_enabled ?? false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', project.id);
+          organization_id: organizationId || project.organization_id
+        };
 
-      if (error) {
-        console.error('Error updating project:', error);
+        const { data: newProject, error } = await (supabase
+          .from('events') as any)
+          .insert([projectData])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating project:', error);
+          toast({
+            title: "Error",
+            description: "Failed to create project",
+            variant: "destructive"
+          });
+          return;
+        }
+
         toast({
-          title: "Error",
-          description: "Failed to update project",
-          variant: "destructive"
+          title: "Success",
+          description: "Project created successfully",
         });
-        return;
+        
+        // Redirect to the new project's detail page
+        router.push(`/admin/projects/${newProject.id}`);
+      } else {
+        // Update existing project
+        const { error } = await (supabase
+          .from('events') as any)
+          .update({
+            event_name: project.event_name,
+            client_name: project.client_name,
+            client_email: project.client_email,
+            client_phone: project.client_phone,
+            event_type: project.event_type,
+            event_date: project.event_date,
+            start_time: project.start_time,
+            end_time: project.end_time,
+            venue_name: project.venue_name,
+            venue_address: project.venue_address,
+            number_of_guests: project.number_of_guests,
+            event_duration: project.event_duration,
+            special_requests: project.special_requests,
+            playlist_notes: project.playlist_notes,
+            timeline_notes: project.timeline_notes,
+            status: project.status,
+            audio_tracking_enabled: project.audio_tracking_enabled ?? false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', project.id);
+
+        if (error) {
+          console.error('Error updating project:', error);
+          toast({
+            title: "Error",
+            description: "Failed to update project",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Sync venue data to linked contact
+        await syncVenueFromProjectToContact(project.id, {
+          venue_name: project.venue_name,
+          venue_address: project.venue_address,
+        });
+
+        toast({
+          title: "Success",
+          description: "Project updated successfully",
+        });
+        setIsEditing(false);
+        await fetchProject(); // Refresh the project data
       }
-
-      // Sync venue data to linked contact
-      await syncVenueFromProjectToContact(project.id, {
-        venue_name: project.venue_name,
-        venue_address: project.venue_address,
-      });
-
-      toast({
-        title: "Success",
-        description: "Project updated successfully",
-      });
-      setIsEditing(false);
-      await fetchProject(); // Refresh the project data
     } catch (error) {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Failed to update project",
+        description: isNewProject ? "Failed to create project" : "Failed to update project",
         variant: "destructive"
       });
     } finally {
@@ -343,14 +424,14 @@ export default function ProjectDetailPage() {
     );
   }
 
-  if (!project) {
+  if (!project && id !== 'new') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-16 lg:pt-0 px-4">
         <div className="text-center">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Project Not Found</h1>
           <p className="text-sm sm:text-base text-gray-600 mb-6">The project you're looking for doesn't exist or you don't have access to it.</p>
-          <Link href="/admin/contacts">
-            <Button>Back to Contacts</Button>
+          <Link href="/admin/projects">
+            <Button>Back to Projects</Button>
           </Link>
         </div>
       </div>
@@ -371,7 +452,9 @@ export default function ProjectDetailPage() {
                 </Button>
               </Link>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">{project.event_name}</h1>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
+                  {id === 'new' ? 'New Project' : (project.event_name || 'Project')}
+                </h1>
                 <p className="text-sm text-gray-600">Project Details</p>
               </div>
             </div>
