@@ -63,7 +63,10 @@ function generateInvoiceFooterMessage(invoice, contact = null) {
  */
 export default async function handler(req, res) {
   // CRITICAL: Always set JSON content type first to prevent HTML 404 responses
-  res.setHeader('Content-Type', 'application/json');
+  // This must be done BEFORE any async operations to ensure we always return JSON
+  if (!res.headersSent) {
+    res.setHeader('Content-Type', 'application/json');
+  }
   
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -80,13 +83,43 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Validate environment variables before proceeding
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('[Invoice Preview API] Missing environment variables:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseServiceKey
+    });
+    return res.status(500).json({ 
+      error: 'Server configuration error',
+      message: 'Missing required environment variables'
+    });
+  }
+
+  // Require admin authentication with better error handling
+  let user;
   try {
-    // Require admin authentication
-    await requireAdmin(req, res);
-  } catch (error) {
-    if (res.headersSent) return;
-    console.error('[Invoice Preview API] Auth error:', error);
-    return res.status(401).json({ error: 'Unauthorized' });
+    user = await requireAdmin(req, res);
+    if (!user) {
+      if (!res.headersSent) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      return;
+    }
+  } catch (authError) {
+    // requireAdmin throws errors, so catching here means auth failed
+    if (res.headersSent) {
+      // Headers already sent, can't send response
+      return;
+    }
+    console.error('[Invoice Preview API] Auth error:', {
+      message: authError?.message,
+      name: authError?.name,
+      stack: authError?.stack?.substring(0, 200)
+    });
+    return res.status(401).json({ 
+      error: 'Unauthorized',
+      message: 'Authentication failed'
+    });
   }
 
   const { id: invoiceId } = req.query;
@@ -342,17 +375,23 @@ export default async function handler(req, res) {
       contactId: invoice.contact_id || invoice.contacts?.id
     });
   } catch (error) {
-    console.error('[Invoice Preview API] Error previewing invoice email:', error);
+    console.error('[Invoice Preview API] Error previewing invoice email:', {
+      message: error?.message,
+      name: error?.name,
+      stack: error?.stack?.substring(0, 500)
+    });
     const errorMessage = error instanceof Error ? error.message : 'Failed to preview email';
     
-    // Ensure JSON response even on error
+    // Ensure JSON response even on error - CRITICAL to prevent HTML 404
     if (!res.headersSent) {
       res.setHeader('Content-Type', 'application/json');
+      res.status(500).json({ 
+        error: 'Failed to preview email',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      });
+    } else {
+      // Headers already sent, log but can't send response
+      console.error('[Invoice Preview API] Headers already sent, cannot send error response');
     }
-    
-    res.status(500).json({ 
-      error: 'Failed to preview email',
-      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
-    });
   }
 }
