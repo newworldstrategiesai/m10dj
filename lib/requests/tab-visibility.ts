@@ -87,10 +87,11 @@ export async function getRequestTabSettings(
       if (orgError) {
         console.warn('[Request Tabs] Error fetching org defaults:', orgError);
       } else if (orgDefaults) {
+        const defaults = orgDefaults as any;
         return {
-          song_request_enabled: orgDefaults.song_request_enabled ?? true,
-          shoutout_enabled: orgDefaults.shoutout_enabled ?? true,
-          tip_enabled: orgDefaults.tip_enabled ?? true,
+          song_request_enabled: defaults.song_request_enabled ?? true,
+          shoutout_enabled: defaults.shoutout_enabled ?? true,
+          tip_enabled: defaults.tip_enabled ?? true,
         };
       }
     }
@@ -105,10 +106,11 @@ export async function getRequestTabSettings(
     if (platformError) {
       console.warn('[Request Tabs] Error fetching platform defaults:', platformError);
     } else if (platformDefaults) {
+      const defaults = platformDefaults as any;
       return {
-        song_request_enabled: platformDefaults.song_request_enabled ?? true,
-        shoutout_enabled: platformDefaults.shoutout_enabled ?? true,
-        tip_enabled: platformDefaults.tip_enabled ?? true,
+        song_request_enabled: defaults.song_request_enabled ?? true,
+        shoutout_enabled: defaults.shoutout_enabled ?? true,
+        tip_enabled: defaults.tip_enabled ?? true,
       };
     }
 
@@ -152,9 +154,10 @@ export async function getAllowedRequestTypes(
         .maybeSingle();
 
       if (!orgError && org) {
+        const orgData = org as any;
         // Only check master toggle for TipJar organizations
-        if (org.product_context === 'tipjar') {
-          songRequestsMasterEnabled = org.requests_song_requests_enabled !== false;
+        if (orgData.product_context === 'tipjar') {
+          songRequestsMasterEnabled = orgData.requests_song_requests_enabled !== false;
         }
       }
     } catch (error) {
@@ -201,9 +204,10 @@ export async function isRequestTypeAllowed(
             .maybeSingle();
 
           if (!orgError && org) {
+            const orgData = org as any;
             // Only check master toggle for TipJar organizations
-            if (org.product_context === 'tipjar') {
-              const masterEnabled = org.requests_song_requests_enabled !== false;
+            if (orgData.product_context === 'tipjar') {
+              const masterEnabled = orgData.requests_song_requests_enabled !== false;
               return settings.song_request_enabled && masterEnabled;
             }
           }

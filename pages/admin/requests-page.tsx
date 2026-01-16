@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import AdminPageLayout from '@/components/layouts/AdminPageLayout';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -31,7 +31,9 @@ import {
   Link as LinkIcon,
   MessageCircle,
   Mic,
-  Gift
+  Gift,
+  Zap,
+  ChevronUp
 } from 'lucide-react';
 import {
   Dialog,
@@ -148,6 +150,31 @@ export default function RequestsPageSettings() {
   // Priority placement fees
   const [fastTrackFee, setFastTrackFee] = useState(1000); // In cents, default $10
   const [nextFee, setNextFee] = useState(2000); // In cents, default $20
+
+  // Advanced Fast Track controls
+  const [fastTrackControls, setFastTrackControls] = useState({
+    display_mode: 'conditional' as 'always' | 'conditional' | 'never',
+    display_style: 'compact' as 'compact' | 'expanded' | 'inline' | 'separate',
+    min_amount: null as number | null, // In cents, null = use default logic
+    min_percentage: null as number | null, // Percentage of top preset (e.g., 50 = 50%), null = use default
+    label: '' as string, // Custom label, empty = use default "Fast-Track"
+    description: '' as string, // Custom description/help text
+    icon: '' as string, // Icon name from lucide-react, empty = use default
+  });
+
+  // Advanced Next Song controls
+  const [nextControls, setNextControls] = useState({
+    display_mode: 'conditional' as 'always' | 'conditional' | 'never',
+    display_style: 'compact' as 'compact' | 'expanded' | 'inline' | 'separate',
+    min_amount: null as number | null,
+    min_percentage: null as number | null,
+    label: '' as string, // Custom label, empty = use default "Next Song"
+    description: '' as string,
+    icon: '' as string,
+  });
+
+  // Button display order
+  const [priorityButtonsOrder, setPriorityButtonsOrder] = useState<'fast_track_first' | 'next_first' | 'together'>('fast_track_first');
   
   const [coverPhotos, setCoverPhotos] = useState({
     requests_cover_photo_url: '',
@@ -443,86 +470,7 @@ export default function RequestsPageSettings() {
     subtitleShadowColor
   );
 
-  useEffect(() => {
-    checkUser();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      fetchOrganization();
-    }
-  }, [user]);
-
-  // Load all Google Fonts for dropdown preview
-  useEffect(() => {
-    const fontFamilies = [
-      'Oswald:wght@400;500;600;700',
-      'Montserrat:wght@400;500;600;700;800;900',
-      'Poppins:wght@400;500;600;700;800;900',
-      'Roboto:wght@400;500;700;900',
-      'Open+Sans:wght@400;600;700;800',
-      'Lato:wght@400;700;900',
-      'Nunito:wght@400;600;700;800;900',
-      'Ubuntu:wght@400;500;700',
-      'Source+Sans+Pro:wght@400;600;700;900',
-      'Inter:wght@400;500;600;700;800;900',
-      'Work+Sans:wght@400;500;600;700;800;900',
-      'DM+Sans:wght@400;500;700',
-      'Space+Grotesk:wght@400;500;600;700',
-      'Bebas+Neue',
-      'Anton',
-      'Raleway:wght@400;500;600;700;800;900',
-      'PT+Sans:wght@400;700',
-      'Josefin+Sans:wght@400;600;700',
-      'Libre+Franklin:wght@400;600;700;800;900',
-      'Quicksand:wght@400;500;600;700',
-      'Rubik:wght@400;500;700;900',
-      'Fira+Sans:wght@400;500;600;700;800;900',
-      'Manrope:wght@400;500;600;700;800',
-      'Comfortaa:wght@400;500;600;700',
-      'Kanit:wght@400;500;600;700;800;900',
-      'Titillium+Web:wght@400;600;700;900',
-      'Muli:wght@400;600;700;800;900',
-      'Exo+2:wght@400;500;600;700;800;900',
-      'Rajdhani:wght@400;500;600;700',
-      'Orbitron:wght@400;500;600;700;800;900',
-      'Righteous',
-      'Fredoka+One',
-      'Bungee',
-      'Russo+One',
-      'Playfair+Display:wght@400;500;600;700;800;900',
-      'Lora:wght@400;500;600;700',
-      'Merriweather:wght@400;700;900',
-      'Libre+Baskerville:wght@400;700',
-      'Crimson+Text:wght@400;600;700',
-      'PT+Serif:wght@400;700',
-      'Bitter:wght@400;700;900',
-      'Arvo:wght@400;700',
-      'Space+Mono:wght@400;700',
-      'Roboto+Mono:wght@400;500;700',
-      'Fira+Code:wght@400;500;600;700',
-    ];
-
-    // Create a single link element with all fonts
-    const linkId = 'google-fonts-all';
-    if (!document.getElementById(linkId)) {
-      const link = document.createElement('link');
-      link.id = linkId;
-      link.rel = 'stylesheet';
-      link.href = `https://fonts.googleapis.com/css2?${fontFamilies.map(f => `family=${f}`).join('&')}&display=swap`;
-      document.head.appendChild(link);
-    }
-  }, []);
-
-  // Handle tab from URL query parameter
-  useEffect(() => {
-    const { tab } = router.query;
-    if (tab === 'design' || tab === 'content' || tab === 'payments' || tab === 'features' || tab === 'assistant' || tab === 'advanced') {
-      setActiveTab(tab as typeof activeTab);
-    }
-  }, [router.query]);
-
-  const checkUser = async () => {
+  const checkUser = useCallback(async () => {
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
       
@@ -541,9 +489,44 @@ export default function RequestsPageSettings() {
       console.error('Error checking user:', error);
       router.push('/signin');
     }
-  };
+  }, [supabase, router]);
 
-  const fetchOrganization = async () => {
+  // Fetch request tab visibility settings
+  const fetchRequestTabSettings = useCallback(async (orgId: string) => {
+    try {
+      setRequestTabSettingsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        return;
+      }
+
+      const response = await fetch(`/api/admin/request-tabs?organizationId=${orgId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.effective) {
+          setRequestTabSettings({
+            song_request_enabled: data.effective.song_request_enabled ?? true,
+            shoutout_enabled: data.effective.shoutout_enabled ?? true,
+            tip_enabled: data.effective.tip_enabled ?? true,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching request tab settings:', error);
+    } finally {
+      setRequestTabSettingsLoading(false);
+    }
+  }, [supabase]);
+
+  const fetchOrganization = useCallback(async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       
@@ -796,6 +779,31 @@ export default function RequestsPageSettings() {
           requests_show_next_song: org.requests_show_next_song !== false,
           requests_show_bundle_discount: org.requests_show_bundle_discount !== false
         });
+
+        // Set advanced Fast Track controls (migrate from old show toggle)
+        setFastTrackControls({
+          display_mode: org.requests_fast_track_display_mode || (org.requests_show_fast_track !== false ? 'conditional' : 'never'),
+          display_style: org.requests_fast_track_display_style || 'compact',
+          min_amount: org.requests_fast_track_min_amount || null,
+          min_percentage: org.requests_fast_track_min_percentage || null,
+          label: org.requests_fast_track_label || '',
+          description: org.requests_fast_track_description || '',
+          icon: org.requests_fast_track_icon || '',
+        });
+
+        // Set advanced Next Song controls
+        setNextControls({
+          display_mode: org.requests_next_display_mode || (org.requests_show_next_song !== false ? 'conditional' : 'never'),
+          display_style: org.requests_next_display_style || 'compact',
+          min_amount: org.requests_next_min_amount || null,
+          min_percentage: org.requests_next_min_percentage || null,
+          label: org.requests_next_label || '',
+          description: org.requests_next_description || '',
+          icon: org.requests_next_icon || '',
+        });
+
+        // Set button display order
+        setPriorityButtonsOrder(org.requests_priority_buttons_order || 'fast_track_first');
         
         // Set SEO fields (don't set default in state - let placeholder show default)
         setSeoFields({
@@ -815,40 +823,86 @@ export default function RequestsPageSettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, supabase, isSuperAdmin, fetchRequestTabSettings]);
 
-  // Fetch request tab visibility settings
-  const fetchRequestTabSettings = async (orgId: string) => {
-    try {
-      setRequestTabSettingsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        return;
-      }
+  useEffect(() => {
+    checkUser();
+  }, [checkUser]);
 
-      const response = await fetch(`/api/admin/request-tabs?organizationId=${orgId}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.effective) {
-          setRequestTabSettings({
-            song_request_enabled: data.effective.song_request_enabled ?? true,
-            shoutout_enabled: data.effective.shoutout_enabled ?? true,
-            tip_enabled: data.effective.tip_enabled ?? true,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching request tab settings:', error);
-    } finally {
-      setRequestTabSettingsLoading(false);
+  useEffect(() => {
+    if (user) {
+      fetchOrganization();
     }
-  };
+  }, [user, fetchOrganization]);
+
+  // Load all Google Fonts for dropdown preview
+  useEffect(() => {
+    const fontFamilies = [
+      'Oswald:wght@400;500;600;700',
+      'Montserrat:wght@400;500;600;700;800;900',
+      'Poppins:wght@400;500;600;700;800;900',
+      'Roboto:wght@400;500;700;900',
+      'Open+Sans:wght@400;600;700;800',
+      'Lato:wght@400;700;900',
+      'Nunito:wght@400;600;700;800;900',
+      'Ubuntu:wght@400;500;700',
+      'Source+Sans+Pro:wght@400;600;700;900',
+      'Inter:wght@400;500;600;700;800;900',
+      'Work+Sans:wght@400;500;600;700;800;900',
+      'DM+Sans:wght@400;500;700',
+      'Space+Grotesk:wght@400;500;600;700',
+      'Bebas+Neue',
+      'Anton',
+      'Raleway:wght@400;500;600;700;800;900',
+      'PT+Sans:wght@400;700',
+      'Josefin+Sans:wght@400;600;700',
+      'Libre+Franklin:wght@400;600;700;800;900',
+      'Quicksand:wght@400;500;600;700',
+      'Rubik:wght@400;500;700;900',
+      'Fira+Sans:wght@400;500;600;700;800;900',
+      'Manrope:wght@400;500;600;700;800',
+      'Comfortaa:wght@400;500;600;700',
+      'Kanit:wght@400;500;600;700;800;900',
+      'Titillium+Web:wght@400;600;700;900',
+      'Muli:wght@400;600;700;800;900',
+      'Exo+2:wght@400;500;600;700;800;900',
+      'Rajdhani:wght@400;500;600;700',
+      'Orbitron:wght@400;500;600;700;800;900',
+      'Righteous',
+      'Fredoka+One',
+      'Bungee',
+      'Russo+One',
+      'Playfair+Display:wght@400;500;600;700;800;900',
+      'Lora:wght@400;500;600;700',
+      'Merriweather:wght@400;700;900',
+      'Libre+Baskerville:wght@400;700',
+      'Crimson+Text:wght@400;600;700',
+      'PT+Serif:wght@400;700',
+      'Bitter:wght@400;700;900',
+      'Arvo:wght@400;700',
+      'Space+Mono:wght@400;700',
+      'Roboto+Mono:wght@400;500;700',
+      'Fira+Code:wght@400;500;600;700',
+    ];
+
+    // Create a single link element with all fonts
+    const linkId = 'google-fonts-all';
+    if (!document.getElementById(linkId)) {
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?${fontFamilies.map(f => `family=${f}`).join('&')}&display=swap`;
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  // Handle tab from URL query parameter
+  useEffect(() => {
+    const { tab } = router.query;
+    if (tab === 'design' || tab === 'content' || tab === 'payments' || tab === 'features' || tab === 'assistant' || tab === 'advanced') {
+      setActiveTab(tab as typeof activeTab);
+    }
+  }, [router.query]);
 
   // Auto-save master toggle for song requests
   const handleSongRequestsToggle = async (enabled: boolean) => {
@@ -1197,6 +1251,24 @@ export default function RequestsPageSettings() {
         // Priority placement fees
         requests_fast_track_fee: fastTrackFee,
         requests_next_fee: nextFee,
+        // Advanced Fast Track controls
+        requests_fast_track_display_mode: fastTrackControls.display_mode,
+        requests_fast_track_display_style: fastTrackControls.display_style,
+        requests_fast_track_min_amount: fastTrackControls.min_amount || null,
+        requests_fast_track_min_percentage: fastTrackControls.min_percentage || null,
+        requests_fast_track_label: fastTrackControls.label?.trim() || null,
+        requests_fast_track_description: fastTrackControls.description?.trim() || null,
+        requests_fast_track_icon: fastTrackControls.icon?.trim() || null,
+        // Advanced Next Song controls
+        requests_next_display_mode: nextControls.display_mode,
+        requests_next_display_style: nextControls.display_style,
+        requests_next_min_amount: nextControls.min_amount || null,
+        requests_next_min_percentage: nextControls.min_percentage || null,
+        requests_next_label: nextControls.label?.trim() || null,
+        requests_next_description: nextControls.description?.trim() || null,
+        requests_next_icon: nextControls.icon?.trim() || null,
+        // Button display order
+        requests_priority_buttons_order: priorityButtonsOrder,
         // Payment usernames for tips section
         requests_cashapp_tag: cashAppTag || null,
         requests_venmo_username: venmoUsername || null,
@@ -4860,6 +4932,414 @@ export default function RequestsPageSettings() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Advanced Fast Track & Next Song Controls */}
+                  {(featureToggles.requests_show_fast_track || featureToggles.requests_show_next_song) && (
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mt-6">
+                      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
+                        Advanced Button Controls
+                      </h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                        Control how and when Fast Track and Next Song buttons appear. These settings override the simple toggles above.
+                      </p>
+
+                      <div className="space-y-8">
+                        {/* Fast Track Advanced Controls */}
+                        {featureToggles.requests_show_fast_track && (
+                          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 sm:p-6">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                          <Zap className="w-5 h-5 text-[#fcba00]" />
+                          Fast Track Button
+                        </h3>
+                        
+                        <div className="space-y-6">
+                          {/* Display Mode */}
+                          <div>
+                            <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              When to Show
+                            </Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['always', 'conditional', 'never'] as const).map((mode) => (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  onClick={() => {
+                                    setFastTrackControls(prev => ({ ...prev, display_mode: mode }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                  className={`px-4 py-2 rounded-lg border-2 transition-colors text-sm font-medium ${
+                                    fastTrackControls.display_mode === mode
+                                      ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                                  }`}
+                                >
+                                  {mode === 'always' ? 'Always' : mode === 'conditional' ? 'Conditional' : 'Never'}
+                                </button>
+                              ))}
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                              {fastTrackControls.display_mode === 'always' && 'Button always visible'}
+                              {fastTrackControls.display_mode === 'conditional' && 'Button shows when conditions are met (default behavior)'}
+                              {fastTrackControls.display_mode === 'never' && 'Button is hidden'}
+                            </p>
+                          </div>
+
+                          {/* Display Style */}
+                          {fastTrackControls.display_mode !== 'never' && (
+                            <div>
+                              <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Display Style
+                              </Label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {(['compact', 'expanded', 'inline', 'separate'] as const).map((style) => (
+                                  <button
+                                    key={style}
+                                    type="button"
+                                    onClick={() => {
+                                      setFastTrackControls(prev => ({ ...prev, display_style: style }));
+                                      setError(null);
+                                      setSuccess(false);
+                                    }}
+                                    className={`px-4 py-2 rounded-lg border-2 transition-colors text-sm font-medium ${
+                                      fastTrackControls.display_style === style
+                                        ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                                    }`}
+                                  >
+                                    {style === 'compact' ? 'Compact (Radio)' : style === 'expanded' ? 'Expanded (Card)' : style === 'inline' ? 'Inline' : 'Separate'}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                How the button appears visually on the page
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Conditional Display Settings */}
+                          {fastTrackControls.display_mode === 'conditional' && (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  Minimum Amount ($)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="Auto (default)"
+                                  value={fastTrackControls.min_amount ? (fastTrackControls.min_amount / 100).toFixed(2) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFastTrackControls(prev => ({
+                                      ...prev,
+                                      min_amount: value === '' ? null : Math.round(parseFloat(value) * 100)
+                                    }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                  className="w-full"
+                                />
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  Only show if payment amount ≥ this value (leave empty for default)
+                                </p>
+                              </div>
+
+                              <div>
+                                <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  Minimum Percentage (%)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  placeholder="Auto (default)"
+                                  value={fastTrackControls.min_percentage?.toString() || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFastTrackControls(prev => ({
+                                      ...prev,
+                                      min_percentage: value === '' ? null : parseInt(value)
+                                    }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                  className="w-full"
+                                />
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  Only show if amount ≥ this % of top preset (e.g., 50 = 50%)
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Custom Label */}
+                          {fastTrackControls.display_mode !== 'never' && (
+                            <div>
+                              <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Custom Label (Optional)
+                              </Label>
+                              <Input
+                                type="text"
+                                placeholder='Fast-Track (default)'
+                                value={fastTrackControls.label}
+                                onChange={(e) => {
+                                  setFastTrackControls(prev => ({ ...prev, label: e.target.value }));
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="w-full"
+                              />
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Leave empty to use default &quot;Fast-Track&quot; label
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Custom Description */}
+                          {fastTrackControls.display_mode !== 'never' && (
+                            <div>
+                              <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Custom Description (Optional)
+                              </Label>
+                              <Textarea
+                                placeholder="Add description text..."
+                                value={fastTrackControls.description}
+                                onChange={(e) => {
+                                  setFastTrackControls(prev => ({ ...prev, description: e.target.value }));
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="w-full min-h-[80px]"
+                                rows={3}
+                              />
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Help text shown below the button (optional)
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                        )}
+
+                        {/* Next Song Advanced Controls */}
+                        {featureToggles.requests_show_next_song && (
+                          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 sm:p-6">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                          <ChevronUp className="w-5 h-5 text-[#fcba00]" />
+                          Next Song Button
+                        </h3>
+                        
+                        <div className="space-y-6">
+                          {/* Display Mode */}
+                          <div>
+                            <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              When to Show
+                            </Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['always', 'conditional', 'never'] as const).map((mode) => (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  onClick={() => {
+                                    setNextControls(prev => ({ ...prev, display_mode: mode }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                  className={`px-4 py-2 rounded-lg border-2 transition-colors text-sm font-medium ${
+                                    nextControls.display_mode === mode
+                                      ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                                  }`}
+                                >
+                                  {mode === 'always' ? 'Always' : mode === 'conditional' ? 'Conditional' : 'Never'}
+                                </button>
+                              ))}
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                              {nextControls.display_mode === 'always' && 'Button always visible'}
+                              {nextControls.display_mode === 'conditional' && 'Button shows when conditions are met (default behavior)'}
+                              {nextControls.display_mode === 'never' && 'Button is hidden'}
+                            </p>
+                          </div>
+
+                          {/* Display Style */}
+                          {nextControls.display_mode !== 'never' && (
+                            <div>
+                              <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Display Style
+                              </Label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {(['compact', 'expanded', 'inline', 'separate'] as const).map((style) => (
+                                  <button
+                                    key={style}
+                                    type="button"
+                                    onClick={() => {
+                                      setNextControls(prev => ({ ...prev, display_style: style }));
+                                      setError(null);
+                                      setSuccess(false);
+                                    }}
+                                    className={`px-4 py-2 rounded-lg border-2 transition-colors text-sm font-medium ${
+                                      nextControls.display_style === style
+                                        ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                                    }`}
+                                  >
+                                    {style === 'compact' ? 'Compact (Radio)' : style === 'expanded' ? 'Expanded (Card)' : style === 'inline' ? 'Inline' : 'Separate'}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                How the button appears visually on the page
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Conditional Display Settings */}
+                          {nextControls.display_mode === 'conditional' && (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  Minimum Amount ($)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="Auto (default)"
+                                  value={nextControls.min_amount ? (nextControls.min_amount / 100).toFixed(2) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setNextControls(prev => ({
+                                      ...prev,
+                                      min_amount: value === '' ? null : Math.round(parseFloat(value) * 100)
+                                    }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                  className="w-full"
+                                />
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  Only show if payment amount ≥ this value (leave empty for default)
+                                </p>
+                              </div>
+
+                              <div>
+                                <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  Minimum Percentage (%)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  placeholder="Auto (default)"
+                                  value={nextControls.min_percentage?.toString() || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setNextControls(prev => ({
+                                      ...prev,
+                                      min_percentage: value === '' ? null : parseInt(value)
+                                    }));
+                                    setError(null);
+                                    setSuccess(false);
+                                  }}
+                                  className="w-full"
+                                />
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  Only show if amount ≥ this % of top preset (e.g., 50 = 50%)
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Custom Label */}
+                          {nextControls.display_mode !== 'never' && (
+                            <div>
+                              <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Custom Label (Optional)
+                              </Label>
+                              <Input
+                                type="text"
+                                placeholder='Next Song (default)'
+                                value={nextControls.label}
+                                onChange={(e) => {
+                                  setNextControls(prev => ({ ...prev, label: e.target.value }));
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="w-full"
+                              />
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Leave empty to use default &quot;Next Song&quot; label
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Custom Description */}
+                          {nextControls.display_mode !== 'never' && (
+                            <div>
+                              <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Custom Description (Optional)
+                              </Label>
+                              <Textarea
+                                placeholder="Add description text..."
+                                value={nextControls.description}
+                                onChange={(e) => {
+                                  setNextControls(prev => ({ ...prev, description: e.target.value }));
+                                  setError(null);
+                                  setSuccess(false);
+                                }}
+                                className="w-full min-h-[80px]"
+                                rows={3}
+                              />
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Help text shown below the button (optional)
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                        )}
+
+                        {/* Button Display Order */}
+                        {(featureToggles.requests_show_fast_track && featureToggles.requests_show_next_song) && (
+                          <div>
+                        <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Button Display Order
+                        </Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {([
+                            { value: 'fast_track_first', label: 'Fast Track First' },
+                            { value: 'next_first', label: 'Next First' },
+                            { value: 'together', label: 'Side by Side' }
+                          ] as const).map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => {
+                                setPriorityButtonsOrder(option.value);
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              className={`px-4 py-2 rounded-lg border-2 transition-colors text-sm font-medium ${
+                                priorityButtonsOrder === option.value
+                                  ? 'border-[#fcba00] bg-[#fcba00]/10 text-[#fcba00]'
+                                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                              Control the order and arrangement of priority buttons
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : activeTab === 'assistant' ? (
                 <div className="space-y-6">

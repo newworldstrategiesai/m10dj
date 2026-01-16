@@ -12,6 +12,7 @@ import BiddingAmountSelector from '../components/bidding/BiddingAmountSelector';
 import { usePaymentSettings } from '../hooks/usePaymentSettings';
 import { useSongExtraction } from '../hooks/useSongExtraction';
 import { useSongSearch } from '../hooks/useSongSearch';
+import { parseCombinedSongInput, formatCombinedDisplay } from '../utils/song-field-parser';
 import { useCrowdRequestPayment } from '../hooks/useCrowdRequestPayment';
 import { useCrowdRequestValidation } from '../hooks/useCrowdRequestValidation';
 import { crowdRequestAPI } from '../utils/crowd-request-api';
@@ -336,6 +337,7 @@ export function GeneralRequestsPage({
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
   const [showAutocomplete, setShowAutocomplete] = useState(false); // Show/hide autocomplete suggestions
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1); // Keyboard navigation
+  const [songInput, setSongInput] = useState(''); // Combined song input field (e.g., "Song Title - Artist Name")
   const songTitleInputRef = useRef(null); // Ref for scrolling to song title field
   const bundleSongsRef = useRef(null); // Ref for scrolling to bundle songs section
   
@@ -918,15 +920,18 @@ export function GeneralRequestsPage({
   // Initialize bundle songs array when bundle size changes
   useEffect(() => {
     if (bundleSize > 1) {
-      const newBundleSongs = [];
-      for (let i = 0; i < bundleSize - 1; i++) {
-        newBundleSongs.push(bundleSongs[i] || { songTitle: '', songArtist: '' });
-      }
-      setBundleSongs(newBundleSongs);
+      // Use functional update to read current bundleSongs without adding it to deps
+      setBundleSongs(prev => {
+        const newBundleSongs = [];
+        for (let i = 0; i < bundleSize - 1; i++) {
+          newBundleSongs.push(prev[i] || { songTitle: '', songArtist: '' });
+        }
+        return newBundleSongs;
+      });
     } else {
       setBundleSongs([]);
     }
-  }, [bundleSize]); // Only depend on bundleSize, not bundleSongs to avoid infinite loop
+  }, [bundleSize]); // Only depend on bundleSize to avoid infinite loop
 
 
   // Check if bidding is enabled for this organization
@@ -1243,8 +1248,10 @@ export function GeneralRequestsPage({
       const isMinBidSelected = baseAmount === minimumAmount;
       
       if (isMinBidSelected) {
-        // Check if first song is filled in
-        const isFirstSongFilled = formData.songTitle?.trim() && formData.songArtist?.trim();
+        // Check if first song is filled in (check both combined input and separate fields for backward compatibility)
+        const parsed = parseCombinedSongInput(songInput);
+        const isFirstSongFilled = (songInput && parsed.title && parsed.artist) || 
+                                  (formData.songTitle?.trim() && formData.songArtist?.trim());
         
         // Small delay to ensure DOM is updated
         setTimeout(() => {
@@ -1273,7 +1280,7 @@ export function GeneralRequestsPage({
         }, 100);
       }
     }
-  }, [bundleSize, getBaseAmount, minimumAmount, formData.songTitle, formData.songArtist]);
+  }, [bundleSize, getBaseAmount, minimumAmount, songInput, formData.songTitle, formData.songArtist]);
 
   // Calculate minimum bid amount based on current winning bid (only for bidding mode)
   const dynamicMinimumAmount = useMemo(() => {
@@ -1385,12 +1392,14 @@ export function GeneralRequestsPage({
 
   // Use song search hook for autocomplete (only when not a URL and not extracted from link)
   // Must be after detectUrl is defined
-  const shouldSearch = formData.songTitle && 
-                       !detectUrl(formData.songTitle) && 
+  // Search on title portion of combined input or formData.songTitle (for backward compatibility)
+  const searchQuery = songInput ? parseCombinedSongInput(songInput).title : formData.songTitle;
+  const shouldSearch = searchQuery && 
+                       !detectUrl(songInput || formData.songTitle) && 
                        !isExtractedFromLink && 
-                       formData.songTitle.trim().length >= 2;
+                       searchQuery.trim().length >= 2;
   const { suggestions, loading: searchingSongs } = useSongSearch(
-    shouldSearch ? formData.songTitle : '', 
+    shouldSearch ? searchQuery : '', 
     organizationId
   );
   
@@ -1413,33 +1422,77 @@ export function GeneralRequestsPage({
   const handleInputChange = async (e) => {
     const { name, value } = e.target;
     
-    // For unified song title field, detect URLs and extract
-    if (name === 'songTitle' && value) {
-      const isUrl = detectUrl(value);
+    // Handle combined song input field
+    if (name === 'songInput') {
+      setSongInput(value);
       
-      if (isUrl) {
-        // URL detected - trigger extraction
-        const url = value.trim();
-        setSongUrl(url); // Store for submission
-        setExtractedSongUrl(url);
+      // Detect URLs in combined input
+      if (value) {
+        const isUrl = detectUrl(value);
         
-        // Clear the input field immediately (don't show the URL)
-        setFormData(prev => ({ ...prev, songTitle: '' }));
-        
-        // Extract song info (this will populate songTitle and songArtist)
-        const extractedData = await extractSongInfo(url);
-        
-        // Store album art if available
-        if (extractedData?.albumArt) {
-          setAlbumArtUrl(extractedData.albumArt);
+        if (isUrl) {
+          // URL detected - trigger extraction
+          const url = value.trim();
+          setSongUrl(url); // Store for submission
+          setExtractedSongUrl(url);
+          
+          // Clear the input field immediately (don't show the URL)
+          setSongInput('');
+          
+          // Extract song info (this will populate songTitle and songArtist via extractSongInfo)
+          const extractedData = await extractSongInfo(url);
+          
+          // Store album art if available
+          if (extractedData?.albumArt) {
+            setAlbumArtUrl(extractedData.albumArt);
+          }
+          
+          // Don't set the URL as the field value - extraction will populate the combined field
+          return;
         }
-        
-        // Don't set the URL as the field value - extraction will populate the title
-        return;
       }
+      
+      // Parse combined input to extract title and artist
+      const parsed = parseCombinedSongInput(value);
+      
+      // Update internal formData with parsed values
+      setFormData(prev => ({
+        ...prev,
+        songTitle: parsed.title,
+        songArtist: parsed.artist
+      }));
+      
+      // Clear audio upload when user manually enters song info
+      if (value?.trim() && (parsed.title || parsed.artist)) {
+        if (audioFileUrl || audioFile) {
+          setAudioFile(null);
+          setAudioFileUrl('');
+          setArtistRightsConfirmed(false);
+          setIsArtist(false);
+          setAudioUploadExpanded(false);
+        }
+      }
+      
+      // Show autocomplete when typing (not URLs, not extracted, search on title portion)
+      const isUrl = detectUrl(value);
+      const titlePortion = parsed.title || value.split(/\s+[-–—byBY]\s+/)[0] || value;
+      if (!isUrl && !isExtractedFromLink && titlePortion.trim().length >= 2) {
+        setShowAutocomplete(true);
+      } else {
+        setShowAutocomplete(false);
+      }
+      
+      // Clear album art if user manually edits after extraction
+      if (albumArtUrl && value !== songInput) {
+        setAlbumArtUrl(null);
+        setIsExtractedFromLink(false);
+        setExtractedSongUrl('');
+      }
+      
+      return;
     }
     
-    // Normal input change - set the field value
+    // Handle other fields normally (legacy support for any remaining separate fields)
     setFormData(prev => ({ ...prev, [name]: value }));
     
     // Clear audio upload when user manually enters song title or artist name
@@ -1453,32 +1506,21 @@ export function GeneralRequestsPage({
         setAudioUploadExpanded(false);
       }
     }
-    
-    // Show autocomplete when typing (not URLs, not extracted)
-    if (name === 'songTitle') {
-      const isUrl = detectUrl(value);
-      if (!isUrl && !isExtractedFromLink && value.trim().length >= 2) {
-        setShowAutocomplete(true);
-      } else {
-        setShowAutocomplete(false);
-      }
-    }
-    
-    // Clear album art if user manually edits after extraction
-    if (name === 'songTitle' && albumArtUrl) {
-      setAlbumArtUrl(null);
-      setIsExtractedFromLink(false);
-      setExtractedSongUrl('');
-    }
   };
 
   // Handle autocomplete suggestion selection
   const handleSuggestionSelect = (suggestion) => {
+    // Update internal formData
     setFormData(prev => ({
       ...prev,
       songTitle: suggestion.title,
       songArtist: suggestion.artist
     }));
+    
+    // Update combined input field to show "Title - Artist" format
+    const combined = formatCombinedDisplay(suggestion.title, suggestion.artist);
+    setSongInput(combined);
+    
     if (suggestion.albumArt) {
       setAlbumArtUrl(suggestion.albumArt);
     }
@@ -1518,7 +1560,7 @@ export function GeneralRequestsPage({
   };
 
   // Handle blur event for URL detection (when user finishes typing)
-  const handleSongTitleBlur = async (e) => {
+  const handleSongInputBlur = async (e) => {
     const value = e.target.value;
     if (!value || extractingSong) return;
     
@@ -1540,7 +1582,25 @@ export function GeneralRequestsPage({
   };
 
   const extractSongInfo = async (url) => {
-    const extractedData = await extractSongInfoHook(url, setFormData);
+    const extractedData = await extractSongInfoHook(url, (updater) => {
+      if (typeof updater === 'function') {
+        const newData = updater(formData);
+        setFormData(prev => ({ ...prev, ...newData }));
+        // Update combined input field to reflect extracted data
+        if (newData.songTitle || newData.songArtist) {
+          const combined = formatCombinedDisplay(newData.songTitle || '', newData.songArtist || '');
+          setSongInput(combined);
+        }
+        return newData;
+      } else {
+        setFormData(prev => ({ ...prev, ...updater }));
+        // Update combined input field
+        if (updater.songTitle || updater.songArtist) {
+          const combined = formatCombinedDisplay(updater.songTitle || '', updater.songArtist || '');
+          setSongInput(combined);
+        }
+      }
+    });
     
     if (extractedData) {
       // Store the URL that was used for extraction and mark as extracted
@@ -1617,13 +1677,21 @@ export function GeneralRequestsPage({
     const value = e.target.value;
     const newSongs = [...bundleSongs];
     
-    // Update the song title
-    newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: value };
+    // Parse combined input to extract title and artist
+    const parsed = parseCombinedSongInput(value);
+    
+    // Update bundle song with parsed values
+    newSongs[bundleIndex] = {
+      ...newSongs[bundleIndex],
+      songTitle: parsed.title || '',
+      songArtist: parsed.artist || ''
+    };
     setBundleSongs(newSongs);
     
-    // Update search query if this is the active bundle song
+    // Update search query if this is the active bundle song (use title portion for search)
     if (activeBundleSongIndex === bundleIndex) {
-      setBundleSongSearchQuery(value);
+      const searchQuery = parsed.title || value.split(/\s+[-–—byBY]\s+/)[0] || value;
+      setBundleSongSearchQuery(searchQuery);
     }
     
     // Check if it's a URL
@@ -1632,8 +1700,8 @@ export function GeneralRequestsPage({
     if (isUrl) {
       // URL detected - trigger extraction
       const url = value.trim();
-      // Clear the input field immediately
-      newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: '' };
+      // Clear the input field immediately (extraction will populate it)
+      newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: '', songArtist: '' };
       setBundleSongs(newSongs);
       setBundleSongSearchQuery('');
       
@@ -1642,8 +1710,9 @@ export function GeneralRequestsPage({
       return;
     }
     
-    // Show autocomplete when typing (not URLs, not extracted)
-    if (!isUrl && !bundleIsExtractedFromLink[bundleIndex] && value.trim().length >= 2) {
+    // Show autocomplete when typing (not URLs, not extracted, search on title portion)
+    const titlePortion = parsed.title || value.split(/\s+[-–—byBY]\s+/)[0] || value;
+    if (!isUrl && !bundleIsExtractedFromLink[bundleIndex] && titlePortion.trim().length >= 2) {
       setBundleShowAutocomplete(prev => ({ ...prev, [bundleIndex]: true }));
     } else {
       setBundleShowAutocomplete(prev => ({ ...prev, [bundleIndex]: false }));
@@ -1665,7 +1734,8 @@ export function GeneralRequestsPage({
     if (isUrl && !bundleIsExtractedFromLink[bundleIndex]) {
       const url = value.trim();
       const newSongs = [...bundleSongs];
-      newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: '' };
+      // Clear both fields (extraction will populate them)
+      newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: '', songArtist: '' };
       setBundleSongs(newSongs);
       
       await extractBundleSongInfo(url, bundleIndex);
@@ -1675,6 +1745,7 @@ export function GeneralRequestsPage({
   // Handle bundle song suggestion selection
   const handleBundleSuggestionSelect = (suggestion, bundleIndex) => {
     const newSongs = [...bundleSongs];
+    // Store both title and artist (for submission)
     newSongs[bundleIndex] = {
       ...newSongs[bundleIndex],
       songTitle: suggestion.title,
@@ -1684,6 +1755,7 @@ export function GeneralRequestsPage({
     setBundleShowAutocomplete(prev => ({ ...prev, [bundleIndex]: false }));
     setBundleSelectedSuggestionIndex(prev => ({ ...prev, [bundleIndex]: -1 }));
     setBundleIsExtractedFromLink(prev => ({ ...prev, [bundleIndex]: false }));
+    // Note: The combined display format will be handled by the input field's value prop using formatCombinedDisplay
   };
 
   // Handle keyboard navigation for bundle songs
@@ -1721,16 +1793,19 @@ export function GeneralRequestsPage({
   // Handle clear extraction for bundle songs
   const handleClearBundleExtraction = (bundleIndex) => {
     const newSongs = [...bundleSongs];
+    // Clear both fields
     newSongs[bundleIndex] = { ...newSongs[bundleIndex], songTitle: '', songArtist: '' };
     setBundleSongs(newSongs);
     setBundleIsExtractedFromLink(prev => ({ ...prev, [bundleIndex]: false }));
     setBundleExtractedSongUrls(prev => ({ ...prev, [bundleIndex]: '' }));
     setBundleExtractionErrors(prev => ({ ...prev, [bundleIndex]: null }));
+    // Combined field will be cleared via the formatCombinedDisplay('', '') call
   };
 
   // Clear extraction state
   const handleClearExtraction = () => {
     setFormData(prev => ({ ...prev, songTitle: '', songArtist: '' }));
+    setSongInput(''); // Clear combined input field
     setSongUrl('');
     setExtractedSongUrl('');
     setIsExtractedFromLink(false);
@@ -1761,6 +1836,34 @@ export function GeneralRequestsPage({
       setError(extractionError);
     }
   }, [extractionError]);
+
+  // Sync combined input field when formData changes externally (e.g., from extraction)
+  // Only sync if the change came from extraction or external source, not from user typing
+  useEffect(() => {
+    // If we have title and artist in formData but songInput is empty or different, sync it
+    if (formData.songTitle || formData.songArtist) {
+      const currentCombined = formatCombinedDisplay(formData.songTitle || '', formData.songArtist || '');
+      const parsed = parseCombinedSongInput(songInput);
+      
+      // Only sync if:
+      // 1. songInput is empty but we have formData, OR
+      // 2. The parsed songInput doesn't match formData (external change like extraction)
+      if (!songInput || (parsed.title !== formData.songTitle || parsed.artist !== formData.songArtist)) {
+        // Only update if the change is significant (avoid sync loops)
+        if (currentCombined && (currentCombined !== songInput || isExtractedFromLink)) {
+          setSongInput(currentCombined);
+        }
+      }
+    } else if (!formData.songTitle && !formData.songArtist && songInput) {
+      // Clear songInput if formData is cleared
+      const parsed = parseCombinedSongInput(songInput);
+      if (!parsed.title && !parsed.artist) {
+        // Only clear if parsed is also empty (avoid clearing when user is typing)
+        // This handles clear extraction case
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.songTitle, formData.songArtist, isExtractedFromLink]); // Don't include songInput to avoid loop
 
   // getBaseAmount and getPaymentAmount are now provided by useCrowdRequestPayment hook
   // isSongSelectionComplete is now provided by useCrowdRequestValidation hook
@@ -4397,21 +4500,23 @@ export function GeneralRequestsPage({
                           <span className="leading-tight">Submit Your Song Request</span>
                         </h2>
                         
-                        {/* Unified Song Name/URL Input */}
+                        {/* Combined Song Title & Artist Input */}
                         <div>
                           <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
                             <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                            {organizationData?.requests_song_title_label || 'Song Name or Link'} <span className="text-red-500">*</span>
+                            {organizationData?.requests_song_title_label || 'Enter a Song'} <span className="text-red-500">*</span>
                           </label>
                           <div className="relative">
                             <input
                               ref={songTitleInputRef}
                               type="text"
-                              name="songTitle"
-                              value={formData.songTitle}
+                              name="songInput"
+                              value={songInput}
                               onChange={handleInputChange}
                               onFocus={() => {
-                                if (formData.songTitle && !detectUrl(formData.songTitle) && !isExtractedFromLink && formData.songTitle.trim().length >= 2) {
+                                const parsed = parseCombinedSongInput(songInput);
+                                const titlePortion = parsed.title || songInput.split(/\s+[-–—byBY]\s+/)[0] || songInput;
+                                if (titlePortion && !detectUrl(songInput) && !isExtractedFromLink && titlePortion.trim().length >= 2) {
                                   setShowAutocomplete(true);
                                 }
                               }}
@@ -4422,12 +4527,12 @@ export function GeneralRequestsPage({
                                   setShowAutocomplete(false);
                                   setSelectedSuggestionIndex(-1);
                                 }, 200);
-                                handleSongTitleBlur(e);
+                                handleSongInputBlur(e);
                               }}
                               className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 touch-manipulation ${
                                 extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3 sm:pr-4'
                               }`}
-                              placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
+                              placeholder={organizationData?.requests_song_title_placeholder || "Song Name - Artist Name"}
                               autoComplete="off"
                             />
                             {extractingSong && (
@@ -4497,23 +4602,6 @@ export function GeneralRequestsPage({
                             </div>
                           )}
                         </div>
-                        
-                        <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                            {organizationData?.requests_artist_name_label || 'Artist Name'}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="songArtist"
-                            value={formData.songArtist}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
-                            placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
-                            required
-                            autoComplete="off"
-                          />
-                        </div>
 
                         {/* Bundle Songs Input (only show when bundle size > 1) */}
                         {bundleSize > 1 && bundleSongs.length > 0 && (
@@ -4542,17 +4630,19 @@ export function GeneralRequestsPage({
                                       <div>
                                         <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
                                           <Music className="w-3 h-3 inline mr-1" />
-                                          Song Title <span className="text-red-500">*</span>
+                                          Enter a Song <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
                                           <input
                                             type="text"
-                                            value={song.songTitle || ''}
+                                            value={formatCombinedDisplay(song.songTitle || '', song.songArtist || '')}
                                             onChange={(e) => handleBundleSongInputChange(e, index)}
                                             onFocus={() => {
                                               setActiveBundleSongIndex(index);
-                                              setBundleSongSearchQuery(song.songTitle || '');
-                                              if (song.songTitle && !detectUrl(song.songTitle) && !bundleIsExtractedFromLink[index] && song.songTitle.trim().length >= 2) {
+                                              const parsed = parseCombinedSongInput(formatCombinedDisplay(song.songTitle || '', song.songArtist || ''));
+                                              const searchQuery = parsed.title || song.songTitle || '';
+                                              setBundleSongSearchQuery(searchQuery);
+                                              if (searchQuery && !detectUrl(formatCombinedDisplay(song.songTitle || '', song.songArtist || '')) && !bundleIsExtractedFromLink[index] && searchQuery.trim().length >= 2) {
                                                 setBundleShowAutocomplete(prev => ({ ...prev, [index]: true }));
                                               }
                                             }}
@@ -4567,7 +4657,7 @@ export function GeneralRequestsPage({
                                             className={`w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 ${
                                               bundleExtractingSong[index] ? 'pr-20' : bundleIsExtractedFromLink[index] ? 'pr-20' : 'pr-3'
                                             }`}
-                                            placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
+                                            placeholder="Song Name - Artist Name"
                                             required
                                             autoComplete="off"
                                           />
@@ -5142,21 +5232,23 @@ export function GeneralRequestsPage({
                           </div>
                         </div>
                       )}
-                      {/* Unified Song Name/URL Input */}
+                      {/* Combined Song Title & Artist Input */}
                       <div>
                         <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
                           <Music className="w-3 h-3 inline mr-1" />
-                          {organizationData?.requests_song_title_label || 'Song Name or Link'} <span className="text-red-500">*</span>
+                          {organizationData?.requests_song_title_label || 'Enter a Song'} <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <input
                             ref={songTitleInputRef}
                             type="text"
-                            name="songTitle"
-                            value={formData.songTitle}
+                            name="songInput"
+                            value={songInput}
                             onChange={handleInputChange}
                             onFocus={() => {
-                              if (formData.songTitle && !detectUrl(formData.songTitle) && !isExtractedFromLink && formData.songTitle.trim().length >= 2) {
+                              const parsed = parseCombinedSongInput(songInput);
+                              const titlePortion = parsed.title || songInput.split(/\s+[-–—byBY]\s+/)[0] || songInput;
+                              if (titlePortion && !detectUrl(songInput) && !isExtractedFromLink && titlePortion.trim().length >= 2) {
                                 setShowAutocomplete(true);
                               }
                             }}
@@ -5167,12 +5259,12 @@ export function GeneralRequestsPage({
                                 setShowAutocomplete(false);
                                 setSelectedSuggestionIndex(-1);
                               }, 200);
-                              handleSongTitleBlur(e);
+                              handleSongInputBlur(e);
                             }}
                             className={`w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-md focus:shadow-brand/20 transition-all duration-200 touch-manipulation ${
                               extractingSong ? 'pr-20 sm:pr-24' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3'
                             }`}
-                            placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
+                            placeholder={organizationData?.requests_song_title_placeholder || "Song Name - Artist Name"}
                             required
                             autoComplete="off"
                           />
@@ -5243,23 +5335,6 @@ export function GeneralRequestsPage({
                            </div>
                          )}
                        </div>
-                      
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
-                          {organizationData?.requests_artist_name_label || 'Artist Name'}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="songArtist"
-                          value={formData.songArtist}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-md focus:shadow-brand/20 transition-all duration-200"
-                          placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
-                          required
-                          autoComplete="off"
-                        />
-                      </div>
 
                       {/* Bundle Songs Input (only show when bundle size > 1) */}
                       {bundleSize > 1 && bundleSongs.length > 0 && (
@@ -5282,36 +5357,25 @@ export function GeneralRequestsPage({
                                 <div className="space-y-3">
                                   <div>
                                     <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
-                                      Song Title <span className="text-red-500">*</span>
+                                      Song Name <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                       type="text"
-                                      value={song.songTitle || ''}
+                                      value={formatCombinedDisplay(song.songTitle || '', song.songArtist || '')}
                                       onChange={(e) => {
+                                        const combinedValue = e.target.value;
+                                        const parsed = parseCombinedSongInput(combinedValue);
                                         const newSongs = [...bundleSongs];
-                                        newSongs[index] = { ...newSongs[index], songTitle: e.target.value };
+                                        newSongs[index] = {
+                                          ...newSongs[index],
+                                          songTitle: parsed.title || '',
+                                          songArtist: parsed.artist || ''
+                                        };
                                         setBundleSongs(newSongs);
                                       }}
                                       className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
-                                      placeholder="Enter song title"
+                                      placeholder="Song Name - Artist Name"
                                       required
-                                      autoComplete="off"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
-                                      Artist Name
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={song.songArtist || ''}
-                                      onChange={(e) => {
-                                        const newSongs = [...bundleSongs];
-                                        newSongs[index] = { ...newSongs[index], songArtist: e.target.value };
-                                        setBundleSongs(newSongs);
-                                      }}
-                                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200"
-                                      placeholder="Enter artist name"
                                       autoComplete="off"
                                     />
                                   </div>
@@ -5347,7 +5411,7 @@ export function GeneralRequestsPage({
 
                       {/* Audio File Upload Section - Collapsible (subtle by default) */}
                       {/* Hide when user manually enters song title or artist name (they're requesting an existing song) */}
-                      {organizationData?.requests_show_audio_upload !== false && !formData.songTitle?.trim() && !formData.songArtist?.trim() && (
+                      {organizationData?.requests_show_audio_upload !== false && !songInput?.trim() && !formData.songTitle?.trim() && !formData.songArtist?.trim() && (
                       <Collapsible open={audioUploadExpanded} onOpenChange={setAudioUploadExpanded} className="mt-3">
                           <div className={`rounded-md overflow-hidden transition-colors ${
                           audioUploadExpanded 
@@ -5570,18 +5634,38 @@ export function GeneralRequestsPage({
                             Having trouble with card payment? You can also tip via:
                           </p>
                           <div className="flex flex-col gap-2 w-full">
-                            {paymentSettings?.cashAppTag && paymentSettings.cashAppTag.trim() && (
-                              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 w-full min-w-0">
-                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">CashApp:</span>
-                                <span className="text-sm font-bold text-green-600 dark:text-green-400 truncate min-w-0 flex-1">{paymentSettings.cashAppTag}</span>
-                              </div>
-                            )}
-                            {paymentSettings?.venmoUsername && paymentSettings.venmoUsername.trim() && (
-                              <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 w-full min-w-0">
-                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">Venmo:</span>
-                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400 truncate min-w-0 flex-1">{paymentSettings.venmoUsername}</span>
-                              </div>
-                            )}
+                            {paymentSettings?.cashAppTag && paymentSettings.cashAppTag.trim() && (() => {
+                              // Clean the CashApp tag (remove $ if present, we'll add it back in the URL)
+                              const cleanTag = paymentSettings.cashAppTag.replace(/^\$/, '').trim();
+                              const cashAppUrl = `https://cash.app/$${cleanTag}`;
+                              return (
+                                <a
+                                  href={cashAppUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 w-full min-w-0 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors cursor-pointer"
+                                >
+                                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">CashApp:</span>
+                                  <span className="text-sm font-bold text-green-600 dark:text-green-400 truncate min-w-0 flex-1">{paymentSettings.cashAppTag}</span>
+                                </a>
+                              );
+                            })()}
+                            {paymentSettings?.venmoUsername && paymentSettings.venmoUsername.trim() && (() => {
+                              // Clean the Venmo username (remove @ if present)
+                              const cleanUsername = paymentSettings.venmoUsername.replace(/^@/, '').trim();
+                              const venmoUrl = `https://venmo.com/${cleanUsername}`;
+                              return (
+                                <a
+                                  href={venmoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 w-full min-w-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
+                                >
+                                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">Venmo:</span>
+                                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400 truncate min-w-0 flex-1">{paymentSettings.venmoUsername}</span>
+                                </a>
+                              );
+                            })()}
                           </div>
                         </div>
                       )}
