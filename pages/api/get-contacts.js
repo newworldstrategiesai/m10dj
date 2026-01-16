@@ -98,7 +98,7 @@ export default async function handler(req, res) {
       // First pass: group by email (most reliable identifier)
       for (const contact of contacts) {
         const email = contact.email_address?.toLowerCase()?.trim();
-        if (email) {
+        if (email && email.length > 0) {
           const existing = emailMap.get(email);
           if (!existing) {
             emailMap.set(email, contact);
@@ -111,20 +111,26 @@ export default async function handler(req, res) {
                 (contact.phone && !existing.phone) ||
                 (contact.organization_id && !existing.organization_id)) {
               emailMap.set(email, contact);
+              // Remove old one from processedIds
+              processedIds.delete(existing.id);
+              processedIds.add(contact.id);
             }
           }
         }
       }
       
       // Second pass: group remaining contacts by phone (if no email match)
+      // Use last 10 digits for matching to handle different formatting
       for (const contact of contacts) {
         if (processedIds.has(contact.id)) continue;
         
         const phone = contact.phone?.replace(/\D/g, '');
         if (phone && phone.length >= 10) {
-          const existing = phoneMap.get(phone);
+          // Use last 10 digits as key for better matching
+          const phoneKey = phone.slice(-10);
+          const existing = phoneMap.get(phoneKey);
           if (!existing) {
-            phoneMap.set(phone, contact);
+            phoneMap.set(phoneKey, contact);
             processedIds.add(contact.id);
           } else {
             // Keep the contact with more complete data or most recent
@@ -133,7 +139,10 @@ export default async function handler(req, res) {
             if (contactDate > existingDate || 
                 (contact.email_address && !existing.email_address) ||
                 (contact.organization_id && !existing.organization_id)) {
-              phoneMap.set(phone, contact);
+              phoneMap.set(phoneKey, contact);
+              // Remove the old one from processedIds so we don't count it
+              processedIds.delete(existing.id);
+              processedIds.add(contact.id);
             }
           }
         }
