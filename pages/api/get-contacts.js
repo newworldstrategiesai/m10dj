@@ -93,6 +93,7 @@ export default async function handler(req, res) {
     if (isAdmin && contacts && contacts.length > 0) {
       const emailMap = new Map(); // Deduplicate by email (most reliable)
       const phoneMap = new Map(); // Deduplicate by phone (secondary)
+      const namePhoneMap = new Map(); // Deduplicate by name + phone (tertiary)
       const processedIds = new Set();
       
       // First pass: group by email (most reliable identifier)
@@ -148,6 +149,39 @@ export default async function handler(req, res) {
         }
       }
       
+      // Third pass: match by name + phone for contacts without emails
+      // This catches cases like "Ben Murray" with same phone but no email
+      const namePhoneMap = new Map();
+      for (const contact of contacts) {
+        if (processedIds.has(contact.id)) continue;
+        
+        const phone = contact.phone?.replace(/\D/g, '');
+        const firstName = contact.first_name?.toLowerCase()?.trim();
+        const lastName = contact.last_name?.toLowerCase()?.trim();
+        
+        if (phone && phone.length >= 10 && firstName && lastName) {
+          const phoneKey = phone.slice(-10);
+          const namePhoneKey = `${firstName}_${lastName}_${phoneKey}`;
+          const existing = namePhoneMap.get(namePhoneKey);
+          
+          if (!existing) {
+            namePhoneMap.set(namePhoneKey, contact);
+            processedIds.add(contact.id);
+          } else {
+            // Keep the contact with more complete data or most recent
+            const contactDate = new Date(contact.created_at || 0);
+            const existingDate = new Date(existing.created_at || 0);
+            if (contactDate > existingDate || 
+                (contact.email_address && !existing.email_address) ||
+                (contact.organization_id && !existing.organization_id)) {
+              namePhoneMap.set(namePhoneKey, contact);
+              processedIds.delete(existing.id);
+              processedIds.add(contact.id);
+            }
+          }
+        }
+      }
+      
       // Build final deduplicated list
       // Start with all unique contacts from email and phone maps
       const uniqueContactsSet = new Map();
@@ -159,6 +193,13 @@ export default async function handler(req, res) {
       
       // Add phone-deduplicated contacts (only if not already added via email)
       for (const contact of phoneMap.values()) {
+        if (!uniqueContactsSet.has(contact.id)) {
+          uniqueContactsSet.set(contact.id, contact);
+        }
+      }
+      
+      // Add name+phone-deduplicated contacts (only if not already added)
+      for (const contact of namePhoneMap.values()) {
         if (!uniqueContactsSet.has(contact.id)) {
           uniqueContactsSet.set(contact.id, contact);
         }
@@ -187,6 +228,7 @@ export default async function handler(req, res) {
         removed: contacts.length - deduplicatedContacts.length,
         emailMatches: emailMap.size,
         phoneMatches: phoneMap.size,
+        namePhoneMatches: namePhoneMap.size,
         processedIds: processedIds.size,
         uniqueContactsInFinal: uniqueContactsSet.size
       });
