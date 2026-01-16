@@ -35,7 +35,8 @@ function PaymentMethodSelection({
   songTitle, 
   songArtist, 
   recipientName,
-  requesterName, // New prop: requester name to include in payment note
+  requesterName, // Prop: requester name to include in payment note
+  onRequesterNameChange, // New: callback to update requester name in parent
   additionalSongs = [],
   setAdditionalSongs,
   bundleSongs = [], // New: Bundle songs array
@@ -53,6 +54,7 @@ function PaymentMethodSelection({
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const [showAddSongs, setShowAddSongs] = useState(false);
   const [additionalSongCount, setAdditionalSongCount] = useState(additionalSongs?.length || 0);
+  const [localRequesterName, setLocalRequesterName] = useState(requesterName || '');
   
   // Sync local count with prop when it changes externally
   useEffect(() => {
@@ -60,6 +62,14 @@ function PaymentMethodSelection({
       setAdditionalSongCount(additionalSongs.length);
     }
   }, [additionalSongs?.length]);
+
+  // Sync local requester name with prop when it changes externally
+  useEffect(() => {
+    if (requesterName !== undefined && requesterName !== localRequesterName) {
+      setLocalRequesterName(requesterName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requesterName]);
 
   const generateQRCode = (text) => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`;
@@ -105,8 +115,10 @@ function PaymentMethodSelection({
     let note = '';
     
     // Start with requester name if available (helps with payment verification)
-    const namePrefix = requesterName && requesterName.trim() && requesterName.trim() !== 'Guest' 
-      ? `${requesterName.trim()} - ` 
+    // Use local state if available, otherwise fall back to prop
+    const currentRequesterName = localRequesterName || requesterName || '';
+    const namePrefix = currentRequesterName && currentRequesterName.trim() && currentRequesterName.trim() !== 'Guest' 
+      ? `${currentRequesterName.trim()} - ` 
       : '';
     
     if (requestType === 'song_request') {
@@ -224,7 +236,70 @@ function PaymentMethodSelection({
     return note;
   };
 
+  // Update requester name in database before payment
+  const updateRequesterNameInDB = async () => {
+    if (!requestId || !localRequesterName || !localRequesterName.trim()) {
+      return false;
+    }
+
+    try {
+      const response = await fetch('/api/crowd-request/update-requester-name-public', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          requesterName: localRequesterName.trim(),
+          paymentCode: paymentCode || null // Include payment code for validation if available
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to update requester name:', errorData);
+        if (onError) {
+          onError(errorData.error || 'Failed to update name. Please try again.');
+        }
+        return false;
+      }
+
+      console.log('✅ Updated requester name in database');
+      return true;
+    } catch (error) {
+      console.error('Error updating requester name:', error);
+      if (onError) {
+        onError('Failed to update name. Please try again.');
+      }
+      return false;
+    }
+  };
+
+  // Validate requester name before processing payment
+  const validateBeforePayment = async () => {
+    if (requestType !== 'tip' && (!localRequesterName || !localRequesterName.trim())) {
+      if (onError) {
+        onError('Please enter your name before proceeding with payment');
+      }
+      return false;
+    }
+    
+    // Update parent with current name
+    if (onRequesterNameChange) {
+      onRequesterNameChange(localRequesterName.trim());
+    }
+
+    // Update name in database (only for song requests and shoutouts)
+    if (requestType !== 'tip' && requestId) {
+      const updated = await updateRequesterNameInDB();
+      if (!updated) {
+        return false; // Update failed, don't proceed
+      }
+    }
+
+    return true;
+  };
+
   const handleCashAppClick = async () => {
+    if (!(await validateBeforePayment())) return;
     try {
       if (!requestId) {
         throw new Error('Request not created yet. Please fill out the form first.');
@@ -300,7 +375,8 @@ function PaymentMethodSelection({
     }
   };
 
-  const handleCashClick = () => {
+  const handleCashClick = async () => {
+    if (!(await validateBeforePayment())) return;
     try {
       if (!requestId) {
         throw new Error('Request not created yet. Please fill out the form first.');
@@ -348,7 +424,8 @@ function PaymentMethodSelection({
     }
   };
 
-  const handleVenmoClick = () => {
+  const handleVenmoClick = async () => {
+    if (!(await validateBeforePayment())) return;
     try {
       if (!paymentSettings?.venmoUsername) {
         throw new Error('Venmo username is not configured. Please contact support.');
@@ -478,7 +555,30 @@ function PaymentMethodSelection({
   };
 
   // Update amount when proceeding with payment
-  const handleProceedWithPayment = (paymentMethod) => {
+  const handleProceedWithPayment = async (paymentMethod) => {
+    // Validate and update requester name for song requests and shoutouts
+    if (requestType !== 'tip') {
+      if (!localRequesterName || !localRequesterName.trim()) {
+        if (onError) {
+          onError('Please enter your name before proceeding with payment');
+        }
+        return;
+      }
+      
+      // Update requester name in database
+      if (requestId) {
+        const updated = await updateRequesterNameInDB();
+        if (!updated) {
+          return; // Update failed, don't proceed
+        }
+      }
+    }
+    
+    // Update requester name in parent
+    if (onRequesterNameChange) {
+      onRequesterNameChange(localRequesterName.trim());
+    }
+    
     // Update the amount in parent component if needed
     if (setAdditionalSongs && additionalSongCount > 0) {
       const newSongs = [];
@@ -490,21 +590,52 @@ function PaymentMethodSelection({
     onPaymentMethodSelected(paymentMethod);
   };
 
+  // Handle requester name input change
+  const handleRequesterNameChange = (e) => {
+    const value = e.target.value;
+    setLocalRequesterName(value);
+    // Update parent immediately for payment note building
+    if (onRequesterNameChange) {
+      onRequesterNameChange(value.trim());
+    }
+  };
+
   return (
-    <div className="bg-gray-50 dark:bg-black rounded-2xl shadow-xl p-6 sm:p-8" data-payment-methods>
-      <div className="text-center mb-6">
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+    <div className="bg-gray-50 dark:bg-black rounded-2xl shadow-xl p-4 sm:p-6" data-payment-methods>
+      <div className="text-center mb-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
           Choose Payment Method
         </h2>
-        <p className="text-lg text-gray-600 dark:text-gray-400">
+        <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400">
           Total: <span className="font-bold text-purple-600 dark:text-purple-400">${(updatedAmount / 100).toFixed(2)}</span>
           {additionalSongCount > 0 && (
-            <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 ml-2">
               ({additionalSongCount} additional song{additionalSongCount !== 1 ? 's' : ''} at {Math.round(bundleDiscount * 100)}% off)
             </span>
           )}
         </p>
       </div>
+
+      {/* Requester Name Field - Required for song requests and shoutouts */}
+      {requestType !== 'tip' && (
+        <div className="mb-4">
+          <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1.5">
+            Your Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={localRequesterName}
+            onChange={handleRequesterNameChange}
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder="Enter your name"
+            required
+            autoComplete="name"
+          />
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+            This helps us match your payment to your request
+          </p>
+        </div>
+      )}
 
       {currentMethod === 'cashapp' && cashAppQr ? (
         <CashAppPaymentScreen
@@ -541,23 +672,23 @@ function PaymentMethodSelection({
           <p className="text-gray-600 dark:text-gray-400">Redirecting to secure payment...</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {/* CashApp Button - Only show if enabled */}
           {paymentSettings?.paymentMethodCashappEnabled !== false && (
           <button
             type="button"
             onClick={handleCashAppClick}
             disabled={isSubmitting}
-            className="group relative w-full p-5 rounded-2xl border-2 border-green-500/80 bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 dark:from-green-950/40 dark:via-emerald-950/30 dark:to-green-950/40 hover:from-green-100 hover:via-emerald-100 hover:to-green-100 dark:hover:from-green-900/50 dark:hover:via-emerald-900/40 dark:hover:to-green-900/50 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-green-500/10 hover:shadow-xl hover:shadow-green-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="group relative w-full p-3.5 sm:p-4 rounded-xl border-2 border-green-500/80 bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 dark:from-green-950/40 dark:via-emerald-950/30 dark:to-green-950/40 hover:from-green-100 hover:via-emerald-100 hover:to-green-100 dark:hover:from-green-900/50 dark:hover:via-emerald-900/40 dark:hover:to-green-900/50 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-green-500/10 hover:shadow-xl hover:shadow-green-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-green-400/0 via-green-400/5 to-green-400/10 group-hover:from-green-400/5 group-hover:via-green-400/10 group-hover:to-green-400/15 transition-all duration-300"></div>
-            <div className="relative flex items-center justify-start gap-4 pl-2">
-              <div className="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow p-2.5 flex-shrink-0">
+            <div className="relative flex items-center justify-start gap-3 pl-2">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow p-2 flex-shrink-0">
                 <svg viewBox="0 0 32 32" className="w-full h-full" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path d="M31.453 4.625c-0.688-1.891-2.177-3.375-4.068-4.063-1.745-0.563-3.333-0.563-6.557-0.563h-9.682c-3.198 0-4.813 0-6.531 0.531-1.896 0.693-3.385 2.188-4.068 4.083-0.547 1.734-0.547 3.333-0.547 6.531v9.693c0 3.214 0 4.802 0.531 6.536 0.688 1.891 2.177 3.375 4.068 4.063 1.734 0.547 3.333 0.547 6.536 0.547h9.703c3.214 0 4.813 0 6.536-0.531 1.896-0.688 3.391-2.182 4.078-4.078 0.547-1.734 0.547-3.333 0.547-6.536v-9.667c0-3.214 0-4.813-0.547-6.547zM23.229 10.802l-1.245 1.24c-0.25 0.229-0.635 0.234-0.891 0.010-1.203-1.010-2.724-1.568-4.292-1.573-1.297 0-2.589 0.427-2.589 1.615 0 1.198 1.385 1.599 2.984 2.198 2.802 0.938 5.12 2.109 5.12 4.854 0 2.99-2.318 5.042-6.104 5.266l-0.349 1.604c-0.063 0.302-0.328 0.516-0.635 0.516h-2.391l-0.12-0.010c-0.354-0.078-0.578-0.432-0.505-0.786l0.375-1.693c-1.438-0.359-2.76-1.083-3.844-2.094v-0.016c-0.25-0.25-0.25-0.656 0-0.906l1.333-1.292c0.255-0.234 0.646-0.234 0.896 0 1.214 1.146 2.839 1.786 4.521 1.76 1.734 0 2.891-0.734 2.891-1.896s-1.172-1.464-3.385-2.292c-2.349-0.839-4.573-2.026-4.573-4.802 0-3.224 2.677-4.797 5.854-4.943l0.333-1.641c0.063-0.302 0.333-0.516 0.641-0.51h2.37l0.135 0.016c0.344 0.078 0.573 0.411 0.495 0.76l-0.359 1.828c1.198 0.396 2.333 1.026 3.302 1.849l0.031 0.031c0.25 0.266 0.25 0.667 0 0.906z" className="text-green-600 dark:text-green-400"/>
                 </svg>
               </div>
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+              <span className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                 Pay with CashApp
               </span>
             </div>
@@ -569,16 +700,16 @@ function PaymentMethodSelection({
           <button
             type="button"
             onClick={handleVenmoClick}
-            className="group relative w-full p-5 rounded-2xl border-2 border-blue-500/80 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 hover:from-blue-100 hover:via-cyan-100 hover:to-blue-100 dark:hover:from-gray-800 dark:hover:via-gray-800 dark:hover:to-gray-800 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-blue-500/10 hover:shadow-xl hover:shadow-blue-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-blue-500"
+            className="group relative w-full p-3.5 sm:p-4 rounded-xl border-2 border-blue-500/80 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 hover:from-blue-100 hover:via-cyan-100 hover:to-blue-100 dark:hover:from-gray-800 dark:hover:via-gray-800 dark:hover:to-gray-800 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-blue-500/10 hover:shadow-xl hover:shadow-blue-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-blue-500"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-blue-400/0 via-blue-400/5 to-blue-400/10 group-hover:from-blue-400/5 group-hover:via-blue-400/10 group-hover:to-blue-400/15 transition-all duration-300"></div>
-            <div className="relative flex items-center justify-start gap-4 pl-2">
-              <div className="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow p-2.5 flex-shrink-0">
+            <div className="relative flex items-center justify-start gap-3 pl-2">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow p-2 flex-shrink-0">
                 <svg viewBox="0 0 48 48" className="w-full h-full" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
                   <path d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z" className="text-blue-600 dark:text-blue-400"/>
                 </svg>
               </div>
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+              <span className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                 Pay with Venmo
               </span>
             </div>
@@ -591,16 +722,16 @@ function PaymentMethodSelection({
             type="button"
             onClick={handleCashClick}
             disabled={isSubmitting}
-            className="group relative w-full p-5 rounded-2xl border-2 border-gray-500/80 bg-gradient-to-br from-gray-50 via-slate-50 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 hover:from-gray-100 hover:via-slate-100 hover:to-gray-100 dark:hover:from-gray-800 dark:hover:via-gray-800 dark:hover:to-gray-800 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-gray-500/10 hover:shadow-xl hover:shadow-gray-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="group relative w-full p-3.5 sm:p-4 rounded-xl border-2 border-gray-500/80 bg-gradient-to-br from-gray-50 via-slate-50 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 hover:from-gray-100 hover:via-slate-100 hover:to-gray-100 dark:hover:from-gray-800 dark:hover:via-gray-800 dark:hover:to-gray-800 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-gray-500/10 hover:shadow-xl hover:shadow-gray-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-gray-400/0 via-gray-400/5 to-gray-400/10 group-hover:from-gray-400/5 group-hover:via-gray-400/10 group-hover:to-gray-400/15 transition-all duration-300"></div>
-            <div className="relative flex items-center justify-start gap-4 pl-2">
-              <div className="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow p-2.5 flex-shrink-0">
+            <div className="relative flex items-center justify-start gap-3 pl-2">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow p-2 flex-shrink-0">
                 <svg className="w-7 h-7 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+              <span className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                 Pay with Cash
               </span>
             </div>
@@ -611,16 +742,19 @@ function PaymentMethodSelection({
           {paymentSettings?.paymentMethodCardEnabled !== false && (
           <button
             type="button"
-            onClick={() => onPaymentMethodSelected('card')}
+            onClick={async () => {
+              if (!(await validateBeforePayment())) return;
+              onPaymentMethodSelected('card');
+            }}
             disabled={isSubmitting}
-            className="group relative w-full p-5 rounded-2xl border-2 border-purple-500/80 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-950/40 dark:via-pink-950/30 dark:to-purple-950/40 hover:from-purple-100 hover:via-pink-100 hover:to-purple-100 dark:hover:from-purple-900/50 dark:hover:via-pink-900/40 dark:hover:to-purple-900/50 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-purple-500/10 hover:shadow-xl hover:shadow-purple-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-md"
+            className="group relative w-full p-3.5 sm:p-4 rounded-xl border-2 border-purple-500/80 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-950/40 dark:via-pink-950/30 dark:to-purple-950/40 hover:from-purple-100 hover:via-pink-100 hover:to-purple-100 dark:hover:from-purple-900/50 dark:hover:via-pink-900/40 dark:hover:to-purple-900/50 transition-all duration-300 touch-manipulation overflow-hidden shadow-md shadow-purple-500/10 hover:shadow-xl hover:shadow-purple-500/25 hover:scale-[1.01] active:scale-[0.99] hover:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-md"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-purple-400/0 via-purple-400/5 to-purple-400/10 group-hover:from-purple-400/5 group-hover:via-purple-400/10 group-hover:to-purple-400/15 transition-all duration-300"></div>
-            <div className="relative flex items-center justify-start gap-4 pl-2">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow flex-shrink-0">
-                <CreditCard className="w-7 h-7 text-white" />
+            <div className="relative flex items-center justify-start gap-3 pl-2">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow flex-shrink-0">
+                <CreditCard className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+              <span className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                 Pay with Card
               </span>
             </div>
@@ -631,9 +765,9 @@ function PaymentMethodSelection({
           {paymentSettings?.paymentMethodCardEnabled !== false && (
           <button
             type="button"
-            onClick={() => handleProceedWithPayment('card')}
+            onClick={async () => await handleProceedWithPayment('card')}
             disabled={isSubmitting}
-            className="group relative w-full p-4 rounded-lg bg-black hover:bg-gray-900 active:bg-gray-800 transition-all duration-200 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-black"
+            className="group relative w-full p-3 sm:p-4 rounded-lg bg-black hover:bg-gray-900 active:bg-gray-800 transition-all duration-200 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-black"
           >
             <div className="flex items-center justify-center gap-2">
               <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -646,24 +780,24 @@ function PaymentMethodSelection({
           </button>
           )}
 
-          {/* Add More Songs Link - Only show for song requests */}
-          {requestType === 'song_request' && bundleDiscountEnabled && bundleDiscount > 0 && (
-            <div className="mt-2">
+          {/* Add More Songs Link - Only show for song requests - Hidden by default to save space */}
+          {requestType === 'song_request' && bundleDiscountEnabled && bundleDiscount > 0 && !showAddSongs && (
+            <div className="mt-1.5">
               <button
                 type="button"
                 onClick={handleAddSongsClick}
-                className="w-full text-center text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 underline transition-colors"
+                className="w-full text-center text-xs sm:text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 underline transition-colors py-1"
               >
-                Add more songs last minute for a {Math.round(bundleDiscount * 100)}% discount
+                Add more songs ({Math.round(bundleDiscount * 100)}% off)
               </button>
             </div>
           )}
 
           {/* Add Songs UI */}
           {showAddSongs && requestType === 'song_request' && bundleDiscountEnabled && bundleDiscount > 0 && (
-            <div className="mt-4 p-4 bg-purple-50 dark:bg-black rounded-xl border border-purple-200 dark:border-gray-800">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+            <div className="mt-2.5 p-3 bg-purple-50 dark:bg-black rounded-xl border border-purple-200 dark:border-gray-800">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">
                   Add More Songs ({Math.round(bundleDiscount * 100)}% discount)
                 </h3>
                 <button
@@ -675,8 +809,8 @@ function PaymentMethodSelection({
                 </button>
               </div>
               
-              <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <div className="mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   How many additional songs?
                 </label>
                 <div className="flex items-center gap-3">
@@ -725,7 +859,7 @@ function PaymentMethodSelection({
                 </div>
               )}
 
-              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 You can enter song names and artist names after payment.
               </p>
             </div>
@@ -734,7 +868,7 @@ function PaymentMethodSelection({
           <button
             type="button"
             onClick={onBack}
-            className="w-full mt-4 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+            className="w-full mt-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
           >
             ← Back to form
           </button>

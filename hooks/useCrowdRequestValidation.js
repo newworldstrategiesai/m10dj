@@ -33,8 +33,8 @@ export function useCrowdRequestValidation({
 
   const validateForm = (setError) => {
     try {
-      // Requester name is optional - will be collected during checkout
-      // No need to validate it on the initial form
+      // Requester name validation is now handled at payment step
+      // No need to validate it here - it will be collected during checkout
 
       if (requestType === 'song_request') {
         if (!formData?.songTitle?.trim()) {

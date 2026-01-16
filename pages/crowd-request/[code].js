@@ -544,7 +544,8 @@ export default function CrowdRequestPage() {
         songTitle: formData.songTitle || null,
         recipientName: formData.recipientName || null,
         recipientMessage: formData.recipientMessage || null,
-        requesterName: formData.requesterName?.trim(),
+        // Use placeholder "Guest" if name not provided - will be updated at payment step
+        requesterName: formData.requesterName?.trim() || 'Guest',
         requesterEmail: formData.requesterEmail || null,
         requesterPhone: formData.requesterPhone || null,
         message: formData.message || null,
@@ -584,7 +585,8 @@ export default function CrowdRequestPage() {
             requestType: 'song_request',
             songArtist: song.songArtist?.trim() || null,
             songTitle: song.songTitle?.trim() || null,
-            requesterName: formData.requesterName?.trim(),
+            // Use placeholder "Guest" if name not provided - will be updated at payment step
+            requesterName: formData.requesterName?.trim() || 'Guest',
             requesterEmail: formData.requesterEmail || null,
             requesterPhone: formData.requesterPhone || null,
             amount: pricePerSong, // Each song gets equal share of bundle price
@@ -622,7 +624,8 @@ export default function CrowdRequestPage() {
             requestType: 'song_request',
             songArtist: song.songArtist?.trim() || null,
             songTitle: song.songTitle?.trim() || null,
-            requesterName: formData.requesterName?.trim(),
+            // Use placeholder "Guest" if name not provided - will be updated at payment step
+            requesterName: formData.requesterName?.trim() || 'Guest',
             requesterEmail: formData.requesterEmail || null,
             requesterPhone: formData.requesterPhone || null,
             amount: 0, // Bundled with main request - payment already included in main request
@@ -812,6 +815,9 @@ export default function CrowdRequestPage() {
                   songArtist={formData.songArtist}
                   recipientName={formData.recipientName}
                   requesterName={formData.requesterName}
+                  onRequesterNameChange={(name) => {
+                    setFormData(prev => ({ ...prev, requesterName: name }));
+                  }}
                   additionalSongs={additionalSongs}
                   setAdditionalSongs={setAdditionalSongs}
                   bundleDiscount={bundleDiscountPercent}

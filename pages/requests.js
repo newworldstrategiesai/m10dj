@@ -1718,28 +1718,8 @@ export function GeneralRequestsPage({
   const prevExtractingSong = useRef(extractingSong);
   const hasAutoFocusedNameField = useRef(false); // Track if we've already auto-focused the name field
   
-  // Auto-focus name field when song selection is complete (only once per session)
-  useEffect(() => {
-    if (requestType === 'song_request' && isSongSelectionComplete() && currentStep === 1) {
-      // Only auto-focus name field once, and only if name is empty
-      if (!hasAutoFocusedNameField.current && !formData.requesterName?.trim()) {
-        hasAutoFocusedNameField.current = true;
-        setTimeout(() => {
-          const nameInput = document.querySelector('input[name="requesterName"]');
-          if (nameInput) {
-            nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            nameInput.focus();
-          }
-        }, 100);
-      }
-    }
-    // Reset the flag when song selection becomes incomplete (user cleared fields)
-    if (!isSongSelectionComplete()) {
-      hasAutoFocusedNameField.current = false;
-    }
-    // For tip, we're already showing the payment selector inline, so no need to advance
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.songTitle, formData.songArtist, requestType, currentStep]);
+  // Auto-focus removed - requester name is now collected at payment step
+  // No need to auto-focus since field is not on step 1 anymore
   
   // Scroll to song title field after extraction completes (don't auto-advance)
   useEffect(() => {
@@ -1777,11 +1757,16 @@ export function GeneralRequestsPage({
   const handleSubmit = async (e) => {
     logger.info('[handleSubmit] Form submission started', { currentStep, requestType, submitting });
     
-    try {
-      e?.preventDefault?.();
-      e?.stopPropagation?.();
-    } catch (err) {
-      logger.warn('Error preventing default', err);
+    // Always prevent default form submission - we handle it manually
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Prevent double submission
+    if (submitting) {
+      logger.warn('[handleSubmit] Already submitting, ignoring duplicate call');
+      return;
     }
     
     setError('');
@@ -1919,7 +1904,8 @@ export function GeneralRequestsPage({
         songTitle: (requestType === 'song_request' ? formData?.songTitle?.trim() : null) || null,
         recipientName: (requestType === 'shoutout' ? formData?.recipientName?.trim() : null) || null,
         recipientMessage: (requestType === 'shoutout' ? formData?.recipientMessage?.trim() : null) || null,
-        requesterName: formData?.requesterName?.trim(),
+        // Use placeholder "Guest" if name not provided - will be updated at payment step
+        requesterName: formData?.requesterName?.trim() || 'Guest',
         requesterEmail: formData?.requesterEmail?.trim() || null,
         requesterPhone: formData?.requesterPhone?.trim() || null,
         message: (requestType === 'tip' ? 'Tip' : messageWithUrl) || null,
@@ -1972,7 +1958,8 @@ export function GeneralRequestsPage({
                   requestId: mainData.requestId,
                   biddingRoundId: biddingData.biddingRoundId,
                   bidAmount: bidAmount,
-                  bidderName: formData.requesterName?.trim(),
+                  // Use placeholder "Guest" if name not provided - will be updated at payment step
+                  bidderName: formData.requesterName?.trim() || 'Guest',
                   bidderEmail: formData.requesterEmail?.trim() || null,
                   bidderPhone: formData.requesterPhone?.trim() || null,
                   organizationId: organizationId
@@ -2049,7 +2036,8 @@ export function GeneralRequestsPage({
             requestType: 'song_request',
             songArtist: song.songArtist?.trim() || null,
             songTitle: song.songTitle?.trim() || null,
-            requesterName: formData?.requesterName?.trim(),
+            // Use placeholder "Guest" if name not provided - will be updated at payment step
+            requesterName: formData?.requesterName?.trim() || 'Guest',
             requesterEmail: formData?.requesterEmail?.trim() || null,
             requesterPhone: formData?.requesterPhone?.trim() || null,
             amount: pricePerSong, // Each song gets equal share of bundle price
@@ -2086,7 +2074,8 @@ export function GeneralRequestsPage({
             requestType: 'song_request',
             songArtist: song.songArtist?.trim() || null,
             songTitle: song.songTitle?.trim() || null,
-            requesterName: formData?.requesterName?.trim(),
+            // Use placeholder "Guest" if name not provided - will be updated at payment step
+            requesterName: formData?.requesterName?.trim() || 'Guest',
             requesterEmail: formData?.requesterEmail?.trim() || null,
             requesterPhone: formData?.requesterPhone?.trim() || null,
             amount: 0, // Bundled with main request - payment already included in main request
@@ -4188,8 +4177,8 @@ export function GeneralRequestsPage({
           </div>
         )}
         
-        <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-8 sm:py-12 md:py-16' : 'py-2 sm:py-3 md:py-4'} px-3 sm:px-4 md:px-8 lg:px-12 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto'), display: 'flex', flexDirection: 'column', maxWidth: '100vw', height: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%'), maxHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%') }}>
-          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-xl md:max-w-2xl lg:max-w-3xl'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden`} style={{ minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
+        <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-4 sm:py-6 md:py-8' : 'py-2 sm:py-3 md:py-4'} px-3 sm:px-4 md:px-8 lg:px-12 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto'), display: 'flex', flexDirection: 'column', maxWidth: '100vw', height: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%'), maxHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%') }}>
+          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-xl md:max-w-2xl lg:max-w-3xl'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden ${showPaymentMethods ? 'overflow-y-auto' : ''}`} style={{ minHeight: 0, maxHeight: '100%', overflow: showPaymentMethods ? 'auto' : 'hidden' }}>
             {/* Header - Compact for no-scroll design - Hide when hero image is shown */}
             {false && (
               <div className="text-center mb-2 sm:mb-3">
@@ -4318,7 +4307,28 @@ export function GeneralRequestsPage({
                 
                 {/* Song Request Form - Always show on bid page (unless user already submitted) */}
                 {!biddingRequestId && (
-                  <form onSubmit={handleSubmit} noValidate className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Only handle if not already submitting
+                    // This is mainly for Enter key presses in form fields
+                    if (!submitting) {
+                      // For step 1, navigate to payment step
+                      if (currentStep === 1) {
+                        setError('');
+                        setCurrentStep(2);
+                        setTimeout(() => {
+                          const paymentElement = document.querySelector('[data-payment-section]');
+                          if (paymentElement) {
+                            paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }, 100);
+                        return;
+                      }
+                      // For step 2, call handleSubmit
+                      handleSubmit(e);
+                    }
+                  }} noValidate className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
                     {/* Request Type Selection - Hidden on bid page since only song_request is allowed */}
                     
                     {/* Song Request Fields */}
@@ -4733,7 +4743,14 @@ export function GeneralRequestsPage({
 
                         {/* Submit Button */}
                         <button
-                          type="submit"
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!submitting) {
+                              handleSubmit(e);
+                            }
+                          }}
                           disabled={(() => {
                             if (submitting) return true;
                             if (!formData.songTitle.trim()) return true;
@@ -4908,6 +4925,9 @@ export function GeneralRequestsPage({
                 songArtist={formData.songArtist}
                 recipientName={formData.recipientName}
                 requesterName={formData.requesterName}
+                onRequesterNameChange={(name) => {
+                  setFormData(prev => ({ ...prev, requesterName: name }));
+                }}
                 additionalSongs={additionalSongs}
                 setAdditionalSongs={setAdditionalSongs}
                 bundleSongs={bundleSongs} // New: Pass bundle songs
@@ -4925,7 +4945,28 @@ export function GeneralRequestsPage({
                 }}
               />
               ) : (
-              <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-2 sm:space-y-3 overflow-y-auto" style={{ minHeight: 0, maxHeight: '100%' }}>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Only handle if not already submitting
+                // This is mainly for Enter key presses in form fields
+                if (!submitting) {
+                  // For step 1, navigate to payment step
+                  if (currentStep === 1) {
+                    setError('');
+                    setCurrentStep(2);
+                    setTimeout(() => {
+                      const paymentElement = document.querySelector('[data-payment-section]');
+                      if (paymentElement) {
+                        paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }, 100);
+                    return;
+                  }
+                  // For step 2, call handleSubmit
+                  handleSubmit(e);
+                }
+              }} className="flex-1 flex flex-col space-y-2 sm:space-y-3 overflow-y-auto" style={{ minHeight: 0, maxHeight: '100%' }}>
                 {/* Request Type Selection */}
                 <div className="bg-white/70 dark:!bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-2.5 sm:p-3 md:p-4 flex-shrink-0">
                   <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-2.5 flex items-center gap-1.5 sm:gap-2">
@@ -5471,8 +5512,8 @@ export function GeneralRequestsPage({
                     </div>
                   )}
 
-                  {/* Requester Information - Removed from initial view for simplicity */}
-                  {/* Name and notes will be collected during checkout if needed */}
+                  {/* Requester Information - Collected at payment step */}
+                  {/* Name will be collected during checkout/payment step */}
 
                 </div>
 
@@ -5573,7 +5614,11 @@ export function GeneralRequestsPage({
                     disabled={submitting}
                     className="group relative w-full py-2.5 sm:py-3 text-sm sm:text-base font-bold inline-flex items-center justify-center gap-2 min-h-[44px] sm:min-h-[48px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-lg sm:rounded-xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50 active:scale-[0.98] transition-all duration-200 overflow-hidden focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none border-0 outline-none !border-0 !outline-none"
                     style={{ border: 'none', outline: 'none' }}
-                    onClick={(e) => {
+                    onClick={async (e) => {
+                      // CRITICAL: Always prevent default and stop propagation FIRST
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
                       // Always log the click for debugging
                       console.log('[Submit Button] onClick fired', {
                         currentStep,
@@ -5589,21 +5634,17 @@ export function GeneralRequestsPage({
                         buttonType: currentStep === 1 ? 'button' : 'submit'
                       });
                       
+                      // Prevent double-submission - check BEFORE any async operations
+                      if (submitting) {
+                        console.warn('[Submit Button] Already submitting, preventing click');
+                        logger.warn('[Submit Button] Already submitting, preventing click');
+                        return;
+                      }
+                      
                       try {
-                        // Prevent double-submission
-                        if (submitting) {
-                          console.warn('[Submit Button] Already submitting, preventing click');
-                          logger.warn('[Submit Button] Already submitting, preventing click');
-                          e.preventDefault();
-                          e.stopPropagation();
-                          return;
-                        }
-                        
                         if (currentStep === 1) {
                           console.log('[Submit Button] Step 1: Navigating to payment step');
                           logger.info('[Submit Button] Step 1: Navigating to payment step');
-                          e.preventDefault();
-                          e.stopPropagation();
                           // Clear any previous errors and go to payment step
                           setError('');
                           setCurrentStep(2);
@@ -5621,17 +5662,8 @@ export function GeneralRequestsPage({
                         console.log('[Submit Button] Step 2: Calling handleSubmit');
                         logger.info('[Submit Button] Step 2: Calling handleSubmit');
                         
-                        // Prevent default form submission since we're handling it manually
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        // Call handleSubmit directly
-                        handleSubmit(e).catch((error) => {
-                          console.error('[Submit Button] Error in handleSubmit:', error);
-                          logger.error('[Submit Button] Error in handleSubmit:', error);
-                          setError('An error occurred. Please try again.');
-                          setSubmitting(false);
-                        });
+                        // Call handleSubmit directly - it will handle its own preventDefault
+                        await handleSubmit(e);
                       } catch (error) {
                         console.error('[Submit Button] onClick error:', error);
                         logger.error('[Submit Button] onClick error:', error);
