@@ -7,6 +7,14 @@ DROP POLICY IF EXISTS "Platform admins can view all request tab defaults" ON req
 DROP POLICY IF EXISTS "Org admins can view their org request tab defaults" ON request_tab_defaults;
 DROP POLICY IF EXISTS "Platform admins can manage platform request tab defaults" ON request_tab_defaults;
 DROP POLICY IF EXISTS "Org admins can manage their org request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Anyone can view platform request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Anyone can view organization request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Platform admins can insert platform request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Platform admins can update platform request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Platform admins can delete platform request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Org admins can insert their org request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Org admins can update their org request tab defaults" ON request_tab_defaults;
+DROP POLICY IF EXISTS "Org admins can delete their org request tab defaults" ON request_tab_defaults;
 
 -- Allow anyone to read platform defaults (organization_id IS NULL)
 CREATE POLICY "Anyone can view platform request tab defaults"
